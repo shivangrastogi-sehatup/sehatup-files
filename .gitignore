@@ -1,0 +1,45 @@
+# Dependency directories
+node_modules/
+dist/
+build/
+.next/
+pushing-repo/
+sehatup-analytics-new/
+temp/
+.claude/
+.sfdx/
+# Firebase
+.firebase/
+*-debug.log
+firebase-debug.log*
+.runtimeconfig.json
+APPRAISAL_DOC.md
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Secret folders
+functions/.runtimeconfig.json
+functions/lib/
+functions/node_modules/
+
+# Secrets and credentials
+*-firebase-adminsdk-*.json
+*-adminsdk-*.json
+service-account.json
+.runtimeconfig.json
+*.p12
+*.key
+*.pem

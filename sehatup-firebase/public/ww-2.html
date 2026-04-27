@@ -1,0 +1,4430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Women's Weight Questionnaire</title>
+
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* Global Styles */
+        body {
+            background: #f5f7fa;
+            font-family: "Roboto", sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("https://cdn.shopify.com/s/files/1/0924/5687/8383/files/questionnaire_blue.jpg?v=1742991013") no-repeat center center;
+            background-size: cover;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        /* Loader Overlay */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            flex-direction: column;
+        }
+
+        .loader-content {
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        /* Container */
+        #questionnaire .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Header with Gradient */
+        #questionnaire .header {
+            background: linear-gradient(135deg, #dfe2e6, #ffffff);
+            color: #000;
+            padding: 25px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        #questionnaire h1,
+        #questionnaire h2,
+        #questionnaire h3,
+        #questionnaire p {
+            margin: 0 0 15px;
+        }
+
+        /* About You Section Styles */
+        .about-you-container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .about-you-container .form-row label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2f74b5;
+        }
+
+        .about-you-container .form-row input {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #b3e5fc;
+            border-radius: 4px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .about-you-container .form-row input:hover,
+        .about-you-container .form-row input:focus {
+            border-color: #4364f7;
+        }
+
+        .error-message {
+            color: red;
+            margin-bottom: 15px;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .about-you-container button {
+            background-color: #ff4b81;
+            color: #fff;
+            padding: 12px 30px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .about-you-container button:hover {
+            background-color: #d23b77;
+            transform: scale(1.03);
+        }
+
+        /* Option Buttons for Questions */
+        .question .option-button,
+        .lifestyle .option-button {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 18px 20px;
+            font-size: 18px;
+            text-align: left;
+            cursor: pointer;
+            transition: border 0.3s, background 0.3s;
+            margin: 8px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .question .option-button:hover,
+        .lifestyle .option-button:hover {
+            border-color: #7a2e20;
+            background: #fff7f6;
+        }
+
+        /* STEP INDICATORS */
+        #step-indicators {
+            display: none;
+        }
+
+        .step-indicators {
+            position: relative;
+            margin: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: nowrap;
+            gap: 8px;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 30%;
+            left: 100px;
+            right: 100px;
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            z-index: 1;
+        }
+
+        .progress-fill-line {
+            position: absolute;
+            top: 30%;
+            left: 100px;
+            height: 4px;
+            background: #4caf50;
+            border-radius: 2px;
+            z-index: 2;
+            width: 0;
+            transition: width 0.1s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+
+            .progress-line,
+            .progress-fill-line {
+                left: 20px;
+                right: 20px;
+            }
+        }
+
+        .step-indicator {
+            position: relative;
+            z-index: 3;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .step-indicator .circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #e9eff5;
+            color: #4364f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .step-indicator.completed .circle {
+            background: #4364f7;
+            color: #fff;
+        }
+
+        .step-indicator.active .circle {
+            background: #4364f7;
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        /* ✅ CLEAN AND RESPONSIVE LABEL STYLING */
+        .step-indicator .label {
+            margin-top: 8px;
+            font-size: 13px;
+            line-height: 1.2;
+            color: #333;
+            word-break: auto-phrase;
+            white-space: normal;
+            max-width: 70px;
+            margin-inline: auto;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .step-indicator .label {
+                font-size: 12px;
+                max-width: 60px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .step-indicator .label {
+                font-size: 7px;
+                max-width: 50px;
+            }
+
+            .step-indicator .circle {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .step-indicators {
+                flex-wrap: wrap;
+                row-gap: 10px;
+                justify-content: space-around;
+            }
+        }
+
+
+        #questionnaire .step {
+            display: none;
+            padding: 20px 0;
+        }
+
+        #questionnaire .step.active {
+            display: block;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .navigation button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            background: #000;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .navigation button:hover {
+            background: #365dcf;
+        }
+
+        /* New CSS for Previous button styled in blue */
+        .navigation button.prev-btn {
+            background: #4364f7;
+            color: #fff;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .navigation button.prev-btn:hover {
+            background: #365dcf;
+        }
+
+        /* Next button remains black */
+        .navigation button.next-btn {
+            background: #000;
+            color: #fff;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .navigation button.next-btn:hover {
+            background: #365dcf;
+        }
+
+        #questionnaire form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 900;
+            color: #333;
+        }
+
+        #questionnaire form input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        #questionnaire .options {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        #questionnaire .options button {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 18px 20px;
+            font-size: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: border 0.3s, background 0.3s;
+        }
+
+        #questionnaire .options button:hover {
+            border-color: #7a2e20;
+            background: #fff7f6;
+        }
+
+        .faq-container {
+            background: #eaf7ff;
+            border: 1px solid #b0e0ff;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .faq-headline {
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        /* FINAL STEP (Results Page) */
+        #questionnaire .final-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 45px;
+        }
+
+        #step-6 .final-layout.centered {
+            max-width: 1700px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        #questionnaire .left-column {
+            flex: 1 1 60%;
+            min-width: 300px;
+        }
+
+        .patient-details {
+            border-radius: 8px;
+            border: 1px, solid #e3e3e3;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .patient-details h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+            color: #010101;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .patient-details-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .patient-info-text {
+            flex: 1 1 55%;
+        }
+
+        .patient-info-text p {
+            margin: 4px 0;
+            font-size: 19px;
+            color: #0c0b0b;
+        }
+
+        .patient-info-score {
+            flex: 0 0 40%;
+            text-align: right;
+        }
+
+        .patient-info-score p {
+            margin: 4px 0;
+            font-size: 36px;
+            color: #010101;
+        }
+
+        /* CIRCULAR PROGRESS */
+        .score-box {
+            width: 140px;
+            height: 140px;
+            margin-bottom: 5px;
+            margin-right: 10%;
+            margin-left: auto;
+            position: relative;
+        }
+
+        .circular-progress {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: conic-gradient(#4caf50 0deg, #eee 0deg);
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .circular-progress::before {
+            content: "";
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            background: #fff;
+            border-radius: 50%;
+            top: 15px;
+            left: 15px;
+            z-index: 1;
+        }
+
+        .inner-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 5px;
+            left: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .progress-value {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+            color: #333;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* Modal Popup for Recommended Products */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 60px auto;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            text-align: center;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .modal-content img {
+            width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .modal-content h2 {
+            margin-top: 16px;
+        }
+
+        .modal-content p.price {
+            font-weight: bold;
+            color: #000;
+            font-size: 1.8rem;
+            margin-top: 10px;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .score-message {
+            font-size: 36px;
+            color: #666;
+        }
+
+        .patient-id {
+            display: none;
+        }
+
+        .future-risk-section {
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        #future-risk {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .risk-tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+
+        .risk-tag {
+            background-color: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 15px;
+            color: #333;
+            white-space: normal;
+            word-wrap: break-word;
+            word-break: break-word;
+            max-width: 100%;
+            flex: 1 1 250px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-sizing: border-box;
+        }
+
+
+        .risk-tag:hover {
+            background-color: #ffe5e5;
+            border-color: #ff3b6e;
+            color: #ff3b6e;
+        }
+
+        .whatsapp-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .whatsapp-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #1A9A9A;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 12px 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .whatsapp-button img {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .whatsapp-button:hover {
+            background-color: #1ebc59;
+            transform: scale(1.05);
+        }
+
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .popup {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .popup input {
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .popup button {
+            background-color: #25d366;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .popup button.close-btn {
+            background-color: #ff3e6c;
+        }
+
+        .results-timeline {
+            background: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .results-timeline h3 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .results-timeline h3 .highlight-text {
+            color: #ff3b6e;
+            font-weight: bold;
+        }
+
+        .timeline-months {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .line {
+            height: 2px;
+            background: #e3e3e3;
+            flex: 1;
+            margin: 0 10px;
+            position: relative;
+            top: -30px;
+        }
+
+        .month-box {
+            text-align: center;
+            flex: 1;
+            position: relative;
+        }
+
+        .month-icon img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid #f2f2f2;
+            background-color: #fff;
+            position: relative;
+            z-index: 2;
+        }
+
+        .month-box h4 {
+            font-size: 12px;
+            margin: 10px 0 5px;
+            color: #333;
+        }
+
+        .month-box p {
+            font-size: 10px;
+            color: #777;
+        }
+
+        .line:last-child {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .timeline-months {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                align-items: stretch;
+            }
+
+            .month-box {
+                flex: none;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .month-box h4,
+            .month-box p {
+                font-size: 14px;
+                word-wrap: break-word;
+            }
+
+            .line {
+                display: none;
+            }
+        }
+
+
+        .support-section {
+            background: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .treatment-plan {
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e3e3e3;
+        }
+
+        .treatment-plan h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .treatment-plan ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .treatment-plan ul li {
+            margin: 5px 0;
+            font-size: 16px;
+            color: #555;
+        }
+
+        #questionnaire .right-column {
+            flex: 1 1 35%;
+            min-width: 250px;
+        }
+
+        .recommended-treatment {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e3e3e3;
+            width: 90%;
+            /* margin-right: 90px; */
+            margin-left: 30px;
+        }
+
+        .recommended-treatment h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .product-list {
+            margin-bottom: 20px;
+        }
+
+        .product-card {
+            background: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+        }
+
+        .product-card img {
+            width: 180px;
+            height: 180px;
+            object-fit: cover;
+            margin: 0 auto 10px;
+            display: block;
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .product-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .price-section {
+            margin-bottom: 10px;
+        }
+
+        .old-price {
+            text-decoration: line-through;
+            color: #999;
+            margin-right: 6px;
+        }
+
+        .new-price {
+            color: #ff3e6c;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .discount-badge {
+            background: #ff3b6e;
+            color: #fff;
+            font-size: 12px;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .checkout-section {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        /* Dropdown icon in product recommendation section */
+        .dropdown-icon {
+            margin-left: 5px;
+            font-size: 14px;
+            color: #888;
+            vertical-align: middle;
+        }
+
+        .product-card:hover .dropdown-icon {
+            color: #4364f7;
+            transform: translateY(2px);
+            transition: transform 0.2s, color 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .checkout-section {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                padding: 15px 10px;
+                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+                z-index: 999;
+            }
+
+            #step-6 .left-column {
+                margin-bottom: 100px;
+            }
+        }
+
+        .checkout-section p {
+            font-size: 16px;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        #total-amount {
+            font-size: 18px;
+            color: #ff3e6c;
+            font-weight: 700;
+            margin-left: 5px;
+        }
+
+        .gst-note {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .buy-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .buy-button {
+            padding: 15px 75px;
+            background: #ed194b;
+            border-radius: 14px;
+            border: none;
+
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s;
+            color: #fff;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .buy-button:hover {
+            background: #ed194b;
+            transform: scale(1.05);
+        }
+
+        #step-6 .final-layout {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            #questionnaire .container {
+                margin: 20px;
+                width: 90%;
+                padding: 15px;
+            }
+
+            #questionnaire h1 {
+                font-size: 24px;
+            }
+
+            #questionnaire h2 {
+                font-size: 20px;
+            }
+
+            #questionnaire p,
+            #questionnaire form label {
+                font-size: 20px;
+            }
+
+            #questionnaire button {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+
+            .step-indicators {
+                margin: 20px 0px;
+            }
+
+            .step-indicator .circle {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+
+            .step-indicator .label {
+                font-size: 12px;
+            }
+
+            .timeline-months {
+                flex-direction: column;
+            }
+
+            .month-box {
+                min-width: 100%;
+            }
+
+            .score-box {
+                width: 120px;
+                height: 120px;
+            }
+
+            .circular-progress {
+                width: 120px;
+                height: 120px;
+            }
+
+            .circular-progress::before {
+                width: 90px;
+                height: 90px;
+                top: 15px;
+                left: 15px;
+            }
+        }
+
+        /* UGC Videos Slider (Update 1) */
+        #ugc-content {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 0 15px;
+            display: none;
+        }
+
+        .ugc-slider {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 10px;
+        }
+
+        .ugc-slide {
+            flex: 0 0 auto;
+            width: 320px;
+            scroll-snap-align: start;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .ugc-slide iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: none;
+        }
+
+        .multi-select-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 16px 0;
+            padding: 12px;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            justify-content: space-between;
+        }
+
+        .multi-option-card {
+            flex: 1 1 calc(48% - 10px);
+            max-width: 48%;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .multi-option-card:hover {
+            border-color: #4364f7;
+            box-shadow: 0 2px 8px rgba(67, 100, 247, 0.15);
+        }
+
+        /* Checkbox input */
+        .multi-checkbox {
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Label text */
+        .multi-label {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        /* Responsive: Stack in one column on small screens */
+        @media (max-width: 480px) {
+            .multi-option-card {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+
+            .multi-label {
+                font-size: 15px;
+            }
+        }
+
+        /* hover & checked states */
+        .multi-option-card:hover {
+            border-color: #4364f7;
+            box-shadow: 0 2px 8px rgba(67, 100, 247, 0.2);
+        }
+
+        .multi-checkbox:checked+.multi-label,
+        .multi-checkbox:checked~.multi-label {
+            font-weight: bold;
+            color: #4364f7;
+        }
+
+        /* Exit Popup for Back Navigation (Update 2) */
+        /* Exit Popup for Back Navigation (Update 2) */
+        #exit-popup {
+            display: none;
+            position: fixed;
+            z-index: 11000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100dvh;
+            /* Use dynamic viewport height for mobile */
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #exit-popup.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        #exit-popup.fade-out {
+            opacity: 0;
+        }
+
+        #exit-popup .modal-content {
+            max-width: 360px;
+            width: 90%;
+            padding: 16px;
+            background: #fff;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #exit-popup img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            image-rendering: auto;
+        }
+
+        #exit-popup h2,
+        #exit-popup p {
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        #exit-popup input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        #exit-popup .close-btn {
+            position: absolute;
+            top: -7px;
+            right: 2px;
+            font-size: 24px;
+            color: #333;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 11001;
+        }
+
+        /* Coupon container style */
+        .coupon-container {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: baseline;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .coupon-container input {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .copy-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+            font-size: 0.95rem;
+        }
+
+        .faq-timer-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        /* in your <style> */
+        .faq-timer-fill {
+            width: 100%;
+            /* start full */
+            height: 100%;
+            background-color: orange;
+            /* start orange */
+            transition:
+                width 1.3s linear,
+                background-color 1.3s linear;
+            /* animate both */
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 480px) {
+            #exit-popup .modal-content {
+                padding: 12px;
+                max-height: 85vh;
+            }
+
+            #exit-popup h2 {
+                font-size: 1.8rem;
+            }
+
+            #exit-popup p {
+                font-size: 1.2rem;
+            }
+
+            .copy-btn {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* whatsapp Styling */
+
+        .whatsapp-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .whatsapp-report-btn {
+            display: inline-flex;
+            align-items: center;
+            background-color: #25d366;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .whatsapp-report-btn:hover {
+            background-color: #1ebc59;
+            transform: scale(1.05);
+        }
+
+        .whatsapp-report-btn img {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        #download-report-button {
+            background-color: #7499ac !important;
+        }
+
+        #download-report-button:hover {
+            background-color: #557d90 !important;
+        }
+
+        #download-report-button {
+            position: relative;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #download-report-button[disabled] {
+            background-color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #download-countdown {
+            font-weight: bold;
+            margin-left: 8px;
+            font-size: 14px;
+            color: #000;
+        }
+
+        .popup-overlay {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .popup {
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .otp-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .otp-modal-content {
+            background: #fff;
+            padding: 30px 25px;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            position: relative;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            font-family: "Segoe UI", sans-serif;
+        }
+
+        .otp-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .otp-modal-content h3 {
+            margin-bottom: 18px;
+            color: #222;
+        }
+
+        .otp-modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            transition: 0.2s;
+        }
+
+        .otp-modal-content input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px #007bff22;
+        }
+
+        .otp-modal-content button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .otp-modal-content button:hover {
+            background-color: #0056b3;
+        }
+
+        #otp-toast {
+            margin-top: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            display: none;
+        }
+
+        #otp-timer {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .otp-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+        }
+
+        .otp-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 25px 30px;
+            width: 90%;
+            max-width: 360px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            position: relative;
+            text-align: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .otp-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .otp-box h3 {
+            margin-bottom: 10px;
+        }
+
+        .otp-input-group {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .otp-input-group input {
+            width: 40px;
+            height: 45px;
+            text-align: center;
+            font-size: 20px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .otp-input-group input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 3px #007bff88;
+        }
+
+        .verify-btn {
+            background-color: #007bff;
+            color: #fff;
+            padding: 12px;
+            width: 100%;
+            font-size: 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .verify-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .resend-text {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        #otp-toast {
+            margin-top: 10px;
+            font-weight: bold;
+            display: none;
+        }
+
+
+        /* OTP Modal Enhancements */
+        #otp-modal h3 {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #otp-modal p {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        #otp-phone {
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #otp-modal .verify-btn,
+        #otp-modal button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease;
+            font-weight: bold;
+        }
+
+        #otp-modal .verify-btn:hover,
+        #otp-modal button:hover {
+            background: #0056b3;
+        }
+
+        #otp-toast {
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 10px;
+            color: green;
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .step-indicator .label {
+                font-size: 7px;
+                word-break: break-word;
+                white-space: normal;
+            }
+
+            .step-indicator .circle {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .step-indicators {
+                flex-wrap: wrap;
+                row-gap: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .whatsapp-button-container {
+                position: fixed;
+                bottom: 100px;
+                /* above buy button */
+                right: 20px;
+                z-index: 9999;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .step-indicator .label {
+                font-size: 7px;
+                line-height: 1.2;
+                word-break: break-word;
+                white-space: normal;
+                max-width: 60px;
+                margin: 6px auto 0;
+            }
+
+            .step-indicator .circle {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .step-indicators {
+                flex-wrap: wrap;
+                row-gap: 10px;
+                justify-content: space-around;
+            }
+        }
+
+
+        @keyframes dots {
+            0% {
+                content: '.';
+            }
+
+            33% {
+                content: '..';
+            }
+
+            66% {
+                content: '...';
+            }
+
+            100% {
+                content: '.';
+            }
+        }
+
+
+        /* ... More of your CSS (all the styles from your original code) ... */
+        /* For brevity, please include your entire CSS from your previous code here */
+    </style>
+
+    <!-- Initialize Firebase -->
+    <script>
+        // Replace the values below with your Firebase project's configuration.
+        // Optionally, you can load these values via Liquid settings.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCr7hpZ8_Qye66RC2LyyWwQ8pXs7Jw1cPg",
+            authDomain: "sehatupdev.firebaseapp.com",
+            projectId: "sehatupdev",
+            storageBucket: "sehatupdev.firebasestorage.app",
+            messagingSenderId: "367894412167",
+            appId: "1:367894412167:web:e8e19660246ff976cfb122"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        // Initialize Firestore
+        const db = firebase.firestore();
+        if (location.hostname === "localhost" || location.hostname == "127.0.0.1") {
+            db.useEmulator("127.0.0.1", 8080);
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Loader Overlay -->
+    <div id="loader">
+        <div class="loader-content">
+            <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/GIF.gif?v=1745393486" alt="Loading..."
+                style="width: 100px; height: 100px" />
+            <p style="font-size: 18px; font-weight: bold">
+                Calculating your personalized health report... 😊
+            </p>
+            <p style="font-size: 16px">
+                Please wait a moment while we analyze your responses.
+            </p>
+        </div>
+    </div>
+
+    <!-- Background Overlay -->
+    <div class="bg-overlay"></div>
+
+    <!-- Questionnaire Section -->
+    <div id="questionnaire">
+        <div class="container">
+            <div class="header">
+                <h1>Women's Weight Questionnaire</h1>
+            </div>
+            <!-- STEP INDICATORS -->
+            <div class="step-indicators" id="step-indicators">
+                <div class="progress-line"></div>
+                <div class="progress-fill-line"></div>
+
+                <div class="step-indicator" data-step="2">
+                    <div class="circle">1</div>
+                    <div class="label">About You</div>
+                </div>
+                <div class="step-indicator" data-step="3">
+                    <div class="circle">2</div>
+                    <div class="label">Health</div>
+                </div>
+                <div class="step-indicator" data-step="4">
+                    <div class="circle">3</div>
+                    <div class="label">Additional</div>
+                </div>
+                <div class="step-indicator" data-step="5">
+                    <div class="circle">4</div>
+                    <div class="label">Lifestyle</div>
+                </div>
+                <div class="step-indicator" data-step="6">
+                    <div class="circle">5</div>
+                    <div class="label">Medical</div>
+                </div>
+                <div class="step-indicator" data-step="7">
+                    <div class="circle">6</div>
+                    <div class="label">Weight Loss</div>
+                </div>
+            </div>
+
+
+            <!-- Step 1: Instructions -->
+            <div id="step-1" class="step active">
+                <h2>Welcome to the Women's Weight Managment Quiz!</h2>
+                <ul>
+                    <li>Welcome to the Women's Weight Questionnaire.</li>
+                    <li>This tool is designed to help assess your current weight and provide personalized
+                        recommendations.</li>
+                    <li>Please note: You must be 18 years or older to proceed.</li>
+                </ul>
+                <div class="navigation">
+                    <div></div>
+                    <button onclick="startQuestionnaire()">
+                        Start Questionnaire
+                    </button>
+                </div>
+            </div>
+            <!-- Step 2: About You -->
+            <div id="step-2" class="step about-you-container">
+                <h2>Tell us a bit about yourself to personalize your experience.</h2>
+
+                <!-- First Sub-form: Personal Info -->
+                <form id="about-you-form">
+                    <div class="form-row">
+                        <label for="name">Enter Your Full Name:</label>
+                        <input type="text" id="name" placeholder="Your name" required />
+                        <span id="name-error" class="error-message"></span>
+                    </div>
+                    <div class="form-row">
+                        <label for="dob">Enter Your Date of Birth:</label>
+                        <input type="date" id="dob" required />
+                        <span id="age-error" class="error-message"></span>
+                    </div>
+                    <div class="form-row">
+                        <label for="phone">Enter Your Phone Number:</label>
+                        <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required
+                            oninput="validatePhone(this)">
+                        <span id="phone-error" class="error-message"></span>
+                    </div>
+                    <div class="navigation">
+                        <button type="button" class="prev-btn" onclick="prevStep(1)">Previous</button>
+                        <button type="button" class="next-btn" onclick="validateAboutYou()">Next</button>
+                    </div>
+                </form>
+
+                <!-- Second Sub-form: Health Metrics (Initially hidden) -->
+                <form id="healthMetricsForm" style="display: none;">
+                    <div class="form-row">
+                        <label for="height">Height (cm):</label>
+                        <input type="number" id="height" name="height" placeholder="Your height in cm" required>
+                        <span id="height-error" class="error-message"></span>
+                    </div>
+                    <div class="form-row">
+                        <label for="currentWeight">Current Weight (kg):</label>
+                        <input type="number" id="currentWeight" name="currentWeight"
+                            placeholder="Your current weight in kg" required>
+                        <span id="weight-error" class="error-message"></span>
+                    </div>
+                    <div class="form-row">
+                        <label for="targetWeight">Target Weight (kg):</label>
+                        <input type="number" id="targetWeight" name="targetWeight"
+                            placeholder="Your target weight in kg" required>
+                        <span id="targetWeight-error" class="error-message"></span>
+                    </div>
+                    <div class="navigation">
+                        <button type="button" class="prev-btn" onclick="backToAboutForm()">Previous</button>
+                        <button type="button" class="next-btn" onclick="continueToHealth()">Next</button>
+                    </div>
+                </form>
+            </div>
+
+
+            <!-- Health Questions -->
+            <div id="step-3" class="step">
+                <div id="questions-container-step-3"></div>
+                <div id="faq-container" class="faq-container" style="display: none"></div>
+                <div class="navigation" id="nav-container-step-3">
+                    <button type="button" class="prev-btn" onclick="prevQuestion()">Previous</button>
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- Step 4: Category-Specific Questions -->
+            <div id="step-4" class="step">
+                <div id="questions-container-step-4"></div>
+                <div id="faq-container" class="faq-container" style="display: none"></div>
+                <div class="navigation" id="nav-container-step-4">
+                    <button type="button" class="prev-btn" onclick="prevQuestion()">
+                        Previous
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- Step 5: Lifestyle Questions -->
+            <div id="step-5" class="step">
+                <div id="questions-container-step-5"></div>
+                <div id="faq-container" class="faq-container" style="display: none"></div>
+                <div class="navigation" id="nav-container-step-5">
+                    <button type="button" class="prev-btn" onclick="prevQuestion()">
+                        Previous
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+
+            <div id="step-6" class="step">
+                <div id="questions-container-step-6"></div>
+                <div id="faq-container" class="faq-container" style="display: none"></div>
+                <div class="navigation" id="nav-container-step-6">
+                    <button type="button" class="prev-btn" onclick="prevQuestion()">
+                        Previous
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+
+
+            <!-- Step 7: Results -->
+            <div id="step-7" class="step">
+                <div class="final-layout">
+                    <div class="left-column">
+                        <div class="patient-details">
+                            <h3>Assesment Report</h3>
+                            <div class="patient-details-container">
+                                <div class="patient-info-text">
+                                    <p><strong></strong> <span id="user-name"></span></p>
+                                    <p><strong></strong> <span id="user-concern"></span></p>
+                                </div>
+                                <div class="patient-info-score">
+                                    <div class="score-box" id="score-box">
+                                        <div class="circular-progress" id="circular-progress">
+                                            <div class="inner-text">
+                                                <p class="progress-value" id="progress-value">0%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p id="condition-text" style="margin-top: 10px"></p>
+                            <span class="patient-id" id="patient-id"></span>
+                            <div class="future-risk-section">
+                                <h3>Future Risk (If Not Treated)</h3>
+                                <div id="future-risk"></div>
+                                <div id="future-risk-tags" class="risk-tags-container"></div>
+                            </div>
+                            <div class="whatsapp-button-container">
+                                <button class="whatsapp-report-btn" onclick="openOtpPopup()">
+                                    <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" />
+                                    Get My Report on WhatsApp
+                                </button>
+                            </div>
+                        </div>
+                        <div class="results-timeline">
+                            <h3>Condition-Based Progress Timeline</h3>
+                            <div id="condition-timeline-container"></div>
+                        </div>
+                        <a href="https://wa.me/919355539355?text=Hi%20I%20need%20help%20regarding%20my%20health%20report."
+                            target="_blank">
+                            <div class="support-section">
+                                <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Banner_6.jpg?v=1745476460"
+                                    alt="24x7 Expert Doctor Support" style="max-width: 100%" />
+                            </div>
+                        </a>
+                        <div class="treatment-plan">
+                            <h4>What you get in your treatment plan</h4>
+                            <ul>
+                                <li>Doctor Support</li>
+                                <li>Ayurvedic Medicine</li>
+                                <li>Custom Plan</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="right-column">
+                        <div class="recommended-treatment">
+                            <h3>Recommended Treatment</h3>
+                            <div class="product-list" id="product-list"></div>
+                            <div class="checkout-section">
+                                <p>
+                                    Total Amount:
+                                    <span id="total-amount">0</span>
+                                    <small class="gst-note">(GST included)</small>
+                                </p>
+                                <div class="buy-button-container">
+                                    <button class="buy-button" onclick="buyNow()">
+                                        Buy Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- UGC Videos Slider (Update 1) -->
+                <div id="ugc-content">
+                    <!-- The slider will be populated by the renderUGCContent() function -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Popup for Recommended Products -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <img id="modalImage" src="" alt="" />
+            <h2 id="modalTitle"></h2>
+            <p id="modalDescription"></p>
+            <p id="modalPrice" class="price"></p>
+        </div>
+    </div>
+
+    <!-- Exit Popup Modal (Update 2) -->
+    <div id="exit-popup">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeExitPopup()">×</span>
+            <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Popup_Image.jpg?v=1745412444"
+                alt="Special Offer" />
+            <h2>Get Extra Off Your Order!</h2>
+            <p>Use the coupon code below to avail an extra discount:</p>
+
+            <div class="coupon-container">
+                <input type="text" id="coupon-code" value="SPECIAL5" readonly />
+                <button class="copy-btn" onclick="copyCouponCode()">Copy</button>
+            </div>
+
+            <p id="copy-feedback" style="display: none; color: green; font-weight: bold">
+                Copied!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = "https://cdn.shopify.com/s/files/1/0924/5687/8383/files";
+
+        /* Global variables and data */
+        let futureRisks = [];
+        // let selectedCategory = "";
+        let currentQuestionIndex = 0;
+        let questions = [];
+        let answers = [];
+        let medicalAnswers = [];
+        let medicalAnswersScore = [];  // stores scores
+        let medicalAnswersText = [];   // stores condition names or inputs
+        let weightLossAnswers = [];
+        let lifestyleAnswers = [];
+        let userSelectedConditions = {};
+        let currentLifestyleIndex = 0;
+        let userInfo = {};
+        let computedHealthScore = 0;
+        let recommendedProducts = [];
+        let currentStep = 1; // Current step tracker
+        let lifestyleAdditionalAnswer = ""; // Additional free-text answer
+        let possibleCauses = [];
+        let lastSubmittedDocId = null;
+        let countdownInterval;
+        let countdownSeconds = 13;
+        let healthScore = 0;
+        let otpTimer, otpTimeLeft = 60;
+        let otpExpiresAt = null;
+        let enteredPhone = "";
+        let category = "";
+        let bmi = 0;
+        let age = 0;
+
+        const productDatabase = {
+            "Leanor 60 (Orlistat)": {
+                name: "Leanor 60 (Orlistat)",
+                salePrice: 599,
+                regularPrice: 799,
+                key: "Leanor 60"
+            },
+            "Leanor 60 mg": {
+                name: "Leanor 60 mg",
+                salePrice: 599,
+                regularPrice: 799,
+                key: "Leanor 60"
+            },
+            "Ignite": {
+                name: "Ignite",
+                salePrice: 1799,
+                regularPrice: 1799,
+                key: "Ignite"
+            },
+            "Multivitamin": {
+                name: "Multivitamin",
+                salePrice: 499,
+                regularPrice: 799,
+                key: "Multivitamin"
+            },
+            "Multivitamin (optional)": {
+                name: "Multivitamin (optional)",
+                salePrice: 499,
+                regularPrice: 799,
+                key: "Multivitamin"
+            },
+            "Slimtox Tea": {
+                name: "Slimtox Tea",
+                salePrice: 399,
+                regularPrice: 449,
+                key: "Slimtox Tea"
+            },
+            "Slimtox Energy Tea": {
+                name: "Slimtox Energy Tea",
+                salePrice: 399,
+                regularPrice: 449,
+                key: "Slimtox Energy Tea"
+            },
+            "Garcinia Cambogia": {
+                name: "Garcinia Cambogia",
+                salePrice: 399,
+                regularPrice: 799,
+                key: "Garcinia Cambogia"
+            },
+            "Thyroidinum 3X": {
+                name: "Thyroidinum 3X",
+                salePrice: 349,
+                regularPrice: 499,
+                key: "Thyroidinum 3X"
+            }
+        };
+
+
+        let healthQuestions = [
+            {
+                question: "Tick that applies for you (For long-term weight control)",
+                options: [
+                    { text: "I definitely will not be able to devote 30 minutes daily to weight control.", score: 0 },
+                    { text: "I'm not sure if I can find 30 minutes daily for weight control.", score: 0 },
+                    { text: "I think I can probably find 30 minutes daily for weight control", score: 0 },
+                    { text: "I can definitely find 30 minutes daily for weight control", score: 0 },
+                    { text: "I can devote more than 30 minutes daily to weight control", score: 0 },
+                ],
+            },
+            {
+                question: "What is your primary weight loss goal?",
+                options: [
+                    { text: "fat loss", score: 0 },
+                    { text: "toning", score: 0 },
+                    { text: "increased energy", score: 0 },
+                    { text: "improved hormonal balance", score: 0 },
+                    { text: "others, please specify", score: 0 },
+                ],
+            },
+        ];
+
+        let lifestyleQuestions = [
+            {
+                question:
+                    "How active are you daily?",
+                options: [
+                    { text: "Sedentary (little or no exercise)", score: 10 },
+                    { text: "Lightly active (1-3 days/week exercise)", score: 6 },
+                    { text: "Moderately active (4-5 days/week exercise)", score: 3 },
+                    { text: "Very active (daily exercise or physical job)", score: 0 },
+                ],
+            },
+            {
+                question:
+                    "During the past 6 months my weight has increased by.",
+                options: [
+                    { text: "1-3Kg", score: 0 },
+                    { text: "3-6Kg", score: 3 },
+                    { text: "6-10Kg", score: 6 },
+                    { text: "More than 10kg", score: 10 },
+                ],
+            },
+            {
+                question:
+                    "Which body type do you identify with?",
+                options: [
+                    { text: "Normal weight", score: 1 },
+                    { text: "Over weight", score: 3 },
+                    { text: "Obese class 1", score: 6 },
+                    { text: "Obese class 2", score: 8 },
+                    { text: "Obese class 3", score: 15 },
+                ],
+            },
+            {
+                question:
+                    "How many hours do you sleep daily?",
+                options: [
+                    { text: "Less than 5 hours", score: 6 },
+                    { text: "5-6 hours", score: 3 },
+                    { text: "7-8 hours", score: 1 },
+                    { text: "More than 8 hours", score: 10 },
+                ],
+            },
+            {
+                question:
+                    "How often do you consume processed/junk food?",
+                options: [
+                    { text: "Rarely", score: 1 },
+                    { text: "Occasionally (1-2 times a week)", score: 3 },
+                    { text: "Frequently (3-5 times a week)", score: 6 },
+                    { text: "Daily", score: 10 },
+                ],
+            },
+            {
+                question:
+                    "How often do you smoke or consume alcohol?",
+                options: [
+                    { text: "Never", score: 1 },
+                    { text: "rarely", score: 5 },
+                    { text: "Occasionally ", score: 6 },
+                    { text: "Frequently ", score: 10 },
+                ],
+            },
+        ];
+
+        let medicalQuestions = [
+            {
+                question:
+                    "Do you experience any of the following? (Select all that apply)",
+                multiple: true,
+                options: [
+                    { text: "PCOS/PCOD", score: 2 },
+                    { text: "Irregular periods", score: 2 },
+                    { text: "Hypertension", score: 2 },
+                    { text: "Diabetes ", score: 2 },
+                    { text: "Family history of obesity or metabolic disorders ", score: 2 },
+                    { text: "Digestive issues (IBS, Acidity, Constipation)", score: 2 },
+                    { text: "Thyroid disorder", score: 2 },
+                    { text: "None ", score: 0 },
+                ],
+            },
+            {
+                question:
+                    "How often do you feel stressed?",
+                options: [
+                    { text: "Rarely", score: 1 },
+                    { text: "Sometimes ", score: 3 },
+                    { text: "Often ", score: 6 },
+                    { text: "Always", score: 10 },
+                ],
+            },
+            {
+                question:
+                    "Are you currently on birth control or hormone therapy?",
+                options: [
+                    { text: "No", score: 1 },
+                    { text: "Yes ", score: 5 },
+                ],
+            },
+            {
+                question:
+                    "Have you recently been pregnant or breastfeeding?",
+                options: [
+                    { text: "No", score: 1 },
+                    { text: "Yes ", score: 5 },
+                ],
+            },
+            {
+                question:
+                    "Do you have any history of pregnancy complications or significant weight gain during pregnancy?",
+                options: [
+                    { text: "No", score: 5 },
+                    { text: "Yes ", score: 1 },
+                ],
+            },
+            {
+                question:
+                    "Do you experience emotional eating ?",
+                options: [
+                    { text: "Never", score: 1 },
+                    { text: "Rarely", score: 3 },
+                    { text: "Sometimes", score: 5 },
+                    { text: "Often", score: 10 },
+                ],
+            },
+            {
+                question:
+                    "What do you consider some of your barriers when it comes to managing your weight? (check all that apply)?",
+                multiple: true,
+                options: [
+                    { text: "Hunger", score: 0 },
+                    { text: "Cravings", score: 0 },
+                    { text: "Fatigue", score: 0 },
+                    { text: "Finances", score: 0 },
+                    { text: "Time", score: 0 },
+                    { text: "Boredom", score: 0 },
+                    { text: "Stress", score: 0 },
+                    { text: "Insomnia", score: 0 },
+                    { text: "Socializing", score: 0 },
+                ],
+            },
+        ];
+
+        let weightLossQuestions = [
+            {
+                question:
+                    "Have you tried weight loss before?",
+                options: [
+                    { text: "No", score: 0 },
+                    { text: "Yes, but unsuccessful", score: 0 },
+                    { text: "Yes, but regained weight", score: 0 },
+                ],
+            },
+            {
+                question:
+                    "Which weight loss method have you tried? (Select all that apply)",
+                multiple: true,
+                options: [
+                    { text: "Dieting", score: 0 },
+                    { text: "Exercise ", score: 0 },
+                    { text: "Supplements", score: 0 },
+                    { text: "Ayurvedic/Homeopathic treatment", score: 0 },
+                    { text: "Allopathic medication", score: 0 },
+                    { text: "None", score: 0 },
+                ],
+            },
+            {
+                question:
+                    "Are you currently on any weight loss medication or supplement? (Select all that apply)",
+                multiple: true,
+                options: [
+                    { text: "No", score: 0 },
+                    { text: "Yes, allopathic", score: 0 },
+                    { text: "Yes, ayurvedic", score: 0 },
+                    { text: "Yes, homeopathic", score: 0 },
+                ],
+            },
+        ];
+
+        const causeMapping = {
+            "How active are you daily?": {
+                "Sedentary (little or no exercise)":
+                    "Sedentary lifestyle & lack of movement reduces calorie expenditure and leads to fat accumulation.",
+                "Lightly active (1-3 days/week exercise)":
+                    "Light active exercises can help with minimal calorie burn. Not much enough to counter daily intake",
+                "Moderately active (4-5 days/week exercise)": "Moderately active lifestyle is better than average, but may need more intensity or consistency to loose weight.",
+                "Very active (daily exercise or physical job)": "Active lifestyle can have positive influence on metabolism and weight management",
+            },
+            "How often do you consume processed/junk food?": {
+                "Rarely": "Minimal intake of processed food so not a significant factor in weight gain.",
+                "Occasionally (1-2 times a week)": "Occasional indulgence may lead to minor calorie surpluses and cravings.",
+                "Frequently (3-5 times a week)": "High intake of processed food increases calorie load and inflammatory response.",
+                "Daily": "Daily consumption disrupts metabolism and promotes fat storage.",
+            },
+            "Do you experience any of the following? (Select all that apply)": {
+                "PCOS/PCOD": "PCOS causes hormonal imbalance that affects insulin and fat storage.",
+                "Irregular periods": "Underactive thyroid slows metabolism, making weight loss difficult.",
+                "Hypertension": "Often associated with poor diet, stress, and visceral fat around organs.",
+                "Diabetes": "Impaired glucose metabolism causes fat accumulation, especially around the belly.",
+                "Family history of obesity or metabolic disorders": "Genetic predisposition may affect metabolism and fat distribution.",
+                "Digestive issues (IBS, Acidity, Constipation)": "Poor digestion may impact nutrient absorption and increase bloating and weight retention.",
+                "Thyroid disorder": "Hormonal imbalance due to thyroid issues",
+                "None": "No known medical conditions reported.",
+            },
+            "Do you experience emotional eating ?": {
+                "Never": "Emotional stability; eating not driven by feelings",
+                "Rarely": "Occasional stress-induced cravings",
+                "Sometimes": "Emotional triggers lead to inconsistent eating patterns",
+                "Often": "Major emotional dysregulation, cortisol elevation, sugar addiction",
+            },
+            "How often do you feel stressed?": {
+                "Rarely": "Healthy emotional regulation.",
+                "Sometimes": "Intermittent stress may affect food choices and sleep quality.",
+                "Often": "Chronic stress triggers cortisol, which increases fat accumulation, especially in the abdomen.",
+                "Always": "Chronic stress triggers cortisol, which increases fat accumulation, especially in the abdomen.",
+            },
+            "Are you currently on birth control or hormone therapy?": {
+                "No": "Hormonal weight fluctuations are less likely;",
+                "Yes": "Hormonal therapies can influence fat distribution, water retention, and appetite regulation.",
+            },
+            "Do you experience emotional eating ?": {
+                "Never": "Indicates good emotional regulation and healthy relationship with food.",
+                "Rarely": "Occasional stress-related eating may not significantly impact weight.",
+                "Sometimes": "Emotional eating may be a response to stress, boredom, or anxiety, leading to irregular calorie intake.",
+                "Often": "Strong link between emotions and food choices, often leading to bingeing on high-calorie items.",
+            }
+        };
+
+
+        const futureRisksMapping = {
+            "How active are you daily?": {
+                "Sedentary (little or no exercise)":
+                    "Increased risk of obesity, diabetes, cardiovascular diseases",
+                "Lightly active (1-3 days/week exercise)":
+                    "Risk of gradual weight gain and lowered metabolism",
+                "Moderately active (4-5 days/week exercise)": "Moderate risk if diet isn’t managed well",
+                "Very active (daily exercise or physical job)": "Low risk helps in maintaining ideal weight",
+            },
+            "How often do you consume processed/junk food?": {
+                "Rarely": "Low risk from this behavior; continue maintaining healthy food habits.",
+                "Occasionally (1-2 times a week)": "If not balanced with activity, can contribute to slow weight gain over time.",
+                "Frequently (3-5 times a week)": "Leads to fat accumulation, insulin resistance, and digestive issues",
+                "Daily": "High risk of obesity, metabolic syndrome, fatty liver, and hormonal imbalance.",
+            },
+            "Do you experience any of the following? (Select all that apply)": {
+                "PCOS/PCOD": "Increased risk of infertility, type 2 diabetes, and chronic weight retention.",
+                "Irregular periods": "Can lead to obesity, mood changes, menstrual issues, and high cholesterol.",
+                "Hypertension": "Elevated risk of heart disease, stroke, and kidney disorders.",
+                "Diabetes": "High risk of cardiovascular disease, nerve damage, and complications in organs.",
+                "Family history of obesity or metabolic disorders": "Increased lifetime risk of obesity, diabetes, and hormonal disorders.",
+                "Digestive issues (IBS, Acidity, Constipation)": "Long-term gut inflammation, fatigue, and difficulty managing weight.",
+                "Thyroid disorder": "Chronic fatigue, infertility, severe weight gain, depression",
+                "None": "Encouraging sign; focus on lifestyle, emotional, and nutritional factors.",
+            },
+            "How often do you feel stressed?": {
+                "Rarely": "Minimal risk if overall lifestyle is balanced.",
+                "Sometimes": "Can progress into chronic stress or binge-eating patterns if unmanaged.",
+                "Often": "Long-term stress may cause emotional eating, hormonal imbalance, and fat gain.",
+                "Always": "Long-term stress may cause emotional eating, hormonal imbalance, and fat gain.",
+            },
+            "Are you currently on birth control or hormone therapy?": {
+                "No": " current weight patterns may be due to lifestyle or metabolism.",
+                "Yes": "May lead to weight gain, mood swings, and metabolic slowdown if not monitored.",
+            },
+            "Do you experience emotional eating ?": {
+                "Never": "Low risk from emotional triggers; weight changes likely due to other factors.",
+                "Rarely": "If unchecked, can evolve into a habit during high-stress periods.",
+                "Sometimes": "Can promote fat gain, digestive distress, and disordered eating over time.",
+                "Often": "Increased risk of obesity, poor self-esteem, metabolic syndrome, and depression.",
+            },
+        };
+
+        const healthTimelineData = {
+            "<25": {
+                "pcos/pcod": [
+                    { month: "Month 1", timelineDesc: "Bloating, mood improvement" },
+                    { month: "Month 3", timelineDesc: "Cycles begin regulating" },
+                    { month: "Month 6", timelineDesc: "Ovulation regularises" }
+                ],
+                "thyroid disorder": [
+                    { month: "Month 1", timelineDesc: "Morning energy rises" },
+                    { month: "Month 3", timelineDesc: "Focus, fatigue improve" },
+                    { month: "Month 6", timelineDesc: "Stable energy and mood" }
+                ],
+                "hypertension": [
+                    { month: "Month 1", timelineDesc: "Heaviness reduces" },
+                    { month: "Month 3", timelineDesc: "BP shows improvement" },
+                    { month: "Month 6", timelineDesc: "BP easier to manage" }
+                ],
+                "diabetes": [
+                    { month: "Month 1", timelineDesc: "Cravings reduce" },
+                    { month: "Month 3", timelineDesc: "Sugar response improves" },
+                    { month: "Month 6", timelineDesc: "Sugar levels stabilise" }
+                ],
+                "family history of obesity or metabolic disorders": [
+                    { month: "Month 1", timelineDesc: "Digestion improves" },
+                    { month: "Month 3", timelineDesc: "Belly fat begins reducing" },
+                    { month: "Month 6", timelineDesc: "Liver health, energy improve" }
+                ],
+                "obesity": [
+                    { month: "Month 1", timelineDesc: "Initial reduction in bloating, better energy, appetite and digestion." },
+                    { month: "Month 3", timelineDesc: "Visible inch loss, better sleep, sustained stamina and improved metabolic rhythm." },
+                    { month: "Month 6", timelineDesc: "Improved tone, weight, control over eating and energy; enhanced daily functioning." }
+                ]
+            },
+
+            "25-60": {
+                "pcos/pcod": [
+                    { month: "Month 1", timelineDesc: "Period discomfort reduces" },
+                    { month: "Month 3", timelineDesc: "Cycles get regular" },
+                    { month: "Month 6", timelineDesc: "PMS and mood swings ease" }
+                ],
+                "thyroid disorder": [
+                    { month: "Month 1", timelineDesc: "Sleep, bowels improve" },
+                    { month: "Month 3", timelineDesc: "Hair, weight improve" },
+                    { month: "Month 6", timelineDesc: "Skin, hair healthier" }
+                ],
+                "hypertension": [
+                    { month: "Month 1", timelineDesc: "Puffiness lessens" },
+                    { month: "Month 3", timelineDesc: "BP starts stabilising" },
+                    { month: "Month 6", timelineDesc: "BP becomes manageable" }
+                ],
+                "diabetes": [
+                    { month: "Month 1", timelineDesc: "Less fatigue after meals" },
+                    { month: "Month 3", timelineDesc: "Sugar control improves" },
+                    { month: "Month 6", timelineDesc: "Rare sugar dips" }
+                ],
+                "family history of obesity or metabolic disorders": [
+                    { month: "Month 1", timelineDesc: "Cravings begin decreasing" },
+                    { month: "Month 3", timelineDesc: "Digestion, bloating reduce" },
+                    { month: "Month 6", timelineDesc: "Liver and cholesterol improve" }
+                ],
+                "obesity": [
+                    { month: "Month 1", timelineDesc: "Appetite settles, reduced snacking, better digestion and sleep" },
+                    { month: "Month 3", timelineDesc: "Fat loss becomes visible, stamina rises, sleep deepens" },
+                    { month: "Month 6", timelineDesc: "Noticeable inch loss, better metabolism, alertness, and physical ease" }
+                ]
+            },
+
+            "61-80": {
+                "pcos/pcod": [
+                    { month: "Month 1", timelineDesc: "Acne, bloating ease" },
+                    { month: "Month 3", timelineDesc: "Periods more predictable" },
+                    { month: "Month 6", timelineDesc: "PMS manageable" },
+                ],
+                "thyroid disorder": [
+                    { month: "Month 1", timelineDesc: "Mood improves" },
+                    { month: "Month 3", timelineDesc: "Hair, focus better" },
+                    { month: "Month 6", timelineDesc: "Hormonal rhythm stable" },
+
+                ],
+                "hypertension": [
+                    { month: "Month 1", timelineDesc: "Puffiness reduces" },
+                    { month: "Month 3", timelineDesc: "BP readings stabilise" },
+                    { month: "Month 6", timelineDesc: "BP stays steady" },
+
+                ],
+                "diabetes": [
+                    { month: "Month 1", timelineDesc: "Sugar crashes decline" },
+                    { month: "Month 3", timelineDesc: "Sugar levels even out" },
+                    { month: "Month 6", timelineDesc: "Appetite remains balanced" },
+
+                ],
+                "family history of obesity or metabolic disorders": [
+                    { month: "Month 1", timelineDesc: "Junk cravings reduce" },
+                    { month: "Month 3", timelineDesc: "Fat shifts, digestion improves" },
+                    { month: "Month 6", timelineDesc: "Body lighter, more resilient" },
+
+                ],
+                "obesity": [
+                    { month: "Month 1", timelineDesc: "Light digestion, fewer cravings, mild sleep and energy improvement" },
+                    { month: "Month 3", timelineDesc: "Energy improves, movement feels easier, eating becomes structured" },
+                    { month: "Month 6", timelineDesc: "Better body tone, control over habits, lighter feeling" },
+
+                ]
+            },
+
+            "81+": {
+                "pcos/pcod": [
+                    { month: "Month 1", timelineDesc: "Skin, mood stable" },
+                    { month: "Month 3", timelineDesc: "Cycles consistent" },
+                    { month: "Month 6", timelineDesc: "PMS under control" },
+                ],
+                "thyroid disorder": [
+                    { month: "Month 1", timelineDesc: "Less daytime fatigue" },
+                    { month: "Month 3", timelineDesc: "Focus, alertness stable" },
+                    { month: "Month 6", timelineDesc: "Thyroid function steady" },
+                ],
+                "hypertension": [
+                    { month: "Month 1", timelineDesc: "Mood, puffiness balanced" },
+                    { month: "Month 3", timelineDesc: "BP remains controlled" },
+                    { month: "Month 6", timelineDesc: "BP under long-term control" },
+                ],
+                "diabetes": [
+                    { month: "Month 1", timelineDesc: "Cravings under control" },
+                    { month: "Month 3", timelineDesc: "Sugar control sustained" },
+                    { month: "Month 6", timelineDesc: "Appetite, sugar balanced" },
+                ],
+                "family history of obesity or metabolic disorders": [
+                    { month: "Month 1", timelineDesc: "Digestion remains smooth" },
+                    { month: "Month 3", timelineDesc: "Lipids, liver stay normal" },
+                    { month: "Month 6", timelineDesc: "Long-term wellness sustained" },
+                ],
+                "obesity": [
+                    { month: "Month 1", timelineDesc: "Weight stable, digestion light, energy and food control consistent." },
+                    { month: "Month 3", timelineDesc: "Agility improves, immune recovery and tone maintained." },
+                    { month: "Month 6", timelineDesc: "Metabolism, body shape, and stamina stay balanced and sustained." },
+                ]
+            }
+        };
+
+        const productWhyPoints = {
+            "Ignite": [
+                "Burns stubborn fat (especially belly)",
+                "Controls appetite and cravings",
+                "Boosts metabolism and energy",
+                "Helps in sugar and insulin balance",
+            ],
+
+            "Valora": [
+                "Support energy, digestion, and fat metabolism.",
+                "Fight tiredness so you stay active.",
+                "Help with sugar control and reduce cravings.",
+                "Balance female hormones (great for PCOS, menopause).",
+                "Boosts energy and metabolism naturally.",
+                "Supports cell health and reduces inflammation.",
+            ],
+
+            "Leanor 60": [
+                "Helps you lose weight by blocking fat absorption from the food you eat."
+            ],
+            "Slimtox Tea": [
+                "Boost fat burning and reduce appetite.",
+                "Control sugar cravings and improve digestion.",
+                "Gently cleanse the body and reduce bloating.",
+                "Help you relax and reduce stress eating.",
+                "Support heart health and reduce inflammation.",
+                "Support metabolism and hormonal balance.",
+            ],
+            "Multivitamin": [
+                "Speed up metabolism and help burn more calories.",
+                "Cut bloating and improve digestion.",
+                "Reduce sugar cravings and support fat breakdown.",
+                "Keep your gut healthy, which helps with weight control.",
+                "Keep your energy high while dieting."
+            ],
+
+            "Slimtox Energy Tea": [
+                "Boost fat burning and metabolism.",
+                "Cut bloating and sugar cravings.",
+                "Help control blood sugar and reduce sweet cravings.",
+                "Lower stress, which helps stop emotional eating.",
+                "Improve digestion and reduce inflammation.",
+            ],
+            "Garcinia Cambogia": [
+                "Natural fruit extract that helps you eat less, burn fat, and stop cravings.",
+            ],
+            "Ayurveda": [
+                "Cravings",
+                "Digestion",
+                "Detox",
+            ],
+        };
+
+        const conditionToTipKeyMap = {
+            "Erectile dysfunction": "ERECTILE DYSFUNCTION",
+            "thyroid disorder": "THYROID DISORDER",
+            "Hypertension": "HYPERTENSION",
+            "Diabetes ": "DIABETES / HIGH BLOOD SUGAR",
+            "Family history of obesity or metabolic disorders ": "FAMILY HISTORY OF OBESITY / METABOLIC SYNDROME",
+            "high cholesterol": "GENERAL", // No dedicated section for cholesterol in your tips, use GENERAL for now
+            "Digestive issues (IBS, Acidity, Constipation)": "GENERAL", // same here
+        };
+
+
+        const lifestyleTips = {
+            "GENERAL": [
+                "Prioritize protein in the first meal — skipping breakfast worsens insulin resistance and hormonal imbalance.",
+                "Avoid calorie-dense drinks — replace juices, smoothies, and milkshakes with plain or lemon water.",
+                "Always pair carbs with protein or fiber — e.g., roti + dal, poha + peanuts to avoid blood sugar spikes.",
+                "Start lunch/dinner with raw salad or soaked nuts to reduce post-meal insulin load.",
+                "Avoid eating after 8:30 PM — night eating worsens fat storage and affects reproductive hormones.",
+                "Include 25–30 minutes of movement daily (walks, yoga, or strength training) — even light movement helps regulate estrogen.",
+            ],
+
+            "PCOS/PCOD": [
+                "Follow fixed meal timings with low-GI grains.",
+                "Limit dairy, sugar, and refined foods.",
+                "Include flaxseeds, leafy greens, and soaked nuts.",
+                "Manage stress with yoga, deep breathing.",
+            ],
+
+            "THYROID DISORDER": [
+                "Use iodized salt and eat whole grains, eggs, and dairy.",
+                "Avoid excess soy, processed foods, and erratic meal times.",
+                "Eat at regular intervals every 3–4 hours.",
+                "Sleep and wake at fixed times to support hormonal rhythm.",
+            ],
+
+            "HYPERTENSION": [
+                "Limit salt; avoid pickles, papads, and processed snacks.",
+                "Include potassium-rich foods: banana, spinach, tomatoes.",
+                "Restrict tea/coffee to 1–2 cups per day.",
+                "Walk daily and practice deep breathing exercises.",
+            ],
+
+            "DIABETES": [
+                "Eat small, frequent meals with whole grains and vegetables.",
+                "Avoid sweets, fruit juices, white rice, and refined flour.",
+                "Walk 10–15 minutes after meals.",
+                "Monitor blood sugar if advised.",
+            ],
+
+            "FAMILY HISTORY OF OBESITY / METABOLIC SYNDROME": [
+                "Avoid long gaps between meals and late dinners.",
+                "Focus on homemade, low-oil meals with balanced portions.",
+                "Stay active throughout the day, not just during workouts.",
+                "Limit sugar, refined carbs, and processed snacks.",
+            ],
+            "Digestive issues (IBS, Acidity, Constipation)": [
+                "Eat slowly and chew food thoroughly.",
+                "Avoid spicy, oily, and very cold or hot foods.",
+                "Use soaked raisins, jeera/ajwain water for gut support.",
+                "Walk after meals to ease digestion and reduce bloating.",
+
+            ],
+            "Irregular periods": [
+                "Eat balanced meals; avoid fasting or skipping.",
+                "Reduce sugar and packaged foods.",
+                "Maintain regular sleep and daily movement.",
+                "Add seeds and healthy fats like ghee or nuts.",
+            ],
+        }
+
+        function calculateHealthScore() {
+            let totalScore = 0;
+
+            // Add lifestyle question scores
+            lifestyleAnswers.forEach(ans => {
+                if (typeof ans === 'object' && ans.score) {
+                    totalScore += ans.score;
+                }
+            });
+
+            // Add medical question scores
+            medicalAnswersScore.forEach(score => {
+                totalScore += score;
+            });
+
+            // Add any additional section scores
+            answers.forEach(ans => {
+                if (typeof ans === 'object' && ans.score) {
+                    totalScore += ans.score;
+                }
+            });
+
+            return totalScore;
+        }
+
+
+        function getRelevantLifestyleTips(selectedConditions, tipsMap) {
+            const tips = new Set();
+
+            let matched = false;
+
+            selectedConditions.forEach(condition => {
+                const tipKey = conditionToTipKeyMap[condition.trim()];
+                if (tipKey && tipsMap[tipKey] && tipsMap[tipKey].length > 0) {
+                    tips.add(tipsMap[tipKey][0]); // Only one tip per condition
+                    matched = true;
+                }
+            });
+
+            // Fallback if nothing selected or only 'None'
+            if (!matched) {
+                tipsMap["GENERAL"].forEach(tip => tips.add(tip));
+            }
+
+            return Array.from(tips);
+        }
+
+        function renderConditionTimeline(computedHealthScore, medicalAnswers, category) {
+            const container = document.getElementById("condition-timeline-container");
+            container.innerHTML = "";
+
+            const scoreGroup = computedHealthScore < 25 ? "<25" :
+                computedHealthScore <= 60 ? "25-60" :
+                    computedHealthScore <= 80 ? "61-80" : "81+";
+
+            const selectedConditions = [];
+
+            // Find selected conditions from dummy data
+            medicalQuestions.forEach((q, idx) => {
+                if (q.multiple && Array.isArray(medicalAnswers[idx])) {
+                    medicalAnswers[idx].forEach(answer => {
+                        const cleaned = answer.trim().toLowerCase();
+                        if (!selectedConditions.includes(cleaned)) {
+                            selectedConditions.push(cleaned);
+                        }
+                    });
+                }
+            });
+
+            console.log("Using scoreGroup:", scoreGroup);
+
+            const obesityTimeline = healthTimelineData[scoreGroup]["obesity"];
+            if (obesityTimeline) {
+                const title = document.createElement("h4");
+                title.innerText = "General Prognosis";
+                container.appendChild(title);
+
+                obesityTimeline.forEach(entry => {
+                    const item = document.createElement("p");
+                    item.innerHTML = `${entry.month}: ${entry.timelineDesc}`;
+                    container.appendChild(item);
+                });
+            }
+            console.log("Detected conditions to show timeline for:", selectedConditions);
+
+            selectedConditions.forEach(condition => {
+
+                const timeline = healthTimelineData[scoreGroup]?.[condition];
+                if (timeline) {
+                    const title = document.createElement("h4");
+                    title.innerText = condition.charAt(0).toUpperCase() + condition.slice(1);
+                    container.appendChild(title);
+
+                    timeline.forEach(entry => {
+                        const item = document.createElement("p");
+                        item.innerHTML = `${entry.month} ${entry.timelineDesc}`;
+                        container.appendChild(item);
+                    });
+                } else {
+                    console.warn(`No timeline data found for condition: ${condition} in group ${scoreGroup}`);
+                }
+            });
+
+            if (container.innerHTML.trim() === "") {
+                container.innerHTML = "<p>No timeline available for selected conditions.</p>";
+            }
+        }
+
+        const concernMappings = [
+            {
+                range: [18.5, 24.9],
+                concern: "Normal",
+                description: "Good BMI but lifestyle changes for maintenance required",
+            },
+            {
+                range: [25, 29.9],
+                concern: "Overweight",
+                description: "Early signs of fat accumulation; risk of metabolic stress",
+            },
+            {
+                range: [30, 34.9],
+                concern: "Obesity Class I",
+                description: "Weight impacting metabolic and hormonal balance",
+            },
+            {
+                range: [35, 39.9],
+                concern: "Obesity Class II",
+                description: "Increased risk of diabetes, BP, hormonal disorders",
+            },
+            {
+                range: [40, Infinity],
+                concern: "Obesity Class III (Morbid)",
+                description: "Requires urgent lifestyle & medical intervention",
+            },
+        ];
+
+        const comorbidityMapping = {
+            "Diabetes / High Sugar": "Metabolic Dysfunction",
+            "High BP": "Cardiovascular Risk",
+            "PCOS / Irregular Periods": "Hormonal Imbalance",
+            "Thyroid Disorder": "Thyroid Dysfunction",
+            "IBS / Acidity / Constipation": "Gastrointestinal Disturbance",
+            "Erectile Dysfunction (Males)": "Hormonal or Circulatory Impairment",
+        };
+
+        function getIssueTitle(bmi, medicalAnswersText) {
+            let issueTitle = "";
+
+            if (bmi < 25) {
+                issueTitle = "Good BMI but lifestyle changes for maintenance required";
+            } else if (bmi >= 25 && bmi <= 29.9) {
+                issueTitle = "Overweight";
+            } else if (bmi >= 30 && bmi <= 34.9) {
+                issueTitle = "Obesity";
+            } else if (bmi >= 35 && bmi <= 39.9) {
+                issueTitle = "Severe Obesity";
+            } else if (bmi >= 40) {
+                issueTitle = "Morbid Obesity";
+            }
+
+            if (medicalAnswersText.includes("diabetes")) {
+                issueTitle += " + Metabolic Dysfunction";
+            }
+            if (medicalAnswersText.includes("hypertension")) {
+                issueTitle += " + Hypertension";
+            }
+            if (medicalAnswersText.includes("pcos/pcod") || medicalAnswersText.includes("irregular periods")) {
+                issueTitle += " + Hormonal Imbalance";
+            }
+            if (medicalAnswersText.includes("thyroid disorder")) {
+                issueTitle += " + Thyroid Dysfunction";
+            }
+            if (medicalAnswersText.includes("digestive issues (ibs, acidity, constipation)")) {
+                issueTitle += " + Gastrointestinal Disturbance";
+            }
+            if (medicalAnswersText.includes("high cholesterol")) {
+                issueTitle += " + High Cholesterol";
+            }
+            if (medicalAnswersText.includes("erectile dysfunction")) {
+                issueTitle += " + Hormonal or Circulatory Impairment";
+            }
+
+            return issueTitle;
+        }
+
+
+
+        function extractConditionsFromMedicalAnswers(medicalAnswersText) {
+            let conditions = [];
+
+            medicalAnswersText.forEach(ans => {
+                if (Array.isArray(ans)) {
+                    ans.forEach(item => {
+                        if (item.trim().toLowerCase() !== "none") {
+                            conditions.push(item.trim());
+                        }
+                    });
+                } else if (typeof ans === "string" && ans.trim().toLowerCase() !== "none") {
+                    conditions.push(ans.trim());
+                }
+            });
+
+            return conditions;
+        }
+
+        function getTimeline(healthScore, medicalAnswersText, bmi) {
+            let timeline = []
+            let timelineDesc1 = ""
+            let timelineDesc3 = ""
+            let timelineDesc6 = ""
+
+            let healthScoreDescMap = {
+                "25": {
+                    "1": "Initial reduction in bloating, better energy, appetite and digestion",
+                    "3": "Visible inch loss, better sleep, sustained stamina and improved metabolic rhythm",
+                    "6": "Improved tone, weight, control over eating and energy; enhanced daily functioning",
+                },
+                "60": {
+                    "1": "Appetite settles, reduced snacking, better digestion and sleep",
+                    "3": "Fat loss becomes visible, stamina rises, sleep deepens",
+                    "6": "Noticeable inch loss, better metabolism, alertness, and physical ease",
+                },
+                "80": {
+                    "1": "Light digestion, fewer cravings, mild sleep and energy improvement",
+                    "3": "Energy improves, movement feels easier, eating becomes structured",
+                    "6": "Better body tone, control over habits, lighter feeling",
+                },
+                "81": {
+                    "1": "Weight stable, digestion light, energy and food control consistent",
+                    "3": "Agility improves, immune recovery and tone maintained",
+                    "6": "Metabolism, body shape, and stamina stay balanced and sustained"
+                }
+            }
+
+            if (healthScore <= 25) {
+                timelineDesc1 = healthScoreDescMap["25"]["1"]
+                timelineDesc3 = healthScoreDescMap["25"]["3"]
+                timelineDesc6 = healthScoreDescMap["25"]["6"]
+            }
+            if (healthScore > 25 && healthScore <= 60) {
+                timelineDesc1 = healthScoreDescMap["60"]["1"]
+                timelineDesc3 = healthScoreDescMap["60"]["3"]
+                timelineDesc6 = healthScoreDescMap["60"]["6"]
+            }
+            if (healthScore > 60 && healthScore <= 80) {
+                timelineDesc1 = healthScoreDescMap["80"]["1"]
+                timelineDesc3 = healthScoreDescMap["80"]["3"]
+                timelineDesc6 = healthScoreDescMap["80"]["6"]
+            }
+            if (healthScore > 80) {
+                timelineDesc1 = healthScoreDescMap["81"]["1"]
+                timelineDesc3 = healthScoreDescMap["81"]["3"]
+                timelineDesc6 = healthScoreDescMap["81"]["6"]
+            }
+
+            if (medicalAnswersText.includes("PCOS/PCOD")) {
+                if (healthScore <= 25) {
+                    timelineDesc1 += ", Bloating, mood improvement"
+                    timelineDesc3 += ", Cycles begins regulating"
+                    timelineDesc6 += ", Ovulation regularises"
+                }
+                if (healthScore > 25 && healthScore <= 60) {
+                    timelineDesc1 += ", Period discomfort reduces"
+                    timelineDesc3 += ", Cycles get regular"
+                    timelineDesc6 += ", PMS and mood swings ease"
+                }
+                if (healthScore > 60 && healthScore <= 80) {
+                    timelineDesc1 += ", Acne, bloating ease"
+                    timelineDesc3 += ", Periods more predictable"
+                    timelineDesc6 += ", PMS manageable"
+                }
+                if (healthScore > 80) {
+                    timelineDesc1 += ", Skin, mood stable"
+                    timelineDesc3 += ", Cycles consistent"
+                    timelineDesc6 += ", PMS under control"
+                }
+            }
+            if (medicalAnswersText.includes("thyroid disorder")) {
+                if (healthScore <= 25) {
+                    timelineDesc1 += ", Morning energy rises"
+                    timelineDesc3 += ", Focus, fatigue improve"
+                    timelineDesc6 += ", Stable energy and mood"
+                }
+                if (healthScore > 25 && healthScore <= 60) {
+                    timelineDesc1 += ", Sleep, bowels improve"
+                    timelineDesc3 += ", Hair, weight improve"
+                    timelineDesc6 += ", Skin, hair healthier"
+                }
+                if (healthScore > 60 && healthScore <= 80) {
+                    timelineDesc1 += ", Mood improves"
+                    timelineDesc3 += ", Hair, focus better"
+                    timelineDesc6 += ", Hormonal rhythm stable"
+                }
+                if (healthScore > 80) {
+                    timelineDesc1 += ", Less daytime fatigue"
+                    timelineDesc3 += ", Focus, alertness stable"
+                    timelineDesc6 += ", Thyroid function steady"
+                }
+            }
+            if (medicalAnswersText.includes("hypertension")) {
+                if (healthScore <= 25) {
+                    timelineDesc1 += ", Heaviness reduces"
+                    timelineDesc3 += ", BP shows improvement"
+                    timelineDesc6 += ", BP easier to manage"
+                }
+                if (healthScore > 25 && healthScore <= 60) {
+                    timelineDesc1 += ", Puffiness lessens"
+                    timelineDesc3 += ", BP starts stabilising"
+                    timelineDesc6 += ", BP becomes manageable"
+                }
+                if (healthScore > 60 && healthScore <= 80) {
+                    timelineDesc1 += ", Puffiness reduces"
+                    timelineDesc3 += ", BP readings stabilise"
+                    timelineDesc6 += ", BP stays steady"
+                }
+                if (healthScore > 80) {
+                    timelineDesc1 += ", Mood, puffiness balanced"
+                    timelineDesc3 += ", BP remains controlled"
+                    timelineDesc6 += ", BP under long-term control"
+                }
+            }
+            if (medicalAnswersText.includes("diabetes")) {
+                if (healthScore <= 25) {
+                    timelineDesc1 += ", Cravings reduce"
+                    timelineDesc3 += ", Sugar response improves"
+                    timelineDesc6 += ", Sugar levels stabilise"
+                }
+                if (healthScore > 25 && healthScore <= 60) {
+                    timelineDesc1 += ", Less fatigue after meals"
+                    timelineDesc3 += ", Sugar control improves"
+                    timelineDesc6 += ", Rare sugar dips"
+                }
+                if (healthScore > 60 && healthScore <= 80) {
+                    timelineDesc1 += ", Sugar crashes decline"
+                    timelineDesc3 += ", Sugar levels even out"
+                    timelineDesc6 += ", Appetite remains balanced"
+                }
+                if (healthScore > 80) {
+                    timelineDesc1 += ", Cravings under control"
+                    timelineDesc3 += ", Sugar control sustained"
+                    timelineDesc6 += ", Appetite, sugar balancede"
+                }
+            }
+            if (medicalAnswersText.includes("digestive issues (ibs, acidity, constipation)")) {
+                if (healthScore <= 25) {
+                    timelineDesc1 += ", Digestion improves"
+                    timelineDesc3 += ", Belly fat begins reducing"
+                    timelineDesc6 += ", Liver health, energy improve"
+                }
+                if (healthScore > 25 && healthScore <= 60) {
+                    timelineDesc1 += ", Cravings begin decreasing"
+                    timelineDesc3 += ", Digestion, bloating reduce"
+                    timelineDesc6 += ", Liver and cholesterol improve"
+                }
+                if (healthScore > 60 && healthScore <= 80) {
+                    timelineDesc1 += ", Junk cravings reduce"
+                    timelineDesc3 += ", Fat shifts, digestion improves"
+                    timelineDesc6 += ", Body lighter, more resilient"
+                }
+                if (healthScore > 80) {
+                    timelineDesc1 += ", Digestion remains smooth"
+                    timelineDesc3 += ", Lipids, liver stay normal"
+                    timelineDesc6 += ", Long-term wellness sustained"
+                }
+            }
+
+            timeline.push({
+                month: "Month 1",
+                timelineDesc: timelineDesc1
+            }, {
+                month: "Month 3",
+                timelineDesc: timelineDesc3
+            }, {
+                month: "Month 6",
+                timelineDesc: timelineDesc6
+            })
+
+            return timeline;
+        }
+
+        function openOtpPopup() {
+            const modal = document.getElementById("otp-modal");
+            const phoneInput = document.getElementById("otp-phone");
+            document.getElementById("otp-step-1").style.display = "block";
+            document.getElementById("otp-step-2").style.display = "none";
+            phoneInput.value = userInfo.phone || "";
+            modal.style.display = "flex";
+            resetOtpInputs();
+        }
+
+        function closeOtpPopup() {
+            document.getElementById("otp-modal").style.display = "none";
+            clearInterval(otpTimer);
+        }
+
+        function moveToNext(input, index) {
+            const inputs = document.querySelectorAll(".otp-input-group input");
+
+            input.addEventListener("keydown", function (e) {
+                const key = e.key;
+                const value = input.value;
+
+                if (key === "Backspace") {
+                    input.value = "";
+                    if (index > 0) inputs[index - 1].focus();
+                    e.preventDefault();
+                } else if (key >= "0" && key <= "9") {
+                    // Allow number, overwrite current
+                    input.value = ""; // clear existing before inserting
+                } else if (key === "ArrowLeft" && index > 0) {
+                    inputs[index - 1].focus();
+                } else if (key === "ArrowRight" && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                } else {
+                    e.preventDefault(); // prevent non-numeric input
+                }
+            });
+
+            input.addEventListener("input", function () {
+                const val = input.value;
+                if (/^\d$/.test(val)) {
+                    if (index < inputs.length - 1) inputs[index + 1].focus();
+                } else {
+                    input.value = ""; // clear non-digit input
+                }
+            });
+        }
+
+        // Apply the listener once for all inputs on load
+        window.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".otp-input-group input").forEach((inp, i) => {
+                moveToNext(inp, i);
+            });
+        });
+
+        function resetOtpInputs() {
+            document.querySelectorAll(".otp-input-group input").forEach(inp => inp.value = "");
+            document.getElementById("otp-toast").style.display = "none";
+        }
+
+        function showOtpToast(msg, color = "green") {
+            const toast = document.getElementById("otp-toast");
+            toast.innerText = msg;
+            toast.style.color = color;
+            toast.style.display = "block";
+            setTimeout(() => (toast.style.display = "none"), 4000);
+        }
+
+        function startOtpTimer() {
+            otpTimeLeft = 60;
+            otpExpiresAt = Date.now() + 60000;
+
+            const timerEl = document.getElementById("otp-timer");
+            const resendLink = document.getElementById("resend-link");
+
+            resendLink.style.display = "none";
+            timerEl.innerText = `Resend in ${otpTimeLeft}s`;
+
+            otpTimer = setInterval(() => {
+                otpTimeLeft--;
+                if (otpTimeLeft > 0) {
+                    timerEl.innerText = `Resend in ${otpTimeLeft}s`;
+                } else {
+                    clearInterval(otpTimer);
+                    timerEl.innerText = "";
+                    resendLink.style.display = "inline";
+                }
+            }, 1000);
+        }
+
+
+
+        function sendOtp() {
+            const phone = document.getElementById("otp-phone").value.trim();
+            if (!/^\d{10}$/.test(phone)) {
+                showOtpToast("Enter valid 10-digit number", "red");
+                return;
+            }
+
+            enteredPhone = phone;
+
+            fetch("https://generateotp-xrtgefpbxq-em.a.run.app", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone }),
+            })
+                .then(res => res.json())
+                .then(() => {
+                    showOtpToast("OTP Sent!");
+                    document.getElementById("otp-step-1").style.display = "none";
+                    document.getElementById("otp-step-2").style.display = "block";
+                    resetOtpInputs();
+                    startOtpTimer();
+                })
+                .catch(() => showOtpToast("Failed to send OTP", "red"));
+        }
+
+        function resendOtp() {
+            if (!enteredPhone || !/^\d{10}$/.test(enteredPhone)) {
+                showOtpToast("Invalid phone number", "red");
+                return;
+            }
+
+            // Disable further clicks temporarily
+            const resendLink = document.getElementById("resend-link");
+            resendLink.style.pointerEvents = "none";
+            resendLink.style.opacity = "0.6";
+
+            fetch("https://generateotp-xrtgefpbxq-em.a.run.app", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: enteredPhone }),
+            })
+                .then((res) => res.json())
+                .then(() => {
+                    showOtpToast("OTP Resent!");
+                    resetOtpInputs();
+                    resendLink.style.pointerEvents = "auto";
+                    resendLink.style.opacity = "1";
+                    startOtpTimer();
+                })
+                .catch(() => {
+                    showOtpToast("Failed to resend OTP", "red");
+                    resendLink.style.pointerEvents = "auto";
+                    resendLink.style.opacity = "1";
+                });
+        }
+
+
+
+        function verifyOtpFromInputs() {
+            const digits = Array.from(document.querySelectorAll(".otp-input-group input")).map(i => i.value).join("");
+            if (digits.length < 6) {
+                showOtpToast("Enter full 6-digit OTP", "red");
+                return;
+            }
+            var windowReference = window.open();
+
+            fetch("https://verifyotp-xrtgefpbxq-em.a.run.app", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: enteredPhone, otp: digits }),
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showOtpToast("OTP Verified");
+                        if (enteredPhone !== userInfo.phone) {
+                            db.collection("questionnaire_submissions")
+                                .doc(lastSubmittedDocId)
+                                .set({ phone: enteredPhone }, { merge: true }).then(() => {
+                                    console.log("Phone updated in Firebase");
+                                    userInfo.phone = enteredPhone;
+                                    windowReference.location = `https://wa.me/919355539355?text=I want my detailed HealthScore360 Report`;
+                                    closeOtpPopup();
+                                }).catch((error) => {
+                                    console.error("Error updating phone in Firebase:", error);
+                                });
+                        } else {
+                            windowReference.location = `https://wa.me/919355539355?text=I want my detailed HealthScore360 Report`;
+                            closeOtpPopup();
+                        }
+                    } else {
+                        showOtpToast("Incorrect or expired OTP. Please double-check or resend.", "red");
+                    }
+                })
+                .catch(() => showOtpToast("Verification failed", "red"));
+        }
+
+        function getRecommendedProducts(score, userInfo, futureRisks) {
+            const selectedNames = [];
+            const isFemale = userInfo.gender === "female";
+            const hasPCOS = futureRisks.includes("PCOS");
+            const hasThyroid = futureRisks.includes("Thyroid");
+
+            if (score < 25) {
+                selectedNames.push("Leanor 60 (Orlistat)", "Ignite", "Multivitamin", "Slimtox Tea");
+                if (isFemale || hasPCOS) selectedNames.push("Garcinia Cambogia");
+            } else if (score >= 25 && score <= 60) {
+                selectedNames.push("Ignite", "Garcinia Cambogia", "Slimtox Tea", "Multivitamin", "Leanor 60 mg");
+                if (hasThyroid) selectedNames.push("Thyroidinum 3X");
+            } else if (score > 60 && score <= 80) {
+                selectedNames.push("Garcinia Cambogia", "Slimtox Energy Tea", "Multivitamin");
+                if (futureRisks.includes("Belly Fat") || futureRisks.includes("Low Energy")) {
+                    selectedNames.push("Ignite", "Leanor 60 mg");
+                }
+            } else if (score > 80) {
+                selectedNames.push("Slimtox Tea", "Multivitamin (optional)");
+            }
+
+            // Return full product objects
+            return selectedNames
+                .filter(name => productDatabase[name])
+                .map(name => {
+                    const base = productDatabase[name];
+                    return {
+                        ...base,
+                        whyPoints: productWhyPoints[base.key] || []
+                    };
+                });
+        }
+
+        function renderRecommendedProducts() {
+            const productList = document.getElementById("product-list");
+            productList.innerHTML = "";
+            let total = 0;
+            recommendedProducts.forEach((product) => {
+                const card = document.createElement("div");
+                card.className = "product-card";
+                card.setAttribute("data-name", product.name);
+                card.setAttribute("data-description", product.description);
+                card.setAttribute("data-price", "₹" + product.salePrice);
+                card.setAttribute("data-image", product.image);
+
+                const img = document.createElement("img");
+                img.src = product.image;
+                img.alt = product.name;
+                const nameEl = document.createElement("div");
+                nameEl.className = "product-name";
+                nameEl.textContent = product.name;
+
+                const dropdownIcon = document.createElement("span");
+                dropdownIcon.className = "dropdown-icon";
+                dropdownIcon.innerText = "⌄";
+                nameEl.appendChild(dropdownIcon);
+
+                const priceSection = document.createElement("div");
+                const oldPrice = document.createElement("span");
+                oldPrice.className = "old-price";
+                oldPrice.textContent = "₹" + product.regularPrice;
+                const newPrice = document.createElement("span");
+                newPrice.className = "new-price";
+                newPrice.textContent = "₹" + product.salePrice;
+                priceSection.appendChild(oldPrice);
+                priceSection.appendChild(newPrice);
+                card.appendChild(img);
+                card.appendChild(nameEl);
+                card.appendChild(priceSection);
+                productList.appendChild(card);
+                total += product.salePrice;
+
+                card.addEventListener("click", () => {
+                    document.getElementById("modalTitle").innerText = product.name;
+                    document.getElementById("modalDescription").innerText =
+                        product.description;
+                    document.getElementById("modalPrice").innerText =
+                        "₹" + product.salePrice;
+                    document.getElementById("modalImage").src = product.image;
+                    document.getElementById("productModal").style.display = "block";
+                });
+            });
+            document.getElementById("total-amount").textContent = "₹" + total;
+        }
+
+        /* ===============================
+               Navigation Functions
+               =============================== */
+        function showStep(stepNumber) {
+            currentStep = stepNumber;
+            document
+                .querySelectorAll("#questionnaire .step")
+                .forEach((step) => step.classList.remove("active"));
+            document.getElementById("step-" + stepNumber).classList.add("active");
+
+            const header = document.querySelector("#questionnaire .header");
+            header.style.display = stepNumber === 1 ? "block" : "none";
+
+            const isQuizStep = stepNumber >= 2 && stepNumber <= 6;
+            document.getElementById("step-indicators").style.display = isQuizStep
+                ? "flex"
+                : "none";
+
+            if (stepNumber === 3) {
+                currentQuestionSet = healthQuestions;
+                currentQuestionIndex = 0;
+                renderQuestion();
+            } else if (stepNumber === 4) {
+                currentQuestionSet = lifestyleQuestions;
+                currentQuestionIndex = 0;
+                renderQuestion();
+            } else if (stepNumber === 5) {
+                currentQuestionSet = medicalQuestions;
+                currentQuestionIndex = 0;
+                renderQuestion();
+            } else if (stepNumber === 6) {
+                currentQuestionSet = weightLossQuestions;
+                currentQuestionIndex = 0;
+                renderQuestion();
+            }
+
+            if (stepNumber === 7) {
+                const container = document.querySelector("#questionnaire .container");
+                container.style.maxWidth = "100%";
+                container.style.margin = "0";
+                container.style.boxShadow = "none";
+                container.style.borderRadius = "0";
+                container.style.padding = "0";
+                document.querySelector(".bg-overlay").style.display = "none";
+                document
+                    .querySelector("#step-7 .final-layout")
+                    .classList.add("centered");
+                renderUGCContent();
+                history.pushState({ step: "results" }, "results", "#results");
+
+                const userId = document.getElementById("patient-id").innerText.trim();
+                console.log("Patient ID:", userId);
+            } else {
+                const container = document.querySelector("#questionnaire .container");
+                container.style = "";
+                document.querySelector(".bg-overlay").style.display = "block";
+                if (document.querySelector("#step-6 .final-layout")) {
+                    document
+                        .querySelector("#step-7 .final-layout")
+                        .classList.remove("centered");
+                }
+            }
+
+            updateStepIndicators();
+            updateStepProgress();
+        }
+
+        function validatePhone() {
+        }
+
+        function getExtraScoreDeduction(age, bmi, conditionPresent) {
+            const bmiClass = getBmiClass(bmi);
+
+            //Skip deduction for Normal weight
+            if (bmiClass === "Normal weight") return 0;
+
+            const deductionRules = {
+                "<18": {
+                    "Overweight": { condition: -8, default: -6 },
+                    "Obese Class I": { condition: -10, default: -8 },
+                    "Obese Class II": { condition: -12, default: -10 },
+                    "Obese Class III": { condition: -14, default: -12 },
+                },
+                "19-45": {
+                    "Overweight": { condition: -10, default: -8 },
+                    "Obese Class I": { condition: -12, default: -10 },
+                    "Obese Class II": { condition: -14, default: -12 },
+                    "Obese Class III": { condition: -16, default: -14 },
+                },
+                "46-65": {
+                    "Overweight": { condition: -10, default: -8 },
+                    "Obese Class I": { condition: -12, default: -10 },
+                    "Obese Class II": { condition: -14, default: -12 },
+                    "Obese Class III": { condition: -16, default: -14 },
+                },
+                "65+": {
+                    "Overweight": { condition: -12, default: -10 },
+                    "Obese Class I": { condition: -14, default: -12 },
+                    "Obese Class II": { condition: -16, default: -14 },
+                    "Obese Class III": { condition: -18, default: -16 },
+                }
+            };
+
+            let group;
+            if (age < 18) group = "<18";
+            else if (age <= 45) group = "19-45";
+            else if (age <= 65) group = "46-65";
+            else group = "65+";
+
+            const rule = deductionRules[group][bmiClass];
+            if (!rule) return 0; // No match, no deduction
+
+            return conditionPresent ? rule.condition : rule.default;
+        }
+
+        function getBmiClass(bmi) {
+            if (bmi <= 24) return "Normal weight";
+            else if (bmi >= 25 && bmi <= 29.9) return "Overweight";
+            else if (bmi >= 30 && bmi <= 34.9) return "Obese Class I";
+            else if (bmi >= 35 && bmi <= 39.9) return "Obese Class II";
+            else return "Obese Class III";
+        }
+
+        function getConditionText(score, bmiCategory, hasHealthConditions) {
+            const bmiUpperClass = ["Obese Class II", "Obese Class III"];
+            const bmiOverweight = ["Overweight", "Obese Class I"];
+
+            if (score < 25) {
+                if (bmiOverweight.includes(bmiCategory) && hasHealthConditions) {
+                    return "You need major lifestyle changes and should start a SEHAT UP doctor-guided health program.";
+                }
+                if (bmiOverweight.includes(bmiCategory) && hasHealthConditions) {
+                    return "You need major lifestyle changes and should start a SEHAT UP doctor-guided health program.";
+                }
+                return "You need to improve your routine, including diet, activity, and sleep. Begin with small, sustainable steps.";
+            }
+
+            if (score >= 25 && score <= 60) {
+                if (bmiUpperClass.includes(bmiCategory) && hasHealthConditions)
+                    return "You need focused lifestyle correction, balanced meals, and targeted support for your health conditions.";
+                if (bmiOverweight.includes(bmiCategory) && hasHealthConditions)
+                    return "You need better meal planning, guided medicinal practice and daily physical activity.";
+                if (bmiCategory === "Overweight" && !hasHealthConditions)
+                    return "You need to work on regular exercise, mindful eating, and reducing screen time or snacking habits.";
+                if (bmiCategory === "Normal weight" && hasHealthConditions)
+                    return "Your weight is fine, but health issues need internal balance through dietary correction, gut health, and better sleep.";
+            }
+
+            if (score >= 61 && score <= 80) {
+                if (bmiOverweight.includes(bmiCategory) && hasHealthConditions)
+                    return "You’re doing better, but you still need to maintain discipline in eating habits and regular physical activity.";
+                if (bmiCategory === "Normal weight" && hasHealthConditions)
+                    return "Your score is fair, but your health requires better stress control, sleep hygiene, and long-term support.";
+                if (bmiCategory === "Overweight" && !hasHealthConditions)
+                    return "You’re on the right track. Keep up healthy lifestyle practices, especially meal timing and light daily activity.";
+            }
+
+            if (score > 80) {
+                if (hasHealthConditions)
+                    return "You’re managing well. Now focus on sustaining your routine and staying consistent with healthy choices.";
+                if (bmiCategory === "Normal weight" && !hasHealthConditions)
+                    return "Great job! Just continue your healthy lifestyle with balanced meals, good sleep, and moderate activity.";
+                if (bmiCategory === "Overweight" && !hasHealthConditions)
+                    return "You’re doing well. Add some light movement or yoga to gradually improve your weight status.";
+            }
+            return "";
+        }
+
+        function calculateBmi(height, weight) {
+            const heightInMeters = height / 100;
+            bmi = weight / (heightInMeters * heightInMeters);
+            return bmi;
+        }
+
+
+        function showAssessmentReport() {
+            showLoader();
+
+            setTimeout(() => {
+                calculateResults(); // base score from all answers
+                hideLoader();
+                showStep(7);
+
+                document.getElementById("user-name").innerText = userInfo.name || "User";
+
+                // BMI Calculation
+                const height = parseFloat(userInfo.height);
+                const weight = parseFloat(userInfo.currentWeight);
+                let category = "", bmiText = "";
+
+                if (height && weight) {
+                    const heightInMeters = height / 100;
+                    bmi = weight / (heightInMeters * heightInMeters);
+                    const roundedBmi = bmi.toFixed(1);
+
+                    // Proper category match
+                    category = getBmiClass(bmi);
+
+                    bmiText = `Your BMI is ${roundedBmi} (${category})`;
+                } else {
+                    bmiText = "BMI could not be calculated.";
+                }
+
+                document.getElementById("user-concern").innerText = bmiText;
+
+                //Deduct based on logic
+                const dob = new Date(userInfo.dob);
+                const age = calculateAge(dob);
+                const hasHealthConditions = medicalAnswers.some(val => val > 0);
+                const extraDeduction = getExtraScoreDeduction(age, bmi, hasHealthConditions);
+
+                // Final computed score after deduction
+                computedHealthScore = Math.max(0, Math.min(100, healthScore - Math.abs(extraDeduction)));
+                renderConditionTimeline(computedHealthScore, medicalAnswersText, category);
+
+
+                // Show animated circle
+                const scoreText = document.getElementById("progress-value");
+                if (scoreText) {
+                    scoreText.innerText = `${computedHealthScore}%`;
+                }
+
+                animateScore(computedHealthScore);
+                updateProductInfo();
+
+                // Condition message
+                const conditionMessage = getConditionText(computedHealthScore, category, hasHealthConditions);
+                document.getElementById("condition-text").innerText = conditionMessage;
+
+                // Render future risks
+                const futureRiskContainer = document.getElementById("future-risk-tags");
+                futureRiskContainer.innerHTML = "";
+                futureRisks.forEach((riskText) => {
+                    const splitRisks = riskText.split(/[,;]+/);
+                    splitRisks.forEach((singleRisk) => {
+                        const tag = document.createElement("span");
+                        tag.className = "risk-tag";
+                        tag.innerText = singleRisk.trim();
+                        futureRiskContainer.appendChild(tag);
+                    });
+                });
+
+                const recommended = getRecommendedProducts(computedHealthScore, userInfo, futureRisks);
+                renderRecommendedProducts(recommended);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }, 3000);
+        }
+
+        function startHealthQuestions() {
+            currentQuestionIndex = 0;
+            currentQuestionSet = healthQuestions;
+            renderQuestion();
+        }
+
+        function startLifestyleQuestions() {
+            currentQuestionIndex = 0;
+            currentQuestionSet = lifestyleQuestions;
+            renderQuestion();
+        }
+
+        function startMedicalQuestions() {
+            currentQuestionIndex = 0;
+            currentQuestionSet = medicalQuestions;
+            renderQuestion();
+        }
+
+        function startWeightLossQuestions() {
+            currentQuestionIndex = 0;
+            currentQuestionSet = weightLossQuestions;
+            renderQuestion();
+        }
+
+        function updateStepIndicators() {
+            const indicators = document.querySelectorAll(".step-indicator");
+            indicators.forEach((indicator) => {
+                const indicatorStep = parseInt(indicator.getAttribute("data-step"), 10);
+                if (indicatorStep < currentStep) {
+                    indicator.classList.add("completed");
+                    indicator.classList.remove("active");
+                } else if (indicatorStep === currentStep) {
+                    indicator.classList.add("active");
+                    indicator.classList.remove("completed");
+                } else {
+                    indicator.classList.remove("active", "completed");
+                }
+            });
+        }
+
+        function updateStepProgress() {
+            const progressFill = document.querySelector(".progress-fill-line");
+            if (!progressFill) return;
+
+            // Step configuration including About You as a full step
+            const stepConfig = [
+                { step: 2, questions: 1 },                         // About You (treated as 1 unit)
+                { step: 3, questions: healthQuestions.length },    // 3
+                { step: 4, questions: lifestyleQuestions.length }, // 6
+                { step: 5, questions: medicalQuestions.length },   // 4
+                { step: 6, questions: weightLossQuestions.length } // 3
+            ];
+
+            const leftMargin = window.innerWidth < 768 ? 20 : 100;
+            const rightMargin = window.innerWidth < 768 ? 20 : 100;
+            const parentWidth = progressFill.parentElement.offsetWidth;
+            const availableWidth = parentWidth - (leftMargin + rightMargin);
+
+            let totalUnits = stepConfig.reduce((sum, s) => sum + s.questions, 0);
+            let completedUnits = 0;
+
+            for (const config of stepConfig) {
+                if (currentStep > config.step) {
+                    completedUnits += config.questions;
+                } else if (currentStep === config.step) {
+                    if (config.step === 2) {
+                        completedUnits += 1; // About You is always counted once
+                    } else {
+                        completedUnits += Math.min(currentQuestionIndex, config.questions);
+                    }
+                    break;
+                }
+            }
+
+            const percent = (completedUnits / totalUnits) * 100;
+            const fillWidth = (percent / 100) * availableWidth;
+
+            progressFill.style.width = `${fillWidth}px`;
+            progressFill.style.left = `${leftMargin}px`;
+        }
+
+        function startQuestionnaire() {
+            showStep(2);
+        }
+
+        function calculateAge(dob) {
+            const diffMs = Date.now() - dob.getTime();
+            const ageDt = new Date(diffMs);
+            return Math.abs(ageDt.getUTCFullYear() - 1970);
+        }
+
+        function validateAboutYou() {
+            const name = document.getElementById("name").value.trim();
+            const dobInput = document.getElementById("dob").value;
+            const phone = document.getElementById("phone").value.trim();
+            const phoneError = document.getElementById("phone-error");
+            const ageError = document.getElementById("age-error");
+            const nameError = document.getElementById("name-error");
+
+            phoneError.innerText = "";
+            ageError.innerText = "";
+            nameError.innerText = "";
+
+            let isValid = true;
+
+            if (!name) {
+                nameError.innerText = "Please enter your name.";
+                isValid = false;
+            }
+
+            if (!/^\d{10}$/.test(phone)) {
+                phoneError.innerText = "Phone must be 10 digits.";
+                isValid = false;
+            }
+
+            // Validate age
+            const birthDate = new Date(dobInput);
+            const age = new Date().getFullYear() - birthDate.getFullYear();
+            if (isNaN(age) || age < 18) {
+                ageError.innerText = "You must be at least 18 years old.";
+                isValid = false;
+            }
+
+            if (isValid) {
+                document.getElementById("about-you-form").style.display = "none";
+                document.getElementById("healthMetricsForm").style.display = "block";
+            }
+
+            userInfo = { name, dob: dobInput, phone };
+
+            const timestamp = new Date();
+
+            const data = {
+                name,
+                dob: dobInput,
+                phone,
+                timestamp: firebase.firestore.Timestamp.fromDate(timestamp),
+                reminderSent: false,
+                reportCategory: "Womens Weight Management"
+            };
+
+
+            if (isValid) {
+                const docRef = db.collection("partial_submissions").doc();
+                userInfo.partialDocId = docRef.id;
+
+                docRef.set(data)
+                    .then(() => {
+                        console.log("Partial data saved with ID:", docRef.id);
+                    })
+                    .catch((error) => {
+                        console.error("Error saving partial data:", error);
+                    });
+            }
+        }
+
+        function backToAboutForm() {
+            document.getElementById("healthMetricsForm").style.display = "none";
+            document.getElementById("about-you-form").style.display = "block";
+        }
+
+        function continueToHealth() {
+            const height = document.getElementById("height").value.trim();
+            const currentWeight = document.getElementById("currentWeight").value.trim();
+            const targetWeight = document.getElementById("targetWeight").value.trim();
+            const heightError = document.getElementById("height-error");
+            const weightError = document.getElementById("weight-error");
+            const targetWeightError = document.getElementById("targetWeight-error");
+
+            userInfo.height = document.getElementById("height").value;
+            userInfo.currentWeight = document.getElementById("currentWeight").value;
+
+            heightError.innerText = "";
+            weightError.innerText = "";
+            targetWeight.innerText = "";
+
+            let isValid = true;
+
+            if (!height) {
+                heightError.innerText = "Please enter your height.";
+                isValid = false;
+            }
+
+            if (!currentWeight) {
+                weightError.innerText = "Please enter your weight.";
+                isValid = false;
+            }
+
+            if (!targetWeight) {
+                targetWeightError.innerText = "Please enter your target weight.";
+                isValid = false;
+            }
+
+            if (isValid) {
+                showStep(3);
+            }
+        }
+
+        function renderQuestion() {
+            const questionContainer = document.getElementById(`questions-container-step-${currentStep}`);
+            const navContainer = document.getElementById(`nav-container-step-${currentStep}`);
+
+            const questionSet = currentQuestionSet;
+            const questionObj = questionSet[currentQuestionIndex];
+
+            if (!questionObj) {
+                if (currentStep === 6) {
+                    // Save data before showing result
+                    calculateResults();
+                    submitDataToFirestore();
+                } else {
+                    showStep(currentStep + 1);
+                }
+                return;
+            }
+
+            questionContainer.innerHTML = "";
+
+            const questionElement = document.createElement("h2");
+            questionElement.textContent = questionObj.question;
+            questionContainer.appendChild(questionElement);
+
+            const optionsWrapper = document.createElement("div");
+            optionsWrapper.className = questionObj.multiple ? "multi-select-container" : "options";
+
+            navContainer.innerHTML = "";
+            navContainer.style.display = "flex";
+            navContainer.style.justifyContent = "space-between";
+            navContainer.style.marginTop = "20px";
+
+            // Prev Button
+            const prevBtn = document.createElement("button");
+            prevBtn.className = "prev-btn";
+            prevBtn.innerText = "Previous";
+            prevBtn.onclick = () => {
+                if (currentQuestionIndex > 0) {
+                    currentQuestionIndex--;
+                    renderQuestion();
+                } else {
+                    prevStep(currentStep - 1);
+                }
+            };
+            navContainer.appendChild(prevBtn);
+
+            if (questionObj.multiple) {
+                const selectedOptions = [];
+
+                questionObj.options.forEach((opt, idx) => {
+                    const label = document.createElement("label");
+                    label.className = "multi-option-card";
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    // checkbox.value = opt.score;
+
+                    checkbox.value = opt.text.trim().toLowerCase();
+
+                    checkbox.className = "multi-checkbox";
+
+                    const span = document.createElement("span");
+                    span.innerText = opt.text;
+                    span.className = "multi-label";
+
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
+                    optionsWrapper.appendChild(label);
+
+                    checkbox.addEventListener("change", () => {
+                        const isNoneOption = ["none", "no"].includes(opt.text.trim().toLowerCase());
+                        const allCheckboxes = optionsWrapper.querySelectorAll("input[type=checkbox]");
+
+                        if (checkbox.checked) {
+                            if (isNoneOption) {
+                                allCheckboxes.forEach(cb => cb !== checkbox && (cb.checked = false));
+                                selectedOptions.length = 0;
+                                selectedOptions.push(opt.text);
+                            } else {
+                                allCheckboxes.forEach(cb => {
+                                    const labelText = cb.parentElement.innerText.trim().toLowerCase();
+                                    if (["none", "no"].includes(labelText)) cb.checked = false;
+                                });
+                                if (!selectedOptions.includes(opt.text)) selectedOptions.push(opt.text);
+                                const noneIndex = selectedOptions.indexOf("None");
+                                if (noneIndex > -1) selectedOptions.splice(noneIndex, 1);
+                            }
+
+                            // ✅ Add possible cause if mapping exists
+                            if (causeMapping[questionObj.question] && causeMapping[questionObj.question][opt.text]) {
+                                const cause = causeMapping[questionObj.question][opt.text];
+                                if (!possibleCauses.includes(cause)) possibleCauses.push(cause);
+                            }
+
+                            // ✅ Add future risk if mapping exists
+                            if (futureRisksMapping[questionObj.question] && futureRisksMapping[questionObj.question][opt.text]) {
+                                const risk = futureRisksMapping[questionObj.question][opt.text];
+                                if (!futureRisks.includes(risk)) futureRisks.push(risk);
+                            }
+
+                        } else {
+                            const index = selectedOptions.indexOf(opt.text);
+                            if (index > -1) selectedOptions.splice(index, 1);
+                        }
+                    });
+                });
+
+                const nextBtn = document.createElement("button");
+                nextBtn.className = "next-btn";
+                nextBtn.innerText = "Next";
+                nextBtn.onclick = () => {
+                    const checked = Array.from(optionsWrapper.querySelectorAll("input[type=checkbox]:checked"))
+                        .map(cb => parseInt(cb.value));
+
+                    const totalScore = checked.reduce((a, b) => a + b, 0);
+
+                    if (currentStep === 3) answers[currentQuestionIndex] = totalScore;
+                    else if (currentStep === 4) lifestyleAnswers[currentQuestionIndex] = totalScore;
+                    else if (currentStep === 5) {
+                        const checked = Array.from(optionsWrapper.querySelectorAll("input[type=checkbox]:checked"));
+
+                        // Score calculation
+                        const totalScore = checked.reduce((a, b) => {
+                            const labelText = b.parentElement.innerText.trim();
+                            const opt = questionObj.options.find(o => o.text === labelText);
+                            return a + (opt?.score || 0);
+                        }, 0);
+
+                        medicalAnswers[currentQuestionIndex] = totalScore;
+
+                        // Condition text collection
+                        const selectedTexts = checked.map(cb => cb.value.trim().toLowerCase());
+                        medicalAnswersText[currentQuestionIndex] = selectedTexts;
+                    }
+
+                    else if (currentStep === 6) weightLossAnswers[currentQuestionIndex] = totalScore;
+
+                    currentQuestionIndex++;
+                    renderQuestion();
+                };
+
+                navContainer.appendChild(nextBtn);
+
+            } else {
+                // Single-select buttons
+                questionObj.options.forEach((option) => {
+                    const button = document.createElement("button");
+                    button.className = "option-button";
+                    button.textContent = option.text;
+                    button.onclick = () => {
+                        // ✅ Store the answer score
+                        if (currentStep === 3) answers[currentQuestionIndex] = option.score;
+                        else if (currentStep === 4) lifestyleAnswers[currentQuestionIndex] = option.score;
+                        // else if (currentStep === 5) medicalAnswers[currentQuestionIndex] = option.score;
+                        else if (currentStep === 5) {
+                            medicalAnswers[currentQuestionIndex] = option.score;
+                            medicalAnswersText[currentQuestionIndex] = option.text.trim().toLowerCase();
+                        }
+
+                        else if (currentStep === 6) weightLossAnswers[currentQuestionIndex] = option.score;
+
+                        // ✅ Add possible cause
+                        if (causeMapping[questionObj.question] && causeMapping[questionObj.question][option.text]) {
+                            const cause = causeMapping[questionObj.question][option.text];
+                            if (!possibleCauses.includes(cause)) possibleCauses.push(cause);
+                        }
+
+                        // ✅ Add future risk
+                        if (futureRisksMapping[questionObj.question] && futureRisksMapping[questionObj.question][option.text]) {
+                            const risk = futureRisksMapping[questionObj.question][option.text];
+                            if (!futureRisks.includes(risk)) futureRisks.push(risk);
+                        }
+
+                        currentQuestionIndex++;
+                        renderQuestion();
+                    };
+                    optionsWrapper.appendChild(button);
+                });
+            }
+
+            questionContainer.appendChild(optionsWrapper);
+            updateStepIndicators();
+            updateStepProgress();
+        }
+
+
+        function nextQuestion() {
+            if (answers[currentQuestionIndex] === null) {
+                alert("Please select an option.");
+                return;
+            }
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            } else {
+                currentLifestyleIndex = 0;
+                lifestyleAnswers = new Array(lifestyleQuestions.length).fill(null);
+                showStep(5);
+                renderLifestyleQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            } else {
+                if (
+                    confirm(
+                        "Return to category selection? Your current answers will be lost."
+                    )
+                ) {
+                    showStep(3);
+                }
+            }
+        }
+
+        /* ===============================
+               Final Score Calculation
+               =============================== */
+
+        function calculateResults() {
+            let totalScore = 0;
+            const allAnswers = [...answers, ...lifestyleAnswers, ...medicalAnswers, ...weightLossAnswers];
+
+            allAnswers.forEach((score) => {
+                if (typeof score === "number" && !isNaN(score)) {
+                    totalScore += score;
+                }
+            });
+
+            healthScore = Math.max(0, 100 - totalScore); // base score
+            computedHealthScore = healthScore;
+            console.log(`Base Health Score: ${healthScore}`);
+        }
+
+        function submitDataToFirestore() {
+
+            const data = {
+                userName: userInfo.name,
+                dob: userInfo.dob,
+                phone: userInfo.phone,
+                healthScore: computedHealthScore,
+                answers: answers,
+                lifestyleAnswers: lifestyleAnswers,
+                medicalAnswers: medicalAnswersScore,
+                concern: "Female Weight Management",
+                lifestyleChanges: [
+                    // Always include general tips first
+                    ...lifestyleTips["GENERAL"].map(tip => ({ text: tip })),
+
+                    // Then include condition-specific tips
+                    ...Object.values(medicalAnswersText)
+                        .flat()
+                        .filter(text => lifestyleTips[text]) // only include known conditions
+                        .flatMap(condition =>
+                            lifestyleTips[condition].map(tip => ({ text: tip }))
+                        ),
+                ],
+                height: parseFloat(userInfo.height),
+                weight: parseFloat(userInfo.currentWeight),
+                bmi: calculateBmi(parseFloat(userInfo.height), parseFloat(userInfo.currentWeight)),
+                issueTitle: getIssueTitle(bmi, Object.values(medicalAnswersText).flat()),
+                timeline: getTimeline(computedHealthScore, Object.values(medicalAnswersText).flat(), bmi),
+                medicalAnswersText: medicalAnswersText.map(ans =>
+                    Array.isArray(ans) ? ans.join(", ") : ans
+                ),
+                weightLossAnswers: weightLossAnswers,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                possibleCauses: possibleCauses.map(cause => ({ text: cause })),
+                futureRisks: futureRisks.map(risk => ({ text: risk })),
+                recommendedProducts: getRecommendedProducts(computedHealthScore, userInfo, futureRisks).map((product, index, arr) => {
+                    const base = {
+                        name: product.name,
+                        salePrice: product.salePrice,
+                        whyPoints: product.whyPoints.map(reason => ({ text: reason })),
+                    };
+                    return base;
+                }),
+                reportCategory: "Weight Management",
+            };
+
+            console.log(data);
+            // showAssessmentReport();
+            // return;
+
+            db.collection("questionnaire_submissions")
+                .add(data)
+                .then((docRef) => {
+                    console.log("Final report saved with ID: ", docRef.id);
+                    lastSubmittedDocId = docRef.id;
+
+                    // Optional: remove from partial_submissions
+                    const partialDocId = userInfo.partialDocId;
+                    if (partialDocId) {
+                        db.collection("partial_submissions").doc(partialDocId).delete()
+                            .then(() => console.log("Partial data deleted after final submission"));
+                    }
+
+                    showAssessmentReport();  // Only show after saving
+                })
+                .catch((error) => {
+                    console.error("Error saving final report:", error);
+                    showAssessmentReport();  // Still show report in fallback
+                });
+
+            showAssessmentReport();
+
+        }
+
+
+        /* ===============================
+               Animate Circular Progress
+               =============================== */
+        function getScoreColor(score) {
+            if (score < 50) return "red";
+            else if (score < 80) return "orange";
+            else return "#4caf50";
+        }
+
+        function animateScore(finalScore) {
+            let currentScore = 0;
+            const progressValue = document.getElementById("progress-value");
+            const progressBar = document.getElementById("circular-progress");
+            const interval = setInterval(() => {
+                currentScore++;
+                if (currentScore >= finalScore) {
+                    currentScore = finalScore;
+                    clearInterval(interval);
+                }
+                progressValue.innerText = currentScore + "%";
+                let color = getScoreColor(currentScore);
+                progressBar.style.background = `conic-gradient(${color} ${currentScore * 3.6
+                    }deg, #eee 0deg)`;
+            }, 20);
+        }
+
+        /* ===============================
+           Dynamic Products & Checkout
+           =============================== */
+        function updateProductInfo() {
+            const dob = new Date(userInfo.dob);
+            const age = calculateAge(dob);
+            recommendedProducts = [];
+            if (computedHealthScore < 25) {
+                recommendedProducts = [
+                    {
+                        name: "Leanor 60",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Orlistat1.jpg?v=1751872910",
+                        regularPrice: 799,
+                        salePrice: 599,
+                        variantId: "51169561575727",
+                        description:
+                            "Orlistat 60 mg is a clinically researched weight management formula made to support fat loss by reducing the absorption of dietary fat. Perfect for those who are on a calorie deficit diet & active lifestyle, it helps accelerate your fitness goals without extreme diets or boosters.",
+                    },
+                    {
+                        name: "Ignite",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                        regularPrice: 1799,
+                        salePrice: 1799,
+                        variantId: "51170203926831",
+                        description:
+                            "Ignifit is a smart fat-burning formula designed to support healthy weight loss without compromising your energy or mood. Researched by clinically studied ingredients like CLA, Green Coffee Bean & White Kidney Bean Extract, it helps reduce fat storage, curb appetite & boost metabolism.",
+                    },
+                    {
+                        name: "Multivitamin",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 799,
+                        salePrice: 499,
+                        variantId: "50972820996399",
+                        description:
+                            "PrimeVital is a comprehensive multivitamin & mineral supplement customized to support men’s daily performance, immunity & overall vitality. Enriched with essential nutrients like Zinc, Iron, Magnesium & powerful botanicals such as Panax Ginseng, Green Tea Extract & Grape Seed, it’s built to fuel both body & mind.",
+                    },
+                    {
+                        name: "Slimtox Tea",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 449,
+                        salePrice: 399,
+                        variantId: "50972820996399",
+                        description:
+                            "LeanRoutine is a calming, metabolism-boosting herbal tea designed to support weight management while helping you relax. Made by ingredients like Green Tea, Garcinia Cambogia, Hibiscus & Valerian Root, this mix helps burn fat, reduce stress & support digestion, all in one soothing cup.",
+                    },
+                    {
+                        name: "Garcinia Cambogia",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                        regularPrice: 799,
+                        salePrice: 399,
+                        variantId: "51170203926831",
+                        description:
+                            "Garcinia Cambogia is a natural weight management supplement that supports fat metabolism & helps reduce emotional eating. Made with hydroxycitric acid (HCA)  which can reduce appetite, block fat production & uplift mood, makes it easier to stay committed to your wellness goals.",
+                    },
+                ];
+            } else if (computedHealthScore >= 25 && computedHealthScore <= 60) {
+                recommendedProducts = [
+
+                    {
+                        name: "Ignite",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                        regularPrice: 1799,
+                        salePrice: 1799,
+                        variantId: "51170203926831",
+                        description:
+                            "Ignifit is a smart fat-burning formula designed to support healthy weight loss without compromising your energy or mood. Researched by clinically studied ingredients like CLA, Green Coffee Bean & White Kidney Bean Extract, it helps reduce fat storage, curb appetite & boost metabolism.",
+                    },
+                    {
+                        name: "Garcinia Cambogia",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                        regularPrice: 799,
+                        salePrice: 399,
+                        variantId: "51170203926831",
+                        description:
+                            "Garcinia Cambogia is a natural weight management supplement that supports fat metabolism & helps reduce emotional eating. Made with hydroxycitric acid (HCA)  which can reduce appetite, block fat production & uplift mood, makes it easier to stay committed to your wellness goals.",
+                    },
+                    {
+                        name: "Slimtox Tea",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 449,
+                        salePrice: 399,
+                        variantId: "50972820996399",
+                        description:
+                            "LeanRoutine is a calming, metabolism-boosting herbal tea designed to support weight management while helping you relax. Made by ingredients like Green Tea, Garcinia Cambogia, Hibiscus & Valerian Root, this mix helps burn fat, reduce stress & support digestion, all in one soothing cup.",
+                    },
+                    {
+                        name: "Thyroidinum 3X",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 449,
+                        salePrice: 399,
+                        variantId: "50972820996399",
+                        description:
+                            "LeanRoutine is a calming, metabolism-boosting herbal tea designed to support weight management while helping you relax. Made by ingredients like Green Tea, Garcinia Cambogia, Hibiscus & Valerian Root, this mix helps burn fat, reduce stress & support digestion, all in one soothing cup.",
+                    },
+                    {
+                        name: "Multivitamin",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 799,
+                        salePrice: 499,
+                        variantId: "50972820996399",
+                        description:
+                            "PrimeVital is a comprehensive multivitamin & mineral supplement customized to support men’s daily performance, immunity & overall vitality. Enriched with essential nutrients like Zinc, Iron, Magnesium & powerful botanicals such as Panax Ginseng, Green Tea Extract & Grape Seed, it’s built to fuel both body & mind.",
+                    },
+                    {
+                        name: "Leanor 60",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Orlistat1.jpg?v=1751872910",
+                        regularPrice: 799,
+                        salePrice: 599,
+                        variantId: "51169561575727",
+                        description:
+                            "Orlistat 60 mg is a clinically researched weight management formula made to support fat loss by reducing the absorption of dietary fat. Perfect for those who are on a calorie deficit diet & active lifestyle, it helps accelerate your fitness goals without extreme diets or boosters.",
+                    },
+
+                ];
+            } else if (computedHealthScore > 60 && computedHealthScore <= 80) {
+                recommendedProducts = [
+
+                    {
+                        name: "Garcinia Cambogia",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                        regularPrice: 799,
+                        salePrice: 399,
+                        variantId: "51170203926831",
+                        description:
+                            "Garcinia Cambogia is a natural weight management supplement that supports fat metabolism & helps reduce emotional eating. Made with hydroxycitric acid (HCA)  which can reduce appetite, block fat production & uplift mood, makes it easier to stay committed to your wellness goals.",
+                    },
+                    {
+                        name: "Slimtox Energy Tea",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                        regularPrice: 449,
+                        salePrice: 399,
+                        variantId: "51170203926831",
+                        description:
+                            "Leanixir is a metabolism-boosting, antioxidant-rich green tea mix made to support your weight management journey the natural way. With carefully selected herbs like Oolong, Moringa & Gymnema, this energizing tea helps curb cravings, fire up metabolism & sharpen mental focus without the anxiety of artificial boosters.",
+                    },
+                    {
+                        name: "Multivitamin",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 799,
+                        salePrice: 499,
+                        variantId: "50972820996399",
+                        description:
+                            "PrimeVital is a comprehensive multivitamin & mineral supplement customized to support men’s daily performance, immunity & overall vitality. Enriched with essential nutrients like Zinc, Iron, Magnesium & powerful botanicals such as Panax Ginseng, Green Tea Extract & Grape Seed, it’s built to fuel both body & mind.",
+                    },
+                    {
+                        name: "Ignite (Optional , if belly fat, low energy)",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                        regularPrice: 1799,
+                        salePrice: 1799,
+                        variantId: "51170203926831",
+                        description:
+                            "Ignifit is a smart fat-burning formula designed to support healthy weight loss without compromising your energy or mood. Researched by clinically studied ingredients like CLA, Green Coffee Bean & White Kidney Bean Extract, it helps reduce fat storage, curb appetite & boost metabolism.",
+                    },
+                ];
+            } else {
+                recommendedProducts = [
+
+                    {
+                        name: "Slimtox Tea",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 449,
+                        salePrice: 399,
+                        variantId: "50972820996399",
+                        description:
+                            "LeanRoutine is a calming, metabolism-boosting herbal tea designed to support weight management while helping you relax. Made by ingredients like Green Tea, Garcinia Cambogia, Hibiscus & Valerian Root, this mix helps burn fat, reduce stress & support digestion, all in one soothing cup.",
+                    },
+                    {
+                        name: "Multivitamin (Optional)",
+                        image:
+                            "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                        regularPrice: 799,
+                        salePrice: 499,
+                        variantId: "50972820996399",
+                        description:
+                            "PrimeVital is a comprehensive multivitamin & mineral supplement customized to support men’s daily performance, immunity & overall vitality. Enriched with essential nutrients like Zinc, Iron, Magnesium & powerful botanicals such as Panax Ginseng, Green Tea Extract & Grape Seed, it’s built to fuel both body & mind.",
+                    },
+                ];
+            }
+            renderRecommendedProducts();
+        }
+
+        /* ===============================
+               Google Sheet Submission (Existing Function)
+               =============================== */
+        function generatePatientId() {
+            const timestamp = Date.now().toString().slice(-5);
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            return "sup00" + timestamp + randomNum;
+        }
+
+
+        function showLoader() {
+            const loader = document.getElementById("loader");
+            loader.style.display = "flex";
+            document.body.style.overflow = "hidden";
+            setTimeout(hideLoader, 15000);
+        }
+
+        function hideLoader() {
+            const loader = document.getElementById("loader");
+            loader.style.display = "none";
+            document.body.style.overflow = "auto";
+        }
+
+        /* ===============================
+               UGC Videos Slider Render (Update 1)
+               =============================== */
+        function renderUGCContent() {
+            const ugcContainer = document.getElementById("ugc-content");
+            // Insert a slider with multiple video slides
+            const sliderHTML = `
+              <div class="ugc-slider">
+                <div class="ugc-slide">
+                  <iframe src="https://www.youtube.com/embed/68SbZuINym0" allowfullscreen></iframe>
+                </div>
+                <div class="ugc-slide">
+                  <iframe src="https://www.youtube.com/embed/EyvZLDLxFYU" allowfullscreen></iframe>
+                </div>
+                <div class="ugc-slide">
+                  <iframe src="https://www.youtube.com/embed/i_lfAg9o4HA" allowfullscreen></iframe>
+                </div>
+              </div>
+            `;
+            ugcContainer.innerHTML = sliderHTML;
+            ugcContainer.style.display = "block";
+        }
+
+        /* ===============================
+               Exit Popup for Back Navigation (Update 2)
+               =============================== */
+        function showExitPopup() {
+            const popup = document.getElementById("exit-popup");
+            popup.style.display = "flex";
+            requestAnimationFrame(() => popup.classList.add("show"));
+        }
+
+        function closeExitPopup() {
+            const popup = document.getElementById("exit-popup");
+            popup.classList.remove("show");
+            popup.classList.add("fade-out");
+            popup.addEventListener(
+                "transitionend",
+                function () {
+                    popup.style.display = "none";
+                    popup.classList.remove("fade-out");
+                },
+                { once: true }
+            );
+        }
+
+        window.addEventListener("popstate", function (e) {
+            if (currentStep === 6) {
+                history.pushState({ step: "results" }, "results", "#results");
+                showExitPopup();
+            }
+        });
+
+        function copyCouponCode() {
+            const couponInput = document.getElementById("coupon-code");
+            const feedback = document.getElementById("copy-feedback");
+
+            navigator.clipboard.writeText(couponInput.value).then(() => {
+                feedback.style.display = "block";
+                setTimeout(() => {
+                    feedback.style.display = "none";
+                }, 1500);
+            });
+        }
+
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        document
+            .querySelector(".close-button")
+            .addEventListener("click", function () {
+                document.getElementById("productModal").style.display = "none";
+            });
+        window.addEventListener("click", function (event) {
+            const modal = document.getElementById("productModal");
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    </script>
+
+    <div id="otp-modal" class="otp-screen">
+        <div class="otp-box">
+            <span class="otp-close" onclick="closeOtpPopup()">×</span>
+
+            <div id="otp-step-1">
+                <h3>Confirm your number</h3>
+                <p>We'll send a WhatsApp report after verification.</p>
+                <input type="tel" id="otp-phone" maxlength="10" placeholder="Enter phone number" inputmode="numeric"
+                    pattern="\d*">
+                <small id="phone-warning" style="color: red; display: none;">Phone number must be exactly 10
+                    digits.</small>
+
+                <button onclick="sendOtp()">Send OTP</button>
+            </div>
+
+            <div id="otp-step-2" style="display: none;">
+                <h3>Verify with OTP</h3>
+                <p>Please enter the OTP sent to your phone.</p>
+                <div class="otp-input-group">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                </div>
+
+                <p class="resend-text" id="resend-text">
+                    Didn't receive the OTP?
+                    <span id="resend-link" style="color: #007bff; font-weight: 670; cursor: pointer; display: none;"
+                        onclick="resendOtp()"> RESEND OTP</span>
+                    <span id="otp-timer" style="margin-left: 5px; color: #888;"></span>
+                </p>
+
+
+                <button onclick="verifyOtpFromInputs()">Verify</button>
+            </div>
+
+            <div id="otp-toast"></div>
+        </div>
+    </div>
+
+</body>
+
+</html>

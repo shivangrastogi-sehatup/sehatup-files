@@ -1,0 +1,967 @@
+<!-- rT.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SehatUP Report</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        /* @font-face {
+            font-family: "Montserrat";
+            src: url("{{baseUrl}}/PDF-Assets/Montserrat-Roboto/Montserrat/Montserrat-VariableFont_wght.ttf") format("truetype");
+            font-weight: 100 900;
+            font-style: normal;
+        } */
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 210mm;
+            overflow-x: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            font-family: "Montserrat", sans-serif;
+        }
+
+        @page {
+            size: auto;
+            margin: 0;
+        }
+
+        body {
+            width: 210mm;
+            min-height: 100%;
+            height: 100%;
+            background-image: url("{{baseUrl}}/PDF-Assets/Background.png");
+            background-size: contain;
+            background-repeat: repeat-y;
+            background-position: center top;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            flex-grow: 1;
+        }
+
+        .banner {
+            width: 100%;
+            display: block;
+            margin: 0 0 0 0;
+            padding: 0;
+            position: relative;
+        }
+
+        .logo {
+            position: absolute;
+            left: 50%;
+            top: 25%;
+            transform: translate(-50%, -50%);
+            width: 160px;
+            height: 40px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .heading {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            font-size: 32px;
+            margin: 0;
+            padding: 0;
+            white-space: nowrap;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .info1 {
+            position: absolute;
+            left: 50%;
+            top: 65%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            font-size: 20px;
+            margin: 0;
+            padding: 0;
+            white-space: nowrap;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .info2 {
+            position: absolute;
+            left: 50%;
+            top: 75%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            font-size: 20px;
+            margin: 0;
+            padding: 0;
+            white-space: nowrap;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .health-score {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 0;
+            white-space: nowrap;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color: #007c89;
+        }
+
+        @media print {
+            body {
+                width: 210mm;
+                height: 100%;
+                min-height: 100%;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+
+        .health-score-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background-size: cover;
+            padding: 40px;
+            border-radius: 12px;
+            font-family: "Montserrat", sans-serif;
+            margin-top: -100px;
+            margin-left: 25px;
+        }
+
+        .health-score-circle {
+            position: relative;
+            width: 540px;
+            height: 350px;
+        }
+
+        .progress-ring {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring .bg-outer {
+            fill: none;
+            stroke-width: 20;
+            stroke: #e0e0e0;
+        }
+
+        .progress-ring .bg-inner {
+            fill: none;
+            stroke-width: 100;
+            stroke: #b8b8b8;
+        }
+
+        .progress-ring .progress {
+            fill: none;
+            stroke-width: 100;
+            stroke: url(#gradient);
+            /* 2π * 170 ≈ 1068.14 */
+            stroke-dasharray: 1068.14;
+
+            stroke-dashoffset: calc(1068.14 * (1 - {{healthScore}} / 100));
+            /* Animation for browser view */
+            transition: stroke-dashoffset 2s ease-in-out;
+        }
+
+        .score-label {
+            position: absolute;
+            top: 51%;
+            left: 38%;
+            transform: translate(-50%, -50%);
+            font-size: 56px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .health-score-text {
+            max-width: 400px;
+            font-family: "Montserrat";
+        }
+
+        .health-score-text h2 {
+            display: none;
+            /* Moved to centered container */
+        }
+
+        .risk-status-container {
+            text-align: center;
+            margin-bottom: 30px;
+            margin-top: -10px;
+        }
+
+        .risk-type-label {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            font-family: "MontserratMedium", sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .risk-critical {
+            color: #d32f2f;
+        }
+
+        /* Deep Red */
+        .risk-high {
+            color: #f57c00;
+        }
+
+        /* Deep Orange */
+        .risk-moderate {
+            color: #fbc02d;
+        }
+
+        /* Deep Yellow/Amber */
+        .risk-low {
+            color: #388e3c;
+        }
+
+        /* Deep Green */
+
+        .health-score-text #risk-description-label {
+            font-size: 18px;
+            line-height: 1.5;
+            color: #555;
+            font-family: "Montserrat", sans-serif;
+            font-weight: 600;
+        }
+
+        .health-score-text #risk-description {
+            font-size: 18px;
+            line-height: 1.5;
+            color: #555;
+            font-family: "Montserrat", sans-serif;
+            font-weight: 400;
+        }
+
+        /* Optional SVG gradient definition */
+        svg defs {
+            pointer-events: none;
+        }
+
+        .comparison-box {
+            background-color: #d9edf2;
+            padding: 30px;
+            max-width: 760px;
+            margin: -50px 15px 15px 15px;
+            text-align: center;
+            font-family: "Montserrat", sans-serif;
+        }
+
+        .comparison-box p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .timeline-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 4;
+            margin-bottom: 10px;
+            background: white;
+            border: 3px solid #D4AF37;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+
+        .timeline-icon img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .bar-chart {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 150px;
+            margin: 20px 0;
+        }
+
+        .bar {
+            width: 80px;
+            margin: 0 20px;
+            text-align: center;
+            color: white;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .bar .label {
+            margin-top: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #your-score-bar {
+            background: linear-gradient(to top, #f39c12, #f7c968);
+            /* Default yellow */
+        }
+
+        #your-score-bar.low-score {
+            background: linear-gradient(to top, #e74c3c, #f18973);
+            /* Red */
+        }
+
+        #your-score-bar.high-score {
+            background: linear-gradient(to top, #2ecc71, #77dd77);
+            /* Green */
+        }
+
+        #peer-score-bar {
+            background: linear-gradient(to top, #0066cc, #00aaff);
+        }
+
+        .score-potential {
+            margin-top: 20px;
+        }
+
+        .score-potential span {
+            background-color: #349ca7;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        .concern-box {
+            max-width: 760px;
+            padding-top: 10px;
+            margin: 0 auto;
+        }
+
+        .concern-image {
+            width: 100%;
+            display: block;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .issue-section {
+            padding: 20px;
+            font-family: "Montserrat", sans-serif;
+            color: #333;
+        }
+
+        .issue-section h3 {
+            color: #333;
+            font-weight: 600;
+            font-size: 32px;
+            margin-bottom: -30px;
+        }
+
+        .issue-section h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: 600;
+            font-size: 32px;
+        }
+
+        .icon-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 30px 0;
+        }
+
+        .icon-list li {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            font-size: 16px;
+            color: #444;
+            align-items: center;
+        }
+
+        .icon-list li img {
+            width: 48px;
+            height: 48px;
+            margin-right: 16px;
+        }
+
+        .icon-list li em {
+            font-style: italic;
+            color: #444;
+        }
+
+        .personalised-box {
+            max-width: 760px;
+            padding-top: 10px;
+            margin: 0 auto;
+        }
+
+        .personalised-plan-image {
+            width: 100%;
+            display: block;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .lifestyle-changes {
+            padding: 20px;
+            font-family: "Montserrat", sans-serif;
+            color: #333;
+        }
+
+        .lifestyle-changes li {
+            font-style: italic;
+            color: #444;
+        }
+
+        .diet-lifestyle-section {
+            padding: 20px;
+            font-family: "Montserrat", sans-serif;
+            color: #333;
+        }
+
+        .diet-lifestyle-section h3 {
+            color: #007c89;
+            font-weight: 700;
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            border-bottom: 2px solid #D4AF37;
+            display: inline-block;
+            padding-bottom: 5px;
+        }
+
+        .lifestyle-changes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 0;
+            list-style: none;
+        }
+
+        .lifestyle-changes li {
+            background: rgba(255, 255, 255, 0.7);
+            border-left: 4px solid #D4AF37;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+            color: #444;
+            font-size: 15px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .recommended-products {
+            text-align: center;
+            margin-top: -40px;
+            font-family: "Montserrat", sans-serif;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .recommended-products h3 {
+            font-family: "Montserrat", sans-serif;
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .products-background-container {
+            position: relative;
+            width: 760px;
+            margin: 0 auto;
+        }
+
+        .products-base-image {
+            width: 100%;
+            display: block;
+            border-radius: 12px;
+        }
+
+        .products-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            /* Slightly tighter width */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            /* Reduced gap for less whitespace */
+            padding: 10px;
+            z-index: 2;
+        }
+
+        .product-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 150px;
+        }
+
+        .product-item-image {
+            width: 130px;
+            height: 130px;
+            object-fit: contain;
+            background: #fffafa;
+            /* Ivory white for consistency */
+            border-radius: 12px;
+            padding: 8px;
+            border: 2px solid #D4AF37;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+            /* mix-blend-mode removed for background consistency */
+        }
+
+        .why-section {
+            padding: 40px 20px;
+            border-radius: 12px;
+            max-width: 900px;
+            font-family: "Montserrat", sans-serif;
+        }
+
+        .why-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #333;
+        }
+
+        .why-point {
+            display: flex;
+            align-items: flex-start;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            width: 95%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .why-icon {
+            width: 42px;
+            height: 42px;
+            margin-right: 16px;
+            filter: drop-shadow(0 2px 4px rgba(212, 175, 55, 0.3));
+        }
+
+        .why-point p {
+            font-size: 20px;
+            color: #333;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .why-point-header {
+            display: flex;
+            align-items: center;
+        }
+
+        .why-point-header p {
+            font-size: 20px;
+            color: #007c89;
+            font-weight: 700;
+            line-height: 1.2;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .why-point-list {
+            font-family: "Montserrat", sans-serif;
+            color: #333;
+        }
+
+        .why-point span {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .offer-banner-image-only {
+            width: 100%;
+            max-width: 600px;
+            margin-top: -40px;
+            margin-left: 75px;
+            margin-right: 40px;
+            margin-bottom: -20px;
+            text-align: center;
+        }
+
+        .offer-banner-image-only img {
+            width: 100%;
+            height: auto;
+            display: inline-block;
+        }
+
+        .progress-section {
+            padding: 40px 20px;
+            text-align: left;
+            margin-bottom: -60px;
+        }
+
+        .progress-section h2 {
+            color: #0099a8;
+            font-weight: 700;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .progress-section p {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .timeline-vertical {
+            position: relative;
+            margin: 60px auto;
+            padding: 20px 0;
+            max-width: 800px;
+        }
+
+        /* Gold line removed as it was leaking throughout the report */
+
+        /* Vertical steps aligned left-right */
+        .timeline-vertical-step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Icon block on the left */
+        .timeline-icon-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100px;
+            margin-right: 40px;
+            z-index: 3;
+            position: relative;
+        }
+
+        .timeline-icon img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #00b6bd;
+        }
+
+        .timeline-month {
+            background-color: #00b6bd;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* Right-hand side description */
+        .timeline-content {
+            flex-grow: 1;
+            padding-top: 12px;
+        }
+
+        .timeline-text {
+            font-size: 16px;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        /* Removed global vertical line as requested */
+
+        .image-only-box {
+            width: 100%;
+            max-width: 600px;
+            margin-top: -40px;
+            margin-left: 75px;
+            margin-right: 40px;
+            margin-bottom: -40px;
+            border-radius: 12px;
+        }
+
+        .image-only-box img {
+            width: 100%;
+            height: auto;
+            display: inline-block;
+        }
+
+        .promo-banner {
+            text-align: left;
+            /* Back to left-align as requested */
+            padding: 40px 20px;
+            font-family: "Arial", sans-serif;
+        }
+
+        .promo-banner h2 {
+            color: #00a6b5;
+            font-size: 24px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .discount-code {
+            background: linear-gradient(to right, #ff6a00, #ffaa00);
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: inline-block;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: #3399b3;
+            color: white;
+            font-weight: 700;
+            padding: 12px 40px;
+            /* Wider button */
+            border-radius: 8px;
+            text-decoration: none;
+            font-style: italic;
+        }
+
+        .footer-bar {
+            max-width: 210mm;
+            background-color: #4ca1a3;
+            /* matches teal background */
+            padding: 15px 20px;
+            text-align: center;
+            color: white;
+            font-family: "Arial", sans-serif;
+            font-size: 16px;
+        }
+
+        .footer-bar a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .footer-bar a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="banner">
+        <img src="{{baseUrl}}/PDF-Assets/1st banner.jpg" alt="Banner" class="banner" />
+        <img src="{{baseUrl}}/PDF-Assets/Logo.png" alt="Logo" class="logo" />
+        <p class="heading">SehatUP Personalised Health Report</p>
+        <p class="info1">
+            <span id="report-date">Date: {{reportDate}}</span> |
+            <span id="user-name">Name: {{userName}}</span><br />
+        </p>
+        <p class="info2">
+            <span id="report-category">Category: {{reportCategory}}</span>
+        </p>
+    </div>
+    <h1 class="health-score">YOUR HEALTH SCORE</h1>
+    <div class="risk-status-container">
+        <h2 id="risk-type" class="risk-type-label risk-{{riskClass}}">{{riskType}}</h2>
+    </div>
+    <div class="health-score-wrapper">
+        <div class="health-score-circle">
+            <svg viewBox="0 0 540 540" class="progress-ring">
+                <circle class="bg-inner" cx="260" cy="200" r="170"></circle>
+                <circle class="progress" cx="260" cy="200" r="170" stroke-dashoffset="{{healthScoreOffset}}"></circle>
+                <circle class="bg-outer" cx="260" cy="200" r="230"></circle>
+            </svg>
+            <div class="score-label" id="score-percent">{{healthScore}}</div>
+        </div>
+
+        <div class="health-score-text">
+            <h2 id="risk-type">{{riskType}}</h2>
+            <p id="risk-description-label">
+                What this means:
+                <span id="risk-description">
+                    {{riskDescription}}
+                </span>
+            </p>
+        </div>
+
+        <svg width="0" height="0">
+            <defs>
+                <linearGradient id="gradient" x1="1" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffcc00" />
+                    <stop offset="100%" stop-color="#ff6600" />
+                </linearGradient>
+            </defs>
+        </svg>
+    </div>
+    <div class="comparison-box">
+        <p>
+            <strong>Compared to others:</strong> {{peerComparison}}
+        </p>
+        <div class="bar-chart">
+            <div class="bar {{#if (lt healthScore 40)}}low-score{{else if (gt healthScore 85)}}high-score{{/if}}"
+                id="your-score-bar" style="height: {{healthScore}}%;">
+                <div class="label">Your Score:<br />{{healthScore}}</div>
+            </div>
+            <div class="bar" id="peer-score-bar"
+                style="height: {{peerAverage}}%; background: linear-gradient(to top, #0066cc, #00aaff);">
+                <div class="label">Peer Average:<br />{{peerAverage}}</div>
+            </div>
+        </div>
+        <!-- <p>
+            <strong>Action Needed:</strong> Simple lifestyle and product changes can
+            improve your score by 20-30 points in 6 weeks.
+        </p>
+        <div class="score-potential">
+            <span>Your Potential Score in 6 Weeks: 85 / 100</span>
+        </div> -->
+    </div>
+    <div class="concern-box">
+        <img src="{{baseUrl}}/PDF-Assets/Group-15.jpg" alt="Health Comparison" class="concern-image" />
+    </div>
+    <div class="issue-section">
+        <h3>Issue Detected: {{issueTitle}}</h3>
+
+        <h4>Possible Causes:</h4>
+        <ul class="icon-list">
+            {{#each possibleCauses}}
+            <li>
+                <img src="{{icon}}" alt="icon" />
+                <em>{{text}}</em>
+            </li>
+            {{/each}}
+        </ul>
+
+        <h4>Future Risks:</h4>
+        <ul class="icon-list">
+            {{#each futureRisks}}
+            <li>
+                <img src="{{icon}}" alt="icon" />
+                <em>{{text}}</em>
+            </li>
+            {{/each}}
+        </ul>
+    </div>
+    <div class="personalised-box">
+        <img src="{{baseUrl}}/PDF-Assets/Group 27.jpg" alt="Personalised Plan" class="personalised-plan-image" />
+    </div>
+    <div class="diet-lifestyle-section">
+        <h3>Diet & Lifestyle Changes:</h3>
+        <ul class="lifestyle-changes">
+            {{#each lifestyleChanges}}
+            <li>{{text}}</li>
+            {{/each}}
+        </ul>
+    </div>
+    <div class="recommended-products">
+        <h3>Recommended Products</h3>
+        <div class="products-background-container">
+            <img src="{{baseUrl}}/PDF-Assets/base_image.jpeg" alt="Background" class="products-base-image" />
+            <div class="products-overlay">
+                {{#each recommendedProducts}}
+                <div class="product-item">
+                    <img src="{{image}}" alt="{{name}}" class="product-item-image" />
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+
+    <div class="why-section">
+        <h2 class="why-title">Why:</h2>
+        {{#each recommendedProducts}}
+        <div class="why-point">
+            <div class="why-point-header">
+                <img src="{{icon}}" alt="Product-Icon" class="why-icon" />
+                <p><span>{{name}}</span></p>
+            </div>
+            <ul class="why-point-list">
+                {{#each whyPoints}}
+                <li>{{text}}</li>
+                {{/each}}
+            </ul>
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="offer-banner-image-only">
+        <a href="https://sehatup.com/pages/for-him">
+            <img src="{{baseUrl}}/PDF-Assets/Group 30.png" alt="Exclusive Offer Banner" />
+        </a>
+    </div>
+
+    <div class="progress-section">
+        <h2>PROGRESS TRACKING & MOTIVATION</h2>
+        <p>Your Expected Progress (If you follow the plan)</p>
+
+        <div class="timeline-vertical">
+
+            {{#each timeline}}
+            <div class="timeline-vertical-step">
+                <div class="timeline-icon-wrapper">
+                    <div class="timeline-icon">
+                        <img src="{{../timelineIconUrl}}" alt="{{month}}">
+                    </div>
+                    <div class="timeline-month">{{month}}</div>
+                </div>
+                <div class="timeline-vertical-line"></div>
+                <div class="timeline-content">
+                    <div class="timeline-text">{{timelineDesc}}</div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+
+
+    </div>
+    <div class="image-only-box">
+        <a href="https://wa.me/919355539355?text=Hey+there%2C+I+have+a+question%21">
+            <img src="{{baseUrl}}/PDF-Assets/Group 32.png" alt="Doctor Consultation" />
+        </a>
+    </div>
+
+    <div class="promo-banner">
+        <h2>Get Started Today & Improve Your Health!</h2>
+        <div class="discount-code">
+            Use Code <strong>SEHAT10</strong> for 10% OFF on Your First Order
+        </div>
+        <div class="cta-container">
+            <a href="{{#if cartLink}}{{cartLink}}{{else}}https://sehatup.com/{{/if}}" class="cta-button">BUY NOW MEDICINES</a>
+        </div>
+    </div>
+
+    <footer class="footer-bar">
+        <p>
+            sehatUP - Your Partner in Health | Contact Us:
+            <a href="mailto:support@sehatup.com">support@sehatup.com</a> | © 2025
+        </p>
+    </footer>
+</body>
+
+</html>

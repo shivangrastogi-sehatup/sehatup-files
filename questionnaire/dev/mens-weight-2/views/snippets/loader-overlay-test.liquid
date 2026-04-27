@@ -1,0 +1,31 @@
+{% comment %} views/snippets/loader-overlay.liquid {% endcomment %}
+<style>
+    #loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        display: none; /* Controlled by JS */
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        flex-direction: column;
+    }
+    .loader-content {
+        text-align: center;
+    }
+</style>
+
+<div id="loader">
+  <div class="loader-content">
+    <img
+      src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/GIF.gif?v=1745393486"
+      alt="Loading..."
+      style="width: 100px; height: 100px"
+    >
+    <p style="font-size: 18px; font-weight: bold">Calculating your personalized health report... 😊</p>
+    <p style="font-size: 16px">Please wait a moment while we analyze your responses.</p>
+  </div>
+</div>

@@ -1,0 +1,4085 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Mens Sexual Health Score</title>
+
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* Global Styles */
+        body {
+            background: #f5f7fa;
+            font-family: "Roboto", sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("https://cdn.shopify.com/s/files/1/0924/5687/8383/files/questionnaire_blue.jpg?v=1742991013") no-repeat center center;
+            background-size: cover;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        /* Loader Overlay */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            flex-direction: column;
+        }
+
+        .loader-content {
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        /* Container */
+        #questionnaire .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Header with Gradient */
+        #questionnaire .header {
+            background: linear-gradient(135deg, #dfe2e6, #ffffff);
+            color: #000;
+            padding: 25px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        #questionnaire h1,
+        #questionnaire h2,
+        #questionnaire h3,
+        #questionnaire p {
+            margin: 0 0 15px;
+        }
+
+        /* About You Section Styles */
+        .about-you-container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .about-you-container .form-row label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2f74b5;
+        }
+
+        .about-you-container .form-row input {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #b3e5fc;
+            border-radius: 4px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .about-you-container .form-row input:hover,
+        .about-you-container .form-row input:focus {
+            border-color: #4364f7;
+        }
+
+        .error-message {
+            color: red;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .about-you-container button {
+            background-color: #ff4b81;
+            color: #fff;
+            padding: 12px 30px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .about-you-container button:hover {
+            background-color: #d23b77;
+            transform: scale(1.03);
+        }
+
+        /* Option Buttons for Questions */
+        .question .option-button,
+        .lifestyle .option-button {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 18px 20px;
+            font-size: 18px;
+            text-align: left;
+            cursor: pointer;
+            transition: border 0.3s, background 0.3s;
+            margin: 8px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .question .option-button:hover,
+        .lifestyle .option-button:hover {
+            border-color: #7a2e20;
+            background: #fff7f6;
+        }
+
+        /* STEP INDICATORS */
+        #step-indicators {
+            display: none;
+        }
+
+        .step-indicators {
+            position: relative;
+            margin: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 30%;
+            left: 100px;
+            right: 100px;
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            z-index: 1;
+        }
+
+        .progress-fill-line {
+            position: absolute;
+            top: 30%;
+            left: 100px;
+            height: 4px;
+            background: #4caf50;
+            border-radius: 2px;
+            z-index: 2;
+            width: 0;
+            transition: width 0.1s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+
+            .progress-line,
+            .progress-fill-line {
+                left: 20px;
+                right: 20px;
+            }
+        }
+
+        .step-indicator {
+            position: relative;
+            z-index: 3;
+            text-align: center;
+            flex: 1;
+        }
+
+        .step-indicator .circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #e9eff5;
+            color: #4364f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin: 0 auto;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .step-indicator.completed .circle {
+            background: #4364f7;
+            color: #fff;
+        }
+
+        .step-indicator.active .circle {
+            background: #4364f7;
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        .step-indicator .label {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        #questionnaire .step {
+            display: none;
+            padding: 20px 0;
+        }
+
+        #questionnaire .step.active {
+            display: block;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .navigation button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            background: #000;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .navigation button:hover {
+            background: #365dcf;
+        }
+
+        /* New CSS for Previous button styled in blue */
+        .navigation button.prev-btn {
+            background: #4364f7;
+            color: #fff;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .navigation button.prev-btn:hover {
+            background: #365dcf;
+        }
+
+        /* Next button remains black */
+        .navigation button.next-btn {
+            background: #000;
+            color: #fff;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+
+        .navigation button.next-btn:hover {
+            background: #365dcf;
+        }
+
+        #questionnaire form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 900;
+            color: #333;
+        }
+
+        #questionnaire form input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        #questionnaire .options {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        #questionnaire .options button {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 18px 20px;
+            font-size: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: border 0.3s, background 0.3s;
+        }
+
+        #questionnaire .options button:hover {
+            border-color: #7a2e20;
+            background: #fff7f6;
+        }
+
+        .faq-container {
+            background: #eaf7ff;
+            border: 1px solid #b0e0ff;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .faq-headline {
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        /* FINAL STEP (Results Page) */
+        #questionnaire .final-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 45px;
+        }
+
+        #step-6 .final-layout.centered {
+            max-width: 1700px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        #questionnaire .left-column {
+            flex: 1 1 60%;
+            min-width: 300px;
+        }
+
+        .patient-details {
+            border-radius: 8px;
+            border: 1px, solid #e3e3e3;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .patient-details h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+            color: #010101;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .patient-details-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .patient-info-text {
+            flex: 1 1 55%;
+        }
+
+        .patient-info-text p {
+            margin: 4px 0;
+            font-size: 19px;
+            color: #0c0b0b;
+        }
+
+        .patient-info-score {
+            flex: 0 0 40%;
+            text-align: right;
+        }
+
+        .patient-info-score p {
+            margin: 4px 0;
+            font-size: 36px;
+            color: #010101;
+        }
+
+        /* CIRCULAR PROGRESS */
+        .score-box {
+            width: 140px;
+            height: 140px;
+            margin-bottom: 5px;
+            margin-right: 10%;
+            margin-left: auto;
+            position: relative;
+        }
+
+        .circular-progress {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: conic-gradient(#4caf50 0deg, #eee 0deg);
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .circular-progress::before {
+            content: "";
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            background: #fff;
+            border-radius: 50%;
+            top: 15px;
+            left: 15px;
+            z-index: 1;
+        }
+
+        .inner-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 5px;
+            left: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .progress-value {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+            color: #333;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* Modal Popup for Recommended Products */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 60px auto;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            text-align: center;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .modal-content img {
+            width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .modal-content h2 {
+            margin-top: 16px;
+        }
+
+        .modal-content p.price {
+            font-weight: bold;
+            color: #000;
+            font-size: 1.8rem;
+            margin-top: 10px;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .score-message {
+            font-size: 36px;
+            color: #666;
+        }
+
+        .patient-id {
+            display: none;
+        }
+
+        .future-risk-section {
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        #future-risk {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        /* original CSS */
+
+        /* .risk-tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    } */
+
+        .risk-tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+
+
+        /* original css */
+
+        /* .risk-tag {
+    background-color: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 20px;
+    padding: 6px 15px;
+    font-size: 16px;
+    color: #333;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.3s;
+    } */
+
+        .risk-tag {
+            background-color: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 15px;
+            color: #333;
+            white-space: normal;
+            word-wrap: break-word;
+            word-break: break-word;
+            max-width: 100%;
+            flex: 1 1 250px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-sizing: border-box;
+        }
+
+
+        .risk-tag:hover {
+            background-color: #ffe5e5;
+            border-color: #ff3b6e;
+            color: #ff3b6e;
+        }
+
+        .whatsapp-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .whatsapp-report-btn {
+            display: inline-flex;
+            align-items: center;
+            background-color: #25d366;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .whatsapp-report-btn:hover {
+            background-color: #1ebc59;
+            transform: scale(1.05);
+        }
+
+        .whatsapp-report-btn img {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .popup {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .popup input {
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .popup button {
+            background-color: #25d366;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .popup button.close-btn {
+            background-color: #ff3e6c;
+        }
+
+        .results-timeline {
+            background: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .results-timeline h3 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .results-timeline h3 .highlight-text {
+            color: #ff3b6e;
+            font-weight: bold;
+        }
+
+        .timeline-months {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .line {
+            height: 2px;
+            background: #e3e3e3;
+            flex: 1;
+            margin: 0 10px;
+            position: relative;
+            top: -30px;
+        }
+
+        .month-box {
+            text-align: center;
+            flex: 1;
+            position: relative;
+        }
+
+        .month-icon img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid #f2f2f2;
+            background-color: #fff;
+            position: relative;
+            z-index: 2;
+        }
+
+        .month-box h4 {
+            font-size: 12px;
+            margin: 10px 0 5px;
+            color: #333;
+        }
+
+        .month-box p {
+            font-size: 10px;
+            color: #777;
+        }
+
+        .line:last-child {
+            display: none;
+        }
+
+
+        /* original css */
+        /* @media (max-width: 480px) {
+      .timeline-months {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-gap: 30px;
+      }
+
+      .line {
+        display: none;
+      }
+    } */
+
+        @media (max-width: 480px) {
+            .timeline-months {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                align-items: stretch;
+            }
+
+            .month-box {
+                flex: none;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .month-box h4,
+            .month-box p {
+                font-size: 14px;
+                word-wrap: break-word;
+            }
+
+            .line {
+                display: none;
+            }
+        }
+
+
+        .support-section {
+            background: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .treatment-plan {
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e3e3e3;
+        }
+
+        .treatment-plan h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .treatment-plan ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .treatment-plan ul li {
+            margin: 5px 0;
+            font-size: 16px;
+            color: #555;
+        }
+
+        #questionnaire .right-column {
+            flex: 1 1 35%;
+            min-width: 250px;
+        }
+
+        .recommended-treatment {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e3e3e3;
+            width: 90%;
+            /* margin-right: 90px; */
+            margin-left: 30px;
+        }
+
+        .recommended-treatment h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .product-list {
+            margin-bottom: 20px;
+        }
+
+        .product-card {
+            background: #fff;
+            border: 1px solid #e3e3e3;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+        }
+
+        .product-card img {
+            width: 180px;
+            height: 180px;
+            object-fit: cover;
+            margin: 0 auto 10px;
+            display: block;
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .product-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .price-section {
+            margin-bottom: 10px;
+        }
+
+        .old-price {
+            text-decoration: line-through;
+            color: #999;
+            margin-right: 6px;
+        }
+
+        .new-price {
+            color: #ff3e6c;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .discount-badge {
+            background: #ff3b6e;
+            color: #fff;
+            font-size: 12px;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .checkout-section {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        /* Dropdown icon in product recommendation section */
+        .dropdown-icon {
+            margin-left: 5px;
+            font-size: 14px;
+            color: #888;
+            vertical-align: middle;
+        }
+
+        .product-card:hover .dropdown-icon {
+            color: #4364f7;
+            transform: translateY(2px);
+            transition: transform 0.2s, color 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .checkout-section {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                padding: 15px 10px;
+                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+                z-index: 999;
+            }
+
+            #step-6 .left-column {
+                margin-bottom: 100px;
+            }
+        }
+
+        .checkout-section p {
+            font-size: 16px;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        #total-amount {
+            font-size: 18px;
+            color: #ff3e6c;
+            font-weight: 700;
+            margin-left: 5px;
+        }
+
+        .gst-note {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .buy-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .buy-button {
+            padding: 15px 75px;
+            background: #ed194b;
+            border-radius: 14px;
+            border: none;
+
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s;
+            color: #fff;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .buy-button:hover {
+            background: #ed194b;
+            transform: scale(1.05);
+        }
+
+        #step-6 .final-layout {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            #questionnaire .container {
+                margin: 20px;
+                width: 90%;
+                padding: 15px;
+            }
+
+            #questionnaire h1 {
+                font-size: 24px;
+            }
+
+            #questionnaire h2 {
+                font-size: 20px;
+            }
+
+            #questionnaire p,
+            #questionnaire form label {
+                font-size: 20px;
+            }
+
+            #questionnaire button {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+
+            .step-indicators {
+                margin: 20px 20px;
+            }
+
+            .step-indicator .circle {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+
+            .step-indicator .label {
+                font-size: 12px;
+            }
+
+            .timeline-months {
+                flex-direction: column;
+            }
+
+            .month-box {
+                min-width: 100%;
+            }
+
+            .score-box {
+                width: 120px;
+                height: 120px;
+            }
+
+            .circular-progress {
+                width: 120px;
+                height: 120px;
+            }
+
+            .circular-progress::before {
+                width: 90px;
+                height: 90px;
+                top: 15px;
+                left: 15px;
+            }
+        }
+
+        /* UGC Videos Slider (Update 1) */
+        #ugc-content {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 0 15px;
+            display: none;
+        }
+
+        .ugc-slider {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 10px;
+        }
+
+        .ugc-slide {
+            flex: 0 0 auto;
+            width: 320px;
+            scroll-snap-align: start;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .ugc-slide iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: none;
+        }
+
+        .multi-select-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 16px 0;
+            padding: 12px;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        /* each checkbox+label combo styled as a “card” */
+        .multi-option-card {
+            flex: 1 1 calc(50% - 12px);
+            max-width: 48%;
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        /* checkbox itself, hidden but still accessible */
+        .multi-checkbox {
+            margin-right: 10px;
+            accent-color: #4364f7;
+            /* modern browsers will color the box & checkmark */
+            width: 18px;
+            height: 18px;
+        }
+
+        /* label text */
+        .multi-label {
+            font-size: 16px;
+            color: #333;
+        }
+
+        /* hover & checked states */
+        .multi-option-card:hover {
+            border-color: #4364f7;
+            box-shadow: 0 2px 8px rgba(67, 100, 247, 0.2);
+        }
+
+        .multi-checkbox:checked+.multi-label,
+        .multi-checkbox:checked~.multi-label {
+            font-weight: bold;
+            color: #4364f7;
+        }
+
+        /* Exit Popup for Back Navigation (Update 2) */
+        /* Exit Popup for Back Navigation (Update 2) */
+        #exit-popup {
+            display: none;
+            position: fixed;
+            z-index: 11000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100dvh;
+            /* Use dynamic viewport height for mobile */
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #exit-popup.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        #exit-popup.fade-out {
+            opacity: 0;
+        }
+
+        #exit-popup .modal-content {
+            max-width: 360px;
+            width: 90%;
+            padding: 16px;
+            background: #fff;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #exit-popup img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            image-rendering: auto;
+        }
+
+        #exit-popup h2,
+        #exit-popup p {
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        #exit-popup input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        #exit-popup .close-btn {
+            position: absolute;
+            top: -7px;
+            right: 2px;
+            font-size: 24px;
+            color: #333;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 11001;
+        }
+
+        /* Coupon container style */
+        .coupon-container {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: baseline;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .coupon-container input {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .copy-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+            font-size: 0.95rem;
+        }
+
+        .faq-timer-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        /* in your <style> */
+        .faq-timer-fill {
+            width: 100%;
+            /* start full */
+            height: 100%;
+            background-color: orange;
+            /* start orange */
+            transition:
+                width 2.5s linear,
+                background-color 2.5s linear;
+            /* animate both */
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 480px) {
+            #exit-popup .modal-content {
+                padding: 12px;
+                max-height: 85vh;
+            }
+
+            #exit-popup h2 {
+                font-size: 1.8rem;
+            }
+
+            #exit-popup p {
+                font-size: 1.2rem;
+            }
+
+            .copy-btn {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* whatsapp Styling */
+
+        .whatsapp-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .whatsapp-report-btn {
+            display: inline-flex;
+            align-items: center;
+            background-color: #7499ac;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .whatsapp-report-btn:hover {
+            background-color: #557d90;
+            transform: scale(1.05);
+        }
+
+        .whatsapp-report-btn img {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        #download-report-button {
+            background-color: #7499ac !important;
+        }
+
+        #download-report-button:hover {
+            background-color: #557d90 !important;
+        }
+
+        #download-report-button {
+            position: relative;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #download-report-button[disabled] {
+            background-color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #download-countdown {
+            font-weight: bold;
+            margin-left: 8px;
+            font-size: 14px;
+            color: #000;
+        }
+
+        .popup-overlay {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .popup {
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .otp-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .otp-modal-content {
+            background: #fff;
+            padding: 30px 25px;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            position: relative;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            font-family: "Segoe UI", sans-serif;
+        }
+
+        .otp-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .otp-modal-content h3 {
+            margin-bottom: 18px;
+            color: #222;
+        }
+
+        .otp-modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            transition: 0.2s;
+        }
+
+        .otp-modal-content input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px #007bff22;
+        }
+
+        .otp-modal-content button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .otp-modal-content button:hover {
+            background-color: #0056b3;
+        }
+
+        #otp-toast {
+            margin-top: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            display: none;
+        }
+
+        #otp-timer {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .otp-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+        }
+
+        .otp-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 25px 30px;
+            width: 90%;
+            max-width: 360px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            position: relative;
+            text-align: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .otp-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .otp-box h3 {
+            margin-bottom: 10px;
+        }
+
+        .otp-input-group {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .otp-input-group input {
+            width: 40px;
+            height: 45px;
+            text-align: center;
+            font-size: 20px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .otp-input-group input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 3px #007bff88;
+        }
+
+        .verify-btn {
+            background-color: #007bff;
+            color: #fff;
+            padding: 12px;
+            width: 100%;
+            font-size: 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .verify-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .resend-text {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        #otp-toast {
+            margin-top: 10px;
+            font-weight: bold;
+            display: none;
+        }
+
+
+        /* OTP Modal Enhancements */
+        #otp-modal h3 {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #otp-modal p {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        #otp-phone {
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        #otp-modal .verify-btn,
+        #otp-modal button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease;
+            font-weight: bold;
+        }
+
+        #otp-modal .verify-btn:hover,
+        #otp-modal button:hover {
+            background: #0056b3;
+        }
+
+        #otp-toast {
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 10px;
+            color: green;
+            display: none;
+        }
+
+        @keyframes dots {
+            0% {
+                content: '.';
+            }
+
+            33% {
+                content: '..';
+            }
+
+            66% {
+                content: '...';
+            }
+
+            100% {
+                content: '.';
+            }
+        }
+
+
+        /* ... More of your CSS (all the styles from your original code) ... */
+        /* For brevity, please include your entire CSS from your previous code here */
+    </style>
+
+    <!-- Initialize Firebase -->
+    <script>
+        // Replace the values below with your Firebase project's configuration.
+        // Optionally, you can load these values via Liquid settings.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCr7hpZ8_Qye66RC2LyyWwQ8pXs7Jw1cPg",
+            authDomain: "sehatupdev.firebaseapp.com",
+            projectId: "sehatupdev",
+            storageBucket: "sehatupdev.firebasestorage.app",
+            messagingSenderId: "367894412167",
+            appId: "1:367894412167:web:e8e19660246ff976cfb122"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        // Initialize Firestore
+        const db = firebase.firestore();
+        //send data to emulator if running locally
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            db.useEmulator("127.0.0.1", 8080);
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Loader Overlay -->
+    <!-- Loader Overlay -->
+    <div id="loader">
+        <div class="loader-content">
+            <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/GIF.gif?v=1745393486" alt="Loading..."
+                style="width: 100px; height: 100px" />
+            <p style="font-size: 18px; font-weight: bold">
+                Calculating your personalized health report... 😊
+            </p>
+            <p style="font-size: 16px">
+                Please wait a moment while we analyze your responses.
+            </p>
+        </div>
+    </div>
+
+    <!-- Background Overlay -->
+    <div class="bg-overlay"></div>
+
+    <!-- Questionnaire Section -->
+    <div id="questionnaire">
+        <div class="container">
+            <div class="header">
+                <h1>Men's Sexual Health Score</h1>
+            </div>
+            <!-- STEP INDICATORS -->
+            <div class="step-indicators" id="step-indicators">
+                <div class="progress-line"></div>
+                <div class="progress-fill-line"></div>
+                <div class="step-indicator" data-step="2">
+                    <div class="circle">1</div>
+                    <div class="label">About You</div>
+                </div>
+                <div class="step-indicator" data-step="3">
+                    <div class="circle">2</div>
+                    <div class="label">Concern</div>
+                </div>
+                <div class="step-indicator" data-step="4">
+                    <div class="circle">3</div>
+                    <div class="label">Questions</div>
+                </div>
+                <div class="step-indicator" data-step="5">
+                    <div class="circle">4</div>
+                    <div class="label">Lifestyle</div>
+                </div>
+            </div>
+            <!-- Step 1: Instructions -->
+            <div id="step-1" class="step active">
+                <h2>Welcome to the Men’s Sexual Health Quiz!</h2>
+                <ul>
+                    <li>✅ Takes just a few minutes</li>
+                    <li>🔒 100% private and secure</li>
+                    <li>🔞 You must be 18 or older to participate</li>
+                </ul>
+                <div class="navigation">
+                    <div></div>
+                    <button onclick="startQuestionnaire()">
+                        Start Your Health Score
+                    </button>
+                </div>
+            </div>
+            <!-- Step 2: About You -->
+            <div id="step-2" class="step about-you-container">
+                <h2>Tell us a bit about yourself to personalize your experience.</h2>
+                <form id="about-you-form">
+                    <div class="form-row">
+                        <label for="name">Enter Your Full Name:</label>
+                        <input type="text" id="name" placeholder="Your name" required />
+                    </div>
+                    <div class="form-row">
+                        <label for="dob">Enter Your Date of Birth:</label>
+                        <input type="date" id="dob" required />
+                        <span id="age-error" class="error-message"></span>
+                    </div>
+                    <div class="form-row">
+                        <label for="phone">Enter Your Phone Number:</label>
+                        <input type="tel" id="phone" placeholder="Your phone number" required />
+                        <span id="phone-error" class="error-message"></span>
+                    </div>
+                    <div class="navigation">
+                        <button type="button" class="prev-btn" onclick="prevStep(1)">
+                            Previous
+                        </button>
+                        <button type="button" class="next-btn" onclick="validateAboutYou()">
+                            Next
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <!-- Step 3: Category Selection -->
+            <div id="step-3" class="step">
+                <h2>Select the challenge you’re facing - we’re here to help.</h2>
+                <div class="options">
+                    <button onclick="selectCategory('ed')">
+                        Erectile Dysfunction (ED)
+                    </button>
+                    <button onclick="selectCategory('pe')">
+                        Premature Ejaculation (PE)
+                    </button>
+                    <button onclick="selectCategory('both')">Both</button>
+                </div>
+                <div class="navigation">
+                    <button type="button" class="prev-btn" onclick="prevStep(2)">
+                        Previous
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+            <!-- Step 4: Category-Specific Questions -->
+            <div id="step-4" class="step">
+                <div id="questions-container"></div>
+                <div id="faq-container" class="faq-container" style="display: none"></div>
+                <div class="navigation" id="nav-container">
+                    <button type="button" class="prev-btn" onclick="prevQuestion()">
+                        Previous
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+            <!-- Step 5: Lifestyle Questions -->
+            <div id="step-5" class="step">
+                <div id="lifestyle-container"></div>
+                <div id="lifestyle-faq-container" class="faq-container" style="display: none"></div>
+                <div class="navigation" id="lifestyle-nav-container">
+                    <button type="button" class="prev-btn" onclick="prevStep(4)">
+                        Previous
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+            <!-- Step 6: Results -->
+            <div id="step-6" class="step">
+                <div class="final-layout">
+                    <div class="left-column">
+                        <div class="patient-details">
+                            <h3>Assesment Report</h3>
+                            <div class="patient-details-container">
+                                <div class="patient-info-text">
+                                    <p><strong></strong> <span id="user-name"></span></p>
+                                    <p><strong></strong> <span id="user-concern"></span></p>
+                                </div>
+                                <div class="patient-info-score">
+                                    <div class="score-box" id="score-box">
+                                        <div class="circular-progress" id="circular-progress">
+                                            <div class="inner-text">
+                                                <p class="progress-value" id="progress-value">0%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p id="condition-text" style="margin-top: 10px"></p>
+                            <span class="patient-id" id="patient-id"></span>
+                            <div class="future-risk-section">
+                                <h3>Future Risk (If Not Treated)</h3>
+                                <div id="future-risk"></div>
+                                <div id="future-risk-tags" class="risk-tags-container"></div>
+                            </div>
+                            <div class="whatsapp-button-container">
+                                <button class="whatsapp-report-btn" onclick="openOtpPopup()">
+                                    <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" />
+                                    Get My Report on WhatsApp
+                                </button>
+                            </div>
+                        </div>
+                        <div class="results-timeline">
+                            <h3>
+                                Start Seeing Results In
+                                <span class="highlight-text">4 Months</span>
+                            </h3>
+                            <div class="timeline-months">
+                                <div class="month-box">
+                                    <div class="month-icon">
+                                        <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/image_277.png?v=1741590675"
+                                            alt="Month 1" />
+                                    </div>
+                                    <h4>Month 1</h4>
+                                    <p>Body Starts to Adapt</p>
+                                </div>
+                                <div class="line"></div>
+                                <div class="month-box">
+                                    <div class="month-icon">
+                                        <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/image_277.png?v=1741590675"
+                                            alt="Month 2" />
+                                    </div>
+                                    <h4>Month 2</h4>
+                                    <p>Visible Internal Progress</p>
+                                </div>
+                                <div class="line"></div>
+                                <div class="month-box">
+                                    <div class="month-icon">
+                                        <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/image_277.png?v=1741590675"
+                                            alt="Month 3" />
+                                    </div>
+                                    <h4>Month 3</h4>
+                                    <p>Noticeable Improvements</p>
+                                </div>
+                                <div class="line"></div>
+                                <div class="month-box">
+                                    <div class="month-icon">
+                                        <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/image_277.png?v=1741590675"
+                                            alt="Month 4" />
+                                    </div>
+                                    <h4>Month 4</h4>
+                                    <p>Peak Effect & Stability</p>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="https://wa.me/919355539355?text=Hi%20I%20need%20help%20regarding%20my%20health%20report."
+                            target="_blank">
+                            <div class="support-section">
+                                <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Banner_6.jpg?v=1745476460"
+                                    alt="24x7 Expert Doctor Support" style="max-width: 100%" />
+                            </div>
+                        </a>
+                        <div class="treatment-plan">
+                            <h4>What you get in your treatment plan</h4>
+                            <ul>
+                                <li>Doctor Support</li>
+                                <li>Ayurvedic Medicine</li>
+                                <li>Custom Plan</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="right-column">
+                        <div class="recommended-treatment">
+                            <h3>Recommended Treatment</h3>
+                            <div class="product-list" id="product-list"></div>
+                            <div class="checkout-section">
+                                <p>
+                                    Total Amount:
+                                    <span id="total-amount">0</span>
+                                    <small class="gst-note">(GST included)</small>
+                                </p>
+                                <div class="buy-button-container">
+                                    <button class="buy-button" onclick="buyNow()">
+                                        Buy Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- UGC Videos Slider (Update 1) -->
+                <div id="ugc-content">
+                    <!-- The slider will be populated by the renderUGCContent() function -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup for Recommended Products -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <img id="modalImage" src="" alt="" />
+            <h2 id="modalTitle"></h2>
+            <p id="modalDescription"></p>
+            <p id="modalPrice" class="price"></p>
+        </div>
+    </div>
+
+    <!-- Exit Popup Modal (Update 2) -->
+    <div id="exit-popup">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeExitPopup()">×</span>
+            <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Popup_Image.jpg?v=1745412444"
+                alt="Special Offer" />
+            <h2>Get Extra Off Your Order!</h2>
+            <p>Use the coupon code below to avail an extra discount:</p>
+
+            <div class="coupon-container">
+                <input type="text" id="coupon-code" value="SPECIAL5" readonly />
+                <button class="copy-btn" onclick="copyCouponCode()">Copy</button>
+            </div>
+
+            <p id="copy-feedback" style="display: none; color: green; font-weight: bold">
+                Copied!
+            </p>
+        </div>
+    </div>
+
+    <!-- JavaScript Section -->
+    <script>
+        const baseUrl = "https://cdn.shopify.com/s/files/1/0924/5687/8383/files";
+
+        /* Global variables and data */
+        let futureRisks = [];
+        let selectedCategory = "";
+        let currentQuestionIndex = 0;
+        let questions = [];
+        let answers = [];
+        let lifestyleAnswers = [];
+        let userSelectedConditions = {};
+        let currentLifestyleIndex = 0;
+        let userInfo = {};
+        let computedHealthScore = 0;
+        let recommendedProducts = [];
+        let currentStep = 1; // Current step tracker
+        let lifestyleAdditionalAnswer = ""; // Additional free-text answer
+        let possibleCauses = [];
+        let lastSubmittedDocId = null;
+        let countdownInterval;
+
+
+        let otpTimer, otpTimeLeft = 60;
+        let otpExpiresAt = null;
+        let enteredPhone = "";
+
+        function openOtpPopup() {
+            const modal = document.getElementById("otp-modal");
+            const phoneInput = document.getElementById("otp-phone");
+            document.getElementById("otp-step-1").style.display = "block";
+            document.getElementById("otp-step-2").style.display = "none";
+            phoneInput.value = userInfo.phone || "";
+            modal.style.display = "flex";
+            resetOtpInputs();
+        }
+
+        function closeOtpPopup() {
+            document.getElementById("otp-modal").style.display = "none";
+            clearInterval(otpTimer);
+        }
+
+        function moveToNext(input, index) {
+            const inputs = document.querySelectorAll(".otp-input-group input");
+
+            input.addEventListener("keydown", function (e) {
+                const key = e.key;
+                const value = input.value;
+
+                if (key === "Backspace") {
+                    input.value = "";
+                    if (index > 0) inputs[index - 1].focus();
+                    e.preventDefault();
+                } else if (key >= "0" && key <= "9") {
+                    // Allow number, overwrite current
+                    input.value = ""; // clear existing before inserting
+                } else if (key === "ArrowLeft" && index > 0) {
+                    inputs[index - 1].focus();
+                } else if (key === "ArrowRight" && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                } else {
+                    e.preventDefault(); // prevent non-numeric input
+                }
+            });
+
+            input.addEventListener("input", function () {
+                const val = input.value;
+                if (/^\d$/.test(val)) {
+                    if (index < inputs.length - 1) inputs[index + 1].focus();
+                } else {
+                    input.value = ""; // clear non-digit input
+                }
+            });
+        }
+
+        // Apply the listener once for all inputs on load
+        window.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".otp-input-group input").forEach((inp, i) => {
+                moveToNext(inp, i);
+            });
+        });
+
+        function resetOtpInputs() {
+            document.querySelectorAll(".otp-input-group input").forEach(inp => inp.value = "");
+            document.getElementById("otp-toast").style.display = "none";
+        }
+
+        function showOtpToast(msg, color = "green") {
+            const toast = document.getElementById("otp-toast");
+            toast.innerText = msg;
+            toast.style.color = color;
+            toast.style.display = "block";
+            setTimeout(() => (toast.style.display = "none"), 4000);
+        }
+
+        function startOtpTimer() {
+            otpTimeLeft = 60;
+            otpExpiresAt = Date.now() + 60000;
+
+            const timerEl = document.getElementById("otp-timer");
+            const resendLink = document.getElementById("resend-link");
+
+            resendLink.style.display = "none";
+            timerEl.innerText = `Resend in ${otpTimeLeft}s`;
+
+            otpTimer = setInterval(() => {
+                otpTimeLeft--;
+                if (otpTimeLeft > 0) {
+                    timerEl.innerText = `Resend in ${otpTimeLeft}s`;
+                } else {
+                    clearInterval(otpTimer);
+                    timerEl.innerText = "";
+                    resendLink.style.display = "inline";
+                }
+            }, 1000);
+        }
+
+
+
+        function sendOtp() {
+            const phone = document.getElementById("otp-phone").value.trim();
+            if (!/^\d{10}$/.test(phone)) {
+                showOtpToast("Enter valid 10-digit number", "red");
+                return;
+            }
+
+            enteredPhone = phone;
+
+            fetch("https://generateotp-xrtgefpbxq-em.a.run.app", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone }),
+            })
+                .then(res => res.json())
+                .then(() => {
+                    showOtpToast("OTP Sent!");
+                    document.getElementById("otp-step-1").style.display = "none";
+                    document.getElementById("otp-step-2").style.display = "block";
+                    resetOtpInputs();
+                    startOtpTimer();
+                })
+                .catch(() => showOtpToast("Failed to send OTP", "red"));
+        }
+
+        function resendOtp() {
+            if (!enteredPhone || !/^\d{10}$/.test(enteredPhone)) {
+                showOtpToast("Invalid phone number", "red");
+                return;
+            }
+
+            // Disable further clicks temporarily
+            const resendLink = document.getElementById("resend-link");
+            resendLink.style.pointerEvents = "none";
+            resendLink.style.opacity = "0.6";
+
+            fetch("https://generateotp-xrtgefpbxq-em.a.run.app", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: enteredPhone }),
+            })
+                .then((res) => res.json())
+                .then(() => {
+                    showOtpToast("OTP Resent!");
+                    resetOtpInputs();
+                    resendLink.style.pointerEvents = "auto";
+                    resendLink.style.opacity = "1";
+                    startOtpTimer();
+                })
+                .catch(() => {
+                    showOtpToast("Failed to resend OTP", "red");
+                    resendLink.style.pointerEvents = "auto";
+                    resendLink.style.opacity = "1";
+                });
+        }
+
+
+
+        function verifyOtpFromInputs() {
+            const digits = Array.from(document.querySelectorAll(".otp-input-group input")).map(i => i.value).join("");
+            if (digits.length < 6) {
+                showOtpToast("Enter full 6-digit OTP", "red");
+                return;
+            }
+            var windowReference = window.open();
+
+            fetch("https://verifyotp-xrtgefpbxq-em.a.run.app", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: enteredPhone, otp: digits }),
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showOtpToast("OTP Verified");
+                        if (enteredPhone !== userInfo.phone) {
+                            db.collection("questionnaire_submissions")
+                                .doc(lastSubmittedDocId)
+                                .set({ phone: enteredPhone }, { merge: true }).then(() => {
+                                    console.log("Phone updated in Firebase");
+                                    userInfo.phone = enteredPhone;
+                                    windowReference.location = `https://wa.me/919355539355?text=I want my detailed HealthScore360 Report`;
+                                    closeOtpPopup();
+                                }).catch((error) => {
+                                    console.error("Error updating phone in Firebase:", error);
+                                });
+                        } else {
+                            windowReference.location = `https://wa.me/919355539355?text=I want my detailed HealthScore360 Report`;
+                            closeOtpPopup();
+                        }
+                    } else {
+                        showOtpToast("Incorrect or expired OTP. Please double-check or resend.", "red");
+                    }
+                })
+                .catch(() => showOtpToast("Verification failed", "red"));
+        }
+
+        // FAQ arrays for category and lifestyle
+        const faqEd = [
+            "Regular exercise and a balanced diet can naturally improve ED symptoms?",
+            "Stress management plays a vital role in managing ED?",
+        ];
+        const faqPe = [
+            "Specialized exercises can help manage premature ejaculation?",
+            "Counseling and behavioral techniques may improve PE over time?",
+        ];
+        const faqBoth = [
+            "A combined approach for ED and PE yields better outcomes?",
+            "A holistic treatment plan boosts overall sexual performance?",
+        ];
+        const faqLifestyle = [
+            "A balanced diet enhances overall sexual well-being?",
+            "Regular exercise increases endurance and performance?",
+        ];
+
+        const concernMapping = {
+            ed: "Erectile Dysfunction",
+            pe: "Premature Ejaculation",
+            both: "ED + PE",
+        };
+
+        const questionBank = {
+            ed: [
+                {
+                    question: "Is getting or staying hard ever a challenge? How often?",
+                    options: [
+                        { text: "Everytime", score: 10 },
+                        { text: "Sometimes", score: 6 },
+                        { text: "Rarely", score: 3 },
+                    ],
+                },
+                {
+                    question: "How often do you struggle to stay hard?",
+                    options: [
+                        { text: "Less than 1 minute", score: 10 },
+                        { text: "1-5 minutes", score: 8 },
+                        { text: "5-10 minutes", score: 5 },
+                        { text: "More than 10 minutes", score: 3 },
+                    ],
+                },
+                {
+                    question: "How often do you feel nervous about performance?",
+                    options: [
+                        { text: "High", score: 10 },
+                        { text: "Moderate", score: 8 },
+                        { text: "Low", score: 5 },
+                        { text: "Very low", score: 3 },
+                    ],
+                },
+                {
+                    question:
+                        "Currently taking any medicine for current problem or lifestyle modification",
+                    options: [
+                        { text: "Medicine", score: 0 },
+                        { text: "Gel", score: 0 },
+                        { text: "Spray", score: 0 },
+                        { text: "None", score: 0 },
+                    ],
+                },
+                {
+                    question: "For how long have you has this condition?",
+                    options: [
+                        { text: "Less than a month", score: 1 },
+                        { text: "Less than 6 months", score: 2 },
+                        { text: "6 months - 1 year", score: 4 },
+                        { text: "1 year+", score: 5 },
+                    ],
+                },
+            ],
+            pe: [
+                {
+                    question: "How often do you feel like you climax too quickly?",
+                    options: [
+                        { text: "Always", score: 10 },
+                        { text: "Sometimes", score: 6 },
+                        { text: "Rarely", score: 10 },
+                    ],
+                },
+                {
+                    question: "What do you believe is causing you to finish early?",
+                    options: [
+                        { text: "High Sensitivity", score: 10 },
+                        { text: "Anxiety", score: 8 },
+                        { text: "Both", score: 5 },
+                        { text: "I do not know", score: 3 },
+                    ],
+                },
+                {
+                    question: "How quickly do you typically finish during intercourse?",
+                    options: [
+                        { text: "Less than 1 minute", score: 10 },
+                        { text: "1-5 minutes", score: 8 },
+                        { text: "5-10 minutes", score: 5 },
+                        { text: "More than 10 minutes", score: 3 },
+                    ],
+                },
+                {
+                    question:
+                        "Currently taking any med. for current problem or lifestyle modification",
+                    options: [
+                        { text: "Medicine", score: 0 },
+                        { text: "Gel", score: 0 },
+                        { text: "Spray", score: 0 },
+                        { text: "None", score: 0 },
+                    ],
+                },
+                {
+                    question: "For how long have you has this condition?",
+                    options: [
+                        { text: "Less than a month", score: 1 },
+                        { text: "Less than 6 months", score: 2 },
+                        { text: "6 months - 1 year", score: 4 },
+                        { text: "1 year+", score: 5 },
+                    ],
+                },
+            ],
+            both: [
+                {
+                    question:
+                        "How often do you have trouble getting an erection or keeping an erection during sex?",
+                    options: [
+                        { text: "Everytime", score: 10 },
+                        { text: "Sometimes", score: 6 },
+                        { text: "Rarely", score: 10 },
+                    ],
+                },
+                {
+                    question: "How long can you keep up with your erection?",
+                    options: [
+                        { text: "Less than 1 minute", score: 10 },
+                        { text: "1-5 minutes", score: 8 },
+                        { text: "5-10 minutes", score: 5 },
+                        { text: "More than 10 minutes", score: 3 },
+                    ],
+                },
+                {
+                    question: "Tell us about your performance anxiety levels",
+                    options: [
+                        { text: "High", score: 10 },
+                        { text: "Moderate", score: 8 },
+                        { text: "Low", score: 5 },
+                        { text: "Never", score: 3 },
+                    ],
+                },
+                {
+                    question: "How often do you have early ejaculation?",
+                    options: [
+                        { text: "Always", score: 0 },
+                        { text: "Sometimes", score: 0 },
+                        { text: "Rarely", score: 0 },
+                    ],
+                },
+                {
+                    question: "What according to you is causing you to finish quickly?",
+                    options: [
+                        { text: "High Sensitivity", score: 0 },
+                        { text: "Anxiety", score: 1 },
+                        { text: "Both", score: 2 },
+                        { text: "I do not know", score: 4 },
+                    ],
+                },
+                {
+                    question:
+                        "What is your ejaculation timing while performing the intercourse?",
+                    options: [
+                        { text: "Less than 1 minute", score: 10 },
+                        { text: "1-5 minutes", score: 8 },
+                        { text: "5-10 minutes", score: 5 },
+                        { text: "More than 10 minutes", score: 3 },
+                    ],
+                },
+                {
+                    question: "For how long have you has this condition?",
+                    options: [
+                        { text: "Less than a month", score: 2 },
+                        { text: "Less than 6 months", score: 3 },
+                        { text: "6 months - 1 year", score: 4 },
+                        { text: "1 year+", score: 5 },
+                    ],
+                },
+            ],
+        };
+
+        const timeline = {
+            ed: [
+                {
+                    month: "Month 1",
+                    timelineDesc:
+                        "Improved erection, better ejaculation control, better mood, reduced fatigue",
+                },
+                {
+                    month: "Month 2",
+                    timelineDesc:
+                        "Longer intercourse duration, sustained erection, emotional improvement",
+                },
+                {
+                    month: "Month 3",
+                    timelineDesc:
+                        "Restored sexual normalcy, better confidence levels during performance",
+                },
+                {
+                    month: "Month 6",
+                    timelineDesc:
+                        "Confident sexual function, minimized dependency on meds, better energy levels",
+                },
+            ],
+
+            pe: [
+                {
+                    month: "Month 1",
+                    timelineDesc:
+                        "Improved ejaculation control, Reduced anxiety during intercourse, Enhanced sexual satisfaction",
+                },
+                {
+                    month: "Month 2",
+                    timelineDesc:
+                        "Significant delay in ejaculation, Increased confidence in sexual performance, Better sexual communication with partner",
+                },
+                {
+                    month: "Month 3",
+                    timelineDesc:
+                        "Consistent control over ejaculation, Higher sexual satisfaction for both partners, Improved emotional connection",
+                },
+                {
+                    month: "Month 6",
+                    timelineDesc:
+                        "Stable ejaculation control without anxiety, Enhanced overall sexual well-being, Reduced dependence on medication for performance",
+                },
+            ],
+
+            both: [
+                {
+                    month: "Month 1",
+                    timelineDesc:
+                        "Improved erection quality and ejaculation control, Reduced performance anxiety, Enhanced energy levels during intercourse",
+                },
+                {
+                    month: "Month 2",
+                    timelineDesc:
+                        "Stronger, more sustained erections, Significant delay in ejaculation, Greater sexual confidence",
+                },
+                {
+                    month: "Month 3",
+                    timelineDesc:
+                        "Restored normal sexual performance, Consistent erection and ejaculation control, Enhanced emotional and sexual intimacy",
+                },
+                {
+                    month: "Month 6",
+                    timelineDesc:
+                        "Complete control over erections and ejaculation, Minimal dependence on medications, High sexual confidence and overall satisfaction",
+                },
+            ],
+        };
+
+        let lifestyleQuestions = [
+            {
+                question:
+                    "How frequently do you consume cigarettes, alcohol, or similar substances on a daily basis?",
+                options: [
+                    { text: "Very Frequently", score: 10 },
+                    { text: "Frequently", score: 8 },
+                    { text: "Sometimes", score: 5 },
+                    { text: "Rarely", score: 3 },
+                    { text: "Never", score: 0 },
+                ],
+            },
+            {
+                question:
+                    "Do you have any of the following health issues? If yes, tick those apply.",
+                multiple: true,
+                options: [
+                    { text: "Heart Problem", score: 2 },
+                    { text: "Blood Pressure", score: 2 },
+                    { text: "Diabetes", score: 2 },
+                    { text: "High Cholesterol", score: 2 },
+                    { text: "Thyroid Issues", score: 2 },
+                    { text: "None", score: 0 },
+                ],
+            },
+        ];
+        const lifestyleTips = {
+            "GENERAL": [
+                "Eat foods that boost energy and hormones like almonds, pumpkin seeds, dates, and dark chocolate ",
+                "Sleep 7–8 hours regularly and avoid stress, as it affects performance",
+                "Stay active—30 minutes of walking or light exercise can help improve stamina",
+                "Avoid smoking, alcohol, and junk food—they affect blood flow and energy",
+                "Include zinc and magnesium-rich foods like seeds, leafy greens, and dry fruits",
+                "Maintain daily physical activity",
+            ],
+
+            "Heart Problem": [
+                "Eat home-cooked meals with less oil, salt, and sugar",
+                "Add heart-healthy foods like walnuts, oats, garlic, and fruits",
+                "Avoid fried and packaged items",
+                "Walk daily for 30 minutes and avoid sitting for long hours",
+            ],
+
+            "Blood Pressure": [
+                "Limit salt—avoid salty snacks, papads, and pickles",
+                "Eat potassium-rich foods like bananas, tomatoes, and spinach",
+                "Reduce tea/coffee to 1–2 cups a day",
+                "Manage stress through deep breathing, meditation, or evening walks",
+                "Drink enough water",
+            ],
+
+            "Diabetes": [
+                "Avoid sugar, sweets, and white rice or maida",
+                "Eat small, regular meals with plenty of vegetables, dal, and whole grains like jowar or brown rice",
+                "Avoid fruit juices—eat whole fruits instead",
+                "Walk after meals and monitor blood sugar regularly",
+            ],
+
+            "High Cholesterol": [
+                "Cut down on fried and buttery foods.Prefer baked, grilled, or steamed items",
+                "Use healthy oils like mustard, rice bran, or olive oil",
+                "Eat more fiber—like fruits with skin, dalia, and vegetables",
+                "Avoid overeating and aim for 20–30 minutes of activity daily",
+            ],
+
+            "Thyroid Issues": [
+                "Eat on time every day and avoid skipping meals",
+                "Use iodized salt, and include foods like eggs, milk, nuts, and whole grains",
+                "Avoid excess soy products and junk food",
+                "Sleep at a fixed time and stay active to support hormone balance",
+            ],
+        };
+
+        const causeMapping = {
+            // ED SECTION
+            "How often do you struggle to stay hard?": {
+                "Less than 1 minute":
+                    "Severe erectile dysfunction, likely vascular or neurological",
+                "1-5 minutes":
+                    "Less severe erectile dysfunction, likely vascular or psychological",
+                "5-10 minutes": "Mild erectile dysfunction, likely psychological",
+                "More than 10 minutes": "Likely psychological",
+            },
+            "How often do you feel nervous about performance?": {
+                "High": "Performance anxiety and stress contributes to poor performance",
+                "Moderate": "Performance anxiety",
+                "Low": "Sometimes stress can be a contributing factor",
+            },
+
+            // PE SECTION
+            "How often do you feel like you climax too quickly?": {
+                "Always":
+                    "Rushing sex, performance anxiety, stress & depression, guilt & shame",
+                "Sometimes": "Performance anxiety, stress & depression",
+                "Rarely": "Performance anxiety",
+            },
+            "What do you believe is causing you to finish early?": {
+                "High Sensitivity":
+                    "Over sensitive penis, hormonal imbalance, infection, genetic predisposition",
+                "Anxiety": "Performance anxiety",
+                "Both": "Over sensitive penis, hormonal imbalance, infection, genetic predisposition",
+                "I do not know": "Performance anxiety, stress & depression",
+            },
+            "How quickly do you typically finish during intercourse?": {
+                "Less than 1 minute":
+                    "Rushing sex, performance anxiety, stress & depression, guilt & shame",
+                "1-5 minutes": "Performance anxiety, stress & depression",
+                "5-10 minutes": "Performance anxiety",
+            },
+            "For how long have you has this condition?": {
+                "Less than a month":
+                    "Psychological triggers, lifestyle factors, hormonal fluctuation, relationship dynamics",
+                "Less than 6 months":
+                    "Psychological triggers, poor sleep, substance use, hormonal imbalances, relationship issues",
+                "6 months - 1 year":
+                    "Stress & depression, chronic medical or neurological conditions, erectile dysfunction",
+                "1 year +":
+                    "Stress & depression, chronic medical or neurological conditions, erectile dysfunction, infrequent sex, substance use",
+            },
+            // BOTH SECTION
+            "How long can you keep up with your erection?": {
+                "Less than 1 minute": "Severe erectile dysfunction, likely vascular or neurological",
+                "1-5 minutes": "Less severe erectile dysfunction, likely vascular or psychological",
+                "5-10 minutes": "Mild erectile dysfunction, likely psychological",
+                "More than 10 minutes": "Likely psychological"
+            },
+            "Tell us about your performance anxiety levels": {
+                "High": "Performance anxiety",
+                "Moderate": "Stress factors"
+            },
+            "What according to you is causing you to finish quickly?": {
+                "High Sensitivity": "Over sensitive penis, hormonal imbalance, infection, genetic predisposition",
+                "Anxiety": "Performance anxiety, stress & depression",
+                "Both": "Performance anxiety, stress & depression, hormonal imbalance",
+                "I don't know": "Performance anxiety, stress & depression"
+            },
+            "What is your ejaculation timing while performing the intercourse?": {
+                "Less than 1 minute": "Rushed sex, infrequent sex, hormonal disturbance, chronic metabolic condition",
+                "1-5 minutes": "Rushed sex, infrequent sex, hormonal disturbance, stress",
+                "5-10 minutes": "Psychological triggers"
+            },
+            "For how long have you has this condition?": {
+                "Less than a month": "Psychological triggers, lifestyle factors, hormonal fluctuation, relationship dynamics",
+                "Less than 6 months": "Psychological triggers, poor sleep, substance use, hormonal imbalances, relationship issues",
+                "6 months - 1 year": "Stress & depression, chronic medical or neurological conditions, erectile dysfunction",
+                "1 year +": "Stress & depression, chronic medical or neurological conditions, erectile dysfunction, infrequent sex, substance use"
+            },
+
+            // LIFESTYLE QUESTIONS
+            "How frequently do you consume cigarettes, alcohol, or similar substances on a daily basis?": {
+                "Very Frequently": "Substance abuse is a contributing factor",
+                "Frequently": "Substance abuse is a contributing factor",
+                "Sometimes": "Chronic substance use may worsen the existing condition"
+            },
+            "Do you have any of the following health issues?": {
+                "Heart Problem": "Vascular issues due to heart problems",
+                "Blood Pressure": "Vascular issues due to blood pressure problems",
+                "Diabetes": "Nerve damage or poor blood flow from diabetes",
+                "High cholesterol": "Vascular or neurological distress due to high cholesterol",
+                "Thyroid issues": "Hormonal imbalance due to thyroid issues"
+            }
+        };
+
+        /* ===============================
+               Navigation Functions
+               =============================== */
+        function showStep(stepNumber) {
+            currentStep = stepNumber;
+            document
+                .querySelectorAll("#questionnaire .step")
+                .forEach((step) => step.classList.remove("active"));
+            document.getElementById("step-" + stepNumber).classList.add("active");
+
+            const header = document.querySelector("#questionnaire .header");
+            header.style.display = stepNumber === 1 ? "block" : "none";
+
+            if (stepNumber >= 2 && stepNumber <= 5) {
+                document.getElementById("step-indicators").style.display = "flex";
+            } else {
+                document.getElementById("step-indicators").style.display = "none";
+            }
+            updateStepIndicators();
+            updateStepProgress();
+
+            if (stepNumber === 6) {
+                const container = document.querySelector("#questionnaire .container");
+                container.style.maxWidth = "100%";
+                container.style.margin = "0";
+                container.style.boxShadow = "none";
+                container.style.borderRadius = "0";
+                container.style.padding = "0";
+                document.querySelector(".bg-overlay").style.display = "none";
+                document
+                    .querySelector("#step-6 .final-layout")
+                    .classList.add("centered");
+                renderUGCContent();
+                history.pushState({ step: "results" }, "results", "#results");
+
+                const userId = document.getElementById("patient-id").innerText.trim();
+                console.log("Patient ID:", userId);
+                if (lastSubmittedDocId) {
+                    listenForDownloadLink(lastSubmittedDocId);
+                } else {
+                    console.warn("No Firebase doc ID available yet");
+                }
+            } else {
+                const container = document.querySelector("#questionnaire .container");
+                container.style = "";
+                document.querySelector(".bg-overlay").style.display = "block";
+                if (document.querySelector("#step-6 .final-layout")) {
+                    document
+                        .querySelector("#step-6 .final-layout")
+                        .classList.remove("centered");
+                }
+            }
+        }
+
+        function updateStepIndicators() {
+            const indicators = document.querySelectorAll(".step-indicator");
+            indicators.forEach((indicator) => {
+                const indicatorStep = parseInt(
+                    indicator.getAttribute("data-step"),
+                    10
+                );
+                if (indicatorStep < currentStep) {
+                    indicator.classList.add("completed");
+                    indicator.classList.remove("active");
+                } else if (indicatorStep === currentStep) {
+                    indicator.classList.add("active");
+                    indicator.classList.remove("completed");
+                } else {
+                    indicator.classList.remove("active", "completed");
+                }
+            });
+        }
+
+        function updateStepProgress() {
+            let effectiveIndex = 0;
+            if (currentStep <= 2) {
+                effectiveIndex = 0;
+            } else if (currentStep === 3) {
+                effectiveIndex = 1;
+            } else if (currentStep === 4) {
+                let fraction =
+                    questions.length > 1
+                        ? currentQuestionIndex / (questions.length - 1)
+                        : 0;
+                effectiveIndex = 2 + fraction;
+            } else if (currentStep === 5) {
+                let fraction =
+                    lifestyleQuestions.length > 1
+                        ? currentLifestyleIndex / (lifestyleQuestions.length - 1)
+                        : 0;
+                effectiveIndex =
+                    3 + currentLifestyleIndex / lifestyleQuestions.length;
+            } else if (currentStep >= 6) {
+                effectiveIndex = 4;
+            }
+            const percent = (effectiveIndex / 4) * 100;
+            const progressFill = document.querySelector(".progress-fill-line");
+            if (progressFill) {
+                const parentWidth = progressFill.parentElement.offsetWidth;
+                let leftMargin = window.innerWidth < 768 ? 20 : 100;
+                let rightMargin = window.innerWidth < 768 ? 20 : 100;
+                const availableWidth = parentWidth - (leftMargin + rightMargin);
+                const fillWidth = (percent / 100) * availableWidth;
+                progressFill.style.width = fillWidth + "px";
+                progressFill.style.left = leftMargin + "px";
+            }
+        }
+
+        function startQuestionnaire() {
+            showStep(2);
+        }
+
+        function calculateAge(dob) {
+            const diffMs = Date.now() - dob.getTime();
+            const ageDt = new Date(diffMs);
+            return Math.abs(ageDt.getUTCFullYear() - 1970);
+        }
+
+        function validateAboutYou() {
+            document.getElementById("age-error").innerText = "";
+            document.getElementById("phone-error").innerText = "";
+
+            const name = document.getElementById("name").value.trim();
+            const dobInput = document.getElementById("dob").value;
+            const phone = document.getElementById("phone").value.trim();
+            const phoneRegex = /^[0-9]{10}$/;
+
+            if (!name || !dobInput || !phone) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            const dobParts = dobInput.split("-");
+            if (dobParts[0].length > 4) {
+                dobParts[0] = dobParts[0].substring(0, 4);
+                document.getElementById("dob").value = dobParts.join("-");
+            }
+
+            const dob = new Date(dobInput);
+            const age = calculateAge(dob);
+            let hasError = false;
+
+            if (age < 18) {
+                document.getElementById("age-error").innerText = "You must be 18 years or older to proceed.";
+                hasError = true;
+            } else if (age > 100) {
+                document.getElementById("age-error").innerText = "You must be younger than 100 years old to proceed.";
+                hasError = true;
+            }
+
+            if (!phoneRegex.test(phone)) {
+                document.getElementById("phone-error").innerText = "Please enter a valid 10-digit phone number.";
+                hasError = true;
+            }
+
+            if (hasError) return;
+
+            userInfo = { name, dob: dobInput, phone };
+
+            const timestamp = new Date();
+
+            const data = {
+                name,
+                dob: dobInput,
+                phone,
+                timestamp: firebase.firestore.Timestamp.fromDate(timestamp),
+                reminderSent: false,
+                reportCategory: "Mens Sexual Wellness"
+            };
+
+            const docRef = db.collection("partial_submissions").doc();
+            userInfo.partialDocId = docRef.id;
+
+            docRef.set(data)
+                .then(() => {
+                    console.log("Partial data saved with ID:", docRef.id);
+                    showStep(3);
+                })
+                .catch((error) => {
+                    console.error("Error saving partial data:", error);
+                });
+
+        }
+
+        function prevStep(stepNumber) {
+            showStep(stepNumber);
+        }
+
+        /* ===============================
+               Category Selection (Step 3)
+               =============================== */
+        function selectCategory(category) {
+            selectedCategory = category;
+            questions = questionBank[category];
+            currentQuestionIndex = 0;
+            answers = new Array(questions.length).fill(null);
+            showStep(4);
+            renderQuestion();
+        }
+
+        /* ===============================
+               Render Category Questions and FAQs (Step 4)
+               =============================== */
+        function renderQuestion() {
+            document.getElementById("faq-container").style.display = "none";
+            document.getElementById("nav-container").style.display = "flex";
+            document.getElementById("step-indicators").style.display = "flex";
+
+            const container = document.getElementById("questions-container");
+            container.innerHTML = "";
+            if (
+                currentQuestionIndex < 0 ||
+                currentQuestionIndex >= questions.length
+            )
+                return;
+            const currentQuestion = questions[currentQuestionIndex];
+            const questionDiv = document.createElement("div");
+            questionDiv.className = "question";
+            const questionLabel = document.createElement("label");
+            questionLabel.innerText = currentQuestion.question;
+            questionDiv.appendChild(questionLabel);
+            currentQuestion.options.forEach((option) => {
+                const optionButton = document.createElement("button");
+                optionButton.className = "option-button";
+                optionButton.innerText = option.text;
+                optionButton.onclick = function () {
+                    const selectedText = option.text;
+                    const currentQuestion = questions[currentQuestionIndex].question;
+
+                    // Store selected score
+                    answers[currentQuestionIndex] = option.score;
+
+                    // 🧠 Dynamically map possible causes
+                    if (causeMapping[currentQuestion]) {
+                        const mappedCauses = Object.values(causeMapping[currentQuestion]);
+
+                        // Remove existing causes for this question
+                        possibleCauses = possibleCauses.filter(
+                            (cause) => !mappedCauses.includes(cause)
+                        );
+
+                        // Add new cause if matching
+                        const cause = causeMapping[currentQuestion][selectedText];
+                        if (cause && !possibleCauses.includes(cause)) {
+                            possibleCauses.push(cause);
+                        }
+                    }
+
+                    // Move to next question with delay
+                    setTimeout(() => {
+                        if (
+                            (currentQuestionIndex + 1) % 2 === 0 &&
+                            currentQuestionIndex < questions.length - 1
+                        ) {
+                            showFaq();
+                        } else {
+                            nextQuestion();
+                        }
+                    }, 300);
+                };
+
+                questionDiv.appendChild(optionButton);
+            });
+            container.appendChild(questionDiv);
+            updateStepProgress();
+        }
+
+        function nextQuestion() {
+            if (answers[currentQuestionIndex] === null) {
+                alert("Please select an option.");
+                return;
+            }
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            } else {
+                currentLifestyleIndex = 0;
+                lifestyleAnswers = new Array(lifestyleQuestions.length).fill(null);
+                showStep(5);
+                renderLifestyleQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            } else {
+                if (
+                    confirm(
+                        "Return to category selection? Your current answers will be lost."
+                    )
+                ) {
+                    showStep(3);
+                }
+            }
+        }
+
+        function showFaq() {
+            const questionsEl = document.getElementById("questions-container");
+            const navEl = document.getElementById("nav-container");
+            const stepEl = document.getElementById("step-indicators");
+            const faqEl = document.getElementById("faq-container");
+
+            questionsEl.style.display = "none";
+            navEl.style.display = "none";
+            stepEl.style.display = "none";
+
+            let faqText = "";
+            if (selectedCategory === "ed") faqText = faqEd[currentQuestionIndex % faqEd.length];
+            else if (selectedCategory === "pe") faqText = faqPe[currentQuestionIndex % faqPe.length];
+            else faqText = faqBoth[currentQuestionIndex % faqBoth.length];
+
+            faqEl.innerHTML = `
+      <div class="faq-timer-bar">
+        <div class="faq-timer-fill"></div>
+      </div>
+      <div class="faq-headline">Did you know? 🤩</div>
+      <div>${faqText}</div>
+      `;
+            faqEl.style.display = "block";
+
+            const fillBar = faqEl.querySelector(".faq-timer-fill");
+            // trigger both shrink and color fade
+            requestAnimationFrame(() => {
+                fillBar.style.width = "0%";
+                fillBar.style.backgroundColor = "green";
+            });
+
+            setTimeout(() => {
+                faqEl.style.display = "none";
+                questionsEl.style.display = "block";
+                navEl.style.display = "flex";
+                stepEl.style.display = "flex";
+                nextQuestion();
+            }, 2500);
+        }
+
+        /* ===============================
+               Render Lifestyle Questions and FAQs (Step 5)
+               =============================== */
+        function renderLifestyleQuestion() {
+            document.getElementById("lifestyle-container").style.display = "block";
+            document.getElementById("lifestyle-nav-container").style.display =
+                "flex";
+            document.getElementById("step-indicators").style.display = "flex";
+            document.getElementById("lifestyle-faq-container").style.display =
+                "none";
+
+            const container = document.getElementById("lifestyle-container");
+            container.innerHTML = "";
+
+            if (currentLifestyleIndex === lifestyleQuestions.length) {
+                document.getElementById("lifestyle-nav-container").style.display =
+                    "none";
+                const questionDiv = document.createElement("div");
+                questionDiv.className = "question";
+
+                const questionLabel = document.createElement("label");
+                questionLabel.innerText =
+                    "Is there anything else you’d like to share about your health that wasn’t covered above?";
+                questionDiv.appendChild(questionLabel);
+
+                const textInput = document.createElement("textarea");
+                textInput.style.width = "100%";
+                textInput.style.padding = "10px";
+                textInput.style.fontSize = "14px";
+                textInput.style.border = "1px solid #b3e5fc";
+                textInput.style.borderRadius = "4px";
+                textInput.placeholder = "Type your message here...";
+                questionDiv.appendChild(textInput);
+
+                const navDiv = document.createElement("div");
+                navDiv.className = "navigation";
+
+                const prevBtn = document.createElement("button");
+                prevBtn.innerText = "Previous";
+                prevBtn.className = "prev-btn";
+                prevBtn.onclick = function () {
+                    currentLifestyleIndex--;
+                    renderLifestyleQuestion();
+                };
+                navDiv.appendChild(prevBtn);
+
+                const submitBtn = document.createElement("button");
+                submitBtn.innerText = "Submit";
+                submitBtn.className = "next-btn";
+                submitBtn.style.marginLeft = "auto";
+                submitBtn.onclick = function () {
+                    lifestyleAdditionalAnswer = textInput.value;
+                    finishLifestyleQuestions();
+                };
+                navDiv.appendChild(submitBtn);
+
+                questionDiv.appendChild(navDiv);
+                container.appendChild(questionDiv);
+                updateStepProgress();
+                return;
+            }
+
+            const currentQuestion = lifestyleQuestions[currentLifestyleIndex];
+            const questionDiv = document.createElement("div");
+            questionDiv.className = "question";
+
+            const questionLabel = document.createElement("label");
+            questionLabel.innerText = currentQuestion.question;
+            questionDiv.appendChild(questionLabel);
+
+            if (currentQuestion.multiple) {
+                // container for the multi-select cards
+                const form = document.createElement("div");
+                form.className = "multi-select-container";
+
+                currentQuestion.options.forEach((opt, idx) => {
+                    const label = document.createElement("label");
+                    label.className = "multi-option-card";
+                    label.htmlFor = `multi-${idx}`;
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.id = `multi-${idx}`;
+                    checkbox.value = opt.score;
+                    checkbox.className = "multi-checkbox";
+
+                    const span = document.createElement("span");
+                    span.innerText = opt.text;
+                    span.className = "multi-label";
+
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
+                    form.appendChild(label);
+
+                    // ✅ Update selected options per question
+                    checkbox.addEventListener("change", () => {
+                        const selected = userSelectedConditions[currentLifestyleIndex] || [];
+                        const isNoneOption = opt.text.trim().toLowerCase() === "none";
+                        const allCheckboxes = form.querySelectorAll("input[type=checkbox]");
+
+                        if (checkbox.checked) {
+                            if (isNoneOption) {
+                                // Uncheck all others
+                                allCheckboxes.forEach(cb => {
+                                    if (cb !== checkbox) {
+                                        cb.checked = false;
+                                    }
+                                });
+                                // Reset selected and push only "None"
+                                selected.length = 0;
+                                selected.push(opt.text);
+                            } else {
+                                // Uncheck "None"
+                                allCheckboxes.forEach(cb => {
+                                    const labelText = cb.parentElement.innerText.trim().toLowerCase();
+                                    if (labelText === "none") {
+                                        cb.checked = false;
+                                    }
+                                });
+
+                                // Add selected option
+                                if (!selected.includes(opt.text)) {
+                                    selected.push(opt.text);
+                                }
+
+                                // Remove "None" if present
+                                const noneIndex = selected.indexOf("None");
+                                if (noneIndex > -1) selected.splice(noneIndex, 1);
+                            }
+                        } else {
+                            // Remove deselected option
+                            const index = selected.indexOf(opt.text);
+                            if (index > -1) selected.splice(index, 1);
+                        }
+
+                        // Update condition tracking
+                        userSelectedConditions[currentLifestyleIndex] = selected;
+                    });
+                });
+
+                questionDiv.appendChild(form);
+
+                const nextBtn = document.createElement("button");
+                nextBtn.className = "next-btn";
+                nextBtn.innerText = "Next";
+                nextBtn.onclick = () => {
+                    const checked = Array.from(
+                        form.querySelectorAll("input[type=checkbox]:checked")
+                    ).map((cb) => parseInt(cb.value));
+                    if (checked.length === 0) {
+                        alert("Please select at least one option.");
+                        return;
+                    }
+                    lifestyleAnswers[currentLifestyleIndex] = checked.reduce((a, b) => a + b, 0);
+                    currentLifestyleIndex++;
+                    renderLifestyleQuestion();
+                };
+
+                // Find and append to existing nav container
+                const lifestyleNavContainer = document.getElementById("lifestyle-nav-container");
+
+                // Remove any previous dynamically added Next buttons
+                const oldNext = lifestyleNavContainer.querySelector(".next-btn");
+                if (oldNext) oldNext.remove();
+
+                // Append your Next button to the right slot (second child)
+                lifestyleNavContainer.children[1].appendChild(nextBtn);
+
+            } else {
+                // Single-select buttons
+                currentQuestion.options.forEach((option) => {
+                    const optionButton = document.createElement("button");
+                    optionButton.className = "option-button";
+                    optionButton.innerText = option.text;
+                    optionButton.onclick = function () {
+                        lifestyleAnswers[currentLifestyleIndex] = option.score;
+                        setTimeout(() => {
+                            currentLifestyleIndex++;
+                            renderLifestyleQuestion();
+                        }, 300);
+                    };
+                    questionDiv.appendChild(optionButton);
+                });
+            }
+
+            container.appendChild(questionDiv);
+            updateStepProgress();
+        }
+        /* ===============================
+               Final Score Calculation
+               =============================== */
+        function calculateResults() {
+            let totalScore = 0;
+
+            answers.forEach((score) => {
+                if (typeof score === "number" && !isNaN(score)) {
+                    totalScore += score;
+                }
+            });
+
+            lifestyleAnswers.forEach((score) => {
+                if (typeof score === "number" && !isNaN(score)) {
+                    totalScore += score;
+                }
+            });
+
+            let healthScore = Math.max(0, 100 - totalScore);
+            computedHealthScore = healthScore;
+
+            updateProductInfo();
+            animateScore(healthScore);
+        }
+
+        /* ===============================
+               Animate Circular Progress
+               =============================== */
+        function getScoreColor(score) {
+            if (score < 50) return "red";
+            else if (score < 80) return "orange";
+            else return "#4caf50";
+        }
+
+        function animateScore(finalScore) {
+            let currentScore = 0;
+            const progressValue = document.getElementById("progress-value");
+            const progressBar = document.getElementById("circular-progress");
+            const interval = setInterval(() => {
+                currentScore++;
+                if (currentScore >= finalScore) {
+                    currentScore = finalScore;
+                    clearInterval(interval);
+                }
+                progressValue.innerText = currentScore + "%";
+                let color = getScoreColor(currentScore);
+                progressBar.style.background = `conic-gradient(${color} ${currentScore * 3.6
+                    }deg, #eee 0deg)`;
+            }, 20);
+        }
+
+        /* ===============================
+               Dynamic Products & Checkout
+               =============================== */
+        function updateProductInfo() {
+            const dob = new Date(userInfo.dob);
+            const age = calculateAge(dob);
+            recommendedProducts = [];
+            if (selectedCategory === "ed") {
+                if (computedHealthScore <= 30) {
+                    recommendedProducts = [
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_5_1.jpg?v=1745322251",
+                            regularPrice: 499,
+                            salePrice: 235,
+                            variantId: "51169561575727",
+                            description:
+                                "It is an everyday low-dose allopathic medicine called tadalafil 5 mg that has the purpose to help adult males with erectile dysfunction (ED) & the signs of benign prostatic hyperplasia (BPH).",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 499,
+                            salePrice: 799,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                    ];
+                } else if (computedHealthScore > 30 && computedHealthScore <= 60) {
+                    recommendedProducts = [
+
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_10_1.jpg?v=1745322321",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+
+                    ];
+                } else if (computedHealthScore > 60 && computedHealthScore <= 84) {
+                    recommendedProducts = [
+
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_10_1.jpg?v=1745322321",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+
+                    ];
+                } else {
+                    recommendedProducts = [
+
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_10_1.jpg?v=1745322321",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+
+                    ];
+                }
+            } else if (selectedCategory === "pe") {
+                if (computedHealthScore <= 30) {
+                    recommendedProducts = [
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 235,
+                            variantId: "51169561575727",
+                            description:
+                                "It is an everyday low-dose allopathic medicine called tadalafil 5 mg that has the purpose to help adult males with erectile dysfunction (ED) & the signs of benign prostatic hyperplasia (BPH).",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                    ];
+                } else if (computedHealthScore > 30 && computedHealthScore <= 60) {
+                    recommendedProducts = [
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                    ];
+                } else if (computedHealthScore > 60 && computedHealthScore <= 84) {
+                    recommendedProducts = [
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                    ];
+                } else {
+                    recommendedProducts = [
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                    ];
+                }
+            } else if (selectedCategory === "both") {
+                if (computedHealthScore <= 30) {
+                    recommendedProducts = [
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_5_1.jpg?v=1745322251",
+                            regularPrice: 499,
+                            salePrice: 235,
+                            variantId: "51169561575727",
+                            description:
+                                "It is an everyday low-dose allopathic medicine called tadalafil 5 mg that has the purpose to help adult males with erectile dysfunction (ED) & the signs of benign prostatic hyperplasia (BPH).",
+                        },
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                    ];
+                } else if (computedHealthScore > 30 && computedHealthScore <= 60) {
+                    recommendedProducts = [
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_10_1.jpg?v=1745322321",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                    ];
+                } else if (computedHealthScore > 60 && computedHealthScore <= 84) {
+                    recommendedProducts = [
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_10_1.jpg?v=1745322321",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                    ];
+                } else {
+                    recommendedProducts = [
+                        {
+                            name: "Shilajit",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_3.jpg?v=1744866332",
+                            regularPrice: 2499,
+                            salePrice: 1349,
+                            variantId: "50972820996399",
+                            description:
+                                "SehatUP brings you the pureness of premium Shilajit sourced from the heights of Himalayan ranges & over 5,000 meters above sea level. We manufacture it in its most authentic form to give you the best result.  This product is packed with over 85+ vital minerals, infused with real 24K gold, & contains an impressive 75% fulvic acid.",
+                        },
+                        {
+                            name: "Ashwagandha",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_2.jpg?v=1744866160",
+                            regularPrice: 799,
+                            salePrice: 499,
+                            variantId: "51170203926831",
+                            description:
+                                "Ashwagandha, referred to as the 'King of Herbs' in Ayurveda which promotes hormonal balance, increases energy levels without being irritating & helps in the body's tolerance to stress.",
+                        },
+                        {
+                            name: "Dapox",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_1.jpg?v=1745322458",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                        {
+                            name: "Tadalafil",
+                            image:
+                                "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_10_1.jpg?v=1745322321",
+                            regularPrice: 499,
+                            salePrice: 279,
+                            variantId: "51169568260399",
+                            description:
+                                "One promising allopathic medication for treating erectile dysfunction (ED) in adult males is Tadalafil 10 mg. It helps men get & maintain a stiff erection by boosting blood flow to the penis, which allows a natural reaction to sexual stimulation.",
+                        },
+                    ];
+                }
+            }
+            renderRecommendedProducts();
+        }
+
+        const productWhyPoints = {
+            Shilajit: [
+                "Enhances Testosterone Levels",
+                "It improves blood flow and neuromuscular tone in the pelvic region, supporting better ejaculatory control",
+                "Antioxidant & Anti-inflammatory",
+                "Shilajit's antioxidant properties protect sperm and overall sexual health",
+                "Controls premature arousal"
+            ],
+
+            Ashwagandha: [
+                "Improve libido",
+                "Enhance sexual stamina",
+                "Supports stronger erections, helps improve endurance and energy levels, reducing fatigue during intercourse",
+                "Supports muscle strength and recovery, which can improve pelvic muscle tone indirectly"
+            ],
+
+            Tadalafil: [
+                "Reduces Performance Anxiety, increases sexual confidence",
+                "Helps prolong the time of ejaculation",
+                "Men with both ED and PE often benefit from Tadalafil"
+            ],
+
+            Dapox: [
+                "Increases the level of serotonin in the brain",
+                "Delays Ejaculation, it can 2–3x IELT",
+                "Improves sexual satisfaction for both partners",
+                "Designed for 'on-demand' use, taken 1–3 hours before intercourse",
+                "Builds confidence over time due to improved control"
+            ]
+        };
+
+        function renderRecommendedProducts() {
+            const productList = document.getElementById("product-list");
+            productList.innerHTML = "";
+            let total = 0;
+            recommendedProducts.forEach((product) => {
+                const card = document.createElement("div");
+                card.className = "product-card";
+                card.setAttribute("data-name", product.name);
+                card.setAttribute("data-description", product.description);
+                card.setAttribute("data-price", "₹" + product.salePrice);
+                card.setAttribute("data-image", product.image);
+
+                const img = document.createElement("img");
+                img.src = product.image;
+                img.alt = product.name;
+                const nameEl = document.createElement("div");
+                nameEl.className = "product-name";
+                nameEl.textContent = product.name;
+
+                const dropdownIcon = document.createElement("span");
+                dropdownIcon.className = "dropdown-icon";
+                dropdownIcon.innerText = "⌄";
+                nameEl.appendChild(dropdownIcon);
+
+                const priceSection = document.createElement("div");
+                const oldPrice = document.createElement("span");
+                oldPrice.className = "old-price";
+                oldPrice.textContent = "₹" + product.regularPrice;
+                const newPrice = document.createElement("span");
+                newPrice.className = "new-price";
+                newPrice.textContent = "₹" + product.salePrice;
+                priceSection.appendChild(oldPrice);
+                priceSection.appendChild(newPrice);
+                card.appendChild(img);
+                card.appendChild(nameEl);
+                card.appendChild(priceSection);
+                productList.appendChild(card);
+                total += product.salePrice;
+
+                card.addEventListener("click", () => {
+                    document.getElementById("modalTitle").innerText = product.name;
+                    document.getElementById("modalDescription").innerText =
+                        product.description;
+                    document.getElementById("modalPrice").innerText =
+                        "₹" + product.salePrice;
+                    document.getElementById("modalImage").src = product.image;
+                    document.getElementById("productModal").style.display = "block";
+                });
+            });
+            document.getElementById("total-amount").textContent = "₹" + total;
+        }
+
+        function buyNow() {
+            let baseUrl = "https://0ec320-gj.myshopify.com/cart/";
+            let items = recommendedProducts
+                .map((product) => `${product.variantId}:1`)
+                .join(",");
+            let cartUrl = baseUrl + items;
+            window.location.href = cartUrl;
+        }
+
+        /* ===============================
+               Google Sheet Submission (Existing Function)
+               =============================== */
+        function generatePatientId() {
+            const timestamp = Date.now().toString().slice(-5);
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            return "sup00" + timestamp + randomNum;
+        }
+
+        function submitDataToGoogleSheet() {
+            const data = {
+                name: userInfo.name,
+                age: userInfo.dob,
+                phone: userInfo.phone,
+                category: selectedCategory,
+                answers: answers,
+                lifestyle: lifestyleAnswers,
+                lifestyleAdditional: lifestyleAdditionalAnswer,
+                healthScore: computedHealthScore,
+                productRecommendation: recommendedProducts
+                    .map((p) => p.name)
+                    .join(", "),
+                patientId: document.getElementById("patient-id").innerText,
+            };
+            fetch(
+                "https://script.google.com/macros/s/AKfycbxquCo9TmqnFumW5-iGr8DcEep-lzs5WgAL9YlwyZT8VBvCValzxxobxKLwuRf9dH7d/exec",
+                {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                }
+            )
+                .then((response) =>
+                    console.log("Data submitted successfully!", response)
+                )
+                .catch((error) => console.error("Error submitting data: ", error));
+        }
+
+        /* ===============================
+               Firebase Submission Function
+               =============================== */
+        function submitDataToFirestore() {
+            const data = {
+                reportDate: new Date()
+                    .toLocaleDateString("en-GB")
+                    .replace(/\//g, "-"),
+                userName: userInfo.name,
+                dob: userInfo.dob,
+                phone: userInfo.phone,
+                // riskType:
+                //   computedHealthScore < 50
+                //     ? "High"
+                //     : computedHealthScore < 80
+                //       ? "Moderate"
+                //       : "Low",
+                // riskPercentage: `${computedHealthScore}%`,
+                healthScore: computedHealthScore,
+                issueTitle: concernMapping[selectedCategory],
+
+                possibleCauses: possibleCauses.map((cause) => ({
+                    text: cause,
+                })),
+
+                lifestyleChanges: [
+                    // Always include general tips first
+                    ...lifestyleTips["GENERAL"].map(tip => ({ text: tip })),
+
+                    // Then include condition-specific tips
+                    ...Object.values(userSelectedConditions)
+                        .flat()
+                        .filter(text => lifestyleTips[text]) // only include known conditions
+                        .flatMap(condition =>
+                            lifestyleTips[condition].map(tip => ({ text: tip }))
+                        ),
+                ],
+
+
+                timeline: timeline[selectedCategory],
+
+                concern: selectedCategory,
+                answers: answers,
+                reportCategory: "Sexual Wellness",
+                lifestyleAnswers: lifestyleAnswers,
+                // lifestyleAdditional: lifestyleAdditionalAnswer,
+
+                recommendedProducts: recommendedProducts.map((p) => ({
+                    name: p.name,
+                    salePrice: p.salePrice,
+                    whyPoints: (productWhyPoints[p.name] || []).map(text => ({
+                        text,
+                    })),
+                })),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+
+
+
+                futureRisks: futureRisks.map((text) => ({
+                    text,
+                })),
+            };
+
+            db.collection("questionnaire_submissions")
+                .add(data)
+                .then((docRef) => {
+                    console.log("Document written with ID: ", docRef.id);
+
+                    lastSubmittedDocId = docRef.id;
+
+                    return docRef.collection("whatsapp_requests").add({
+                        status: "pending",
+                        requestedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        message: "User requested WhatsApp support",
+                        sent: false,
+                    });
+                })
+                .then(() => {
+                    console.log("WhatsApp request subcollection added.");
+                    showStep(6);
+                })
+                .catch((error) => {
+                    console.error("Error during submission:", error);
+                });
+
+            const partialDocId = userInfo.partialDocId;
+            if (partialDocId) {
+                db.collection("partial_submissions").doc(partialDocId).delete()
+                    .then(() => {
+                        console.log("Partial data deleted after full submission.");
+                    })
+                    .catch((err) => {
+                        console.error("Error deleting partial data:", err);
+                    });
+            }
+        }
+
+        /* ===============================
+               Future Risk Update Function
+               =============================== */
+        function updateFutureRisk(healthScore) {
+            let riskText = "";
+            futureRisks = [];
+
+            if (selectedCategory === "ed") {
+                // Erectile Dysfunction – cardiovascular & metabolic risks
+                if (healthScore < 50) {
+                    riskText = "High Future Risk: Immediate attention recommended.";
+                }
+                else if (healthScore < 80) {
+                    riskText = "Moderate Future Risk: Lifestyle improvements advised.";
+                }
+                else {
+                    riskText = "Low Future Risk: Keep up the good work!";
+                }
+
+                futureRisks = [
+                    "Loss of libido",
+                    "Relationship strain",
+                    "Impotency",
+                    "Risk of irreversible vascular and neurological damage",
+                    "Chronic depression",
+                ];
+            } else if (selectedCategory === "pe") {
+                // Premature Ejaculation – psychosocial & mental health risks
+                if (healthScore < 50) {
+                    riskText = "High Future Risk: Counselling & medical review needed";
+                }
+                else if (healthScore < 80) {
+                    riskText = "Moderate Future Risk: Behavioral techniques recommended";
+                }
+                else {
+                    riskText = "Low Future Risk: Continue current routine";
+                }
+
+                futureRisks = [
+                    "Escalation to secondary erectile dysfunction due to psychological stress",
+                    "Relationship strain, partner frustration",
+                    "Avoidance of intimacy",
+                    "Lower self esteem and increased performance anxiety over time",
+                ];
+            } else {
+                // Both ED + PE – combined risks
+                if (healthScore < 50) {
+                    riskText = "High Future Risk: Comprehensive treatment advised";
+                }
+                else if (healthScore < 80) {
+                    riskText = "Moderate Future Risk: Holistic lifestyle changes suggested";
+                }
+                else {
+                    riskText = "Low Future Risk: Well-maintained health!";
+                }
+
+                futureRisks = [
+                    "Escalation to complete sexual dysfunction",
+                    "Long term hormonal dysregulation",
+                    "Risk of psychosomatic disorders ( chronic fatigue, insomnia, substance abuse)",
+                    "Isolation, social withdrawl and reduced quality of life",
+                    "Chronic depression",
+                    "Relationship conflicts",
+                ];
+            }
+
+
+
+            document.getElementById("future-risk").innerText = riskText;
+            const futureRiskContainer = document.getElementById("future-risk-tags");
+            futureRiskContainer.innerHTML = "";
+            futureRisks.forEach(risk => {
+                const tag = document.createElement("div");
+                tag.className = "risk-tag";
+                tag.innerText = risk;
+                futureRiskContainer.appendChild(tag);
+            });
+        }
+
+
+        function showLoader() {
+            const loader = document.getElementById("loader");
+            loader.style.display = "flex";
+            document.body.style.overflow = "hidden";
+            setTimeout(hideLoader, 15000);
+        }
+
+        function hideLoader() {
+            const loader = document.getElementById("loader");
+            loader.style.display = "none";
+            document.body.style.overflow = "auto";
+        }
+
+        function finishLifestyleQuestions() {
+            document.getElementById("lifestyle-container").style.display = "none";
+            document.getElementById("lifestyle-nav-container").style.display =
+                "none";
+            showLoader();
+            setTimeout(() => {
+                calculateResults();
+                hideLoader();
+                showStep(6);
+                document.getElementById("user-name").innerText = userInfo.name;
+                document.getElementById("user-concern").innerText =
+                    concernMapping[selectedCategory] || selectedCategory;
+                let conditionText = "";
+                if (selectedCategory === "ed") {
+                    conditionText =
+                        "Erectile Dysfunction can often be improved with medication, lifestyle changes, and therapy";
+                } else if (selectedCategory === "pe") {
+                    conditionText =
+                        "Premature Ejaculation may be managed through specialized exercises, counseling, or medications";
+                } else {
+                    conditionText =
+                        "You’ve indicated concerns about both ED and PE. A comprehensive plan can help improve overall performance";
+                }
+                document.getElementById("condition-text").innerText = conditionText;
+                document.getElementById("patient-id").innerText =
+                    "Health ID: " + generatePatientId();
+                updateFutureRisk(computedHealthScore);
+
+                // Submit data to Google Sheets (if applicable)
+                submitDataToGoogleSheet();
+                // Submit data to Firebase Firestore
+                submitDataToFirestore();
+            }, 4000);
+        }
+
+
+        //Function to limit number on OTP 
+        const phoneInput = document.getElementById("otp-phone");
+        const warningText = document.getElementById("phone-warning");
+
+        phoneInput.addEventListener("input", function () {
+            const phone = phoneInput.value.trim();
+
+            // Remove non-digit characters
+            phoneInput.value = phone.replace(/\D/g, "");
+
+            if (phone.length > 10) {
+                phoneInput.value = phone.slice(0, 10); // Force 10-digit limit
+                warningText.innerText = "Phone number cannot exceed 10 digits.";
+                warningText.style.display = "block";
+            } else if (phone.length < 10 && warningText.style.display === "block") {
+                warningText.innerText = "Phone number must be exactly 10 digits.";
+            } else {
+                warningText.style.display = "none";
+            }
+        });
+
+
+
+        /* ===============================
+               UGC Videos Slider Render (Update 1)
+               =============================== */
+        function renderUGCContent() {
+            const ugcContainer = document.getElementById("ugc-content");
+            // Insert a slider with multiple video slides
+            const sliderHTML = `
+              <div class="ugc-slider">
+                <div class="ugc-slide">
+                  <iframe src="https://www.youtube.com/embed/68SbZuINym0" allowfullscreen></iframe>
+                </div>
+                <div class="ugc-slide">
+                  <iframe src="https://www.youtube.com/embed/EyvZLDLxFYU" allowfullscreen></iframe>
+                </div>
+                <div class="ugc-slide">
+                  <iframe src="https://www.youtube.com/embed/i_lfAg9o4HA" allowfullscreen></iframe>
+                </div>
+              </div>
+            `;
+            ugcContainer.innerHTML = sliderHTML;
+            ugcContainer.style.display = "block";
+        }
+
+        /* ===============================
+               Exit Popup for Back Navigation (Update 2)
+               =============================== */
+        function showExitPopup() {
+            const popup = document.getElementById("exit-popup");
+            popup.style.display = "flex";
+            requestAnimationFrame(() => popup.classList.add("show"));
+        }
+
+        function closeExitPopup() {
+            const popup = document.getElementById("exit-popup");
+            popup.classList.remove("show");
+            popup.classList.add("fade-out");
+            popup.addEventListener(
+                "transitionend",
+                function () {
+                    popup.style.display = "none";
+                    popup.classList.remove("fade-out");
+                },
+                { once: true }
+            );
+        }
+
+        window.addEventListener("popstate", function (e) {
+            if (currentStep === 6) {
+                history.pushState({ step: "results" }, "results", "#results");
+                showExitPopup();
+            }
+        });
+
+        function copyCouponCode() {
+            const couponInput = document.getElementById("coupon-code");
+            const feedback = document.getElementById("copy-feedback");
+
+            navigator.clipboard.writeText(couponInput.value).then(() => {
+                feedback.style.display = "block";
+                setTimeout(() => {
+                    feedback.style.display = "none";
+                }, 1500);
+            });
+        }
+    </script>
+
+    <!-- Phone & OTP Modal -->
+    <div id="otp-modal" class="otp-screen">
+        <div class="otp-box">
+            <span class="otp-close" onclick="closeOtpPopup()">×</span>
+
+            <div id="otp-step-1">
+                <h3>Confirm your number</h3>
+                <p>We'll send a WhatsApp report after verification.</p>
+                <input type="tel" id="otp-phone" maxlength="10" placeholder="Enter phone number" inputmode="numeric"
+                    pattern="\d*">
+                <small id="phone-warning" style="color: red; display: none;">Phone number must be exactly 10
+                    digits.</small>
+
+                <button onclick="sendOtp()">Send OTP</button>
+            </div>
+
+            <div id="otp-step-2" style="display: none;">
+                <h3>Verify with OTP</h3>
+                <p>Please enter the OTP sent to your phone.</p>
+                <div class="otp-input-group">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                    <input type="tel" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+                </div>
+
+                <p class="resend-text" id="resend-text">
+                    Didn't receive the OTP?
+                    <span id="resend-link" style="color: #007bff; font-weight: 670; cursor: pointer; display: none;"
+                        onclick="resendOtp()"> RESEND OTP</span>
+                    <span id="otp-timer" style="margin-left: 5px; color: #888;"></span>
+                </p>
+
+
+                <button onclick="verifyOtpFromInputs()">Verify</button>
+            </div>
+
+            <div id="otp-toast"></div>
+        </div>
+    </div>
+
+</body>
+
+</html>

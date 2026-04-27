@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Raw Firestore Data - Questionnaire Answers</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #f0f2f5; color: #1a1a1a; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .doc-section { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 30px; margin-bottom: 40px; border-left: 5px solid #007bff; }
+        .doc-section.mens-weight { border-left-color: #3498db; }
+        .doc-section.womens-weight { border-left-color: #e84393; }
+        .doc-section.mens-wellness { border-left-color: #2d3436; }
+        .doc-section.womens-wellness { border-left-color: #6c5ce7; }
+        
+        h1 { font-size: 1.5em; color: #2d3436; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
+        h2 { font-size: 1.2em; color: #0984e3; margin-top: 25px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        
+        pre { background: #2d3436; color: #dfe6e9; padding: 20px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+        
+        /* Highlighting Styles */
+        .key-common { color: #55efc4; font-weight: bold; } /* Mint Green */
+        .key-unique { color: #fab1a0; font-weight: bold; } /* Peach */
+        .string { color: #ffeaa7; }
+        .number { color: #74b9ff; }
+        .boolean { color: #a29bfe; }
+        
+        .legend { background: white; padding: 20px; border-radius: 8px; margin-bottom: 40px; display: flex; gap: 40px; border: 1px solid #dfe6e9; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .box { width: 20px; height: 20px; border-radius: 4px; }
+        
+        .sql-guide { background: #fff; padding: 30px; border-radius: 8px; margin-bottom: 40px; border: 2px dashed #636e72; }
+        .sql-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .sql-table th, .sql-table td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        .sql-table th { background: #f8f9fa; color: #636e72; text-transform: uppercase; font-size: 12px; }
+        
+        .improv-box { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 15px; border-radius: 4px; margin-top: 20px; }
+        
+        @media print {
+            .doc-section { page-break-after: always; box-shadow: none; border: 1px solid #eee; }
+            .sql-guide, .legend { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="sql-guide">
+            <h1 style="color: #d63031;">🚀 SQL Migration Strategy (NoSQL to Relational)</h1>
+            <p>To move these questionnaires to an SQL database (PostgreSQL/MySQL), we should normalize the structure into 4 primary tables to ensure data integrity and easier analytics.</p>
+            
+            <table class="sql-table">
+                <tr>
+                    <th>Table Name</th>
+                    <th>Standardization Goal</th>
+                </tr>
+                <tr>
+                    <td><strong>users</strong></td>
+                    <td>Atomic storage of <code>user_name</code>, <code>phone</code>, and <code>dob</code>. Use phone as a unique index.</td>
+                </tr>
+                <tr>
+                    <td><strong>submissions</strong></td>
+                    <td>Common metadata: <code>health_score</code>, <code>risk_type</code>, <code>issue_title</code>, <code>pdf_url</code>, <code>timestamp</code>.</td>
+                </tr>
+                <tr>
+                    <td><strong>submission_metrics</strong></td>
+                    <td>Optional metrics: <code>current_weight</code>, <code>target_weight</code>, <code>height</code>, <code>bmi</code>.</td>
+                </tr>
+                <tr>
+                    <td><strong>submission_answers</strong></td>
+                    <td>Normalized list of <code>category</code>, <code>question</code>, <code>answer</code>, and <code>score</code> for every entry.</td>
+                </tr>
+            </table>
+
+            <div class="improv-box">
+                <strong>💡 Improvisation for SQL:</strong> 
+                1. Standardize <code>weight</code> to <code>current_weight</code> across all types. 
+                2. Flatten the <code>rawState</code> object into the metrics/answers tables.
+                3. Move <code>recommendedProducts</code> to many-to-many relationship using Product IDs.
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="box" style="background: #55efc4;"></div> Common Keys (Present in all)</div>
+            <div class="legend-item"><div class="box" style="background: #fab1a0;"></div> Unique Keys (Specific to this type)</div>
+        </div>
+
+    <div class="doc-section mens-weight">
+        <h1>1. mens-weight (Nvbpt16BJCVdRSqlYhFn)</h1>
+        <pre id="json-1">{
+  "userName": "Shivang",
+  "phone": "1234567890",
+  "dob": "2002-08-12",
+  "whatsapp_requests": [],
+  "currentWeight": 80,
+  "targetWeight": 70,
+  "height": 180,
+  "bmi": 24.7,
+  "healthScore": 60,
+  "isWhatsAppSent": false,
+  "issueTitle": "High Weight Management Risk (Hormonal Factors)",
+  "concern": "Mens Weight Loss",
+  "reportCategory": "Mens Weight Loss",
+  "reportDate": "27-03-2026",
+  "riskType": "High Risk",
+  "riskClass": "high",
+  "riskDescription": "Your score indicates that you are in a high-risk zone. Your body is showing multiple signs of imbalance — whether it’s poor sleep, low energy, mood swings, weight issues, or early symptoms of lifestyle-related diseases. These issues are serious and can worsen quickly if ignored.",
+  "peerAverage": 85,
+  "peerComparison": "Your score is lower than 60% of people in your age group.",
+  "questionnaireId": "mens-weight",
+  "pdfGeneratedAt": "27 March 2026 at 11:26:46 UTC+5:30",
+  "reportDownloadUrl": "https://storage.googleapis.com/sehatup-f96b5.firebasestorage.app/reports_pdf/Nvbpt16BJCVdRSqlYhFn/HealthScore360Report_Shivang_27-03-2026_YhFn.pdf?...",
+  "reportStoragePath": "gs://sehatup-f96b5.firebasestorage.app/reports_pdf/Nvbpt16BJCVdRSqlYhFn/HealthScore360Report_Shivang_27-03-2026_YhFn.pdf",
+  "answers": [
+    { "question": "Tick that applies for you (For long-term weight control)", "answer": "I'm not sure if I can find 30 minutes daily for weight control.", "score": 0 },
+    { "question": "What is your primary weight loss goal?", "answer": "Lose 5-10 kg", "score": 0 },
+    { "question": "Why do you want to lose weight?", "answer": "improved looks", "score": 0 },
+    { "question": "How active are you daily?", "answer": "Lightly active (1-3 days/week exercise)", "score": 15 },
+    { "question": "During the past 6 months my weight has increased by.", "answer": "3-6Kg", "score": 3 },
+    { "question": "Which body type do you identify with?", "answer": "Over weight", "score": 5 },
+    { "question": "How many hours do you sleep daily?", "answer": "5-6 hours", "score": 10 },
+    { "question": "How often do you consume processed/junk food?", "answer": "Occasionally (1-2 times a week)", "score": 3 },
+    { "question": "How often do you smoke or consume alcohol?", "answer": "rarely", "score": 5 },
+    { "question": "Do you experience any of the following? (Select all that apply)", "answer": "Hypertension", "score": 2 },
+    { "question": "How often do you feel stressed?", "answer": "Sometimes ", "score": 3 },
+    { "question": "Do you experience emotional eating ?", "answer": "Rarely", "score": 3 },
+    { "question": "What do you consider some of your barriers when it comes to managing your weight? (check all that apply)?", "answer": "Fatigue", "score": 0 },
+    { "question": "Have you tried weight loss before?", "answer": "Yes, but unsuccessful", "score": 0 },
+    { "question": "Which weight loss method have you tried? (Select all that apply)", "answer": "Supplements", "score": 0 },
+    { "question": "Are you currently on any weight loss medication or supplement? (Select all that apply)", "answer": "Yes, ayurvedic", "score": 0 }
+  ],
+  "healthAnswers": [
+    { "question": "Tick that applies for you (For long-term weight control)", "text": "I'm not sure if I can find 30 minutes daily for weight control.", "score": 0 },
+    { "question": "What is your primary weight loss goal?", "text": "Lose 5-10 kg", "score": 0 },
+    { "question": "Why do you want to lose weight?", "text": "improved looks", "score": 0 }
+  ],
+  "lifestyleAnswers": [
+    { "question": "How active are you daily?", "text": "Lightly active (1-3 days/week exercise)", "score": 15 },
+    { "question": "During the past 6 months my weight has increased by.", "text": "3-6Kg", "score": 3 },
+    { "question": "Which body type do you identify with?", "text": "Over weight", "score": 5 },
+    { "question": "How many hours do you sleep daily?", "text": "5-6 hours", "score": 10 },
+    { "question": "How often do you consume processed/junk food?", "text": "Occasionally (1-2 times a week)", "score": 3 },
+    { "question": "How often do you smoke or consume alcohol?", "text": "rarely", "score": 5 }
+  ],
+  "medicalAnswers": [
+    { "question": "Do you experience any of the following? (Select all that apply)", "score": 2, "text": ["Hypertension"] },
+    { "question": "How often do you feel stressed?", "score": 3, "text": "Sometimes " },
+    { "question": "Do you experience emotional eating ?", "score": 3, "text": "Rarely" },
+    { "question": "What do you consider some of your barriers when it comes to managing your weight? (check all that apply)?", "score": 0, "text": ["Fatigue"] }
+  ],
+  "weightLossAnswers": [
+    { "question": "Have you tried weight loss before?", "text": "Yes, but unsuccessful", "score": 0 },
+    { "question": "Which weight loss method have you tried? (Select all that apply)", "score": 0, "text": ["Supplements"] },
+    { "question": "Are you currently on any weight loss medication or supplement? (Select all that apply)", "score": 0, "text": ["Yes, ayurvedic"] }
+  ],
+  "lifestyleChanges": [
+    { "text": "Never skip your first meal—delayed or skipped breakfast can lead to belly fat and insulin resistance." },
+    { "text": "Avoid calorie drinks—replace juices, energy drinks, and even smoothies with plain or lemon water." },
+    { "text": "Combine carbs with protein—never eat carbs alone to avoid fat storage (e.g., roti with dal or paneer)." },
+    { "text": "Start meals with fiber—have raw salads or soaked nuts before meals to prevent sugar spikes." },
+    { "text": "Maintain a 'metabolic window'—finish dinner at least 3 hours before bedtime for better fat metabolism." },
+    { "text": "Stand up every 45 minutes—long sitting reduces testosterone and lymphatic flow. Take micro-breaks." },
+    { "text": "Limit salt; avoid pickles, papads, and processed snacks." },
+    { "text": "Include potassium-rich foods: banana, spinach, tomatoes." },
+    { "text": "Restrict tea/coffee to 1–2 cups per day." },
+    { "text": "Walk daily and practice deep breathing exercises." }
+  ],
+  "possibleCauses": [
+    { "text": "Light active exercises can help with minimal calorie burn. Not much enough to counter daily intake" },
+    { "text": "Likely mild caloric surplus, metabolic resistance, sedentary habits" },
+    { "text": "Moderate indulgence, processed food cravings" },
+    { "text": "Common with obesity, poor vascular elasticity, stress" },
+    { "text": "Occasional stress-induced cravings" }
+  ],
+  "futureRisks": [
+    { "text": "Risk of gradual weight gain and lowered metabolism" },
+    { "text": "Progression to obesity, increased risk of hypertension and diabetes" },
+    { "text": "If not balanced with activity, can contribute to slow weight gain over time" },
+    { "text": "Heart disease, kidney failure, stroke" },
+    { "text": "Possible future coping dependency, mild weight fluctuations" }
+  ],
+  "recommendedProducts": [
+    {
+      "name": "Garcinia Cambogia Drops - sehatUP",
+      "salePrice": 499,
+      "image": "https://www.sehatup.com/cdn/shop/files/GaceniaCambogiaDropsArtboard1_1.webp?v=1773726387&width=600",
+      "whyPoints": [
+        { "text": "Reduces appetite." },
+        { "text": "Blocks fat production." }
+      ]
+    },
+    {
+      "name": "LeanRoutine",
+      "salePrice": 399,
+      "image": "https://www.sehatup.com/cdn/shop/files/rn-image_picker_lib_temp_95a1fb3c-b5ab-41aa-bba3-5b650e8869c4.webp?v=1774086061&width=600",
+      "whyPoints": [
+        { "text": "Boost fat burning." },
+        { "text": "Reduce bloating." },
+        { "text": "Help reduce stress eating." }
+      ]
+    },
+    {
+      "name": "Orlistat 60 mg (Smart Science for a Leaner You)",
+      "salePrice": 599,
+      "image": "https://www.sehatup.com/cdn/shop/files/Orlistat1.webp?v=1773726713&width=600",
+      "whyPoints": [
+        { "text": "Helps lose weight by blocking fat absorption." }
+      ]
+    }
+  ],
+  "rawState": {
+    "allAnswers": {
+      "Health": [
+        { "question": "Tick that applies for you (For long-term weight control)", "score": 0, "text": "I'm not sure if I can find 30 minutes daily for weight control." },
+        { "question": "What is your primary weight loss goal?", "score": 0, "text": "Lose 5-10 kg" },
+        { "question": "Why do you want to lose weight?", "score": 0, "text": "improved looks" }
+      ],
+      "Weight Loss": [
+        { "question": "Have you tried weight loss before?", "score": 0, "text": "Yes, but unsuccessful" },
+        { "question": "Which weight loss method have you tried? (Select all that apply)", "score": 0, "text": ["Supplements"] },
+        { "question": "Are you currently on any weight loss medication or supplement? (Select all that apply)", "score": 0, "text": ["Yes, ayurvedic"] }
+      ],
+      "lifestyle": [
+        { "question": "How active are you daily?", "score": 15, "text": "Lightly active (1-3 days/week exercise)" },
+        { "question": "During the past 6 months my weight has increased by.", "score": 3, "text": "3-6Kg" },
+        { "question": "Which body type do you identify with?", "score": 5, "text": "Over weight" },
+        { "question": "How many hours do you sleep daily?", "score": 10, "text": "5-6 hours" },
+        { "question": "How often do you consume processed/junk food?", "score": 3, "text": "Occasionally (1-2 times a week)" },
+        { "question": "How often do you smoke or consume alcohol?", "score": 5, "text": "rarely" }
+      ],
+      "medical": [
+        { "question": "Do you experience any of the following? (Select all that apply)", "score": 2, "text": ["Hypertension"] },
+        { "question": "How often do you feel stressed?", "score": 3, "text": "Sometimes " },
+        { "question": "Do you experience emotional eating ?", "score": 3, "text": "Rarely" },
+        { "question": "What do you consider some of your barriers when it comes to managing your weight? (check all that apply)?", "score": 0, "text": ["Fatigue"] }
+      ]
+    },
+    "results": {
+      "conditionTextHTML": "<p>Your BMI (24.7) suggests **Overweight** status. The weight gain is likely driven by underlying hormonal issues (PCOD/Thyroid) and stress.</p>",
+      "issueTitle": "High Weight Management Risk (Hormonal Factors)",
+      "lifestyleConditions": ["hypertension"]
+    },
+    "timelineData": {
+      "general": [
+        { "month": "Month 1", "timelineDesc": "Appetite and mood begin to stabilize" },
+        { "month": "Month 3", "timelineDesc": "Visible changes in weight and waistline" },
+        { "month": "Month 6", "timelineDesc": "Fat loss more sustainable, better energy and control" }
+      ]
+    }
+  },
+  "timeline": [
+    { "month": "Month 1", "timelineDesc": "Appetite and mood begin to stabilize" },
+    { "month": "Month 3", "timelineDesc": "Visible changes in weight and waistline" },
+    { "month": "Month 6", "timelineDesc": "Fat loss more sustainable, better energy and control" }
+  ],
+  "timestamp": "27 March 2026 at 11:26:38 UTC+5:30"
+}</pre>
+        <div class="improv-box">
+            <strong>Unique Fields:</strong> <code>currentWeight</code>, <code>height</code>, <code>targetWeight</code>, <code>bmi</code>, <code>healthAnswers</code>, <code>lifestyleAnswers</code>, <code>medicalAnswers</code>, <code>weightLossAnswers</code>
+        </div>
+    </div>
+
+    <div class="doc-section mens-wellness">
+        <h1>2. mens-wellness (SdurQIxd0Bx205UGJgNs)</h1>
+        <pre id="json-2">{
+  "userName": "Shivang",
+  "phone": "1234567890",
+  "dob": "2002-08-12",
+  "whatsapp_requests": [],
+  "healthScore": 57,
+  "isWhatsAppSent": false,
+  "issueTitle": "Erectile Dysfunction",
+  "concern": "ED",
+  "reportCategory": "Mens Sexual Wellness",
+  "reportDate": "27-03-2026",
+  "riskType": "High Risk",
+  "riskClass": "high",
+  "riskDescription": "Your score indicates that you are in a high-risk zone. Your body is showing multiple signs of imbalance — whether it’s poor sleep, low energy, mood swings, weight issues, or early symptoms of lifestyle-related diseases. These issues are serious and can worsen quickly if ignored.",
+  "peerAverage": 85,
+  "peerComparison": "Your score is lower than 60% of people in your age group.",
+  "questionnaireId": "mens-wellness",
+  "pdfGeneratedAt": "27 March 2026 at 11:26:10 UTC+5:30",
+  "reportDownloadUrl": "https://storage.googleapis.com/sehatup-f96b5.firebasestorage.app/reports_pdf/SdurQIxd0Bx205UGJgNs/HealthScore360Report_Shivang_27-03-2026_JgNs.pdf?...",
+  "reportStoragePath": "gs://sehatup-f96b5.firebasestorage.app/reports_pdf/SdurQIxd0Bx205UGJgNs/HealthScore360Report_Shivang_27-03-2026_JgNs.pdf",
+  "answers": [
+    { "question": "Selected Challenge", "answer": "ED", "score": 0 },
+    { "question": "Is getting or staying hard ever a challenge? How often?", "answer": "Sometimes", "score": 6 },
+    { "question": "How often do you struggle to stay hard?", "answer": "1-5 minutes", "score": 8 },
+    { "question": "How often do you feel nervous about performance?", "answer": "Moderate", "score": 8 },
+    { "question": "Currently taking any medicine for current problem or lifestyle modification", "answer": "Medicine", "score": 0 },
+    { "question": "For how long have you has this condition?", "answer": "Less than 6 months", "score": 2 },
+    { "question": "How frequently do you consume cigarettes, alcohol, or similar substances on a daily basis?", "answer": "Frequently", "score": 8 },
+    { "question": "Do you have any of the following health issues? If yes, tick those apply.", "answer": "Thyroid Issues", "score": 2 }
+  ],
+  "sexualHealthAnswers": [
+    { "question": "Is getting or staying hard ever a challenge? How often?", "text": "Sometimes", "score": 6 },
+    { "question": "How often do you struggle to stay hard?", "text": "1-5 minutes", "score": 8 },
+    { "question": "How often do you feel nervous about performance?", "text": "Moderate", "score": 8 },
+    { "question": "Currently taking any medicine for current problem or lifestyle modification", "text": "Medicine", "score": 0 },
+    { "question": "For how long have you has this condition?", "text": "Less than 6 months", "score": 2 }
+  ],
+  "lifestyleComorbiditiesAnswers": [
+    { "question": "How frequently do you consume cigarettes, alcohol, or similar substances on a daily basis?", "text": "Frequently", "score": 8 },
+    { "question": "Do you have any of the following health issues? If yes, tick those apply.", "score": 2, "text": ["Thyroid Issues"] }
+  ],
+  "lifestyleChanges": [
+    { "text": "Eat foods that boost energy and hormones like almonds, pumpkin seeds, dates, and dark chocolate " },
+    { "text": "Sleep 7–8 hours regularly and avoid stress, as it affects performance" },
+    { "text": "Stay active—30 minutes of walking or light exercise can help improve stamina" },
+    { "text": "Avoid smoking, alcohol, and junk food—they affect blood flow and energy" },
+    { "text": "Include zinc and magnesium-rich foods like seeds, leafy greens, and dry fruits" },
+    { "text": "Maintain daily physical activity" }
+  ],
+  "possibleCauses": [
+    { "text": "Psychological triggers" },
+    { "text": "Vascular deficiency" },
+    { "text": "Hormonal imbalance" }
+  ],
+  "futureRisks": [
+    { "text": "Loss of libido" },
+    { "text": "Relationship strain" },
+    { "text": "Impotency (untreated ED)" },
+    { "text": "Risk of irreversible vascular and neurological damage" },
+    { "text": "Chronic depression" }
+  ],
+  "recommendedProducts": [
+    {
+      "name": "Ashwagandha Tablets",
+      "salePrice": 499,
+      "image": "https://www.sehatup.com/cdn/shop/files/Ashwagandha.webp?v=1773727966&width=600",
+      "whyPoints": [
+        { "text": "Improves libido." },
+        { "text": "Enhances stamina." },
+        { "text": "Supports stronger erections." }
+      ]
+    },
+    {
+      "name": "Pure Himalayan Shilajit Resin – 20g | SehatUP",
+      "salePrice": 1349,
+      "image": "https://www.sehatup.com/cdn/shop/files/pure-himalayan-shilajit-resin.webp?v=1773727203&width=600",
+      "whyPoints": [
+        { "text": "Enhances testosterone levels." },
+        { "text": "Improves blood flow." },
+        { "text": "Supports sexual health." }
+      ]
+    }
+  ],
+  "rawState": {
+    "allAnswers": {
+      "concern": [
+        { "question": "Selected Challenge", "score": 0, "text": "ED" }
+      ],
+      "lifestyle": [
+        { "question": "How frequently do you consume cigarettes, alcohol, or similar substances on a daily basis?", "score": 8, "text": "Frequently" },
+        { "question": "Do you have any of the following health issues? If yes, tick those apply.", "score": 2, "text": ["Thyroid Issues"] }
+      ],
+      "sexual_health": [
+        { "question": "Is getting or staying hard ever a challenge? How often?", "score": 6, "text": "Sometimes" },
+        { "question": "How often do you struggle to stay hard?", "score": 8, "text": "1-5 minutes" },
+        { "question": "How often do you feel nervous about performance?", "score": 8, "text": "Moderate" },
+        { "question": "Currently taking any medicine for current problem or lifestyle modification", "score": 0, "text": "Medicine" },
+        { "question": "For how long have you has this condition?", "score": 2, "text": "Less than 6 months" }
+      ]
+    },
+    "results": {
+      "conditionTextHTML": "<p>Erectile Dysfunction can often be improved with medication, lifestyle changes, and therapy</p>",
+      "issueTitle": "Erectile Dysfunction",
+      "lifestyleConditions": []
+    },
+    "timelineData": {
+      "general": [
+        { "month": "Month 1", "timelineDesc": "Improved erection, better mood, reduced fatigue" },
+        { "month": "Month 3", "timelineDesc": "Restored sexual normalcy, better confidence levels" },
+        { "month": "Month 6", "timelineDesc": "Confident sexual function, better energy levels" }
+      ]
+    }
+  },
+  "timeline": [
+    { "month": "Month 1", "timelineDesc": "Improved erection, better mood, reduced fatigue" },
+    { "month": "Month 3", "timelineDesc": "Restored sexual normalcy, better confidence levels" },
+    { "month": "Month 6", "timelineDesc": "Confident sexual function, better energy levels" }
+  ],
+  "timestamp": "27 March 2026 at 11:26:03 UTC+5:30"
+}</pre>
+        <div class="improv-box">
+            <strong>Unique Fields:</strong> <code>sexualHealthAnswers</code>, <code>lifestyleComorbiditiesAnswers</code>
+        </div>
+    </div>
+
+    <div class="doc-section womens-weight">
+        <h1>3. womens-weight (w2vEgcyj9dv79V4N1MrM)</h1>
+        <pre id="json-3">{
+  "userName": "Shivang",
+  "phone": "1234567890",
+  "dob": "2002-08-12",
+  "whatsapp_requests": [],
+  "weight": 80,
+  "targetWeight": 70,
+  "height": 180,
+  "healthScore": 62,
+  "isWhatsAppSent": false,
+  "issueTitle": "Normal weight + Hormonal Imbalance",
+  "concern": "Women's Weight Management",
+  "reportCategory": "Womens Weight Management",
+  "reportDate": "27-03-2026",
+  "riskType": "Moderate Risk",
+  "riskClass": "moderate",
+  "riskDescription": "Your score suggests that your health is somewhat compromised. There may not be major symptoms now, but your system is under pressure. Signs like reduced stamina, mild stress, hormonal shifts, or disturbed digestion could be early warnings of deeper issues ahead.",
+  "peerAverage": 90,
+  "peerComparison": "Your score is lower than 20% of people in your age group.",
+  "questionnaireId": "womens-weight",
+  "pdfGeneratedAt": "27 March 2026 at 11:25:48 UTC+5:30",
+  "reportDownloadUrl": "https://storage.googleapis.com/sehatup-f96b5.firebasestorage.app/reports_pdf/w2vEgcyj9dv79V4N1MrM/HealthScore360Report_Shivang_27-03-2026_1MrM.pdf?...",
+  "reportStoragePath": "gs://sehatup-f96b5.firebasestorage.app/reports_pdf/w2vEgcyj9dv79V4N1MrM/HealthScore360Report_Shivang_27-03-2026_1MrM.pdf",
+  "answers": [
+    { "question": "Tick that applies for you (For long-term weight control)", "answer": "I definitely will not be able to devote 30 minutes daily to weight control.", "score": 0 },
+    { "question": "What is your primary weight loss goal?", "answer": "fat loss", "score": 0 },
+    { "question": "How active are you daily?", "answer": "Sedentary (little or no exercise)", "score": 10 },
+    { "question": "During the past 6 months my weight has increased by.", "answer": "1-3Kg", "score": 0 },
+    { "question": "Which body type do you identify with?", "answer": "Normal weight", "score": 1 },
+    { "question": "How many hours do you sleep daily?", "answer": "Less than 5 hours", "score": 6 },
+    { "question": "How often do you consume processed/junk food?", "answer": "Rarely", "score": 1 },
+    { "question": "How often do you smoke or consume alcohol?", "answer": "Never", "score": 1 },
+    { "question": "Do you experience any of the following? (Select all that apply)", "answer": "PCOS/PCOD", "score": 2 },
+    { "question": "How often do you feel stressed?", "answer": "Sometimes", "score": 3 },
+    { "question": "Are you currently on birth control or hormone therapy?", "answer": "Yes", "score": 5 },
+    { "question": "Have you recently been pregnant or breastfeeding?", "answer": "Yes", "score": 5 },
+    { "question": "Do you have any history of pregnancy complications or significant weight gain during pregnancy?", "answer": "Yes", "score": 1 },
+    { "question": "Do you experience emotional eating ?", "answer": "Rarely", "score": 3 },
+    { "question": "What do you consider some of your barriers when it comes to managing your weight? (check all that apply)?", "answer": "Fatigue", "score": 0 },
+    { "question": "Have you tried weight loss before?", "answer": "Yes, but unsuccessful", "score": 0 },
+    { "question": "Which weight loss method have you tried? (Select all that apply)", "answer": "Supplements", "score": 0 },
+    { "question": "Are you currently on any weight loss medication or supplement? (Select all that apply)", "answer": "Yes, ayurvedic, Yes, homeopathic", "score": 0 }
+  ],
+  "lifestyleChanges": [
+    { "text": "Follow fixed meal timings with low-GI grains." },
+    { "text": "Limit dairy, sugar, and refined foods." },
+    { "text": "Include flaxseeds and leafy greens." },
+    { "text": "Manage stress with yoga." },
+    { "text": "Prioritize protein in the first meal — skipping breakfast worsens insulin resistance." },
+    { "text": "Avoid calorie-dense drinks — replace juices with plain or lemon water." },
+    { "text": "Always pair carbs with protein or fiber to avoid blood sugar spikes." },
+    { "text": "Start lunch/dinner with raw salad to reduce post-meal insulin load." },
+    { "text": "Avoid eating after 8:30 PM — night eating worsens fat storage." },
+    { "text": "Include 25–30 minutes of movement daily (walks, yoga)." }
+  ],
+  "possibleCauses": [
+    { "text": "Sedentary lifestyle & lack of movement reduces calorie expenditure and leads to fat accumulation." },
+    { "text": "Minimal intake of processed food so not a significant factor." },
+    { "text": "PCOS causes hormonal imbalance that affects insulin and fat storage." },
+    { "text": "Intermittent stress may affect food choices." },
+    { "text": "Hormonal therapies can influence fat distribution and appetite." },
+    { "text": "Occasional stress-induced cravings." }
+  ],
+  "futureRisks": [
+    { "text": "Increased risk of obesity, diabetes, cardiovascular diseases" },
+    { "text": "Low risk; continue maintaining healthy food habits." },
+    { "text": "Increased risk of infertility and chronic weight retention." },
+    { "text": "Can progress into chronic stress if unmanaged." },
+    { "text": "May lead to weight gain and mood swings if not monitored." },
+    { "text": "Can evolve into a habit during high-stress periods." }
+  ],
+  "recommendedProducts": [
+    {
+      "name": "Garcinia Cambogia Drops - sehatUP",
+      "salePrice": 499,
+      "image": "https://www.sehatup.com/cdn/shop/files/GaceniaCambogiaDropsArtboard1_1.webp?v=1773726387&width=600",
+      "whyPoints": [
+        { "text": "Reduces appetite." },
+        { "text": "Blocks fat production." }
+      ]
+    },
+    {
+      "name": "Slimtox Energy Tea",
+      "salePrice": 399,
+      "image": "https://www.sehatup.com/cdn/shop/files/rn-image_picker_lib_temp_7663c288-2388-4649-a694-1211965c9cdd.webp?v=1773725391&width=600",
+      "whyPoints": [
+        { "text": "Boost fat burning." },
+        { "text": "Improve digestion." },
+        { "text": "Control sugar cravings." }
+      ]
+    },
+    {
+      "name": "Orlistat 60 mg (Smart Science for a Leaner You)",
+      "salePrice": 599,
+      "image": "https://www.sehatup.com/cdn/shop/files/Orlistat1.webp?v=1773726713&width=600",
+      "whyPoints": [
+        { "text": "Helps lose weight by blocking fat absorption." }
+      ]
+    }
+  ],
+  "rawState": {
+    "allAnswers": {
+      "health": [
+        { "question": "Tick that applies for you (For long-term weight control)", "score": 0, "text": "I definitely will not be able to devote 30 minutes daily to weight control." },
+        { "question": "What is your primary weight loss goal?", "score": 0, "text": "fat loss" }
+      ],
+      "lifestyle": [
+        { "question": "How active are you daily?", "score": 10, "text": "Sedentary (little or no exercise)" },
+        { "question": "During the past 6 months my weight has increased by.", "score": 0, "text": "1-3Kg" },
+        { "question": "Which body type do you identify with?", "score": 1, "text": "Normal weight" },
+        { "question": "How many hours do you sleep daily?", "score": 6, "text": "Less than 5 hours" },
+        { "question": "How often do you consume processed/junk food?", "score": 1, "text": "Rarely" },
+        { "question": "How often do you smoke or consume alcohol?", "score": 1, "text": "Never" }
+      ],
+      "medical": [
+        { "question": "Do you experience any of the following? (Select all that apply)", "score": 2, "text": ["PCOS/PCOD"] },
+        { "question": "How often do you feel stressed?", "score": 3, "text": "Sometimes" },
+        { "question": "Are you currently on birth control or hormone therapy?", "score": 5, "text": "Yes" },
+        { "question": "Have you recently been pregnant or breastfeeding?", "score": 5, "text": "Yes" },
+        { "question": "Do you have any history of pregnancy complications or significant weight gain during pregnancy?", "score": 1, "text": "Yes" },
+        { "question": "Do you experience emotional eating ?", "score": 3, "text": "Rarely" },
+        { "question": "What do you consider some of your barriers when it comes to managing your weight? (check all that apply)?", "score": 0, "text": ["Fatigue"] }
+      ],
+      "weightLoss": [
+        { "question": "Have you tried weight loss before?", "score": 0, "text": "Yes, but unsuccessful" },
+        { "question": "Which weight loss method have you tried? (Select all that apply)", "score": 0, "text": ["Supplements"] },
+        { "question": "Are you currently on any weight loss medication or supplement? (Select all that apply)", "score": 0, "text": ["Yes, ayurvedic", "Yes, homeopathic"] }
+      ]
+    },
+    "results": {
+      "conditionTextHTML": "<p>You’re doing better, but still need discipline in eating habits and regular physical activity.</p>",
+      "issueTitle": "Normal weight + Hormonal Imbalance",
+      "lifestyleConditions": ["pcos/pcod"]
+    },
+    "timelineData": {
+      "general": [
+        { "month": "Month 1", "timelineDesc": "Light digestion, fewer cravings, mild sleep and energy improvement., acne, bloating ease" },
+        { "month": "Month 3", "timelineDesc": "Energy improves, movement feels easier, eating becomes structured., periods more predictable" },
+        { "month": "Month 6", "timelineDesc": "Better body tone, control over habits, lighter feeling., pms manageable" }
+      ]
+    }
+  },
+  "timeline": [
+    { "month": "Month 1", "timelineDesc": "Light digestion, fewer cravings, mild sleep and energy improvement., acne, bloating ease" },
+    { "month": "Month 3", "timelineDesc": "Energy improves, movement feels easier, eating becomes structured., periods more predictable" },
+    { "month": "Month 6", "timelineDesc": "Better body tone, control over habits, lighter feeling., pms manageable" }
+  ],
+  "timestamp": "27 March 2026 at 11:25:40 UTC+5:30"
+}</pre>
+        <div class="improv-box">
+            <strong>Unique Fields:</strong> <code>weight</code> (Needs standardization), <code>height</code>, <code>targetWeight</code>
+        </div>
+    </div>
+
+    <div class="doc-section womens-wellness">
+        <h1>4. womens-wellness (eNNqL5kPwDEclOsViWUQ)</h1>
+        <pre id="json-4">{
+  "userName": "Shivang",
+  "phone": "1234567890",
+  "dob": "2002-08-12",
+  "whatsapp_requests": [],
+  "healthScore": 56,
+  "isWhatsAppSent": false,
+  "issueTitle": "High Hormonal Disturbance, Thyroid Dysfunction, Vaginal pH Imbalance",
+  "concern": "Women's Wellness",
+  "reportCategory": "Womens Sexual Wellness",
+  "reportDate": "27-03-2026",
+  "riskType": "High Risk",
+  "riskClass": "high",
+  "riskDescription": "Your score indicates that you are in a high-risk zone. Your body is showing multiple signs of imbalance — whether it’s poor sleep, low energy, mood swings, weight issues, or early symptoms of lifestyle-related diseases. These issues are serious and can worsen quickly if ignored.",
+  "peerAverage": 85,
+  "peerComparison": "Your score is lower than 60% of people in your age group.",
+  "questionnaireId": "womens-wellness",
+  "pdfGeneratedAt": "27 March 2026 at 11:25:03 UTC+5:30",
+  "reportDownloadUrl": "https://storage.googleapis.com/sehatup-f96b5.firebasestorage.app/reports_pdf/eNNqL5kPwDEclOsViWUQ/HealthScore360Report_Shivang_27-03-2026_iWUQ.pdf?...",
+  "reportStoragePath": "gs://sehatup-f96b5.firebasestorage.app/reports_pdf/eNNqL5kPwDEclOsViWUQ/HealthScore360Report_Shivang_27-03-2026_iWUQ.pdf",
+  "lifestyleChanges": [
+    { "text": "Use iodized salt and eat whole grains, eggs, and dairy" },
+    { "text": "Avoid excess soy, processed foods, and erratic meals" },
+    { "text": "Maintain regular meal times every 3–4 hours" },
+    { "text": "Sleep and wake at fixed times to support hormonal rhythm" },
+    { "text": "Eat balanced meals; avoid fasting or skipping." },
+    { "text": "Reduce sugar and packaged foods" },
+    { "text": "Maintain regular sleep and daily movement" },
+    { "text": "Add seeds and healthy fats like ghee or nuts" }
+  ],
+  "possibleCauses": [
+    { "text": "Mild hormonal fluctuations, stress, or lifestyle shifts." },
+    { "text": "Slight prostaglandin activity, occasional stress." },
+    { "text": "Hypo- or hyperthyroidism affecting metabolism and hormones." },
+    { "text": "Good hygiene, balanced vaginal flora, no infection." },
+    { "text": "Minor hormonal fluctuation due to stress, diet, or sleep issues." }
+  ],
+  "futureRisks": [
+    "May cause delayed ovulation or mild fertility issues if unchecked.",
+    "Low risk. Could worsen if lifestyle becomes unbalanced.",
+    "Irregular cycles, fatigue, weight changes, fertility issues.",
+    "No immediate risks. Continue good hygiene practices.",
+    "Risk of worsening imbalance if lifestyle isn’t improved."
+  ],
+  "recommendedProducts": [
+    {
+      "name": "Her Menses (For Rhythmic Relief & Hormonal Harmony)",
+      "salePrice": 499,
+      "image": "https://www.sehatup.com/cdn/shop/files/1_1_04c45726-86c9-440e-89f2-1d9e153d3a74.webp?v=1770037146&width=600",
+      "whyPoints": [
+        { "text": "Helps fix irregular or missed periods." },
+        { "text": "Soothes pain, irritability, and emotional ups and downs." },
+        { "text": "Useful in PCOS, delayed or painful periods." }
+      ]
+    },
+    {
+      "name": "Zencal D3K2",
+      "salePrice": 499,
+      "image": "https://www.sehatup.com/cdn/shop/files/Zencal-1.webp?v=1764844230&width=600",
+      "whyPoints": [
+        { "text": "Boosts metabolism and supports fat breakdown." },
+        { "text": "Helps D3 work better and keeps calcium in bones, not in fat cells." },
+        { "text": "Helps reduce fatigue and balance mood." }
+      ]
+    },
+    {
+      "name": "Aloezy ( Intimate Foam Wash) | Best intimate wash for Womens",
+      "salePrice": 349,
+      "image": "https://www.sehatup.com/cdn/shop/files/Aloezy_Intimate_Foam_Wash1.webp?v=1770033818&width=600",
+      "whyPoints": [
+        { "text": "Soothe and calm the skin." },
+        { "text": "Maintain healthy pH balance." },
+        { "text": "Gentle and safe for daily use." }
+      ]
+    }
+  ],
+  "rawState": {
+    "allAnswers": {
+      "health": [
+        { "question": "How regular is your menstrual cycle?", "score": 5, "text": "Slightly irregular (varies by a few days)" },
+        { "question": "How severe are your menstrual cramps?", "score": 5, "text": "Mild discomfort, manageable without medication" },
+        { "question": "How would you describe your period flow?", "score": 5, "text": "Heavy for 1–2 days, then manageable" },
+        { "question": "Have you been diagnosed with PCOD or PCOS?", "score": 5, "text": "Yes, but it’s under control" },
+        { "question": "Do you experience any symptoms...?", "score": 0, "text": ["Diarrhea"] }
+      ],
+      "hormonal": [
+        { "question": "Do you experience hormonal imbalance symptoms...?", "score": 5, "text": "Occasionally" },
+        { "question": "Have you ever been diagnosed with estrogen dominance...?", "score": 5, "text": "Yes, but it’s under control" }
+      ],
+      "hygiene": [
+        { "question": "Do you experience itching, irritation, or discomfort...?", "score": 3, "text": "Rarely or never" },
+        { "question": "Do you experience any bad odor or discharge...?", "score": 5, "text": "Occasionally" }
+      ],
+      "lifestyle": [
+        { "question": "How often do you consume a balanced diet...?", "score": 3, "text": "Daily" },
+        { "question": "How often do you consume caffeinated beverages...?", "score": 0, "text": "Rarely or never" },
+        { "question": "How often do you feel fatigued or low in energy during your period?", "score": 3, "text": "Rarely or never" },
+        { "question": "How often do you consume alcohol or cigarettes?", "score": 0, "text": "Rarely" },
+        { "question": "Do you have any of the mentioned health problems?", "score": 0, "text": ["Thyroid disorder"] }
+      ]
+    },
+    "results": {
+      "conditionTextHTML": "<p>Moderate Hormonal imbalance (if untreated, may disrupt fertility)</p>",
+      "issueTitle": "High Hormonal Disturbance, Thyroid Dysfunction, Vaginal pH Imbalance",
+      "lifestyleConditions": ["thyroid disorder", "irregular periods"]
+    },
+    "timelineData": {
+      "extras": [
+        {
+          "sectionTitle": "Hormonal Health",
+          "timeline": [
+            { "month": "Month 1", "timelineDesc": "Mood steadier, acne reduces" },
+            { "month": "Month 2", "timelineDesc": "Facial hair slows, emotional stability" },
+            { "month": "Month 3", "timelineDesc": "Skin texture better, weight balanced" },
+            { "month": "Month 6", "timelineDesc": "No mood swings, better skin and stamina" }
+          ]
+        },
+        {
+          "sectionTitle": "PMS & Cramps",
+          "timeline": [
+            { "month": "Month 1", "timelineDesc": "Pain and bloating ease" },
+            { "month": "Month 2", "timelineDesc": "PMS improves" },
+            { "month": "Month 3", "timelineDesc": "Rare cramps, better focus" },
+            { "month": "Month 6", "timelineDesc": "PMS gone or minimal" }
+          ]
+        },
+        {
+          "sectionTitle": "Vaginal Health",
+          "timeline": [
+            { "month": "Month 1", "timelineDesc": "Discharge and irritation reduce" },
+            { "month": "Month 2", "timelineDesc": "Odor fades, pH improves" },
+            { "month": "Month 3", "timelineDesc": "No abnormal discharge" },
+            { "month": "Month 6", "timelineDesc": "Consistent freshness and balance" }
+          ]
+        },
+        {
+          "sectionTitle": "Estrogen / PCOS",
+          "timeline": [
+            { "month": "Month 1", "timelineDesc": "Hormonal swelling reduces" },
+            { "month": "Month 2", "timelineDesc": "Better mid-cycle flow" },
+            { "month": "Month 3", "timelineDesc": "Hormone profile improves" },
+            { "month": "Month 6", "timelineDesc": "PCOS signs well-managed" }
+          ]
+        }
+      ],
+      "general": [
+        { "month": "Month 1", "timelineDesc": "Mild improvement in cycle timing" },
+        { "month": "Month 2", "timelineDesc": "Cycles more predictable" },
+        { "month": "Month 3", "timelineDesc": "Periods regular and lighter" },
+        { "month": "Month 6", "timelineDesc": "Healthy cycle pattern maintained" }
+      ]
+    }
+  },
+  "timeline": [
+    { "month": "Month 1", "timelineDesc": "Mild improvement in cycle timing, Mood steadier, acne reduces, Pain and bloating ease, Discharge and irritation reduce, Hormonal swelling reduces" },
+    { "month": "Month 2", "timelineDesc": "Cycles more predictable, Facial hair slows, emotional stability, PMS improves, Odor fades, pH improves, Better mid-cycle flow" },
+    { "month": "Month 3", "timelineDesc": "Periods regular and lighter, Skin texture better, weight balanced, Rare cramps, better focus, No abnormal discharge, Hormone profile improves" }
+  ],
+  "timestamp": "27 March 2026 at 11:24:54 UTC+5:30"
+}</pre>
+        <div class="improv-box">
+            <strong>Unique Fields:</strong> Specialized <code>rawState</code> categorization (health, hormonal, hygiene, lifestyle).
+        </div>
+    </div>
+
+    <script>
+        const commonKeys = [
+            "userName", "phone", "dob", "healthScore", "issueTitle", "concern", 
+            "riskType", "riskClass", "reportCategory", "reportDate", 
+            "isWhatsAppSent", "whatsapp_requests", "questionnaireId", "timestamp",
+            "lifestyleChanges", "possibleCauses", "futureRisks", "recommendedProducts",
+            "pdfGeneratedAt", "peerAverage", "peerComparison", "reportDownloadUrl", 
+            "reportStoragePath", "timeline", "rawState"
+        ];
+
+        function highlightJSON(jsonId) {
+            const pre = document.getElementById(jsonId);
+            if (!pre) return;
+            let text = pre.innerHTML;
+
+            // Highlight Keys
+            text = text.replace(/"(\w+)":/g, (match, key) => {
+                const isCommon = commonKeys.includes(key);
+                const className = isCommon ? 'key-common' : 'key-unique';
+                return `"<span class="${className}">${key}</span>":`;
+            });
+
+            // Highlight Values
+            text = text.replace(/: "(.*?)"/g, ': "<span class="string">$1</span>"');
+            text = text.replace(/: (\d+)/g, ': <span class="number">$1</span>');
+            text = text.replace(/: (true|false)/g, ': <span class="boolean">$1</span>');
+
+            pre.innerHTML = text;
+        }
+
+        // Apply highlighting to all blocks
+        for (let i = 1; i <= 4; i++) {
+            highlightJSON(`json-${i}`);
+        }
+    </script>
+</body>
+</html>

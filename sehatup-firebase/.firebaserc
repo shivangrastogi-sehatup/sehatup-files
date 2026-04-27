@@ -1,0 +1,10 @@
+{
+  "projects": {
+    "default": "sehatup-f96b5",
+    "prod": "sehatup-f96b5",
+    "dev": "sehatupdev",
+    "live": "sehatup-f96b5"
+  },
+  "targets": {},
+  "etags": {}
+}

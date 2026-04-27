@@ -1,0 +1,281 @@
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+{{ 'questionnaire-test.css' | asset_url | stylesheet_tag }}
+
+<div class="bg-overlay"></div>
+
+{% render 'loader-overlay-test' %}
+
+<div id="questionnaire">
+  <div class="container">
+    <div class="header">
+      <h1>Women's Weight Management Score</h1>
+    </div>
+
+    <div id="desktop-steps" class="desktop-steps-container"></div>
+
+    <div id="mobile-step-indicator" class="mobile-indicator-container">
+      <div class="mobile-indicator-card">
+        <div class="mobile-info-wrapper">
+          <div class="mobile-step-circle-wrapper">
+            <p class="mobile-step-label">STEP</p>
+            <div id="mobile-step-number-container" class="mobile-step-circle">1</div>
+          </div>
+
+          <div class="mobile-details-wrapper">
+            <p id="mobile-question-counter" class="mobile-question-counter">Q1 / 1</p>
+            <p id="mobile-step-name" class="mobile-step-name">About You & Metrics</p>
+            <div id="mobile-step-progress-bar">
+              <div id="mobile-step-progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="step-1" class="step active">
+      <h2>Welcome to the Women’s Weight & Metabolic Quiz!</h2>
+      <ul>
+        <li>Takes just a few minutes</li>
+        <li>100% private and secure</li>
+        <li>You must be 18 or older to participate</li>
+      </ul>
+      <div class="navigation">
+        <div></div>
+        <button data-action="start">Start Questionnaire</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: ABOUT YOU & METRICS (Single UI Step with two sequential forms) -->
+    <div id="step-2" class="step about-you-container">
+      
+      <!-- 2a: PERSONAL INFO FORM -->
+      <div id="user-info-section">
+        <h2>Tell us a bit about yourself to personalize your experience.</h2>
+        <form id="about-you-form">
+          <div class="form-row">
+            <label for="name">Enter Your Full Name:</label>
+            <input type="text" id="name" placeholder="Your name" required>
+            <span id="name-error" class="error-message"></span>
+          </div>
+          <div class="form-row">
+            <label for="dob">Enter Your Date of Birth:</label>
+            <input type="date" id="dob" required>
+            <span id="age-error" class="error-message"></span>
+          </div>
+          <div class="form-row">
+            <label for="phone">Enter Your Phone Number:</label>
+            <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required>
+            <span id="phone-error" class="error-message"></span>
+          </div>
+
+          <div class="navigation">
+            <button
+              type="button"
+              class="prev-btn"
+              data-action="prev"
+              data-step="1"
+            >
+              Previous
+            </button>
+            <button type="button" class="next-btn" data-action="validate-user-info">Next</button> 
+          </div>
+        </form>
+      </div>
+
+      <!-- 2b: HEALTH METRICS FORM (Initially hidden) -->
+      <div id="metrics-section" style="display: none;">
+        <h2>Enter your body measurements for personalized health metrics.</h2>
+        <form id="health-metrics-form">
+          <div class="form-row">
+            <label for="height">Height (in cm):</label>
+            <input type="number" id="height" placeholder="e.g. 165" min="100" max="250" required>
+            <span id="height-error" class="error-message"></span>
+          </div>
+          <div class="form-row">
+            <label for="currentWeight">Current Weight (in kg):</label>
+            <input type="number" id="currentWeight" placeholder="e.g. 75" min="20" max="300" required>
+            <span id="weight-error" class="error-message"></span>
+          </div>
+          <div class="form-row">
+            <label for="targetWeight">Target Weight (in kg):</label>
+            <input type="number" id="targetWeight" placeholder="e.g. 60" min="20" max="300" required>
+            <span id="targetWeight-error" class="error-message"></span>
+          </div>
+
+          <div class="navigation">
+            <button
+              type="button"
+              class="prev-btn"
+              data-action="prev-to-user-info"
+            >
+              Previous
+            </button>
+            <!-- Moves to the first question group (Internal Step 3) -->
+            <button type="button" class="next-btn" data-action="validate-metrics">Start Assessment</button>
+          </div>
+        </form>
+      </div>
+      
+    </div>
+    
+    <!-- STEP 3-6: QUESTIONS (Starts at internal step 3) -->
+    <div id="step-question" class="step">
+      <div id="question-content"></div>
+      <div id="faq-container" class="faq-container" style="display: none"></div>
+      <div class="navigation" id="question-navigation">
+        <button
+          type="button"
+          class="prev-btn"
+          data-action="prev-question"
+        >
+          Previous
+        </button>
+        <div id="next-button-container"></div>
+      </div>
+    </div>
+
+    <!-- STEP 7: RESULTS (Internal Step 7 - last question group (6) + 1) -->
+    <div id="step-7" class="step">
+      <div class="final-layout">
+        <div class="left-column">
+          <div class="patient-details">
+            <h3>Assesment Report</h3>
+            <div class="patient-details-container">
+              <div class="patient-info-text">
+                <p>
+                  <strong></strong>
+                  <span id="user-name"></span>
+                </p>
+                <p>
+                  <strong></strong>
+                  <span id="user-concern"></span>
+                </p>
+              </div>
+              <div class="patient-info-score">
+                <div class="score-box" id="score-box">
+                  <div
+                    class="circular-progress"
+                    id="circular-progress"
+                  >
+                    <div class="inner-text">
+                      <p class="progress-value" id="progress-value">0%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="condition-text" style="margin-top: 10px"></div>
+            <span class="patient-id" id="patient-id"></span>
+            <div class="future-risk-section">
+              <h3>Future Risk (If Not Treated)</h3>
+              <div id="future-risk"></div>
+              <div id="future-risk-tags" class="risk-tags-container"></div>
+            </div>
+            <div class="whatsapp-button-container">
+              <button
+                class="whatsapp-report-btn"
+                data-action="open-otp"
+              >
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
+                  alt="WhatsApp"
+                >
+                Get My Report on WhatsApp
+              </button>
+            </div>
+          </div>
+          <div class="results-timeline">
+            <h3>Condition-Based Progress Timeline</h3>
+            <div id="condition-timeline-container"></div>
+          </div>
+          <a
+            href="https://wa.me/919355539355?text=Hi%20I%20need%20help%20regarding%20my%20health%20report."
+            target="_blank"
+          >
+            <div class="support-section">
+              <img
+                src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Banner_6.jpg?v=1745476460"
+                alt="24x7 Expert Doctor Support"
+                style="max-width: 100%"
+              >
+            </div>
+          </a>
+          <div class="treatment-plan">
+            <h4>What you get in your treatment plan</h4>
+            <ul>
+              <li>Doctor Support</li>
+              <li>Ayurvedic Medicine</li>
+              <li>Custom Plan</li>
+            </ul>
+          </div>
+        </div>
+        <div class="right-column">
+          <div class="recommended-treatment">
+            <h3>Recommended Treatment</h3>
+            <div class="product-list" id="product-list"></div>
+            <div class="checkout-section">
+              <p>
+                Total Amount:
+                <span id="total-amount">0</span>
+                <small class="gst-note">(GST included)</small>
+              </p>
+              <div class="buy-button-container">
+                <button
+                  class="buy-button"
+                  data-action="buy-now"
+                >
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="ugc-content"></div>
+    </div>
+  </div>
+</div>
+
+{% render 'otp-verification-modal-test' %}
+
+<div id="productModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" data-action="close-modal">&times;</span>
+    <img
+      id="modalImage"
+      src=""
+      alt=""
+    >
+    <h2 id="modalTitle"></h2>
+    <p id="modalDescription"></p>
+    <p id="modalPrice" class="price"></p>
+  </div>
+</div>
+
+<div id="exit-popup" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" data-action="close-modal">×</span>
+    <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Popup_Image.jpg?v=1745412444" alt="Special Offer">
+    <h2>Get Extra Off Your Order!</h2>
+    <p>Use the coupon code below to avail an extra discount:</p>
+    <div class="coupon-container">
+      <input
+        type="text"
+        id="coupon-code"
+        value="SPECIAL5"
+        readonly
+      >
+      <button class="copy-btn" data-action="copy-coupon">Copy</button>
+    </div>
+    <p id="copy-feedback" style="display: none; color: green; font-weight: bold">Copied!</p>
+  </div>
+</div>
+
+{% comment %}
+  These are your main JS files.
+{% endcomment %}
+<script src="{{ 'development-firebase-config.js' | asset_url }}"></script>
+<script src="{{ 'product-database-common.js' | asset_url }}"></script>
+<script src="{{ 'config-womens-weight.js' | asset_url }}"></script>
+<script src="{{ 'questionnaire-engine.js' | asset_url }}"></script>

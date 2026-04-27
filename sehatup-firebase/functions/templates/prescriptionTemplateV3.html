@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sehatUP Medical Prescription</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --brand-primary: #2C2C2C; /* Dark Charcoal from homepage */
+            --brand-primary-soft: #4B5563;
+            --brand-red: #F12F46;
+            --brand-red-dark: #d62539;
+            --brand-bg-dark: #1A1A1A;
+
+            --bg-soft: #F5F6F7;
+            --border: #E6E8EA;
+
+            --text-dark: #2C2C2C;
+            --text-light: #6B7280;
+            --white: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 4mm 4mm 10mm 4mm; /* Clean standard margins */
+        }
+
+        html,
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: "Montserrat", sans-serif;
+            color: var(--text-dark);
+            background-color: var(--white);
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            /* Width handled by @page margins in print */
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 4mm 4mm 4mm; /* Removed top padding to move logo up */
+            position: relative;
+            background-color: #fff;
+            counter-reset: page;
+        }
+
+
+        /* Watermark */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 80px;
+            font-weight: 900;
+            white-space: nowrap;
+            z-index: -1;
+            pointer-events: none;
+            text-transform: uppercase;
+            opacity: 0.05;
+        }
+
+        .watermark .sehat { color: #000; }
+        .watermark .up { color: #F12F46; }
+
+        .brand-sehat { color: #000; }
+        .brand-up { color: #F12F46; }
+
+        /* Header Layout */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0;
+            margin-bottom: 4px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .header-left .logo {
+            height: 22px;
+            width: auto;
+        }
+
+        .header-doctor {
+            border-left: 2px solid #0f8a8d;
+            padding-left: 15px;
+            margin-left: 15px;
+            flex: 1.5;
+        }
+
+        .header-right {
+            text-align: right;
+            flex: 2;
+            padding-top: 0;
+        }
+
+        .header-right h2 {
+            margin: 0;
+            font-size: 22px;
+            color: #000;
+            font-weight: 700;
+        }
+
+        .header-right .qual {
+            font-size: 11px;
+            font-weight: 500;
+            color: #4B5563;
+            margin-top: 2px;
+        }
+
+        .header-right-col .reg {
+            font-size: 10px;
+            font-weight: 700;
+            color: #475569;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            background: #F1F5F9;
+            padding: 4px 12px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        /* Info Banner */
+        .info-pill-container {
+            display: flex;
+            justify-content: space-between;
+            background: var(--brand-primary);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Doctor & Patient Split */
+        .details-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 8px;
+        }
+
+        .patient-details-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            background: #F9FAFB;
+            padding: 12px 20px;
+            border-radius: 16px;
+            border: 1px solid #E5E7EB; /* Added border */
+            margin-bottom: 8px;
+        }
+
+        .patient-details-grid div {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            border: none;
+            padding: 0;
+        }
+
+        .patient-details-grid .label {
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+        }
+
+        .patient-details-grid .val {
+            font-weight: 700;
+            color: #000;
+            font-size: 14px;
+            letter-spacing: -0.2px;
+        }
+
+        .doctor-card {
+            border-left: 4px solid #D4AF37;
+            padding-left: 15px;
+            background: rgba(255, 255, 255, 0.4);
+            padding: 12px 15px;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .doctor-card h2 {
+            margin: 0;
+            font-size: 18px;
+            color: #000;
+            font-weight: 800;
+        }
+
+        .doctor-card .qual {
+            font-size: 12px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 5px;
+        }
+
+        .doctor-card .reg {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--brand-teal);
+            background: #E6F2F3;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .patient-card {
+            background: white;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #eee;
+        }
+
+        .patient-card div {
+            font-size: 12px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .patient-card .label {
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+
+        .patient-card .val {
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .diagnosis-section {
+            margin-bottom: 8px;
+        }
+
+        .diagnosis-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 8px;
+        }
+
+        .diagnosis-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            text-transform: none;
+            letter-spacing: normal;
+            white-space: nowrap;
+        }
+
+        .diagnosis-header .line {
+            height: 1px;
+            background: #E5E7EB;
+            flex-grow: 1;
+        }
+
+        .diagnosis-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 12px 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            border-left: 6px solid #2C2C2C;
+        }
+
+        .diagnosis-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .diagnosis-info {
+            font-size: 12px;
+            color: #6B7280;
+            line-height: 1.4;
+            letter-spacing: 0.1px;
+        }
+
+        /* Medicine Table */
+        .med-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--brand-primary);
+        }
+
+        .med-section-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+            text-transform: none;
+            letter-spacing: normal;
+            white-space: nowrap;
+        }
+
+        .order-container {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            break-inside: avoid;
+        }
+
+        .order-text {
+            flex: 1;
+        }
+
+        .order-text h4 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #1E293B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .order-text p {
+            margin: 2px 0 0 0;
+            font-size: 10px;
+            color: #64748B;
+            font-weight: 500;
+        }
+
+        .order-btn {
+            background: #F12F46;
+            color: #FFFFFF !important;
+            padding: 12px 28px;
+            border-radius: 100px;
+            text-decoration: none !important;
+            font-weight: 800;
+            font-size: 12px;
+            display: inline-flex !important;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(241, 47, 70, 0.2);
+            border: none;
+            flex-shrink: 0;
+        }
+
+        .order-btn img {
+            height: 18px;
+            filter: brightness(0) invert(1);
+        }
+
+        .med-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            table-layout: fixed;
+        }
+
+        .med-table th {
+            text-align: left;
+            font-size: 10.5px;
+            font-weight: 800;
+            color: var(--text-dark);
+            padding: 12px 10px;
+            background: var(--bg-soft);
+            border-bottom: 2px solid var(--brand-primary);
+        }
+
+        .med-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            font-size: 13px; /* Matched to Diagnosis Info */
+        }
+
+        .med-table tr:last-child td {
+            border-bottom: 2px solid var(--text-dark);
+        }
+
+        .med-title {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            word-wrap: break-word;
+        }
+
+        .med-content {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .med-content a {
+            color: var(--brand-teal);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        /* Dosage Display */
+        .dosage-freq {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark);
+            letter-spacing: 5px; /* Increased to allow label alignment */
+            margin-bottom: 2px;
+            font-family: monospace; /* Monospace for numbers helps alignment */
+        }
+
+        .dosage-labels {
+            font-size: 8px;
+            color: var(--text-light);
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding-left: 2px; /* Fine-tuned adjustment to align with monospace numbers */
+        }
+
+        .med-detail-main {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 2px;
+            font-size: 13px;
+        }
+
+        .med-duration {
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 12px;
+        }
+
+        /* Legend Footer */
+        .med-legend {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+            margin-bottom: 24px;
+        }
+
+        .legend-box {
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 9.5px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .legend-box:last-child {
+            flex: 1;
+            white-space: normal;
+        }
+
+        .legend-box strong {
+            color: var(--brand-primary);
+        }
+
+
+
+        /* Advice Grid */
+        /* Advice Section Redesign */
+        .advice-section {
+            margin-top: 25px;
+            margin-bottom: 30px;
+        }
+
+        .advice-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .advice-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            text-transform: none;
+            letter-spacing: normal;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .advice-header .line {
+            height: 1px;
+            background: #E5E7EB;
+            flex-grow: 1;
+        }
+
+        .advice-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 40px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .advice-list li {
+            font-size: 11px;
+            color: #4B5563;
+            line-height: 1.5;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .advice-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 6.5px;
+            width: 4px;
+            height: 4px;
+            background: #000;
+            border-radius: 50%;
+        }
+
+
+        /* Footer & Trust */
+        .trust-footer {
+            margin-top: 10px;
+            border: 1px solid #F1F5F9;
+            padding: 15px 25px;
+            background: #F8FAFC;
+            border-radius: 16px;
+            margin-bottom: 25px;
+        }
+
+        .legal-block {
+            font-size: 11px;
+            color: #475569;
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .legal-block strong {
+            color: #0F172A;
+            font-weight: 800;
+        }
+
+        .legal-subtext {
+            color: #94A3B8;
+            margin-top: 6px;
+            display: block;
+            font-size: 10px;
+        }
+
+        .footer-bar {
+            background-color: #2C2C2C;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .qr-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+
+
+        /* Signature Row */
+        .signature-row {
+            display: flex;
+            gap: 50px;
+            align-items: center;
+            margin-top: 20px;
+            margin-bottom: 24px;
+            padding-top: 5px; /* Changed from border-top */
+            break-inside: avoid;
+            break-before: auto; /* Added */
+        }
+
+        .sig-item {
+            text-align: center;
+        }
+
+        .sig-img {
+            height: 60px;
+            width: auto;
+            margin-bottom: 5px;
+        }
+
+        .sig-name {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-dark);
+        }
+
+        .sig-qual {
+            font-size: 10px;
+            color: var(--text-light);
+        }
+
+
+
+        /* PDF PAGE BREAK CONTROL */
+        .med-table {
+            page-break-inside: auto;
+        }
+
+        .med-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .med-table thead {
+            display: table-header-group;
+        }
+
+        .advice-section {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .signature-row {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .trust-footer {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        /* Page Numbers for Scalability */
+        .page-header {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="watermark">sehatUP Official</div>
+
+    <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
+        <div class="header-left-col">
+            <img src="{{logoBase64}}" alt="sehatUP" style="height: 38px; display: block;">
+        </div>
+        <div class="header-right-col" style="text-align: right;">
+            <div style="font-size: 10px; font-weight: 700; color: #1E293B; margin-bottom: 3px;">www.sehatup.com</div>
+            <div style="font-size: 9px; font-weight: 500; color: #64748B; margin-bottom: 2px;">support@sehatup.com</div>
+            <div style="font-size: 9px; font-weight: 500; color: #64748B;">+91-9355539355</div>
+        </div>
+    </div>
+
+    <div class="details-section">
+        <div class="patient-details-grid">
+            <div><span class="label">Patient Name</span> <span class="val">{{patientName}}</span></div>
+            <div><span class="label">Age / Gender</span> <span class="val">{{patientAge}} / {{patientGender}}</span></div>
+            <div><span class="label">Date of Consultation</span> <span class="val">{{consultationDate}}</span></div>
+            <div><span class="label">Prescription ID</span> <span class="val">{{prescriptionID}}</span></div>
+        </div>
+    </div>
+
+    <div class="diagnosis-section">
+        <div class="diagnosis-header">
+            <h3 style="font-size: 18px; font-weight: 700; color: #111827; text-transform: none; letter-spacing: normal;">Clinical Diagnosis</h3>
+            <div class="line"></div>
+        </div>
+        <div class="diagnosis-card" style="border-left: 6px solid #2C2C2C; min-height: 60px;">
+            <div class="diagnosis-title" style="font-size: 16px;">{{primaryDiagnosis}}</div>
+            {{#if clinicalFindings}}
+            <div class="diagnosis-info">{{clinicalFindings}}</div>
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="med-section-header" style="border-bottom: none; align-items: center; margin-bottom: 8px; display: flex; justify-content: space-between;">
+        <h2 style="font-size: 18px; font-weight: 700; color: #111827; text-transform: none; letter-spacing: normal;">Medication Prescribed</h2>
+        <div style="height: 1px; background: #E5E7EB; flex-grow: 1; margin-left: 15px; margin-right: 15px;"></div>
+        <a href="{{#if cartLink}}{{cartLink}}{{else}}https://sehatup.com/{{/if}}" target="_blank" style="display: flex; align-items: center; background: #FF3B47; color: white; text-decoration: none; padding: 8px 18px; border-radius: 50px; font-weight: 700; font-size: 12px; box-shadow: 0 4px 12px rgba(255, 59, 71, 0.3); text-transform: uppercase; white-space: nowrap;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            BUY NOW MEDICINES
+        </a>
+    </div>
+
+    <div style="border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; margin-bottom: 4px;">
+        <table class="med-table" style="margin-bottom: 0;">
+            <thead>
+                <tr>
+                    <th style="width: 42%; background: #F8FAFC; padding: 14px 18px;">MEDICINE NAME</th>
+                    <th style="width: 15%; background: #F8FAFC; padding: 14px 18px; text-align: center;">DOSAGE</th>
+                    <th style="width: 30%; background: #F8FAFC; padding: 14px 18px;">MEDICINE DETAILS</th>
+                    <th style="width: 13%; background: #F8FAFC; padding: 14px 18px; text-align: right;">DURATION</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each recommendedProducts}}
+                <tr>
+                    <td style="padding: 15px 14px; vertical-align: top;">
+                        <div class="med-title" style="font-size: 12px; font-weight: 600; margin-bottom: 2px; color: #111827;">{{this.name}}</div>
+                        {{#if this.contains}}
+                        <div class="med-content" style="font-size: 9.5px; color: #6B7280; font-weight: 400;">{{this.contains}}</div>
+                        {{/if}}
+                    </td>
+
+                    <td style="padding: 15px 10px; text-align: center; vertical-align: top;">
+                        {{#if (eq this.dosageType "schedule")}}
+                        <div style="display: inline-flex; flex-direction: column; align-items: center; justify-content: flex-start;">
+                            <div style="display: grid; grid-template-columns: 14px 4px 14px 4px 14px 4px 14px; align-items: center; justify-items: center; margin-top: -2px;">
+                                <span style="font-size: 13px; font-weight: 700; color: {{#if (eq this.dosage.[0] "0")}}#CBD5E1{{else}}#1E293B{{/if}};">{{this.dosage.[0]}}</span>
+                                <span style="color: #E2E8F0; font-weight: 400; font-size: 12px;">-</span>
+                                <span style="font-size: 13px; font-weight: 700; color: {{#if (eq this.dosage.[1] "0")}}#CBD5E1{{else}}#1E293B{{/if}};">{{this.dosage.[1]}}</span>
+                                <span style="color: #E2E8F0; font-weight: 400; font-size: 12px;">-</span>
+                                <span style="font-size: 13px; font-weight: 700; color: {{#if (eq this.dosage.[2] "0")}}#CBD5E1{{else}}#1E293B{{/if}};">{{this.dosage.[2]}}</span>
+                                <span style="color: #E2E8F0; font-weight: 400; font-size: 12px;">-</span>
+                                <span style="font-size: 13px; font-weight: 700; color: {{#if (eq this.dosage.[3] "0")}}#CBD5E1{{else}}#1E293B{{/if}};">{{this.dosage.[3]}}</span>
+                                
+                                <span style="font-size: 8px; font-weight: 900; color: #1e293b; margin-top: 2px;">M</span>
+                                <div></div>
+                                <span style="font-size: 8px; font-weight: 900; color: #1e293b; margin-top: 2px;">A</span>
+                                <div></div>
+                                <span style="font-size: 8px; font-weight: 900; color: #1e293b; margin-top: 2px;">E</span>
+                                <div></div>
+                                <span style="font-size: 8px; font-weight: 900; color: #1e293b; margin-top: 2px;">N</span>
+                            </div>
+                        </div>
+                        {{else}}
+                        <div style="display: inline-flex; flex-direction: column; align-items: center; justify-content: flex-start;">
+                            <div style="font-size: 12px; font-weight: 600; color: #1E293B; line-height: 1.2;">{{this.dosageValue}} {{#if (eq this.dosageType "drops")}}Drops{{/if}}</div>
+                            {{#if this.dosageFrequency}}
+                            <div style="font-size: 8.5px; font-weight: 400; color: #6B7280; margin-top: 1px;">{{this.dosageFrequency}} Times / Day</div>
+                            {{/if}}
+                        </div>
+                        {{/if}}
+                    </td>
+                    <td style="padding: 15px 14px; vertical-align: top;">
+                        <div class="med-detail-main" style="font-size: 11px; font-weight: 600; color: #1E293B; margin-bottom: 2px;">{{this.type}} | {{this.timing}}</div>
+                        <div class="med-content" style="font-size: 9.5px; color: #6B7280; font-weight: 400;">{{this.instruction}}</div>
+                    </td>
+                    <td style="padding: 15px 14px; vertical-align: top; text-align: right;">
+                        <div class="med-duration" style="font-size: 11px; font-weight: 500; color: #111827;">{{this.duration}}</div>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="font-size: 10.5px; font-weight: 400; color: #1E293B; margin-top: 0px; margin-bottom: 20px; padding: 0 5px;">
+        M-A-E-N: Morning - Afternoon - Evening - Night
+    </div>
+
+    <div class="advice-section" style="margin-top: 30px; display: block !important;">
+        <div class="advice-header">
+            <h2 style="font-size: 18px; font-weight: 700; color: #111827; text-transform: none; letter-spacing: normal;">Lifestyle & Dietary Guidelines</h2>
+            <div class="line"></div>
+        </div>
+        <ul class="advice-list">
+            {{#each guidelines}}
+            <li>{{this}}</li>
+            {{/each}}
+        </ul>
+    </div>
+
+
+    <div class="signature-row" style="display: flex; {{#if (eq (len doctors) 1)}}justify-content: flex-start;{{else}}justify-content: space-between;{{/if}} align-items: flex-start; margin-top: 15px; text-align: center; gap: 20px;">
+        {{#each doctors}}
+        <div class="sig-item" style="{{#if (eq (len ../doctors) 1)}}flex: 0 1 auto;{{else if (eq (len ../doctors) 2)}}flex: 0 1 auto;{{else}}flex: 1;{{/if}} min-width: 0; text-align: center;">
+            <div style="min-height: 55px; display: flex; justify-content: center; align-items: center; margin-bottom: 8px;">
+                {{#each this.signatures}}
+        <img src="{{this}}" class="sig-img" style="height: 28px; opacity: 0.9;">
+                {{/each}}
+            </div>
+            <div class="sig-name" style="font-size: 11px; font-weight: 900; color: #000; text-transform: uppercase;">{{this.name}}</div>
+            <div class="sig-qual" style="font-size: 7.5px; color: #475569; white-space: pre-line; line-height: 1.2;">{{this.qualification}}</div>
+            {{#if this.registrationNo}}
+            <div style="font-size: 7.5px; font-weight: 700; color: #000; margin-top: 3px;">REG NO: {{this.registrationNo}}</div>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="disclaimer-section" style="margin-top: 8px; border-top: 1px solid #F3F4F6; padding-top: 6px;">
+        <p style="font-size: 7.5px; color: #9CA3AF; line-height: 1.4; margin: 0; font-weight: 400;">
+            <span style="font-weight: 600; color: #6B7280; text-transform: uppercase; font-size: 7px; letter-spacing: 0.3px;">Disclaimer:</span> This digital prescription is issued by registered medical practitioners via Sehatup Wellness Pvt Ltd. It is based on the online consultation and the information provided by the patient. * Not for medico-legal purposes. Do not self-medicate.
+        </p>
+    </div>
+
+
+</body>
+
+</html>

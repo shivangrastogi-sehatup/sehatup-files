@@ -1,0 +1,256 @@
+{% comment %} snippets/otp-verification-modal-test.liquid - Premium Redesign {% endcomment %}
+<style>
+  .otp-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    justify-content: center;
+    align-items: center;
+    z-index: 100000;
+    animation: fadeInModal 0.3s ease-out;
+  }
+
+  @keyframes fadeInModal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .otp-box {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 40px 32px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    position: relative;
+    text-align: center;
+    font-family: 'Inter', -apple-system, sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .otp-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s;
+    border-radius: 50%;
+  }
+
+  .otp-close:hover {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .otp-icon-wrapper {
+    width: 64px;
+    height: 64px;
+    background: #eff6ff;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    color: #2563eb;
+  }
+
+  .otp-box h3 {
+    margin-bottom: 12px;
+    font-size: 24px;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.025em;
+  }
+
+  .otp-box p {
+    font-size: 15px;
+    color: #64748b;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .otp-input-group {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  .otp-input {
+    width: 48px;
+    height: 56px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #f8fafc;
+    color: #1e293b;
+  }
+
+  .otp-input:focus {
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .otp-box .verify-btn,
+  .otp-box button {
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 14px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+    margin-top: 8px;
+  }
+
+  .otp-box button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.4);
+    filter: brightness(1.1);
+  }
+
+  .otp-box button:active {
+    transform: translateY(0);
+  }
+
+  .resend-text {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 24px;
+  }
+
+  #resend-link {
+    color: #2563eb;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 4px;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  #resend-link:hover {
+    color: #1e40af;
+    text-decoration: underline;
+  }
+
+  #otp-phone {
+    font-size: 18px;
+    font-weight: 600;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px 18px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    background: #f8fafc;
+    transition: all 0.2s;
+    text-align: center;
+    letter-spacing: 0.1em;
+  }
+
+  #otp-phone:focus {
+    border-color: #2563eb;
+    background: #fff;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  }
+
+  .warning-text {
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: none;
+    animation: shake 0.4s ease-in-out;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  #otp-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 100001;
+    display: none;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+</style>
+
+<div id="otp-modal" class="otp-screen">
+  <div class="otp-box">
+    <span class="otp-close" data-action="close-otp">&times;</span> 
+    
+    <div class="otp-icon-wrapper">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+    </div>
+
+    <div id="otp-step-1">
+      <h3 data-i18n="otp-title-1">Secure Your Report</h3>
+      <p data-i18n="otp-msg-1">Enter your phone number to receive your personalized health report via WhatsApp.</p>
+      
+      <input type="tel" id="otp-phone" maxlength="10" placeholder="Enter 10-digit phone number" data-i18n="otp-placeholder-phone" inputmode="numeric" pattern="\d*">
+      <div id="phone-warning" class="warning-text" data-i18n="phone-warning">Phone number must be exactly 10 digits.</div>
+      
+      <button data-action="send-otp" data-i18n="otp-btn-send">Send Verification Code</button>
+    </div>
+    
+    <div id="otp-step-2" style="display: none;">
+      <h3 data-i18n="otp-title-2">Verify Your Number</h3>
+      <p data-i18n="otp-msg-2">We've sent a 6-digit verification code to your phone.</p>
+      
+      <div class="otp-input-group">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1">
+      </div>
+
+      <div class="resend-text">
+        <span data-i18n="otp-resend-text">Didn't receive the code?</span>
+        <span id="resend-link" data-action="resend-otp" style="display: none;" data-i18n="otp-resend-link">Resend Code</span>
+        <span id="otp-timer" style="margin-left: 8px; font-weight: 700; color: #1e293b;"></span>
+      </div>
+
+      <button data-action="verify-otp" data-i18n="otp-btn-verify">Verify & Access Report</button>
+    </div>
+  </div>
+</div>
+
+<div id="otp-toast"></div>

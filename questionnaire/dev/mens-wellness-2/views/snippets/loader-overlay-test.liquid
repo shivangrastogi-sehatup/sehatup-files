@@ -1,0 +1,87 @@
+{% comment %} loader-overlay.liquid {% endcomment %}
+<style>
+    #loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        display: none; /* Hidden by default in background style */
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        flex-direction: column;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+    }
+
+    /* Active state */
+    #loader.show {
+        display: flex;
+        opacity: 1;
+    }
+
+    .loader-content {
+        text-align: center;
+        animation: fadeIn 1s ease-in-out;
+    }
+
+    .bg-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url("https://cdn.shopify.com/s/files/1/0924/5687/8383/files/questionnaire_blue.jpg?v=1742991013") no-repeat center center;
+        background-size: cover;
+        z-index: -1;
+        opacity: 0.5;
+    }
+
+</style>
+
+<!-- Loader Overlay - Starts VISIBLE to prevent refresh flickers -->
+<div id="loader" class="show">
+  <div class="loader-content">
+    <img
+      src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/GIF.gif?v=1745393486"
+      alt="Loading..."
+      style="width: 100px; height: 100px"
+    >
+    <p style="font-size: 18px; font-weight: bold">Calculating your personalized health report... 😊</p>
+    <p style="font-size: 16px">Please wait a moment while we analyze your responses.</p>
+  </div>
+</div>
+
+<!-- Background Overlay -->
+<div class="bg-overlay"></div>
+
+<script>
+    function showLoader() {
+        const loader = document.getElementById("loader");
+        loader.style.display = "flex";
+        // Use requestAnimationFrame or a tiny timeout to trigger the transition after display: flex
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                loader.classList.add("show");
+            });
+        });
+        document.body.style.overflow = "hidden";
+        
+        // Safety timeout shortened or managed better - usually engine handles this
+    }
+
+    function hideLoader() {
+        const loader = document.getElementById("loader");
+        loader.classList.remove("show");
+        
+        // Wait for the transition to finish before hiding
+        setTimeout(() => {
+            if (!loader.classList.contains("show")) {
+                loader.style.display = "none";
+                document.body.style.overflow = "auto";
+            }
+        }, 500); // Matches the 0.5s transition
+    }
+</script>

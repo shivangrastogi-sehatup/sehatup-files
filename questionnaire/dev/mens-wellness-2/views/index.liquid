@@ -1,0 +1,307 @@
+{% comment %}mens-wellness.liquid {% endcomment %}
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+{{ 'questionnaire-2.css' | asset_url | stylesheet_tag }}
+
+<div class="bg-overlay"></div>
+
+{% render 'loader-overlay-test' %}
+
+<div id="questionnaire">
+  <div class="container">
+    <div class="header">
+      <h1>Men's Sexual Wellness Score</h1>
+    </div>
+
+    <div id="desktop-steps" class="desktop-steps-container"></div>
+
+    <div id="mobile-step-indicator" class="mobile-indicator-container">
+      <div class="mobile-indicator-card">
+        <div class="mobile-info-wrapper">
+          <div class="mobile-step-circle-wrapper">
+            <p class="mobile-step-label">STEP</p>
+            <div id="mobile-step-number-container" class="mobile-step-circle">1</div>
+          </div>
+          <div class="mobile-details-wrapper">
+            <p id="mobile-question-counter" class="mobile-question-counter">Q1 / 1</p>
+            <p id="mobile-step-name" class="mobile-step-name">About You</p>
+            <div id="mobile-step-progress-bar">
+              <div id="mobile-step-progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="step-1" class="step active">
+      <h2>Welcome to the Men's Sexual Health Quiz!</h2>
+      <ul>
+        <li>Takes just a few minutes</li>
+        <li>100% private and secure</li>
+        <li>You must be 18 or older to participate</li>
+      </ul>
+      <div class="navigation">
+        <div></div>
+        <button data-action="start">Start Questionnaire</button>
+      </div>
+    </div>
+
+    <div id="step-2" class="step about-you-container">
+      <h2>Tell us a bit about yourself to personalize your experience.</h2>
+      <form id="about-you-form">
+        <div class="form-row">
+          <label for="name">Enter Your Full Name:</label>
+          <input type="text" id="name" placeholder="Your name" required>
+          <span id="name-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="dob">Enter Your Date of Birth:</label>
+          <input type="date" id="dob" required>
+          <span id="age-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="phone">Enter Your Phone Number:</label>
+          <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required>
+          <span id="phone-error" class="error-message"></span>
+        </div>
+        <div class="navigation">
+          <button
+            type="button"
+            class="prev-btn"
+            data-action="prev"
+            data-step="1"
+          >
+            Previous
+          </button>
+          <button type="button" class="next-btn" data-action="validate-user-info">Next</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="step-3" class="step">
+
+      <div id="concern-selection-content">
+
+        <h2>Select the challenge you’re facing - we’re here to help</h2>
+
+        <div class="options">
+
+          <button class="option-button" data-action="select-concern" data-concern-key="ed" data-step-id="3">
+            Erectile Dysfunction (ED)
+          </button>
+
+          <button class="option-button" data-action="select-concern" data-concern-key="pe" data-step-id="3">
+            Premature Ejaculation (PE)
+          </button>
+
+          <button class="option-button" data-action="select-concern" data-concern-key="both" data-step-id="3">
+            Both
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="navigation" id="concern-navigation">
+
+        <button
+
+
+
+
+
+          type="button"
+
+
+
+
+
+          class="prev-btn"
+
+
+
+
+
+          data-action="prev"
+
+
+
+
+
+          data-step="2"
+
+
+
+
+        >
+          Previous
+        </button>
+
+      </div>
+
+    </div>
+
+    <div id="step-question" class="step">
+      <div id="question-content"></div>
+      <div id="faq-container" class="faq-container" style="display: none"></div>
+      <div class="navigation" id="question-navigation">
+        <button
+          type="button"
+          class="prev-btn"
+          data-action="prev-question"
+        >
+          Previous
+        </button>
+        <div id="next-button-container"></div>
+      </div>
+    </div>
+
+    <div id="result-page" class="step">
+      <div class="final-layout">
+        <div class="left-column">
+          <div class="patient-details">
+            <h3>Assessment Report</h3>
+            <div class="patient-details-container">
+              <div class="patient-info-text">
+                <p>
+                  <strong>Patient Name:</strong>
+                  <span id="user-name"></span>
+                </p>
+                <p>
+                  <strong>Primary Concern:</strong>
+                  <span id="user-concern"></span>
+                </p>
+              </div>
+              <div class="patient-info-score">
+                <div class="score-box" id="score-box">
+                  <div
+                    class="circular-progress"
+                    id="circular-progress"
+                  >
+                    <div class="inner-text">
+                      <p class="progress-value" id="progress-value">0%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="condition-text" style="margin-top: 10px"></div>
+            <span class="patient-id" id="patient-id"></span>
+            <div class="future-risk-section">
+              <h3>Future Risk (If Not Treated)</h3>
+              <div id="future-risk"></div>
+              <div id="future-risk-tags" class="risk-tags-container"></div>
+            </div>
+            <div class="whatsapp-button-container">
+              <button
+                class="whatsapp-report-btn"
+                data-action="open-otp"
+              >
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
+                  alt="WhatsApp"
+                >
+                Get My Report on WhatsApp
+              </button>
+            </div>
+            <div class="restart-container" style="margin-top: 20px; text-align: center;">
+               <button class="restart-secondary-btn" data-action="restart-journey">
+                  Restart Health Check
+               </button>
+            </div>
+          </div>
+          <div class="results-timeline">
+            <h3>Condition-Based Progress Timeline</h3>
+            <div id="condition-timeline-container"></div>
+          </div>
+          <a
+            href="https://wa.me/919355539355?text=Hi%20I%20need%20help%20regarding%20my%20health%20report."
+            target="_blank"
+          >
+            <div class="support-section">
+              <img
+                src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Banner_6.jpg?v=1745476460"
+                alt="24x7 Expert Doctor Support"
+                style="max-width: 100%"
+              >
+            </div>
+          </a>
+          <div class="treatment-plan">
+            <h3>What you get in your treatment plan</h3>
+            <ul>
+              <li>Doctor Support</li>
+              <li>Ayurvedic Medicine</li>
+              <li>Custom Plan</li>
+            </ul>
+          </div>
+        </div>
+        <div class="right-column">
+          <div class="recommended-treatment">
+            <h3>Recommended Treatment</h3>
+            <div class="product-list" id="product-list"></div>
+            <div class="checkout-section">
+              <div class="checkout-section-divider"></div>
+              <p>
+                Total Amount:
+                <span id="total-amount">0</span>
+                <small class="gst-note">(GST included)</small>
+              </p>
+              <div class="buy-button-container">
+                <button
+                  class="buy-button"
+                  data-action="buy-now"
+                >
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="ugc-content"></div>
+    </div>
+  </div>
+</div>
+
+{% render 'otp-verification-modal' %}
+<div id="productModal" class="modal"></div>
+<div id="exit-popup" class="modal"></div>
+
+<script>
+  // 1. Initialize a global object to hold live Shopify data
+  window.shopifyLiveProducts = {};
+
+  {% comment %}
+    We loop through a collection that contains your quiz products.
+    Make sure you create a collection in Shopify (e.g., with handle 'all')
+    or use 'collections.all' if you don't have many products.
+  {% endcomment %}
+
+  {% paginate collections.all.products by 250 %}
+    {% for product in collections.all.products %}
+
+      // Store data keyed by the product Handle
+      window.shopifyLiveProducts["{{ product.handle }}"] = {
+        title: {{ product.title | json }},
+        featuredImage: "https:{{ product.featured_image | image_url: width: 600 }}",
+        url: "{{ product.url }}",
+        variants: {}
+      };
+
+      // Store specific variant details (Price, Stock)
+      {% for variant in product.variants %}
+        window.shopifyLiveProducts["{{ product.handle }}"].variants["{{ variant.id }}"] = {
+          price: {{ variant.price }}, // Price in cents (e.g. 49900)
+          compareAtPrice: {{ variant.compare_at_price | default: 'null' }},
+          available: {{ variant.available }}, // true/false based on inventory
+          inventory_quantity: {{ variant.inventory_quantity }}
+        };
+      {% endfor %}
+
+    {% endfor %}
+  {% endpaginate %}
+</script>
+<script defer="defer" src="{{ 'firebase-config.js' | asset_url }}"></script>
+<script defer="defer" src="{{ 'product-database-common.js' | asset_url }}"></script>
+<script defer="defer" src="{{ 'config-mens-health-2.js' | asset_url }}"></script>
+<script defer="defer" src="{{ 'questionnaire-engine-2.js' | asset_url }}"></script>

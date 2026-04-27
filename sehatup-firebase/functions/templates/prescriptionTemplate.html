@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Prescription Template</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 210mm;
+            font-family: 'Montserrat', sans-serif;
+            color: #333;
+            background-color: #fff;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            padding: 10px;
+            position: relative;
+        }
+
+        @page {
+            size: auto;
+            margin: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+
+        .header-left {
+            max-width: 400px;
+        }
+
+        .logo {
+            height: 20px;
+            width: auto;
+            margin-bottom: 8px;
+        }
+
+        .contact-info {
+            font-size: 13px;
+            margin: 10px 0 0 0;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .header-right {
+            text-align: right;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 45px;
+            color: #333;
+        }
+
+        .patient-details {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            color: #000;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            font-size: 13px;
+        }
+
+        .detail-item {
+            font-weight: 600;
+        }
+
+        .label {
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #000;
+            margin-right: 5px;
+            font-size: 11px;
+        }
+
+        .diagnosis-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .diagnosis-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .medication-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 35px;
+            border: 1px solid #000;
+        }
+
+        .medication-table th,
+        .medication-table td {
+            border: 1px solid #000;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 13px;
+        }
+        
+        .medication-table tr {
+            page-break-inside: avoid;
+        }
+
+        .medication-table th {
+            font-weight: 800;
+            background-color: #f0f0f0;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+
+        .medication-table td:first-child,
+        .medication-table th:first-child {
+            width: 40px;
+            text-align: center;
+        }
+
+        .advice-section {
+            margin-top: 30px;
+        }
+
+        .advice-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            page-break-inside: avoid;
+        }
+
+        .advice-sub-section h4 {
+            margin: 0 0 15px 0;
+            font-weight: 800;
+            font-size: 16px;
+            color: #000;
+        }
+
+        .advice-list {
+            margin: 0;
+            padding-left: 18px;
+            list-style-type: disc;
+        }
+
+        .advice-list li {
+            font-size: 12px;
+            margin-bottom: 8px;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .footer {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+            page-break-inside: avoid;
+        }
+
+        .signature-container {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .signature {
+            max-height: 50px;
+            width: auto;
+        }
+
+        .doctor-name {
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 3px;
+            color: #000;
+        }
+
+        .doctor-details {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        .prescription-label {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-decoration: underline;
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-left">
+            <a href="https://sehatup.com" target="_blank" style="text-decoration: none;">
+                <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/New_Logo_Red_and_Black_without_tagline.png?v=1750143614"
+                    alt="sehatUP" class="logo">
+            </a>
+            <p class="contact-info">sehatUP Digital Health Clinic | +91-9355539355</p>
+        </div>
+        <div class="header-right">
+            DATE : {{date}}
+        </div>
+    </div>
+
+    <div class="prescription-label">PRESCRIPTION</div>
+
+
+
+    <div class="patient-details">
+        <div class="section-title">Patient Details;</div>
+        <div class="details-grid">
+            <div class="detail-item"><span class="label">NAME:</span> {{patientName}}</div>
+            <div class="detail-item"><span class="label">GENDER:</span> {{patientGender}}</div>
+            <div class="detail-item"><span class="label">AGE:</span> {{patientAge}}</div>
+            <div class="detail-item"><span class="label">Registration ID:</span> {{displayId}}</div>
+        </div>
+    </div>
+
+    <div class="diagnosis-section">
+        <div class="section-title">Diagnosis</div>
+        <div class="diagnosis-box">
+            {{diagnosis}}
+        </div>
+    </div>
+
+    <table class="medication-table">
+        <thead>
+            <tr>
+                <th>S.No.</th>
+                <th>Medicine Name</th>
+                <th>Regimen</th>
+                <th>Duration</th>
+                <th>Remarks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each medications}}
+            <tr>
+                <td>{{this.sNo}}</td>
+                <td>{{this.name}}</td>
+                <td>{{this.regimen}}</td>
+                <td>{{this.duration}}</td>
+                <td>{{this.remarks}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+
+    <div class="advice-section">
+        <div class="section-title">Advice</div>
+        <div class="advice-box">
+            <div class="advice-sub-section">
+                <h4>Diet</h4>
+                <ul class="advice-list">
+                    {{#each dietAdvice}}
+                    <li>{{this}}</li>
+                    {{/each}}
+                </ul>
+            </div>
+            <div class="advice-sub-section">
+                <h4>Lifestyle</h4>
+                <ul class="advice-list">
+                    {{#each lifestyleAdvice}}
+                    <li>{{this}}</li>
+                    {{/each}}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        {{#if doctorSignatures}}
+        <div style="display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; width: 100%;">
+            {{#each doctorSignatures}}
+            <img src="{{this}}" alt="Signature" style="height: 60px; width: auto; object-fit: contain;">
+            {{/each}}
+        </div>
+        {{/if}}
+        <div style="font-size: 10px; color: #777; font-style: italic; margin-top: 5px; width: 100%;">
+            * Not for medico-legal purposes | Sehatup Wellness Pvt Ltd | <a href="https://sehatup.com" target="_blank" style="color: inherit; text-decoration: none;">www.sehatup.com</a> | support@sehatup.com | 9355539355
+        </div>
+    </div>
+</body>
+
+</html>

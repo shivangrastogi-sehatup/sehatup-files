@@ -1,0 +1,32 @@
+{
+    "rewrites": [
+        {
+            "source": "/api-sehatup/:path*",
+            "destination": "https://sehatup.com/:path*"
+        },
+        {
+            "source": "/api-shorten-tiny/:path*",
+            "destination": "https://tinyurl.com/:path*"
+        },
+        {
+            "source": "/api-shorten-isgd/:path*",
+            "destination": "https://is.gd/:path*"
+        },
+        {
+            "source": "/api-shorten-vgd/:path*",
+            "destination": "https://v.gd/:path*"
+        },
+        {
+            "source": "/api-shorten-ulvis/:path*",
+            "destination": "https://ulvis.net/:path*"
+        },
+        {
+            "source": "/api-shorten-chilp/:path*",
+            "destination": "https://chilp.it/:path*"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}

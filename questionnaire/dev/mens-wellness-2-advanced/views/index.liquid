@@ -1,0 +1,445 @@
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+{{ 'questionnaire-test.css' | asset_url | stylesheet_tag }}
+
+<div class="bg-overlay"></div>
+
+{% render 'loader-overlay-test' %}
+
+<div id="questionnaire">
+  <div class="container">
+    <div class="language-switch">
+      <button class="lang-btn active" data-action="change-lang" data-lang="en">EN</button>
+      <button class="lang-btn" data-action="change-lang" data-lang="hi">हिंदी</button>
+    </div>
+    <div class="header">
+      <h1 data-i18n="main-title">Men's Sexual Wellness Score</h1>
+    </div>
+
+    <div id="desktop-steps" class="desktop-steps-container"></div>
+
+    <div id="mobile-step-indicator" class="mobile-indicator-container">
+      <div class="mobile-indicator-card">
+        <div class="mobile-info-wrapper">
+          <div class="mobile-step-circle-wrapper">
+            <p class="mobile-step-label">STEP</p>
+            <div id="mobile-step-number-container" class="mobile-step-circle">1</div>
+          </div>
+          <div class="mobile-details-wrapper">
+            <p id="mobile-question-counter" class="mobile-question-counter">Q1 / 1</p>
+            <p id="mobile-step-name" class="mobile-step-name">About You</p>
+            <div id="mobile-step-progress-bar">
+              <div id="mobile-step-progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="step-1" class="step active">
+      <h2 data-i18n="welcome-title">Welcome to the Men's Sexual Health Quiz!</h2>
+      <div class="welcome-content-flex">
+        <ul>
+          <li data-i18n="welcome-point-1">Takes just a few minutes</li>
+          <li data-i18n="welcome-point-2">100% private and secure</li>
+          <li data-i18n="welcome-point-3">You must be 18 or older to participate</li>
+        </ul>
+        <div class="welcome-navigation">
+          <button data-action="start" class="btn-primary" data-i18n="btn-start">Start Questionnaire</button>
+          <button id="show-previous-btn" data-action="show-previous" class="btn-secondary" style="display: none;" data-i18n="btn-prev-report">Show Previous Report</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="step-2" class="step about-you-container">
+      <h2 data-i18n="personal-info-title">Tell us a bit about yourself to personalize your experience.</h2>
+      <form id="about-you-form">
+        <div class="form-row">
+          <label for="name" data-i18n="label-name">Enter Your Full Name:</label>
+          <input type="text" id="name" placeholder="Your name" data-i18n="placeholder-name" required>
+          <span id="name-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="dob" data-i18n="label-dob">Enter Your Date of Birth:</label>
+          <input type="date" id="dob" required>
+          <span id="age-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="phone" data-i18n="label-phone">Enter Your Phone Number:</label>
+          <input type="tel" id="phone" placeholder="Phone" data-i18n="placeholder-phone" maxlength="10" pattern="\d{10}" required>
+          <span id="phone-error" class="error-message"></span>
+        </div>
+        <div class="navigation">
+          <button
+            type="button"
+            class="prev-btn"
+            data-action="prev"
+            data-i18n="btn-prev"
+          >
+            Previous
+          </button>
+          <button type="button" class="next-btn" data-action="validate-user-info" data-i18n="btn-next">Next</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="step-3" class="step">
+
+      <div id="concern-selection-content">
+        <h2 data-i18n="step-3-title">Select the challenge you’re facing - we’re here to help</h2>
+        <div class="options">
+          <button class="option-button" data-action="select-concern" data-concern-key="ed" data-step-id="3" data-i18n="btn-ed">
+            Erectile Dysfunction (ED)
+          </button>
+          <button class="option-button" data-action="select-concern" data-concern-key="pe" data-step-id="3" data-i18n="btn-pe">
+            Premature Ejaculation (PE)
+          </button>
+          <button class="option-button" data-action="select-concern" data-concern-key="both" data-step-id="3" data-i18n="btn-both">
+            Both
+          </button>
+        </div>
+      </div>
+
+      <div class="navigation" id="concern-navigation">
+
+        <button
+
+
+
+
+
+          type="button"
+
+
+
+
+
+          class="prev-btn"
+
+
+
+
+
+          data-action="prev"
+
+
+
+
+
+          data-step="2"
+
+
+
+
+        >
+          Previous
+        </button>
+
+      </div>
+
+    </div>
+
+    <div id="step-question" class="step">
+      <div id="question-content"></div>
+      <div id="faq-container" class="faq-container" style="display: none"></div>
+      <div class="navigation" id="question-navigation">
+        <button
+          type="button"
+          class="prev-btn"
+          data-action="prev-question"
+        >
+          Previous
+        </button>
+        <div id="next-button-container"></div>
+      </div>
+    </div>
+
+    <div id="result-page" class="step">
+      <div class="result-navigation">
+        <button class="back-arrow-btn" data-action="go-back-from-results">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          <span data-i18n="btn-back-to-quiz">Back to Questionnaire</span>
+        </button>
+      </div>
+      <div class="final-layout">
+        <div class="left-column">
+          <div class="patient-details">
+            <h3 class="assessment-header">
+              <div style="display: flex; align-items: center;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; color: #2563eb;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span data-i18n="report-title">Assessment Report</span>
+              </div>
+              <span class="report-header-date"><span data-i18n="label-report-date">Date:</span> <span id="report-date"></span></span>
+            </h3>
+            <div class="patient-assessment-header-grid">
+              <!-- Left: Stacked Info (Details + Tagline) -->
+              <div class="header-info-stack">
+                <div class="details-grid-compact">
+                  <div class="detail-item">
+                    <span class="detail-label" data-i18n="label-patient-name">Patient Name</span>
+                    <span class="detail-value" id="user-name"></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label" data-i18n="label-age">Age</span>
+                    <span class="detail-value" id="user-age"></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label" data-i18n="label-category">Category</span>
+                    <span class="detail-value" data-i18n="mens-wellness-category">Men's Wellness</span>
+                  </div>
+                </div>
+
+                <!-- NEW: Dynamic Issue Header & Condition Details -->
+                <div id="issue-header" class="issue-header-text"></div>
+                <div id="condition-details" class="condition-details-html"></div>
+                
+                <!-- Keep hidden/legacy if needed for engine but we'll update engine -->
+                <div id="condition-text" style="display:none"></div>
+              </div>
+
+              <!-- Right: Standalone Score Circle -->
+              <div class="header-score-column">
+                <div class="score-box-mini">
+                  <div class="circular-progress-small" id="circular-progress">
+                    <div class="inner-value-box">
+                      <p class="progress-val-text" id="progress-value">
+                        <span class="score-num">0</span><span class="percent-sign">%</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div id="risk-level" class="risk-level-badge"></div>
+              </div>
+            </div>
+            <span class="patient-id" id="patient-id"></span>
+            <div class="future-risk-section">
+              <h3 class="assessment-header" style="font-size: 18px; margin-bottom: 20px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; color: #dc2626;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <span data-i18n="label-future-risk-title">Future Risk (If Not Treated)</span>
+              </h3>
+              <div id="future-risk"></div>
+              <div id="future-risk-tags" class="risk-tags-container"></div>
+            </div>
+            <div class="whatsapp-button-container">
+              <button
+                class="whatsapp-report-btn"
+                data-action="open-otp"
+              >
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
+                  alt="WhatsApp"
+                >
+                <span data-i18n="btn-whatsapp-report">Get My Report on WhatsApp</span>
+              </button>
+            </div>
+          </div>
+          <div class="results-timeline">
+            <h3 data-i18n="timeline-title">Condition-Based Progress Timeline</h3>
+            <div id="condition-timeline-container"></div>
+          </div>
+          <a
+            href="https://wa.me/919355539355?text=Hi%20I%20need%20help%20regarding%20my%20health%20report."
+            target="_blank"
+          >
+            <div class="support-section">
+              <img
+                src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Banner_6.jpg?v=1745476460"
+                alt="24x7 Expert Doctor Support"
+                style="max-width: 100%"
+              >
+            </div>
+          </a>
+          <div class="treatment-plan">
+            <h4 data-i18n="included-plan-title">What's included in your Plan</h4>
+            <div class="treatment-grid">
+              <div class="treatment-item">
+                <div class="treatment-icon doctor-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </div>
+                <div class="treatment-text" data-i18n="expert-doctor-support">Expert Doctor Support</div>
+              </div>
+              <div class="treatment-item">
+                <div class="treatment-icon medicine-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12v2H6zm11 3H7c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 9h-3v3h-2v-3H8v-2h3V10h2v3h3v2z"/></svg>
+                </div>
+                <div class="treatment-text" data-i18n="ayurvedic-medicine">Ayurvedic Medicine</div>
+              </div>
+              <div class="treatment-item">
+                <div class="treatment-icon plan-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                </div>
+                <div class="treatment-text" data-i18n="custom-diet-exercise">Custom Diet & Exercise</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="right-column">
+          <div class="recommended-treatment">
+            <h3 data-i18n="recommended-treatment">Recommended Treatment</h3>
+            <div class="product-list" id="product-list"></div>
+            <div class="checkout-section">
+              <p>
+                <span data-i18n="label-total-amount">Total Amount:</span>
+                <span id="total-amount">0</span>
+                <small class="gst-note" data-i18n="label-gst-included">(GST included)</small>
+              </p>
+              <div class="buy-button-container">
+                <button
+                  class="buy-button"
+                  data-action="buy-now"
+                  data-i18n="btn-buy-now"
+                >
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="ugc-content"></div>
+      
+      <!-- Debug Footer for Version Sync Verification (Target: v3.6.3) -->
+      <div id="footer-version-note" style="text-align: center; padding: 20px; border-top: 1px solid #f0f0f0; margin-top: 20px; opacity: 0.5;"></div>
+    </div>
+  </div>
+</div>
+
+{% render 'otp-verification-modal-test' %}
+<div id="productModal" class="modal"></div>
+<div id="exit-popup" class="modal"></div>
+
+<script>
+  // 1. Initialize a global object to hold live Shopify data
+  window.shopifyLiveProducts = {};
+
+  {% comment %}
+    We loop through a collection that contains your quiz products.
+    Make sure you create a collection in Shopify (e.g., with handle 'all')
+    or use 'collections.all' if you don't have many products.
+  {% endcomment %}
+
+  {% paginate collections.all.products by 250 %}
+    {% for product in collections.all.products %}
+
+      // Store data keyed by the product Handle
+      window.shopifyLiveProducts["{{ product.handle }}"] = {
+        title: {{ product.title | json }},
+        featuredImage: "https:{{ product.featured_image | image_url: width: 600 }}",
+        url: "{{ product.url }}",
+        variants: {}
+      };
+
+      // Store specific variant details (Price, Stock)
+      {% for variant in product.variants %}
+        window.shopifyLiveProducts["{{ product.handle }}"].variants["{{ variant.id }}"] = {
+          price: {{ variant.price }}, // Price in cents (e.g. 49900)
+          compareAtPrice: {{ variant.compare_at_price | default: 'null' }},
+          available: {{ variant.available }}, // true/false based on inventory
+          inventory_quantity: {{ variant.inventory_quantity }}
+        };
+      {% endfor %}
+
+    {% endfor %}
+  {% endpaginate %}
+</script>
+<script defer="defer" src="{{ 'development-firebase-config.js' | asset_url }}?v={{ 'now' | date: '%S' }}"></script>
+<script defer="defer" src="{{ 'product-database-common-test.js' | asset_url }}?v={{ 'now' | date: '%S' }}"></script>
+<script defer="defer" src="{{ 'config-mens-health-test.js' | asset_url }}?v={{ 'now' | date: '%S' }}"></script>
+<script defer="defer" src="{{ 'questionnaire-engine-test.js' | asset_url }}?v={{ 'now' | date: '%S' }}"></script>
+
+<!-- Version 3.6.5 - Categorical Separation (EN/HI Divided Flow) -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof QuestionnaireEngine !== 'undefined') {
+       console.log("NUCLEAR OVERRIDE v3.6.5: Categorical Separation Initialized");
+       
+       QuestionnaireEngine.prototype.renderResults = function() {
+          const lang = localStorage.getItem(`selected_lang_${this.config.id}`) || this.currentLanguage || 'en';
+          this.currentLanguage = lang; 
+          this.version = "3.6.5 (Divided Flow)";
+          
+          const langData = this.uiTranslations[lang];
+          if (!langData) return;
+
+          // 1. Force Global Re-calculation
+          if (typeof this.config.resultRules === 'function') {
+               this.state.results = this.config.resultRules(this.state.healthScore, this.state.allAnswers, this.config, this.state.userInfo);
+          }
+
+          // 2. Clear & Reset Static UI
+          this.updateStaticUI();
+          this.updateLanguageToggle();
+
+          // 3. DIVIDED FLOW: English Baseline vs Hindi Transformation
+          const rawName = this.state.userInfo.name || "Patient";
+          let displayName = rawName;
+          let displayIssueTitle = this.state.results.issueTitle;
+          let displayConditionHTML = this.state.results.conditionTextHTML;
+          let riskLabel = this.state.results.riskLevel || 'high-risk';
+          let currency = "Rs.";
+
+          if (lang === 'hi') {
+              // HINDI TRANSFORMATION
+              const nameMap = { 'shivang': 'शिवांग', 'shivam': 'शिवम', 'rohit': 'रोहित' };
+              displayName = nameMap[rawName.toLowerCase().trim()] || rawName;
+              displayIssueTitle = this.state.results.issueTitleHi || displayIssueTitle;
+              displayConditionHTML = this.state.results.conditionTextHTMLHi || displayConditionHTML;
+              riskLabel = langData[riskLabel] || riskLabel;
+              currency = "रु.";
+          } else {
+              // ENGLISH BASELINE (Pure reset)
+              const reverseMap = { 'शिवांग': 'Shivang', 'शिवम': 'Shivam' };
+              displayName = reverseMap[rawName] || rawName;
+              currency = "Rs.";
+          }
+
+          // 4. Apply Updates Categorically
+          const userNameEl = document.getElementById('user-name');
+          if (userNameEl) userNameEl.innerText = displayName;
+
+          if (this.state.userInfo.dob) {
+              const dob = new Date(this.state.userInfo.dob);
+              const today = new Date();
+              let age = today.getFullYear() - dob.getFullYear();
+              const m = today.getMonth() - dob.getMonth();
+              if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                  age--;
+              }
+              const userAgeEl = document.getElementById('user-age');
+              if (userAgeEl) userAgeEl.innerText = age;
+          }
+
+          const userConcernEl = document.getElementById('user-concern');
+          const issueHeaderEl = document.getElementById('issue-header');
+          if (userConcernEl) userConcernEl.innerText = displayIssueTitle;
+          if (issueHeaderEl) issueHeaderEl.innerText = displayIssueTitle;
+
+          const conditionTextEl = document.getElementById('condition-text');
+          const conditionDetailsEl = document.getElementById('condition-details');
+          if (conditionTextEl) conditionTextEl.innerHTML = displayConditionHTML;
+          if (conditionDetailsEl) conditionDetailsEl.innerHTML = displayConditionHTML;
+
+          const riskLevelEl = document.getElementById('risk-level');
+          if (riskLevelEl) {
+              riskLevelEl.innerText = langData[riskLabel] || riskLabel;
+          }
+
+          const totalAmountEl = document.getElementById('total-amount');
+          if (totalAmountEl) {
+              const totalVal = totalAmountEl.textContent.match(/\d+/);
+              if (totalVal) totalAmountEl.textContent = currency + totalVal[0];
+          }
+
+          // Update Future Risks
+          const riskContainer = document.getElementById('future-risk-tags');
+          if (riskContainer && this.state.results.futureRisks) {
+              riskContainer.innerHTML = this.state.results.futureRisks.map(risk => {
+                  const text = (lang === 'hi' && risk.hi) ? risk.hi : (risk.en || risk.text || risk);
+                  return `<div class="risk-tag">${text}</div>`;
+              }).join('');
+          }
+       };
+    }
+  });
+</script>
