@@ -1,5 +1,13 @@
 const QUICKREPLY_WEBHOOK_URL = 'https://api.quickreply.ai/webhook/company/GgbHGAprcvQx26qKL_c/key/YfQSwCRH4oBic4ecL';
 
+const formatPhone = (phone) => {
+    const p = String(phone || '').trim();
+    if (!p) return p;
+    if (p.startsWith('+')) return p;
+    if (p.startsWith('91') && p.length === 12) return '+' + p;
+    return '+91' + p;
+};
+
 /**
  * Triggers the 'order_placed' event on QuickReply.
  */
@@ -12,7 +20,7 @@ export const triggerOrderPlacedWebhook = async (name, phone) => {
             },
             body: JSON.stringify({
                 event: 'order_placed',
-                phone: phone,
+                phone: formatPhone(phone),
                 name: name
             }),
         });
@@ -36,7 +44,7 @@ export const triggerHealthKitReadyWebhook = async (name, phone, cartLink, prescr
             },
             body: JSON.stringify({
                 event: 'health_kit_ready',
-                phone: phone,
+                phone: formatPhone(phone),
                 name: name,
                 cartlink: cartLink,
                 prescription_url: prescriptionUrl
