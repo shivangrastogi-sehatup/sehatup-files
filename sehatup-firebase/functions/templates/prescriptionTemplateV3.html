@@ -55,23 +55,6 @@
         }
 
 
-        /* Watermark */
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 80px;
-            font-weight: 900;
-            white-space: nowrap;
-            z-index: -1;
-            pointer-events: none;
-            text-transform: uppercase;
-            opacity: 0.05;
-        }
-
-        .watermark .sehat { color: #000; }
-        .watermark .up { color: #F12F46; }
 
         .brand-sehat { color: #000; }
         .brand-up { color: #F12F46; }
@@ -572,7 +555,7 @@
         }
 
         .legal-subtext {
-            color: #94A3B8;
+            color: #475569;
             margin-top: 6px;
             display: block;
             font-size: 10px;
@@ -673,7 +656,6 @@
 </head>
 
 <body>
-    <div class="watermark">sehatUP Official</div>
 
     <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
         <div class="header-left-col">
@@ -700,10 +682,10 @@
             <h3 style="font-size: 18px; font-weight: 700; color: #111827; text-transform: none; letter-spacing: normal;">Clinical Diagnosis</h3>
             <div class="line"></div>
         </div>
-        <div class="diagnosis-card" style="border-left: 6px solid #2C2C2C; min-height: 60px;">
-            <div class="diagnosis-title" style="font-size: 16px;">{{primaryDiagnosis}}</div>
+        <div class="diagnosis-card" style="background: #F8FAFC; border: 1px solid #E5E7EB; border-left: 4px solid #F12F46; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);">
+            <div class="diagnosis-title" style="font-size: 16px; color: #111827; font-weight: 700; margin-bottom: 4px;">{{primaryDiagnosis}}</div>
             {{#if clinicalFindings}}
-            <div class="diagnosis-info">{{clinicalFindings}}</div>
+            <div class="diagnosis-info" style="font-size: 12.5px; color: #4B5563; line-height: 1.5;">{{clinicalFindings}}</div>
             {{/if}}
         </div>
     </div>
@@ -819,6 +801,166 @@
             <span style="font-weight: 600; color: #6B7280; text-transform: uppercase; font-size: 7px; letter-spacing: 0.3px;">Disclaimer:</span> This digital prescription is issued by registered medical practitioners via Sehatup Wellness Pvt Ltd. It is based on the online consultation and the information provided by the patient. * Not for medico-legal purposes. Do not self-medicate.
         </p>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         PAGE 2 — DETAILED DIET & LIFESTYLE PLAN
+         Rendered only when prescriptionTemplate is set (hasDietPlan = true).
+         page-break-before: always forces a new A4 page regardless of whether
+         the prescription above spans 1 page or 2 pages.
+    ════════════════════════════════════════════════════════════════════════ -->
+    {{#if hasDietPlan}}
+    <div style="page-break-before: always; break-before: page; padding: 0 2mm 4mm 2mm;">
+
+        <!-- ── PROMOTIONAL BANNER ── -->
+        <div style="background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%); border-radius: 12px; padding: 14px 22px; margin-bottom: 18px; text-align: center;">
+            <div style="font-size: 14px; font-weight: 700; color: #FFFFFF; letter-spacing: 0px; line-height: 1.5; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <img src="{{baseUrl}}/PDF-Assets/prescription/celebration.png" alt="🎉" style="height: 22px; width: 22px;">
+                Your Complimentary Free Personalized Diet Plan&nbsp;<span style="color: #6EE7B7; font-weight: 800;">(Worth ₹1500)</span>&nbsp;is Ready!
+            </div>
+        </div>
+
+        <!-- ── TITLE BLOCK ── -->
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px 22px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+            <div style="font-size: 20px; font-weight: 800; color: #0F172A; letter-spacing: -0.4px; margin-bottom: 9px;">
+                Diet &amp; Lifestyle Plan
+            </div>
+            <div style="margin-bottom: 10px;">
+                <span style="background: #FFF1F2; color: #F12F46; font-size: 10.5px; font-weight: 700; padding: 3px 11px; border-radius: 6px; border: 1px solid #FECDD3; display: inline-block;">Condition: {{dietPlan.condition}}</span>
+            </div>
+            <div style="font-size: 10px; color: #64748B; font-weight: 500;">
+                Prepared by: <span style="color: #0F172A; font-weight: 700;">Dr. Somya Sharma (BHMS, Dietician)</span>
+            </div>
+            {{#if dietPlan.subtitle}}
+            <div style="font-size: 9px; color: #475569; font-style: italic; margin-top: 7px; line-height: 1.55;">
+                {{dietPlan.subtitle}}
+            </div>
+            {{/if}}
+        </div>
+
+        <!-- ── UNDERSTANDING YOUR CONDITION (general plan only) ── -->
+        {{#if dietPlan.understandingItems}}
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Understanding Your Condition</div>
+            {{#each dietPlan.understandingItems}}
+            <div style="font-size: 10.5px; color: #334155; margin-bottom: 4px; padding-left: 14px; position: relative; line-height: 1.5;">
+                <span style="position: absolute; left: 0; top: 6px; width: 4px; height: 4px; background: #94A3B8; border-radius: 50%; display: inline-block;"></span>
+                {{this}}
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+
+        <!-- ── MEAL CARDS (2-column grid) ── -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+            {{#each dietPlan.meals}}
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+                <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 7px;">{{this.time}}</div>
+                {{#if this.food}}
+                <div style="font-size: 11px; font-weight: 600; color: #0F172A; margin-bottom: 5px; line-height: 1.55;">{{this.food}}</div>
+                {{/if}}
+                {{#if this.items}}
+                {{#each this.items}}
+                <div style="font-size: 10.5px; color: #334155; margin-bottom: 3px; padding-left: 14px; position: relative; line-height: 1.5;">
+                    <span style="position: absolute; left: 0; top: 6px; width: 4px; height: 4px; background: #94A3B8; border-radius: 50%; display: inline-block;"></span>
+                    {{this}}
+                </div>
+                {{/each}}
+                {{/if}}
+                {{#if this.benefit}}
+                <div style="font-size: 8.5px; color: #475569; font-style: italic; margin-top: 7px; line-height: 1.45; border-top: 1px solid #F1F5F9; padding-top: 6px;">{{this.benefit}}</div>
+                {{/if}}
+            </div>
+            {{/each}}
+        </div>
+
+        <!-- ── DAILY ADD-ONS & SPECIAL FOCUS ── -->
+        {{#if dietPlan.dailyAddons}}
+        <div style="display: grid; grid-template-columns: {{#if dietPlan.specialFocus}}1fr 1fr{{else}}1fr{{/if}}; gap: 8px; margin-bottom: 10px;">
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+                <div style="font-size: 8.5px; font-weight: 800; color: #059669; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 7px;">Daily Add-ons</div>
+                <div style="font-size: 11px; font-weight: 600; color: #0F172A; margin-bottom: 4px; line-height: 1.55;">{{dietPlan.dailyAddons.food}}</div>
+                <div style="font-size: 8.5px; color: #475569; font-style: italic; line-height: 1.45;">{{dietPlan.dailyAddons.benefit}}</div>
+            </div>
+            {{#if dietPlan.specialFocus}}
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+                <div style="font-size: 8.5px; font-weight: 800; color: #D97706; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 7px;">Special Focus — {{dietPlan.specialFocus.title}}</div>
+                <div style="font-size: 11px; font-weight: 600; color: #0F172A; margin-bottom: 4px; line-height: 1.55;">{{dietPlan.specialFocus.food}}</div>
+                <div style="font-size: 8.5px; color: #475569; font-style: italic; line-height: 1.45;">{{dietPlan.specialFocus.benefit}}</div>
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        <!-- ── ADVANCED TIPS (general plan only) ── -->
+        {{#if dietPlan.advancedTips}}
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+            <div style="font-size: 8.5px; font-weight: 800; color: #6D28D9; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Advanced Dietician Tips</div>
+            {{#each dietPlan.advancedTips}}
+            <div style="font-size: 10.5px; color: #334155; margin-bottom: 4px; padding-left: 16px; position: relative; line-height: 1.5;">
+                <span style="position: absolute; left: 0; font-weight: 700; color: #475569; font-size: 9px;">{{add @index 1}}.</span>
+                {{this}}
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+
+        <!-- ── AVOID FOODS + LIFESTYLE (side by side) ── -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+            {{#if dietPlan.avoidFoods}}
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+                <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Foods to Avoid / Limit</div>
+                {{#each dietPlan.avoidFoods}}
+                <div style="font-size: 10.5px; color: #334155; margin-bottom: 4px; padding-left: 14px; position: relative; line-height: 1.5;">
+                    <span style="position: absolute; left: 0; top: 6px; width: 4px; height: 4px; background: #CBD5E1; border-radius: 50%; display: inline-block;"></span>
+                    {{this}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+                <div style="font-size: 8.5px; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Lifestyle Instructions</div>
+                {{#each dietPlan.lifestyle}}
+                <div style="font-size: 10.5px; color: #334155; margin-bottom: 4px; padding-left: 14px; position: relative; line-height: 1.5;">
+                    <span style="position: absolute; left: 0; top: 6px; width: 4px; height: 4px; background: #CBD5E1; border-radius: 50%; display: inline-block;"></span>
+                    {{this}}
+                </div>
+                {{/each}}
+            </div>
+        </div>
+
+        <!-- ── HYDRATION + FOLLOW-UP ── -->
+        <div style="display: grid; grid-template-columns: {{#if dietPlan.hydration}}1fr 1fr{{else}}1fr{{/if}}; gap: 8px; margin-bottom: 12px;">
+            {{#if dietPlan.hydration}}
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+                <img src="{{baseUrl}}/PDF-Assets/prescription/hydration.png" alt="💧" style="height: 24px; width: 24px; flex-shrink: 0;">
+                <div>
+                    <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px;">Hydration</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #0F172A; line-height: 1.45;">{{dietPlan.hydration}}</div>
+                </div>
+            </div>
+            {{/if}}
+            {{#if dietPlan.followUp}}
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+                <img src="{{baseUrl}}/PDF-Assets/prescription/calendar.png" alt="📅" style="height: 24px; width: 24px; flex-shrink: 0;">
+                <div>
+                    <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px;">Follow-Up</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #0F172A; line-height: 1.45;">{{dietPlan.followUp}}</div>
+                </div>
+            </div>
+            {{/if}}
+        </div>
+
+        <!-- ── NOTE ── -->
+        {{#if dietPlan.note}}
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); break-inside: avoid; page-break-inside: avoid;">
+            <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px;">Note</div>
+            <div style="font-size: 10.5px; color: #334155; line-height: 1.55; font-style: italic;">{{dietPlan.note}}</div>
+        </div>
+        {{/if}}
+
+
+    </div>
+    {{/if}}
 
 
 </body>

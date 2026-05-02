@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SehatUP Report</title>
+    <title>sehatUP Report</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -177,7 +177,13 @@
             /* 2π * 170 ≈ 1068.14 */
             stroke-dasharray: 1068.14;
 
-            stroke-dashoffset: calc(1068.14 * (1 - {{healthScore}} / 100));
+            stroke-dashoffset: calc(1068.14 * (1 - {
+                            {
+                            healthScore
+                        }
+                    }
+
+                    / 100));
             /* Animation for browser view */
             transition: stroke-dashoffset 2s ease-in-out;
         }
@@ -778,7 +784,7 @@
     <div class="banner">
         <img src="{{baseUrl}}/PDF-Assets/1st banner.jpg" alt="Banner" class="banner" />
         <img src="{{baseUrl}}/PDF-Assets/Logo.png" alt="Logo" class="logo" />
-        <p class="heading">SehatUP Personalised Health Report</p>
+        <p class="heading">sehatUP Personalised Health Report</p>
         <p class="info1">
             <span id="report-date">Date: {{reportDate}}</span> |
             <span id="user-name">Name: {{userName}}</span><br />
@@ -952,7 +958,8 @@
             Use Code <strong>SEHAT10</strong> for 10% OFF on Your First Order
         </div>
         <div class="cta-container">
-            <a href="{{#if cartLink}}{{cartLink}}{{else}}https://sehatup.com/{{/if}}" class="cta-button">BUY NOW MEDICINES</a>
+            <a href="{{#if cartLink}}{{cartLink}}{{else}}https://sehatup.com/{{/if}}" class="cta-button">BUY NOW
+                MEDICINES</a>
         </div>
     </div>
 

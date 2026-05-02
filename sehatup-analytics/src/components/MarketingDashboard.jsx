@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, setDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FIREBASE_MODE, setFirebaseMode } from '../config/firebaseEnvironment';
-import "react-datepicker/dist/react-datepicker.css";
-import DatePicker from "react-datepicker";
 import {
     Search,
     Phone,
@@ -13,34 +11,34 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
     ArrowUpDown,
     Activity,
     Copy,
     Check,
     MessageCircle,
-    User
+    User,
+    UserPlus,
+    Ruler
 } from 'lucide-react';
 import { formatDateToCustom, parseFirestoreDate, formatTableTimestamp } from '../utils/dataHelpers';
 import PrescriptionEditor from './PrescriptionEditor';
 import DoctorProfile from './DoctorProfile';
 import ExportControls from './ExportControls';
 import StatusModal from './StatusModal';
+import CreateUserModal from './CreateUserModal';
 import { triggerOrderPlacedWebhook } from '../utils/webhookHelpers';
 
-// Custom Date Input for Mobile and Desktop (Prevents Keyboard popup and typing)
-const CustomDateInput = React.forwardRef(({ value, onClick, className }, ref) => (
-    <input
-        value={value}
-        onClick={onClick}
-        onChange={() => { }}
-        onKeyDown={(e) => e.preventDefault()}
-        className={className}
-        readOnly
-        ref={ref}
-        placeholder="Select Date"
-        style={{ caretColor: 'transparent', cursor: 'pointer' }}
-    />
-));
+// Native date <-> JS Date helpers for the From/To filter
+const toIsoDate = (d) => {
+    if (!d) return '';
+    const dt = d instanceof Date ? d : new Date(d);
+    if (isNaN(dt)) return '';
+    const tz = dt.getTimezoneOffset();
+    return new Date(dt.getTime() - tz * 60000).toISOString().slice(0, 10);
+};
+
+const TODAY_ISO = toIsoDate(new Date());
 
 // Performance Helper: Debounce Hook
 function useDebounce(value, delay) {
@@ -96,50 +94,117 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
     const [doctorComments, setDoctorComments] = useState(user.doctorComments || "");
     const [isSaving, setIsSaving] = useState(false);
     const [products, setProducts] = useState(user.recommendedProducts || []);
-    const [latestCartUrl, setLatestCartUrl] = useState(user.cartUrl || ""); // Track cartUrl from history
+    const [latestCartUrl, setLatestCartUrl] = useState(user.cartUrl || "");
     const [copiedCart, setCopiedCart] = useState(false);
     const [showSuccessHighlight, setShowSuccessHighlight] = useState(false);
     const [showSaveError, setShowSaveError] = useState(false);
     const [saveErrorMessage, setSaveErrorMessage] = useState("");
     const [initialData, setInitialData] = useState(null);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [prescriptionHistory, setPrescriptionHistory] = useState([]);
+    const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+
+    // Edit Info State
+    const [isEditingInfo, setIsEditingInfo] = useState(false);
+    const [editInfo, setEditInfo] = useState({
+        name: user.userName || user.name || user.userInfo?.name || '',
+        phone: user.phone || user.userInfo?.phone || '',
+        dob: user.dob || user.userInfo?.dob || '',
+        height: user.height || user.userInfo?.height || user.healthMetrics?.height || '',
+        currentWeight: user.currentWeight || user.userInfo?.currentWeight || user.healthMetrics?.currentWeight || '',
+        targetWeight: user.targetWeight || user.userInfo?.targetWeight || user.healthMetrics?.targetWeight || ''
+    });
+
+    const handleSaveUserInfo = async () => {
+        try {
+            const userRef = doc(db, collectionName, user.id);
+            const h = Number(editInfo.height) || null;
+            const cw = Number(editInfo.currentWeight) || null;
+            const tw = Number(editInfo.targetWeight) || null;
+
+            const updates = {
+                userName: editInfo.name,
+                name: editInfo.name,
+                phone: editInfo.phone,
+                dob: editInfo.dob,
+                height: h,
+                currentWeight: cw,
+                targetWeight: tw,
+                // Update nested structures if they exist or create them
+                userInfo: {
+                    ...(user.userInfo || {}),
+                    name: editInfo.name,
+                    phone: editInfo.phone,
+                    dob: editInfo.dob,
+                    height: h,
+                    currentWeight: cw,
+                    targetWeight: tw
+                },
+                healthMetrics: {
+                    ...(user.healthMetrics || {}),
+                    height: h,
+                    currentWeight: cw,
+                    targetWeight: tw
+                }
+            };
+            await updateDoc(userRef, updates);
+            // Update local user object (shallowly)
+            Object.assign(user, updates);
+            setIsEditingInfo(false);
+            showStatus('success', 'Info Updated', 'Patient information has been successfully updated.');
+        } catch (error) {
+            console.error("Error updating user info:", error);
+            showStatus('error', 'Update Failed', error.message);
+        }
+    };
 
     useEffect(() => {
         const fetchNestedData = async () => {
-            let histProducts = user.recommendedProducts || [];
-            let histComments = user.doctorComments || "";
-            let histCart = user.cartUrl || "";
-
-            if (user.isConsulted) {
+            if (!user.isConsulted) return;
+            let history = [];
+            try {
                 const q = query(
                     collection(db, `${collectionName}/${user.id}/prescriptions`),
-                    orderBy("savedAt", "desc"),
-                    limit(1)
+                    orderBy("savedAt", "desc")
                 );
                 const snap = await getDocs(q);
-                if (!snap.empty) {
-                    const latest = snap.docs[0].data();
-                    histProducts = latest.recommendedProducts || [];
-                    histCart = latest.cartUrl || "";
-                    histComments = latest.primaryDiagnosis || latest.doctorComments || "";
-                    
-                    setProducts(histProducts);
-                    setLatestCartUrl(histCart);
-                    setDoctorComments(histComments);
-                }
-            }
+                history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setPrescriptionHistory(history);
 
-            setInitialData({
-                isConsulted: user.isConsulted || false,
-                isPurchased: user.isPurchased || false,
-                doctorComments: histComments,
-                products: histProducts
-            });
-            setIsInitialized(true);
+                if (history.length > 0) {
+                    const latest = history[0];
+                    if (latest.recommendedProducts) setProducts(latest.recommendedProducts);
+                    if (latest.primaryDiagnosis || latest.doctorComments) {
+                        setDoctorComments(latest.primaryDiagnosis || latest.doctorComments);
+                    }
+                    if (latest.cartUrl) setLatestCartUrl(latest.cartUrl);
+                }
+            } catch (err) {
+                console.error("Error fetching prescription history:", err);
+            } finally {
+                const latestVar = history.length > 0 ? history[0] : {};
+                setInitialData({
+                    doctorComments: (latestVar.primaryDiagnosis || latestVar.doctorComments || ""),
+                    products: (latestVar.recommendedProducts || []),
+                    isConsulted: true,
+                    isPurchased: user.isPurchased || false
+                });
+                setIsInitialized(true);
+            }
         };
 
-        fetchNestedData();
-    }, [user.id, user.isConsulted, user.isPurchased, user.doctorComments, user.cartUrl, user.recommendedProducts, collectionName]);
+        if (user.isConsulted) {
+            fetchNestedData();
+        } else {
+            setInitialData({
+                doctorComments: (user.doctorComments || ""),
+                products: (user.recommendedProducts || []),
+                isConsulted: (user.isConsulted || false),
+                isPurchased: (user.isPurchased || false)
+            });
+            setIsInitialized(true);
+        }
+    }, [user.id, user.isConsulted, user.isPurchased, user.doctorComments, collectionName]);
 
     const reportDateStr = useMemo(() => {
         const d = parseFirestoreDate(user.timestamp);
@@ -255,31 +320,123 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                 <div className="modal-content-scroll" style={{ position: 'relative' }}>
                     <div className="modal-header-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, paddingRight: 40 }}>
                         <div style={{ flex: 1 }}>
-                            <h2 style={{ fontSize: 32, margin: 0, lineHeight: 1.1 }}>{user.userName || user.name || 'Anonymous'}</h2>
-                            <div style={{ color: 'var(--muted)', marginTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} /> {user.phone || 'No Phone'}</span>
-                                {user.dob && (
-                                    <>
+                            {isEditingInfo ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <input 
+                                        type="text" 
+                                        className="native-input" 
+                                        value={editInfo.name} 
+                                        onChange={(e) => setEditInfo({ ...editInfo, name: e.target.value })}
+                                        placeholder="Patient Name"
+                                        style={{ fontSize: 24, fontWeight: 700 }}
+                                    />
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Phone</label>
+                                            <input 
+                                                type="tel" 
+                                                className="native-input" 
+                                                value={editInfo.phone} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, phone: e.target.value })}
+                                                placeholder="10-digit Phone"
+                                                maxLength="10"
+                                                pattern="[0-9]{10}"
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>DOB</label>
+                                            <input 
+                                                type="date" 
+                                                className="native-input" 
+                                                value={editInfo.dob} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, dob: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Height (cm)</label>
+                                            <input 
+                                                type="number" 
+                                                className="native-input" 
+                                                value={editInfo.height} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, height: e.target.value })}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Weight (kg)</label>
+                                            <input 
+                                                type="number" 
+                                                className="native-input" 
+                                                value={editInfo.currentWeight} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, currentWeight: e.target.value })}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Target (kg)</label>
+                                            <input 
+                                                type="number" 
+                                                className="native-input" 
+                                                value={editInfo.targetWeight} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, targetWeight: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                        <button className="btn primary mini-btn" onClick={handleSaveUserInfo}>Save Info</button>
+                                        <button className="btn ghost mini-btn" onClick={() => setIsEditingInfo(false)}>Cancel</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <h2 style={{ fontSize: 32, margin: 0, lineHeight: 1.1 }}>{user.userName || user.name || 'Anonymous'}</h2>
+                                        <button 
+                                            className="btn ghost mini-btn" 
+                                            onClick={() => setIsEditingInfo(true)}
+                                            style={{ padding: '4px 8px', fontSize: 10, height: 'auto' }}
+                                        >
+                                            Edit Info
+                                        </button>
+                                    </div>
+                                    <div style={{ color: 'var(--muted)', marginTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} /> {user.phone || 'No Phone'}</span>
+                                        {user.dob && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span>DOB: {formatDateToCustom(user.dob)}</span>
+                                            </>
+                                        )}
+                                        {ageDisplay && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span style={{ fontWeight: 600, color: '#fff' }}>Age: {ageDisplay}</span>
+                                            </>
+                                        )}
+                                        {user.height && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Ruler size={14} /> {user.height} cm</span>
+                                            </>
+                                        )}
+                                        {user.currentWeight && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Activity size={14} /> {user.currentWeight} kg</span>
+                                            </>
+                                        )}
                                         <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-                                        <span>DOB: {formatDateToCustom(user.dob)}</span>
-                                    </>
-                                )}
-                                {ageDisplay && (
-                                    <>
-                                        <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-                                        <span style={{ fontWeight: 600, color: '#fff' }}>Age: {ageDisplay}</span>
-                                    </>
-                                )}
-                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <CalIcon size={14} style={{ opacity: 0.7 }} /> Report: {reportDateStr}
-                                </span>
-                                {user.isWhatsAppSent && (
-                                    <span className="badge stable" style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px' }}>
-                                        <MessageCircle size={14} /> Requested via WhatsApp
-                                    </span>
-                                )}
-                            </div>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <CalIcon size={14} style={{ opacity: 0.7 }} /> Report: {reportDateStr}
+                                        </span>
+                                        {user.isWhatsAppSent && (
+                                            <span className="badge stable" style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px' }}>
+                                                <MessageCircle size={14} /> Requested via WhatsApp
+                                            </span>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                         <div className="modal-score-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
                             {user.healthScore !== undefined && <CircularScore score={user.healthScore} />}
@@ -457,6 +614,146 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                     </div>
                 )}
 
+                {/* Prescription History Timeline - Hidden for now */}
+                {false && prescriptionHistory.length > 0 && (
+                    <div style={{ marginBottom: '40px', padding: '0 24px' }}>
+                        <div 
+                            onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                            style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                gap: 8, 
+                                color: 'var(--muted)', 
+                                textTransform: 'uppercase', 
+                                fontSize: 13, 
+                                letterSpacing: 1, 
+                                marginBottom: isHistoryExpanded ? 16 : 0,
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                padding: '12px 16px',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '12px',
+                                border: '1px solid rgba(255,255,255,0.06)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <CalIcon size={18} /> Prescription History ({prescriptionHistory.length})
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700 }}>
+                                {isHistoryExpanded ? 'COLLAPSE' : 'EXPAND'}
+                                <ChevronDown size={16} style={{ transform: isHistoryExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                            </div>
+                        </div>
+
+                        {isHistoryExpanded && (
+                            <div className="history-timeline" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                                {prescriptionHistory.map((h, i) => (
+                                    <div key={h.id || i} style={{ 
+                                        background: 'rgba(255,255,255,0.03)', 
+                                        border: '1px solid rgba(255,255,255,0.06)', 
+                                        borderRadius: '16px', 
+                                        padding: '16px 20px',
+                                        position: 'relative',
+                                        transition: 'transform 0.2s'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 2 }}>
+                                                    {formatTableTimestamp(h.savedAt)}
+                                                </div>
+                                                <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    {i === 0 ? 'Current Prescription' : `Record #${prescriptionHistory.length - i}`}
+                                                    {(h.prescriptionID || h.displayId) && <span style={{ color: 'var(--accent1)', opacity: 0.8 }}>• {h.prescriptionID || h.displayId}</span>}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                {(h.pdfUrl || h.reportDownloadUrl || h.prescriptionDownloadUrl) && (
+                                                    <a 
+                                                        href={h.pdfUrl || h.reportDownloadUrl || h.prescriptionDownloadUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        style={{ 
+                                                            background: 'rgba(255, 255, 255, 0.08)', 
+                                                            color: '#fff', 
+                                                            padding: '6px 12px', 
+                                                            borderRadius: '100px', 
+                                                            fontSize: 11, 
+                                                            fontWeight: 700, 
+                                                            textDecoration: 'none',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                                                        }}
+                                                    >
+                                                        <FileText size={13} /> View PDF
+                                                    </a>
+                                                )}
+                                                <button 
+                                                    onClick={() => onOpenEditor(h)}
+                                                    style={{ 
+                                                        background: 'rgba(34, 211, 238, 0.15)', 
+                                                        color: '#22d3ee', 
+                                                        padding: '6px 12px', 
+                                                        borderRadius: '100px', 
+                                                        fontSize: 11, 
+                                                        fontWeight: 700, 
+                                                        border: '1px solid rgba(34, 211, 238, 0.2)',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6
+                                                    }}
+                                                >
+                                                    <FileText size={13} /> Edit
+                                                </button>
+                                                <a 
+                                                    href={h.cartUrl || '#'} 
+                                                    target={h.cartUrl ? "_blank" : "_self"}
+                                                    rel="noopener noreferrer"
+                                                    style={{ 
+                                                        background: h.cartUrl ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
+                                                        color: h.cartUrl ? 'var(--accent1)' : 'rgba(255, 255, 255, 0.3)', 
+                                                        padding: '6px 12px', 
+                                                        borderRadius: '100px', 
+                                                        fontSize: 11, 
+                                                        fontWeight: 700, 
+                                                        textDecoration: 'none',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        border: h.cartUrl ? '1px solid rgba(124, 58, 237, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                                        pointerEvents: h.cartUrl ? 'auto' : 'none',
+                                                        cursor: h.cartUrl ? 'pointer' : 'not-allowed'
+                                                    }}
+                                                >
+                                                    <ShoppingBag size={13} /> Buy Now
+                                                </a>
+                                            </div>
+                                        </div>
+                                        
+                                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', padding: '10px 14px', borderRadius: '12px', marginBottom: 12 }}>
+                                            <span style={{ fontWeight: 700, color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Diagnosis & Notes</span>
+                                            {h.primaryDiagnosis || h.doctorComments || 'No notes recorded.'}
+                                        </div>
+
+                                        {h.recommendedProducts && h.recommendedProducts.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                {h.recommendedProducts.map((p, pIdx) => (
+                                                    <div key={pIdx} style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: 10, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        {p.name} (x{p.qty || 1})
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Sticky Action Footer */}
                 <div style={{ padding: '20px 24px', background: 'var(--card-bg)', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 16, zIndex: 10, borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px', marginTop: 'auto' }}>
                     {user.reportDownloadUrl && (
@@ -487,7 +784,11 @@ export default function MarketingDashboard({ onLogout }) {
 
     const saved = getSavedFilters();
 
-    const [allData, setAllData] = useState({ questionnaire_submissions: [], partial_submissions: [] });
+    const [allData, setAllData] = useState({ 
+        questionnaire_submissions: [], 
+        partial_submissions: [],
+        manual_submissions: []
+    });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(saved.searchQuery || "");
     const debouncedSearchQuery = useDebounce(searchQuery, 300); // Debounce typing
@@ -500,6 +801,7 @@ export default function MarketingDashboard({ onLogout }) {
     const [whatsappOnly, setWhatsappOnly] = useState(saved.whatsappOnly || false);
     const [consultedOnly, setConsultedOnly] = useState(saved.consultedOnly || false);
     const [purchasedOnly, setPurchasedOnly] = useState(saved.purchasedOnly || false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const handleSwitchBackend = (mode) => {
         if (mode === currentBackend) return;
@@ -534,6 +836,8 @@ export default function MarketingDashboard({ onLogout }) {
     });
     const [toDate, setToDate] = useState(new Date());
     const [dateError, setDateError] = useState(null);
+    const lastValidFrom = useRef(fromDate);
+    const lastValidTo = useRef(toDate);
 
 
 
@@ -556,12 +860,11 @@ export default function MarketingDashboard({ onLogout }) {
 
     useEffect(() => {
         let loadedCollections = 0;
-        const totalToLoad = 2;
-
+        const totalToLoad = 3;
         const checkLoaded = () => {
             loadedCollections++;
             if (loadedCollections >= totalToLoad) {
-                setTimeout(() => setLoading(false), 300); // Subtle delay for smooth transition
+                setTimeout(() => setLoading(false), 300);
             }
         };
 
@@ -569,26 +872,42 @@ export default function MarketingDashboard({ onLogout }) {
         const unsub1 = onSnapshot(q1, (snap) => {
             setAllData(prev => ({ ...prev, questionnaire_submissions: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
             if (loading) checkLoaded();
-        }, () => checkLoaded());
+        }, (err) => {
+            console.error("Error fetching questionnaire_submissions:", err);
+            checkLoaded();
+        });
 
         const q2 = query(collection(db, "partial_submissions"), orderBy("timestamp", "desc"));
         const unsub2 = onSnapshot(q2, (snap) => {
             setAllData(prev => ({ ...prev, partial_submissions: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
             if (loading) checkLoaded();
-        }, () => checkLoaded());
+        }, (err) => {
+            console.error("Error fetching partial_submissions:", err);
+            checkLoaded();
+        });
 
-        return () => { unsub1(); unsub2(); };
+        const q3 = query(collection(db, "manual_submissions"), orderBy("timestamp", "desc"));
+        const unsub3 = onSnapshot(q3, (snap) => {
+            setAllData(prev => ({ ...prev, manual_submissions: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
+            if (loading) checkLoaded();
+        }, (err) => {
+            console.error("Error fetching manual_submissions:", err);
+            checkLoaded();
+        });
+
+        return () => { unsub1(); unsub2(); unsub3(); };
     }, [loading]);
 
     const submissions = useMemo(() => {
         if (activeCollection === 'all' || !activeCollection) {
             const full = (allData.questionnaire_submissions || []).map(s => ({ ...s, _collection: 'full' }));
             const partial = (allData.partial_submissions || []).map(s => ({ ...s, _collection: 'partial' }));
-            return [...full, ...partial];
+            const manual = (allData.manual_submissions || []).map(s => ({ ...s, _collection: 'manual' }));
+            return [...full, ...partial, ...manual];
         }
         return (allData[activeCollection] || []).map(s => ({ 
             ...s, 
-            _collection: activeCollection === 'questionnaire_submissions' ? 'full' : 'partial' 
+            _collection: activeCollection === 'questionnaire_submissions' ? 'full' : (activeCollection === 'manual_submissions' ? 'manual' : 'partial')
         }));
     }, [allData, activeCollection]);
 
@@ -620,12 +939,15 @@ export default function MarketingDashboard({ onLogout }) {
 
             if (!passesSearch) return false;
 
-            if (!s.timestamp) return false;
-            const ts = parseFirestoreDate(s.timestamp);
-            if (!ts) return false;
+            // Environment Filter
+            if (s.mode && s.mode !== currentBackend) return false;
 
-            const passesDate = ts >= fromDate && ts <= toDate;
-            if (!passesDate) return false;
+            // Date Filter (Allowing null timestamps to pass for new patients)
+            const ts = parseFirestoreDate(s.timestamp);
+            if (ts) {
+                const passesDate = ts >= fromDate && ts <= toDate;
+                if (!passesDate) return false;
+            }
 
             // WhatsApp Filter logic
             if (whatsappOnly && !s.isWhatsAppSent) return false;
@@ -645,8 +967,8 @@ export default function MarketingDashboard({ onLogout }) {
             let valB = b[sortBy] || (sortBy === 'userName' ? b.name : '');
 
             if (sortBy === 'timestamp') {
-                valA = parseFirestoreDate(valA)?.getTime() || 0;
-                valB = parseFirestoreDate(valB)?.getTime() || 0;
+                valA = parseFirestoreDate(valA)?.getTime() || Date.now();
+                valB = parseFirestoreDate(valB)?.getTime() || Date.now();
             }
 
             if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
@@ -786,189 +1108,177 @@ export default function MarketingDashboard({ onLogout }) {
                             className="panel glass-panel"
                             style={{ display: 'flex', flexDirection: 'column', minHeight: '600px' }}
                         >
-                            {/* Ultra-Slim Cohesive Toolbar */}
-                             <div className="dr-toolbar-row">
-                                <div className="filter-item" style={{ flex: 1.5 }}>
-                                    <div className="dr-search-wrapper" style={{ width: '100%', minWidth: 'auto' }}>
-                                        <Search size={16} className="search-icon" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search name, phone, or symptom (e.g. PCOD)..."
-                                            value={searchQuery}
-                                            onChange={(e) => {
-                                                setSearchQuery(e.target.value);
-                                                setCurrentPage(1);
-                                            }}
-                                            className="native-input"
-                                            style={{ width: '100%', paddingLeft: '40px' }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="toolbar-v-divider" />
-
-                                <div className="filter-item">
-                                    <div className="btn-group" style={{ background: 'rgba(255,255,255,0.02)', padding: '3px', borderRadius: '12px' }}>
-                                        <button 
-                                            className={`toolbar-btn miniature ${activeCollection === 'questionnaire_submissions' ? 'active' : ''}`} 
-                                            onClick={() => setActiveCollection(prev => prev === 'questionnaire_submissions' ? 'all' : 'questionnaire_submissions')}
-                                            style={{ minWidth: '60px', fontSize: '10px', fontWeight: 800, background: activeCollection === 'questionnaire_submissions' ? 'rgba(34,211,238,0.2)' : 'transparent', color: activeCollection === 'questionnaire_submissions' ? '#22d3ee' : 'rgba(255,255,255,0.4)' }}
-                                        >
-                                            FULL
-                                        </button>
-                                        <button 
-                                            className={`toolbar-btn miniature ${activeCollection === 'partial_submissions' ? 'active' : ''}`} 
-                                            onClick={() => setActiveCollection(prev => prev === 'partial_submissions' ? 'all' : 'partial_submissions')}
-                                            style={{ minWidth: '70px', fontSize: '10px', fontWeight: 800, background: activeCollection === 'partial_submissions' ? 'rgba(251,191,36,0.15)' : 'transparent', color: activeCollection === 'partial_submissions' ? '#fbbf24' : 'rgba(255,255,255,0.4)' }}
-                                        >
-                                            PARTIAL
-                                        </button>
-                                        <div className="toolbar-v-divider" style={{ margin: '0 4px', height: '20px', background: 'rgba(255,255,255,0.05)' }} />
-                                        <button 
-                                            className={`toolbar-btn miniature ${consultedOnly ? 'active' : ''}`}
-                                            onClick={() => { setConsultedOnly(!consultedOnly); setCurrentPage(1); }}
-                                            style={{ minWidth: '85px', fontSize: '10px', fontWeight: 800, background: consultedOnly ? 'rgba(34,197,94,0.15)' : 'transparent', color: consultedOnly ? '#4ade80' : 'rgba(255,255,255,0.4)', border: 'none' }}
-                                        >
-                                            CONSULTED
-                                        </button>
-                                        <button 
-                                            className={`toolbar-btn miniature ${purchasedOnly ? 'active' : ''}`}
-                                            onClick={() => { setPurchasedOnly(!purchasedOnly); setCurrentPage(1); }}
-                                            style={{ minWidth: '85px', fontSize: '10px', fontWeight: 800, background: purchasedOnly ? 'rgba(139,92,246,0.15)' : 'transparent', color: purchasedOnly ? '#a78bfa' : 'rgba(255,255,255,0.4)', border: 'none' }}
-                                        >
-                                            PURCHASED
-                                        </button>
-                                        <button 
-                                            className={`toolbar-btn miniature ${whatsappOnly ? 'active' : ''}`}
-                                            onClick={() => { setWhatsappOnly(!whatsappOnly); setCurrentPage(1); }}
-                                            style={{ minWidth: '85px', fontSize: '10px', fontWeight: 800, background: whatsappOnly ? 'rgba(244,63,94,0.15)' : 'transparent', color: whatsappOnly ? '#fb7185' : 'rgba(255,255,255,0.4)', border: 'none' }}
-                                        >
-                                            WHATSAPP
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="toolbar-v-divider" style={{ marginLeft: 'auto' }} />
-
-                                <div className="filter-item" style={{ position: 'relative' }}>
-                                    <span className="filter-label">From:</span>
-                                    <DatePicker
-                                        selected={fromDate}
-                                        onChange={(d) => {
-                                            if (toDate && d > toDate) {
-                                                setDateError("Start date cannot be after end date");
-                                                setTimeout(() => setDateError(null), 3000);
-                                                return;
-                                            }
-                                            setDateError(null);
-                                            setFromDate(d);
+                            {/* Row 1: Discovery — Search + Date Range + Primary Action */}
+                            <div className="crm-toolbar crm-toolbar-primary">
+                                <div className="crm-search">
+                                    <Search size={16} className="crm-search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, phone, or symptom..."
+                                        value={searchQuery}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
                                             setCurrentPage(1);
                                         }}
-                                        onMonthChange={(d) => {
-                                            if (toDate && d > toDate) return;
-                                            setDateError(null);
-                                            setFromDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        onYearChange={(d) => {
-                                            if (toDate && d > toDate) return;
-                                            setDateError(null);
-                                            setFromDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        maxDate={toDate || new Date()}
-                                        dateFormat="dd MMM yy"
-                                        className="native-input mini-date"
-                                        showMonthDropdown
-                                        showYearDropdown
-                                        scrollableYearDropdown
-                                        yearDropdownItemNumber={25}
-                                        portalId="root"
-                                        autoComplete="off"
-                                        customInput={<CustomDateInput className="native-input semi-slim mini-date" />}
-                                        withPortal
                                     />
-                                    <span className="filter-label" style={{ marginLeft: 8 }}>To:</span>
-                                    <DatePicker
-                                        selected={toDate}
-                                        onChange={(d) => {
-                                            if (fromDate && d < fromDate) {
-                                                setDateError("End date cannot be before start date");
-                                                setTimeout(() => setDateError(null), 3000);
-                                                return;
-                                            }
-                                            setDateError(null);
-                                            setToDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        onMonthChange={(d) => {
-                                            if (fromDate && d < fromDate) return;
-                                            setDateError(null);
-                                            setToDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        onYearChange={(d) => {
-                                            if (fromDate && d < fromDate) return;
-                                            setDateError(null);
-                                            setToDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        minDate={fromDate}
-                                        maxDate={new Date()}
-                                        dateFormat="dd MMM yy"
-                                        className="native-input mini-date"
-                                        showMonthDropdown
-                                        showYearDropdown
-                                        scrollableYearDropdown
-                                        yearDropdownItemNumber={25}
-                                        portalId="root"
-                                        autoComplete="off"
-                                        customInput={<CustomDateInput className="native-input semi-slim mini-date" />}
-                                        withPortal
-                                    />
-
-                                    {dateError && (
-                                        <div className="date-error-popup">
-                                            {dateError}
-                                        </div>
+                                    {searchQuery && (
+                                        <button
+                                            type="button"
+                                            className="crm-search-clear"
+                                            onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
+                                            aria-label="Clear search"
+                                        >
+                                            <X size={14} />
+                                        </button>
                                     )}
                                 </div>
 
+                                <div className="crm-daterange">
+                                    <input
+                                        type="date"
+                                        className="crm-daterange-input"
+                                        aria-label="From date"
+                                        value={toIsoDate(fromDate)}
+                                        max={toIsoDate(toDate) || TODAY_ISO}
+                                        onFocus={() => { lastValidFrom.current = fromDate; }}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) { setFromDate(null); setCurrentPage(1); return; }
+                                            const d = new Date(v);
+                                            setFromDate(d);
+                                            setCurrentPage(1);
+                                            // Clear error if it becomes valid while typing
+                                            if (!toDate || d <= toDate) setDateError(null);
+                                        }}
+                                        onBlur={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) return;
+                                            const d = new Date(v);
+                                            if (toDate && d > toDate) {
+                                                setDateError("Start date cannot be after end date");
+                                                setFromDate(lastValidFrom.current);
+                                                setTimeout(() => setDateError(null), 3000);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                    />
+                                    <span className="crm-daterange-arrow">→</span>
+                                    <input
+                                        type="date"
+                                        className="crm-daterange-input"
+                                        aria-label="To date"
+                                        value={toIsoDate(toDate)}
+                                        min={toIsoDate(fromDate)}
+                                        max={TODAY_ISO}
+                                        onFocus={() => { lastValidTo.current = toDate; }}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) { setToDate(null); setCurrentPage(1); return; }
+                                            const d = new Date(v);
+                                            setToDate(d);
+                                            setCurrentPage(1);
+                                            // Clear error if it becomes valid while typing
+                                            if (!fromDate || d >= fromDate) setDateError(null);
+                                        }}
+                                        onBlur={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) return;
+                                            const d = new Date(v);
+                                            if (fromDate && d < fromDate) {
+                                                setDateError("End date cannot be before start date");
+                                                setToDate(lastValidTo.current);
+                                                setTimeout(() => setDateError(null), 3000);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                    />
+                                    {dateError && <div className="date-error-popup">{dateError}</div>}
+                                </div>
+
+                                <button
+                                    className="btn new-patient-cta"
+                                    onClick={() => setIsCreateModalOpen(true)}
+                                    title="Create a new patient profile"
+                                >
+                                    <UserPlus size={16} />
+                                    <span>New Patient</span>
+                                </button>
                             </div>
 
-                            {/* Order & Pagination Row */}
-                            <div className="dr-toolbar-row" style={{ borderTop: 'none', background: 'rgba(255, 255, 255, 0.01)', padding: '6px 24px' }}>
-                                <div className="filter-item">
-                                    <ArrowUpDown size={14} style={{ color: 'var(--muted)', marginRight: 4 }} />
-                                    <span className="filter-label">Order By:</span>
-                                    <select className="native-select semi-slim" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                                        <option value="timestamp">Submission Date</option>
-                                        <option value="userName">Patient Name</option>
-                                    </select>
+                            {/* Row 2: Filter Chips + Display Controls */}
+                            <div className="crm-toolbar crm-toolbar-secondary">
+                                <div className="crm-chip-group">
                                     <button
-                                        className={`toolbar-btn mini-toggle ${sortOrder === 'asc' ? 'active' : ''}`}
-                                        onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                        className={`crm-chip chip-full ${activeCollection === 'questionnaire_submissions' ? 'active' : ''}`}
+                                        onClick={() => setActiveCollection(prev => prev === 'questionnaire_submissions' ? 'all' : 'questionnaire_submissions')}
                                     >
-                                        {sortOrder.toUpperCase()}
+                                        Full
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-partial ${activeCollection === 'partial_submissions' ? 'active' : ''}`}
+                                        onClick={() => setActiveCollection(prev => prev === 'partial_submissions' ? 'all' : 'partial_submissions')}
+                                    >
+                                        Partial
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-manual ${activeCollection === 'manual_submissions' ? 'active' : ''}`}
+                                        onClick={() => setActiveCollection(prev => prev === 'manual_submissions' ? 'all' : 'manual_submissions')}
+                                        style={{ 
+                                            background: activeCollection === 'manual_submissions' ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
+                                            borderColor: activeCollection === 'manual_submissions' ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255, 255, 255, 0.1)'
+                                        }}
+                                    >
+                                        Manual
+                                    </button>
+                                    <span className="crm-chip-sep" />
+                                    <button
+                                        className={`crm-chip chip-consulted ${consultedOnly ? 'active' : ''}`}
+                                        onClick={() => { setConsultedOnly(!consultedOnly); setCurrentPage(1); }}
+                                    >
+                                        Consulted
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-purchased ${purchasedOnly ? 'active' : ''}`}
+                                        onClick={() => { setPurchasedOnly(!purchasedOnly); setCurrentPage(1); }}
+                                    >
+                                        Purchased
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-whatsapp ${whatsappOnly ? 'active' : ''}`}
+                                        onClick={() => { setWhatsappOnly(!whatsappOnly); setCurrentPage(1); }}
+                                    >
+                                        WhatsApp
                                     </button>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>
-                                        Total Records: <span style={{ color: '#fff' }}>{processedSubmissions.length}</span>
+                                <div className="crm-controls">
+                                    <div className="crm-control-group">
+                                        <ArrowUpDown size={13} className="crm-control-icon" />
+                                        <select className="crm-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                                            <option value="timestamp">Date</option>
+                                            <option value="userName">Name</option>
+                                        </select>
+                                        <button
+                                            className={`crm-order-toggle ${sortOrder === 'asc' ? 'asc' : 'desc'}`}
+                                            onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                            title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                                        >
+                                            {sortOrder === 'asc' ? '↑' : '↓'}
+                                        </button>
                                     </div>
-                                    <div className="toolbar-v-divider" style={{ height: 16 }} />
-                                    <ExportControls 
-                                        filtered={{ completed: processedSubmissions, partial: [] }} 
-                                        showStatus={showStatus} 
+
+                                    <div className="crm-records-count">
+                                        <strong>{processedSubmissions.length.toLocaleString()}</strong> records
+                                    </div>
+
+                                    <ExportControls
+                                        filtered={{ completed: processedSubmissions, partial: [] }}
+                                        showStatus={showStatus}
                                     />
-                                </div>
 
-                                <div style={{ flex: 1 }} />
-
-                                <div className="filter-item">
-                                    <span className="filter-label">Rows:</span>
-                                    {isCustomRows ? (
+                                    <div className="crm-control-group">
+                                        <span className="crm-control-label">Rows</span>
+                                        {isCustomRows ? (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <input
                                                 type="number"
@@ -1020,6 +1330,7 @@ export default function MarketingDashboard({ onLogout }) {
                                         </select>
                                     )}
                                 </div>
+                                </div>
                             </div>
 
                             <div className="patient-list">
@@ -1063,7 +1374,7 @@ export default function MarketingDashboard({ onLogout }) {
                                                 <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                     <ArrowUpDown size={20} className="p-arrow" style={{ transform: 'rotate(90deg)' }} />
                                                     <div className="p-status-text">
-                                                        {p._collection === 'partial' ? 'Partial' : 'Full'}
+                                                        {p._collection === 'manual' ? 'Manual' : (p._collection === 'partial' ? 'Partial' : 'Full')}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1152,7 +1463,11 @@ export default function MarketingDashboard({ onLogout }) {
                 <PatientDetailModal
                     user={selectedUser}
                     onClose={() => setSelectedUser(null)}
-                    collectionName={activeCollection === 'all' ? (selectedUser._collection === 'full' ? 'questionnaire_submissions' : 'partial_submissions') : activeCollection}
+                    collectionName={
+                        activeCollection !== 'all' ? activeCollection : 
+                        (selectedUser._collection === 'full' ? 'questionnaire_submissions' : 
+                         (selectedUser._collection === 'manual' ? 'manual_submissions' : 'partial_submissions'))
+                    }
                     showStatus={showStatus}
                     onOpenEditor={(user) => {
                         setSelectedUser(null);
@@ -1161,6 +1476,20 @@ export default function MarketingDashboard({ onLogout }) {
                     }}
                 />
             )}
+
+            <CreateUserModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                mode={currentBackend}
+                onUserCreated={(newUser) => {
+                    setAllData(prev => ({ 
+                        ...prev, 
+                        manual_submissions: [newUser, ...prev.manual_submissions] 
+                    }));
+                    showStatus('success', 'Patient Created', `Profile for ${newUser.name} created.`);
+                }}
+            />
+
             <StatusModal {...modalConfig} onClose={() => setModalConfig({ ...modalConfig, isOpen: false })} />
         </div>
     );

@@ -218,7 +218,7 @@ const StyledSelect = ({ value, onChange, options, placeholder = 'Select...' }) =
                     color: displayLabel ? '#fff' : 'rgba(255,255,255,0.35)',
                     outline: 'none', cursor: 'pointer', fontFamily: 'inherit',
                     textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    transition: 'border-color 0.2s',
+                    transition: 'border-color 0.2s', whiteSpace: 'nowrap',
                 }}
             >
                 {displayLabel || placeholder}
@@ -352,9 +352,9 @@ const BulletListInput = ({ value, onChange, placeholder, accentColor = 'rgba(124
     );
 };
 
-const SectionCard = ({ icon, title, children, accentColor = 'var(--accent2)' }) => (
+const SectionCard = ({ icon, title, children, accentColor = 'var(--accent2)', style = {} }) => (
     <div className="glass-card animate-in" style={{
-        borderRadius: 20, padding: '26px', marginBottom: 20,
+        borderRadius: 20, padding: '26px', marginBottom: 20, position: 'relative', ...style
     }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: `${accentColor}15`, border: `1px solid ${accentColor}33`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -679,6 +679,7 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
     });
     const [primaryDiagnosis, setPrimaryDiagnosis] = useState(patient.doctorComments || patient.primaryDiagnosis || "");
     const [clinicalFindings, setClinicalFindings] = useState(patient.clinicalFindings || "");
+    const [prescriptionTemplate, setPrescriptionTemplate] = useState(patient.prescriptionTemplate || "");
     const [consultationDate, setConsultationDate] = useState(() => {
         if (patient.consultedAt) {
             const d = patient.consultedAt.toDate ? patient.consultedAt.toDate() : new Date(patient.consultedAt);
@@ -991,6 +992,7 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
 
     const handleSave = async () => {
         if (!patientName) return alert("Patient Name is required.");
+        if (!patientGender || patientGender === "Not Selected") return alert("Please select the patient's gender. It is required for the prescription.");
         setIsSaving(true);
         try {
             const resolvedProducts = await resolveAllVariantIds(products);
@@ -1011,6 +1013,7 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
                 phone: patient.phone || patient.mobileNumber || '',
                 primaryDiagnosis,
                 clinicalFindings,
+                prescriptionTemplate: prescriptionTemplate || null,
                 consultationDate,
                 lifestyleChanges: lifestyleAdvice.split('\n').filter(l => l.trim()).map(text => ({ text })),
                 recommendedProducts: resolvedProducts.map(p => {
@@ -1254,18 +1257,18 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 16px 60px' }}>
 
                 {/* Patient Details */}
-                <SectionCard icon={<User />} title="Patient Details" accentColor="#6366f1">
-                    <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1.2fr 1.5fr', gap: 16, alignItems: 'end' }}>
+                <SectionCard icon={<User />} title="Patient Details" accentColor="#6366f1" style={{ zIndex: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.3fr 0.7fr 1fr 1.2fr', gap: 16, alignItems: 'end' }}>
                         <div>
                             <FieldLabel>Full Name *</FieldLabel>
                             <StyledInput value={patientName} onChange={e => setPatientName(e.target.value)} placeholder="Enter patient name" />
                         </div>
                         <div>
-                            <FieldLabel>Gender</FieldLabel>
+                            <FieldLabel>Gender *</FieldLabel>
                             <StyledSelect
                                 value={patientGender}
                                 onChange={val => setPatientGender(val)}
-                                placeholder="Select gender"
+                                placeholder="Not Selected"
                                 options={['Male', 'Female', 'Other']}
                             />
                         </div>
@@ -1358,7 +1361,23 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
                     </div>
                 </SectionCard>
 
-                <SectionCard icon={<Activity />} title="Clinical Analysis" accentColor="#22d3ee">
+                <SectionCard icon={<Activity />} title="Clinical Analysis" accentColor="#22d3ee" style={{ zIndex: 5 }}>
+                    <div style={{ marginBottom: 14 }}>
+                        <FieldLabel>Prescription Template</FieldLabel>
+                        <select 
+                            value={prescriptionTemplate} 
+                            onChange={e => setPrescriptionTemplate(e.target.value)}
+                            style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: '#fff', outline: 'none', cursor: 'pointer' }}
+                        >
+                            <option value="" style={{ color: '#000' }}>N/A (No Diet Template)</option>
+                            <option value="lean_to_weight_gain" style={{ color: '#000' }}>PCOD – Lean Type (Weight Gain)</option>
+                            <option value="weight_to_lean" style={{ color: '#000' }}>PCOD – Overweight Type (Weight Loss)</option>
+                            <option value="infertility_pcod_pcos" style={{ color: '#000' }}>PCOD – Infertility & Irregular Periods</option>
+                            <option value="thyroid_diabetes_pcod" style={{ color: '#000' }}>PCOD – Thyroid + Diabetes (Leucorrhea)</option>
+                            <option value="pcod_mood_anxiety_insomnia" style={{ color: '#000' }}>PCOD – Mood Swings, Anxiety & Insomnia</option>
+                            <option value="general_pcod_pcos" style={{ color: '#000' }}>PCOD – General (Irregular Periods)</option>
+                        </select>
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 14 }}>
                         <div>
                             <FieldLabel>Primary Diagnosis</FieldLabel>
@@ -1384,7 +1403,7 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
                 </SectionCard>
 
                 {/* Medications */}
-                <SectionCard icon={<ShoppingBag />} title="Medications & Products" accentColor="#f59e0b">
+                <SectionCard icon={<ShoppingBag />} title="Medications & Products" accentColor="#f59e0b" style={{ zIndex: 1 }}>
                     {/* Search */}
                     <div style={{ position: 'relative', marginBottom: 16 }}>
                         <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }} />

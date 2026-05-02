@@ -168,17 +168,7 @@ export default function DoctorProfile({ defaultTab = 'profile', onTabChange }) {
                                 <p className="profile-subtitle">Manage your professional information and digital signatures</p>
                             </div>
                         </>
-                    ) : (
-                        <>
-                            <div className="profile-icon-wrapper history">
-                                <FileText size={32} />
-                            </div>
-                            <div>
-                                <h1 className="profile-main-title">Prescription History</h1>
-                                <p className="profile-subtitle">View and manage all previously generated medical prescriptions</p>
-                            </div>
-                        </>
-                    )}
+                    ) : null}
                 </div>
             </div>
 

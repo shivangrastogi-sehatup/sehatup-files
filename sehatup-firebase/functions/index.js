@@ -126,6 +126,381 @@ handlebars.registerHelper("len", function (arr) {
   return Array.isArray(arr) ? arr.length : 0;
 });
 
+handlebars.registerHelper("add", function (a, b) {
+  return parseInt(a) + parseInt(b);
+});
+
+// ─── Diet & Lifestyle Plan Templates ─────────────────────────────────────────
+const DIET_PLANS = {
+  lean_to_weight_gain: {
+    condition: "PCOD (Lean Type) with Hairfall, Weakness, Heavy Periods",
+    subtitle: "Diet planned considering hormonal imbalance, nutritional deficiency & low body weight",
+    meals: [
+      {
+        time: "Early Morning (7:00–8:00 AM)",
+        food: "1 glass lukewarm water + 5 soaked almonds + 2 walnuts + 5–6 soaked black raisins",
+        benefit: "Helps improve energy levels, supports hair growth & reduces weakness caused by heavy periods"
+      },
+      {
+        time: "Breakfast (8:30–9:30 AM)",
+        food: "Option 1: Paneer sandwich (multigrain bread)  |  Option 2: 2 eggs + 1 toast  |  Option 3: Vegetable poha with peanuts",
+        benefit: "High protein + healthy fats help in weight gain, reduce hairfall & support hormonal balance"
+      },
+      {
+        time: "Mid-Morning (11:00–12:00 PM)",
+        food: "1 banana / chikoo / mango (seasonal)",
+        benefit: "Supports healthy weight gain & maintains energy throughout the day"
+      },
+      {
+        time: "Lunch (1:30–2:30 PM)",
+        food: "2 multigrain roti + 1 bowl sabzi + 1 bowl dal/paneer + 1 bowl curd  |  Small portion salad before meal",
+        benefit: "Balanced nutrition improves digestion, supports hormones & reduces weakness"
+      },
+      {
+        time: "Evening Snack (5:00–6:00 PM)",
+        food: "Tea (light) + peanut chaat / roasted chana  |  OR coconut water + handful makhana",
+        benefit: "Maintains energy levels & reduces muscle fatigue"
+      },
+      {
+        time: "Dinner (7:30–8:30 PM)",
+        food: "2 roti + sabzi + paneer/dal",
+        benefit: "No restriction on dinner quantity – focus on nourishment & recovery"
+      }
+    ],
+    dailyAddons: {
+      food: "1 tsp seeds mix (flax + pumpkin) + 1–2 tsp ghee daily",
+      benefit: "Improves hormonal balance, hair health & supports weight gain"
+    },
+    specialFocus: {
+      title: "Heavy Periods & Weakness",
+      food: "Include beetroot, spinach, black raisins regularly",
+      benefit: "Helps improve blood levels & reduces fatigue"
+    },
+    avoidFoods: [
+      "Avoid junk, packaged food, excess sugar",
+      "Limit tea/coffee (max 1–2 cups)",
+      "Prevents further hormonal imbalance"
+    ],
+    hydration: "2.5–3 litres water daily",
+    lifestyle: [
+      "30 minutes light exercise or walk",
+      "Proper sleep (7–8 hours)",
+      "Avoid stress & late night eating"
+    ],
+    followUp: "Review after 15 days for weight and symptom improvement",
+    note: "This diet is specifically designed for lean PCOD patients with weakness and heavy menstrual flow. Focus is on improving nutritional status, hormonal balance & gradual healthy weight gain."
+  },
+
+  weight_to_lean: {
+    condition: "PCOD with Weight Gain, Acne, Hairfall & Irregular Periods",
+    subtitle: "Diet planned considering hormonal imbalance, metabolism disturbance & digestive issues",
+    meals: [
+      {
+        time: "Early Morning (7:00–8:00 AM)",
+        food: "1 glass lukewarm water + lemon (without sugar) + 1 tsp soaked methi seeds",
+        benefit: "Helps improve digestion, reduce bloating & support fat metabolism"
+      },
+      {
+        time: "Breakfast (8:30–9:30 AM)",
+        food: "Option 1: 2 besan chilla + curd  |  Option 2: Vegetable oats + seeds mix  |  Option 3: 2 eggs + 1 multigrain toast",
+        benefit: "High protein breakfast helps reduce acne, hairfall & controls cravings"
+      },
+      {
+        time: "Mid-Morning (11:00–12:00 PM)",
+        food: "1 fruit (apple/guava/papaya)",
+        benefit: "Maintains energy levels & prevents overeating"
+      },
+      {
+        time: "Lunch (1:30–2:30 PM)",
+        food: "2 multigrain roti + 1 bowl sabzi + 1 bowl dal/paneer + salad before meal",
+        benefit: "Balanced meal supports hormonal balance & weight control"
+      },
+      {
+        time: "Evening Snack (5:00–6:00 PM)",
+        food: "Green tea / normal tea (without sugar) + roasted chana / makhana",
+        benefit: "Controls cravings & supports metabolism"
+      },
+      {
+        time: "Dinner (7:30–8:30 PM)",
+        food: "1–2 roti + sabzi OR vegetable soup + paneer",
+        benefit: "Light dinner helps reduce bloating & supports fat loss"
+      }
+    ],
+    dailyAddons: {
+      food: "Flax seeds – 1 tsp, Pumpkin seeds – 1 tsp, 2 walnuts",
+      benefit: "Supports hormonal balance, reduces acne & hairfall"
+    },
+    avoidFoods: [
+      "Avoid sugar, bakery, fried & packaged food",
+      "Limit rice, potato, banana, mango",
+      "Reduce excess tea/coffee"
+    ],
+    hydration: "2.5–3 litres water daily",
+    lifestyle: [
+      "30–40 min daily walk/exercise",
+      "Proper sleep (7–8 hrs)",
+      "Avoid late night eating"
+    ],
+    followUp: "Review after 15 days",
+    note: "This diet focuses on hormonal balance, weight reduction & improvement in skin and hair health."
+  },
+
+  infertility_pcod_pcos: {
+    condition: "PCOD with Irregular Periods & Infertility Concerns",
+    subtitle: "Diet planned considering hormonal imbalance, ovulation support & reproductive health",
+    meals: [
+      {
+        time: "Early Morning (7:00–8:00 AM)",
+        food: "Lukewarm water + 1 tsp soaked methi seeds OR 2 walnuts",
+        benefit: "Supports hormonal balance & ovulation function"
+      },
+      {
+        time: "Breakfast (High Protein)",
+        food: "Besan chilla + curd  /  Eggs + toast  /  Oats + seeds",
+        benefit: "Improves egg quality & stabilizes hormones"
+      },
+      {
+        time: "Mid-Morning",
+        food: "1 fruit (apple/guava/papaya)",
+        benefit: "Maintains energy & prevents hormonal fluctuations"
+      },
+      {
+        time: "Lunch",
+        food: "2 roti + sabzi + dal/paneer + salad",
+        benefit: "Balanced nutrition supports reproductive system"
+      },
+      {
+        time: "Evening Snack",
+        food: "Green tea / normal tea (no sugar) + roasted chana/makhana",
+        benefit: "Controls cravings & supports metabolism"
+      },
+      {
+        time: "Dinner (Light & Early)",
+        food: "1–2 roti + sabzi OR soup + paneer",
+        benefit: "Improves digestion & supports hormonal recovery"
+      }
+    ],
+    dailyAddons: {
+      food: "Flax seeds, pumpkin seeds, walnuts",
+      benefit: "Supports ovulation, hormone balance & fertility"
+    },
+    specialFocus: {
+      title: "Reproductive Health",
+      food: "Include leafy greens, beetroot, nuts, seeds regularly",
+      benefit: "Improves blood flow & reproductive health"
+    },
+    avoidFoods: [
+      "Sugar, junk food, packaged food, excess caffeine",
+      "Prevents hormonal imbalance"
+    ],
+    lifestyle: [
+      "30–40 min walk daily",
+      "Stress management",
+      "Proper sleep",
+      "Regular cycle support is essential"
+    ],
+    followUp: "Review after 15 days"
+  },
+
+  thyroid_diabetes_pcod: {
+    condition: "PCOD with Thyroid Imbalance, Sugar Tendency, Leucorrhea & Weakness",
+    subtitle: "Diet planned considering hormonal imbalance, metabolism disturbance & nutritional deficiency",
+    meals: [
+      {
+        time: "Early Morning (7:00–8:00 AM)",
+        food: "Lukewarm water + 1 tsp soaked methi seeds",
+        benefit: "Helps control sugar levels & supports hormonal balance"
+      },
+      {
+        time: "Breakfast (High Protein)",
+        food: "Besan chilla + curd  /  Eggs + toast  /  Vegetable oats + seeds",
+        benefit: "Supports thyroid, reduces hairfall & controls cravings"
+      },
+      {
+        time: "Mid-Morning",
+        food: "1 fruit (apple/guava/papaya)",
+        benefit: "Maintains steady energy levels"
+      },
+      {
+        time: "Lunch",
+        food: "2 roti + sabzi + dal/paneer + salad",
+        benefit: "Improves digestion & supports hormones"
+      },
+      {
+        time: "Evening Snack",
+        food: "Tea (no sugar) + roasted chana/makhana",
+        benefit: "Prevents weakness & cravings"
+      },
+      {
+        time: "Dinner",
+        food: "1–2 roti + sabzi OR soup + paneer",
+        benefit: "Light dinner improves metabolism & reduces bloating"
+      }
+    ],
+    dailyAddons: {
+      food: "Flax seeds, pumpkin seeds, walnuts, black raisins",
+      benefit: "Helps in hairfall, weakness & hormonal balance"
+    },
+    specialFocus: {
+      title: "Leucorrhea & Overall Health",
+      food: "Curd (daytime), coconut water, green vegetables",
+      benefit: "Supports leucorrhea & overall health"
+    },
+    avoidFoods: [
+      "Sugar, junk food, packaged food",
+      "Limit tea/coffee"
+    ],
+    lifestyle: [
+      "Daily walk",
+      "Proper sleep",
+      "Stress management"
+    ],
+    followUp: "Review after 15 days"
+  },
+
+  general_pcod_pcos: {
+    condition: "PCOD with Irregular Periods (General Type)",
+    subtitle: "Plan focuses on regulating hormones, improving ovulation and stabilizing insulin levels",
+    understandingItems: [
+      "Irregular periods are mainly due to hormonal imbalance.",
+      "This plan focuses on regulating hormones, improving ovulation and stabilizing insulin levels."
+    ],
+    meals: [
+      {
+        time: "Morning Hormone Reset Routine",
+        items: [
+          "Warm water with soaked methi seeds (4–5 seeds, 4 times/week)",
+          "2 soaked walnuts + 5 almonds",
+          "10–15 min sunlight exposure for Vitamin D",
+          "Light stretching or breathing exercises"
+        ]
+      },
+      {
+        time: "Breakfast (High Protein – Must)",
+        items: [
+          "Paneer bhurji / Eggs / Moong dal chilla",
+          "Add 1 tsp flaxseed powder (estrogen balance)",
+          "Avoid bread, biscuits, sugary cereals",
+          "Tea/coffee without excess sugar"
+        ]
+      },
+      {
+        time: "Mid-Morning Hormone Snack",
+        items: [
+          "Low GI fruit: Apple / Guava / Papaya",
+          "1 tsp pumpkin seeds (zinc for hormone support)",
+          "Avoid fruit juices"
+        ]
+      },
+      {
+        time: "Lunch (Balanced Plate)",
+        items: [
+          "1–2 roti (multigrain) + sabzi + dal",
+          "Include leafy greens (spinach, methi)",
+          "1 bowl curd (skip if white discharge)",
+          "Avoid fried/oily food"
+        ]
+      },
+      {
+        time: "Evening Cortisol Control Snack",
+        items: [
+          "Herbal tea (cinnamon + tulsi)",
+          "Roasted chana / makhana",
+          "Avoid biscuits, namkeen"
+        ]
+      },
+      {
+        time: "Dinner (Light & Early)",
+        items: [
+          "Dal + sabzi + 1 roti",
+          "1 tsp sesame seeds (cycle regulation)",
+          "Finish dinner before 8:30 PM",
+          "Avoid heavy carbs at night"
+        ]
+      }
+    ],
+    advancedTips: [
+      "Seed Cycling: flax + pumpkin (first half cycle), sesame + sunflower (second half)",
+      "Protein in every meal improves ovulation",
+      "Avoid cold foods during periods",
+      "Sleep before 11 PM (melatonin-hormone link)",
+      "Daily 20–30 min walk"
+    ],
+    lifestyle: [
+      "Manage stress (yoga, breathing, journaling)",
+      "Avoid late nights",
+      "Stay hydrated (2–3 litres water)",
+      "Consistency is key for results"
+    ],
+    note: "This is a general plan. Follow consistently for 6–8 weeks for visible results."
+  },
+
+  pcod_mood_anxiety_insomnia: {
+    condition: "PCOD with Mood Swings, Anxiety, Overthinking & Insomnia",
+    subtitle: "Diet planned considering hormonal imbalance, stress factors & nervous system support",
+    meals: [
+      {
+        time: "Early Morning (7:00–8:00 AM)",
+        food: "Lukewarm water + 2 walnuts + 4 soaked almonds",
+        benefit: "Supports brain health & reduces anxiety"
+      },
+      {
+        time: "Breakfast (High Protein + Brain Support)",
+        food: "Besan chilla + curd / Eggs + toast / Oats + seeds",
+        benefit: "Stabilizes mood & reduces cravings"
+      },
+      {
+        time: "Mid-Morning",
+        food: "1 fruit (banana/apple/papaya)",
+        benefit: "Maintains energy & prevents irritability"
+      },
+      {
+        time: "Lunch",
+        food: "2 roti + sabzi + dal/paneer + salad",
+        benefit: "Balanced meal supports hormones & mental stability"
+      },
+      {
+        time: "Evening Snack",
+        food: "Herbal tea / normal tea (no sugar) + makhana/chana",
+        benefit: "Prevents anxiety spikes in evening"
+      },
+      {
+        time: "Dinner (Light & Early)",
+        food: "1–2 roti + sabzi OR soup + paneer",
+        benefit: "Light dinner improves sleep quality"
+      }
+    ],
+    dailyAddons: {
+      food: "Flax seeds, pumpkin seeds, walnuts",
+      benefit: "Supports hormonal balance & brain function"
+    },
+    specialFocus: {
+      title: "Sleep Support Routine",
+      food: "1 glass warm milk at night (if suits) or chamomile tea",
+      benefit: "Avoid phone 30–45 mins before sleep"
+    },
+    avoidFoods: [
+      "Caffeine excess, sugar, late night eating, junk food",
+      "These worsen anxiety & sleep disturbance"
+    ],
+    lifestyle: [
+      "30 min walk, deep breathing, proper sleep routine",
+      "Stress management is essential for recovery"
+    ],
+    followUp: "Review after 15 days"
+  }
+};
+
+const injectDietPlan = (data) => {
+  const selectedTemplate = data.prescriptionTemplate;
+  if (selectedTemplate && DIET_PLANS[selectedTemplate]) {
+    data.dietPlan = DIET_PLANS[selectedTemplate];
+    data.hasDietPlan = true;
+  } else {
+    data.hasDietPlan = false;
+  }
+};
+
 // Compile templates once at startup
 const template = handlebars.compile(templateHtml);
 const prescriptionTemplate = handlebars.compile(prescriptionTemplateHtml);
@@ -334,10 +709,24 @@ const generatePDF = async (data, docId, type = "report") => {
     fs.writeFileSync(tempHtmlPath, html);
 
     // Launch Puppeteer and generate PDF
-    const browser = await puppeteer.launch({
+    const launchOptions = {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
       headless: true,
-    });
+    };
+    
+    // Workaround for Windows Defender blocking downloaded Chromium locally
+    if (process.env.FUNCTIONS_EMULATOR === "true" && process.platform === "win32") {
+      const fs = require('fs');
+      const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+      const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+      if (fs.existsSync(chromePath)) {
+        launchOptions.executablePath = chromePath;
+      } else if (fs.existsSync(edgePath)) {
+        launchOptions.executablePath = edgePath;
+      }
+    }
+
+    const browser = await puppeteer.launch(launchOptions);
     const page = await browser.newPage();
     await page.goto(`file://${tempHtmlPath}`, {
       waitUntil: "networkidle0",
@@ -549,6 +938,224 @@ exports.testPrescriptionPDF = onRequest(async (req, res) => {
   }
 });
 
+// ─── Test: Diet + Prescription PDF ───────────────────────────────────────────
+// GET /testDietPrescriptionPDF?template=lean_to_weight_gain
+// Generates a full 2-page prescription: page 1 = Rx, page 2 = diet plan
+// Defaults to thyroid_diabetes_pcod if no ?template= param given
+exports.testDietPrescriptionPDF = onRequest(
+  { timeoutSeconds: 300, memory: "2GiB", region: "us-central1" },
+  async (req, res) => {
+    try {
+      const selectedTemplate = req.query.template || "thyroid_diabetes_pcod";
+
+      if (!DIET_PLANS[selectedTemplate]) {
+        return res.status(400).send(
+          `Unknown template "${selectedTemplate}". Valid options: ${Object.keys(DIET_PLANS).join(", ")}`
+        );
+      }
+
+      const docId = `DIET-TEST-${Date.now()}`;
+
+      // Configuration for different templates to show relevant data in test
+      const templateConfigs = {
+        lean_to_weight_gain: {
+          primaryDiagnosis: "Lean PCOD with Nutritional Deficiency & Weakness",
+          clinicalFindings: "Patient has low BMI, reporting weakness and hairfall. Recommended for healthy weight gain and muscle recovery.",
+          recommendedProducts: [
+            {
+              name: "HER MENSES (FOR RHYTHMIC RELIEF & HORMONAL HARMONY)",
+              dosage: ["1", "0", "0", "1"],
+              dosageType: "schedule",
+              type: "CAPSULE",
+              timing: "After Food",
+              instruction: "Take with warm water",
+              duration: "1 Month",
+              quantity: 1,
+              contains: "Shatavari, Ashoka, Lodhra"
+            },
+            {
+              name: "SHILAJIT (PURE HIMALAYAN RESIN)",
+              dosageValue: "Pea sized",
+              dosageType: "text",
+              type: "RESIN",
+              timing: "With Milk",
+              instruction: "Dissolve in warm milk",
+              duration: "1 Month",
+              quantity: 1,
+              contains: "Fulvic Acid, Minerals"
+            },
+            {
+              name: "IRON PLUS SYRUP",
+              dosage: ["0", "0", "1", "0"],
+              dosageType: "schedule",
+              type: "SYRUP",
+              timing: "After Food",
+              instruction: "Take after dinner",
+              duration: "1 Month",
+              quantity: 1,
+              contains: "Ferrum met, Natrum mur, China off"
+            }
+          ],
+          lifestyleChanges: [
+            { text: "Increase protein and healthy fats intake." },
+            { text: "Strength training exercises (3 times a week)." },
+            { text: "Proper sleep (7–8 hours)." }
+          ],
+          guidelines: [
+            "Increase protein and healthy fats intake.",
+            "Strength training exercises (3 times a week).",
+            "Proper sleep (7–8 hours)."
+          ]
+        },
+        thyroid_diabetes_pcod: {
+          primaryDiagnosis: "PCOD with Thyroid Imbalance & Irregular Periods",
+          clinicalFindings: "Hormonal imbalance detected. Elevated TSH. Irregular menstrual cycle. Mild weight gain with weakness.",
+          recommendedProducts: [
+            {
+              name: "HER MENSES (FOR RHYTHMIC RELIEF & HORMONAL HARMONY)",
+              dosage: ["1", "0", "0", "1"],
+              dosageType: "schedule",
+              type: "CAPSULE",
+              timing: "After Food",
+              instruction: "Take with warm water",
+              duration: "1 Month",
+              quantity: 1,
+              contains: "Shatavari, Ashoka, Lodhra"
+            },
+            {
+              name: "THYRO BALANCE DROPS",
+              dosageValue: "10",
+              dosageType: "drops",
+              dosageFrequency: "3",
+              type: "LIQUID",
+              timing: "Before Meals",
+              instruction: "Dilute in half cup water",
+              duration: "45 Days",
+              quantity: 1,
+              contains: "Fucus vesiculosus, Iodum, Calcarea carb"
+            },
+            {
+              name: "IRON PLUS SYRUP",
+              dosage: ["0", "0", "1", "0"],
+              dosageType: "schedule",
+              type: "SYRUP",
+              timing: "After Food",
+              instruction: "Take after dinner",
+              duration: "1 Month",
+              quantity: 1,
+              contains: "Ferrum met, Natrum mur, China off"
+            }
+          ],
+          lifestyleChanges: [
+            { text: "Avoid sugar and processed foods." },
+            { text: "Maintain a consistent sleep schedule (7–8 hours)." },
+            { text: "30 minutes of light walk daily." }
+          ],
+          guidelines: [
+            "Avoid sugar and processed foods.",
+            "Maintain a consistent sleep schedule (7–8 hours).",
+            "30 minutes of light walk daily."
+          ]
+        }
+      };
+
+      const config = templateConfigs[selectedTemplate] || templateConfigs.thyroid_diabetes_pcod;
+
+      const mockData = {
+        patientName: "Priya Sharma",
+        patientAge: "28",
+        patientGender: "Female",
+        prescriptionID: `RX-DIET-TEST`,
+        displayId: `RX-DIET-TEST`,
+        consultationDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        prescriptionTemplate: selectedTemplate,
+        ...config,
+        doctors: [
+          {
+            name: "DR. SOMYA SHARMA",
+            qualification: "BHMS, Dietician\nHomeopathy & Nutrition",
+            registrationNo: "REG-12345",
+            signatures: []
+          }
+        ],
+        logoBase64: getBase64("Logo.png"),
+        backgroundBase64: getBase64("Background.png"),
+      };
+
+      // Build cart URL (skips unresolved variant IDs gracefully)
+      mockData.cartUrl = generateCartUrl(mockData.recommendedProducts);
+      mockData.cartLink = mockData.cartUrl;
+
+      // Inject the diet plan data
+      injectDietPlan(mockData);
+
+      // QR Code
+      try {
+        mockData.qrCodeData = await QRCode.toDataURL(`https://sehatup.com/verify/${docId}`);
+      } catch (_) {}
+
+      // Normalize product fields for V3 template
+      mockData.recommendedProducts = mockData.recommendedProducts.map((prod) => {
+        let dosage = prod.dosage || ["0", "0", "0", "0"];
+        while (dosage.length < 4) dosage.push("0");
+        return {
+          ...prod,
+          dosage,
+          dosageType: prod.dosageType || "schedule",
+          dosageValue: prod.dosageValue || "",
+          dosageFrequency: prod.dosageFrequency || "",
+        };
+      });
+
+      const { downloadUrl } = await generatePDF(mockData, docId, "prescription");
+
+      res.status(200).send(`
+        <!DOCTYPE html><html>
+        <head>
+          <title>Diet Prescription Test</title>
+          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&display=swap" rel="stylesheet">
+          <style>
+            body { font-family: 'Montserrat', sans-serif; background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            .card { background: #1e293b; padding: 40px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center; border: 1px solid rgba(255,255,255,0.1); max-width: 520px; width: 90%; }
+            h1 { color: #f12f46; margin: 0 0 8px; font-size: 22px; }
+            .sub { color: #94a3b8; font-size: 13px; margin-bottom: 8px; }
+            .template-badge { background: rgba(241,47,70,0.15); color: #f12f46; border: 1px solid rgba(241,47,70,0.3); padding: 5px 14px; border-radius: 100px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; display: inline-block; margin-bottom: 24px; }
+            .plans { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 28px; }
+            .plan-link { text-decoration: none; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; transition: all 0.2s; }
+            .plan-link:hover { background: rgba(241,47,70,0.15); color: #f12f46; border-color: rgba(241,47,70,0.3); }
+            .plan-link.active { background: rgba(241,47,70,0.2); color: #f12f46; border-color: rgba(241,47,70,0.5); }
+            .btn-group { display: flex; gap: 12px; justify-content: center; }
+            .btn { text-decoration: none; padding: 13px 26px; border-radius: 12px; font-weight: 800; font-size: 13px; border: none; cursor: pointer; }
+            .btn-primary { background: #f12f46; color: white; }
+            .btn-secondary { background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); }
+            .ts { margin-top: 24px; font-size: 10px; color: #475569; font-weight: 600; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="template-badge">DIET PLAN: ${selectedTemplate.toUpperCase().replace(/_/g, " ")}</div>
+            <h1>2-Page Prescription Ready</h1>
+            <p class="sub">Page 1: Prescription &nbsp;·&nbsp; Page 2: Diet & Lifestyle Plan</p>
+            <div class="plans">
+              ${Object.keys(DIET_PLANS).map(k => `
+                <a href="?template=${k}" class="plan-link ${k === selectedTemplate ? 'active' : ''}">${k.replace(/_/g, ' ')}</a>
+              `).join('')}
+            </div>
+            <div class="btn-group">
+              <a href="${downloadUrl}" target="_blank" class="btn btn-primary">VIEW PDF</a>
+              <a href="?template=${selectedTemplate}" class="btn btn-secondary">REGENERATE</a>
+            </div>
+            <div class="ts">Generated at: ${new Date().toLocaleTimeString()}</div>
+          </div>
+        </body></html>
+      `);
+    } catch (error) {
+      console.error("[testDietPrescriptionPDF] Error:", error);
+      res.status(500).send(`Error: ${error.message}`);
+    }
+  }
+);
+
 const sendReportOnWhatsApp = async (name, phone, reportUrl) => {
   const tenantId = process.env.TENANT_ID;
   const accessToken = process.env.WATI_ACCESS_TOKEN;
@@ -675,13 +1282,49 @@ exports.CreatePDFOnFormSubmission = onDocumentCreated(
       ? "https://sehatup-f96b5.web.app"
       : "https://sehatupdev.web.app";
 
-    // If environment is dev, then exit from the function without generating the PDF
-    if (!isProduction) {
-      // return;
-    }
-
     data["baseUrl"] = baseUrl;
     const { phone, userName, healthScore, concern } = data;
+
+    // [Migration Engine] Transfer clinical data from partial_submissions if phone matches
+    try {
+      const db = getFirestore();
+      const partialSnap = await db.collection("partial_submissions")
+        .where("phone", "==", phone)
+        .limit(1)
+        .get();
+
+      if (!partialSnap.empty) {
+        const partialDoc = partialSnap.docs[0];
+        const partialData = partialDoc.data();
+        console.log(`[Migration] Found partial submission for ${phone}. Transferring prescriptions...`);
+
+        // Transfer prescriptions subcollection
+        const prescriptionsSnap = await partialDoc.ref.collection("prescriptions").get();
+        const transferPromises = prescriptionsSnap.docs.map(pDoc => 
+          snapshot.ref.collection("prescriptions").doc(pDoc.id).set(pDoc.data())
+        );
+        await Promise.all(transferPromises);
+
+        // Merge key clinical flags/notes
+        const updates = {};
+        if (partialData.isConsulted) updates.isConsulted = true;
+        if (partialData.isPurchased) updates.isPurchased = true;
+        if (partialData.lastConsultationDiagnosis) updates.lastConsultationDiagnosis = partialData.lastConsultationDiagnosis;
+        if (partialData.doctorComments) updates.doctorComments = partialData.doctorComments;
+        
+        if (Object.keys(updates).length > 0) {
+            await snapshot.ref.update(updates);
+            // Sync local data object for PDF generation
+            Object.assign(data, updates);
+        }
+
+        // Atomic cleanup: Delete the partial record
+        await partialDoc.ref.delete();
+        console.log(`[Migration] Successfully migrated records for ${phone} and deleted partial document.`);
+      }
+    } catch (migrateErr) {
+      console.error("[Migration] Error transferring data:", migrateErr);
+    }
     data = { ...data, ...getRiskMetrics(healthScore) };
     // Pre-calculate SVG stroke-dashoffset for the PDF (r=170, C=1068.14)
     data["healthScoreOffset"] = 1068.14 * (1 - healthScore / 100);
@@ -702,7 +1345,7 @@ exports.CreatePDFOnFormSubmission = onDocumentCreated(
       return {
         ...item,
         icon: `${baseUrl}/PDF-Assets/why-icon.png`,
-        image: item.image || `${baseUrl}/PDF-Assets/generic-product.png`,
+        image: item.image || `${baseUrl}/PDF-Assets/generic-image.png`,
       };
     });
 
@@ -891,6 +1534,9 @@ exports.CreatePrescriptionPDFOnTrigger = onDocumentCreated(
 
     data.guidelines = [...dietLines, ...lifestyleLines, ...structuredLifestyleLines];
 
+    // Inject structured diet plan template if selected
+    injectDietPlan(data);
+
     // Ensure necessary fields for V3 layout
 
     // Ensure necessary fields for V3 layout
@@ -1063,7 +1709,10 @@ exports.generatePrescriptionPDF_HTTP = onRequest(
 
       data.guidelines = [...dietLines, ...lifestyleLines, ...structuredLifestyleLines];
 
-      console.log(`[HTTP PDF] Guidelines count: ${data.guidelines.length}`);
+      // Inject structured diet plan template if selected
+      injectDietPlan(data);
+
+      console.log(`[HTTP PDF] Guidelines count: ${data.guidelines.length}, hasDietPlan: ${data.hasDietPlan}`);
 
       data.consultationDate = data.consultationDate || data.date;
 

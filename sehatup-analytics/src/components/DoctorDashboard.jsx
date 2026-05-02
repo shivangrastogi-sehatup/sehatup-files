@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FIREBASE_MODE, setFirebaseMode } from '../config/firebaseEnvironment';
@@ -6,13 +6,14 @@ import "react-datepicker/dist/react-datepicker.css";
 import DatePicker from "react-datepicker";
 import {
     Activity, FileText, ShoppingBag, Search,
-    ChevronDown, User, ChevronRight, Phone, Calendar as CalIcon,
-    ChevronLeft, Copy, Check, ArrowUpDown, X, MessageCircle
+    ChevronDown, User, UserPlus, ChevronRight, Phone, Calendar as CalIcon,
+    ChevronLeft, Copy, Check, ArrowUpDown, X, MessageCircle, Ruler
 } from 'lucide-react';
 
 import PrescriptionEditor from './PrescriptionEditor';
 import DoctorProfile from './DoctorProfile';
 import StatusModal from './StatusModal';
+import CreateUserModal from './CreateUserModal';
 import { triggerOrderPlacedWebhook } from '../utils/webhookHelpers';
 import ExportControls from './ExportControls';
 import { formatDateToCustom, parseFirestoreDate, formatTableTimestamp } from '../utils/dataHelpers';
@@ -87,13 +88,67 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
     const [showSuccessHighlight, setShowSuccessHighlight] = useState(false);
     const [showSaveError, setShowSaveError] = useState(false);
     const [saveErrorMessage, setSaveErrorMessage] = useState("");
-    const [products, setProducts] = useState([]); // REMOVED: user.recommendedProducts initialization
+    const [products, setProducts] = useState(user.recommendedProducts || []);
     const [copiedCart, setCopiedCart] = useState(false);
-    const [generatedLink, setGeneratedLink] = useState("");
+    const [generatedLink, setGeneratedLink] = useState(user.cartUrl || "");
     const [prescriptionHistory, setPrescriptionHistory] = useState([]);
     const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [initialData, setInitialData] = useState(null);
+
+    // Edit Info State
+    const [isEditingInfo, setIsEditingInfo] = useState(false);
+    const [editInfo, setEditInfo] = useState({
+        name: user.userName || user.name || user.userInfo?.name || '',
+        phone: user.phone || user.userInfo?.phone || '',
+        dob: user.dob || user.userInfo?.dob || '',
+        height: user.height || user.userInfo?.height || user.healthMetrics?.height || '',
+        currentWeight: user.currentWeight || user.userInfo?.currentWeight || user.healthMetrics?.currentWeight || '',
+        targetWeight: user.targetWeight || user.userInfo?.targetWeight || user.healthMetrics?.targetWeight || ''
+    });
+
+    const handleSaveUserInfo = async () => {
+        try {
+            const userRef = doc(db, collectionName, user.id);
+            const h = Number(editInfo.height) || null;
+            const cw = Number(editInfo.currentWeight) || null;
+            const tw = Number(editInfo.targetWeight) || null;
+
+            const updates = {
+                userName: editInfo.name,
+                name: editInfo.name,
+                phone: editInfo.phone,
+                dob: editInfo.dob,
+                height: h,
+                currentWeight: cw,
+                targetWeight: tw,
+                // Update nested structures if they exist or create them
+                userInfo: {
+                    ...(user.userInfo || {}),
+                    name: editInfo.name,
+                    phone: editInfo.phone,
+                    dob: editInfo.dob,
+                    height: h,
+                    currentWeight: cw,
+                    targetWeight: tw
+                },
+                healthMetrics: {
+                    ...(user.healthMetrics || {}),
+                    height: h,
+                    currentWeight: cw,
+                    targetWeight: tw
+                }
+            };
+            await updateDoc(userRef, updates);
+            // Update local user object (shallowly)
+            Object.assign(user, updates);
+            setIsEditingInfo(false);
+            showStatus('success', 'Info Updated', 'Patient information has been successfully updated.');
+        } catch (error) {
+            console.error("Error updating user info:", error);
+            showStatus('error', 'Update Failed', error.message);
+        }
+    };
 
     useEffect(() => {
         const fetchNestedData = async () => {
@@ -136,7 +191,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
         } else {
             setInitialData({
                 doctorComments: (user.doctorComments || ""),
-                products: [], // Will be filled by fetchNestedData or kept empty for new
+                products: (user.recommendedProducts || []),
                 isConsulted: (user.isConsulted || false),
                 isPurchased: (user.isPurchased || false)
             });
@@ -270,31 +325,123 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                 <div className="modal-content-scroll" style={{ position: 'relative' }}>
                     <div className="modal-header-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, paddingRight: 40 }}>
                         <div style={{ flex: 1 }}>
-                            <h2 style={{ fontSize: 32, margin: 0, lineHeight: 1.1 }}>{user.userName || user.name || 'Anonymous'}</h2>
-                            <div style={{ color: 'var(--muted)', marginTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} /> {user.phone || 'No Phone'}</span>
-                                {user.dob && (
-                                    <>
+                            {isEditingInfo ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <input 
+                                        type="text" 
+                                        className="native-input" 
+                                        value={editInfo.name} 
+                                        onChange={(e) => setEditInfo({ ...editInfo, name: e.target.value })}
+                                        placeholder="Patient Name"
+                                        style={{ fontSize: 24, fontWeight: 700 }}
+                                    />
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Phone</label>
+                                            <input 
+                                                type="tel" 
+                                                className="native-input" 
+                                                value={editInfo.phone} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, phone: e.target.value })}
+                                                placeholder="10-digit Phone"
+                                                maxLength="10"
+                                                pattern="[0-9]{10}"
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>DOB</label>
+                                            <input 
+                                                type="date" 
+                                                className="native-input" 
+                                                value={editInfo.dob} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, dob: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Height (cm)</label>
+                                            <input 
+                                                type="number" 
+                                                className="native-input" 
+                                                value={editInfo.height} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, height: e.target.value })}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Weight (kg)</label>
+                                            <input 
+                                                type="number" 
+                                                className="native-input" 
+                                                value={editInfo.currentWeight} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, currentWeight: e.target.value })}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label className="filter-label" style={{ fontSize: 10 }}>Target (kg)</label>
+                                            <input 
+                                                type="number" 
+                                                className="native-input" 
+                                                value={editInfo.targetWeight} 
+                                                onChange={(e) => setEditInfo({ ...editInfo, targetWeight: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                        <button className="btn primary mini-btn" onClick={handleSaveUserInfo}>Save Info</button>
+                                        <button className="btn ghost mini-btn" onClick={() => setIsEditingInfo(false)}>Cancel</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <h2 style={{ fontSize: 32, margin: 0, lineHeight: 1.1 }}>{user.userName || user.name || 'Anonymous'}</h2>
+                                        <button 
+                                            className="btn ghost mini-btn" 
+                                            onClick={() => setIsEditingInfo(true)}
+                                            style={{ padding: '4px 8px', fontSize: 10, height: 'auto' }}
+                                        >
+                                            Edit Info
+                                        </button>
+                                    </div>
+                                    <div style={{ color: 'var(--muted)', marginTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} /> {user.phone || 'No Phone'}</span>
+                                        {user.dob && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span>DOB: {formatDateToCustom(user.dob)}</span>
+                                            </>
+                                        )}
+                                        {ageDisplay && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span style={{ fontWeight: 600, color: '#fff' }}>Age: {ageDisplay}</span>
+                                            </>
+                                        )}
+                                        {user.height && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Ruler size={14} /> {user.height} cm</span>
+                                            </>
+                                        )}
+                                        {user.currentWeight && (
+                                            <>
+                                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Activity size={14} /> {user.currentWeight} kg</span>
+                                            </>
+                                        )}
                                         <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-                                        <span>DOB: {formatDateToCustom(user.dob)}</span>
-                                    </>
-                                )}
-                                {ageDisplay && (
-                                    <>
-                                        <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-                                        <span style={{ fontWeight: 600, color: '#fff' }}>Age: {ageDisplay}</span>
-                                    </>
-                                )}
-                                <span style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <CalIcon size={14} style={{ opacity: 0.7 }} /> Report: {reportDateStr}
-                                </span>
-                                {user.isWhatsAppSent && (
-                                    <span className="badge stable" style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px' }}>
-                                        <MessageCircle size={14} /> Requested via WhatsApp
-                                    </span>
-                                )}
-                            </div>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <CalIcon size={14} style={{ opacity: 0.7 }} /> Report: {reportDateStr}
+                                        </span>
+                                        {user.isWhatsAppSent && (
+                                            <span className="badge stable" style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px' }}>
+                                                <MessageCircle size={14} /> Requested via WhatsApp
+                                            </span>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                         <div className="modal-score-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
                             {user.healthScore !== undefined && <CircularScore score={user.healthScore} />}
@@ -374,14 +521,14 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
 
 
 
-                    {/* Versioned Recommended Treatment: Pull from history subcollection */}
-                    {(prescriptionHistory[0]?.recommendedProducts || []) && prescriptionHistory[0]?.recommendedProducts.length > 0 && (
+                    {/* Versioned Recommended Treatment: Pull from state (synced with history) or fallback to questionnaire */}
+                    {products && products.length > 0 && (
                         <div style={{ marginBottom: 40 }}>
                             <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted)', textTransform: 'uppercase', fontSize: 13, letterSpacing: 1, marginBottom: 16 }}>
                                 <ShoppingBag size={18} /> Recommended Treatment
                             </h4>
                             <div className="recommended-products">
-                                {prescriptionHistory[0].recommendedProducts.map((prod, i) => (
+                                {products.map((prod, i) => (
                                     <div key={i} className="prod-card" style={{ paddingRight: '16px', background: 'rgba(255,255,255,0.02)' }}>
                                         <img src={prod.image} alt={prod.name} className="prod-img" onError={(e) => e.target.src = 'https://via.placeholder.com/150'} />
                                         <div className="prod-body">
@@ -397,8 +544,8 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                         </div>
                     )}
 
-                    {/* Versioned Cart Link: Pull from history subcollection */}
-                    {prescriptionHistory[0]?.cartUrl && (
+                    {/* Versioned Cart Link: Pull from state (synced with history) or fallback to questionnaire */}
+                    {generatedLink && (
                         <div style={{ marginBottom: '40px' }}>
                             <div style={{
                                 background: 'rgba(124, 58, 237, 0.08)',
@@ -415,14 +562,14 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                     <div style={{ minWidth: 0 }}>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent1)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Recommended Cart Link</div>
                                         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {prescriptionHistory[0].cartUrl}
+                                            {generatedLink}
                                         </div>
                                     </div>
                                 </div>
                                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(prescriptionHistory[0].cartUrl);
+                                                navigator.clipboard.writeText(generatedLink);
                                                 setCopiedCart(true);
                                                 setTimeout(() => setCopiedCart(false), 2000);
                                             }}
@@ -445,7 +592,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                             {copiedCart ? 'Copied!' : 'Copy'}
                                         </button>
                                         <a
-                                            href={prescriptionHistory[0].cartUrl}
+                                            href={generatedLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             style={{
@@ -471,7 +618,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                         </div>
                     )}
 
-                    {/* Prescription History Timeline - Hidden for demo */}
+                    {/* Prescription History Timeline - Hidden for now */}
                     {false && prescriptionHistory.length > 0 && (
                         <div style={{ marginBottom: '40px' }}>
                             <div 
@@ -565,28 +712,28 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                                     >
                                                         <FileText size={13} /> Edit
                                                     </button>
-                                                    {h.cartUrl && (
-                                                        <a 
-                                                            href={h.cartUrl} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            style={{ 
-                                                                background: 'rgba(124, 58, 237, 0.15)', 
-                                                                color: 'var(--accent1)', 
-                                                                padding: '6px 12px', 
-                                                                borderRadius: '100px', 
-                                                                fontSize: 11, 
-                                                                fontWeight: 700, 
-                                                                textDecoration: 'none',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 6,
-                                                                border: '1px solid rgba(124, 58, 237, 0.2)'
-                                                            }}
-                                                        >
-                                                            <ShoppingBag size={13} /> Buy Now
-                                                        </a>
-                                                    )}
+                                                    <a 
+                                                        href={h.cartUrl || '#'} 
+                                                        target={h.cartUrl ? "_blank" : "_self"}
+                                                        rel="noopener noreferrer"
+                                                        style={{ 
+                                                            background: h.cartUrl ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
+                                                            color: h.cartUrl ? 'var(--accent1)' : 'rgba(255, 255, 255, 0.3)', 
+                                                            padding: '6px 12px', 
+                                                            borderRadius: '100px', 
+                                                            fontSize: 11, 
+                                                            fontWeight: 700, 
+                                                            textDecoration: 'none',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            border: h.cartUrl ? '1px solid rgba(124, 58, 237, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                                            pointerEvents: h.cartUrl ? 'auto' : 'none',
+                                                            cursor: h.cartUrl ? 'pointer' : 'not-allowed'
+                                                        }}
+                                                    >
+                                                        <ShoppingBag size={13} /> Buy Now
+                                                    </a>
                                                 </div>
                                             </div>
                                             
@@ -613,6 +760,8 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                 </div>
 
 
+
+
                 {/* Sticky Action Footer */}
                 <div style={{ padding: '20px 24px', background: 'var(--card-bg)', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 16, zIndex: 10, borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px', marginTop: 'auto' }}>
                     {user.reportDownloadUrl && (
@@ -628,8 +777,18 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
         </div>
     );
 };
-
 export default function DoctorDashboard({ onLogout }) {
+    // Native date <-> JS Date helpers for the From/To filter
+    const toIsoDate = (d) => {
+        if (!d) return '';
+        const dt = d instanceof Date ? d : new Date(d);
+        if (isNaN(dt)) return '';
+        const tz = dt.getTimezoneOffset();
+        return new Date(dt.getTime() - tz * 60000).toISOString().slice(0, 10);
+    };
+
+    const TODAY_ISO = toIsoDate(new Date());
+
     // Persistence Helper: Load state from localStorage
     const getSavedFilters = () => {
         try {
@@ -643,19 +802,24 @@ export default function DoctorDashboard({ onLogout }) {
 
     const saved = getSavedFilters();
 
-    const [allData, setAllData] = useState({ questionnaire_submissions: [], partial_submissions: [] });
+    const [allData, setAllData] = useState({ 
+        questionnaire_submissions: [], 
+        partial_submissions: [],
+        manual_submissions: [] 
+    });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(saved.searchQuery || "");
-    const debouncedSearchQuery = useDebounce(searchQuery, 300); // Debounce typing
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
     const [filterType] = useState(saved.filterType || "userName");
     const [selectedUser, setSelectedUser] = useState(null);
-    const [currentView, setCurrentView] = useState("dashboard"); // dashboard, editor, profile
+    const [currentView, setCurrentView] = useState("dashboard");
     const [prescriptionUser, setPrescriptionUser] = useState(null);
     const [whatsappOnly, setWhatsappOnly] = useState(saved.whatsappOnly || false);
     const [consultedOnly, setConsultedOnly] = useState(saved.consultedOnly || false);
     const [purchasedOnly, setPurchasedOnly] = useState(saved.purchasedOnly || false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [profileTab, setProfileTab] = useState('profile');
-    const [currentBackend] = useState(FIREBASE_MODE); // 'live' or 'dev'
+    const [currentBackend] = useState(FIREBASE_MODE);
 
     const handleSwitchBackend = (mode) => {
         if (mode === currentBackend) return;
@@ -663,7 +827,6 @@ export default function DoctorDashboard({ onLogout }) {
         window.location.reload();
     };
 
-    // Filters & Pagination
     const [currentPage, setCurrentPage] = useState(saved.currentPage || 1);
     const [rowsPerPage, setRowsPerPage] = useState(saved.rowsPerPage || 12);
     const [isCustomRows, setIsCustomRows] = useState(false);
@@ -671,14 +834,19 @@ export default function DoctorDashboard({ onLogout }) {
     const [sortOrder, setSortOrder] = useState(saved.sortOrder || "desc");
     const [activeCollection, setActiveCollection] = useState(saved.activeCollection || "all");
     const [fromDate, setFromDate] = useState(() => {
+        if (saved.fromDate) return new Date(saved.fromDate);
         const d = new Date();
         d.setFullYear(d.getFullYear() - 1);
         return d;
     });
-    const [toDate, setToDate] = useState(new Date());
+    const [toDate, setToDate] = useState(() => {
+        if (saved.toDate) return new Date(saved.toDate);
+        return new Date();
+    });
     const [dateError, setDateError] = useState(null);
+    const lastValidFrom = useRef(fromDate);
+    const lastValidTo = useRef(toDate);
 
-    // Status Modal State
     const [modalConfig, setModalConfig] = useState({ 
         isOpen: false, 
         type: 'success', 
@@ -689,8 +857,6 @@ export default function DoctorDashboard({ onLogout }) {
     const showStatus = (type, title, message) => 
         setModalConfig({ isOpen: true, type, title, message });
 
-
-    // Persist filters to localStorage whenever they change
     useEffect(() => {
         const stateToSave = {
             searchQuery,
@@ -702,19 +868,21 @@ export default function DoctorDashboard({ onLogout }) {
             activeCollection: activeCollection || 'all',
             whatsappOnly,
             consultedOnly,
-            purchasedOnly
+            purchasedOnly,
+            fromDate: fromDate.toISOString(),
+            toDate: toDate.toISOString()
         };
         localStorage.setItem('dr_dashboard_filters', JSON.stringify(stateToSave));
-    }, [searchQuery, filterType, currentPage, rowsPerPage, sortBy, sortOrder, activeCollection, whatsappOnly, consultedOnly, purchasedOnly]);
+    }, [searchQuery, filterType, currentPage, rowsPerPage, sortBy, sortOrder, activeCollection, whatsappOnly, consultedOnly, purchasedOnly, fromDate, toDate]);
 
     useEffect(() => {
         let loadedCollections = 0;
-        const totalToLoad = 2;
+        const totalToLoad = 3;
 
         const checkLoaded = () => {
             loadedCollections++;
             if (loadedCollections >= totalToLoad) {
-                setTimeout(() => setLoading(false), 300); // Subtle delay for smooth transition
+                setTimeout(() => setLoading(false), 300);
             }
         };
 
@@ -722,45 +890,56 @@ export default function DoctorDashboard({ onLogout }) {
         const unsub1 = onSnapshot(q1, (snap) => {
             setAllData(prev => ({ ...prev, questionnaire_submissions: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
             if (loading) checkLoaded();
-        }, () => checkLoaded());
+        }, (err) => {
+            console.error("Error fetching questionnaire_submissions:", err);
+            checkLoaded();
+        });
 
         const q2 = query(collection(db, "partial_submissions"), orderBy("timestamp", "desc"));
         const unsub2 = onSnapshot(q2, (snap) => {
             setAllData(prev => ({ ...prev, partial_submissions: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
             if (loading) checkLoaded();
-        }, () => checkLoaded());
+        }, (err) => {
+            console.error("Error fetching partial_submissions:", err);
+            checkLoaded();
+        });
 
-        return () => { unsub1(); unsub2(); };
+        const q3 = query(collection(db, "manual_submissions"), orderBy("timestamp", "desc"));
+        const unsub3 = onSnapshot(q3, (snap) => {
+            setAllData(prev => ({ ...prev, manual_submissions: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
+            if (loading) checkLoaded();
+        }, (err) => {
+            console.error("Error fetching manual_submissions:", err);
+            checkLoaded();
+        });
+
+        return () => { unsub1(); unsub2(); unsub3(); };
     }, [loading]);
 
     const submissions = useMemo(() => {
         if (activeCollection === 'all' || !activeCollection) {
             const full = (allData.questionnaire_submissions || []).map(s => ({ ...s, _collection: 'full' }));
             const partial = (allData.partial_submissions || []).map(s => ({ ...s, _collection: 'partial' }));
-            return [...full, ...partial];
+            const manual = (allData.manual_submissions || []).map(s => ({ ...s, _collection: 'manual' }));
+            return [...full, ...partial, ...manual];
         }
         return (allData[activeCollection] || []).map(s => ({ 
             ...s, 
-            _collection: activeCollection === 'questionnaire_submissions' ? 'full' : 'partial' 
+            _collection: activeCollection === 'questionnaire_submissions' ? 'full' : (activeCollection === 'manual_submissions' ? 'manual' : 'partial')
         }));
     }, [allData, activeCollection]);
 
-    // Reset page to 1 whenever filters change to avoid showing empty pages
     useEffect(() => {
         setCurrentPage(1);
     }, [debouncedSearchQuery, activeCollection, fromDate, toDate, whatsappOnly, consultedOnly, purchasedOnly]);
 
     const processedSubmissions = useMemo(() => {
         let result = (submissions || []).filter(s => {
-            // Enhanced Clinical Fuzzy Search
             const query = debouncedSearchQuery.toLowerCase();
             let passesSearch = true;
             if (query) {
-                // 1. Check Name/Phone
                 const nameMatch = (s.userName || s.name || "").toLowerCase().includes(query);
                 const phoneMatch = (s.phone || "").toLowerCase().includes(query);
-
-                // 2. Check Clinical Data (Quest. Answers)
                 let responseMatch = false;
                 if (s.answers && Array.isArray(s.answers)) {
                     responseMatch = s.answers.some(qa =>
@@ -773,34 +952,30 @@ export default function DoctorDashboard({ onLogout }) {
 
             if (!passesSearch) return false;
 
-            // Date Range filter
-            if (!s.timestamp) return false;
+            // Environment Filter
+            if (s.mode && s.mode !== currentBackend) return false;
+
+            // Date Filter (Allowing null timestamps to pass for new patients)
             const ts = parseFirestoreDate(s.timestamp);
-            if (!ts) return false;
-            
-            const passesDate = ts >= fromDate && ts <= toDate;
-            if (!passesDate) return false;
+            if (ts) {
+                const passesDate = ts >= fromDate && ts <= toDate;
+                if (!passesDate) return false;
+            }
 
-            // WhatsApp Filter logic
             if (whatsappOnly && !s.isWhatsAppSent) return false;
-
-            // Consulted Filter logic
             if (consultedOnly && !s.isConsulted) return false;
-
-            // Purchased Filter logic
             if (purchasedOnly && !s.isPurchased) return false;
 
             return true;
         });
 
-        // Sorting
         result.sort((a, b) => {
             let valA = a[sortBy] || (sortBy === 'userName' ? a.name : '');
             let valB = b[sortBy] || (sortBy === 'userName' ? b.name : '');
 
             if (sortBy === 'timestamp') {
-                valA = parseFirestoreDate(valA)?.getTime() || 0;
-                valB = parseFirestoreDate(valB)?.getTime() || 0;
+                valA = parseFirestoreDate(valA)?.getTime() || Date.now();
+                valB = parseFirestoreDate(valB)?.getTime() || Date.now();
             }
 
             if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
@@ -826,10 +1001,9 @@ export default function DoctorDashboard({ onLogout }) {
                         <div className="h-title">Doctor <span style={{ fontWeight: 300, opacity: 1 }}>Portal</span></div>
                         <div style={{ color: "var(--muted)", marginTop: 6 }}>Clinical Analytics v2.1</div>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        {/* Only show switcher if user has admin/editor role */}
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                         {(auth.currentUser?.email || '').includes('admin') || (auth.currentUser?.email || '').includes('shivang') ? (
-                            <div className="btn-group" style={{ height: 40, padding: 3, background: 'rgba(255,255,255,0.03)', borderRadius: 12 }}>
+                            <div className="btn-group" style={{ height: 40, padding: 3, background: 'rgba(255,255,255,0.03)', borderRadius: 12, display: 'flex' }}>
                                 <button 
                                     className={`toolbar-btn miniature ${currentBackend === 'live' ? 'active' : ''}`}
                                     onClick={() => handleSwitchBackend('live')}
@@ -843,7 +1017,9 @@ export default function DoctorDashboard({ onLogout }) {
                                         fontWeight: currentBackend === 'live' ? 800 : 500,
                                         textShadow: currentBackend === 'live' ? '0 0 10px rgba(74, 222, 128, 0.5)' : 'none',
                                         background: currentBackend === 'live' ? 'rgba(74, 222, 128, 0.1)' : 'transparent',
-                                        border: 'none'
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        cursor: 'pointer'
                                     }}
                                 >
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 10px #4ade80', opacity: currentBackend === 'live' ? 1 : 0.4 }}></div>
@@ -862,7 +1038,9 @@ export default function DoctorDashboard({ onLogout }) {
                                         fontWeight: currentBackend === 'dev' ? 800 : 500,
                                         textShadow: currentBackend === 'dev' ? '0 0 10px rgba(251, 191, 36, 0.5)' : 'none',
                                         background: currentBackend === 'dev' ? 'rgba(251, 191, 36, 0.1)' : 'transparent',
-                                        border: 'none'
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        cursor: 'pointer'
                                     }}
                                 >
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fbbf24', boxShadow: '0 0 10px #fbbf24', opacity: currentBackend === 'dev' ? 1 : 0.4 }}></div>
@@ -871,8 +1049,6 @@ export default function DoctorDashboard({ onLogout }) {
                             </div>
                         ) : null}
 
-
-                        {/* Profile Dropdown Component inline here */}
                         <div className="profile-dropdown-container">
                             <button className={`btn ghost`} onClick={() => setCurrentView("profile")}>
                                 <User size={18} /> My Profile
@@ -898,250 +1074,181 @@ export default function DoctorDashboard({ onLogout }) {
                                 </div>
                             </div>
                         </div>
-
                         <button className="btn ghost" onClick={onLogout}>Logout</button>
                     </div>
                 </header>
 
                 {currentView === "dashboard" && (
                     <div className="dr-content-grid animate-in" style={{ gridTemplateColumns: '1fr' }}>
-                        <div
-                            className="panel glass-panel"
-                            style={{ display: 'flex', flexDirection: 'column', minHeight: '600px' }}
-                        >
-                            {/* Ultra-Slim Cohesive Toolbar */}
-                            <div className="dr-toolbar-row">
-                                <div className="filter-item" style={{ flex: 1.5 }}>
-                                    <div className="dr-search-wrapper" style={{ width: '100%', minWidth: 'auto' }}>
-                                        <Search size={16} className="search-icon" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search name, phone, or symptom (e.g. PCOD)..."
-                                            value={searchQuery}
-                                            onChange={(e) => {
-                                                setSearchQuery(e.target.value);
-                                                setCurrentPage(1);
-                                            }}
-                                            className="native-input"
-                                            style={{ width: '100%', paddingLeft: '40px' }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="toolbar-v-divider" />
-
-                                <div className="filter-item">
-                                    <div className="btn-group" style={{ background: 'rgba(255,255,255,0.02)', padding: '3px', borderRadius: '12px' }}>
-                                        <button 
-                                            className={`toolbar-btn miniature ${activeCollection === 'questionnaire_submissions' ? 'active' : ''}`} 
-                                            onClick={() => setActiveCollection(prev => prev === 'questionnaire_submissions' ? 'all' : 'questionnaire_submissions')}
-                                            style={{ minWidth: '60px', fontSize: '10px', fontWeight: 800, background: activeCollection === 'questionnaire_submissions' ? 'rgba(34,211,238,0.2)' : 'transparent', color: activeCollection === 'questionnaire_submissions' ? '#22d3ee' : 'rgba(255,255,255,0.4)' }}
-                                        >
-                                            FULL
-                                        </button>
-                                        <button 
-                                            className={`toolbar-btn miniature ${activeCollection === 'partial_submissions' ? 'active' : ''}`} 
-                                            onClick={() => setActiveCollection(prev => prev === 'partial_submissions' ? 'all' : 'partial_submissions')}
-                                            style={{ minWidth: '70px', fontSize: '10px', fontWeight: 800, background: activeCollection === 'partial_submissions' ? 'rgba(251,191,36,0.15)' : 'transparent', color: activeCollection === 'partial_submissions' ? '#fbbf24' : 'rgba(255,255,255,0.4)' }}
-                                        >
-                                            PARTIAL
-                                        </button>
-                                        <div className="toolbar-v-divider" style={{ margin: '0 4px', height: '20px', background: 'rgba(255,255,255,0.05)' }} />
-                                        <button 
-                                            className={`toolbar-btn miniature ${consultedOnly ? 'active' : ''}`}
-                                            onClick={() => { setConsultedOnly(!consultedOnly); setCurrentPage(1); }}
-                                            style={{ minWidth: '85px', fontSize: '10px', fontWeight: 800, background: consultedOnly ? 'rgba(34,197,94,0.15)' : 'transparent', color: consultedOnly ? '#4ade80' : 'rgba(255,255,255,0.4)', border: 'none' }}
-                                        >
-                                            CONSULTED
-                                        </button>
-                                        <button 
-                                            className={`toolbar-btn miniature ${purchasedOnly ? 'active' : ''}`}
-                                            onClick={() => { setPurchasedOnly(!purchasedOnly); setCurrentPage(1); }}
-                                            style={{ minWidth: '85px', fontSize: '10px', fontWeight: 800, background: purchasedOnly ? 'rgba(139,92,246,0.15)' : 'transparent', color: purchasedOnly ? '#a78bfa' : 'rgba(255,255,255,0.4)', border: 'none' }}
-                                        >
-                                            PURCHASED
-                                        </button>
-                                        <button 
-                                            className={`toolbar-btn miniature ${whatsappOnly ? 'active' : ''}`}
-                                            onClick={() => { setWhatsappOnly(!whatsappOnly); setCurrentPage(1); }}
-                                            style={{ minWidth: '85px', fontSize: '10px', fontWeight: 800, background: whatsappOnly ? 'rgba(244,63,94,0.15)' : 'transparent', color: whatsappOnly ? '#fb7185' : 'rgba(255,255,255,0.4)', border: 'none' }}
-                                        >
-                                            WHATSAPP
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="toolbar-v-divider" style={{ marginLeft: 'auto' }} />
-
-                                <div className="filter-item" style={{ position: 'relative' }}>
-                                    <span className="filter-label">From:</span>
-                                    <DatePicker
-                                        selected={fromDate}
-                                        onChange={(d) => {
-                                            if (toDate && d > toDate) {
-                                                setDateError("Start date cannot be after end date");
-                                                setTimeout(() => setDateError(null), 3000);
-                                                return;
-                                            }
-                                            setDateError(null);
-                                            setFromDate(d);
+                        <div className="panel glass-panel" style={{ display: 'flex', flexDirection: 'column', minHeight: '600px' }}>
+                            <div className="crm-toolbar crm-toolbar-primary">
+                                <div className="crm-search">
+                                    <Search size={16} className="crm-search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, phone, or symptom..."
+                                        value={searchQuery}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
                                             setCurrentPage(1);
                                         }}
-                                        onMonthChange={(d) => {
-                                            if (toDate && d > toDate) return;
-                                            setDateError(null);
-                                            setFromDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        onYearChange={(d) => {
-                                            if (toDate && d > toDate) return;
-                                            setDateError(null);
-                                            setFromDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        maxDate={toDate || new Date()}
-                                        dateFormat="dd MMM yy"
-                                        className="native-input mini-date"
-                                        showMonthDropdown
-                                        showYearDropdown
-                                        scrollableYearDropdown
-                                        yearDropdownItemNumber={25}
-                                        portalId="root"
-                                        autoComplete="off"
-                                        customInput={<CustomDateInput className="native-input semi-slim mini-date" />}
-                                        withPortal
                                     />
-                                    <span className="filter-label" style={{ marginLeft: 8 }}>To:</span>
-                                    <DatePicker
-                                        selected={toDate}
-                                        onChange={(d) => {
-                                            if (fromDate && d < fromDate) {
-                                                setDateError("End date cannot be before start date");
-                                                setTimeout(() => setDateError(null), 3000);
-                                                return;
-                                            }
-                                            setDateError(null);
-                                            setToDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        onMonthChange={(d) => {
-                                            if (fromDate && d < fromDate) return;
-                                            setDateError(null);
-                                            setToDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        onYearChange={(d) => {
-                                            if (fromDate && d < fromDate) return;
-                                            setDateError(null);
-                                            setToDate(d);
-                                            setCurrentPage(1);
-                                        }}
-                                        minDate={fromDate}
-                                        maxDate={new Date()}
-                                        dateFormat="dd MMM yy"
-                                        className="native-input mini-date"
-                                        showMonthDropdown
-                                        showYearDropdown
-                                        scrollableYearDropdown
-                                        yearDropdownItemNumber={25}
-                                        portalId="root"
-                                        autoComplete="off"
-                                        customInput={<CustomDateInput className="native-input semi-slim mini-date" />}
-                                        withPortal
-                                    />
-
-                                    {dateError && (
-                                        <div className="date-error-popup">
-                                            {dateError}
-                                        </div>
+                                    {searchQuery && (
+                                        <button
+                                            type="button"
+                                            className="crm-search-clear"
+                                            onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
+                                            aria-label="Clear search"
+                                        >
+                                            <X size={14} />
+                                        </button>
                                     )}
                                 </div>
 
+                                <div className="crm-daterange">
+                                    <input
+                                        type="date"
+                                        className="crm-daterange-input"
+                                        aria-label="From date"
+                                        value={toIsoDate(fromDate)}
+                                        max={toIsoDate(toDate) || TODAY_ISO}
+                                        onFocus={() => { lastValidFrom.current = fromDate; }}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) { setFromDate(null); setCurrentPage(1); return; }
+                                            const d = new Date(v);
+                                            setFromDate(d);
+                                            setCurrentPage(1);
+                                            if (!toDate || d <= toDate) setDateError(null);
+                                        }}
+                                        onBlur={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) return;
+                                            const d = new Date(v);
+                                            if (toDate && d > toDate) {
+                                                setDateError("Start date cannot be after end date");
+                                                setFromDate(lastValidFrom.current);
+                                                setTimeout(() => setDateError(null), 3000);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                    />
+                                    <span className="crm-daterange-arrow">→</span>
+                                    <input
+                                        type="date"
+                                        className="crm-daterange-input"
+                                        aria-label="To date"
+                                        value={toIsoDate(toDate)}
+                                        min={toIsoDate(fromDate)}
+                                        max={TODAY_ISO}
+                                        onFocus={() => { lastValidTo.current = toDate; }}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) { setToDate(null); setCurrentPage(1); return; }
+                                            const d = new Date(v);
+                                            setToDate(d);
+                                            setCurrentPage(1);
+                                            if (!fromDate || d >= fromDate) setDateError(null);
+                                        }}
+                                        onBlur={(e) => {
+                                            const v = e.target.value;
+                                            if (!v) return;
+                                            const d = new Date(v);
+                                            if (fromDate && d < fromDate) {
+                                                setDateError("End date cannot be before start date");
+                                                setToDate(lastValidTo.current);
+                                                setTimeout(() => setDateError(null), 3000);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                    />
+                                    {dateError && <div className="date-error-popup">{dateError}</div>}
+                                </div>
+
+                                <button
+                                    className="btn btn-primary new-patient-cta"
+                                    onClick={() => setIsCreateModalOpen(true)}
+                                >
+                                    <UserPlus size={16} />
+                                    <span>New Patient</span>
+                                </button>
                             </div>
 
-                            {/* Order & Pagination Row */}
-                            <div className="dr-toolbar-row" style={{ borderTop: 'none', background: 'rgba(255, 255, 255, 0.01)', padding: '6px 24px' }}>
-                                <div className="filter-item">
-                                    <ArrowUpDown size={14} style={{ color: 'var(--muted)', marginRight: 4 }} />
-                                    <span className="filter-label">Order By:</span>
-                                    <select className="native-select semi-slim" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                                        <option value="timestamp">Submission Date</option>
-                                        <option value="userName">Patient Name</option>
-                                    </select>
+                            <div className="crm-toolbar crm-toolbar-secondary">
+                                <div className="crm-chip-group">
                                     <button
-                                        className={`toolbar-btn mini-toggle ${sortOrder === 'asc' ? 'active' : ''}`}
-                                        onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                        className={`crm-chip chip-full ${activeCollection === 'questionnaire_submissions' ? 'active' : ''}`}
+                                        onClick={() => setActiveCollection(prev => prev === 'questionnaire_submissions' ? 'all' : 'questionnaire_submissions')}
                                     >
-                                        {sortOrder.toUpperCase()}
+                                        Full
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-partial ${activeCollection === 'partial_submissions' ? 'active' : ''}`}
+                                        onClick={() => setActiveCollection(prev => prev === 'partial_submissions' ? 'all' : 'partial_submissions')}
+                                    >
+                                        Partial
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-manual ${activeCollection === 'manual_submissions' ? 'active' : ''}`}
+                                        onClick={() => setActiveCollection(prev => prev === 'manual_submissions' ? 'all' : 'manual_submissions')}
+                                        style={{ 
+                                            background: activeCollection === 'manual_submissions' ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
+                                            borderColor: activeCollection === 'manual_submissions' ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255, 255, 255, 0.1)'
+                                        }}
+                                    >
+                                        Manual
+                                    </button>
+                                    <span className="crm-chip-sep" />
+                                    <button
+                                        className={`crm-chip chip-consulted ${consultedOnly ? 'active' : ''}`}
+                                        onClick={() => { setConsultedOnly(!consultedOnly); setCurrentPage(1); }}
+                                    >
+                                        Consulted
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-purchased ${purchasedOnly ? 'active' : ''}`}
+                                        onClick={() => { setPurchasedOnly(!purchasedOnly); setCurrentPage(1); }}
+                                    >
+                                        Purchased
+                                    </button>
+                                    <button
+                                        className={`crm-chip chip-whatsapp ${whatsappOnly ? 'active' : ''}`}
+                                        onClick={() => { setWhatsappOnly(!whatsappOnly); setCurrentPage(1); }}
+                                    >
+                                        WhatsApp
                                     </button>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>
-                                        Total Records: <span style={{ color: '#fff' }}>{processedSubmissions.length}</span>
-                                    </div>
-                                    <div className="toolbar-v-divider" style={{ height: 16 }} />
-                                    <ExportControls 
-                                        filtered={{ completed: processedSubmissions, partial: [] }} 
-                                        showStatus={showStatus} 
-                                    />
-                                </div>
-
-                                <div style={{ flex: 1 }} />
-
-                                <div className="filter-item">
-                                    <span className="filter-label">Rows:</span>
-                                    {isCustomRows ? (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <input
-                                                type="number"
-                                                className="native-input semi-slim"
-                                                style={{ width: '60px', textAlign: 'center' }}
-                                                value={Math.floor(rowsPerPage/3)}
-                                                autoFocus
-                                                min="1"
-                                                max="200"
-                                                onChange={(e) => {
-                                                    const rowCount = Math.max(1, parseInt(e.target.value) || 0);
-                                                    setRowsPerPage(rowCount * 3);
-                                                    setCurrentPage(1);
-                                                }}
-                                                onBlur={() => {
-                                                    if (rowsPerPage % 3 !== 0 || ![12, 24, 48, 96, 150].includes(rowsPerPage)) {
-                                                        // keep custom
-                                                    } else {
-                                                        setIsCustomRows(false);
-                                                    }
-                                                }}
-                                            />
-                                            <button
-                                                className="mini-toggle"
-                                                style={{ padding: '4px 6px' }}
-                                                onClick={() => setIsCustomRows(false)}
-                                            >
-                                                Reset
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <select
-                                            className="native-select semi-slim"
-                                            value={rowsPerPage}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val === 'custom') {
-                                                    setIsCustomRows(true);
-                                                } else {
-                                                    setRowsPerPage(Number(val));
-                                                    setCurrentPage(1);
-                                                }
-                                            }}
-                                        >
-                                            {[12, 24, 48, 96, 150].map(val => (
-                                                <option key={val} value={val}>{val === 150 ? '50+ Rows' : `${Math.floor(val/3)} Rows`}</option>
-                                            ))}
-                                            <option value="custom">Custom...</option>
+                                <div className="crm-controls">
+                                    <div className="crm-control-group">
+                                        <ArrowUpDown size={13} className="crm-control-icon" />
+                                        <select className="crm-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                                            <option value="timestamp">Date</option>
+                                            <option value="userName">Name</option>
                                         </select>
-                                    )}
+                                        <button
+                                            className={`crm-order-toggle ${sortOrder === 'asc' ? 'asc' : 'desc'}`}
+                                            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                        >
+                                            {sortOrder === 'asc' ? '↑' : '↓'}
+                                        </button>
+                                    </div>
+
+                                    <div className="crm-records-count">
+                                        <strong>{processedSubmissions.length.toLocaleString()}</strong> records
+                                    </div>
+
+                                    <ExportControls submissions={processedSubmissions} type={activeCollection === 'partial_submissions' ? 'partial' : 'full'} showStatus={showStatus} />
+
+                                    <div className="crm-control-group">
+                                        <span className="crm-control-label">Rows</span>
+                                        <select className="crm-select" value={rowsPerPage} onChange={(e) => setRowsPerPage(Number(e.target.value))}>
+                                            <option value={12}>12</option>
+                                            <option value={24}>24</option>
+                                            <option value={48}>48</option>
+                                            <option value={96}>96</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1186,7 +1293,7 @@ export default function DoctorDashboard({ onLogout }) {
                                                 <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                     <ArrowUpDown size={20} className="p-arrow" style={{ transform: 'rotate(90deg)' }} />
                                                     <div className="p-status-text">
-                                                        {p._collection === 'partial' ? 'Partial' : 'Full'}
+                                                        {p._collection === 'manual' ? 'Manual' : (p._collection === 'partial' ? 'Partial' : 'Full')}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1212,6 +1319,7 @@ export default function DoctorDashboard({ onLogout }) {
                                         <div className="page-numbers">
                                             {[...Array(totalPages)].map((_, i) => {
                                                 const pg = i + 1;
+                                                // Simple pagination logic: show first, last, and around current
                                                 if (pg === 1 || pg === totalPages || (pg >= currentPage - 1 && pg <= currentPage + 1)) {
                                                     return (
                                                         <button
@@ -1223,7 +1331,9 @@ export default function DoctorDashboard({ onLogout }) {
                                                         </button>
                                                     );
                                                 }
-                                                if (pg === currentPage - 2 || pg === currentPage + 2) return <span key={pg}>...</span>;
+                                                if (pg === currentPage - 2 || pg === currentPage + 2) {
+                                                    return <span key={pg} className="page-dots">...</span>;
+                                                }
                                                 return null;
                                             })}
                                         </div>
@@ -1244,7 +1354,11 @@ export default function DoctorDashboard({ onLogout }) {
                 {currentView === "editor" && prescriptionUser && (
                     <PrescriptionEditor
                         patient={prescriptionUser}
-                        collectionName={activeCollection === 'all' ? (prescriptionUser._collection === 'full' ? 'questionnaire_submissions' : 'partial_submissions') : activeCollection}
+                        collectionName={
+                            activeCollection !== 'all' ? activeCollection : 
+                            (prescriptionUser._collection === 'full' ? 'questionnaire_submissions' : 
+                             (prescriptionUser._collection === 'manual' ? 'manual_submissions' : 'partial_submissions'))
+                        }
                         onClose={() => {
                             setCurrentView("dashboard");
                             setPrescriptionUser(null);
@@ -1260,22 +1374,17 @@ export default function DoctorDashboard({ onLogout }) {
                 {currentView === "profile" && (
                     <DoctorProfile defaultTab={profileTab} onTabChange={setProfileTab} />
                 )}
-
-                <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-                    <defs>
-                        <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="var(--accent1)" />
-                            <stop offset="100%" stopColor="var(--accent2)" />
-                        </linearGradient>
-                    </defs>
-                </svg>
             </div>
 
             {selectedUser && currentView === "dashboard" && (
                 <PatientDetailModal
                     user={selectedUser}
                     onClose={() => setSelectedUser(null)}
-                    collectionName={activeCollection === 'all' ? (selectedUser._collection === 'full' ? 'questionnaire_submissions' : 'partial_submissions') : activeCollection}
+                    collectionName={
+                        activeCollection !== 'all' ? activeCollection : 
+                        (selectedUser._collection === 'full' ? 'questionnaire_submissions' : 
+                         (selectedUser._collection === 'manual' ? 'manual_submissions' : 'partial_submissions'))
+                    }
                     showStatus={showStatus}
                     onOpenEditor={(user) => {
                         setSelectedUser(null);
@@ -1284,6 +1393,20 @@ export default function DoctorDashboard({ onLogout }) {
                     }}
                 />
             )}
+            
+            <CreateUserModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                mode={currentBackend}
+                onUserCreated={(newUser) => {
+                    setAllData(prev => ({ 
+                        ...prev, 
+                        manual_submissions: [newUser, ...prev.manual_submissions] 
+                    }));
+                    showStatus('success', 'Patient Created', `Profile for ${newUser.name} created.`);
+                }}
+            />
+
             <StatusModal {...modalConfig} onClose={() => setModalConfig({ ...modalConfig, isOpen: false })} />
         </div>
     );
