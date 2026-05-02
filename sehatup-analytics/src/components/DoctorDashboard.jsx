@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FIREBASE_MODE, setFirebaseMode } from '../config/firebaseEnvironment';
-import "react-datepicker/dist/react-datepicker.css";
-import DatePicker from "react-datepicker";
 import {
     Activity, FileText, ShoppingBag, Search,
     ChevronDown, User, UserPlus, ChevronRight, Phone, Calendar as CalIcon,
@@ -18,20 +16,7 @@ import { triggerOrderPlacedWebhook } from '../utils/webhookHelpers';
 import ExportControls from './ExportControls';
 import { formatDateToCustom, parseFirestoreDate, formatTableTimestamp } from '../utils/dataHelpers';
 
-// Custom Date Input for Mobile and Desktop (Prevents Keyboard popup and typing)
-const CustomDateInput = React.forwardRef(({ value, onClick, className }, ref) => (
-    <input
-        value={value}
-        onClick={onClick}
-        onChange={() => { }}
-        onKeyDown={(e) => e.preventDefault()}
-        className={className}
-        readOnly
-        ref={ref}
-        placeholder="Select Date"
-        style={{ caretColor: 'transparent', cursor: 'pointer' }}
-    />
-));
+
 
 // Performance Helper: Debounce Hook
 function useDebounce(value, delay) {
@@ -197,7 +182,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
             });
             setIsInitialized(true);
         }
-    }, [user.id, user.isConsulted, user.isPurchased, user.doctorComments, collectionName]);
+    }, [user.id, user.isConsulted, user.isPurchased, user.doctorComments, user.recommendedProducts, collectionName]);
 
     const reportDateStr = useMemo(() => {
         const d = parseFirestoreDate(user.timestamp);
@@ -829,7 +814,7 @@ export default function DoctorDashboard({ onLogout }) {
 
     const [currentPage, setCurrentPage] = useState(saved.currentPage || 1);
     const [rowsPerPage, setRowsPerPage] = useState(saved.rowsPerPage || 12);
-    const [isCustomRows, setIsCustomRows] = useState(false);
+
     const [sortBy, setSortBy] = useState(saved.sortBy || "timestamp");
     const [sortOrder, setSortOrder] = useState(saved.sortOrder || "desc");
     const [activeCollection, setActiveCollection] = useState(saved.activeCollection || "all");
@@ -984,7 +969,7 @@ export default function DoctorDashboard({ onLogout }) {
         });
 
         return result;
-    }, [submissions, debouncedSearchQuery, sortBy, sortOrder, fromDate, toDate, whatsappOnly, consultedOnly, purchasedOnly]);
+    }, [submissions, debouncedSearchQuery, sortBy, sortOrder, fromDate, toDate, whatsappOnly, consultedOnly, purchasedOnly, currentBackend]);
 
     const totalPages = Math.ceil(processedSubmissions.length / rowsPerPage);
     const paginatedSubmissions = processedSubmissions.slice(

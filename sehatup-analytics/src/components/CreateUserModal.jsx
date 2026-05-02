@@ -6,7 +6,6 @@ import {
   X,
   UserPlus,
   Calendar,
-  Phone,
   Activity,
   Ruler,
   Target,
@@ -16,7 +15,6 @@ import {
   Scale,
   Check,
   ArrowLeft,
-  ArrowRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 

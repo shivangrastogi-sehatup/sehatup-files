@@ -144,6 +144,7 @@ export default function ExportControls({ filtered, submissions, type, showStatus
     <>
       <div style={{ display: "flex", gap: 8 }}>
         <button className="btn" disabled={busy} onClick={() => handleExport('xlsx')}>Export Excel</button>
+        <button className="btn ghost" disabled={busy} onClick={() => handleExport('csv')}>Export CSV</button>
       </div>
 
       {toast && createPortal(

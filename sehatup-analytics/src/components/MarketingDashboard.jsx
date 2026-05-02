@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, setDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FIREBASE_MODE, setFirebaseMode } from '../config/firebaseEnvironment';
 import {
@@ -204,7 +204,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
             });
             setIsInitialized(true);
         }
-    }, [user.id, user.isConsulted, user.isPurchased, user.doctorComments, collectionName]);
+    }, [user.id, user.isConsulted, user.isPurchased, user.doctorComments, user.recommendedProducts, collectionName]);
 
     const reportDateStr = useMemo(() => {
         const d = parseFirestoreDate(user.timestamp);
@@ -830,11 +830,15 @@ export default function MarketingDashboard({ onLogout }) {
     const [sortOrder, setSortOrder] = useState(saved.sortOrder || "desc");
     const [activeCollection, setActiveCollection] = useState(saved.activeCollection || "all");
     const [fromDate, setFromDate] = useState(() => {
+        if (saved.fromDate) return new Date(saved.fromDate);
         const d = new Date();
         d.setFullYear(d.getFullYear() - 1);
         return d;
     });
-    const [toDate, setToDate] = useState(new Date());
+    const [toDate, setToDate] = useState(() => {
+        if (saved.toDate) return new Date(saved.toDate);
+        return new Date();
+    });
     const [dateError, setDateError] = useState(null);
     const lastValidFrom = useRef(fromDate);
     const lastValidTo = useRef(toDate);
@@ -853,10 +857,12 @@ export default function MarketingDashboard({ onLogout }) {
             activeCollection: activeCollection || 'all',
             whatsappOnly,
             consultedOnly,
-            purchasedOnly
+            purchasedOnly,
+            fromDate: fromDate?.toISOString(),
+            toDate: toDate?.toISOString()
         };
         localStorage.setItem('marketing_dashboard_filters', JSON.stringify(stateToSave));
-    }, [searchQuery, filterType, currentPage, rowsPerPage, sortBy, sortOrder, activeCollection, whatsappOnly, consultedOnly, purchasedOnly]);
+    }, [searchQuery, filterType, currentPage, rowsPerPage, sortBy, sortOrder, activeCollection, whatsappOnly, consultedOnly, purchasedOnly, fromDate, toDate]);
 
     useEffect(() => {
         let loadedCollections = 0;
@@ -977,7 +983,7 @@ export default function MarketingDashboard({ onLogout }) {
         });
 
         return result;
-    }, [submissions, debouncedSearchQuery, sortBy, sortOrder, fromDate, toDate, whatsappOnly, consultedOnly, purchasedOnly]);
+    }, [submissions, debouncedSearchQuery, sortBy, sortOrder, fromDate, toDate, whatsappOnly, consultedOnly, purchasedOnly, currentBackend]);
 
     const totalPages = Math.ceil(processedSubmissions.length / rowsPerPage);
     const paginatedSubmissions = processedSubmissions.slice(
