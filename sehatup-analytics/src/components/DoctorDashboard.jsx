@@ -825,8 +825,14 @@ export default function DoctorDashboard({ onLogout }) {
         return d;
     });
     const [toDate, setToDate] = useState(() => {
-        if (saved.toDate) return new Date(saved.toDate);
-        return new Date();
+        const today = new Date();
+        if (saved.toDate) {
+            const savedTo = new Date(saved.toDate);
+            // If the saved end date is in the past (stale from a previous day),
+            // advance it to today so new records are not filtered out.
+            return savedTo < today ? today : savedTo;
+        }
+        return today;
     });
     const [dateError, setDateError] = useState(null);
     const lastValidFrom = useRef(fromDate);
@@ -889,7 +895,7 @@ export default function DoctorDashboard({ onLogout }) {
             checkLoaded();
         });
 
-        const q3 = query(collection(db, "manual_submissions"), orderBy("timestamp", "desc"));
+        const q3 = query(collection(db, "manual_submissions"));
         const unsub3 = onSnapshot(q3, (snap) => {
             setAllData(prev => ({ ...prev, manual_submissions: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
             if (loading) checkLoaded();
@@ -920,6 +926,7 @@ export default function DoctorDashboard({ onLogout }) {
 
     const processedSubmissions = useMemo(() => {
         let result = (submissions || []).filter(s => {
+            let dropReason = null;
             const query = debouncedSearchQuery.toLowerCase();
             let passesSearch = true;
             if (query) {
@@ -935,23 +942,37 @@ export default function DoctorDashboard({ onLogout }) {
                 passesSearch = nameMatch || phoneMatch || responseMatch;
             }
 
-            if (!passesSearch) return false;
+            if (!passesSearch) dropReason = 'search';
 
             // Environment Filter
-            if (s.mode && s.mode !== currentBackend) return false;
+            if (!dropReason && s.mode && s.mode !== currentBackend) dropReason = 'environment';
 
             // Date Filter (Allowing null timestamps to pass for new patients)
             const ts = parseFirestoreDate(s.timestamp);
-            if (ts) {
-                const passesDate = ts >= fromDate && ts <= toDate;
-                if (!passesDate) return false;
+            if (!dropReason && ts) {
+                let passesDate = true;
+                if (fromDate) {
+                    let startOfDay = new Date(fromDate);
+                    startOfDay.setHours(0, 0, 0, 0);
+                    if (ts < startOfDay) passesDate = false;
+                }
+                if (toDate) {
+                    let endOfDay = new Date(toDate);
+                    endOfDay.setHours(23, 59, 59, 999);
+                    if (ts > endOfDay) passesDate = false;
+                }
+                if (!passesDate) dropReason = 'date';
             }
 
-            if (whatsappOnly && !s.isWhatsAppSent) return false;
-            if (consultedOnly && !s.isConsulted) return false;
-            if (purchasedOnly && !s.isPurchased) return false;
+            if (!dropReason && whatsappOnly && !s.isWhatsAppSent) dropReason = 'whatsapp';
+            if (!dropReason && consultedOnly && !s.isConsulted) dropReason = 'consulted';
+            if (!dropReason && purchasedOnly && !s.isPurchased) dropReason = 'purchased';
 
-            return true;
+            if (s._collection === 'manual') {
+                console.log(`[Filter Log] Manual Sub ID: ${s.id}, Name: ${s.name || s.userName}, mode: ${s.mode}, Date: ${ts}, dropReason: ${dropReason}`);
+            }
+
+            return dropReason === null;
         });
 
         result.sort((a, b) => {

@@ -36,14 +36,16 @@
 
     <div id="step-1" class="step active">
       <h2>Welcome to the Women’s Weight & Metabolic Quiz!</h2>
-      <ul>
-        <li>Takes just a few minutes</li>
-        <li>100% private and secure</li>
-        <li>You must be 18 or older to participate</li>
-      </ul>
-      <div class="navigation">
-        <div></div>
-        <button data-action="start">Start Questionnaire</button>
+      <div class="welcome-content-flex">
+        <ul>
+          <li>Takes just a few minutes</li>
+          <li>100% private and secure</li>
+          <li>You must be 18 or older to participate</li>
+        </ul>
+        <div class="welcome-navigation">
+          <button data-action="start" class="btn-primary">Start Questionnaire</button>
+          <button id="show-previous-btn" data-action="show-previous" class="btn-secondary" style="display: none;">Show Previous Report</button>
+        </div>
       </div>
     </div>
 
@@ -138,41 +140,68 @@
 
     <!-- STEP 7: RESULTS (Internal Step 7 - last question group (6) + 1) -->
     <div id="result-page" class="step">
+      <div class="result-navigation">
+        <button class="back-arrow-btn" data-action="go-back-from-results">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          <span>Back to Questionnaire</span>
+        </button>
+      </div>
       <div class="final-layout">
         <div class="left-column">
           <div class="patient-details">
-            <h3>Assesment Report</h3>
-            <div class="patient-details-container">
-              <div class="patient-info-text">
-                <p>
-                  <strong></strong>
-                  <span id="user-name"></span>
-                </p>
-                <p>
-                  <strong></strong>
-                  <span id="user-concern"></span>
-                </p>
-              </div>
-              <div class="patient-info-score">
-                <div class="score-box" id="score-box">
-                  <div
-                    class="circular-progress"
-                    id="circular-progress"
-                  >
-                    <div class="inner-text">
-                      <p class="progress-value" id="progress-value">0%</p>
-                    </div>
+              <h3 class="assessment-header">
+                  <div style="display: flex; align-items: center;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; color: #2563eb;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Assessment Report
                   </div>
-                </div>
+                  <div class="report-header-date">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      Date: <span id="report-date"></span>
+                  </div>
+              </h3>
+
+              <div class="patient-assessment-header-grid">
+                  <div class="header-info-stack">
+                      <div class="details-grid-compact">
+                          <div class="detail-item">
+                              <span class="detail-label">Patient Name</span>
+                              <span id="user-name" class="detail-value"></span>
+                          </div>
+                          <div class="detail-item">
+                              <span class="detail-label">Age</span>
+                              <span id="user-age" class="detail-value"></span>
+                          </div>
+                          <div class="detail-item">
+                              <span class="detail-label">Category</span>
+                              <span id="user-category" class="detail-value"></span>
+                          </div>
+                      </div>
+                      
+                      <div class="issue-header-text" id="user-concern"></div>
+                      <div class="condition-details-html" id="condition-text"></div>
+                  </div>
+
+                  <div class="header-score-column">
+                      <div class="score-box-mini">
+                          <div class="circular-progress-small" id="circular-progress">
+                              <div class="inner-value-box">
+                                  <div class="progress-val-text">
+                                      <span class="score-num" id="progress-value">0</span>
+                                      <span class="percent-sign">%</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <div class="risk-level-badge" id="risk-level-badge"></div>
+                  </div>
               </div>
-            </div>
-            <div id="condition-text" style="margin-top: 10px"></div>
-            <span class="patient-id" id="patient-id"></span>
-            <div class="future-risk-section">
-              <h3>Future Risk (If Not Treated)</h3>
-              <div id="future-risk"></div>
-              <div id="future-risk-tags" class="risk-tags-container"></div>
-            </div>
+              
+              <div class="future-risk-section">
+                  <div class="assessment-header" style="margin-top: 10px;">Future Risk (If Not Treated)</div>
+                  <div id="future-risk" style="display:none;"></div>
+                  <div id="future-risk-tags" class="risk-tags-container"></div>
+              </div>
+
             <div class="whatsapp-button-container">
               <button
                 class="whatsapp-report-btn"
@@ -203,14 +232,28 @@
             </div>
           </a>
           <div class="treatment-plan">
-            <h4>What you get in your treatment plan</h4>
-            <ul>
-              <li>Doctor Support</li>
-              <li>Ayurvedic Medicine</li>
-              <li>Custom Plan</li>
-            </ul>
-          </div>
-        </div>
+              <h4>Your Treatment Inclusions</h4>
+              <div class="treatment-grid">
+                  <div class="treatment-item">
+                      <div class="treatment-icon doctor-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                      </div>
+                      <span class="treatment-text">Expert Doctor Consultation</span>
+                  </div>
+                  <div class="treatment-item">
+                      <div class="treatment-icon medicine-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+                      </div>
+                      <span class="treatment-text">Personalized Ayurvedic Kit</span>
+                  </div>
+                  <div class="treatment-item">
+                      <div class="treatment-icon plan-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      </div>
+                      <span class="treatment-text">Custom Diet & Lifestyle Plan</span>
+                  </div>
+              </div>
+          </div>        </div>
         <div class="right-column">
           <div class="recommended-treatment">
             <h3>Recommended Treatment</h3>

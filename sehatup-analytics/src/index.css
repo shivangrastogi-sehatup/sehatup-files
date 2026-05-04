@@ -3220,22 +3220,34 @@ input:focus {
   gap: 4px;
 }
 
+/* Full — 2px solid cyan */
 .patient-item.full {
-  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+  border: 2px solid rgba(6, 182, 212, 0.35) !important;
 }
 
 .patient-item.full:hover {
   border-color: var(--accent3) !important;
-  box-shadow: 0 0 25px rgba(6, 182, 212, 0.2);
+  box-shadow: 0 0 28px rgba(6, 182, 212, 0.25);
 }
 
+/* Partial — 2px dashed amber */
 .patient-item.partial {
-  border: 1px solid rgba(251, 191, 36, 0.3) !important;
+  border: 2px dashed rgba(251, 191, 36, 0.4) !important;
 }
 
 .patient-item.partial:hover {
   border-color: var(--accent-warn) !important;
-  box-shadow: 0 0 25px rgba(251, 191, 36, 0.2);
+  box-shadow: 0 0 28px rgba(251, 191, 36, 0.25);
+}
+
+/* Manual — 2px dotted pink */
+.patient-item.manual {
+  border: 2px dotted rgba(236, 72, 153, 0.5) !important;
+}
+
+.patient-item.manual:hover {
+  border-color: #ec4899 !important;
+  box-shadow: 0 0 28px rgba(236, 72, 153, 0.3);
 }
 
 .p-avatar.purchased {

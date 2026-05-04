@@ -53,7 +53,7 @@ function preprocessLiquid(templateStr) {
 // --- Routes ---
 // Map standard 'firebase-config.js' to the shared test config
 app.get("/firebase-config.js", (req, res) => {
-  res.sendFile(path.join(sharedPath, "public", "firebase-config-test.js"));
+  res.sendFile(path.join(sharedPath, "public", "firebase-config.js"));
 });
 
 app.get("/", async (req, res) => {
