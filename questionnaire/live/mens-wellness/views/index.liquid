@@ -181,6 +181,8 @@
                       <div class="risk-level-badge" id="risk-level-badge"></div>
                   </div>
               </div>
+              <span class="patient-id" id="patient-id"></span>
+
               
               <div class="future-risk-section">
                   <div class="assessment-header" style="margin-top: 10px;">Future Risk (If Not Treated)</div>
@@ -269,8 +271,34 @@
 </div>
 
 {% render 'otp-verification-modal' %}
-<div id="productModal" class="modal"></div>
-<div id="exit-popup" class="modal"></div>
+<div id="productModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" data-action="close-modal">&times;</span>
+    <img id="modalImage" src="" alt="">
+    <h2 id="modalTitle"></h2>
+    <p id="modalDescription"></p>
+    <p id="modalPrice" class="price"></p>
+  </div>
+</div>
+
+<div id="exit-popup" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" data-action="close-modal">×</span>
+    <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Popup_Image.jpg?v=1745412444" alt="Special Offer">
+    <h2>Get Extra Off Your Order!</h2>
+    <p>Use the coupon code below to avail an extra discount:</p>
+    <div class="coupon-container">
+      <input
+        type="text"
+        id="coupon-code"
+        value="SPECIAL5"
+        readonly
+      >
+      <button class="copy-btn" data-action="copy-coupon">Copy</button>
+    </div>
+    <p id="copy-feedback" style="display: none; color: green; font-weight: bold">Copied!</p>
+  </div>
+</div>
 
 <script>
   // 1. Initialize a global object to hold live Shopify data

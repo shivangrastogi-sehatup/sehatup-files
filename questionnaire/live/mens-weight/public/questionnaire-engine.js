@@ -1016,12 +1016,6 @@ class QuestionnaireEngine {
              this.state.results = this.config.resultRules(this.state.healthScore, this.state.allAnswers, this.config, this.state.userInfo);
         }
 
-        // Safety: Hide step indicators
-        const desktopSteps = document.getElementById('desktop-steps');
-        const mobileSteps = document.getElementById('mobile-step-indicator');
-        if (desktopSteps) desktopSteps.style.display = 'none';
-        if (mobileSteps) mobileSteps.style.display = 'none';
-
         const userNameEl = document.getElementById('user-name');
         const userConcernEl = document.getElementById('user-concern');
         const reportDateEl = document.getElementById('report-date');
