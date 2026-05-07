@@ -1454,7 +1454,11 @@ export default function MarketingDashboard({ onLogout }) {
                 {currentView === "editor" && prescriptionUser && (
                     <PrescriptionEditor
                         patient={prescriptionUser}
-                        collectionName={activeCollection === 'all' ? (prescriptionUser._collection === 'full' ? 'questionnaire_submissions' : 'partial_submissions') : activeCollection}
+                        collectionName={
+                            activeCollection !== 'all' ? activeCollection : 
+                            (prescriptionUser._collection === 'full' ? 'questionnaire_submissions' : 
+                             (prescriptionUser._collection === 'manual' ? 'manual_submissions' : 'partial_submissions'))
+                        }
                         onClose={() => {
                             setCurrentView("dashboard");
                             setPrescriptionUser(null);
