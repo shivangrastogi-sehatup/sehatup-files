@@ -2,11 +2,31 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FIREBASE_MODE, setFirebaseMode } from '../config/firebaseEnvironment';
-import {
-    Activity, FileText, ShoppingBag, Search,
-    ChevronDown, User, UserPlus, ChevronRight, Phone, Calendar as CalIcon,
-    ChevronLeft, Copy, Check, ArrowUpDown, X, MessageCircle, Ruler
+import { 
+    X, 
+    FileText, 
+    MessageCircle, 
+    Activity, 
+    Calendar as CalIcon, 
+    ChevronDown, 
+    ShoppingBag, 
+    Search, 
+    User, 
+    Phone, 
+    Ruler, 
+    Check, 
+    Download,
+    Eye,
+    Plus,
+    Copy,
+    Trash2,
+    Edit3,
+    UserPlus,
+    ArrowUpDown,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import PrescriptionEditor from './PrescriptionEditor';
 import DoctorProfile from './DoctorProfile';
@@ -436,7 +456,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                         </div>
                     </div>
 
-                    <div className="patient-meta-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 28, background: 'rgba(255,255,255,0.03)', padding: '16px 20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="patient-meta-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 32, background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
                         <div className="patient-meta-item">
                             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Submission Date</div>
                             <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{formatTableTimestamp(user.timestamp)}</div>
@@ -455,7 +475,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                         )}
                     </div>
 
-                    <div className="clinical-actions-panel" style={{ background: 'linear-gradient(to right, rgba(20,20,30,0.6), rgba(30,30,45,0.6))', padding: '16px 28px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '32px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="clinical-actions-panel" style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', textTransform: 'uppercase', fontSize: 13, letterSpacing: 1, margin: 0, fontWeight: 700 }}>
                             <Activity size={18} style={{ color: 'var(--accent1)' }} /> Clinical Update
                         </h4>
@@ -531,17 +551,17 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
 
                     {/* Versioned Cart Link: Pull from state (synced with history) or fallback to questionnaire */}
                     {generatedLink && (
-                        <div style={{ marginBottom: '40px' }}>
-                            <div style={{
-                                background: 'rgba(124, 58, 237, 0.08)',
-                                border: '1px solid rgba(124, 58, 237, 0.2)',
-                                borderRadius: '12px',
-                                padding: '12px 16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: 12
-                            }}>
+                        <div style={{
+                            background: 'rgba(124, 58, 237, 0.08)',
+                            border: '1px solid rgba(124, 58, 237, 0.2)',
+                            borderRadius: '16px',
+                            padding: '24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            marginBottom: '32px'
+                        }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                                     <ShoppingBag size={18} style={{ color: 'var(--accent1)', flexShrink: 0 }} />
                                     <div style={{ minWidth: 0 }}>
@@ -600,11 +620,10 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                         </a>
                                     </div>
                             </div>
-                        </div>
                     )}
 
-                    {/* Prescription History Timeline - Hidden for now */}
-                    {false && prescriptionHistory.length > 0 && (
+                    {/* Prescription History Timeline */}
+                    {prescriptionHistory.length > 0 && (
                         <div style={{ marginBottom: '40px' }}>
                             <div 
                                 onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
@@ -620,9 +639,9 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                     marginBottom: isHistoryExpanded ? 16 : 0,
                                     cursor: 'pointer',
                                     userSelect: 'none',
-                                    padding: '12px 16px',
+                                    padding: '24px',
                                     background: 'rgba(255,255,255,0.03)',
-                                    borderRadius: '12px',
+                                    borderRadius: '16px',
                                     border: '1px solid rgba(255,255,255,0.06)'
                                 }}
                             >
@@ -635,111 +654,121 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                 </div>
                             </div>
 
-                            {isHistoryExpanded && (
-                                <div className="history-timeline" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                                    {prescriptionHistory.map((h, i) => (
-                                        <div key={h.id || i} style={{ 
-                                            background: 'rgba(255,255,255,0.03)', 
-                                            border: '1px solid rgba(255,255,255,0.06)', 
-                                            borderRadius: '16px', 
-                                            padding: '16px 20px',
-                                            position: 'relative',
-                                            transition: 'transform 0.2s'
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                                <div>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 2 }}>
-                                                        {formatTableTimestamp(h.savedAt)}
-                                                    </div>
-                                                    <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        {i === 0 ? 'Current Prescription' : `Record #${prescriptionHistory.length - i}`}
-                                                        {(h.prescriptionID || h.displayId) && <span style={{ color: 'var(--accent1)', opacity: 0.8 }}>• {h.prescriptionID || h.displayId}</span>}
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: 8 }}>
-                                                    {(h.pdfUrl || h.reportDownloadUrl) && (
-                                                        <a 
-                                                            href={h.pdfUrl || h.reportDownloadUrl} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            style={{ 
-                                                                background: 'rgba(255, 255, 255, 0.08)', 
-                                                                color: '#fff', 
-                                                                padding: '6px 12px', 
-                                                                borderRadius: '100px', 
-                                                                fontSize: 11, 
-                                                                fontWeight: 700, 
-                                                                textDecoration: 'none',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 6,
-                                                                border: '1px solid rgba(255, 255, 255, 0.1)'
-                                                            }}
-                                                        >
-                                                            <FileText size={13} /> View PDF
-                                                        </a>
-                                                    )}
-                                                    <button 
-                                                        onClick={() => onOpenEditor(h)}
-                                                        style={{ 
-                                                            background: 'rgba(34, 211, 238, 0.15)', 
-                                                            color: '#22d3ee', 
-                                                            padding: '6px 12px', 
-                                                            borderRadius: '100px', 
-                                                            fontSize: 11, 
-                                                            fontWeight: 700, 
-                                                            border: '1px solid rgba(34, 211, 238, 0.2)',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 6
-                                                        }}
-                                                    >
-                                                        <FileText size={13} /> Edit
-                                                    </button>
-                                                    <a 
-                                                        href={h.cartUrl || '#'} 
-                                                        target={h.cartUrl ? "_blank" : "_self"}
-                                                        rel="noopener noreferrer"
-                                                        style={{ 
-                                                            background: h.cartUrl ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
-                                                            color: h.cartUrl ? 'var(--accent1)' : 'rgba(255, 255, 255, 0.3)', 
-                                                            padding: '6px 12px', 
-                                                            borderRadius: '100px', 
-                                                            fontSize: 11, 
-                                                            fontWeight: 700, 
-                                                            textDecoration: 'none',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 6,
-                                                            border: h.cartUrl ? '1px solid rgba(124, 58, 237, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)',
-                                                            pointerEvents: h.cartUrl ? 'auto' : 'none',
-                                                            cursor: h.cartUrl ? 'pointer' : 'not-allowed'
-                                                        }}
-                                                    >
-                                                        <ShoppingBag size={13} /> Buy Now
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            
-                                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', padding: '10px 14px', borderRadius: '12px', marginBottom: 12 }}>
-                                                <span style={{ fontWeight: 700, color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Diagnosis & Notes</span>
-                                                {h.primaryDiagnosis || h.doctorComments || 'No notes recorded.'}
-                                            </div>
-
-                                            {h.recommendedProducts && h.recommendedProducts.length > 0 && (
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                                    {h.recommendedProducts.map((p, pIdx) => (
-                                                        <div key={pIdx} style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: 10, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                            {p.name} (x{p.qty || 1})
+                            <AnimatePresence>
+                                {isHistoryExpanded && (
+                                    <motion.div 
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                        style={{ overflow: 'hidden' }}
+                                    >
+                                        <div className="history-timeline" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                                            {prescriptionHistory.map((h, i) => (
+                                                <div key={h.id || i} style={{ 
+                                                    background: 'rgba(255,255,255,0.03)', 
+                                                    border: '1px solid rgba(255,255,255,0.06)', 
+                                                    borderRadius: '16px', 
+                                                    padding: '16px 20px',
+                                                    position: 'relative',
+                                                    transition: 'transform 0.2s'
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                                        <div>
+                                                            <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 2 }}>
+                                                                {formatTableTimestamp(h.savedAt)}
+                                                            </div>
+                                                            <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                {i === 0 ? 'Current Prescription' : `Record #${prescriptionHistory.length - i}`}
+                                                                {(h.prescriptionID || h.displayId) && <span style={{ color: 'var(--accent1)', opacity: 0.8 }}>• {h.prescriptionID || h.displayId}</span>}
+                                                            </div>
                                                         </div>
-                                                    ))}
+                                                        <div style={{ display: 'flex', gap: 8 }}>
+                                                            {(h.pdfUrl || h.reportDownloadUrl || h.prescriptionDownloadUrl) && (
+                                                                <a 
+                                                                    href={h.pdfUrl || h.reportDownloadUrl || h.prescriptionDownloadUrl} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    style={{ 
+                                                                        background: 'rgba(255, 255, 255, 0.08)', 
+                                                                        color: '#fff', 
+                                                                        padding: '6px 12px', 
+                                                                        borderRadius: '100px', 
+                                                                        fontSize: 11, 
+                                                                        fontWeight: 700, 
+                                                                        textDecoration: 'none',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 6,
+                                                                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                                                                    }}
+                                                                >
+                                                                    <FileText size={13} /> View PDF
+                                                                </a>
+                                                            )}
+                                                            <button 
+                                                                onClick={() => onOpenEditor(h)}
+                                                                style={{ 
+                                                                    background: 'rgba(34, 211, 238, 0.15)', 
+                                                                    color: '#22d3ee', 
+                                                                    padding: '6px 12px', 
+                                                                    borderRadius: '100px', 
+                                                                    fontSize: 11, 
+                                                                    fontWeight: 700, 
+                                                                    border: '1px solid rgba(34, 211, 238, 0.2)',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 6
+                                                                }}
+                                                            >
+                                                                <FileText size={13} /> Edit
+                                                            </button>
+                                                            <a 
+                                                                href={h.cartUrl || '#'} 
+                                                                target={h.cartUrl ? "_blank" : "_self"}
+                                                                rel="noopener noreferrer"
+                                                                style={{ 
+                                                                    background: h.cartUrl ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
+                                                                    color: h.cartUrl ? 'var(--accent1)' : 'rgba(255, 255, 255, 0.3)', 
+                                                                    padding: '6px 12px', 
+                                                                    borderRadius: '100px', 
+                                                                    fontSize: 11, 
+                                                                    fontWeight: 700, 
+                                                                    textDecoration: 'none',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 6,
+                                                                    border: h.cartUrl ? '1px solid rgba(124, 58, 237, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)',
+                                                                    pointerEvents: h.cartUrl ? 'auto' : 'none',
+                                                                    cursor: h.cartUrl ? 'pointer' : 'not-allowed'
+                                                                }}
+                                                            >
+                                                                <ShoppingBag size={13} /> Buy Now
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', padding: '10px 14px', borderRadius: '12px', marginBottom: 12 }}>
+                                                        <span style={{ fontWeight: 700, color: 'var(--muted)', fontSize: 10, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Diagnosis & Notes</span>
+                                                        {h.primaryDiagnosis || h.doctorComments || 'No notes recorded.'}
+                                                    </div>
+
+                                                    {h.recommendedProducts && h.recommendedProducts.length > 0 && (
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                            {h.recommendedProducts.map((p, pIdx) => (
+                                                                <div key={pIdx} style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: 10, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                                    {p.name} (x{p.qty || 1})
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
                 </div>

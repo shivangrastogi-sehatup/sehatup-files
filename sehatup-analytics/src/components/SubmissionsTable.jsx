@@ -5,15 +5,16 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 export default function SubmissionsTable({
   partial = [],
   completed = [],
+  manual = [],
   currentPage = 1,
   pageSize = 10,
   onPageChange
 }) {
-  const [showCompleted, setShowCompleted] = useState(true);
-  const rawData = showCompleted ? completed : partial;
+  const [activeTab, setActiveTab] = useState("completed");
+  const rawData = activeTab === "completed" ? completed : (activeTab === "manual" ? manual : partial);
 
-  const totalPages = Math.ceil(rawData.length / pageSize);
-  const data = rawData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.ceil((rawData?.length || 0) / pageSize);
+  const data = (rawData || []).slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div style={{ padding: '0 12px' }}>
@@ -27,37 +28,52 @@ export default function SubmissionsTable({
         gap: 16
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 18, color: '#fff' }}>{showCompleted ? "Completed" : "Partial"}</div>
+          <div style={{ fontWeight: 700, fontSize: 18, color: '#fff' }}>
+            {activeTab === "completed" ? "Completed" : (activeTab === "manual" ? "Manual" : "Partial")}
+          </div>
           <div className="glass-panel" style={{ padding: '6px 14px', fontSize: 13, borderRadius: 20, background: 'rgba(255,255,255,0.05)', fontWeight: 600, color: 'var(--muted)' }}>
-            {rawData.length} entries
+            {(rawData?.length || 0)} entries
           </div>
         </div>
         <div className="glass-panel" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 14, background: 'rgba(0,0,0,0.2)' }}>
           <button
-            className={`btn ${showCompleted ? '' : 'ghost'}`}
-            onClick={() => { setShowCompleted(true); onPageChange?.(1); }}
+            className={`btn ${activeTab === "completed" ? '' : 'ghost'}`}
+            onClick={() => { setActiveTab("completed"); onPageChange?.(1); }}
             style={{
               padding: '8px 20px',
               fontSize: 13,
               borderRadius: 10,
               border: 'none',
-              boxShadow: showCompleted ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
+              boxShadow: activeTab === "completed" ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
             }}
           >
             Completed
           </button>
           <button
-            className={`btn ${!showCompleted ? '' : 'ghost'}`}
-            onClick={() => { setShowCompleted(false); onPageChange?.(1); }}
+            className={`btn ${activeTab === "partial" ? '' : 'ghost'}`}
+            onClick={() => { setActiveTab("partial"); onPageChange?.(1); }}
             style={{
               padding: '8px 20px',
               fontSize: 13,
               borderRadius: 10,
               border: 'none',
-              boxShadow: !showCompleted ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
+              boxShadow: activeTab === "partial" ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
             }}
           >
             Partial
+          </button>
+          <button
+            className={`btn ${activeTab === "manual" ? '' : 'ghost'}`}
+            onClick={() => { setActiveTab("manual"); onPageChange?.(1); }}
+            style={{
+              padding: '8px 20px',
+              fontSize: 13,
+              borderRadius: 10,
+              border: 'none',
+              boxShadow: activeTab === "manual" ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
+            }}
+          >
+            Manual
           </button>
         </div>
       </div>

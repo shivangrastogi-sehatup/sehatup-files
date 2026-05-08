@@ -70,6 +70,7 @@ const AvatarInitials = ({ name, roles = [], onClick }) => {
 const MANAGED_COLLECTIONS = [
     "questionnaire_submissions",
     "partial_submissions",
+    "manual_submissions",
     "doctor_details",
     "doctor_signature_requests",
     "users",

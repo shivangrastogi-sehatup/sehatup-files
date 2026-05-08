@@ -43,6 +43,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [partialData, setPartialData] = useState([]);
   const [completedData, setCompletedData] = useState([]);
+  const [manualData, setManualData] = useState([]);
 
   // Filters
   const [fromDate, setFromDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 90); return d; });
@@ -70,8 +71,10 @@ export default function Dashboard() {
     const unsubPartial = onSnapshot(q1, (snap) => setPartialData(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     const q2 = query(collection(db, "questionnaire_submissions"), orderBy("timestamp", "desc"));
     const unsubCompleted = onSnapshot(q2, (snap) => { setCompletedData(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
+    const q3 = query(collection(db, "manual_submissions"), orderBy("timestamp", "desc"));
+    const unsubManual = onSnapshot(q3, (snap) => { setManualData(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
 
-    return () => { unsubPartial(); unsubCompleted(); };
+    return () => { unsubPartial(); unsubCompleted(); unsubManual(); };
   }, []);
 
   const filtered = useMemo(() => {
@@ -100,11 +103,12 @@ export default function Dashboard() {
 
     return {
       partial: applyFilters(partialData),
-      completed: applyFilters(completedData)
+      completed: applyFilters(completedData),
+      manual: applyFilters(manualData)
     };
-  }, [partialData, completedData, fromDate, toDate, categoryFilter, genderFilter]);
+  }, [partialData, completedData, manualData, fromDate, toDate, categoryFilter, genderFilter]);
 
-  const analytics = useMemo(() => computeAnalytics(filtered.partial, filtered.completed), [filtered]);
+  const analytics = useMemo(() => computeAnalytics(filtered.partial, filtered.completed, filtered.manual), [filtered]);
 
   const setQuickFilter = (days) => {
     const end = new Date();
@@ -291,6 +295,7 @@ export default function Dashboard() {
             <SubmissionsTable
               partial={filtered.partial}
               completed={filtered.completed}
+              manual={filtered.manual}
               currentPage={currentPage}
               pageSize={pageSize}
               onPageChange={setCurrentPage}

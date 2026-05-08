@@ -13,7 +13,6 @@ temp/
 *-debug.log
 firebase-debug.log*
 .runtimeconfig.json
-APPRAISAL_DOC.md
 
 # Environment variables
 .env
