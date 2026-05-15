@@ -1,5 +1,6 @@
 node_modules/
-*.local
-sehatup-f96b5-firebase-adminsdk-fbsvc-3e1ef010fd.json
+*-adminsdk-*.json
+.env
+.env.*
 emulator-data/
 .cache/

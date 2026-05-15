@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Role colors</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; background: var(--bg-surface); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .card { border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; }
+  .swatch { height: 64px; display: flex; align-items: center; padding: 0 14px; color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+  .body { padding: 10px 14px; background: var(--bg-surface); }
+  .body .role { font-family: var(--font-body); font-weight: 600; font-size: 12px; color: var(--text-primary); }
+  .body .hex  { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); margin-top: 2px;}
+  .body .soft { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 3px 8px; border-radius: var(--radius-pill); font-family: var(--font-body); font-weight: 600; font-size: 10px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="card">
+      <div class="swatch" style="background: var(--role-admin);">Admin</div>
+      <div class="body">
+        <div class="role">System Administrator</div>
+        <div class="hex">#4F46E5</div>
+        <span class="soft" style="background: var(--role-admin-soft); color: var(--role-admin);"><span class="dot" style="background:var(--role-admin)"></span>admin</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="swatch" style="background: var(--role-doctor);">Doctor</div>
+      <div class="body">
+        <div class="role">Medical Professional</div>
+        <div class="hex">#0EA5B7</div>
+        <span class="soft" style="background: var(--role-doctor-soft); color: var(--role-doctor);"><span class="dot" style="background:var(--role-doctor)"></span>doctor</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="swatch" style="background: var(--role-marketing);">Marketing</div>
+      <div class="body">
+        <div class="role">Performance Marketer</div>
+        <div class="hex">#F59E0B</div>
+        <span class="soft" style="background: var(--role-marketing-soft); color: #B45309;"><span class="dot" style="background:var(--role-marketing)"></span>perf marketing</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="swatch" style="background: var(--role-patient);">Patient</div>
+      <div class="body">
+        <div class="role">Patient / User</div>
+        <div class="hex">#E5114F</div>
+        <span class="soft" style="background: var(--role-patient-soft); color: var(--role-patient);"><span class="dot" style="background:var(--role-patient)"></span>user</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

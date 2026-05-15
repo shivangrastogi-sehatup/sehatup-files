@@ -1,0 +1,197 @@
+{% comment %} snippets/otp-verification-modal.liquid {% endcomment %}
+<style>
+  .otp-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    animation: otp-fade-in 0.3s ease;
+  }
+  @keyframes otp-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  .otp-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    position: relative;
+    text-align: center;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .otp-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #9ca3af;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .otp-close:hover { color: #374151; }
+
+  .otp-box h3 {
+    margin: 0 0 12px;
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.025em;
+  }
+  .otp-box p {
+    font-size: 15px;
+    color: #6b7280;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  #otp-phone {
+    font-size: 18px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 16px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-weight: 500;
+  }
+  #otp-phone:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+
+  .otp-input-group {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 20px 0;
+  }
+  .otp-input-group input {
+    width: 45px;
+    height: 55px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.2s;
+    background: #f9fafb;
+  }
+  .otp-input-group input:focus {
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+
+  .resend-text {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 16px 0 24px;
+  }
+  #resend-link {
+    color: #3b82f6;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-left: 4px;
+  }
+  #resend-link:hover { text-decoration: underline; }
+
+  .verify-btn, 
+  .otp-box button[data-action="send-otp"],
+  .otp-box button[data-action="verify-otp"] {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(0, 123, 255, 0.2);
+  }
+  .verify-btn:hover,
+  .otp-box button:hover {
+    background: #0069d9;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 15px -3px rgba(0, 123, 255, 0.3);
+  }
+  .verify-btn:active,
+  .otp-box button:active { transform: translateY(0); }
+
+  #phone-warning {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #ef4444;
+  }
+
+  /* Fix for awkward browser autofill styling */
+  .otp-box input:-webkit-autofill,
+  .otp-box input:-webkit-autofill:hover, 
+  .otp-box input:-webkit-autofill:focus, 
+  .otp-box input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 40px white inset !important;
+    -webkit-text-fill-color: #111827 !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .otp-input-group input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 40px #f9fafb inset !important;
+  }
+
+  .otp-footer {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #f3f4f6;
+  }
+</style>
+
+<div id="otp-modal" class="otp-screen">
+  <div class="otp-box">
+    <span class="otp-close" data-action="close-otp">×</span> 
+    
+    <!-- STEP 1: Phone Confirmation -->
+    <div id="otp-step-1">
+      <h3>Confirm your number</h3>
+      <p>We'll send a WhatsApp report after verification.</p>
+      <input type="tel" id="otp-phone" maxlength="10" placeholder="1234567890" inputmode="numeric" pattern="\d*">
+      <div id="phone-warning" style="display: none;">Phone number must be exactly 10 digits.</div>
+      <button data-action="send-otp">Send OTP</button>
+    </div>
+    
+    <!-- STEP 2: OTP Verification -->
+    <div id="otp-step-2" style="display: none;">
+      <h3>Verify with OTP</h3>
+      <p>Please enter the OTP sent to your phone.</p>
+      <div class="otp-input-group">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+        <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+      </div>
+      <div class="resend-text" id="resend-text">
+        Didn't receive the OTP?
+        <span id="resend-link" data-action="resend-otp" style="display: none;">RESEND OTP</span>
+        <span id="otp-timer" style="margin-left: 4px; color: #9ca3af; font-weight: 600;"></span>
+      </div>
+      <button data-action="verify-otp">Verify</button>
+    </div>
+    
+    <div id="otp-toast" style="margin-top: 16px;"></div>
+  </div>
+</div>

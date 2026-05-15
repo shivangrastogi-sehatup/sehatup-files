@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Radii & shadows</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+body{padding:20px;background:var(--bg-app);font-family:var(--font-body);}
+.section{margin-bottom:18px;}
+.lbl{font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;}
+.row{display:flex;gap:14px;}
+.tile{background:var(--bg-surface);border:1px solid var(--border-default);padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex:1;}
+.tile .n{font-weight:700;font-size:13px;color:var(--text-primary);}
+.tile .v{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);}
+.rad-sm{border-radius:var(--radius-sm);}
+.rad-md{border-radius:var(--radius-md);}
+.rad-lg{border-radius:var(--radius-lg);}
+.rad-xl{border-radius:var(--radius-xl);}
+.rad-pill{border-radius:var(--radius-pill);}
+.sh-xs{box-shadow:var(--shadow-xs);}
+.sh-sm{box-shadow:var(--shadow-sm);}
+.sh-md{box-shadow:var(--shadow-md);}
+.sh-lg{box-shadow:var(--shadow-lg);}
+</style></head><body>
+<div class="section">
+<div class="lbl">Corner radii</div>
+<div class="row">
+  <div class="tile rad-sm"><span class="n">sm</span><span class="v">6 px</span></div>
+  <div class="tile rad-md"><span class="n">md</span><span class="v">10 px</span></div>
+  <div class="tile rad-lg"><span class="n">lg</span><span class="v">14 px</span></div>
+  <div class="tile rad-xl"><span class="n">xl</span><span class="v">20 px</span></div>
+  <div class="tile rad-pill" style="padding:10px 20px;"><span class="n">pill</span><span class="v">9999</span></div>
+</div>
+</div>
+<div class="section">
+<div class="lbl">Elevation</div>
+<div class="row">
+  <div class="tile rad-md sh-xs"><span class="n">xs</span><span class="v">hairline rest</span></div>
+  <div class="tile rad-md sh-sm"><span class="n">sm</span><span class="v">cards · KPI</span></div>
+  <div class="tile rad-md sh-md"><span class="n">md</span><span class="v">menus · popovers</span></div>
+  <div class="tile rad-md sh-lg"><span class="n">lg</span><span class="v">modals · sheets</span></div>
+</div>
+</div>
+</body></html>

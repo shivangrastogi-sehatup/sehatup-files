@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>KPI cards</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="../components.css">
+<style>body{padding:20px;background:var(--bg-app);}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+</style></head><body>
+<div class="grid">
+  <div class="kpi">
+    <div class="kpi__row">
+      <span class="kpi__label">Started</span>
+      <span class="kpi__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+    </div>
+    <div class="kpi__value">1,284</div>
+    <div class="kpi__delta">▲ 12.4% vs last 30d</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi__row">
+      <span class="kpi__label">Completed</span>
+      <span class="kpi__icon" style="background:var(--success-soft);color:var(--success)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+    </div>
+    <div class="kpi__value">982</div>
+    <div class="kpi__delta">▲ 8.7% vs last 30d</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi__row">
+      <span class="kpi__label">Avg health score</span>
+      <span class="kpi__icon" style="background:var(--clinical-teal-soft);color:var(--clinical-teal)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+    </div>
+    <div class="kpi__value">68</div>
+    <div class="kpi__delta kpi__delta--down">▼ 2 pts vs peer avg</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi__row">
+      <span class="kpi__label">Completion %</span>
+      <span class="kpi__icon" style="background:var(--role-admin-soft);color:var(--role-admin)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+    </div>
+    <div class="kpi__value">76%</div>
+    <div class="kpi__delta">▲ 3.1 pts WoW</div>
+  </div>
+</div>
+</body></html>

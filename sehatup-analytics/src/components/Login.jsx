@@ -46,11 +46,18 @@ export default function Login() {
             }
             if (userRoles.length === 0) userRoles = ["user"];
 
-            if (!userRoles.includes(selectedRole) && !userRoles.includes("admin")) {
+            // For authorization check, treat 'viewer' and 'tele_sales' as compatible
+            const authorizedRoles = [...userRoles];
+            if (userRoles.includes("viewer")) authorizedRoles.push("tele_sales");
+            if (userRoles.includes("tele_sales")) authorizedRoles.push("viewer");
+
+            if (!authorizedRoles.includes(selectedRole) && !userRoles.includes("admin")) {
                 const roleLabels = {
                     admin: "System Administrator",
                     doctor: "Medical Professional",
                     performance_marketing: "Performance Marketer",
+                    tele_sales: "Tele-Sales Role",
+                    order_creator: "Order Creating Role",
                     user: "Patient / User"
                 };
                 const userRealRole = userRoles.map(r => roleLabels[r] || r).join(" and ");
@@ -63,6 +70,8 @@ export default function Login() {
                 if (selectedRole === "admin") navigate("/admin");
                 else if (selectedRole === "doctor") navigate("/doctor");
                 else if (selectedRole === "performance_marketing") navigate("/marketing");
+                else if (selectedRole === "tele_sales") navigate("/tele-sales");
+                else if (selectedRole === "order_creator") navigate("/order-creator");
                 else navigate("/");
             }
         } catch (err) {
@@ -115,6 +124,8 @@ export default function Login() {
                                         <option value="user">Patient / User</option>
                                         <option value="doctor">Medical Professional</option>
                                         <option value="performance_marketing">Performance Marketer</option>
+                                        <option value="tele_sales">Tele-Sales Role</option>
+                                        <option value="order_creator">Order Creating Role</option>
                                         <option value="admin">System Administrator</option>
                                     </select>
                                     <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Neutral scale</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; background: var(--bg-surface); }
+  .scale { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0; border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; }
+  .s { padding: 16px 8px; display: flex; flex-direction: column; gap: 4px; font-family: var(--font-body); }
+  .s .n { font-weight: 700; font-size: 12px; }
+  .s .h { font-family: var(--font-mono); font-size: 10px; opacity: 0.7; }
+  .s.light { color: var(--text-primary); }
+  .s.dark  { color: #fff; }
+  .legend { margin-top: 12px; font-family: var(--font-body); font-size: 12px; color: var(--text-secondary); display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend b { color: var(--text-primary); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="scale">
+    <div class="s light" style="background:#F7F9FC"><span class="n">50</span><span class="h">F7F9FC</span></div>
+    <div class="s light" style="background:#F1F5F9"><span class="n">100</span><span class="h">F1F5F9</span></div>
+    <div class="s light" style="background:#E2E8F0"><span class="n">200</span><span class="h">E2E8F0</span></div>
+    <div class="s light" style="background:#CBD5E1"><span class="n">300</span><span class="h">CBD5E1</span></div>
+    <div class="s light" style="background:#94A3B8"><span class="n">400</span><span class="h">94A3B8</span></div>
+    <div class="s dark"  style="background:#64748B"><span class="n">500</span><span class="h">64748B</span></div>
+    <div class="s dark"  style="background:#475569"><span class="n">600</span><span class="h">475569</span></div>
+    <div class="s dark"  style="background:#334155"><span class="n">700</span><span class="h">334155</span></div>
+    <div class="s dark"  style="background:#1E293B"><span class="n">800</span><span class="h">1E293B</span></div>
+    <div class="s dark"  style="background:#0F172A"><span class="n">900</span><span class="h">0F172A</span></div>
+  </div>
+  <div class="legend">
+    <span><b>50</b> app canvas</span>
+    <span><b>100</b> subtle bg / stripe</span>
+    <span><b>200</b> border</span>
+    <span><b>400</b> placeholder / muted icon</span>
+    <span><b>500</b> secondary text</span>
+    <span><b>900</b> primary text / display</span>
+  </div>
+</body>
+</html>

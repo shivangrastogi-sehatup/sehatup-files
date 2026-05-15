@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Semantic colors</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+body{padding:20px;background:var(--bg-surface);font-family:var(--font-body);}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;}
+.tile{border-radius:10px;padding:12px 14px;border:1px solid var(--border-default);display:flex;flex-direction:column;gap:6px;}
+.name{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;}
+.dot{width:10px;height:10px;border-radius:50%;}
+.hex{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);}
+.use{font-size:12px;color:var(--text-secondary);}
+.bar{display:flex;height:6px;border-radius:999px;overflow:hidden;}
+.bar > div{flex:1;}
+.lbl{font-family:var(--font-body);font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;}
+</style></head><body>
+<div class="lbl">Status / clinical</div>
+<div class="row">
+  <div class="tile" style="background:var(--success-soft);">
+    <div class="name"><span class="dot" style="background:var(--success)"></span>Success</div>
+    <div class="hex">#10B981 · #D1FAE5</div>
+    <div class="use">Completed assessments · low risk</div>
+  </div>
+  <div class="tile" style="background:var(--warning-soft);">
+    <div class="name"><span class="dot" style="background:var(--warning)"></span>Warning</div>
+    <div class="hex">#F59E0B · #FEF3C7</div>
+    <div class="use">Moderate risk · partial data</div>
+  </div>
+  <div class="tile" style="background:var(--danger-soft);">
+    <div class="name"><span class="dot" style="background:var(--danger)"></span>Danger</div>
+    <div class="hex">#EF4444 · #FEE2E2</div>
+    <div class="use">High risk · failed deliveries</div>
+  </div>
+  <div class="tile" style="background:var(--info-soft);">
+    <div class="name"><span class="dot" style="background:var(--info)"></span>Info</div>
+    <div class="hex">#0EA5E9 · #E0F2FE</div>
+    <div class="use">Neutral system messages</div>
+  </div>
+</div>
+<div class="lbl">Role accents</div>
+<div class="row">
+  <div class="tile" style="background:var(--role-admin-soft);">
+    <div class="name"><span class="dot" style="background:var(--role-admin)"></span>Admin</div>
+    <div class="hex">#6D28D9 · #EDE9FE</div><div class="use">System administrator</div>
+  </div>
+  <div class="tile" style="background:var(--role-doctor-soft);">
+    <div class="name"><span class="dot" style="background:var(--role-doctor)"></span>Doctor</div>
+    <div class="hex">#0E7490 · #CFFAFE</div><div class="use">Medical professional</div>
+  </div>
+  <div class="tile" style="background:var(--role-marketing-soft);">
+    <div class="name"><span class="dot" style="background:var(--role-marketing)"></span>Marketing</div>
+    <div class="hex">#C2410C · #FFEDD5</div><div class="use">Performance marketer</div>
+  </div>
+  <div class="tile" style="background:var(--role-patient-soft);">
+    <div class="name"><span class="dot" style="background:var(--role-patient)"></span>Patient</div>
+    <div class="hex">#15803D · #DCFCE7</div><div class="use">User / patient</div>
+  </div>
+</div>
+</body></html>

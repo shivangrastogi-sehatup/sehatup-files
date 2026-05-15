@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brand colors</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; background: var(--bg-surface); }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .sw { border-radius: var(--radius-md); padding: 16px; height: 110px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--border-default); }
+  .sw .name { font-family: var(--font-display); font-weight: 600; font-size: 14px; }
+  .sw .hex  { font-family: var(--font-mono); font-size: 12px; opacity: 0.9; }
+  .sw.dark  { color: #fff; border-color: transparent; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="sw dark" style="background: var(--brand-red);">
+      <div class="name">Brand red</div><div class="hex">#E5114F · var(--brand-red)</div>
+    </div>
+    <div class="sw dark" style="background: var(--brand-red-600);">
+      <div class="name">Brand red 600</div><div class="hex">#C30E43 · hover/press</div>
+    </div>
+    <div class="sw dark" style="background: var(--brand-red-700);">
+      <div class="name">Brand red 700</div><div class="hex">#A50C39 · text-on-soft</div>
+    </div>
+    <div class="sw" style="background: var(--brand-red-soft); color: var(--brand-red-700);">
+      <div class="name">Brand red soft</div><div class="hex">#FFE5EC · chip/hover bg</div>
+    </div>
+    <div class="sw" style="background: var(--brand-red-tint); color: var(--brand-red-700);">
+      <div class="name">Brand red tint</div><div class="hex">#FFF5F8 · hero wash</div>
+    </div>
+    <div class="sw dark" style="background: var(--clinical-teal);">
+      <div class="name">Clinical teal</div><div class="hex">#0EA5B7 · data/charts</div>
+    </div>
+  </div>
+</body>
+</html>

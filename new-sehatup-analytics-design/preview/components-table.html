@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Patient table row</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="../components.css">
+<style>body{padding:20px;background:var(--bg-app);}</style></head><body>
+<div style="background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);overflow:hidden;">
+<table class="ds-table">
+  <thead><tr>
+    <th style="width:34%">Patient</th>
+    <th>Last assessment</th>
+    <th>Health score</th>
+    <th>Risk</th>
+    <th>Owner</th>
+    <th style="text-align:right;">Action</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="avatar">AS</span>
+          <div>
+            <div style="font-weight:600;color:var(--text-primary);">Aarav Sharma</div>
+            <div style="font-size:12px;color:var(--text-muted);">+91 98•••• 4421 · Mumbai</div>
+          </div>
+        </div>
+      </td>
+      <td>09 May 2026, 18:42</td>
+      <td><span style="font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text-primary);">72</span><span style="color:var(--text-muted);font-size:12px;"> / 100</span></td>
+      <td><span class="chip chip--success">Low</span></td>
+      <td><span class="chip chip--doctor"><span class="dot" style="background:var(--role-doctor)"></span>Dr. Mehra</span></td>
+      <td style="text-align:right;"><button class="btn btn--ghost btn--sm">Open chart →</button></td>
+    </tr>
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="avatar" style="background:var(--clinical-teal-soft);color:#0E6F75;">PR</span>
+          <div>
+            <div style="font-weight:600;">Priya Ranganathan</div>
+            <div style="font-size:12px;color:var(--text-muted);">+91 87•••• 1109 · Chennai</div>
+          </div>
+        </div>
+      </td>
+      <td>08 May 2026, 09:17</td>
+      <td><span style="font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text-primary);">54</span><span style="color:var(--text-muted);font-size:12px;"> / 100</span></td>
+      <td><span class="chip chip--warning">Moderate</span></td>
+      <td><span class="chip chip--doctor"><span class="dot" style="background:var(--role-doctor)"></span>Dr. Kapoor</span></td>
+      <td style="text-align:right;"><button class="btn btn--ghost btn--sm">Open chart →</button></td>
+    </tr>
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="avatar" style="background:var(--role-admin-soft);color:var(--role-admin);">RK</span>
+          <div>
+            <div style="font-weight:600;">Rohit Khanna</div>
+            <div style="font-size:12px;color:var(--text-muted);">+91 99•••• 6620 · Delhi NCR</div>
+          </div>
+        </div>
+      </td>
+      <td>07 May 2026, 14:05</td>
+      <td><span style="font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--danger);">38</span><span style="color:var(--text-muted);font-size:12px;"> / 100</span></td>
+      <td><span class="chip chip--danger">High</span></td>
+      <td><span class="chip chip--admin"><span class="dot" style="background:var(--role-admin)"></span>Unassigned</span></td>
+      <td style="text-align:right;"><button class="btn btn--primary btn--sm">Assign doctor</button></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</body></html>

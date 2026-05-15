@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Chips & status</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="../components.css">
+<style>body{padding:20px;background:var(--bg-surface);}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;}
+.lbl{font-family:var(--font-body);font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;width:90px;}
+</style></head><body>
+<div class="row"><span class="lbl">Roles</span>
+  <span class="chip chip--admin"><span class="dot" style="background:var(--role-admin)"></span>admin</span>
+  <span class="chip chip--doctor"><span class="dot" style="background:var(--role-doctor)"></span>doctor</span>
+  <span class="chip chip--marketing"><span class="dot" style="background:var(--role-marketing)"></span>perf marketing</span>
+  <span class="chip chip--patient"><span class="dot" style="background:var(--role-patient)"></span>user</span>
+</div>
+<div class="row"><span class="lbl">Risk</span>
+  <span class="chip chip--danger"><span class="dot" style="background:var(--danger)"></span>High Risk</span>
+  <span class="chip chip--warning"><span class="dot" style="background:var(--warning)"></span>Moderate Risk</span>
+  <span class="chip chip--success"><span class="dot" style="background:var(--success)"></span>Low Risk</span>
+</div>
+<div class="row"><span class="lbl">Status</span>
+  <span class="chip chip--success">Completed</span>
+  <span class="chip chip--warning">Partial</span>
+  <span class="chip chip--info">Manual entry</span>
+  <span class="chip chip--danger">WhatsApp failed</span>
+  <span class="chip chip--brand">PDF synced</span>
+</div>
+<div class="row"><span class="lbl">Concern</span>
+  <span class="chip chip--brand">ED</span>
+  <span class="chip chip--brand">Mens Weight</span>
+  <span class="chip chip--brand">Womens Wellness</span>
+  <span class="chip chip--brand">PCOS / PCOD</span>
+</div>
+</body></html>

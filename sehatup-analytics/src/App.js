@@ -12,7 +12,10 @@ import AdminPanel from "./components/AdminPanel";
 import DoctorDashboard from "./components/DoctorDashboard";
 import UserDashboard from "./components/UserDashboard";
 import MarketingDashboard from "./components/MarketingDashboard";
+import TeleSalesDashboard from "./components/TeleSalesDashboard";
+import TeleSalesView from './components/TeleSalesView';
 import ProtectedRoute from "./components/ProtectedRoute";
+import { PermissionsProvider } from './context/PermissionsContext';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -68,7 +71,8 @@ export default function App() {
 
   return (
     <Router>
-      <Routes>
+      <PermissionsProvider>
+        <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route
           path="/login"
@@ -85,6 +89,8 @@ export default function App() {
                     if (intendedRole === "admin") return <Navigate to="/admin" />;
                     if (intendedRole === "doctor") return <Navigate to="/doctor" />;
                     if (intendedRole === "performance_marketing") return <Navigate to="/marketing" />;
+                    if (intendedRole === "tele_sales") return <Navigate to="/tele-sales" />;
+                    if (intendedRole === "order_creator") return <Navigate to="/order-creator" />;
                   }
                 }
 
@@ -92,6 +98,8 @@ export default function App() {
                 if (hasAdmin) return <Navigate to="/admin" />;
                 if (roles.includes("doctor")) return <Navigate to="/doctor" />;
                 if (roles.includes("performance_marketing")) return <Navigate to="/marketing" />;
+                if (roles.includes("tele_sales")) return <Navigate to="/tele-sales" />;
+                if (roles.includes("order_creator")) return <Navigate to="/order-creator" />;
                 return <Navigate to="/" />;
               })()
             )
@@ -111,8 +119,8 @@ export default function App() {
         <Route
           path="/doctor"
           element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={["doctor"]}>
-              <DoctorDashboard onLogout={handleLogout} />
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["doctor", "tele_sales", "viewer"]}>
+              <DoctorDashboard onLogout={handleLogout} roles={roles} />
             </ProtectedRoute>
           }
         />
@@ -120,8 +128,26 @@ export default function App() {
         <Route
           path="/marketing"
           element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={["performance_marketing"]}>
-              <MarketingDashboard onLogout={handleLogout} />
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["performance_marketing", "tele_sales", "viewer"]}>
+              <MarketingDashboard onLogout={handleLogout} roles={roles} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/tele-sales"
+          element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["tele_sales", "admin"]}>
+              <TeleSalesView onLogout={handleLogout} roles={roles} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/order-creator"
+          element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["order_creator", "admin"]}>
+              <TeleSalesDashboard onLogout={handleLogout} roles={roles} />
             </ProtectedRoute>
           }
         />
@@ -137,7 +163,8 @@ export default function App() {
 
         {/* redirect unknown routes */}
         <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+        </Routes>
+      </PermissionsProvider>
     </Router>
   );
 }

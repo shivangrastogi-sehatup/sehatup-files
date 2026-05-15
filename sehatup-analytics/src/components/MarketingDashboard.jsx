@@ -29,6 +29,7 @@ import ExportControls from './ExportControls';
 import StatusModal from './StatusModal';
 import CreateUserModal from './CreateUserModal';
 import { triggerOrderPlacedWebhook } from '../utils/webhookHelpers';
+import { usePermissions } from '../context/PermissionsContext';
 
 // Native date <-> JS Date helpers for the From/To filter
 const toIsoDate = (d) => {
@@ -89,7 +90,14 @@ const CircularScore = React.memo(({ score }) => {
 
 // SearchResultItem removed
 
-const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showStatus }) => {
+const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showStatus, roles = [], hasPermission }) => {
+    // Dynamic flags from the new permissions system
+    const canGeneratePrescription = hasPermission('can_generate_prescription');
+    const canEditClinicalPurchased = hasPermission('can_edit_clinical_purchased');
+    const canEditClinicalConsulted = hasPermission('can_edit_clinical_consulted');
+    const canEditInfo = hasPermission('can_edit_patient_info');
+
+    // For legacy support or simpler checks
     const [isConsulted, setIsConsulted] = useState(user.isConsulted || false);
     const [isPurchased, setIsPurchased] = useState(user.isPurchased || false);
     const [doctorComments, setDoctorComments] = useState(user.doctorComments || "");
@@ -392,13 +400,15 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                 <>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                         <h2 style={{ fontSize: 32, margin: 0, lineHeight: 1.1 }}>{user.userName || user.name || 'Anonymous'}</h2>
-                                        <button 
-                                            className="btn ghost mini-btn" 
-                                            onClick={() => setIsEditingInfo(true)}
-                                            style={{ padding: '4px 8px', fontSize: 10, height: 'auto' }}
-                                        >
-                                            Edit Info
-                                        </button>
+                                        {canEditInfo && (
+                                            <button 
+                                                className="btn ghost mini-btn" 
+                                                onClick={() => setIsEditingInfo(true)}
+                                                style={{ padding: '4px 8px', fontSize: 10, height: 'auto' }}
+                                            >
+                                                Edit Info
+                                            </button>
+                                        )}
                                     </div>
                                     <div style={{ color: 'var(--muted)', marginTop: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} /> {user.phone || 'No Phone'}</span>
@@ -466,38 +476,44 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                         )}
                     </div>
 
-                    <div className="clinical-actions-panel" style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', textTransform: 'uppercase', fontSize: 13, letterSpacing: 1, margin: 0, fontWeight: 700 }}>
-                            <Activity size={18} style={{ color: 'var(--accent1)' }} /> Clinical Update
-                        </h4>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: isPurchased ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)', padding: '8px 16px', borderRadius: '100px', border: `1px solid ${isPurchased ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`, transition: 'all 0.3s ease', color: isPurchased ? '#4ade80' : 'var(--muted)', fontWeight: 600, fontSize: 13 }}>
-                                <input type="checkbox" checked={isPurchased} onChange={(e) => setIsPurchased(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#4ade80', margin: 0 }} />
-                                Purchased
-                            </label>
-
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: isConsulted ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)', padding: '8px 16px', borderRadius: '100px', border: `1px solid ${isConsulted ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`, transition: 'all 0.3s ease', color: isConsulted ? '#4ade80' : 'var(--muted)', fontWeight: 600, fontSize: 13 }}>
-                                <input type="checkbox" checked={isConsulted} onChange={(e) => setIsConsulted(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#4ade80', margin: 0 }} />
-                                Consulted
-                            </label>
-
-                            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                <button className="btn" onClick={handleSaveClinicalUpdate} disabled={isSaving} style={{ background: isConsulted || isPurchased ? '#4ade80' : 'var(--accent1)', color: isConsulted || isPurchased ? '#000' : 'white', padding: '8px 24px', borderRadius: '100px', fontWeight: 700, transition: 'all 0.3s', fontSize: 13, minWidth: '120px' }}>
-                                    {isSaving ? "Saving..." : "Save Changes"}
-                                </button>
-                                {showSuccessHighlight && (
-                                    <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, whiteSpace: 'nowrap', color: '#4ade80', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, animation: 'fadeInOut 3s forwards' }}>
-                                        <Check size={12} /> Records Saved
-                                    </div>
+                    {(canEditClinicalConsulted || canEditClinicalPurchased) && (
+                        <div className="clinical-actions-panel" style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', textTransform: 'uppercase', fontSize: 13, letterSpacing: 1, margin: 0, fontWeight: 700 }}>
+                                <Activity size={18} style={{ color: 'var(--accent1)' }} /> Clinical Update
+                            </h4>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                {canEditClinicalPurchased && (
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: isPurchased ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)', padding: '8px 16px', borderRadius: '100px', border: `1px solid ${isPurchased ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`, transition: 'all 0.3s ease', color: isPurchased ? '#4ade80' : 'var(--muted)', fontWeight: 600, fontSize: 13 }}>
+                                        <input type="checkbox" checked={isPurchased} onChange={(e) => setIsPurchased(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#4ade80', margin: 0 }} />
+                                        Purchased
+                                    </label>
                                 )}
-                                {showSaveError && (
-                                    <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, whiteSpace: 'nowrap', color: '#f43f5e', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, animation: 'fadeInOut 5s forwards' }}>
-                                        <X size={12} /> {saveErrorMessage}
-                                    </div>
+
+                                {canEditClinicalConsulted && (
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: isConsulted ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)', padding: '8px 16px', borderRadius: '100px', border: `1px solid ${isConsulted ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`, transition: 'all 0.3s ease', color: isConsulted ? '#4ade80' : 'var(--muted)', fontWeight: 600, fontSize: 13 }}>
+                                        <input type="checkbox" checked={isConsulted} onChange={(e) => setIsConsulted(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#4ade80', margin: 0 }} />
+                                        Consulted
+                                    </label>
                                 )}
+
+                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                    <button className="btn" onClick={handleSaveClinicalUpdate} disabled={isSaving} style={{ background: isConsulted || isPurchased ? '#4ade80' : 'var(--accent1)', color: isConsulted || isPurchased ? '#000' : 'white', padding: '8px 24px', borderRadius: '100px', fontWeight: 700, transition: 'all 0.3s', fontSize: 13, minWidth: '120px' }}>
+                                        {isSaving ? "Saving..." : "Save Changes"}
+                                    </button>
+                                    {showSuccessHighlight && (
+                                        <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, whiteSpace: 'nowrap', color: '#4ade80', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, animation: 'fadeInOut 3s forwards' }}>
+                                            <Check size={12} /> Records Saved
+                                        </div>
+                                    )}
+                                    {showSaveError && (
+                                        <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, whiteSpace: 'nowrap', color: '#f43f5e', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, animation: 'fadeInOut 5s forwards' }}>
+                                            <X size={12} /> {saveErrorMessage}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {user.answers && user.answers.length > 0 && (
                         <div style={{ marginBottom: 40 }}>
@@ -697,24 +713,26 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                                                                     <FileText size={13} /> View PDF
                                                                 </a>
                                                             )}
-                                                            <button 
-                                                                onClick={() => onOpenEditor(h)}
-                                                                style={{ 
-                                                                    background: 'rgba(34, 211, 238, 0.15)', 
-                                                                    color: '#22d3ee', 
-                                                                    padding: '6px 12px', 
-                                                                    borderRadius: '100px', 
-                                                                    fontSize: 11, 
-                                                                    fontWeight: 700, 
-                                                                    border: '1px solid rgba(34, 211, 238, 0.2)',
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 6
-                                                                }}
-                                                            >
-                                                                <FileText size={13} /> Edit
-                                                            </button>
+                                                            {canGeneratePrescription && (
+                                                                <button 
+                                                                    onClick={() => onOpenEditor(h)}
+                                                                    style={{ 
+                                                                        background: 'rgba(34, 211, 238, 0.15)', 
+                                                                        color: '#22d3ee', 
+                                                                        padding: '6px 12px', 
+                                                                        borderRadius: '100px', 
+                                                                        fontSize: 11, 
+                                                                        fontWeight: 700, 
+                                                                        border: '1px solid rgba(34, 211, 238, 0.2)',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 6
+                                                                    }}
+                                                                >
+                                                                    <FileText size={13} /> Edit
+                                                                </button>
+                                                            )}
                                                             <a 
                                                                 href={h.cartUrl || '#'} 
                                                                 target={h.cartUrl ? "_blank" : "_self"}
@@ -770,16 +788,20 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                             <FileText size={18} /> Medical Report
                         </a>
                     )}
-                    <button className="btn" onClick={() => onOpenEditor(user)} style={{ flex: 2, justifyContent: 'center', background: 'linear-gradient(135deg, var(--accent3), var(--accent2))', color: 'white', fontWeight: 'bold' }}>
-                        <FileText size={18} /> Create Prescription
-                    </button>
+                    {canGeneratePrescription && (
+                        <button className="btn" onClick={() => onOpenEditor(user)} style={{ flex: 2, justifyContent: 'center', background: 'linear-gradient(135deg, var(--accent3), var(--accent2))', color: 'white', fontWeight: 'bold' }}>
+                            <FileText size={18} /> Create Prescription
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-export default function MarketingDashboard({ onLogout }) {
+export default function MarketingDashboard({ onLogout, roles = [] }) {
+    const { hasPermission } = usePermissions();
+    const canCreateManualPatient = hasPermission('can_create_manual_patient');
     // Persistence Helper: Load state from localStorage
     const getSavedFilters = () => {
         try {
@@ -1226,14 +1248,15 @@ export default function MarketingDashboard({ onLogout }) {
                                     {dateError && <div className="date-error-popup">{dateError}</div>}
                                 </div>
 
-                                <button
-                                    className="btn new-patient-cta"
-                                    onClick={() => setIsCreateModalOpen(true)}
-                                    title="Create a new patient profile"
-                                >
-                                    <UserPlus size={16} />
-                                    <span>New Patient</span>
-                                </button>
+                                {canCreateManualPatient && (
+                                    <button 
+                                        className="btn primary" 
+                                        onClick={() => setIsCreateModalOpen(true)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, height: 42, padding: '0 16px', borderRadius: 10 }}
+                                    >
+                                        <UserPlus size={18} /> New Patient
+                                    </button>
+                                )}
                             </div>
 
                             {/* Row 2: Filter Chips + Display Controls */}
@@ -1494,7 +1517,7 @@ export default function MarketingDashboard({ onLogout }) {
                 </svg>
             </div>
 
-            {selectedUser && currentView === "dashboard" && (
+            {selectedUser && (
                 <PatientDetailModal
                     user={selectedUser}
                     onClose={() => setSelectedUser(null)}
@@ -1504,6 +1527,8 @@ export default function MarketingDashboard({ onLogout }) {
                          (selectedUser._collection === 'manual' ? 'manual_submissions' : 'partial_submissions'))
                     }
                     showStatus={showStatus}
+                    roles={roles}
+                    hasPermission={hasPermission}
                     onOpenEditor={(user) => {
                         setSelectedUser(null);
                         setPrescriptionUser(user);

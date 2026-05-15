@@ -10,6 +10,8 @@ import {
     setDoc,
     deleteDoc,
     deleteField,
+    getDoc,
+    writeBatch
 } from "firebase/firestore";
 import { 
     Shield, 
@@ -21,11 +23,17 @@ import {
     Unlock,
     Trash2,
     UserPlus,
+    Activity,
+    FileText,
+    PieChart,
+    UserCircle,
+    ShoppingBag,
+    Users
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import StatusModal from './StatusModal';
 
-const AVAILABLE_ROLES = ["admin", "doctor", "editor", "performance_marketing", "support", "viewer"];
+const AVAILABLE_ROLES = ["admin", "doctor", "performance_marketing", "tele_sales", "order_creator", "viewer", "user"];
 
 const RoleManager = () => {
     const [users, setUsers] = useState([]);
@@ -37,6 +45,19 @@ const RoleManager = () => {
     
     // New User State
     const [newUser, setNewUser] = useState({ uid: "", email: "", name: "", role: "viewer" });
+    const [userPermissions, setUserPermissions] = useState({});
+    const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
+
+    const PERMISSION_KEYS = [
+        { key: 'can_generate_prescription', label: 'Generate Prescriptions', icon: <FileText size={14} /> },
+        { key: 'can_edit_clinical_purchased', label: 'Update Purchased Status', icon: <Activity size={14} /> },
+        { key: 'can_edit_clinical_consulted', label: 'Update Consulted Status', icon: <Activity size={14} /> },
+        { key: 'can_edit_patient_info', label: 'Edit Patient Information', icon: <UserCircle size={14} /> },
+        { key: 'can_create_manual_patient', label: 'Create New Patient Records', icon: <Plus size={14} /> },
+        { key: 'view_marketing_analytics', label: 'Access Marketing Analytics', icon: <PieChart size={14} /> },
+        { key: 'can_create_shopify_orders', label: 'Create Shopify Orders', icon: <ShoppingBag size={14} /> },
+        { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers', icon: <Users size={14} /> },
+    ];
 
     // Status Modal State
     const [modalConfig, setModalConfig] = useState({ 
@@ -66,6 +87,23 @@ const RoleManager = () => {
         (user.email || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const fetchUserPermissions = async (userId) => {
+        setIsLoadingPermissions(true);
+        try {
+            const permSnap = await getDoc(doc(db, "users", userId, "permissions", "settings"));
+            if (permSnap.exists()) {
+                setUserPermissions(permSnap.data());
+            } else {
+                setUserPermissions({});
+            }
+        } catch (error) {
+            console.error("Error fetching permissions:", error);
+            setUserPermissions({});
+        } finally {
+            setIsLoadingPermissions(false);
+        }
+    };
+
     const handleSaveUserDetails = async () => {
         if (!selectedUser) return;
         setIsUpdating(true);
@@ -86,10 +124,18 @@ const RoleManager = () => {
             };
             
             // Use setDoc with merge to apply updates and deletions
-            await setDoc(userRef, updates, { merge: true });
+            // Use writeBatch to update both user and permissions sub-collection
+            const batch = writeBatch(db);
+            batch.set(userRef, updates, { merge: true });
+            
+            // Update permissions sub-collection
+            const permRef = doc(db, "users", selectedUser.id, "permissions", "settings");
+            batch.set(permRef, userPermissions);
+
+            await batch.commit();
             
             setSelectedUser(null);
-            showStatus('success', 'User Updated', 'User profile and permissions have been synchronized.');
+            showStatus('success', 'User Updated', 'User profile and granular permissions have been saved.');
         } catch (error) {
             console.error("Error saving user:", error);
             showStatus('error', 'Update Failed', "Failed to save user changes.");
@@ -237,11 +283,9 @@ const RoleManager = () => {
                                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                          <button className="btn ghost mini-btn" onClick={() => {
                                             const editUser = { ...user };
-                                            // 1. Sync name fields
                                             if (!editUser.displayName && editUser.name) editUser.displayName = editUser.name;
                                             if (!editUser.name && editUser.displayName) editUser.name = editUser.displayName;
                                             
-                                            // 2. Ensure roles is an array for the multi-select UI
                                             const initialRoles = Array.from(new Set([
                                                 ...(Array.isArray(editUser.roles) ? editUser.roles : []),
                                                 ...(editUser.role ? [editUser.role] : [])
@@ -250,6 +294,7 @@ const RoleManager = () => {
                                             if (!editUser.role) editUser.role = editUser.roles[0];
 
                                             setSelectedUser(editUser);
+                                            fetchUserPermissions(editUser.id);
                                         }}>
                                             Edit
                                         </button>
@@ -326,8 +371,61 @@ const RoleManager = () => {
                             </div>
 
 
-                            <div style={{ marginBottom: 24 }}>
-                                <label style={{ fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', opacity: 0.5, marginBottom: 16, display: 'block' }}>Additional Permissions</label>
+                             <div style={{ marginBottom: 24 }}>
+                                <label style={{ fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', opacity: 0.5, marginBottom: 16, display: 'block', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 8 }}>
+                                    Dynamic Tool Permissions (Sub-collection)
+                                </label>
+                                {isLoadingPermissions ? (
+                                    <div style={{ padding: 20, textAlign: 'center', opacity: 0.5, fontSize: 12 }}>Loading sub-collection data...</div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+                                        {PERMISSION_KEYS.map(perm => (
+                                            <div 
+                                                key={perm.key} 
+                                                onClick={() => setUserPermissions(prev => ({...prev, [perm.key]: !prev[perm.key]}))}
+                                                style={{ 
+                                                    padding: '12px 16px', 
+                                                    borderRadius: 12, 
+                                                    background: userPermissions[perm.key] ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
+                                                    border: `1px solid ${userPermissions[perm.key] ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.06)'}`,
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                    <div style={{ color: userPermissions[perm.key] ? '#10b981' : 'var(--muted)' }}>{perm.icon}</div>
+                                                    <span style={{ fontSize: '13px', fontWeight: 500, color: userPermissions[perm.key] ? '#fff' : 'rgba(255,255,255,0.7)' }}>{perm.label}</span>
+                                                </div>
+                                                <div style={{ 
+                                                    width: 36, 
+                                                    height: 18, 
+                                                    borderRadius: 20, 
+                                                    background: userPermissions[perm.key] ? '#10b981' : 'rgba(255,255,255,0.1)',
+                                                    position: 'relative',
+                                                    transition: 'background 0.3s'
+                                                }}>
+                                                    <div style={{ 
+                                                        width: 14, 
+                                                        height: 14, 
+                                                        borderRadius: '50%', 
+                                                        background: '#fff', 
+                                                        position: 'absolute', 
+                                                        top: 2, 
+                                                        left: userPermissions[perm.key] ? 20 : 2,
+                                                        transition: 'left 0.3s'
+                                                    }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ marginBottom: 24, opacity: 0.8 }}>
+                                <label style={{ fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', opacity: 0.5, marginBottom: 16, display: 'block', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 8 }}>Role Assignment (Legacy)</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                                     {AVAILABLE_ROLES.map(role => {
                                         const hasRole = selectedUser.roles?.includes(role);

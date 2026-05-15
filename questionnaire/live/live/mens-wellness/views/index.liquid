@@ -1,0 +1,340 @@
+{% comment %}mens-wellness.liquid {% endcomment %}
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+{{ 'questionnaire-test.css' | asset_url | stylesheet_tag }}
+
+<div class="bg-overlay"></div>
+
+{% render 'loader-overlay' %}
+
+<div id="questionnaire">
+  <div class="container">
+    <div class="header">
+      <h1>Men's Sexual Wellness Score</h1>
+    </div>
+
+    <div id="desktop-steps" class="desktop-steps-container"></div>
+
+    <div id="mobile-step-indicator" class="mobile-indicator-container">
+      <div class="mobile-indicator-card">
+        <div class="mobile-info-wrapper">
+          <div class="mobile-step-circle-wrapper">
+            <p class="mobile-step-label">STEP</p>
+            <div id="mobile-step-number-container" class="mobile-step-circle">1</div>
+          </div>
+          <div class="mobile-details-wrapper">
+            <p id="mobile-question-counter" class="mobile-question-counter">Q1 / 1</p>
+            <p id="mobile-step-name" class="mobile-step-name">About You</p>
+            <div id="mobile-step-progress-bar">
+              <div id="mobile-step-progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="step-1" class="step active">
+      <h2>Welcome to the Men's Sexual Health Quiz!</h2>
+      <div class="welcome-content-flex">
+        <ul>
+          <li>Takes just a few minutes</li>
+          <li>100% private and secure</li>
+          <li>You must be 18 or older to participate</li>
+        </ul>
+        <div class="welcome-navigation">
+          <button data-action="start" class="btn-primary">Start Questionnaire</button>
+          <button id="show-previous-btn" data-action="show-previous" class="btn-secondary" style="display: none;">Show Previous Report</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="step-2" class="step about-you-container">
+      <h2>Tell us a bit about yourself to personalize your experience.</h2>
+      <form id="about-you-form">
+        <div class="form-row">
+          <label for="name">Enter Your Full Name:</label>
+          <input type="text" id="name" placeholder="Your name" required>
+          <span id="name-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="dob">Enter Your Date of Birth:</label>
+          <input type="date" id="dob" required>
+          <span id="age-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="phone">Enter Your Phone Number:</label>
+          <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required>
+          <span id="phone-error" class="error-message"></span>
+        </div>
+        <div class="navigation">
+          <button
+            type="button"
+            class="prev-btn"
+            data-action="prev"
+            data-step="1"
+          >
+            Previous
+          </button>
+          <button type="button" class="next-btn" data-action="validate-user-info">Next</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="step-3" class="step">
+
+      <div id="concern-selection-content">
+
+        <h2>Select the challenge you’re facing - we’re here to help</h2>
+
+        <div class="options">
+
+          <button class="option-button" data-action="select-concern" data-concern-key="ed" data-step-id="3">
+            Erectile Dysfunction (ED)
+          </button>
+
+          <button class="option-button" data-action="select-concern" data-concern-key="pe" data-step-id="3">
+            Premature Ejaculation (PE)
+          </button>
+
+          <button class="option-button" data-action="select-concern" data-concern-key="both" data-step-id="3">
+            Both
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="navigation" id="concern-navigation">
+        <button type="button" class="prev-btn" data-action="prev" data-step="2">
+          Previous
+        </button>
+      </div>
+    </div>
+
+    <div id="step-question" class="step">
+      <div id="question-content"></div>
+      <div id="faq-container" class="faq-container" style="display: none"></div>
+      <div class="navigation" id="question-navigation">
+        <button
+          type="button"
+          class="prev-btn"
+          data-action="prev-question"
+        >
+          Previous
+        </button>
+        <div id="next-button-container"></div>
+      </div>
+    </div>
+
+    <div id="result-page" class="step">
+      <div class="result-navigation">
+        <button class="back-arrow-btn" data-action="go-back-from-results">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          <span>Back to Questionnaire</span>
+        </button>
+      </div>
+      <div class="final-layout">
+        <div class="left-column">
+          <div class="patient-details">
+              <h3 class="assessment-header">
+                  <div style="display: flex; align-items: center;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; color: #2563eb;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Assessment Report
+                  </div>
+                  <div class="report-header-date">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      Date: <span id="report-date"></span>
+                  </div>
+              </h3>
+
+              <div class="patient-assessment-header-grid">
+                  <div class="header-info-stack">
+                      <div class="details-grid-compact">
+                          <div class="detail-item">
+                              <span class="detail-label">Name</span>
+                              <span id="user-name" class="detail-value"></span>
+                          </div>
+                          <div class="detail-item">
+                              <span class="detail-label">Age</span>
+                              <span id="user-age" class="detail-value"></span>
+                          </div>
+                          <div class="detail-item">
+                              <span class="detail-label">Category</span>
+                              <span id="user-category" class="detail-value"></span>
+                          </div>
+                      </div>
+                      <div class="issue-header-text" id="user-concern"></div>
+                      <div class="condition-details-html" id="condition-text"></div>
+                  </div>
+
+                  <div class="header-score-column">
+                      <div class="score-box-mini">
+                          <div class="circular-progress-small" id="circular-progress">
+                              <div class="inner-value-box">
+                                  <div class="progress-val-text">
+                                      <span class="score-num" id="progress-value">0</span>
+                                      <span class="percent-sign">%</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <div class="risk-level-badge" id="risk-level-badge"></div>
+                  </div>
+              </div>
+              <span class="patient-id" id="patient-id"></span>
+
+              
+              <div class="future-risk-section">
+                  <div class="assessment-header" style="margin-top: 10px;">Future Risk (If Not Treated)</div>
+                  <div id="future-risk" style="display:none;"></div>
+                  <div id="future-risk-tags" class="risk-tags-container"></div>
+              </div>
+
+            <div class="whatsapp-button-container">
+              <button
+                class="whatsapp-report-btn"
+                data-action="open-otp"
+              >
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
+                  alt="WhatsApp"
+                >
+                Get My Report on WhatsApp
+              </button>
+            </div>
+          </div>
+          <div class="results-timeline">
+            <h3>Condition-Based Progress Timeline</h3>
+            <div id="condition-timeline-container"></div>
+          </div>
+          <a
+            href="https://wa.me/919355539355?text=Hi%20I%20need%20help%20regarding%20my%20health%20report."
+            target="_blank"
+          >
+            <div class="support-section">
+              <img
+                src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/24X7_Banner.webp?v=1774931578"
+                alt="24x7 Expert Doctor Support"
+                style="max-width: 100%"
+              >
+            </div>
+          </a>
+          <div class="treatment-plan">
+              <h4>Your Treatment Inclusions</h4>
+              <div class="treatment-grid">
+                  <div class="treatment-item">
+                      <div class="treatment-icon doctor-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                      </div>
+                      <span class="treatment-text">Expert Doctor Consultation</span>
+                  </div>
+                  <div class="treatment-item">
+                      <div class="treatment-icon medicine-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+                      </div>
+                      <span class="treatment-text">Personalized Integrated Kit</span>
+                  </div>
+                  <div class="treatment-item">
+                      <div class="treatment-icon plan-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      </div>
+                      <span class="treatment-text">Custom Diet & Lifestyle Plan</span>
+                  </div>
+              </div>
+          </div>
+        </div>
+        <div class="right-column">
+          <div class="recommended-treatment">
+            <h3>Recommended Treatment</h3>
+            <div class="product-list" id="product-list"></div>
+            <div class="checkout-section">
+              <p>
+                Total Amount:
+                <span id="total-amount">0</span>
+                <small class="gst-note">(GST included)</small>
+              </p>
+              <div class="buy-button-container">
+                <button
+                  class="buy-button"
+                  data-action="buy-now"
+                >
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="ugc-content"></div>
+    </div>
+  </div>
+</div>
+
+{% render 'otp-verification-modal' %}
+<div id="productModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" data-action="close-modal">&times;</span>
+    <img id="modalImage" src="" alt="">
+    <h2 id="modalTitle"></h2>
+    <p id="modalDescription"></p>
+    <p id="modalPrice" class="price"></p>
+  </div>
+</div>
+
+<div id="exit-popup" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" data-action="close-modal">×</span>
+    <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Popup_Image.jpg?v=1745412444" alt="Special Offer">
+    <h2>Get Extra Off Your Order!</h2>
+    <p>Use the coupon code below to avail an extra discount:</p>
+    <div class="coupon-container">
+      <input
+        type="text"
+        id="coupon-code"
+        value="SPECIAL5"
+        readonly
+      >
+      <button class="copy-btn" data-action="copy-coupon">Copy</button>
+    </div>
+    <p id="copy-feedback" style="display: none; color: green; font-weight: bold">Copied!</p>
+  </div>
+</div>
+
+<script>
+  // 1. Initialize a global object to hold live Shopify data
+  window.shopifyLiveProducts = {};
+
+  {% comment %}
+    We loop through a collection that contains your quiz products.
+    Make sure you create a collection in Shopify (e.g., with handle 'all')
+    or use 'collections.all' if you don't have many products.
+  {% endcomment %}
+
+  {% paginate collections.all.products by 250 %}
+    {% for product in collections.all.products %}
+
+      // Store data keyed by the product Handle
+      window.shopifyLiveProducts["{{ product.handle }}"] = {
+        title: {{ product.title | json }},
+        featuredImage: "https:{{ product.featured_image | image_url: width: 600 }}",
+        url: "{{ product.url }}",
+        variants: {}
+      };
+
+      // Store specific variant details (Price, Stock)
+      {% for variant in product.variants %}
+        window.shopifyLiveProducts["{{ product.handle }}"].variants["{{ variant.id }}"] = {
+          price: {{ variant.price }}, // Price in cents (e.g. 49900)
+          compareAtPrice: {{ variant.compare_at_price | default: 'null' }},
+          available: {{ variant.available }}, // true/false based on inventory
+          inventory_quantity: {{ variant.inventory_quantity }}
+        };
+      {% endfor %}
+
+    {% endfor %}
+  {% endpaginate %}
+</script>
+<script defer="defer" src="{{ 'firebase-config.js' | asset_url }}"></script>
+<script defer="defer" src="{{ 'product-database-common.js' | asset_url }}"></script>
+<script defer="defer" src="{{ 'config-mens-health.js' | asset_url }}"></script>
+<script defer="defer" src="{{ 'questionnaire-engine.js' | asset_url }}"></script>

@@ -66,4 +66,38 @@ module.exports = function (app) {
             },
         })
     );
+
+    app.use(
+        '/api-shopify',
+        createProxyMiddleware({
+            target: 'https://0ec320-gj.myshopify.com',
+            changeOrigin: true,
+            pathRewrite: {
+                '^/api-shopify': '',
+            },
+            headers: {
+                'X-Shopify-Access-Token': process.env.SHOPIFY_ACCESS_TOKEN || '',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'SehatUp-CRM'
+            },
+            onProxyRes: function (proxyRes) {
+                delete proxyRes.headers['www-authenticate'];
+            },
+            onProxyReq: (proxyReq) => {
+                proxyReq.setHeader('X-Shopify-Access-Token', process.env.SHOPIFY_ACCESS_TOKEN || '');
+            }
+        })
+    );
+
+    app.use(
+        '/api-sehatup',
+        createProxyMiddleware({
+            target: 'https://sehatup.com',
+            changeOrigin: true,
+            pathRewrite: {
+                '^/api-sehatup': '',
+            }
+        })
+    );
 };

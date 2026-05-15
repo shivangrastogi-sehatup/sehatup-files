@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Buttons</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="../components.css">
+<style>body{padding:20px;background:var(--bg-surface);}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}.lbl{font-family:var(--font-body);font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;width:80px;}</style>
+</head><body>
+<div class="row"><span class="lbl">Primary</span>
+  <button class="btn btn--primary">Save changes</button>
+  <button class="btn btn--primary btn--sm">Approve</button>
+  <button class="btn btn--primary btn--lg">Sign in</button>
+  <button class="btn btn--primary" disabled>Disabled</button>
+</div>
+<div class="row"><span class="lbl">Secondary</span>
+  <button class="btn btn--secondary">Cancel</button>
+  <button class="btn btn--secondary btn--sm">Export</button>
+  <button class="btn btn--secondary">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download CSV
+  </button>
+</div>
+<div class="row"><span class="lbl">Ghost</span>
+  <button class="btn btn--ghost">View details</button>
+  <button class="btn btn--ghost btn--sm">Skip</button>
+</div>
+<div class="row"><span class="lbl">Danger</span>
+  <button class="btn btn--danger">Delete submission</button>
+  <button class="btn btn--danger btn--sm">Revoke role</button>
+</div>
+</body></html>
