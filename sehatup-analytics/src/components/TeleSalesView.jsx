@@ -16,6 +16,7 @@ import {
     Ruler, 
     Check, 
     Copy,
+    ArrowUpDown,
     ChevronLeft,
     ChevronRight
 } from 'lucide-react';

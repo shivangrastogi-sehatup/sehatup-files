@@ -1,7 +1,7 @@
 // src/components/TeleSalesDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { 
-    LayoutDashboard, Plus, Users, Search, X, Package, AlertCircle, LogOut, Loader2, ChevronRight
+    LayoutDashboard, Plus, Users, Search, X, Package, AlertCircle, LogOut, Loader2, ChevronRight, UserPlus, ArrowUpDown, ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { searchCustomers, updateCustomer, createDraftOrder, getCustomers, getCustomersCount } from '../utils/shopify';
@@ -34,7 +34,7 @@ export default function TeleSalesDashboard({ onLogout }) {
     const [isSearching, setIsSearching] = useState(false);
     const [customers, setCustomers] = useState([]);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
-    const [pageSize] = useState(50);
+    const [pageSize, setPageSize] = useState(50);
     const [pagination, setPagination] = useState({ next: '', prev: '', current: '' });
     const [pageNumber, setPageNumber] = useState(1);
     const [totalCustomers, setTotalCustomers] = useState(0);
@@ -44,6 +44,7 @@ export default function TeleSalesDashboard({ onLogout }) {
     const [cart, setCart] = useState([]);
     const totalDiscount = 0;
     const shippingCost = 0;
+    const [orderStatus, setOrderStatus] = useState({ loading: false, success: false, error: null });
     const [paymentDueLater, setPaymentDueLater] = useState(false);
     const [productSearchResults, setProductSearchResults] = useState([]);
     const [isProductSearching, setIsProductSearching] = useState(false);
