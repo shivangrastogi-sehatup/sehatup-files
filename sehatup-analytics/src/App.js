@@ -6,7 +6,6 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
 // Components
-import Dashboard from "./components/Dashboard";
 import Login from "./components/Login";
 import AdminPanel from "./components/AdminPanel";
 import DoctorDashboard from "./components/DoctorDashboard";
