@@ -73,7 +73,7 @@ export default function App() {
     <Router>
       <PermissionsProvider>
         <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Navigate to="/login" />} />
         <Route
           path="/login"
           element={
@@ -94,13 +94,13 @@ export default function App() {
                   }
                 }
 
-                // Fallback prioritised redirect
+                // Fallback prioritized redirect
                 if (hasAdmin) return <Navigate to="/admin" />;
                 if (roles.includes("doctor")) return <Navigate to="/doctor" />;
                 if (roles.includes("performance_marketing")) return <Navigate to="/marketing" />;
                 if (roles.includes("tele_sales")) return <Navigate to="/tele-sales" />;
                 if (roles.includes("order_creator")) return <Navigate to="/order-creator" />;
-                return <Navigate to="/" />;
+                return <Navigate to="/me" />;
               })()
             )
           }
@@ -119,7 +119,7 @@ export default function App() {
         <Route
           path="/doctor"
           element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={["doctor", "tele_sales", "viewer"]}>
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["doctor"]}>
               <DoctorDashboard onLogout={handleLogout} roles={roles} />
             </ProtectedRoute>
           }
@@ -128,7 +128,7 @@ export default function App() {
         <Route
           path="/marketing"
           element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={["performance_marketing", "tele_sales", "viewer"]}>
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["performance_marketing"]}>
               <MarketingDashboard onLogout={handleLogout} roles={roles} />
             </ProtectedRoute>
           }
@@ -137,7 +137,7 @@ export default function App() {
         <Route
           path="/tele-sales"
           element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={["tele_sales", "admin"]}>
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["tele_sales"]}>
               <TeleSalesView onLogout={handleLogout} roles={roles} />
             </ProtectedRoute>
           }
@@ -146,7 +146,7 @@ export default function App() {
         <Route
           path="/order-creator"
           element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={["order_creator", "admin"]}>
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["order_creator"]}>
               <TeleSalesDashboard onLogout={handleLogout} roles={roles} />
             </ProtectedRoute>
           }
