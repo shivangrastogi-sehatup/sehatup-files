@@ -1439,19 +1439,25 @@ class QuestionnaireEngine {
         const ugcContainer = document.getElementById('ugc-content');
         if (!ugcContainer) return;
 
-        // Expanded to 10 videos for testing as requested
-        const VIDEO_IDS = [
-            '68SbZuINym0', 'EyvZLDLxFYU', 'i_lfAg9o4HA', 
-            '68SbZuINym0', 'EyvZLDLxFYU', 'i_lfAg9o4HA',
-            '68SbZuINym0', 'EyvZLDLxFYU', 'i_lfAg9o4HA',
-            '68SbZuINym0'
+        // Limit to 3 videos, supporting both YouTube IDs and direct .mp4 Shopify links
+        const VIDEO_SOURCES = [
+            '68SbZuINym0', 
+            'EyvZLDLxFYU', 
+            'i_lfAg9o4HA'
         ];
-        const slidesHTML = VIDEO_IDS.map(id => `
-            <div class="ugc-slide ugc-slide-lite" data-action="load-youtube" data-src="https://www.youtube.com/embed/${id}">
-                <img class="ugc-thumbnail"
-                     src="https://i.ytimg.com/vi/${id}/maxresdefault.jpg"
-                     onerror="this.src='https://i.ytimg.com/vi/${id}/hqdefault.jpg'"
-                     alt="Customer Review" loading="eager">
+        const slidesHTML = VIDEO_SOURCES.map(src => {
+            const isMp4 = src.includes('.mp4');
+            const dataSrc = isMp4 ? src : `https://www.youtube.com/embed/${src}`;
+            const thumbSrc = isMp4 ? '' : `https://i.ytimg.com/vi/${src}/maxresdefault.jpg`;
+            const thumbFallback = isMp4 ? '' : `https://i.ytimg.com/vi/${src}/hqdefault.jpg`;
+            
+            return `
+            <div class="ugc-slide ugc-slide-lite" data-action="load-youtube" data-src="${dataSrc}" data-type="${isMp4 ? 'mp4' : 'youtube'}">
+                ${isMp4 ? 
+                    `<video class="ugc-thumbnail lazy-video" data-src="${src}#t=0.1" preload="none" muted playsinline style="object-fit: cover; width: 100%; height: 100%; background: #222;"></video>` 
+                    : 
+                    `<img class="ugc-thumbnail" src="${thumbSrc}" onerror="this.src='${thumbFallback}'" alt="Customer Review" loading="lazy">`
+                }
                 <div class="ugc-slide-gradient"></div>
                 <div class="play-button">
                     <svg viewBox="0 0 24 24" fill="white" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>
@@ -1461,11 +1467,34 @@ class QuestionnaireEngine {
                     Verified
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
         const slider = ugcContainer.classList.contains('ugc-slider') ? ugcContainer
             : ugcContainer.querySelector('.ugc-slider') || ugcContainer;
         slider.innerHTML = slidesHTML;
+
+        // Lazy load MP4 video frames to prevent network bottlenecks
+        if ('IntersectionObserver' in window) {
+            const videoObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const video = entry.target;
+                        video.src = video.dataset.src;
+                        video.preload = "metadata";
+                        video.classList.remove('lazy-video');
+                        observer.unobserve(video);
+                    }
+                });
+            }, { root: slider, rootMargin: '0px 200px' });
+            
+            slider.querySelectorAll('video.lazy-video').forEach(v => videoObserver.observe(v));
+        } else {
+            slider.querySelectorAll('video.lazy-video').forEach(v => {
+                v.src = v.dataset.src;
+                v.preload = "metadata";
+            });
+        }
 
         const ugcSection = document.getElementById('ugc-section');
         if (ugcSection) {
@@ -1482,22 +1511,53 @@ class QuestionnaireEngine {
             if (!ugcSection.querySelector('.ugc-dots')) {
                 ugcSection.insertAdjacentHTML('beforeend', `
                     <div class="ugc-dots">
-                        ${VIDEO_IDS.map((_, i) => `<div class="ugc-dot${i === 0 ? ' active' : ''}"></div>`).join('')}
+                        ${VIDEO_SOURCES.map((_, i) => `<div class="ugc-dot${i === 0 ? ' active' : ''}"></div>`).join('')}
                     </div>`);
             }
         }
 
         requestAnimationFrame(() => {
             this._checkUgcArrows(slider);
-            if (window.innerWidth <= 768) {
-                this._initUgcMobileCenterDetect(slider);
-            } else if (UGC_AUTO_SCROLL) {
+            
+            // Always bind scroll detection to sync dots (for both mobile drag and desktop scroll)
+            this._initUgcScrollDetect(slider);
+
+            if (UGC_AUTO_SCROLL && window.innerWidth > 768) {
                 this._initUgcAutoScroll(slider, UGC_AUTO_SCROLL_MS);
             }
         });
 
         // Listen for resize to re-check arrows
-        window.addEventListener('resize', () => this._checkUgcArrows(slider));
+        window.addEventListener('resize', () => {
+            this._checkUgcArrows(slider);
+        });
+
+        // Add click listeners to dots
+        const section = document.getElementById('ugc-section');
+        if (section) {
+            const dotsList = section.querySelectorAll('.ugc-dot');
+            dotsList.forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    const maxScroll = slider.scrollWidth - slider.clientWidth;
+                    if (maxScroll > 0 && dotsList.length > 1) {
+                        const targetScroll = (index / (dotsList.length - 1)) * maxScroll;
+                        slider.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                    }
+                });
+            });
+            
+            // Also ensure arrows update the scroll (if not already handled by inline onclick)
+            const leftArrow = section.querySelector('.ugc-nav.prev');
+            const rightArrow = section.querySelector('.ugc-nav.next');
+            if (leftArrow && !leftArrow.dataset.bound) {
+                leftArrow.dataset.bound = "true";
+                leftArrow.addEventListener('click', () => slider.scrollBy({left: -300, behavior: 'smooth'}));
+            }
+            if (rightArrow && !rightArrow.dataset.bound) {
+                rightArrow.dataset.bound = "true";
+                rightArrow.addEventListener('click', () => slider.scrollBy({left: 300, behavior: 'smooth'}));
+            }
+        }
     }
 
     _checkUgcArrows(slider) {
@@ -1517,41 +1577,32 @@ class QuestionnaireEngine {
             dots.style.display = (isOverflowing) ? 'flex' : 'none';
         }
 
-        // If not overflowing, center the slider
         slider.style.justifyContent = isOverflowing ? 'flex-start' : 'center';
     }
 
-    _initUgcMobileCenterDetect(slider) {
+    _initUgcScrollDetect(slider) {
         const slides = Array.from(slider.querySelectorAll('.ugc-slide'));
         if (!slides.length) return;
 
-        let sliderWidth = slider.offsetWidth;
         const updateDots = () => {
-            const scrollLeft = slider.scrollLeft;
-            const viewportCenter = scrollLeft + (sliderWidth / 2);
-            
+            const maxScroll = slider.scrollWidth - slider.clientWidth;
             let bestIdx = 0;
-            let minDistance = Infinity;
-
-            slides.forEach((slide, idx) => {
-                const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
-                const distance = Math.abs(viewportCenter - slideCenter);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    bestIdx = idx;
-                }
-            });
+            
+            if (maxScroll <= 0) {
+                bestIdx = 0;
+            } else {
+                const scrollPercent = slider.scrollLeft / maxScroll;
+                const clampedPercent = Math.max(0, Math.min(1, scrollPercent));
+                bestIdx = Math.round(clampedPercent * (slides.length - 1));
+            }
 
             this._updateUgcDots(slider, bestIdx);
         };
 
         slider.addEventListener('scroll', updateDots, { passive: true });
-        window.addEventListener('resize', () => {
-            sliderWidth = slider.offsetWidth;
-            updateDots();
-        });
+        window.addEventListener('resize', updateDots);
         
-        updateDots();
+        setTimeout(updateDots, 100);
     }
 
     _updateUgcDots(slider, activeIdx) {
@@ -1585,14 +1636,16 @@ class QuestionnaireEngine {
     loadYoutubeVideo(target) {
         const slide = target.closest('.ugc-slide-lite');
         if (!slide || !slide.dataset.src) return;
+        const isMp4 = slide.dataset.type === 'mp4';
 
         // 1. Optimized Initialization: Clear any other active videos first
         document.querySelectorAll('.ugc-slide:not(.ugc-slide-lite)').forEach(activeSlide => {
-            const activeIframe = activeSlide.querySelector('iframe');
-            if (activeIframe) activeIframe.remove();
+            const activeVideo = activeSlide.querySelector('iframe, video.active-video');
+            if (activeVideo) activeVideo.remove();
             
             // Restore play icon and original state
             activeSlide.classList.add('ugc-slide-lite');
+            activeSlide.classList.remove('is-playing');
             const newPlayBtn = document.createElement('div');
             newPlayBtn.className = 'play-button';
             newPlayBtn.innerHTML = `
@@ -1609,52 +1662,92 @@ class QuestionnaireEngine {
 
         // 2. Immediate Visual Feedback
         slide.classList.remove('ugc-slide-lite');
+        slide.classList.add('is-playing');
         const playBtn = slide.querySelector('.play-button');
         if (playBtn) playBtn.remove();
         
         const thumbnail = slide.querySelector('.ugc-thumbnail');
-        if (thumbnail) thumbnail.style.opacity = '0';
+        if (thumbnail && !isMp4) thumbnail.style.opacity = '0';
 
         const loader = document.createElement('div');
         loader.className = 'ugc-loader';
         slide.appendChild(loader);
 
-        // 3. Native YouTube Shorts-style Embed
-        // controls=1 (native), iv_load_policy=3 (no annotations), modestbranding=1 (premium)
-        // enablejsapi=1 for state tracking
-        const iframe = document.createElement('iframe');
-        iframe.src = `${slide.dataset.src}?autoplay=1&mute=0&rel=0&modestbranding=1&controls=1&iv_load_policy=3&enablejsapi=1`;
-        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-        iframe.allowFullscreen = true;
-        iframe.style.cssText = 'width:100%; height:100%; position:absolute; top:0; left:0; border:none; z-index:1; opacity:0; transition:opacity 0.4s;';
-        
-        // 4. Advanced State Management (Hides thumbnail ONLY when playing)
-        const checkPlaying = (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                if (data.event === 'onStateChange' && data.info === 1) { // 1 = Playing
-                    if (loader) loader.remove();
-                    if (thumbnail) {
-                        thumbnail.style.opacity = '0';
-                        setTimeout(() => { thumbnail.style.display = 'none'; }, 400);
-                    }
-                    iframe.style.opacity = '1';
-                    window.removeEventListener('message', checkPlaying);
-                }
-            } catch (err) {}
-        };
-        window.addEventListener('message', checkPlaying);
-        
-        // 4. Remove all custom click-pause/volume logic
-        slide.onclick = null; 
-        
-        iframe.onload = () => {
-            if (loader) loader.remove();
-            if (thumbnail) thumbnail.style.display = 'none';
-            iframe.style.opacity = '1';
-        };
+        slide.onclick = null;
 
-        slide.appendChild(iframe);
+        if (isMp4) {
+            const video = document.createElement('video');
+            video.className = 'active-video';
+            video.src = slide.dataset.src;
+            video.controls = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.style.cssText = 'width:100%; height:100%; position:absolute; top:0; left:0; border:none; z-index:1; opacity:0; transition:opacity 0.4s; object-fit: cover;';
+            
+            video.onplaying = () => {
+                if (loader) loader.remove();
+                if (thumbnail) {
+                    thumbnail.style.opacity = '0';
+                    setTimeout(() => { thumbnail.style.display = 'none'; }, 400);
+                }
+                video.style.opacity = '1';
+                slide.classList.add('is-playing');
+            };
+            video.onpause = () => slide.classList.remove('is-playing');
+            video.onended = () => slide.classList.remove('is-playing');
+
+            video.load();
+            slide.appendChild(video);
+        } else {
+            // 3. Native YouTube Shorts-style Embed
+            const iframe = document.createElement('iframe');
+            iframe.src = `${slide.dataset.src}?autoplay=1&mute=0&rel=0&modestbranding=1&controls=1&iv_load_policy=3&cc_load_policy=0&enablejsapi=1`;
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            iframe.allowFullscreen = true;
+            iframe.style.cssText = 'width:100%; height:100%; position:absolute; top:0; left:0; border:none; z-index:1; opacity:0; transition:opacity 0.4s;';
+            
+            // 4. Advanced State Management
+            const checkPlaying = (e) => {
+                if (e.source !== iframe.contentWindow) return;
+                try {
+                    let data = e.data;
+                    if (typeof data === 'string') data = JSON.parse(data);
+                    
+                    let state = -1;
+                    if (data.event === 'onStateChange') state = data.info;
+                    else if (data.event === 'infoDelivery' && data.info) state = data.info.playerState !== undefined ? data.info.playerState : data.info;
+
+                    if (state === 1) { // 1 = Playing
+                        if (loader) loader.remove();
+                        if (thumbnail) {
+                            thumbnail.style.opacity = '0';
+                            setTimeout(() => { thumbnail.style.display = 'none'; }, 400);
+                        }
+                        iframe.style.opacity = '1';
+                        slide.classList.add('is-playing');
+                    } else if (state === 2 || state === 0) { // 2 = Paused, 0 = Ended
+                        slide.classList.remove('is-playing');
+                    }
+                } catch (err) {}
+            };
+            window.addEventListener('message', checkPlaying);
+            
+            const observer = new MutationObserver((mutations) => {
+                if (!document.body.contains(iframe)) {
+                    window.removeEventListener('message', checkPlaying);
+                    observer.disconnect();
+                }
+            });
+            observer.observe(slide, { childList: true });
+
+            iframe.onload = () => {
+                if (loader) loader.remove();
+                if (thumbnail) thumbnail.style.display = 'none';
+                iframe.style.opacity = '1';
+            };
+
+            slide.appendChild(iframe);
+        }
     }
 
     animateScore(finalScore) {
@@ -1824,10 +1917,16 @@ class QuestionnaireEngine {
         }
 
         try {
+            const requestBody = { phone: this.enteredPhone, otp: digits };
+            // If the user is on a specific report, attach its ID
+            if (this.state.finalDocId) {
+                requestBody.docId = this.state.finalDocId;
+            }
+
             const response = await fetch("https://verifyotp-xrtgefpbxq-em.a.run.app", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone: this.enteredPhone, otp: digits }),
+                body: JSON.stringify(requestBody),
             });
             const data = await response.json();
 

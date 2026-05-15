@@ -1793,12 +1793,44 @@ exports.getLatestReportByPhoneNumber = onRequest(
     }
 
     const db = getFirestore();
-    const userDocSnapshot = await db
-      .collection("questionnaire_submissions")
-      .where("phone", "==", phone)
-      .orderBy("timestamp", "desc")
-      .limit(1)
-      .get();
+    let requestedDocId = null;
+
+    try {
+      const activeReq = await db.collection("active_whatsapp_requests").doc(phone).get();
+      if (activeReq.exists) {
+        const reqData = activeReq.data();
+        if (reqData.timestamp) {
+          const diffMs = Date.now() - reqData.timestamp.toMillis();
+          // Valid for 10 minutes (600,000 ms)
+          if (diffMs < 600000) {
+            requestedDocId = reqData.docId;
+            console.log(`Found active specific WhatsApp request for docId: ${requestedDocId}`);
+          }
+        }
+        // Consume the request so it isn't reused indefinitely
+        await activeReq.ref.delete();
+      }
+    } catch (e) {
+      console.log("Error checking active_whatsapp_requests:", e);
+    }
+
+    let userDocSnapshot;
+    
+    if (requestedDocId) {
+      const specificDoc = await db.collection("questionnaire_submissions").doc(requestedDocId).get();
+      if (specificDoc.exists) {
+        userDocSnapshot = { empty: false, docs: [specificDoc] };
+      } else {
+        userDocSnapshot = { empty: true };
+      }
+    } else {
+      userDocSnapshot = await db
+        .collection("questionnaire_submissions")
+        .where("phone", "==", phone)
+        .orderBy("timestamp", "desc")
+        .limit(1)
+        .get();
+    }
 
     if (userDocSnapshot.empty) {
       return res.status(200).send({ success: false, error: "No report found" });
@@ -2009,7 +2041,7 @@ exports.verifyOTP = onRequest(
     cors: true,
   },
   async (req, res) => {
-    const { phone, otp } = req.body;
+    const { phone, otp, docId } = req.body;
     //Check if the request is a POST request
     if (req.method !== "POST") {
       return res
@@ -2038,6 +2070,13 @@ exports.verifyOTP = onRequest(
       };
       const isValid = totp.check(otp, secret);
       if (isValid) {
+        if (docId) {
+          const db = getFirestore();
+          await db.collection("active_whatsapp_requests").doc(phone).set({
+            docId: docId,
+            timestamp: FieldValue.serverTimestamp()
+          });
+        }
         return res
           .status(200)
           .send({ success: true, message: "OTP verified successfully" });

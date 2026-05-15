@@ -41,16 +41,17 @@ async function start() {
     
     // Markdown Version (Fixed)
     let markdown = '# SehatUP Product Price List\n\n';
-    markdown += `| Product Name | Selling Price (INR) | MRP (INR) |\n`;
-    markdown += `| :--- | :--- | :--- |\n`;
+    markdown += `| Product Name | Selling Price (INR) | MRP (INR) | 10% Off Price (INR) |\n`;
+    markdown += `| :--- | :--- | :--- | :--- |\n`;
 
     // CSV Version (Excel compatible)
-    let csv = 'Product Name,Selling Price (INR),MRP (INR)\n';
+    let csv = 'Product Name,Selling Price (INR),MRP (INR),10% Off Price (INR)\n';
 
     products.forEach(p => {
       const v = p.variants[0];
       const sellingPrice = parseFloat(v.price).toFixed(2);
       const mrp = v.compare_at_price ? parseFloat(v.compare_at_price).toFixed(2) : sellingPrice;
+      const discountedPrice = (parseFloat(v.price) * 0.9).toFixed(2);
       
       // Clean title for Markdown (remove |)
       const cleanTitle = p.title.replace(/\|/g, '-').trim();
@@ -58,8 +59,8 @@ async function start() {
       // Clean title for CSV (wrap in quotes to handle commas)
       const csvTitle = `"${p.title.replace(/"/g, '""')}"`;
 
-      markdown += `| ${cleanTitle} | ₹${sellingPrice} | ₹${mrp} |\n`;
-      csv += `${csvTitle},${sellingPrice},${mrp}\n`;
+      markdown += `| ${cleanTitle} | ₹${sellingPrice} | ₹${mrp} | ₹${discountedPrice} |\n`;
+      csv += `${csvTitle},${sellingPrice},${mrp},${discountedPrice}\n`;
     });
 
     fs.writeFileSync('PRODUCT_LIST.md', markdown);

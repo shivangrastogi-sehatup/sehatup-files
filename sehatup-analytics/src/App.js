@@ -11,7 +11,7 @@ import AdminPanel from "./components/AdminPanel";
 import DoctorDashboard from "./components/DoctorDashboard";
 import UserDashboard from "./components/UserDashboard";
 import MarketingDashboard from "./components/MarketingDashboard";
-import TeleSalesDashboard from "./components/TeleSalesDashboard";
+import OrderCreationCRM from "./components/OrderCreationCRM";
 import TeleSalesView from './components/TeleSalesView';
 import ProtectedRoute from "./components/ProtectedRoute";
 import { PermissionsProvider } from './context/PermissionsContext';
@@ -146,7 +146,7 @@ export default function App() {
           path="/order-creator"
           element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={["order_creator"]}>
-              <TeleSalesDashboard onLogout={handleLogout} roles={roles} />
+              <OrderCreationCRM onLogout={handleLogout} roles={roles} />
             </ProtectedRoute>
           }
         />
