@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
     // Extract the original path from the request URL
     // e.g. /shopify-v2/graphql.json -> /graphql.json
-    const endpoint = req.url.replace('/shopify-v2', '').split('?')[0];
+    const endpoint = req.url.replace('/shopify-v2', '');
     const apiPath = `/admin/api/${API_VERSION}${endpoint}`;
     const url = `https://${SHOPIFY_HOSTNAME}${apiPath}`;
 

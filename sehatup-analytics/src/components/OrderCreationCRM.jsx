@@ -202,7 +202,7 @@ const PAYMENT_TERMS_OPTIONS = [
     { value: 'FIXED', label: 'Fixed date' },
 ];
 
-const OrderCreationCRM = ({ user }) => {
+const OrderCreationCRM = ({ user, onLogout }) => {
     const agentName = user?.displayName || user?.email || 'CRM Agent';
     const [csvUrl] = useState('https://docs.google.com/spreadsheets/d/e/2PACX-1vSL_HNjTH0rykbrl-q3GwYZ6SDYrskbsCa-VxgtA2qVTXkxIl8r4SpLF_ne95EHK8wfcqYNFwjNMPqI/pub?output=csv');
     const [leads, setLeads] = useState([]);
@@ -865,25 +865,33 @@ const OrderCreationCRM = ({ user }) => {
     // ─── Google Sheets sync ───────────────────────────────────────────────────
     // Requires a Google Apps Script Web App. Paste this script in Apps Script and deploy as Web App:
     //   function doPost(e) {
-    //     const d = JSON.parse(e.postData.contents);
-    //     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    //     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    //     const phoneCol = headers.indexOf('Phone Number') + 1;
-    //     const lastRow = sheet.getLastRow();
-    //     let found = false;
-    //     let updateRow = -1;
-    //     for (let i = 2; i <= lastRow; i++) {
-    //       if (sheet.getRange(i, phoneCol).getValue().toString().replace(/\D/g,'') === d.phone) {
-    //         found = true; updateRow = i; break;
+    //     try {
+    //       const d = JSON.parse(e.postData.contents);
+    //       const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    //       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    //       const phoneCol = headers.indexOf('Phone Number') + 1;
+    //       if (phoneCol === 0) throw new Error("Phone Number column not found");
+    //       const lastRow = sheet.getLastRow();
+    //       let updateRow = -1;
+    //       if (lastRow > 1) {
+    //         const phoneData = sheet.getRange(2, phoneCol, lastRow - 1, 1).getValues();
+    //         for (let i = 0; i < phoneData.length; i++) {
+    //           if (phoneData[i][0].toString().replace(/\D/g,'') === d.phone) { updateRow = i + 2; break; }
+    //         }
     //       }
+    //       if (updateRow === -1) {
+    //         updateRow = lastRow + 1;
+    //         if (updateRow > sheet.getMaxRows()) sheet.insertRowAfter(sheet.getMaxRows());
+    //       }
+    //       Object.keys(d.updates).forEach(h => { const c = headers.indexOf(h)+1; if(c) sheet.getRange(updateRow,c).setValue(d.updates[h]); });
+    //       let luCol = headers.indexOf('Last Updated')+1; if(!luCol){sheet.getRange(1,headers.length+1).setValue('Last Updated');luCol=headers.length+1;}
+    //       let ubCol = headers.indexOf('Updated By')+1; if(!ubCol){sheet.getRange(1,headers.length+2).setValue('Updated By');ubCol=headers.length+2;}
+    //       sheet.getRange(updateRow,luCol).setValue(new Date().toLocaleString('en-IN'));
+    //       sheet.getRange(updateRow,ubCol).setValue(d.updatedBy);
+    //       return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+    //     } catch(err) {
+    //       return ContentService.createTextOutput(JSON.stringify({error: err.message})).setMimeType(ContentService.MimeType.JSON);
     //     }
-    //     if (!found) { updateRow = lastRow + 1; }
-    //     Object.keys(d.updates).forEach(h => { const c = headers.indexOf(h)+1; if(c) sheet.getRange(updateRow,c).setValue(d.updates[h]); });
-    //     let luCol = headers.indexOf('Last Updated')+1; if(!luCol){sheet.getRange(1,headers.length+1).setValue('Last Updated');luCol=headers.length+1;}
-    //     let ubCol = headers.indexOf('Updated By')+1; if(!ubCol){sheet.getRange(1,headers.length+2).setValue('Updated By');ubCol=headers.length+2;}
-    //     sheet.getRange(updateRow,luCol).setValue(new Date().toLocaleString('en-IN'));
-    //     sheet.getRange(updateRow,ubCol).setValue(d.updatedBy);
-    //     return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
     //   }
 
     const saveGscriptUrl = (url) => {
@@ -961,7 +969,7 @@ const OrderCreationCRM = ({ user }) => {
         <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial, sans-serif', color: '#e2e8f0', background: '#0a0f1e' }}>
 
             {/* LEFT: Leads */}
-            <div style={{ width: '28%', minWidth: 260, borderRight: '1px solid #1e293b', padding: '20px', overflowY: 'auto' }}>
+            <div style={{ width: '28%', minWidth: 260, borderRight: '1px solid #1e293b', padding: '20px', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <h2 style={{ color: '#fff', margin: 0, fontSize: 18 }}>Order Requests</h2>
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -994,22 +1002,43 @@ const OrderCreationCRM = ({ user }) => {
                 )}
 
                 <div style={{ fontSize: 12, color: '#475569', marginBottom: 12 }}>{leads.length} leads</div>
-                {leads.map((lead, i) => (
-                    <div key={i} onClick={() => selectLead(lead)} style={{
-                        padding: '12px',
-                        background: selectedLead === lead ? '#1e293b' : 'transparent',
-                        border: `1px solid ${selectedLead === lead ? '#3b82f6' : '#1e293b'}`,
-                        marginBottom: 8, borderRadius: 8, cursor: 'pointer',
-                    }}>
-                        <strong style={{ color: selectedLead === lead ? '#38bdf8' : '#e2e8f0', fontSize: 14 }}>
-                            {lead['First Name'] || lead['firstName']} {lead['Last Name'] || lead['lastName']}
-                        </strong>
-                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>{lead['Phone Number'] || lead['phone']}</div>
-                        <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
-                            {lead['District/City'] || lead['city']}, {lead['State'] || lead['state']}
+                
+                <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4, paddingBottom: 16 }}>
+                    {leads.map((lead, i) => (
+                        <div key={i} onClick={() => selectLead(lead)} style={{
+                            padding: '12px',
+                            background: selectedLead === lead ? '#1e293b' : 'transparent',
+                            border: `1px solid ${selectedLead === lead ? '#3b82f6' : '#1e293b'}`,
+                            marginBottom: 8, borderRadius: 8, cursor: 'pointer',
+                        }}>
+                            <strong style={{ color: selectedLead === lead ? '#38bdf8' : '#e2e8f0', fontSize: 14 }}>
+                                {lead['First Name'] || lead['firstName']} {lead['Last Name'] || lead['lastName']}
+                            </strong>
+                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>{lead['Phone Number'] || lead['phone']}</div>
+                            <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                                {lead['District/City'] || lead['city']}, {lead['State'] || lead['state']}
+                            </div>
                         </div>
+                    ))}
+                </div>
+
+                {onLogout && (
+                    <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #1e293b' }}>
+                        <button 
+                            onClick={onLogout} 
+                            style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px solid #ef444455', color: '#ef4444', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#ef444415'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#ef444455'; }}
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            Log Out
+                        </button>
                     </div>
-                ))}
+                )}
             </div>
 
             {/* RIGHT: Order Form */}
