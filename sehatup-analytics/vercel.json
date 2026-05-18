@@ -25,6 +25,10 @@
             "destination": "https://chilp.it/:path*"
         },
         {
+            "source": "/shopify-v2/:path*",
+            "destination": "/api/shopify.js"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
