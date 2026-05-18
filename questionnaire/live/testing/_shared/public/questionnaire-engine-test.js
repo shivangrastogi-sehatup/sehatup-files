@@ -988,7 +988,16 @@ class QuestionnaireEngine {
             answeredQuestions.pop();
             this.renderQuestionGroup(currentGroup);
         } else if (this.state.currentStep > firstQuestionStep) {
-            this.showStep(this.state.currentStep - 1);
+            // First question of a non-first group: pop the previous group's
+            // last answer so its last question is re-rendered. Without this,
+            // renderQuestionGroup sees the prev group fully answered and
+            // immediately advances forward again, trapping the user.
+            const prevStep = this.state.currentStep - 1;
+            const prevGroup = this.config.questionGroups.find((g) => g.step === prevStep);
+            if (prevGroup && (this.state.allAnswers[prevGroup.key]?.length || 0) > 0) {
+                this.state.allAnswers[prevGroup.key].pop();
+            }
+            this.showStep(prevStep);
         } else {
             this.showStep(2);
         }

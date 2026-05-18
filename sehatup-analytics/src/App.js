@@ -146,7 +146,7 @@ export default function App() {
           path="/order-creator"
           element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={["order_creator"]}>
-              <OrderCreationCRM onLogout={handleLogout} roles={roles} />
+              <OrderCreationCRM onLogout={handleLogout} roles={roles} user={user} />
             </ProtectedRoute>
           }
         />

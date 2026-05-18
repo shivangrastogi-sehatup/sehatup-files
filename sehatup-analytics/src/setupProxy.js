@@ -52,6 +52,12 @@ module.exports = function (app) {
                     if (proxyRes.statusCode !== 200) {
                         console.log(`    Response body (first 300 chars): ${responseBody.substring(0, 300)}`);
                     }
+                    if (apiPath.includes('shipping_zones')) {
+                        console.log(`    [SHIPPING_ZONES] body: ${responseBody.substring(0, 3000)}`);
+                    }
+                    if (apiPath.includes('graphql')) {
+                        console.log(`    [GRAPHQL] body: ${responseBody.substring(0, 3000)}`);
+                    }
                     res.status(proxyRes.statusCode);
                     // Forward safe response headers
                     ['content-type', 'x-shopify-shop-api-call-limit'].forEach(h => {
