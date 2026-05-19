@@ -597,22 +597,26 @@ const questionnaireConfig = {
             riskType: initialRiskType,
             concern: allAnswers.concern?.[0]?.text,
             reportCategory: "Mens Sexual Wellness",
-            lifestyleConditions: results.lifestyleConditions || [],
+            sexualHealthAnswers: allAnswers.sexual_health || [],
+            lifestyleComorbiditiesAnswers: allAnswers.lifestyle || [],
             possibleCauses: possibleCauses,
             lifestyleChanges: lifestyleTipsArray,
             timeline: combinedTimeline,
             answers: answers,
             questionnaireId: config.id,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            isWhatsAppSent: false,
             futureRisks: (results.futureRisks || []).map((text) => ({
                 text
             })),
             recommendedProducts: finalRecommendedProducts,
+            rawState: {
+                allAnswers: allAnswers,
+                results: results
+            },
         };
         try {
             const docRef = await db.collection('questionnaire_submissions').add(data);
-            // console.log('Submission successful');
+            console.log('Document written with ID: ', docRef.id);
             return docRef.id;
         } catch (e) {
             console.error('Error saving to Firebase:', e);

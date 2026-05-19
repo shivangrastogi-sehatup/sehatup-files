@@ -27,6 +27,7 @@ import ExportControls from './ExportControls';
 import StatusModal from './StatusModal';
 import { triggerOrderPlacedWebhook } from '../utils/webhookHelpers';
 import { usePermissions } from '../context/PermissionsContext';
+import OrderModal from './OrderModal';
 
 // Native date <-> JS Date helpers for the From/To filter
 const toIsoDate = (d) => {
@@ -85,7 +86,7 @@ const CircularScore = React.memo(({ score }) => {
 });
 
 
-const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showStatus, roles = [], hasPermission }) => {
+const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showStatus, roles = [], hasPermission, onCreateOrder }) => {
     // Dynamic flags from the new permissions system
     const canGeneratePrescription = hasPermission('can_generate_prescription');
     const canEditClinicalPurchased = hasPermission('can_edit_clinical_purchased');
@@ -438,6 +439,16 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
                             {user.healthScore !== undefined && <CircularScore score={user.healthScore} />}
                             {user.healthScore !== undefined && (
                                 <div className={`badge ${risk.class}`} style={{ margin: 0 }}>{risk.label}</div>
+                            )}
+                            {onCreateOrder && (
+                                <button
+                                    type="button"
+                                    onClick={() => onCreateOrder(user)}
+                                    style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.35)', fontWeight: 600, fontSize: 12, padding: '8px 14px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                                    title="Create a Shopify order pre-filled with this patient's info"
+                                >
+                                    <ShoppingBag size={14} /> Create Order
+                                </button>
                             )}
                         </div>
                     </div>
@@ -826,8 +837,20 @@ export default function TeleSalesView({ onLogout, roles = [] }) {
         message: '' 
     });
 
-    const showStatus = (type, title, message) => 
+    const showStatus = (type, title, message) =>
         setModalConfig({ isOpen: true, type, title, message });
+
+    // Create-order modal — opens from header (blank) or from the patient modal (prefilled)
+    const [orderModalOpen, setOrderModalOpen] = useState(false);
+    const [orderModalLead, setOrderModalLead] = useState(null);
+    const openOrderModal = (lead = null) => {
+        setOrderModalLead(lead);
+        setOrderModalOpen(true);
+    };
+    const closeOrderModal = () => {
+        setOrderModalOpen(false);
+        setOrderModalLead(null);
+    };
 
 
     const [currentPage, setCurrentPage] = useState(saved.currentPage || 1);
@@ -1021,6 +1044,15 @@ export default function TeleSalesView({ onLogout, roles = [] }) {
                             </div>
                         ) : null}
 
+                        <button
+                            className="btn ghost"
+                            onClick={() => openOrderModal(null)}
+                            style={{ background: 'rgba(34, 197, 94, 0.10)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.25)', fontWeight: 600, fontSize: 13, padding: '8px 18px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 8 }}
+                            title="Create a new Shopify order"
+                        >
+                            <ShoppingBag size={16} /> Create Order
+                        </button>
+
                         <div className="profile-dropdown-container">
                             <button className={`btn ghost`} onClick={() => setCurrentView("profile")}>
                                 <User size={18} /> My Profile
@@ -1154,9 +1186,25 @@ export default function TeleSalesView({ onLogout, roles = [] }) {
                     showStatus={showStatus}
                     roles={roles}
                     hasPermission={hasPermission}
+                    onCreateOrder={(patient) => {
+                        setSelectedUser(null);
+                        openOrderModal(patient);
+                    }}
                 />
             )}
             <StatusModal {...modalConfig} onClose={() => setModalConfig({ ...modalConfig, isOpen: false })} />
+
+            {/* Create-order modal — Tele-Sales role does NOT update Google Sheet (gscriptUrl='') */}
+            <OrderModal
+                isOpen={orderModalOpen}
+                onClose={closeOrderModal}
+                initialLead={orderModalLead}
+                agentName={auth.currentUser?.displayName || auth.currentUser?.email || 'Tele-Sales Agent'}
+                gscriptUrl=""
+                onOrderPlaced={(info) => {
+                    showStatus('success', 'Order Created', `Shopify ${info.type} #${info.id} created.`);
+                }}
+            />
         </div>
     );
 }

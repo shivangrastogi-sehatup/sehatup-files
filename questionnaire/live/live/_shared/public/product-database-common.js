@@ -15,7 +15,7 @@ const PRODUCT_REGISTRY = {
     IGNITE: { handle: 'ignite-fat-burner' },
     ORLISTAT: { handle: 'orlistat-60-mg' },
     VALORA: { handle: 'valora' },
-    SLIMTOX_RELAX_TEA: { handle: 'leanroutine' },
+    SLIMTOX_TEA: { handle: 'slimtox-tea' },
     SLIMTOX_ENERGY_TEA: { handle: 'slimtox-energy-tea' },
     METABOLIC_MULTI: { handle: 'metabolic-multivitamin' },
     GARCINIA: { handle: 'garcenia-cambogia-drops' },
@@ -106,7 +106,7 @@ const productDatabaseCommon = {
         ],
     },
 
-    [PRODUCT_REGISTRY.SLIMTOX_RELAX_TEA.handle]: {
+    [PRODUCT_REGISTRY.SLIMTOX_TEA.handle]: {
         description: "A calming metabolism-boosting herbal tea for weight management.",
         whyPoints: [
             "Boost fat burning.",

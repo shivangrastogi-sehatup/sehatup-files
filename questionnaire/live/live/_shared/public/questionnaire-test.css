@@ -401,23 +401,58 @@ body {
 
 .navigation button.next-btn,
 .navigation button[data-action="validate-user"],
+.navigation button[data-action="validate-metrics"],
 .navigation button[data-action="submit-multi-select"] {
-    background: #4c51bf;
-    color: #fff;
+    background: #4c51bf !important;
+    color: #fff !important;
     font-weight: 600;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .06)
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .06);
 }
 
 .navigation button.next-btn:hover:not(:disabled),
 .navigation button[data-action="validate-user"]:hover:not(:disabled),
+.navigation button[data-action="validate-metrics"]:hover:not(:disabled),
 .navigation button[data-action="submit-multi-select"]:hover:not(:disabled) {
-    background: #4349ab
+    background: #4349ab !important;
 }
+
+/* This makes the container "invisible" so its children participate in the .navigation flexbox directly */
+#next-button-container {
+    display: contents;
+}
+
 
 .navigation button:disabled {
     opacity: .5;
     cursor: not-allowed
 }
+
+@media (max-width: 900px) {
+    .navigation {
+        padding: 0;
+        gap: 15px;
+    }
+    .navigation button {
+        padding: 10px 20px !important; /* Sleeker vertical profile */
+        font-size: 15px !important;
+        min-width: 150px;              /* Equalized width for balance */
+        width: auto !important;
+        flex: 0 1 auto;
+        border-radius: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .navigation button {
+        padding: 10px 15px !important;
+        min-width: calc(50% - 10px);   /* Balanced side-by-side layout */
+        font-size: 14px !important;    /* Ensure long text fits */
+    }
+}
+
+
+
+
 
 .about-you-container {
     background-color: #fff;
@@ -786,9 +821,9 @@ body {
 
 .inner-value-box {
     position: absolute;
-    top: 50%;
+    top: 47%;
     /* Anchor to absolute center */
-    left: 50%;
+    left: 48%;
     transform: translate(-50%, -50%);
     /* Mathematical center */
     z-index: 2;
@@ -812,7 +847,7 @@ body {
 }
 
 .score-num {
-    font-size: 38px;
+    font-size: 28px;
     font-weight: 800;
     color: #111827;
     line-height: 1;
@@ -1369,7 +1404,7 @@ body {
 }
 
 .results-timeline h3 {
-    font-size: 1.1rem;
+    font-size: 24px;
     color: #333;
     margin-bottom: 1.25rem
 }
@@ -1465,15 +1500,15 @@ body {
 
 @media (min-width:1201px) {
     .results-timeline h3 {
-        font-size: 1.25rem
+        font-size: 26px
     }
 
     .month-box h4 {
-        font-size: 1.15rem
+        font-size: 20px
     }
 
     .month-box p {
-        font-size: 1.05rem
+        font-size: 16px
     }
 }
 
@@ -1523,11 +1558,11 @@ body {
     }
 
     .month-box h4 {
-        font-size: 0.95rem
+        font-size: 16px
     }
 
     .month-box p {
-        font-size: 0.9rem
+        font-size: 14px
     }
 
     .month-box p.extra-desc {
@@ -1551,7 +1586,7 @@ body {
 
     .month-box h4,
     .month-box p {
-        font-size: .875rem
+        font-size: 14px
     }
 
     .month-box p.extra-desc {
@@ -2341,9 +2376,11 @@ body {
     scroll-snap-align: center;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     background: #111;
-    will-change: auto;
-    transform: none;
-    transition: box-shadow 0.4s ease;
+    will-change: transform, box-shadow;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid #f3f4f6;
 }
 
@@ -2379,6 +2416,13 @@ body {
     font-size: 10px;
     font-weight: 700;
     color: #fff;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.ugc-slide.is-playing .ugc-verified-badge {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
 }
 
 .ugc-verified-badge svg {
@@ -2507,7 +2551,7 @@ body {
         height: 298px;
         opacity: 1;
         transform: none;
-        transition: box-shadow 0.4s ease;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .ugc-slide:hover {
@@ -2752,7 +2796,7 @@ body {
 
     #questionnaire button {
         font-size: 14px;
-        padding: 8px 0
+        padding: 12px 18px;
     }
 
     .step-indicators {
@@ -2953,18 +2997,33 @@ body {
     }
 
     .welcome-navigation {
-        flex-direction: column-reverse;
-        width: 100%;
-        gap: 10px;
+        flex-direction: row-reverse;
+        width: auto;
+        gap: 15px;
         margin-top: 20px;
     }
 
     .btn-primary,
     .btn-secondary {
-        width: 100%;
+        width: auto;
         text-align: center;
     }
 }
+
+/* New breakpoint for ultra-small mobiles */
+@media (max-width: 400px) {
+    .welcome-navigation {
+        flex-direction: column-reverse;
+        width: 100%;
+        gap: 10px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+    }
+}
+
 
 .container {
     position: relative;

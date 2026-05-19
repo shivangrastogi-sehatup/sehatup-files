@@ -1,15 +1,37 @@
 {% comment %} mens-weight.liquid {% endcomment %}
-<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+
 {{ 'questionnaire-test.css' | asset_url | stylesheet_tag }}
 
 <div class="bg-overlay"></div>
 
 {% render 'loader-overlay' %}
+<script>
+  (function() {
+    // Fast-hide loader on home page for new users before the main engine even loads.
+    // localStorage can throw in Safari Private mode / sandboxed webviews; if it does,
+    // hide the loader anyway so we never trap a user who never had a session.
+    try {
+      const quizId = 'mens-weight';
+      const hasSession = localStorage.getItem('active_session_state_' + quizId) || localStorage.getItem('partialDocId_' + quizId);
+      if (!hasSession) {
+        const loader = document.getElementById('loader');
+        if (loader) loader.style.display = 'none';
+      }
+    } catch (_) {
+      const loader = document.getElementById('loader');
+      if (loader) loader.style.display = 'none';
+    }
+  })();
+</script>
+
 
 <div id="questionnaire">
   <div class="container">
     <div class="header">
+      <title>Men's Weight Management Score</title>
       <h1>Men's Weight Management Score</h1>
     </div>
 
@@ -22,7 +44,6 @@
             <p class="mobile-step-label">STEP</p>
             <div id="mobile-step-number-container" class="mobile-step-circle">1</div>
           </div>
-
           <div class="mobile-details-wrapper">
             <p id="mobile-question-counter" class="mobile-question-counter">Q1 / 1</p>
             <p id="mobile-step-name" class="mobile-step-name">About You & Metrics</p>
@@ -115,8 +136,9 @@
               Previous
             </button>
             <!-- Moves to the first question group (Internal Step 3) -->
-            <button type="button" class="next-btn" data-action="validate-metrics">Start Assessment</button>
+            <button type="button" class="next-btn" data-action="validate-metrics">Next</button>
           </div>
+
         </form>
       </div>
       
@@ -301,7 +323,7 @@
                     <span id="product-discount-val">0</span>
                 </div>
                 <div class="coupon-text-note">
-                    Use coupon <strong style="color: #4f46e5;">SEHATUP10</strong> and get <strong>10% extra off</strong>
+                    Use coupon <strong style="color: #4f46e5;">SEHAT10</strong> and get <strong>10% extra off</strong> on your first order
                 </div>
                 <div class="summary-total">
                     <span>Total Payable:</span>
@@ -343,7 +365,6 @@
 </div>
 
 {% render 'otp-verification-modal' %}
-
 <div id="productModal" class="modal">
   <div class="modal-content">
     <span class="close-button" data-action="close-modal">&times;</span>
@@ -376,7 +397,7 @@
 {% comment %}
   These are your main JS files.
 {% endcomment %}
- <script>
+<script>
   // 1. Initialize a global object to hold live Shopify data
   window.shopifyLiveProducts = {};
 

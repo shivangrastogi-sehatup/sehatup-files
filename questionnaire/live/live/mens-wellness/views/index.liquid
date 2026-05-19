@@ -1,15 +1,37 @@
 {% comment %}mens-wellness.liquid {% endcomment %}
-<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+
 {{ 'questionnaire-test.css' | asset_url | stylesheet_tag }}
 
 <div class="bg-overlay"></div>
 
 {% render 'loader-overlay' %}
+<script>
+  (function() {
+    // Fast-hide loader on home page for new users before the main engine even loads.
+    // localStorage can throw in Safari Private mode / sandboxed webviews; if it does,
+    // hide the loader anyway so we never trap a user who never had a session.
+    try {
+      const quizId = 'mens-wellness';
+      const hasSession = localStorage.getItem('active_session_state_' + quizId) || localStorage.getItem('partialDocId_' + quizId);
+      if (!hasSession) {
+        const loader = document.getElementById('loader');
+        if (loader) loader.style.display = 'none';
+      }
+    } catch (_) {
+      const loader = document.getElementById('loader');
+      if (loader) loader.style.display = 'none';
+    }
+  })();
+</script>
+
 
 <div id="questionnaire">
   <div class="container">
     <div class="header">
+      <title>Men's Sexual Wellness Score</title>
       <h1>Men's Sexual Wellness Score</h1>
     </div>
 
@@ -143,7 +165,7 @@
                   </div>
                   <div class="report-header-date">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                      Date: <span id="report-date"></span>
+                      Date: <span id="report-date" class="report-date-val"></span>
                   </div>
               </h3>
 
@@ -162,7 +184,12 @@
                               <span class="detail-label">Category</span>
                               <span id="user-category" class="detail-value"></span>
                           </div>
+                          <div class="detail-item report-date-row">
+                              <span class="detail-label">Report Date</span>
+                              <span class="detail-value report-date-val"></span>
+                          </div>
                       </div>
+                      
                       <div class="issue-header-text" id="user-concern"></div>
                       <div class="condition-details-html" id="condition-text"></div>
                   </div>
@@ -184,27 +211,52 @@
               <span class="patient-id" id="patient-id"></span>
 
               
+              <!-- NEW PREMIUM RISK INTELLIGENCE SECTION -->
               <div class="future-risk-section">
-                  <div class="assessment-header" style="margin-top: 10px;">Future Risk (If Not Treated)</div>
-                  <div id="future-risk" style="display:none;"></div>
-                  <div id="future-risk-tags" class="risk-tags-container"></div>
+                  <div class="risk-intelligence-header">
+                      <h2>Potential Health Risks If Ignored</h2>
+                      <p class="risk-intelligence-description">If left untreated, these conditions may gradually impact your health and wellbeing.</p>
+                  </div>
+
+                  <div id="future-risk-tags" class="risk-cards-grid">
+                      <!-- Intelligent Risk Cards dynamically injected here -->
+                  </div>
+
+
+                  <div class="reassurance-medical-box">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      <span>Early treatment can significantly improve outcomes through lifestyle correction, medication, and guided therapy.</span>
+                  </div>
               </div>
 
-            <div class="whatsapp-button-container">
-              <button
-                class="whatsapp-report-btn"
-                data-action="open-otp"
-              >
-                <img
-                  src="https://cdn-icons-png.flaticon.com/512/733/733585.png"
-                  alt="WhatsApp"
-                >
-                Get My Report on WhatsApp
-              </button>
-            </div>
+              <!-- NEW PREMIUM CTA SECTION -->
+              <div class="premium-cta-section">
+                  <h3>Get Your Detailed HealthScore 360 Report</h3>
+                  <p>Receive your comprehensive 360° health analysis and personalized recovery roadmap directly on WhatsApp.</p>
+                  
+                  <button class="whatsapp-sticky-btn" data-action="open-otp">
+                      <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" style="width: 24px; height: 24px;">
+                      Get My Report on WhatsApp
+                  </button>
+                  
+                  <div class="cta-trust-indicators">
+                      <div class="trust-item">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                          Private & Confidential
+                      </div>
+                      <div class="trust-item">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                          Reviewed by Experts
+                      </div>
+                      <div class="trust-item">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                          Takes &lt; 2 mins
+                      </div>
+                  </div>
+              </div>
           </div>
-          <div class="results-timeline">
-            <h3>Condition-Based Progress Timeline</h3>
+          <div class="results-timeline centered-header">
+            <h3>Start Seeing Results In 6 Months</h3>
             <div id="condition-timeline-container"></div>
           </div>
           <a
@@ -248,11 +300,24 @@
             <h3>Recommended Treatment</h3>
             <div class="product-list" id="product-list"></div>
             <div class="checkout-section">
-              <p>
-                Total Amount:
-                <span id="total-amount">0</span>
-                <small class="gst-note">(GST included)</small>
-              </p>
+              <div class="cart-summary">
+                <div class="summary-item">
+                    <span>Subtotal (MRP):</span>
+                    <span id="total-mrp">0</span>
+                </div>
+                <div class="summary-item discount">
+                    <span>Product Discount:</span>
+                    <span id="product-discount-val">0</span>
+                </div>
+                <div class="coupon-text-note">
+                    Use coupon <strong style="color: #4f46e5;">SEHAT10</strong> and get <strong>10% extra off</strong> on your first order
+                </div>
+                <div class="summary-total">
+                    <span>Total Payable:</span>
+                    <span id="total-amount">0</span>
+                </div>
+              </div>
+              <small class="gst-note">(GST included)</small>
               <div class="buy-button-container">
                 <button
                   class="buy-button"
@@ -265,7 +330,23 @@
           </div>
         </div>
       </div>
-      <div id="ugc-content"></div>
+      <!-- PREMIUM CUSTOMER REVIEWS SECTION -->
+      <div id="ugc-section" class="ugc-content-wrapper">
+          <h3 class="centered-header">Customer Reviews</h3>
+          <div class="ugc-slider-container">
+              <button class="ugc-nav prev" onclick="document.getElementById('ugc-content').scrollBy({left: -300, behavior: 'smooth'})">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              
+              <div id="ugc-content" class="ugc-slider">
+                  <!-- Video slides dynamically injected here -->
+              </div>
+
+              <button class="ugc-nav next" onclick="document.getElementById('ugc-content').scrollBy({left: 300, behavior: 'smooth'})">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+          </div>
+      </div>
     </div>
   </div>
 </div>

@@ -91,7 +91,7 @@ Below is how a specific "Critical Risk" document (ID: `qUtRMXqXmwkwt6rHU6KT`) is
 	"assessment": {
 		"questionnaireId": "womens-wellness",
 		"concern": "Women's Wellness",
-		"reportCategory": "Womens Sexual Wellness",
+		"reportCategory": "Womens Wellness",
 		"healthScore": 25,
 		"riskType": "Critical Risk",
 		"issueTitle": "High Hormonal Disturbance",

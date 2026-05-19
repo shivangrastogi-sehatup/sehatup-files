@@ -2,9 +2,10 @@
 class QuestionnaireEngine {
     constructor(config) {
         this.config = config;
-        this.version = "3.6.3"; // Deep Sync & Cache Busting
+        this.version = "3.7.0"; // Loader-stuck fixes: finishQuestionnaire watchdog, persistData await, modal-await, switchForm lang fix
         this.db = window.db;
-        console.log("ENGINE VERSION 3.6.3 LOADED");
+        console.log("ENGINE VERSION 3.7.0 LOADED");
+
 
         if (!this.db) {
             console.error('Firebase DB (window.db) is not initialized.');
@@ -59,7 +60,7 @@ class QuestionnaireEngine {
         this.state = {
             currentStep: 1,
             userInfo: {},
-            allAnswers: {},
+            allAnswers: { concern: [] },
             healthScore: 0,
             reportDate: null,
             results: {},
@@ -67,16 +68,11 @@ class QuestionnaireEngine {
                 height: null,
                 currentWeight: null,
                 targetWeight: null,
-                bmi: null
+                bmi: null,
             },
             partialDocId: null,
             finalDocId: null,
-            healthScore: 0,
             recommendedProducts: [],
-            results: {},
-            allAnswers: {
-                concern: [],
-            },
         };
 
         this.config.questionGroups.forEach((group) => {
@@ -236,17 +232,94 @@ class QuestionnaireEngine {
         });
     }
 
+    resetState() {
+        console.log("Resetting questionnaire state for a fresh start.");
+        const oldLang = this.currentLanguage;
+        
+        // Reset state to initial values
+        this.state = {
+            currentStep: 1,
+            userInfo: {},
+            allAnswers: {
+                concern: [],
+            },
+            healthScore: 0,
+            reportDate: null,
+            results: {},
+            healthMetrics: {
+                height: null,
+                currentWeight: null,
+                targetWeight: null,
+                bmi: null
+            },
+            partialDocId: null,
+            finalDocId: null,
+            recommendedProducts: [],
+        };
+
+        // Re-initialize answer buckets for each group
+        this.config.questionGroups.forEach((group) => {
+            this.state.allAnswers[group.key] = [];
+        });
+
+        // Clear local storage for active session
+        localStorage.removeItem(`active_session_state_${this.config.id}`);
+        localStorage.removeItem(`partialDocId_${this.config.id}`);
+        
+        // Ensure language is preserved
+        this.currentLanguage = oldLang;
+        
+        // Update UI
+        this.updateStepIndicators();
+        
+        // Clear any form inputs if they exist
+        ['name', 'dob', 'phone', 'height', 'currentWeight', 'targetWeight'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        
+        // Clear error messages
+        document.querySelectorAll('.error-message').forEach(el => el.innerText = '');
+    }
+
+    parseMarkdown(text) {
+        if (!text) return "";
+        // Simple bold parser: **text** -> <strong>text</strong>
+        return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
+
     async init() {
         const startTime = Date.now();
-        // Dynamic minimum duration: shorter if we are just showing results
-        const isReturningToResults = localStorage.getItem(`active_session_state_${this.config.id}`) && 
-                                   JSON.parse(localStorage.getItem(`active_session_state_${this.config.id}`)).currentStep === 99;
-        
+        const savedState = localStorage.getItem(`active_session_state_${this.config.id}`);
+        const partialDocId = localStorage.getItem(`partialDocId_${this.config.id}`);
+        let initialStep = 1;
+
+        if (savedState) {
+            try {
+                const parsed = JSON.parse(savedState);
+                if (parsed && parsed.currentStep) initialStep = parsed.currentStep;
+            } catch (e) { console.error("Error parsing initial local state:", e); }
+        }
+
+        // If we are at the very beginning (Step 1) and no remote session to load, hide loader immediately.
+        // This avoids the "Calculating report..." flicker on the home page.
+        if (initialStep === 1 && !partialDocId) {
+            this.hideLoader(true); // Instant hide
+        }
+
+        const isReturningToResults = initialStep === 99;
         const minDuration = isReturningToResults ? 1000 : 2000; 
+
+        // Tracks whether the page-load fast-hide already removed the loader so we
+        // don't double-hide it (cheap, but avoids an unnecessary fade animation).
+        let loaderAlreadyHidden = (initialStep === 1 && !partialDocId);
+
         const hideWithDelay = () => {
+            if (loaderAlreadyHidden) return;
             const elapsed = Date.now() - startTime;
             const remaining = Math.max(0, minDuration - elapsed);
             setTimeout(() => this.hideLoader(), remaining);
+            loaderAlreadyHidden = true;
         };
 
         console.log(`Initializing questionnaire: ${this.config.id}`);
@@ -262,8 +335,6 @@ class QuestionnaireEngine {
         });
 
         console.log("Starting engine initialization...");
-        // Check for active session (refresh persistence)
-        const savedState = localStorage.getItem(`active_session_state_${this.config.id}`);
         if (savedState) {
             console.log("Found active session state in localStorage");
             try {
@@ -275,9 +346,8 @@ class QuestionnaireEngine {
                         console.log("Calling showStep for resume...");
                         this.showStep(this.state.currentStep);
                     } catch (e) { console.error("Error showing resumed step:", e); }
-                    console.log("Scheduling hideWithDelay after resume");
                     hideWithDelay();
-                    return; // Skip loadState (Firestore) if we have a fresh local state
+                    return;
                 }
             } catch (e) { console.error("Error parsing local state:", e); }
         }
@@ -288,9 +358,13 @@ class QuestionnaireEngine {
             console.log("State loaded. Current step:", this.state.currentStep);
             this.showStep(this.state.currentStep);
         } catch (e) { console.error("Error loading state:", e); }
-        console.log("Scheduling hideWithDelay after loadState");
+
+        // Always release the loader after init resolves. If we landed back on step 1
+        // (e.g. user picked "Restart" in the resume modal), the original code skipped
+        // hideWithDelay() and the loader stayed up forever when partialDocId existed.
         hideWithDelay();
     }
+
 
     async handleGlobalClick(e) {
         const target = e.target.closest('[data-action]');
@@ -304,6 +378,7 @@ class QuestionnaireEngine {
         } else if (action === 'prev') {
             this.showStep(parseInt(target.dataset.step, 10));
         } else if (action === 'start') {
+            this.resetState();
             this.showStep(2);
         } else if (action === 'validate-user-info') {
             this.validateUserInfo();
@@ -405,6 +480,7 @@ class QuestionnaireEngine {
         // Visual Version Label for Debugging
         const footerNote = document.getElementById('footer-version-note');
         if (footerNote) {
+            const lang = this.currentLanguage || 'en';
             footerNote.innerText = `Version: ${this.version} [${lang.toUpperCase()}]`;
             footerNote.style.fontSize = '12px';
             footerNote.style.color = '#ccc';
@@ -688,7 +764,7 @@ class QuestionnaireEngine {
                 `;
             }).join('');
             optionsHTML = `<div class="multi-select-container">${optionsHTML}</div>`;
-            navContainer.innerHTML = `<button class="next-btn" data-action="submit-multi-select">${this.uiTranslations[this.currentLanguage]['btn-next']}</button>`;
+            navContainer.innerHTML = `<button type="button" class="next-btn" data-action="submit-multi-select" data-i18n="btn-next">${this.uiTranslations[this.currentLanguage]['btn-next']}</button>`;
         } else {
             optionsHTML = q.options.map((opt) => {
                 const optText = (isHi && opt.hi) ? opt.hi : opt.text;
@@ -913,7 +989,16 @@ class QuestionnaireEngine {
             answeredQuestions.pop();
             this.renderQuestionGroup(currentGroup);
         } else if (this.state.currentStep > firstQuestionStep) {
-            this.showStep(this.state.currentStep - 1);
+            // First question of a non-first group: pop the previous group's
+            // last answer so its last question is re-rendered. Without this,
+            // renderQuestionGroup sees the prev group fully answered and
+            // immediately advances forward again, trapping the user.
+            const prevStep = this.state.currentStep - 1;
+            const prevGroup = this.config.questionGroups.find((g) => g.step === prevStep);
+            if (prevGroup && (this.state.allAnswers[prevGroup.key]?.length || 0) > 0) {
+                this.state.allAnswers[prevGroup.key].pop();
+            }
+            this.showStep(prevStep);
         } else {
             this.showStep(2);
         }
@@ -926,26 +1011,41 @@ class QuestionnaireEngine {
         }
     }
 
-    finishQuestionnaire() {
+    async finishQuestionnaire() {
         this.showLoader();
-        this.state.healthScore = this.config.calculateScore(this.state.allAnswers, this.state.userInfo, this.config);
-        this.state.recommendedProducts = this.config.productRules(this.state.healthScore, this.state.allAnswers, this.config.productDatabase, this.state.userInfo, this.config);
-        this.state.results = this.config.resultRules(this.state.healthScore, this.state.allAnswers, this.config, this.state.userInfo);
-        this.state.reportDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
 
-        const saveSubmission = this.config.saveSubmission;
-        if (typeof saveSubmission !== 'function') {
-            console.error('Configuration missing saveSubmission function.');
+        // Failsafe watchdog: if anything below stalls (slow network, throw in setTimeout
+        // chain, hung Firestore retry), the loader is force-hidden after 25s with a
+        // visible message instead of trapping the user on the spinner forever.
+        const watchdog = setTimeout(() => {
+            console.error('finishQuestionnaire: watchdog fired (25s)');
             this.hideLoader();
-            return;
-        }
+            this.showNonBlockingMessage('Network seems slow. Please check your connection and try again.');
+        }, 25000);
 
-        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-        const saveToFirebase = async () => {
+        try {
+            // All three of these are sync user code from the config. A throw here used
+            // to bubble out of the setTimeout caller and silently strand the loader.
+            this.state.healthScore = this.config.calculateScore(this.state.allAnswers, this.state.userInfo, this.config);
+            this.state.recommendedProducts = this.config.productRules(this.state.healthScore, this.state.allAnswers, this.config.productDatabase, this.state.userInfo, this.config);
+            this.state.results = this.config.resultRules(this.state.healthScore, this.state.allAnswers, this.config, this.state.userInfo);
+            this.state.reportDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+
+            const saveSubmission = this.config.saveSubmission;
+            if (typeof saveSubmission !== 'function') {
+                throw new Error('Configuration missing saveSubmission function.');
+            }
+
+            // Race the Firestore write against a 15s timeout. On flaky mobile networks
+            // the SDK retries indefinitely without surfacing an error.
+            const finalDocId = await Promise.race([
+                saveSubmission(this.state, this.db, this.config),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('save_timeout')), 15000)),
+            ]);
+            this.state.finalDocId = finalDocId;
+
+            // Fire-and-forget; failures here must not block the report from showing.
             try {
-                const finalDocId = await saveSubmission(this.state, this.db, this.config);
-                this.state.finalDocId = finalDocId;
-
                 fetch("https://script.google.com/macros/s/AKfycbwYNLb__I57oyfPeqVwl7xd-IW5m5avDt0G3PhDIPaji3ztUTl9OgnQXJDeGcVB8Kto/exec", {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -958,8 +1058,10 @@ class QuestionnaireEngine {
                         category: this.state.results.issueTitle,
                         recommendedProducts: this.state.recommendedProducts.filter(p => p.active).map(p => p.name)
                     })
-                });
+                }).catch(err => console.warn('Sheets log failed (non-fatal):', err));
+            } catch (err) { console.warn('Sheets log failed (non-fatal):', err); }
 
+            try {
                 const docRef = this.db.collection('questionnaire_submissions').doc(finalDocId);
                 await docRef.collection('whatsapp_requests').add({
                     status: 'pending',
@@ -967,46 +1069,51 @@ class QuestionnaireEngine {
                     message: `User completed ${this.config.id}`,
                     sent: false,
                 });
+            } catch (err) { console.warn('whatsapp_requests write failed (non-fatal):', err); }
 
-                if (this.state.partialDocId) {
-                    try {
-                        await this.db.collection('partial_submissions').doc(this.state.partialDocId).delete();
-                        localStorage.removeItem(`partialDocId_${this.config.id}`);
-                        this.state.partialDocId = null;
-                    } catch (e) { console.error(e); }
-                }
-
-                await delay(2000);
-                this.hideLoader();
-                
-                // Mark as terminal results step to skip 'Thank You' card on refresh
-                this.state.currentStep = 99;
-                this.saveLocalState();
-                
-                this.renderResults();
-
-                // Save to persistent storage
-                localStorage.setItem(`completed_report_${this.config.id}`, JSON.stringify(this.state));
-                const btn = document.getElementById('show-previous-btn');
-                if (btn) btn.style.display = 'block';
-
-                const questionnaireEl = document.getElementById('questionnaire');
-                if (questionnaireEl) questionnaireEl.classList.add('full-screen-results');
-
-                const stepQuestionEl = document.getElementById('step-question');
-                if (stepQuestionEl) stepQuestionEl.classList.remove('active');
-
-                const resultPageEl = document.getElementById('result-page');
-                if (resultPageEl) resultPageEl.classList.add('active');
-
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } catch (e) {
-                console.error('Error saving:', e);
-                this.hideLoader();
-                this.showNonBlockingMessage('Error saving report. Please check connection.');
+            if (this.state.partialDocId) {
+                try {
+                    await this.db.collection('partial_submissions').doc(this.state.partialDocId).delete();
+                    localStorage.removeItem(`partialDocId_${this.config.id}`);
+                    this.state.partialDocId = null;
+                } catch (e) { console.warn('partial cleanup failed (non-fatal):', e); }
             }
-        };
-        saveToFirebase();
+
+            this.hideLoader();
+
+            // Mark as terminal results step to skip 'Thank You' card on refresh
+            this.state.currentStep = 99;
+            this.saveLocalState();
+
+            this.renderResults();
+
+            try {
+                localStorage.setItem(`completed_report_${this.config.id}`, JSON.stringify(this.state));
+            } catch (e) { console.warn('completed_report save failed:', e); }
+
+            const btn = document.getElementById('show-previous-btn');
+            if (btn) btn.style.display = 'block';
+
+            const questionnaireEl = document.getElementById('questionnaire');
+            if (questionnaireEl) questionnaireEl.classList.add('full-screen-results');
+
+            const stepQuestionEl = document.getElementById('step-question');
+            if (stepQuestionEl) stepQuestionEl.classList.remove('active');
+
+            const resultPageEl = document.getElementById('result-page');
+            if (resultPageEl) resultPageEl.classList.add('active');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) {
+            console.error('finishQuestionnaire failed:', e);
+            this.hideLoader();
+            const msg = e && e.message === 'save_timeout'
+                ? 'Could not reach our servers. Please check your connection and try again.'
+                : 'Could not generate report. Please try again in a moment.';
+            this.showNonBlockingMessage(msg);
+        } finally {
+            clearTimeout(watchdog);
+        }
     }
 
     handleShowPreviousReport() {
@@ -1026,7 +1133,7 @@ class QuestionnaireEngine {
                 this.hideLoader();
                 this.showNonBlockingMessage("Could not load previous report.");
             }
-        }, 2500);
+        }, 1500); // Reduced from 2500ms for better UX
     }
 
     renderResults() {
@@ -1110,8 +1217,8 @@ class QuestionnaireEngine {
 
         if (userConcernEl) userConcernEl.innerText = displayIssueTitle;
         if (issueHeaderEl) issueHeaderEl.innerText = displayIssueTitle;
-        if (conditionTextEl) conditionTextEl.innerHTML = displayConditionHTML;
-        if (conditionDetailsEl) conditionDetailsEl.innerHTML = displayConditionHTML;
+        if (conditionTextEl) conditionTextEl.innerHTML = this.parseMarkdown(displayConditionHTML);
+        if (conditionDetailsEl) conditionDetailsEl.innerHTML = this.parseMarkdown(displayConditionHTML);
 
         const date = this.state.reportDate || new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
         console.log("Syncing Report Date:", date);
@@ -1133,7 +1240,7 @@ class QuestionnaireEngine {
         }
 
         const riskContainer = document.getElementById('future-risk-tags');
-        riskContainer.innerHTML = '';
+        if (riskContainer) riskContainer.innerHTML = '';
         
         // Premium Risk Card Mapper (Icon, Description, Severity, Timeline)
         const riskMetadata = {
@@ -1145,7 +1252,7 @@ class QuestionnaireEngine {
             'vascular': { icon: '🩸', desc: 'Untreated issues may indicate worsening blood circulation or neurological complications.', severity: 'High', timeline: 'Progressive', class: 'high-severity' }
         };
 
-        if (this.state.results && this.state.results.futureRisks) {
+        if (riskContainer && this.state.results && this.state.results.futureRisks) {
             this.state.results.futureRisks.forEach((risk) => {
                 const riskText = (lang === 'hi' && risk.hi) ? risk.hi : (risk.en || risk.text || risk);
                 const lowerRiskText = riskText.toLowerCase();
@@ -1277,47 +1384,56 @@ class QuestionnaireEngine {
         const docId = localStorage.getItem(`partialDocId_${this.config.id}`);
         if (!docId) return;
 
-        this.showResumeModal("Welcome back!", "Do you want to resume your previous session?", "Resume", "Restart", async (shouldResume) => {
-            if (shouldResume) {
-                try {
-                    const docSnap = await this.db.collection('partial_submissions').doc(docId).get();
-                    if (docSnap.exists) {
-                        const loadedState = docSnap.data();
-                        const oldAllAnswers = this.state.allAnswers;
-                        this.state = { ...this.state, ...loadedState };
-                        this.state.allAnswers = { ...oldAllAnswers, ...loadedState.allAnswers };
+        const shouldResume = await new Promise((resolve) => {
+            this.showResumeModal(
+                "Welcome back!",
+                "Do you want to resume your previous session?",
+                "Resume",
+                "Restart",
+                (choice) => resolve(choice)
+            );
+        });
 
-                        this.config.questionGroups.forEach((group) => {
-                            if (!this.state.allAnswers[group.key]) this.state.allAnswers[group.key] = [];
-                        });
+        if (shouldResume) {
+            try {
+                const docSnap = await this.db.collection('partial_submissions').doc(docId).get();
+                if (docSnap.exists) {
+                    const loadedState = docSnap.data();
+                    const oldAllAnswers = this.state.allAnswers;
+                    this.state = { ...this.state, ...loadedState };
+                    this.state.allAnswers = { ...oldAllAnswers, ...loadedState.allAnswers };
 
-                        const setVal = (id, val) => {
-                            const el = document.getElementById(id);
-                            if (el) el.value = val || '';
-                        };
+                    this.config.questionGroups.forEach((group) => {
+                        if (!this.state.allAnswers[group.key]) this.state.allAnswers[group.key] = [];
+                    });
 
-                        setVal('name', this.state.userInfo.name);
-                        setVal('dob', this.state.userInfo.dob);
-                        setVal('phone', this.state.userInfo.phone);
-                        setVal('height', this.state.healthMetrics.height);
-                        setVal('currentWeight', this.state.healthMetrics.currentWeight);
-                        setVal('targetWeight', this.state.healthMetrics.targetWeight);
+                    const setVal = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = val || '';
+                    };
 
-                        this.showStep(this.state.currentStep);
-                    } else {
-                        localStorage.removeItem(`partialDocId_${this.config.id}`);
-                        this.showStep(1);
-                    }
-                } catch (e) {
-                    console.error('Error loading state:', e);
+                    setVal('name', this.state.userInfo.name);
+                    setVal('dob', this.state.userInfo.dob);
+                    setVal('phone', this.state.userInfo.phone);
+                    setVal('height', this.state.healthMetrics.height);
+                    setVal('currentWeight', this.state.healthMetrics.currentWeight);
+                    setVal('targetWeight', this.state.healthMetrics.targetWeight);
+
+                    this.showStep(this.state.currentStep);
+                } else {
+                    localStorage.removeItem(`partialDocId_${this.config.id}`);
                     this.showStep(1);
                 }
-            } else {
-                try { await this.db.collection('partial_submissions').doc(docId).delete(); } catch (e) { }
-                localStorage.removeItem(`partialDocId_${this.config.id}`);
+            } catch (e) {
+                console.error('Error loading state:', e);
                 this.showStep(1);
             }
-        });
+        } else {
+            try { await this.db.collection('partial_submissions').doc(docId).delete(); } catch (e) { }
+            localStorage.removeItem(`partialDocId_${this.config.id}`);
+            this.resetState();
+            this.showStep(1);
+        }
     }
 
     setupMultiSelectNoneLogic(container) {
@@ -1363,22 +1479,19 @@ class QuestionnaireEngine {
         modal.style.display = 'flex';
     }
 
-    persistData() {
+    async persistData() {
         if (!this.state.partialDocId) return;
         const docRef = this.db.collection('partial_submissions').doc(this.state.partialDocId);
         const dataToSave = { ...this.state, lastUpdated: new Date() };
-        console.log("Saving partial data:", this.state.partialDocId);
 
         delete dataToSave.config;
         delete dataToSave.results;
         delete dataToSave.healthScore;
 
         try {
-            console.log("Attempting to update partial data for ID:", this.state.partialDocId);
-            docRef.set(dataToSave, { merge: true });
-            console.log("✅ Partial data SUCCESSFULLY UPDATED");
+            await docRef.set(dataToSave, { merge: true });
         } catch (e) {
-            console.error('❌ Error persisting data:', e);
+            console.error('Error persisting partial data:', e);
         }
     }
 
@@ -1406,13 +1519,20 @@ class QuestionnaireEngine {
         document.body.style.overflow = 'hidden';
     }
 
-    hideLoader() {
+    hideLoader(instant = false) {
         const loader = document.getElementById('loader');
         if (!loader) return;
         
         // Ensure the page is at the top when revealing content
         window.scrollTo(0, 0);
         
+        if (instant) {
+            loader.style.display = 'none';
+            loader.classList.add('fade-out');
+            document.body.style.overflow = 'auto';
+            return;
+        }
+
         loader.classList.add('fade-out');
 
         // Apply fade-in to the active questionnaire content
@@ -1443,7 +1563,11 @@ class QuestionnaireEngine {
         const VIDEO_SOURCES = [
             '68SbZuINym0', 
             'EyvZLDLxFYU', 
-            'i_lfAg9o4HA'
+            'i_lfAg9o4HA',
+            'https://cdn.shopify.com/videos/c/o/v/7d18a270f4494242b7379ef07b97ee51.mp4',
+            'https://cdn.shopify.com/videos/c/o/v/66949ab80f554a369d0cecd80a15ae7f.mp4',
+            'https://cdn.shopify.com/videos/c/o/v/f851c6047a4d499e925d4b5a867163d9.mp4',
+            'https://cdn.shopify.com/videos/c/o/v/28bcf5d173d54cf49d5dd4cc5592aece.mp4'
         ];
         const slidesHTML = VIDEO_SOURCES.map(src => {
             const isMp4 = src.includes('.mp4');
@@ -1662,7 +1786,7 @@ class QuestionnaireEngine {
 
         // 2. Immediate Visual Feedback
         slide.classList.remove('ugc-slide-lite');
-        slide.classList.add('is-playing');
+        slide.classList.add('is-playing'); // Hide badge immediately for better UX
         const playBtn = slide.querySelector('.play-button');
         if (playBtn) playBtn.remove();
         
@@ -1884,6 +2008,11 @@ class QuestionnaireEngine {
         });
     }
 
+    resendOtp() {
+        this.resetOtpInputs();
+        this.sendOtp();
+    }
+
     startOtpTimer() {
         this.otpExpiresAt = Date.now() + 60000;
         const resendLink = document.getElementById("resend-link");
@@ -1918,7 +2047,6 @@ class QuestionnaireEngine {
 
         try {
             const requestBody = { phone: this.enteredPhone, otp: digits };
-            // If the user is on a specific report, attach its ID
             if (this.state.finalDocId) {
                 requestBody.docId = this.state.finalDocId;
             }
@@ -1946,7 +2074,7 @@ class QuestionnaireEngine {
                     }
                 }
 
-                window.open(`https://wa.me/919355539355?text=I want my detailed healthscore360 report`, '_blank');
+                window.open(`https://wa.me/919355539355?text=I want my detailed HealthScore360 report`, '_blank');
                 this.closeOtpPopup();
             } else {
                 alert("Invalid OTP. Please try again.");
@@ -1960,7 +2088,8 @@ class QuestionnaireEngine {
         } finally {
             if (verifyBtn) {
                 verifyBtn.disabled = false;
-                verifyBtn.innerText = "Verify & Get Report";
+                const verifyText = this.uiTranslations[this.currentLanguage]?.['otp-btn-verify'] || 'Verify & Get Report';
+                verifyBtn.innerText = verifyText;
             }
         }
     }

@@ -2019,10 +2019,15 @@ class QuestionnaireEngine {
         }
 
         try {
+            const requestBody = { phone: this.enteredPhone, otp: digits };
+            if (this.state.finalDocId) {
+                requestBody.docId = this.state.finalDocId;
+            }
+
             const response = await fetch("https://verifyotp-xrtgefpbxq-em.a.run.app", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone: this.enteredPhone, otp: digits }),
+                body: JSON.stringify(requestBody),
             });
             const data = await response.json();
 

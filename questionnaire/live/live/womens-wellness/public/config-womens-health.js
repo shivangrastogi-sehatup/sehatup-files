@@ -773,7 +773,7 @@ const questionnaireConfig = {
       riskType: initialRiskType,
       issueTitle: results.issueTitle,
       concern: "Women's Wellness",
-      reportCategory: "Womens Sexual Wellness",
+      reportCategory: "Womens Wellness",
       lifestyleConditions: results.lifestyleConditions || [],
       possibleCauses: possibleCauses,
       lifestyleChanges: lifestyleTipsArray,
