@@ -795,6 +795,7 @@ const PatientDetailModal = ({ user, onClose, collectionName, onOpenEditor, showS
 
 export default function TeleSalesView({ onLogout, roles = [] }) {
     const { hasPermission } = usePermissions();
+    const canCreateShopifyOrders = hasPermission('can_create_shopify_orders');
     
     const getSavedFilters = () => {
         try {
@@ -1044,14 +1045,16 @@ export default function TeleSalesView({ onLogout, roles = [] }) {
                             </div>
                         ) : null}
 
-                        <button
-                            className="btn ghost"
-                            onClick={() => openOrderModal(null)}
-                            style={{ background: 'rgba(34, 197, 94, 0.10)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.25)', fontWeight: 600, fontSize: 13, padding: '8px 18px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 8 }}
-                            title="Create a new Shopify order"
-                        >
-                            <ShoppingBag size={16} /> Create Order
-                        </button>
+                        {canCreateShopifyOrders && (
+                            <button
+                                className="btn ghost"
+                                onClick={() => openOrderModal(null)}
+                                style={{ background: 'rgba(34, 197, 94, 0.10)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.25)', fontWeight: 600, fontSize: 13, padding: '8px 18px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 8 }}
+                                title="Create a new Shopify order"
+                            >
+                                <ShoppingBag size={16} /> Create Order
+                            </button>
+                        )}
 
                         <div className="profile-dropdown-container">
                             <button className={`btn ghost`} onClick={() => setCurrentView("profile")}>
@@ -1186,10 +1189,10 @@ export default function TeleSalesView({ onLogout, roles = [] }) {
                     showStatus={showStatus}
                     roles={roles}
                     hasPermission={hasPermission}
-                    onCreateOrder={(patient) => {
+                    onCreateOrder={canCreateShopifyOrders ? (patient) => {
                         setSelectedUser(null);
                         openOrderModal(patient);
-                    }}
+                    } : null}
                 />
             )}
             <StatusModal {...modalConfig} onClose={() => setModalConfig({ ...modalConfig, isOpen: false })} />
