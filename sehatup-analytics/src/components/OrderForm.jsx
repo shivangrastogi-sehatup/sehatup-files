@@ -1,6 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { ToastStack, useToasts, safeJson } from './OrderFormShared';
 
+// Inject custom animations for autofill fields
+if (typeof document !== 'undefined') {
+    const id = 'autofill-highlight-style';
+    if (!document.getElementById(id)) {
+        const style = document.createElement('style');
+        style.id = id;
+        style.textContent = `
+            @keyframes autofill-glow {
+                0% {
+                    background-color: rgba(14, 165, 233, 0.25) !important;
+                    border-color: #0ea5e9 !important;
+                    box-shadow: 0 0 10px rgba(14, 165, 233, 0.4);
+                }
+                100% {
+                    background-color: #0a0f1e !important;
+                    border-color: #1e293b !important;
+                    box-shadow: none;
+                }
+            }
+            .autofill-highlighted {
+                animation: autofill-glow 1.5s ease-out forwards;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -75,6 +102,9 @@ const OrderForm = ({
 
     // Toasts
     const { toasts, addToast, updateToast, removeToast } = useToasts();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSearchingPincode, setIsSearchingPincode] = useState(false);
+    const [autofillActive, setAutofillActive] = useState(false);
 
     // ─── Initial-lead prefill ────────────────────────────────────────────────
 
@@ -116,6 +146,89 @@ const OrderForm = ({
         setCustomShippingPrice('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialLead]);
+ 
+    // ─── Pincode lookup to autofill city and state ───────────────────────────
+    useEffect(() => {
+        const pin = String(pincode || '').trim();
+        if (pin.length === 6 && /^\d+$/.test(pin)) {
+            const fetchLocation = async () => {
+                setIsSearchingPincode(true);
+                let resolved = false;
+
+                const updateLocation = (cityVal, stateVal, source) => {
+                    if (resolved) return;
+                    resolved = true;
+
+                    setAutofillActive(true);
+                    setTimeout(() => setAutofillActive(false), 1500);
+
+                    const typeValue = (val, setter) => {
+                        let i = 0;
+                        setter('');
+                        const timer = setInterval(() => {
+                            setter(() => val.substring(0, i + 1));
+                            i++;
+                            if (i >= val.length) {
+                                clearInterval(timer);
+                            }
+                        }, 20); // 20ms per character
+                    };
+
+                    if (cityVal) typeValue(cityVal, setCity);
+                    if (stateVal) typeValue(stateVal, setStateName);
+
+                    addToast({
+                        type: 'success',
+                        title: 'Pincode Autofilled',
+                        message: `City: ${cityVal}, State: ${stateVal} (via ${source})`,
+                        autoDismiss: 3000
+                    });
+                };
+
+                const fetchPostalPincode = async () => {
+                    try {
+                        const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (data && data[0] && data[0].Status === 'Success') {
+                            const po = data[0].PostOffice?.[0];
+                            if (po) {
+                                updateLocation(po.District, po.State, 'Post Office API');
+                            }
+                        }
+                    } catch (e) {}
+                };
+
+                const fetchZippopotam = async () => {
+                    try {
+                        const res = await fetch(`https://api.zippopotam.us/IN/${pin}`);
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        const place = data.places?.[0];
+                        if (place) {
+                            const cleanState = (place.state || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            const cleanCity = (place['place name'] || '')
+                                .replace(/\s+S\.O$/i, '')
+                                .replace(/\s+B\.O$/i, '')
+                                .replace(/\s+H\.O$/i, '')
+                                .replace(/\s+G\.P\.O$/i, '')
+                                .trim();
+                            updateLocation(cleanCity, cleanState, 'Zippopotam CDN');
+                        }
+                    } catch (e) {}
+                };
+
+                try {
+                    await Promise.all([fetchPostalPincode(), fetchZippopotam()]);
+                } catch (err) {
+                    console.warn('[Pincode Lookup] failed:', err);
+                } finally {
+                    setIsSearchingPincode(false);
+                }
+            };
+            fetchLocation();
+        }
+    }, [pincode]);
 
     // ─── Shipping rates ──────────────────────────────────────────────────────
 
@@ -599,6 +712,8 @@ const OrderForm = ({
     const handleSaveDraft = async () => {
         const err = validateForOrder();
         if (err) return alert(err);
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         const tid = addToast({ type: 'loading', title: 'Saving Draft Order', message: 'Looking up customer...' });
         try {
             const customer = await resolveCustomer();
@@ -632,12 +747,16 @@ const OrderForm = ({
         } catch (err) {
             console.error('[Draft] failed:', err);
             updateToast(tid, { type: 'error', title: 'Draft Failed', message: err.message });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handlePlaceOrder = async () => {
         const err = validateForOrder();
         if (err) return alert(err);
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         const tid = addToast({ type: 'loading', title: 'Placing Order', message: 'Looking up customer...' });
         try {
             const customer = await resolveCustomer();
@@ -682,6 +801,8 @@ const OrderForm = ({
         } catch (err) {
             console.error('[Place Order] failed:', err);
             updateToast(tid, { type: 'error', title: 'Order Failed', message: err.message });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -689,6 +810,8 @@ const OrderForm = ({
         if (!customerFirstName.trim() || !phone.trim()) {
             return alert('First name and phone number are required.');
         }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         const tid = addToast({ type: 'loading', title: 'Saving Customer', message: 'Resolving Shopify profile...' });
         try {
             await resolveCustomer();
@@ -708,6 +831,8 @@ const OrderForm = ({
         } catch (err) {
             console.error('[Save Customer] failed:', err);
             updateToast(tid, { type: 'error', title: 'Save Failed', message: err.message });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -753,9 +878,10 @@ const OrderForm = ({
                     <input placeholder="Phone Number *" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} />
                     <button
                         onClick={handleSaveCustomer}
-                        style={{ width: '100%', padding: '9px 0', background: '#0ea5e9', border: 'none', borderRadius: 6, color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer', marginTop: 2 }}
+                        disabled={isSubmitting}
+                        style={{ width: '100%', padding: '9px 0', background: '#0ea5e9', border: 'none', borderRadius: 6, color: '#fff', fontWeight: 600, fontSize: 13, cursor: isSubmitting ? 'not-allowed' : 'pointer', marginTop: 2, opacity: isSubmitting ? 0.6 : 1 }}
                     >
-                        Save / Update Customer & Address
+                        {isSubmitting ? 'Saving...' : 'Save / Update Customer & Address'}
                     </button>
                 </div>
 
@@ -774,8 +900,20 @@ const OrderForm = ({
                     <input placeholder="Address *" value={address} onChange={e => setAddress(e.target.value)} style={inputStyle} />
                     <input placeholder="Landmark" value={landmark} onChange={e => setLandmark(e.target.value)} style={inputStyle} />
                     <div style={{ display: 'flex', gap: 10 }}>
-                        <input placeholder="City *" value={city} onChange={e => setCity(e.target.value)} style={inputStyle} />
-                        <input placeholder="State *" value={stateName} onChange={e => setStateName(e.target.value)} style={inputStyle} />
+                        <input
+                            placeholder="City *"
+                            value={city}
+                            onChange={e => setCity(e.target.value)}
+                            className={autofillActive ? 'autofill-highlighted' : ''}
+                            style={inputStyle}
+                        />
+                        <input
+                            placeholder="State *"
+                            value={stateName}
+                            onChange={e => setStateName(e.target.value)}
+                            className={autofillActive ? 'autofill-highlighted' : ''}
+                            style={inputStyle}
+                        />
                         <input placeholder="Pincode *" value={pincode} onChange={e => setPincode(e.target.value)} style={inputStyle} />
                     </div>
                 </div>
@@ -1053,9 +1191,21 @@ const OrderForm = ({
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button onClick={handleSaveDraft} style={draftBtnStyle}>Save Draft Order</button>
-                <button onClick={handlePlaceOrder} style={orderBtnStyle}>Place Order</button>
-                <button onClick={testConnection} style={testBtnStyle}>Test ⚡</button>
+                <button
+                    onClick={handleSaveDraft}
+                    disabled={isSubmitting}
+                    style={{ ...draftBtnStyle, opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                >
+                    {isSubmitting ? 'Saving Draft...' : 'Save Draft Order'}
+                </button>
+                <button
+                    onClick={handlePlaceOrder}
+                    disabled={isSubmitting}
+                    style={{ ...orderBtnStyle, opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                >
+                    {isSubmitting ? 'Placing Order...' : 'Place Order'}
+                </button>
+                <button onClick={testConnection} disabled={isSubmitting} style={{ ...testBtnStyle, opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>Test ⚡</button>
                 {sheetSyncEnabled() && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#4ade80' }}>✓ Sheet sync enabled</span>}
                 {!sheetSyncEnabled() && gscriptUrl !== null && (
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: '#475569' }}>Sheet sync disabled</span>

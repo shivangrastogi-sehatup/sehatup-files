@@ -18,7 +18,7 @@ import { parseCSV } from './OrderFormShared';
 // │ the ⚙ panel; new agents will see "Sheet sync disabled" by default.    │
 // │ Deploy template: https://script.google.com (see comment block below).  │
 // └────────────────────────────────────────────────────────────────────────┘
-export const DEFAULT_GSCRIPT_URL = '';   // ← e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
+export const DEFAULT_GSCRIPT_URL = '/api/leads';   // ← e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
 
 // Apps Script doPost reference (paste into Apps Script editor, deploy as Web App):
 //
@@ -57,7 +57,7 @@ export const DEFAULT_GSCRIPT_URL = '';   // ← e.g. 'https://script.google.com/
 const OrderCreationCRM = ({ user, onLogout }) => {
     const agentName = user?.displayName || user?.email || 'CRM Agent';
 
-    const [csvUrl] = useState('https://docs.google.com/spreadsheets/d/e/2PACX-1vSL_HNjTH0rykbrl-q3GwYZ6SDYrskbsCa-VxgtA2qVTXkxIl8r4SpLF_ne95EHK8wfcqYNFwjNMPqI/pub?output=csv');
+    const [csvUrl] = useState('/api/leads');
     const [leads, setLeads] = useState([]);
     const [selectedLead, setSelectedLead] = useState(null);
     const [isManualEntry, setIsManualEntry] = useState(false);

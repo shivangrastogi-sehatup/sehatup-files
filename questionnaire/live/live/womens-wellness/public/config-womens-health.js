@@ -1,7 +1,172 @@
-// assets/config-womens-health.js
+// assets/config-womens-health.js — Bilingual (en / hi).
+// Questions/options carry `hi`; futureRisksMapping values are { en, hi };
+// femaleGeneralTimeline entries carry hi/hiDesc; uiTranslations holds all
+// static UI strings. causeMapping, lifestyleTips and the extra timelines stay
+// English (saved-only, not shown on the result page).
+
+const _monthHi = { "Month 1": "महीना 1", "Month 2": "महीना 2", "Month 3": "महीना 3", "Month 6": "महीना 6" };
+
+const uiTranslations = {
+  en: {
+    'main-title': "Women's Wellness Health Score",
+    'welcome-title': "Welcome to the Women’s Sexual Health Quiz!",
+    'welcome-point-1': "Takes just a few minutes",
+    'welcome-point-2': "100% private and secure",
+    'welcome-point-3': "You must be 18 or older to participate",
+    'btn-start': "Start Questionnaire",
+    'btn-prev-report': "Show Previous Report",
+    'personal-info-title': "Tell us a bit about yourself to personalize your experience.",
+    'label-name': "Enter Your Full Name:",
+    'placeholder-name': "Your name",
+    'label-dob': "Enter Your Date of Birth:",
+    'label-phone': "Enter Your Phone Number:",
+    'placeholder-phone': "Phone",
+    'btn-prev': "Previous",
+    'btn-next': "Next",
+    'btn-back-to-quiz': "Back to Questionnaire",
+    'report-title': "Assessment Report",
+    'label-report-date': "Date:",
+    'label-patient-name': "Name",
+    'label-age': "Age",
+    'label-category': "Category",
+    'label-report-date-row': "Report Date",
+    'report-category': "Women's Wellness",
+    'future-risk-heading': "Potential Health Risks If Ignored",
+    'future-risk-desc': "If left untreated, these conditions may gradually impact your health and wellbeing.",
+    'reassurance-text': "Early treatment can significantly improve outcomes through lifestyle correction, medication, and guided therapy.",
+    'cta-title': "Get Your Detailed HealthScore 360 Report",
+    'cta-desc': "Receive your comprehensive 360° health analysis and personalized recovery roadmap directly on WhatsApp.",
+    'btn-whatsapp-report': "Get My Report on WhatsApp",
+    'trust-private': "Private & Confidential",
+    'trust-experts': "Reviewed by Experts",
+    'trust-time': "Takes < 2 mins",
+    'timeline-goal': 'Start Seeing Results In <span class="highlight-text">6 Months</span>',
+    'included-plan-title': "Your Treatment Inclusions",
+    'treat-doctor': "Expert Doctor Consultation",
+    'treat-kit': "Personalized Integrated Kit",
+    'treat-diet': "Custom Diet & Lifestyle Plan",
+    'recommended-treatment': "Recommended Treatment",
+    'label-subtotal': "Subtotal (MRP):",
+    'label-product-discount': "Product Discount:",
+    'coupon-note': 'Use coupon <strong style="color: #4f46e5;">SEHAT10</strong> and get <strong>10% extra off</strong> on your first order',
+    'label-total-payable': "Total Payable:",
+    'label-gst-included': "(GST included)",
+    'btn-buy-now': "Buy Now",
+    'reviews-title': "Customer Reviews",
+    'exit-title': "Get Extra Off Your Order!",
+    'exit-desc': "Use the coupon code below to avail an extra discount:",
+    'btn-copy': "Copy",
+    'copied-feedback': "Copied!",
+    'great-job': "Great Job!",
+    'thank-you-msg': "Thank you for completing the assessment.<br>We are now generating your personalized report.",
+    'redirecting': "Redirecting...",
+    'calculating-health-report': "Calculating your personalized health report... 😊",
+    'wait-moment': "Please wait a moment while we analyze your responses.",
+    'currency-symbol': "Rs.",
+    'about-you': "About You",
+    'health': "Health",
+    'lifestyle': "Lifestyle",
+    'hygiene': "Hygiene",
+    'hormonal': "Hormonal",
+    'Critical Risk': "Critical Risk",
+    'High Risk': "High Risk",
+    'Moderate Risk': "Moderate Risk",
+    'Low Risk': "Low Risk",
+    'otp-title-1': "Confirm your number",
+    'otp-msg-1': "We'll send a WhatsApp report after verification.",
+    'otp-placeholder-phone': "Enter 10-digit phone number",
+    'otp-btn-send': "Send OTP",
+    'otp-title-2': "Verify with OTP",
+    'otp-msg-2': "Please enter the OTP sent to your phone.",
+    'otp-resend-text': "Didn't receive the OTP?",
+    'otp-resend-link': "RESEND OTP",
+    'otp-btn-verify': "Verify",
+    'phone-warning': "Phone number must be exactly 10 digits.",
+    'verifying': "Verifying...",
+  },
+  hi: {
+    'main-title': "महिला स्वास्थ्य स्कोर",
+    'welcome-title': "महिला यौन स्वास्थ्य प्रश्नोत्तरी में आपका स्वागत है!",
+    'welcome-point-1': "इसमें केवल कुछ मिनट लगते हैं",
+    'welcome-point-2': "100% निजी और सुरक्षित",
+    'welcome-point-3': "भाग लेने के लिए आपकी आयु 18 वर्ष या उससे अधिक होनी चाहिए",
+    'btn-start': "प्रश्नावली शुरू करें",
+    'btn-prev-report': "पिछली रिपोर्ट दिखाएं",
+    'personal-info-title': "अपने अनुभव को व्यक्तिगत बनाने के लिए हमें अपने बारे में थोड़ा बताएं।",
+    'label-name': "अपना पूरा नाम दर्ज करें:",
+    'placeholder-name': "आपका नाम",
+    'label-dob': "अपनी जन्म तिथि दर्ज करें:",
+    'label-phone': "अपना फोन नंबर दर्ज करें:",
+    'placeholder-phone': "फ़ोन नंबर",
+    'btn-prev': "पिछला",
+    'btn-next': "अगला",
+    'btn-back-to-quiz': "प्रश्नावली पर वापस जाएँ",
+    'report-title': "आकलन रिपोर्ट",
+    'label-report-date': "दिनांक:",
+    'label-patient-name': "नाम",
+    'label-age': "आयु",
+    'label-category': "श्रेणी",
+    'label-report-date-row': "रिपोर्ट दिनांक",
+    'report-category': "महिला कल्याण",
+    'future-risk-heading': "नज़रअंदाज़ करने पर संभावित स्वास्थ्य जोखिम",
+    'future-risk-desc': "यदि उपचार न किया जाए, तो ये स्थितियाँ धीरे-धीरे आपके स्वास्थ्य और कल्याण को प्रभावित कर सकती हैं।",
+    'reassurance-text': "जल्दी उपचार से जीवनशैली सुधार, दवा और मार्गदर्शित थेरेपी के माध्यम से परिणाम काफ़ी बेहतर हो सकते हैं।",
+    'cta-title': "अपनी विस्तृत HealthScore 360 रिपोर्ट प्राप्त करें",
+    'cta-desc': "अपना संपूर्ण 360° स्वास्थ्य विश्लेषण और व्यक्तिगत रिकवरी रोडमैप सीधे व्हाट्सएप पर प्राप्त करें।",
+    'btn-whatsapp-report': "व्हाट्सएप पर मेरी रिपोर्ट प्राप्त करें",
+    'trust-private': "निजी और गोपनीय",
+    'trust-experts': "विशेषज्ञों द्वारा समीक्षित",
+    'trust-time': "2 मिनट से कम समय",
+    'timeline-goal': '<span class="highlight-text">6 महीनों</span> में परिणाम देखना शुरू करें',
+    'included-plan-title': "आपके उपचार में क्या शामिल है",
+    'treat-doctor': "विशेषज्ञ डॉक्टर परामर्श",
+    'treat-kit': "व्यक्तिगत इंटीग्रेटेड किट",
+    'treat-diet': "कस्टम डाइट और जीवनशैली योजना",
+    'recommended-treatment': "अनुशंसित उपचार",
+    'label-subtotal': "उप-योग (MRP):",
+    'label-product-discount': "उत्पाद छूट:",
+    'coupon-note': 'कूपन <strong style="color: #4f46e5;">SEHAT10</strong> का उपयोग करें और अपने पहले ऑर्डर पर <strong>10% अतिरिक्त छूट</strong> पाएं',
+    'label-total-payable': "कुल देय राशि:",
+    'label-gst-included': "(GST शामिल)",
+    'btn-buy-now': "अभी खरीदें",
+    'reviews-title': "ग्राहकों की समीक्षा",
+    'exit-title': "अपने ऑर्डर पर अतिरिक्त छूट पाएं!",
+    'exit-desc': "अतिरिक्त छूट पाने के लिए नीचे दिया गया कूपन कोड उपयोग करें:",
+    'btn-copy': "कॉपी करें",
+    'copied-feedback': "कॉपी हो गया!",
+    'great-job': "बहुत बढ़िया!",
+    'thank-you-msg': "आकलन पूरा करने के लिए धन्यवाद।<br>हम अब आपकी व्यक्तिगत रिपोर्ट तैयार कर रहे हैं।",
+    'redirecting': "रीडायरेक्ट किया जा रहा है...",
+    'calculating-health-report': "आपकी व्यक्तिगत स्वास्थ्य रिपोर्ट तैयार की जा रही है... 😊",
+    'wait-moment': "कृपया कुछ क्षण प्रतीक्षा करें जब तक हम आपके उत्तरों का विश्लेषण कर रहे हैं।",
+    'currency-symbol': "रु.",
+    'about-you': "आपके बारे में",
+    'health': "स्वास्थ्य",
+    'lifestyle': "जीवनशैली",
+    'hygiene': "स्वच्छता",
+    'hormonal': "हार्मोनल",
+    'Critical Risk': "गंभीर जोखिम",
+    'High Risk': "उच्च जोखिम",
+    'Moderate Risk': "मध्यम जोखिम",
+    'Low Risk': "कम जोखिम",
+    'otp-title-1': "अपना नंबर पुष्टि करें",
+    'otp-msg-1': "सत्यापन के बाद हम व्हाट्सएप पर रिपोर्ट भेजेंगे।",
+    'otp-placeholder-phone': "10-अंकीय फोन नंबर दर्ज करें",
+    'otp-btn-send': "OTP भेजें",
+    'otp-title-2': "OTP से सत्यापित करें",
+    'otp-msg-2': "कृपया अपने फोन पर भेजा गया OTP दर्ज करें।",
+    'otp-resend-text': "OTP प्राप्त नहीं हुआ?",
+    'otp-resend-link': "OTP पुनः भेजें",
+    'otp-btn-verify': "सत्यापित करें",
+    'phone-warning': "फोन नंबर बिल्कुल 10 अंकों का होना चाहिए।",
+    'verifying': "सत्यापित किया जा रहा है...",
+  },
+};
+
 const questionnaireConfig = {
   id: 'womens-wellness',
   staticSteps: 2, // 1. Welcome, 2. About You. Questions start at step 3.
+  uiTranslations: uiTranslations,
 
   questionGroups: [
     {
@@ -10,162 +175,173 @@ const questionnaireConfig = {
       questions: [
         {
           question: 'How regular is your menstrual cycle?',
+          hi: 'आपका मासिक चक्र कितना नियमित है?',
           options: [
-            { text: 'Very regular (28–30 days)', score: 3 },
-            { text: 'Slightly irregular (varies by a few days)', score: 5 },
-            { text: 'Irregular (varies significantly)', score: 8 },
-            { text: 'Highly unpredictable or absent', score: 10 },
+            { text: 'Very regular (28–30 days)', hi: 'बहुत नियमित (28–30 दिन)', score: 3 },
+            { text: 'Slightly irregular (varies by a few days)', hi: 'थोड़ा अनियमित (कुछ दिनों का अंतर)', score: 5 },
+            { text: 'Irregular (varies significantly)', hi: 'अनियमित (काफ़ी अंतर)', score: 8 },
+            { text: 'Highly unpredictable or absent', hi: 'अत्यधिक अनिश्चित या अनुपस्थित', score: 10 },
           ],
         },
         {
           question: 'How severe are your menstrual cramps?',
+          hi: 'आपके मासिक धर्म के दर्द कितने गंभीर हैं?',
           options: [
-            { text: 'I don’t experience cramps', score: 3 },
-            { text: 'Mild discomfort, manageable without medication', score: 5 },
-            { text: 'Moderate pain, occasionally need medication', score: 8 },
-            { text: 'Severe pain, regularly need medication', score: 10 },
+            { text: 'I don’t experience cramps', hi: 'मुझे दर्द नहीं होता', score: 3 },
+            { text: 'Mild discomfort, manageable without medication', hi: 'हल्की असुविधा, बिना दवा के प्रबंधनीय', score: 5 },
+            { text: 'Moderate pain, occasionally need medication', hi: 'मध्यम दर्द, कभी-कभी दवा की आवश्यकता', score: 8 },
+            { text: 'Severe pain, regularly need medication', hi: 'गंभीर दर्द, नियमित रूप से दवा की आवश्यकता', score: 10 },
           ],
         },
         {
           question: 'How would you describe your period flow?',
+          hi: 'आप अपने मासिक प्रवाह का वर्णन कैसे करेंगी?',
           options: [
-            { text: 'Light to moderate', score: 3 },
-            { text: 'Heavy for 1–2 days, then manageable', score: 5 },
-            { text: 'Heavy for most of the cycle', score: 8 },
-            { text: 'Extremely heavy and difficult to manage', score: 10 },
+            { text: 'Light to moderate', hi: 'हल्का से मध्यम', score: 3 },
+            { text: 'Heavy for 1–2 days, then manageable', hi: '1–2 दिन भारी, फिर प्रबंधनीय', score: 5 },
+            { text: 'Heavy for most of the cycle', hi: 'अधिकांश चक्र के दौरान भारी', score: 8 },
+            { text: 'Extremely heavy and difficult to manage', hi: 'अत्यधिक भारी और प्रबंधन में कठिन', score: 10 },
           ],
         },
         {
           question: 'Have you been diagnosed with PCOD or PCOS?',
+          hi: 'क्या आपको PCOD या PCOS का निदान हुआ है?',
           options: [
-            { text: 'No', score: 0 },
-            { text: 'Yes, but it’s under control', score: 5 },
-            { text: 'Yes, and I’m managing it', score: 8 },
-            { text: 'Yes, and it’s not well-managed', score: 10 },
+            { text: 'No', hi: 'नहीं', score: 0 },
+            { text: 'Yes, but it’s under control', hi: 'हां, लेकिन यह नियंत्रण में है', score: 5 },
+            { text: 'Yes, and I’m managing it', hi: 'हां, और मैं इसे प्रबंधित कर रही हूं', score: 8 },
+            { text: 'Yes, and it’s not well-managed', hi: 'हां, और यह ठीक से प्रबंधित नहीं है', score: 10 },
           ],
         },
         {
           question: 'Do you experience any symptoms given below during or just before your menstrual cycle? (Select all that apply)',
+          hi: 'क्या आप अपने मासिक चक्र के दौरान या ठीक पहले नीचे दिए गए किसी लक्षण का अनुभव करती हैं? (सभी लागू चुनें)',
           multiple: true,
           options: [
-            { text: 'Bloating', score: 0 },
-            { text: 'Constipation', score: 0 },
-            { text: 'Diarrhea', score: 0 },
-            { text: 'Acne', score: 0 },
-            { text: 'Mood swings', score: 0 },
-            { text: 'Headache', score: 0 },
-            { text: 'None', score: 0 },
+            { text: 'Bloating', hi: 'सूजन', score: 0 },
+            { text: 'Constipation', hi: 'कब्ज', score: 0 },
+            { text: 'Diarrhea', hi: 'दस्त', score: 0 },
+            { text: 'Acne', hi: 'मुंहासे', score: 0 },
+            { text: 'Mood swings', hi: 'मूड स्विंग्स', score: 0 },
+            { text: 'Headache', hi: 'सिरदर्द', score: 0 },
+            { text: 'None', hi: 'कोई नहीं', score: 0 },
           ],
         },
       ],
     },
     {
       step: 4,
-      key: 'lifestyle', // Your old 'lifestyleQuestions'
+      key: 'lifestyle',
       questions: [
         {
           question: 'How often do you consume a balanced diet with fruits, vegetables, and calcium or Vitamin D-rich foods?',
+          hi: 'आप कितनी बार फलों, सब्जियों और कैल्शियम या विटामिन D युक्त खाद्य पदार्थों के साथ संतुलित आहार लेती हैं?',
           options: [
-            { text: 'Daily', score: 3 },
-            { text: 'Most days', score: 5 },
-            { text: 'Occasionally', score: 8 },
-            { text: 'Rarely', score: 10 },
+            { text: 'Daily', hi: 'रोज़ाना', score: 3 },
+            { text: 'Most days', hi: 'अधिकांश दिन', score: 5 },
+            { text: 'Occasionally', hi: 'कभी-कभी', score: 8 },
+            { text: 'Rarely', hi: 'कभी-कभार', score: 10 },
           ],
         },
         {
           question: 'How often do you consume caffeinated beverages (e.g., coffee, tea, energy drinks, soda)?',
+          hi: 'आप कितनी बार कैफीनयुक्त पेय (जैसे कॉफी, चाय, एनर्जी ड्रिंक, सोडा) का सेवन करती हैं?',
           options: [
-            { text: 'Rarely or never', score: 0 },
-            { text: 'Occasionally, a few times a week', score: 5 },
-            { text: 'Daily, 1–2 servings', score: 8 },
-            { text: 'Daily, more than 3 servings', score: 10 },
+            { text: 'Rarely or never', hi: 'कभी-कभार या कभी नहीं', score: 0 },
+            { text: 'Occasionally, a few times a week', hi: 'कभी-कभी, सप्ताह में कुछ बार', score: 5 },
+            { text: 'Daily, 1–2 servings', hi: 'रोज़ाना, 1–2 बार', score: 8 },
+            { text: 'Daily, more than 3 servings', hi: 'रोज़ाना, 3 से अधिक बार', score: 10 },
           ],
         },
         {
           question: 'How often do you feel fatigued or low in energy during your period?',
+          hi: 'मासिक धर्म के दौरान आप कितनी बार थकान या ऊर्जा की कमी महसूस करती हैं?',
           options: [
-            { text: 'Rarely or never', score: 3 },
-            { text: 'Occasionally', score: 5 },
-            { text: 'Frequently', score: 8 },
-            { text: 'Always', score: 10 },
+            { text: 'Rarely or never', hi: 'कभी-कभार या कभी नहीं', score: 3 },
+            { text: 'Occasionally', hi: 'कभी-कभी', score: 5 },
+            { text: 'Frequently', hi: 'अक्सर', score: 8 },
+            { text: 'Always', hi: 'हमेशा', score: 10 },
           ],
         },
         {
           question: 'How often do you consume alcohol or cigarettes?',
+          hi: 'आप कितनी बार शराब या सिगरेट का सेवन करती हैं?',
           options: [
-            { text: 'Rarely', score: 0 },
-            { text: 'Occasionally', score: 0 },
-            { text: '2–3 times a week', score: 0 },
-            { text: 'Daily', score: 0 },
+            { text: 'Rarely', hi: 'कभी-कभार', score: 0 },
+            { text: 'Occasionally', hi: 'कभी-कभी', score: 0 },
+            { text: '2–3 times a week', hi: 'सप्ताह में 2–3 बार', score: 0 },
+            { text: 'Daily', hi: 'रोज़ाना', score: 0 },
           ],
         },
         {
           question: 'Do you have any of the mentioned health problems? (Select all that apply)',
+          hi: 'क्या आपको उल्लिखित में से कोई स्वास्थ्य समस्या है? (सभी लागू चुनें)',
           multiple: true,
           options: [
-            { text: 'Endometriosis / Fibroids', score: 0 },
-            { text: 'Depression/Anxiety', score: 0 },
-            { text: 'Thyroid disorder', score: 0 },
-            { text: 'PCOD/PCOS', score: 0 },
-            { text: 'Diabetes', score: 0 },
-            { text: 'None', score: 0 },
+            { text: 'Endometriosis / Fibroids', hi: 'एंडोमेट्रियोसिस / फाइब्रॉइड', score: 0 },
+            { text: 'Depression/Anxiety', hi: 'अवसाद/चिंता', score: 0 },
+            { text: 'Thyroid disorder', hi: 'थायरॉइड विकार', score: 0 },
+            { text: 'PCOD/PCOS', hi: 'PCOD/PCOS', score: 0 },
+            { text: 'Diabetes', hi: 'मधुमेह', score: 0 },
+            { text: 'None', hi: 'कोई नहीं', score: 0 },
           ],
         },
       ],
     },
     {
       step: 5,
-      key: 'hygiene', // Your old 'hygieneQuestions'
+      key: 'hygiene',
       questions: [
         {
           question: 'Do you experience itching, irritation, or discomfort in the intimate area?',
+          hi: 'क्या आप अंतरंग क्षेत्र में खुजली, जलन या असुविधा का अनुभव करती हैं?',
           options: [
-            { text: 'Rarely or never', score: 3 },
-            { text: 'Occasionally', score: 5 },
-            { text: 'Frequently', score: 8 },
-            { text: 'Always', score: 10 },
+            { text: 'Rarely or never', hi: 'कभी-कभार या कभी नहीं', score: 3 },
+            { text: 'Occasionally', hi: 'कभी-कभी', score: 5 },
+            { text: 'Frequently', hi: 'अक्सर', score: 8 },
+            { text: 'Always', hi: 'हमेशा', score: 10 },
           ],
         },
         {
           question: 'Do you experience any bad odor or discharge from your genitalia?',
+          hi: 'क्या आप अपने जननांग से कोई दुर्गंध या स्राव अनुभव करती हैं?',
           options: [
-            { text: 'Rarely or never', score: 3 },
-            { text: 'Occasionally', score: 5 },
-            { text: 'Frequently', score: 8 },
-            { text: 'Always', score: 10 },
+            { text: 'Rarely or never', hi: 'कभी-कभार या कभी नहीं', score: 3 },
+            { text: 'Occasionally', hi: 'कभी-कभी', score: 5 },
+            { text: 'Frequently', hi: 'अक्सर', score: 8 },
+            { text: 'Always', hi: 'हमेशा', score: 10 },
           ],
         },
       ],
     },
     {
       step: 6,
-      key: 'hormonal', // Your old 'hormonalQuestions'
+      key: 'hormonal',
       questions: [
         {
           question: 'Do you experience hormonal imbalance symptoms such as acne, mood swings, facial hair or weight changes?',
+          hi: 'क्या आप मुंहासे, मूड स्विंग्स, चेहरे के बाल या वज़न परिवर्तन जैसे हार्मोनल असंतुलन के लक्षण अनुभव करती हैं?',
           options: [
-            { text: 'Rarely or never', score: 3 },
-            { text: 'Occasionally', score: 5 },
-            { text: 'Frequently', score: 8 },
-            { text: 'Always', score: 10 },
+            { text: 'Rarely or never', hi: 'कभी-कभार या कभी नहीं', score: 3 },
+            { text: 'Occasionally', hi: 'कभी-कभी', score: 5 },
+            { text: 'Frequently', hi: 'अक्सर', score: 8 },
+            { text: 'Always', hi: 'हमेशा', score: 10 },
           ],
         },
         {
           question: 'Have you ever been diagnosed with estrogen dominance or related conditions?',
+          hi: 'क्या आपको कभी एस्ट्रोजन प्रभुत्व या संबंधित स्थितियों का निदान हुआ है?',
           options: [
-            { text: 'No', score: 3 },
-            { text: 'Yes, but it’s under control', score: 5 },
-            { text: 'Yes, and I’m managing it', score: 8 },
-            { text: 'Yes and it’s uncontrolled', score: 10 },
+            { text: 'No', hi: 'नहीं', score: 3 },
+            { text: 'Yes, but it’s under control', hi: 'हां, लेकिन यह नियंत्रण में है', score: 5 },
+            { text: 'Yes, and I’m managing it', hi: 'हां, और मैं इसे प्रबंधित कर रही हूं', score: 8 },
+            { text: 'Yes and it’s uncontrolled', hi: 'हां और यह अनियंत्रित है', score: 10 },
           ],
         },
       ],
     },
   ],
 
-  /**
-   * ALL DATA MAPPINGS (PRODUCTS, TIMELINES, CAUSES)
-   */
   productDatabase: window.productDatabase,
 
   causeMapping: {
@@ -202,64 +378,65 @@ const questionnaireConfig = {
     },
   },
 
+  // futureRisksMapping values are { en, hi } so the result page can localise.
   futureRisksMapping: {
     'How regular is your menstrual cycle?': {
-      'Very regular (28–30 days)': 'Minimal risk. Keep maintaining healthy habits.',
-      'Slightly irregular (varies by a few days)': 'May cause delayed ovulation or mild fertility issues if unchecked.',
-      'Irregular (varies significantly)': 'Increased risk of infertility, hormonal disorders, and endometrial issues.',
-      'Highly unpredictable or absent': 'High risk of infertility, endometrial hyperplasia, or metabolic disorders.',
+      'Very regular (28–30 days)': { en: 'Minimal risk. Keep maintaining healthy habits.', hi: 'न्यूनतम खतरा। स्वस्थ आदतें बनाए रखें।' },
+      'Slightly irregular (varies by a few days)': { en: 'May cause delayed ovulation or mild fertility issues if unchecked.', hi: 'यदि अनदेखा किया जाए तो विलंबित ओव्यूलेशन या हल्की प्रजनन समस्याएं हो सकती हैं।' },
+      'Irregular (varies significantly)': { en: 'Increased risk of infertility, hormonal disorders, and endometrial issues.', hi: 'बांझपन, हार्मोनल विकारों और एंडोमेट्रियल समस्याओं का बढ़ा खतरा।' },
+      'Highly unpredictable or absent': { en: 'High risk of infertility, endometrial hyperplasia, or metabolic disorders.', hi: 'बांझपन, एंडोमेट्रियल हाइपरप्लासिया या मेटाबॉलिक विकारों का उच्च खतरा।' },
     },
     'How severe are your menstrual cramps?': {
-      'I don’t experience cramps': 'No risk. Maintain current health.',
-      'Mild discomfort, manageable without medication': 'Low risk. Could worsen if lifestyle becomes unbalanced.',
-      'Moderate pain, occasionally need medication': 'May progress to chronic pelvic pain or severe endometriosis.',
-      'Severe pain, regularly need medication': 'Chronic pain, infertility, need for surgery if untreated.',
+      'I don’t experience cramps': { en: 'No risk. Maintain current health.', hi: 'कोई खतरा नहीं। वर्तमान स्वास्थ्य बनाए रखें।' },
+      'Mild discomfort, manageable without medication': { en: 'Low risk. Could worsen if lifestyle becomes unbalanced.', hi: 'कम खतरा। यदि जीवनशैली असंतुलित हो जाए तो बिगड़ सकता है।' },
+      'Moderate pain, occasionally need medication': { en: 'May progress to chronic pelvic pain or severe endometriosis.', hi: 'दीर्घकालिक पेल्विक दर्द या गंभीर एंडोमेट्रियोसिस की ओर बढ़ सकता है।' },
+      'Severe pain, regularly need medication': { en: 'Chronic pain, infertility, need for surgery if untreated.', hi: 'दीर्घकालिक दर्द, बांझपन, उपचार न होने पर सर्जरी की आवश्यकता।' },
     },
     'Do you have any of the mentioned health problems? (Select all that apply)': {
-      'Endometriosis / Fibroids': 'Infertility, chronic pain, heavy bleeding, need for surgery.',
-      'Depression/Anxiety': 'Emotional burnout, sleep disorders, hormonal imbalance, weight gain.',
-      'Thyroid disorder': 'Irregular cycles, fatigue, weight changes, fertility issues.',
-      'PCOD/PCOS': 'Irregular periods, infertility, diabetes, heart disease risk.',
-      'Diabetes': 'Hormonal disruption, menstrual irregularities, fertility issues, chronic complications.',
+      'Endometriosis / Fibroids': { en: 'Infertility, chronic pain, heavy bleeding, need for surgery.', hi: 'बांझपन, दीर्घकालिक दर्द, भारी रक्तस्राव, सर्जरी की आवश्यकता।' },
+      'Depression/Anxiety': { en: 'Emotional burnout, sleep disorders, hormonal imbalance, weight gain.', hi: 'भावनात्मक थकावट, नींद विकार, हार्मोनल असंतुलन, वज़न वृद्धि।' },
+      'Thyroid disorder': { en: 'Irregular cycles, fatigue, weight changes, fertility issues.', hi: 'अनियमित चक्र, थकान, वज़न परिवर्तन, प्रजनन समस्याएं।' },
+      'PCOD/PCOS': { en: 'Irregular periods, infertility, diabetes, heart disease risk.', hi: 'अनियमित मासिक धर्म, बांझपन, मधुमेह, हृदय रोग का खतरा।' },
+      'Diabetes': { en: 'Hormonal disruption, menstrual irregularities, fertility issues, chronic complications.', hi: 'हार्मोनल गड़बड़ी, मासिक अनियमितताएं, प्रजनन समस्याएं, दीर्घकालिक जटिलताएं।' },
     },
     'Do you experience itching, irritation, or discomfort in the intimate area?': {
-      'Rarely or never': 'No immediate risks. Continue good hygiene practices.',
-      'Occasionally': 'May lead to recurrent infections or inflammation if ignored.',
-      'Frequently': 'Risk of chronic infections, discomfort, or pelvic inflammation.',
-      'Always': 'High risk of chronic inflammation, sexual health issues, or reproductive tract damage.',
+      'Rarely or never': { en: 'No immediate risks. Continue good hygiene practices.', hi: 'कोई तत्काल खतरा नहीं। अच्छी स्वच्छता बनाए रखें।' },
+      'Occasionally': { en: 'May lead to recurrent infections or inflammation if ignored.', hi: 'यदि अनदेखा किया जाए तो बार-बार संक्रमण या सूजन हो सकती है।' },
+      'Frequently': { en: 'Risk of chronic infections, discomfort, or pelvic inflammation.', hi: 'दीर्घकालिक संक्रमण, असुविधा या पेल्विक सूजन का खतरा।' },
+      'Always': { en: 'High risk of chronic inflammation, sexual health issues, or reproductive tract damage.', hi: 'दीर्घकालिक सूजन, यौन स्वास्थ्य समस्याओं या प्रजनन तंत्र क्षति का उच्च खतरा।' },
     },
     'Do you experience hormonal imbalance symptoms such as acne, mood swings, facial hair or weight changes?': {
-      'Rarely or never': 'No major risks. Maintain current routine.',
-      'Occasionally': 'Risk of worsening imbalance if lifestyle isn’t improved.',
-      'Frequently': 'May cause cycle irregularity, skin issues, weight gain, emotional distress.',
-      'Always': 'Risk of infertility, diabetes, obesity, and mood disorders if left untreated.',
+      'Rarely or never': { en: 'No major risks. Maintain current routine.', hi: 'कोई बड़ा खतरा नहीं। वर्तमान दिनचर्या बनाए रखें।' },
+      'Occasionally': { en: 'Risk of worsening imbalance if lifestyle isn’t improved.', hi: 'यदि जीवनशैली में सुधार न हो तो असंतुलन बिगड़ने का खतरा।' },
+      'Frequently': { en: 'May cause cycle irregularity, skin issues, weight gain, emotional distress.', hi: 'चक्र अनियमितता, त्वचा समस्याएं, वज़न वृद्धि, भावनात्मक परेशानी का कारण बन सकता है।' },
+      'Always': { en: 'Risk of infertility, diabetes, obesity, and mood disorders if left untreated.', hi: 'उपचार न होने पर बांझपन, मधुमेह, मोटापा और मनोदशा विकारों का खतरा।' },
     },
   },
 
   femaleGeneralTimeline: {
     '<25': [
-      { month: 'Month 1', timelineDesc: 'Cycle begins to respond' },
-      { month: 'Month 2', timelineDesc: 'Periods become more predictable' },
-      { month: 'Month 3', timelineDesc: 'Regular cycles (within 3–5 days)' },
-      { month: 'Month 6', timelineDesc: 'Smooth and timely cycles' },
+      { month: 'Month 1', timelineDesc: 'Cycle begins to respond', hiDesc: 'चक्र प्रतिक्रिया देना शुरू करता है' },
+      { month: 'Month 2', timelineDesc: 'Periods become more predictable', hiDesc: 'मासिक धर्म अधिक अनुमानित हो जाता है' },
+      { month: 'Month 3', timelineDesc: 'Regular cycles (within 3–5 days)', hiDesc: 'नियमित चक्र (3–5 दिनों के भीतर)' },
+      { month: 'Month 6', timelineDesc: 'Smooth and timely cycles', hiDesc: 'सुचारू और समय पर चक्र' },
     ],
     '25-60': [
-      { month: 'Month 1', timelineDesc: 'Mild improvement in cycle timing' },
-      { month: 'Month 2', timelineDesc: 'Cycles more predictable' },
-      { month: 'Month 3', timelineDesc: 'Periods regular and lighter' },
-      { month: 'Month 6', timelineDesc: 'Healthy cycle pattern maintained' },
+      { month: 'Month 1', timelineDesc: 'Mild improvement in cycle timing', hiDesc: 'चक्र समय में हल्का सुधार' },
+      { month: 'Month 2', timelineDesc: 'Cycles more predictable', hiDesc: 'चक्र अधिक अनुमानित' },
+      { month: 'Month 3', timelineDesc: 'Periods regular and lighter', hiDesc: 'मासिक धर्म नियमित और हल्का' },
+      { month: 'Month 6', timelineDesc: 'Healthy cycle pattern maintained', hiDesc: 'स्वस्थ चक्र पैटर्न बना रहता है' },
     ],
     '61-80': [
-      { month: 'Month 1', timelineDesc: 'Slight improvement in timing' },
-      { month: 'Month 2', timelineDesc: 'Regular and balanced cycles' },
-      { month: 'Month 3', timelineDesc: 'Fully predictable periods' },
-      { month: 'Month 6', timelineDesc: 'Cycles easy and on time' },
+      { month: 'Month 1', timelineDesc: 'Slight improvement in timing', hiDesc: 'समय में हल्का सुधार' },
+      { month: 'Month 2', timelineDesc: 'Regular and balanced cycles', hiDesc: 'नियमित और संतुलित चक्र' },
+      { month: 'Month 3', timelineDesc: 'Fully predictable periods', hiDesc: 'पूरी तरह अनुमानित मासिक धर्म' },
+      { month: 'Month 6', timelineDesc: 'Cycles easy and on time', hiDesc: 'चक्र आसान और समय पर' },
     ],
     '81+': [
-      { month: 'Month 1', timelineDesc: 'Cycles stay smooth and regular' },
-      { month: 'Month 2', timelineDesc: 'Healthy rhythm continues' },
-      { month: 'Month 3', timelineDesc: 'Consistent and healthy periods' },
-      { month: 'Month 6', timelineDesc: 'Long-term menstrual wellness' },
+      { month: 'Month 1', timelineDesc: 'Cycles stay smooth and regular', hiDesc: 'चक्र सुचारू और नियमित रहते हैं' },
+      { month: 'Month 2', timelineDesc: 'Healthy rhythm continues', hiDesc: 'स्वस्थ लय जारी रहती है' },
+      { month: 'Month 3', timelineDesc: 'Consistent and healthy periods', hiDesc: 'सुसंगत और स्वस्थ मासिक धर्म' },
+      { month: 'Month 6', timelineDesc: 'Long-term menstrual wellness', hiDesc: 'दीर्घकालिक मासिक कल्याण' },
     ],
   },
   hormonalTimelineByScore: {
@@ -368,7 +545,6 @@ const questionnaireConfig = {
   },
 
   productWhyPoints: {
-    // *** FIXED KEYS to match product names from database ***
     'Zencal D3K2': [
       'Boosts metabolism and supports fat breakdown.',
       'Helps D3 work better and keeps calcium in bones, not in fat cells.',
@@ -391,14 +567,14 @@ const questionnaireConfig = {
       'Support hormonal balance and menstrual flow.',
       'Boost iron and energy during periods.',
     ],
-    'Aloezy Wash': [ // Fixed key from 'Aloezy'
+    'Aloezy Wash': [
       'Soothe and calm the skin.',
       'Give a fresh, cooling feel.',
       'Maintains healthy pH balance.',
       'Protects against germs.',
       'Gentle and safe for daily use.',
     ],
-    'Thyrostatin 3X': [ // Fixed key from 'Thyroidinum 3x'
+    'Thyrostatin 3X': [
       'Helps if you have a slow (underactive) thyroid, which can cause weight gain',
       'Supports fat burning and energy use.',
       'Helps fight tiredness that makes you less active.',
@@ -533,10 +709,11 @@ const questionnaireConfig = {
 
     const bracket = getScoreBracket(score);
     let baseIssue = '';
-    if (score < 25) baseIssue = 'Critical Hormonal Disturbance';
-    else if (score <= 60) baseIssue = 'High Hormonal Disturbance';
-    else if (score <= 80) baseIssue = 'Mild Hormonal Disturbance';
-    else baseIssue = 'Good Hormonal Health';
+    let baseIssueHi = '';
+    if (score < 25) { baseIssue = 'Critical Hormonal Disturbance'; baseIssueHi = 'गंभीर हार्मोनल गड़बड़ी'; }
+    else if (score <= 60) { baseIssue = 'High Hormonal Disturbance'; baseIssueHi = 'उच्च हार्मोनल गड़बड़ी'; }
+    else if (score <= 80) { baseIssue = 'Mild Hormonal Disturbance'; baseIssueHi = 'हल्की हार्मोनल गड़बड़ी'; }
+    else { baseIssue = 'Good Hormonal Health'; baseIssueHi = 'अच्छा हार्मोनल स्वास्थ्य'; }
 
     // Get answers from Lifestyle, Q5 ('Do you have any of the mentioned health problems?')
     let lifestyleConditions = getAnswerArray('lifestyle', 4);
@@ -544,33 +721,49 @@ const questionnaireConfig = {
     const hygieneAnswer = getAnswerText('hygiene', 1);
 
     let extraIssues = [];
-    if (lifestyleConditions.includes('Diabetes')) extraIssues.push('Metabolic Dysfunction');
-    if (lifestyleConditions.includes('Thyroid disorder')) extraIssues.push('Thyroid Dysfunction');
-    if (lifestyleConditions.includes('Depression/Anxiety')) extraIssues.push('PMS-linked Mood Disorder');
-    if (lifestyleConditions.includes('Endometriosis / Fibroids')) extraIssues.push('Fibroids / Endometriosis');
+    let extraIssuesHi = [];
+    if (lifestyleConditions.includes('Diabetes')) { extraIssues.push('Metabolic Dysfunction'); extraIssuesHi.push('मेटाबॉलिक दुष्क्रिया'); }
+    if (lifestyleConditions.includes('Thyroid disorder')) { extraIssues.push('Thyroid Dysfunction'); extraIssuesHi.push('थायरॉइड दुष्क्रिया'); }
+    if (lifestyleConditions.includes('Depression/Anxiety')) { extraIssues.push('PMS-linked Mood Disorder'); extraIssuesHi.push('PMS-संबंधित मनोदशा विकार'); }
+    if (lifestyleConditions.includes('Endometriosis / Fibroids')) { extraIssues.push('Fibroids / Endometriosis'); extraIssuesHi.push('फाइब्रॉइड / एंडोमेट्रियोसिस'); }
     if (
       hygieneAnswer.includes('Occasionally') ||
       hygieneAnswer.includes('Frequently') ||
       hygieneAnswer.includes('Always')
     ) {
       extraIssues.push('Vaginal pH Imbalance');
+      extraIssuesHi.push('योनि pH असंतुलन');
     }
 
     let issueTitle = baseIssue;
+    let issueTitleHi = baseIssueHi;
     if (extraIssues.length > 0) {
       issueTitle += ', ' + extraIssues.join(', ');
+      issueTitleHi += ', ' + extraIssuesHi.join(', ');
     }
 
     let baseText = '';
-    if (score < 25) baseText = 'Severe hormonal imbalance with disrupted menstrual health';
-    else if (score <= 60) baseText = 'Moderate Hormonal imbalance (if untreated, may disrupt fertility)';
-    else if (score <= 80) baseText = 'Slight hormonal irregularities triggered by lifestyle, stress or nutritional deficiency';
-    else baseText = 'No major hormonal or PMS issue detected. Continue maintaining hormonal and menstrual wellness.';
+    let baseTextHi = '';
+    if (score < 25) {
+      baseText = 'Severe hormonal imbalance with disrupted menstrual health';
+      baseTextHi = 'बाधित मासिक स्वास्थ्य के साथ गंभीर हार्मोनल असंतुलन';
+    } else if (score <= 60) {
+      baseText = 'Moderate Hormonal imbalance (if untreated, may disrupt fertility)';
+      baseTextHi = 'मध्यम हार्मोनल असंतुलन (यदि उपचार न किया जाए, तो प्रजनन क्षमता बाधित हो सकती है)';
+    } else if (score <= 80) {
+      baseText = 'Slight hormonal irregularities triggered by lifestyle, stress or nutritional deficiency';
+      baseTextHi = 'जीवनशैली, तनाव या पोषण की कमी से उत्पन्न हल्की हार्मोनल अनियमितताएं';
+    } else {
+      baseText = 'No major hormonal or PMS issue detected. Continue maintaining hormonal and menstrual wellness.';
+      baseTextHi = 'कोई बड़ी हार्मोनल या PMS समस्या नहीं पाई गई। हार्मोनल और मासिक कल्याण बनाए रखना जारी रखें।';
+    }
 
     let conditionTextHTML = `<p>${baseText}</p>`;
+    let conditionTextHTMLHi = `<p>${baseTextHi}</p>`;
 
     let futureRisks = [];
-    let possibleCauses = []; // Added for full report
+    let possibleCauses = [];
+    const seenRisks = new Set();
 
     for (const groupKey in allAnswers) {
       allAnswers[groupKey].forEach((answer) => {
@@ -581,9 +774,8 @@ const questionnaireConfig = {
         texts.forEach((text) => {
           if (qRisks && qRisks[text]) {
             const risk = qRisks[text];
-            if (risk && !futureRisks.includes(risk)) {
-              futureRisks.push(risk);
-            }
+            const key = risk.en || risk;
+            if (!seenRisks.has(key)) { seenRisks.add(key); futureRisks.push(risk); }
           }
           if (qCauses && qCauses[text]) {
             const cause = qCauses[text];
@@ -680,12 +872,20 @@ const questionnaireConfig = {
       .map(c => conditionTipKeys[c])
       .filter(Boolean);
 
+    // Add the Hindi month label to the displayed (general) timeline.
+    const generalLocalized = general.map(item => ({
+      ...item,
+      hi: _monthHi[item.month] || item.month,
+    }));
+
     return {
       issueTitle,
+      issueTitleHi,
       conditionTextHTML,
+      conditionTextHTMLHi,
       futureRisks,
       possibleCauses,
-      timelineData: { general, extras },
+      timelineData: { general: generalLocalized, extras },
       lifestyleConditions: [...new Set(finalLifestyleKeys)], // Pass the mapped keys
     };
   },
@@ -750,6 +950,7 @@ const questionnaireConfig = {
     const finalRecommendedProducts = activeProducts.map((p) => {
       return {
         name: p.name,
+        nameHi: p.nameHi || '',
         salePrice: p.salePrice,
         image: p.image,
         whyPoints: (p.whyPoints || []).map((text) => ({
@@ -762,6 +963,14 @@ const questionnaireConfig = {
       text: cause
     }));
 
+    // futureRisks may be { en, hi } objects or plain strings — normalise both.
+    const futureRisks = (results.futureRisks || []).map((r) => {
+      if (r && typeof r === 'object') {
+        return { text: r.en || r.text || '', textHi: r.hi || '' };
+      }
+      return { text: r, textHi: '' };
+    });
+
     // 5. Build final data object
     const initialRiskType = config.getRiskType(computedHealthScore);
     const data = {
@@ -772,6 +981,7 @@ const questionnaireConfig = {
       healthScore: computedHealthScore,
       riskType: initialRiskType,
       issueTitle: results.issueTitle,
+      issueTitleHi: results.issueTitleHi || '',
       concern: "Women's Wellness",
       reportCategory: "Womens Wellness",
       lifestyleConditions: results.lifestyleConditions || [],
@@ -782,9 +992,7 @@ const questionnaireConfig = {
       questionnaireId: config.id,
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       isWhatsAppSent: false,
-      futureRisks: (results.futureRisks || []).map((text) => ({
-        text
-      })),
+      futureRisks: futureRisks,
       recommendedProducts: finalRecommendedProducts,
     };
 

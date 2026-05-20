@@ -86,6 +86,48 @@ module.exports = function (app) {
             pathRewrite: { '^/api-sehatup': '' },
         })
     );
+    // Local development proxy for /api/leads
+    app.use('/api/leads', (req, res) => {
+        const url = process.env.DEFAULT_GSCRIPT_URL;
+        if (!url) {
+            return res.status(500).json({ error: 'DEFAULT_GSCRIPT_URL is not configured' });
+        }
+
+        if (req.method === 'GET') {
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.text();
+                })
+                .then(csvData => {
+                    res.setHeader('Content-Type', 'text/csv');
+                    res.status(200).send(csvData);
+                })
+                .catch(error => {
+                    res.status(500).json({ error: error.message });
+                });
+        } else if (req.method === 'POST') {
+            if (url.includes('docs.google.com/spreadsheets')) {
+                return res.status(200).json({ skipped: true, message: 'Default sync skipped (CSV URL configured)' });
+            }
+            // Collect request body
+            const chunks = [];
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', () => {
+                const bodyStr = Buffer.concat(chunks).toString();
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: bodyStr
+                })
+                .then(response => response.text())
+                .then(data => res.status(200).send(data))
+                .catch(error => res.status(500).json({ error: error.message }));
+            });
+        } else {
+            res.status(405).json({ error: 'Method Not Allowed' });
+        }
+    });
 
     // URL shortener proxies
     const shorteners = {

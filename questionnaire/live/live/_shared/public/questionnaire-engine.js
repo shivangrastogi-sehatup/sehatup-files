@@ -83,7 +83,9 @@ class QuestionnaireEngine {
 
         // Localization Support
         this.currentLanguage = localStorage.getItem(`selected_lang_${this.config.id}`) || 'en';
-        this.uiTranslations = {
+        // Per-questionnaire UI strings live in the config (config.uiTranslations).
+        // The object below is only a fallback for questionnaires not yet migrated.
+        this.uiTranslations = this.config.uiTranslations || {
             'en': {
                 'main-title': "Men's Sexual Wellness Score",
                 'welcome-title': "Welcome to the Men's Sexual Health Quiz!",
@@ -138,15 +140,15 @@ class QuestionnaireEngine {
                 'calculating-health-report': "Calculating your personalized health report... 😊",
                 'wait-moment': "Please wait a moment while we analyze your responses.",
                 'reviews-title': "Customer Reviews",
-                'otp-title-1': "Secure Your Report",
-                'otp-msg-1': "Enter your phone number to receive your personalized health report via WhatsApp.",
+                'otp-title-1': "Confirm your number",
+                'otp-msg-1': "We'll send a WhatsApp report after verification.",
                 'otp-placeholder-phone': "Enter 10-digit phone number",
-                'otp-btn-send': "Send Verification Code",
-                'otp-title-2': "Verify Your Number",
-                'otp-msg-2': "We've sent a 6-digit verification code to your phone.",
-                'otp-resend-text': "Didn't receive the code?",
-                'otp-resend-link': "Resend Code",
-                'otp-btn-verify': "Verify & Access Report",
+                'otp-btn-send': "Send OTP",
+                'otp-title-2': "Verify with OTP",
+                'otp-msg-2': "Please enter the OTP sent to your phone.",
+                'otp-resend-text': "Didn't receive the OTP?",
+                'otp-resend-link': "RESEND OTP",
+                'otp-btn-verify': "Verify",
                 'phone-warning': "Phone number must be exactly 10 digits.",
                 'verifying': "Verifying..."
             },
@@ -728,6 +730,10 @@ class QuestionnaireEngine {
             }
             if (titleElement) {
                 titleElement.className = `step-title ${titleClass}`;
+                // Keep the label text in sync with the current language. The step
+                // HTML is only built once (isInitialRender), so on a language
+                // toggle the text would otherwise stay in the original language.
+                titleElement.textContent = group.label;
             }
         });
     }
@@ -1208,7 +1214,11 @@ class QuestionnaireEngine {
                 'mens-weight': "Men's Weight Management",
                 'womens-weight': "Women's Weight Management"
             };
-            userCategoryEl.innerText = categoryMap[this.config.id] || this.config.title || "Health Assessment";
+            // Prefer the localized 'report-category' string if the config provides one.
+            userCategoryEl.innerText = langData['report-category']
+                || categoryMap[this.config.id]
+                || this.config.title
+                || "Health Assessment";
         }
         
         // Dynamic labels from results
@@ -1338,15 +1348,18 @@ class QuestionnaireEngine {
             const currencySymbol = langData['currency-symbol'] || 'Rs.';
             const oldPriceHTML = hasDiscount ? `<span class="old-price">${currencySymbol}${product.regularPrice}</span>` : '';
             const discountBadgeHTML = hasDiscount ? `<div class="prod-discount-tag">${productDiscount}% OFF</div>` : '';
-            
+            // Hindi product name + description when available (set in product-database-common.js)
+            const displayProductName = (lang === 'hi' && product.nameHi) ? product.nameHi : product.name;
+            const displayProductDesc = (lang === 'hi' && product.descriptionHi) ? product.descriptionHi : (product.description || '');
+
             productList.innerHTML += `
-                <div class="product-card" data-action="open-product-modal" 
-                    data-name="${product.name}" 
-                    data-description="${product.description || ''}" 
+                <div class="product-card" data-action="open-product-modal"
+                    data-name="${displayProductName}"
+                    data-description="${displayProductDesc}"
                     data-price="${currencySymbol}${product.salePrice}" data-image="${product.image}">
                     ${discountBadgeHTML}
-                    <img src="${product.image}" alt="${product.name}">
-                    <div class="product-name">${product.name}</div>
+                    <img src="${product.image}" alt="${displayProductName}">
+                    <div class="product-name">${displayProductName}</div>
                     <div class="price-section">
                         ${oldPriceHTML}
                         <span class="new-price">${currencySymbol}${product.salePrice}</span>

@@ -165,17 +165,17 @@
     
     <!-- STEP 1: Phone Confirmation -->
     <div id="otp-step-1">
-      <h3>Confirm your number</h3>
-      <p>We'll send a WhatsApp report after verification.</p>
-      <input type="tel" id="otp-phone" maxlength="10" placeholder="1234567890" inputmode="numeric" pattern="\d*">
-      <div id="phone-warning" style="display: none;">Phone number must be exactly 10 digits.</div>
-      <button data-action="send-otp">Send OTP</button>
+      <h3 data-i18n="otp-title-1">Confirm your number</h3>
+      <p data-i18n="otp-msg-1">We'll send a WhatsApp report after verification.</p>
+      <input type="tel" id="otp-phone" maxlength="10" placeholder="1234567890" data-i18n="otp-placeholder-phone" inputmode="numeric" pattern="\d*">
+      <div id="phone-warning" style="display: none;" data-i18n="phone-warning">Phone number must be exactly 10 digits.</div>
+      <button data-action="send-otp" data-i18n="otp-btn-send">Send OTP</button>
     </div>
-    
+
     <!-- STEP 2: OTP Verification -->
     <div id="otp-step-2" style="display: none;">
-      <h3>Verify with OTP</h3>
-      <p>Please enter the OTP sent to your phone.</p>
+      <h3 data-i18n="otp-title-2">Verify with OTP</h3>
+      <p data-i18n="otp-msg-2">Please enter the OTP sent to your phone.</p>
       <div class="otp-input-group">
         <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
         <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
@@ -185,11 +185,11 @@
         <input type="tel" class="otp-input" pattern="\d*" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
       </div>
       <div class="resend-text" id="resend-text">
-        Didn't receive the OTP?
-        <span id="resend-link" data-action="resend-otp" style="display: none;">RESEND OTP</span>
+        <span data-i18n="otp-resend-text">Didn't receive the OTP?</span>
+        <span id="resend-link" data-action="resend-otp" style="display: none;" data-i18n="otp-resend-link">RESEND OTP</span>
         <span id="otp-timer" style="margin-left: 4px; color: #9ca3af; font-weight: 600;"></span>
       </div>
-      <button data-action="verify-otp">Verify</button>
+      <button data-action="verify-otp" data-i18n="otp-btn-verify">Verify</button>
     </div>
     
     <div id="otp-toast" style="margin-top: 16px;"></div>
