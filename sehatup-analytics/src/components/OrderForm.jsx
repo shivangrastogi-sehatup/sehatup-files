@@ -103,7 +103,6 @@ const OrderForm = ({
     // Toasts
     const { toasts, addToast, updateToast, removeToast } = useToasts();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSearchingPincode, setIsSearchingPincode] = useState(false);
     const [autofillActive, setAutofillActive] = useState(false);
 
     // ─── Initial-lead prefill ────────────────────────────────────────────────
@@ -152,7 +151,6 @@ const OrderForm = ({
         const pin = String(pincode || '').trim();
         if (pin.length === 6 && /^\d+$/.test(pin)) {
             const fetchLocation = async () => {
-                setIsSearchingPincode(true);
                 let resolved = false;
 
                 const updateLocation = (cityVal, stateVal, source) => {
@@ -222,13 +220,11 @@ const OrderForm = ({
                     await Promise.all([fetchPostalPincode(), fetchZippopotam()]);
                 } catch (err) {
                     console.warn('[Pincode Lookup] failed:', err);
-                } finally {
-                    setIsSearchingPincode(false);
                 }
             };
             fetchLocation();
         }
-    }, [pincode]);
+    }, [pincode, addToast]);
 
     // ─── Shipping rates ──────────────────────────────────────────────────────
 
