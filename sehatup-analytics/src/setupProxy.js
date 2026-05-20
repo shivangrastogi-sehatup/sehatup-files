@@ -88,13 +88,14 @@ module.exports = function (app) {
     );
     // Local development proxy for /api/leads
     app.use('/api/leads', (req, res) => {
-        const url = process.env.DEFAULT_GSCRIPT_URL;
-        if (!url) {
-            return res.status(500).json({ error: 'DEFAULT_GSCRIPT_URL is not configured' });
-        }
+        const getUrl = process.env.GOOGLE_SHEET_URL || process.env.DEFAULT_GSCRIPT_URL;
+        const postUrl = process.env.DEFAULT_GSCRIPT_URL;
 
         if (req.method === 'GET') {
-            fetch(url)
+            if (!getUrl) {
+                return res.status(500).json({ error: 'GOOGLE_SHEET_URL or DEFAULT_GSCRIPT_URL is not configured' });
+            }
+            fetch(getUrl)
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.text();
@@ -107,7 +108,10 @@ module.exports = function (app) {
                     res.status(500).json({ error: error.message });
                 });
         } else if (req.method === 'POST') {
-            if (url.includes('docs.google.com/spreadsheets')) {
+            if (!postUrl) {
+                return res.status(500).json({ error: 'DEFAULT_GSCRIPT_URL is not configured' });
+            }
+            if (postUrl.includes('docs.google.com/spreadsheets')) {
                 return res.status(200).json({ skipped: true, message: 'Default sync skipped (CSV URL configured)' });
             }
             // Collect request body
@@ -115,7 +119,7 @@ module.exports = function (app) {
             req.on('data', chunk => chunks.push(chunk));
             req.on('end', () => {
                 const bodyStr = Buffer.concat(chunks).toString();
-                fetch(url, {
+                fetch(postUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: bodyStr
