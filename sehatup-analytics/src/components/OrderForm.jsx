@@ -149,13 +149,15 @@ const OrderForm = ({
     // ─── Pincode lookup to autofill city and state ───────────────────────────
     useEffect(() => {
         const pin = String(pincode || '').trim();
+        let fallbackTimer = null;
+
         if (pin.length === 6 && /^\d+$/.test(pin)) {
             const fetchLocation = async () => {
-                let resolved = false;
+                let resolvedSource = null; // 'zippopotam' | 'official'
 
-                const updateLocation = (cityVal, stateVal, source) => {
-                    if (resolved) return;
-                    resolved = true;
+                const updateLocation = (cityVal, stateVal, sourceKey) => {
+                    if (resolvedSource === 'official') return;
+                    resolvedSource = sourceKey;
 
                     setAutofillActive(true);
                     setTimeout(() => setAutofillActive(false), 1500);
@@ -178,7 +180,7 @@ const OrderForm = ({
                     addToast({
                         type: 'success',
                         title: 'Pincode Autofilled',
-                        message: `City: ${cityVal}, State: ${stateVal} (via ${source})`,
+                        message: `City: ${cityVal}, State: ${stateVal} (via ${sourceKey === 'official' ? 'Official Post Office API' : 'Zippopotam CDN'})`,
                         autoDismiss: 3000
                     });
                 };
@@ -191,7 +193,7 @@ const OrderForm = ({
                         if (data && data[0] && data[0].Status === 'Success') {
                             const po = data[0].PostOffice?.[0];
                             if (po) {
-                                updateLocation(po.District, po.State, 'Post Office API');
+                                updateLocation(po.District, po.State, 'official');
                             }
                         }
                     } catch (e) {}
@@ -211,19 +213,27 @@ const OrderForm = ({
                                 .replace(/\s+H\.O$/i, '')
                                 .replace(/\s+G\.P\.O$/i, '')
                                 .trim();
-                            updateLocation(cleanCity, cleanState, 'Zippopotam CDN');
+                            updateLocation(cleanCity, cleanState, 'zippopotam');
                         }
                     } catch (e) {}
                 };
 
-                try {
-                    await Promise.all([fetchPostalPincode(), fetchZippopotam()]);
-                } catch (err) {
-                    console.warn('[Pincode Lookup] failed:', err);
-                }
+                // Trigger official API immediately
+                fetchPostalPincode();
+
+                // If official API doesn't resolve within 250ms, trigger Zippopotam for fast access fallback
+                fallbackTimer = setTimeout(() => {
+                    if (resolvedSource !== 'official') {
+                        fetchZippopotam();
+                    }
+                }, 250);
             };
             fetchLocation();
         }
+
+        return () => {
+            if (fallbackTimer) clearTimeout(fallbackTimer);
+        };
     }, [pincode, addToast]);
 
     // ─── Shipping rates ──────────────────────────────────────────────────────
