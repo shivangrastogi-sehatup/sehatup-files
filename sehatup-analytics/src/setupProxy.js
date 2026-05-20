@@ -95,16 +95,30 @@ module.exports = function (app) {
             if (!getUrl) {
                 return res.status(500).json({ error: 'GOOGLE_SHEET_URL or DEFAULT_GSCRIPT_URL is not configured' });
             }
-            fetch(getUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    return response.text();
+            console.log(`[Proxy] Fetching leads from GOOGLE_SHEET_URL: ${getUrl}`);
+            fetch(getUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            })
+                .then(async response => {
+                    const contentType = response.headers.get('content-type') || '';
+                    console.log(`[Proxy] Response status: ${response.status}, Content-Type: ${contentType}`);
+                    const text = await response.text();
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                    }
+                    if (text.trim().toLowerCase().startsWith('<html') || text.trim().toLowerCase().startsWith('<!doctype')) {
+                        console.log('[Proxy] Error: Received HTML instead of CSV! Content preview:', text.substring(0, 500));
+                    }
+                    return text;
                 })
                 .then(csvData => {
                     res.setHeader('Content-Type', 'text/csv');
                     res.status(200).send(csvData);
                 })
                 .catch(error => {
+                    console.error('[Proxy] Fetch leads failed:', error);
                     res.status(500).json({ error: error.message });
                 });
         } else if (req.method === 'POST') {

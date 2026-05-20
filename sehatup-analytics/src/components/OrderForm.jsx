@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ToastStack, useToasts, safeJson } from './OrderFormShared';
 
 // Inject custom animations for autofill fields
@@ -10,9 +10,9 @@ if (typeof document !== 'undefined') {
         style.textContent = `
             @keyframes autofill-glow {
                 0% {
-                    background-color: rgba(14, 165, 233, 0.25) !important;
-                    border-color: #0ea5e9 !important;
-                    box-shadow: 0 0 10px rgba(14, 165, 233, 0.4);
+                    background-color: rgba(16, 185, 129, 0.2) !important;
+                    border-color: #10b981 !important;
+                    box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
                 }
                 100% {
                     background-color: #0a0f1e !important;
@@ -104,6 +104,8 @@ const OrderForm = ({
     const { toasts, addToast, updateToast, removeToast } = useToasts();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [autofillActive, setAutofillActive] = useState(false);
+    const [autofillMessage, setAutofillMessage] = useState('');
+    const typingTimersRef = useRef({ city: null, state: null });
 
     // ─── Initial-lead prefill ────────────────────────────────────────────────
 
@@ -153,16 +155,20 @@ const OrderForm = ({
 
         if (pin.length === 6 && /^\d+$/.test(pin)) {
             const fetchLocation = async () => {
-                let resolvedSource = null; // 'zippopotam' | 'official'
+                let resolved = false;
 
                 const updateLocation = (cityVal, stateVal, sourceKey) => {
-                    if (resolvedSource === 'official') return;
-                    resolvedSource = sourceKey;
+                    if (resolved) return;
+                    resolved = true;
 
                     setAutofillActive(true);
                     setTimeout(() => setAutofillActive(false), 1500);
 
-                    const typeValue = (val, setter) => {
+                    // Clear any currently running typing intervals
+                    if (typingTimersRef.current.city) clearInterval(typingTimersRef.current.city);
+                    if (typingTimersRef.current.state) clearInterval(typingTimersRef.current.state);
+
+                    const typeValue = (val, setter, key) => {
                         let i = 0;
                         setter('');
                         const timer = setInterval(() => {
@@ -170,33 +176,32 @@ const OrderForm = ({
                             i++;
                             if (i >= val.length) {
                                 clearInterval(timer);
+                                typingTimersRef.current[key] = null;
                             }
                         }, 20); // 20ms per character
+                        typingTimersRef.current[key] = timer;
                     };
 
-                    if (cityVal) typeValue(cityVal, setCity);
-                    if (stateVal) typeValue(stateVal, setStateName);
+                    if (cityVal) typeValue(cityVal, setCity, 'city');
+                    if (stateVal) typeValue(stateVal, setStateName, 'state');
 
-                    addToast({
-                        type: 'success',
-                        title: 'Pincode Autofilled',
-                        message: `City: ${cityVal}, State: ${stateVal} (via ${sourceKey === 'official' ? 'Official Post Office API' : 'Zippopotam CDN'})`,
-                        autoDismiss: 3000
-                    });
+                    setAutofillMessage(`Autofilled via ${sourceKey === 'official' ? 'Official Post Office API' : 'Zippopotam CDN'}`);
                 };
 
                 const fetchPostalPincode = async () => {
                     try {
                         const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-                        if (!res.ok) return;
+                        if (!res.ok) return false;
                         const data = await res.json();
                         if (data && data[0] && data[0].Status === 'Success') {
                             const po = data[0].PostOffice?.[0];
                             if (po) {
                                 updateLocation(po.District, po.State, 'official');
+                                return true;
                             }
                         }
                     } catch (e) {}
+                    return false;
                 };
 
                 const fetchZippopotam = async () => {
@@ -219,22 +224,25 @@ const OrderForm = ({
                 };
 
                 // Trigger official API immediately
-                fetchPostalPincode();
+                const ok = await fetchPostalPincode();
+                if (ok) return;
 
-                // If official API doesn't resolve within 250ms, trigger Zippopotam for fast access fallback
+                // If official API didn't succeed/resolve within 1000ms, fall back to Zippopotam
                 fallbackTimer = setTimeout(() => {
-                    if (resolvedSource !== 'official') {
+                    if (!resolved) {
                         fetchZippopotam();
                     }
-                }, 250);
+                }, 1000);
             };
             fetchLocation();
+        } else {
+            setAutofillMessage('');
         }
 
         return () => {
             if (fallbackTimer) clearTimeout(fallbackTimer);
         };
-    }, [pincode, addToast]);
+    }, [pincode]);
 
     // ─── Shipping rates ──────────────────────────────────────────────────────
 
@@ -922,6 +930,12 @@ const OrderForm = ({
                         />
                         <input placeholder="Pincode *" value={pincode} onChange={e => setPincode(e.target.value)} style={inputStyle} />
                     </div>
+                    {autofillMessage && (
+                        <div style={{ fontSize: 12, color: '#10b981', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }}></span>
+                            {autofillMessage}
+                        </div>
+                    )}
                 </div>
             </div>
 

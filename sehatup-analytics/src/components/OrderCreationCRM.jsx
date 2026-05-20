@@ -1,257 +1,509 @@
-// OrderCreationCRM.jsx
-// Lead-list view + right-panel <OrderForm /> for the CRM/order-creation role.
-// The form itself is implemented in OrderForm.jsx so other roles (Tele-Sales,
-// Doctor, etc.) can reuse the exact same flow via OrderModal.
-
-import React, { useState, useEffect, useCallback } from 'react';
+// OrderCreationCRM.jsx — Admin-style layout with sidebar navigation
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import OrderForm from './OrderForm';
 import { parseCSV } from './OrderFormShared';
+import { db, auth } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+    ClipboardList, Settings, LogOut,
+    Search, RefreshCw, ChevronDown,
+    Package, Save, CheckCircle
+} from 'lucide-react';
 
-// ─── Apps Script default URL ────────────────────────────────────────────────
-// This is the production URL used to sync customer + last-order rows back to
-// the leads Google Sheet. A per-browser override can be set via the gear (⚙)
-// panel below — that value (in localStorage 'crm_gscript_url') takes priority.
-//
-// ┌────────────────────────────────────────────────────────────────────────┐
-// │ ACTION REQUIRED: paste your deployed Apps Script Web App URL below.   │
-// │ Until this is set, every agent's browser must enter their own URL in   │
-// │ the ⚙ panel; new agents will see "Sheet sync disabled" by default.    │
-// │ Deploy template: https://script.google.com (see comment block below).  │
-// └────────────────────────────────────────────────────────────────────────┘
-export const DEFAULT_GSCRIPT_URL = '/api/leads';   // ← e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
+export const DEFAULT_GSCRIPT_URL = '/api/leads';
 
-// Apps Script doPost reference (paste into Apps Script editor, deploy as Web App):
-//
-//   function doPost(e) {
-//     try {
-//       const d = JSON.parse(e.postData.contents);
-//       const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-//       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-//       const phoneCol = headers.indexOf('Phone Number') + 1;
-//       if (phoneCol === 0) throw new Error("Phone Number column not found");
-//       const lastRow = sheet.getLastRow();
-//       let updateRow = -1;
-//       if (lastRow > 1) {
-//         const phoneData = sheet.getRange(2, phoneCol, lastRow - 1, 1).getValues();
-//         for (let i = 0; i < phoneData.length; i++) {
-//           if (phoneData[i][0].toString().replace(/\D/g,'') === d.phone) { updateRow = i + 2; break; }
-//         }
-//       }
-//       if (updateRow === -1) {
-//         updateRow = lastRow + 1;
-//         if (updateRow > sheet.getMaxRows()) sheet.insertRowAfter(sheet.getMaxRows());
-//       }
-//       Object.keys(d.updates).forEach(h => { const c = headers.indexOf(h)+1; if(c) sheet.getRange(updateRow,c).setValue(d.updates[h]); });
-//       let luCol = headers.indexOf('Last Updated')+1; if(!luCol){sheet.getRange(1,headers.length+1).setValue('Last Updated');luCol=headers.length+1;}
-//       let ubCol = headers.indexOf('Updated By')+1; if(!ubCol){sheet.getRange(1,headers.length+2).setValue('Updated By');ubCol=headers.length+2;}
-//       sheet.getRange(updateRow,luCol).setValue(new Date().toLocaleString('en-IN'));
-//       sheet.getRange(updateRow,ubCol).setValue(d.updatedBy);
-//       return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
-//     } catch(err) {
-//       return ContentService.createTextOutput(JSON.stringify({error: err.message})).setMimeType(ContentService.MimeType.JSON);
-//     }
-//   }
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const getInitials = (name) => {
+    if (!name || name === 'Unnamed') return '??';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 // ─── Component ──────────────────────────────────────────────────────────────
-
 const OrderCreationCRM = ({ user, onLogout }) => {
-    const agentName = user?.displayName || user?.email || 'CRM Agent';
+    const agentEmail = user?.email || '';
 
-    const [csvUrl] = useState('/api/leads');
-    const [leads, setLeads] = useState([]);
-    const [selectedLead, setSelectedLead] = useState(null);
-    const [isManualEntry, setIsManualEntry] = useState(false);
-    const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+    const [view, setView] = useState('create');
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-    // Sheet-sync URL: localStorage override wins; falls back to DEFAULT_GSCRIPT_URL.
+    // User profile from Firestore
+    const [profileName, setProfileName] = useState('');
+    const [profileLoaded, setProfileLoaded] = useState(false);
+
+    // Settings form fields
+    const [settingsName, setSettingsName] = useState('');
+    const [settingsPhone, setSettingsPhone] = useState('');
+    const [settingsSaving, setSettingsSaving] = useState(false);
+    const [settingsSaved, setSettingsSaved] = useState(false);
+
+    // Fetch user profile from Firestore "users" collection
+    useEffect(() => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        const uid = currentUser.uid;
+
+        (async () => {
+            try {
+                // 1. Try direct UID lookup
+                const snap = await getDoc(doc(db, 'users', uid));
+                const rawData = snap.exists() ? snap.data() : null;
+                let name = rawData?.name || rawData?.userName || rawData?.displayName || '';
+
+                // 2. If no name found, query by email across all user docs
+                if (!name && currentUser.email) {
+                    const { collection: col, query: q, where, getDocs: gd } = await import('firebase/firestore');
+                    const emailQuery = q(col(db, 'users'), where('email', '==', currentUser.email));
+                    const emailSnap = await gd(emailQuery);
+                    if (!emailSnap.empty) {
+                        for (const d of emailSnap.docs) {
+                            const data = d.data();
+                            name = data.name || data.userName || data.displayName || '';
+                            if (name) {
+                                // Also grab phone if available
+                                if (data.phone) setSettingsPhone(data.phone);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Last fallback: Firebase Auth displayName
+                if (!name) name = currentUser.displayName || '';
+
+                setProfileName(name);
+                setSettingsName(name);
+                if (rawData?.phone) setSettingsPhone(rawData.phone);
+            } catch (err) {
+                console.warn('[CRM] Failed to fetch user profile:', err);
+                setProfileName(currentUser.displayName || '');
+                setSettingsName(currentUser.displayName || '');
+            } finally {
+                setProfileLoaded(true);
+            }
+        })();
+    }, [user]);
+
+    const displayName = profileName || 'Unnamed';
+
+    // Save profile to Firestore
+    const saveProfile = async () => {
+        if (!user?.uid) return;
+        setSettingsSaving(true);
+        setSettingsSaved(false);
+        try {
+            await setDoc(doc(db, 'users', user.uid), {
+                name: settingsName.trim(),
+                phone: settingsPhone.trim(),
+                email: agentEmail,
+                role: 'order_creator',
+                updatedAt: new Date()
+            }, { merge: true });
+            setProfileName(settingsName.trim());
+            setSettingsSaved(true);
+            setTimeout(() => setSettingsSaved(false), 3000);
+        } catch (err) {
+            console.error('[CRM] Failed to save profile:', err);
+            alert('Failed to save profile: ' + err.message);
+        } finally {
+            setSettingsSaving(false);
+        }
+    };
+
+    // Sheet sync config
     const [gscriptOverride, setGscriptOverride] = useState(() => {
-        try { return localStorage.getItem('crm_gscript_url') || ''; }
-        catch { return ''; }
+        try { return localStorage.getItem('crm_gscript_url') || ''; } catch { return ''; }
     });
-    const [showConfig, setShowConfig] = useState(false);
-
-    const effectiveGscriptUrl = (gscriptOverride && gscriptOverride.trim())
-        ? gscriptOverride.trim()
-        : DEFAULT_GSCRIPT_URL;
+    const effectiveGscriptUrl = (gscriptOverride && gscriptOverride.trim()) ? gscriptOverride.trim() : DEFAULT_GSCRIPT_URL;
+    const usingDefault = !gscriptOverride.trim() && DEFAULT_GSCRIPT_URL;
+    const sheetEnabled = !!effectiveGscriptUrl;
 
     const saveGscriptOverride = (url) => {
         setGscriptOverride(url);
-        try { localStorage.setItem('crm_gscript_url', url); }
-        catch (e) { console.warn('[CRM] localStorage set failed', e); }
+        try { localStorage.setItem('crm_gscript_url', url); } catch {}
     };
-
     const clearGscriptOverride = () => {
         setGscriptOverride('');
         try { localStorage.removeItem('crm_gscript_url'); } catch {}
     };
 
-    // ─── Leads ──────────────────────────────────────────────────────────────
+    // Order history
+    const [orders, setOrders] = useState([]);
+    const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+    const [historySearch, setHistorySearch] = useState('');
+    const [orderFormKey, setOrderFormKey] = useState(() => `manual-${Date.now()}`);
 
-    const fetchLeads = useCallback(async () => {
-        if (!csvUrl) return;
-        setIsLoadingLeads(true);
+    const fetchOrders = useCallback(async () => {
+        setIsLoadingOrders(true);
         try {
-            const response = await fetch(csvUrl);
-            const text = await response.text();
-            const parsed = parseCSV(text);
-            if (parsed.length > 0) console.log('[Leads] CSV columns:', Object.keys(parsed[0]));
-            setLeads(parsed);
-        } catch (error) {
-            if (error.message === 'HTML_RESPONSE') {
-                alert("Not a valid CSV URL. Go to your sheet → File → Share → Publish to web → Select 'CSV'.");
-            } else {
-                console.error('[Leads] Failed to fetch:', error);
-            }
+            const res = await fetch('/api/leads');
+            const text = await res.text();
+            setOrders(parseCSV(text));
+        } catch (err) {
+            console.error('[CRM] Failed to fetch orders:', err);
         } finally {
-            setIsLoadingLeads(false);
+            setIsLoadingOrders(false);
         }
-    }, [csvUrl]);
+    }, []);
 
-    useEffect(() => { fetchLeads(); }, [fetchLeads]);
+    useEffect(() => { if (view === 'history') fetchOrders(); }, [view, fetchOrders]);
 
-    // ─── Lead selection ─────────────────────────────────────────────────────
+    const filteredOrders = useMemo(() => {
+        if (!historySearch.trim()) return orders;
+        const q = historySearch.toLowerCase();
+        return orders.filter(o =>
+            (o['First Name'] || '').toLowerCase().includes(q) ||
+            (o['Last Name'] || '').toLowerCase().includes(q) ||
+            (o['Phone Number'] || '').toLowerCase().includes(q) ||
+            (o['District/City'] || '').toLowerCase().includes(q) ||
+            (o['State'] || '').toLowerCase().includes(q)
+        );
+    }, [orders, historySearch]);
 
-    const selectLead = (lead) => {
-        // Force OrderForm remount so it re-applies the initialLead prefill.
-        setSelectedLead(null);
-        setIsManualEntry(false);
-        setTimeout(() => setSelectedLead(lead), 0);
-    };
+    // Close profile menu on outside click
+    useEffect(() => {
+        if (!showProfileMenu) return;
+        const handler = () => setShowProfileMenu(false);
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, [showProfileMenu]);
 
-    const startNewOrder = () => {
-        setSelectedLead(null);
-        setIsManualEntry(false);
-        setTimeout(() => setIsManualEntry(true), 0);
-    };
+    const resetOrderForm = () => setOrderFormKey(`manual-${Date.now()}`);
 
-    // ─── Render ─────────────────────────────────────────────────────────────
-
-    const showForm = selectedLead || isManualEntry;
-    const formInitialLead = selectedLead || (isManualEntry ? {} : null);
-    // key forces OrderForm remount (and state reset) on new lead / new manual.
-    const formKey = selectedLead
-        ? `lead-${leads.indexOf(selectedLead)}`
-        : (isManualEntry ? `manual-${Date.now()}` : 'none');
-
-    const usingDefault = !gscriptOverride.trim() && DEFAULT_GSCRIPT_URL;
-    const sheetEnabled = !!effectiveGscriptUrl;
+    const navItems = [
+        { id: 'create', label: 'Create Order', icon: Package },
+        { id: 'history', label: 'Order History', icon: ClipboardList },
+        { id: 'settings', label: 'Settings', icon: Settings },
+    ];
 
     return (
-        <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial, sans-serif', color: '#e2e8f0', background: '#0a0f1e' }}>
+        <div className="admin-layout">
+            {/* ──── SIDEBAR ──── */}
+            <aside className="admin-sidebar">
+                <div className="sidebar-header">
+                    <div className="h-title" style={{ fontSize: '24px' }}>
+                        SehatUp <span style={{ fontWeight: 300, opacity: 0.7 }}>CRM</span>
+                    </div>
+                </div>
 
-            {/* LEFT: Leads */}
-            <div style={{ width: '28%', minWidth: 260, borderRight: '1px solid #1e293b', padding: '20px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h2 style={{ color: '#fff', margin: 0, fontSize: 18 }}>Order Requests</h2>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={startNewOrder} style={{ ...refreshBtnStyle, background: '#3b82f6', color: '#fff' }} title="New Manual Order">+ New</button>
-                        <button onClick={fetchLeads} disabled={isLoadingLeads} style={refreshBtnStyle}>
-                            {isLoadingLeads ? '...' : '↻'}
+                <nav className="sidebar-nav">
+                    <div className="nav-section">Navigation</div>
+                    {navItems.map(item => (
+                        <button
+                            key={item.id}
+                            className={`nav-item ${view === item.id ? 'active' : ''}`}
+                            onClick={() => setView(item.id)}
+                        >
+                            <item.icon size={20} /> {item.label}
                         </button>
-                        <button onClick={() => setShowConfig(v => !v)} style={{ ...refreshBtnStyle, background: showConfig ? '#1e3a5f' : '#1e293b' }} title="Configure">⚙</button>
-                    </div>
-                </div>
-                <div style={{ fontSize: 11, color: '#475569', marginBottom: showConfig ? 10 : 12 }}>
-                    Agent: {agentName}
-                    {sheetEnabled
-                        ? <span style={{ color: '#4ade80', marginLeft: 8 }}>· Sheet sync ON{usingDefault ? ' (default)' : ' (override)'}</span>
-                        : <span style={{ color: '#f59e0b', marginLeft: 8 }}>· Sheet sync OFF</span>}
-                </div>
+                    ))}
+                </nav>
 
-                {showConfig && (
-                    <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, padding: 14, marginBottom: 14 }}>
-                        <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginBottom: 8 }}>Google Sheets Sync</div>
-                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 8, lineHeight: 1.5 }}>
-                            {DEFAULT_GSCRIPT_URL
-                                ? 'Default URL is hard-coded in code. Paste an override here only if you need to point at a different Apps Script (e.g. a test sheet).'
-                                : 'No default URL set in code (DEFAULT_GSCRIPT_URL is empty). Paste your Apps Script Web App URL here, or set the default in OrderCreationCRM.jsx.'}
-                        </div>
-                        <input
-                            placeholder={DEFAULT_GSCRIPT_URL ? '(using default — paste here to override)' : 'https://script.google.com/macros/s/.../exec'}
-                            value={gscriptOverride}
-                            onChange={e => saveGscriptOverride(e.target.value)}
-                            style={{ ...inputStyle, marginBottom: 6, fontSize: 11 }}
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                            <span style={{ color: sheetEnabled ? '#4ade80' : '#f59e0b' }}>
-                                {sheetEnabled
-                                    ? `✓ ${usingDefault ? 'Using default URL' : 'Using override URL'}`
-                                    : '⚠ Sheet sync disabled — orders will NOT update the sheet'}
-                            </span>
-                            {gscriptOverride.trim() && (
-                                <button onClick={clearGscriptOverride} style={{ background: 'transparent', border: '1px solid #1e293b', color: '#94a3b8', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>
-                                    Reset to default
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                <div style={{ fontSize: 12, color: '#475569', marginBottom: 12 }}>{leads.length} leads</div>
-
-                <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4, paddingBottom: 16 }}>
-                    {leads.map((lead, i) => (
-                        <div key={i} onClick={() => selectLead(lead)} style={{
-                            padding: '12px',
-                            background: selectedLead === lead ? '#1e293b' : 'transparent',
-                            border: `1px solid ${selectedLead === lead ? '#3b82f6' : '#1e293b'}`,
-                            marginBottom: 8, borderRadius: 8, cursor: 'pointer',
+                {/* ──── SIDEBAR FOOTER ──── */}
+                <div className="sidebar-footer" style={{ position: 'relative' }}>
+                    <div
+                        onClick={(e) => { e.stopPropagation(); setShowProfileMenu(v => !v); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: 8, borderRadius: 12, cursor: 'pointer',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                        {/* Proper circle avatar */}
+                        <div style={{
+                            width: 40, height: 40, minWidth: 40, minHeight: 40,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, var(--accent1, #f43f5e), var(--accent2, #8b5cf6))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: 800, color: '#fff', fontSize: 14,
+                            border: '2px solid rgba(255,255,255,0.1)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                         }}>
-                            <strong style={{ color: selectedLead === lead ? '#38bdf8' : '#e2e8f0', fontSize: 14 }}>
-                                {lead['First Name'] || lead['firstName']} {lead['Last Name'] || lead['lastName']}
-                            </strong>
-                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>{lead['Phone Number'] || lead['phone']}</div>
-                            <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
-                                {lead['District/City'] || lead['city']}, {lead['State'] || lead['state']}
+                            {getInitials(displayName)}
+                        </div>
+                        {/* Name only */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                                fontSize: 14, fontWeight: 600, color: '#fff',
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                            }}>
+                                {displayName}
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                                <span style={{
+                                    fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+                                    padding: '1px 6px', borderRadius: 4,
+                                    background: 'rgba(139,92,246,0.2)', color: '#a78bfa',
+                                    border: '1px solid rgba(139,92,246,0.3)'
+                                }}>order-creator</span>
                             </div>
                         </div>
-                    ))}
-                </div>
-
-                {onLogout && (
-                    <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #1e293b' }}>
-                        <button
-                            onClick={onLogout}
-                            style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px solid #ef444455', color: '#ef4444', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#ef444415'; e.currentTarget.style.borderColor = '#ef4444'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#ef444455'; }}
-                        >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                <polyline points="16 17 21 12 16 7"></polyline>
-                                <line x1="21" y1="12" x2="9" y2="12"></line>
-                            </svg>
-                            Log Out
-                        </button>
+                        <ChevronDown size={14} style={{
+                            opacity: 0.5, flexShrink: 0,
+                            transform: showProfileMenu ? 'rotate(180deg)' : 'none',
+                            transition: 'transform 0.2s'
+                        }} />
                     </div>
-                )}
-            </div>
 
-            {/* RIGHT: Order Form */}
-            <div style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
-                {!showForm ? (
-                    <div style={{ color: '#334155', marginTop: 120, textAlign: 'center', fontSize: 18 }}>
-                        ← Select a lead to create an order
-                        <div style={{ marginTop: 24 }}>
-                            <button onClick={startNewOrder} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', color: '#fff', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
-                                + Create Manual Order
-                            </button>
+                    {/* Dropdown menu */}
+                    {showProfileMenu && (
+                        <div style={{
+                            position: 'absolute', bottom: '100%', left: 8, right: 8,
+                            marginBottom: 8,
+                            background: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16,
+                            padding: 8, zIndex: 9999,
+                            boxShadow: '0 -10px 40px rgba(0,0,0,0.6)'
+                        }}>
+                            <div style={{ padding: '12px 12px 8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <strong style={{ color: '#fff', fontSize: 13 }}>{displayName}</strong>
+                                <div style={{ fontSize: 11, opacity: 0.5, color: '#94a3b8', marginTop: 2 }}>{agentEmail}</div>
+                            </div>
+                            <DropdownItem icon={<Settings size={16} />} label="Settings" onClick={() => { setView('settings'); setShowProfileMenu(false); }} />
+                            {onLogout && <DropdownItem icon={<LogOut size={16} />} label="Logout" color="#ef4444" hoverBg="rgba(239,68,68,0.1)" onClick={onLogout} />}
                         </div>
+                    )}
+                </div>
+            </aside>
+
+            {/* ──── MAIN ──── */}
+            <main className="admin-main">
+                <header className="main-header">
+                    <div className="header-left">
+                        <h2 className="view-title">
+                            {view === 'create' && 'Create Order'}
+                            {view === 'history' && 'Order History'}
+                            {view === 'settings' && 'CRM Settings'}
+                        </h2>
                     </div>
-                ) : (
-                    <OrderForm
-                        key={formKey}
-                        agentName={agentName}
-                        initialLead={formInitialLead}
-                        gscriptUrl={effectiveGscriptUrl}
-                    />
-                )}
-            </div>
+                    <div className="header-right" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <span style={{
+                            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                            background: sheetEnabled ? 'rgba(74,222,128,0.1)' : 'rgba(245,158,11,0.1)',
+                            color: sheetEnabled ? '#4ade80' : '#f59e0b',
+                            border: `1px solid ${sheetEnabled ? 'rgba(74,222,128,0.3)' : 'rgba(245,158,11,0.3)'}`
+                        }}>
+                            {sheetEnabled ? `● Sheet sync ON${usingDefault ? ' (default)' : ''}` : '○ Sheet sync OFF'}
+                        </span>
+                        {view === 'create' && (
+                            <button className="btn ghost" onClick={resetOrderForm} style={{ height: 36, fontSize: 12 }}>
+                                <RefreshCw size={14} /> New Form
+                            </button>
+                        )}
+                        {view === 'history' && (
+                            <button className="btn ghost" onClick={fetchOrders} disabled={isLoadingOrders} style={{ height: 36, fontSize: 12 }}>
+                                <RefreshCw size={14} /> {isLoadingOrders ? 'Loading...' : 'Refresh'}
+                            </button>
+                        )}
+                    </div>
+                </header>
+
+                <div className="content-area">
+                    {/* ── CREATE ORDER ── */}
+                    {view === 'create' && (
+                        <OrderForm
+                            key={orderFormKey}
+                            agentName={displayName}
+                            initialLead={{}}
+                            gscriptUrl={effectiveGscriptUrl}
+                        />
+                    )}
+
+                    {/* ── ORDER HISTORY ── */}
+                    {view === 'history' && (
+                        <div>
+                            <div className="glass-panel" style={{ padding: 16, marginBottom: 24 }}>
+                                <div style={{ position: 'relative' }}>
+                                    <Search style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} size={16} />
+                                    <input
+                                        type="text" className="select"
+                                        style={{ width: '100%', paddingLeft: 40, height: 44 }}
+                                        placeholder="Search by name, phone, city, state..."
+                                        value={historySearch}
+                                        onChange={e => setHistorySearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                                {isLoadingOrders ? (
+                                    <div style={{ padding: 60, textAlign: 'center', color: '#64748b' }}>
+                                        <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+                                        <div>Loading orders...</div>
+                                    </div>
+                                ) : filteredOrders.length === 0 ? (
+                                    <div style={{ padding: 60, textAlign: 'center', color: '#475569' }}>
+                                        <ClipboardList size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+                                        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>No orders found</div>
+                                        <div style={{ fontSize: 13 }}>{orders.length === 0 ? 'Create your first order to see it here.' : 'Try a different search query.'}</div>
+                                    </div>
+                                ) : (
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                            <thead>
+                                                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                                    {['#', 'Name', 'Phone', 'Address', 'City', 'State', 'Pin Code', 'Last Updated', 'Updated By'].map(h => (
+                                                        <th key={h} style={{
+                                                            padding: '14px 16px', textAlign: 'left', fontWeight: 700,
+                                                            fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px',
+                                                            color: '#64748b', whiteSpace: 'nowrap', position: 'sticky', top: 0,
+                                                            background: 'rgba(15,23,42,0.9)', backdropFilter: 'blur(10px)'
+                                                        }}>{h}</th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredOrders.map((order, i) => (
+                                                    <tr key={i} style={{
+                                                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                                        transition: 'background 0.2s', cursor: 'default'
+                                                    }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <td style={tdStyle}>{i + 1}</td>
+                                                        <td style={{ ...tdStyle, fontWeight: 600, color: '#e2e8f0' }}>
+                                                            {order['First Name'] || ''} {order['Last Name'] || ''}
+                                                        </td>
+                                                        <td style={tdStyle}>{order['Phone Number'] || ''}</td>
+                                                        <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {order['Address'] || ''}
+                                                        </td>
+                                                        <td style={tdStyle}>{order['District/City'] || ''}</td>
+                                                        <td style={tdStyle}>{order['State'] || ''}</td>
+                                                        <td style={tdStyle}>{order['Pin Code'] || ''}</td>
+                                                        <td style={{ ...tdStyle, fontSize: 11, color: '#64748b' }}>{order['Last Updated'] || '-'}</td>
+                                                        <td style={tdStyle}>
+                                                            {order['Updated By'] ? (
+                                                                <span style={{
+                                                                    fontSize: 10, fontWeight: 700, padding: '3px 8px',
+                                                                    borderRadius: 6, background: 'rgba(139,92,246,0.15)',
+                                                                    color: '#a78bfa', border: '1px solid rgba(139,92,246,0.25)'
+                                                                }}>{order['Updated By']}</span>
+                                                            ) : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div style={{ padding: '12px 16px', fontSize: 12, color: '#475569', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                            Showing {filteredOrders.length} of {orders.length} orders
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── SETTINGS ── */}
+                    {view === 'settings' && (
+                        <div style={{ maxWidth: 640 }}>
+                            {/* Profile Section */}
+                            <div className="glass-panel" style={{ padding: 32, marginBottom: 24 }}>
+                                <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: '#fff' }}>Profile</h3>
+                                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#64748b' }}>Update your display name and contact info.</p>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24, padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div style={{
+                                        width: 56, height: 56, minWidth: 56, borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, var(--accent1, #f43f5e), var(--accent2, #8b5cf6))',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontWeight: 800, color: '#fff', fontSize: 20,
+                                        border: '3px solid rgba(255,255,255,0.1)',
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                                    }}>
+                                        {getInitials(settingsName || displayName)}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>{settingsName || 'Unnamed'}</div>
+                                        <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{agentEmail}</div>
+                                    </div>
+                                </div>
+
+                                <label style={labelStyle}>Display Name</label>
+                                <input
+                                    className="select"
+                                    placeholder="Enter your name"
+                                    value={settingsName}
+                                    onChange={e => setSettingsName(e.target.value)}
+                                    style={{ width: '100%', marginBottom: 16 }}
+                                />
+
+                                <label style={labelStyle}>Phone Number</label>
+                                <input
+                                    className="select"
+                                    placeholder="Enter your phone number"
+                                    value={settingsPhone}
+                                    onChange={e => setSettingsPhone(e.target.value)}
+                                    style={{ width: '100%', marginBottom: 20 }}
+                                />
+
+                                <button
+                                    onClick={saveProfile}
+                                    disabled={settingsSaving}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                        width: '100%', padding: '12px 20px', borderRadius: 12,
+                                        background: settingsSaved ? '#10b981' : 'linear-gradient(135deg, var(--accent1, #f43f5e), var(--accent2, #8b5cf6))',
+                                        color: '#fff', border: 'none', fontWeight: 700, fontSize: 14,
+                                        cursor: settingsSaving ? 'wait' : 'pointer',
+                                        opacity: settingsSaving ? 0.7 : 1,
+                                        transition: 'all 0.3s',
+                                        boxShadow: '0 4px 15px rgba(244,63,94,0.3)'
+                                    }}
+                                >
+                                    {settingsSaved ? <><CheckCircle size={16} /> Saved!</> : settingsSaving ? 'Saving...' : <><Save size={16} /> Save Profile</>}
+                                </button>
+                            </div>
+
+                            {/* Sheets Sync Section */}
+                            <div className="glass-panel" style={{ padding: 32 }}>
+                                <h3 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: '#fff' }}>Google Sheets Sync</h3>
+                                <p style={{ margin: '0 0 20px', fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>
+                                    Configure the Apps Script Web App URL used to sync orders to your Google Sheet.
+                                </p>
+
+                                <label style={labelStyle}>Apps Script URL Override</label>
+                                <input
+                                    className="select"
+                                    placeholder={DEFAULT_GSCRIPT_URL ? '(using default — paste here to override)' : 'https://script.google.com/macros/s/.../exec'}
+                                    value={gscriptOverride}
+                                    onChange={e => saveGscriptOverride(e.target.value)}
+                                    style={{ width: '100%', marginBottom: 12 }}
+                                />
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: sheetEnabled ? '#4ade80' : '#f59e0b' }}>
+                                        {sheetEnabled ? `✓ ${usingDefault ? 'Using default URL' : 'Using override URL'}` : '⚠ Sheet sync disabled'}
+                                    </span>
+                                    {gscriptOverride.trim() && (
+                                        <button onClick={clearGscriptOverride} className="btn ghost" style={{ fontSize: 12, height: 32 }}>Reset to default</button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </main>
         </div>
     );
 };
 
-const inputStyle = { width: '100%', padding: '10px 12px', marginBottom: 10, border: '1px solid #1e293b', borderRadius: 6, boxSizing: 'border-box', background: '#0a0f1e', color: '#e2e8f0', fontSize: 13 };
-const refreshBtnStyle = { padding: '6px 12px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 };
+// ─── Small components ───────────────────────────────────────────────────────
+const DropdownItem = ({ icon, label, onClick, color = '#94a3b8', hoverBg = 'rgba(255,255,255,0.05)' }) => (
+    <div
+        onClick={onClick}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', borderRadius: 8, color, fontSize: 13, transition: 'background 0.2s' }}
+        onMouseEnter={e => e.currentTarget.style.background = hoverBg}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+    >
+        {icon} {label}
+    </div>
+);
+
+const tdStyle = { padding: '12px 16px', color: '#94a3b8', whiteSpace: 'nowrap' };
+const labelStyle = { fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' };
 
 export default OrderCreationCRM;
