@@ -29,7 +29,6 @@ const OrderCreationCRM = ({ user, onLogout }) => {
 
     // User profile from Firestore
     const [profileName, setProfileName] = useState('');
-    const [profileLoaded, setProfileLoaded] = useState(false);
 
     // Settings form fields
     const [settingsName, setSettingsName] = useState('');
@@ -78,8 +77,6 @@ const OrderCreationCRM = ({ user, onLogout }) => {
                 console.warn('[CRM] Failed to fetch user profile:', err);
                 setProfileName(currentUser.displayName || '');
                 setSettingsName(currentUser.displayName || '');
-            } finally {
-                setProfileLoaded(true);
             }
         })();
     }, [user]);
