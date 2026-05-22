@@ -107,7 +107,83 @@ const OrderForm = ({
     const [autofillMessage, setAutofillMessage] = useState('');
     const typingTimersRef = useRef({ city: null, state: null });
 
+    // Free Sample
+    const [freeSampleVariant, setFreeSampleVariant] = useState(null);
+    const [addFreeSample, setAddFreeSample] = useState(false);
+
+    // Order Discount State
+    const [orderDiscountType, setOrderDiscountType] = useState('none'); // 'none', 'code', 'custom', 'automatic'
+    const [orderDiscountCode, setOrderDiscountCode] = useState('');
+    const [orderCustomDiscountType, setOrderCustomDiscountType] = useState('percentage'); // 'percentage', 'fixed_amount'
+    const [orderCustomDiscountValue, setOrderCustomDiscountValue] = useState('');
+    const [orderCustomDiscountReason, setOrderCustomDiscountReason] = useState('');
+    
+    // UI State for Modals
+    const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+    const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
+    
+    // Temporary State for Discount Modal
+    const [tempDiscountCode, setTempDiscountCode] = useState('');
+    const [tempApplyAutomatic, setTempApplyAutomatic] = useState(false);
+    const [tempAddCustom, setTempAddCustom] = useState(false);
+    const [tempCustomType, setTempCustomType] = useState('fixed_amount');
+    const [tempCustomValue, setTempCustomValue] = useState('');
+    const [tempCustomReason, setTempCustomReason] = useState('');
+
+    // Temporary State for Shipping Modal
+    const [tempShippingSelectionMode, setTempShippingSelectionMode] = useState('rates');
+    const [tempSelectedShipping, setTempSelectedShipping] = useState(null);
+    const [tempCustomShippingTitle, setTempCustomShippingTitle] = useState('');
+    const [tempCustomShippingPrice, setTempCustomShippingPrice] = useState('');
+
     // ─── Initial-lead prefill ────────────────────────────────────────────────
+
+    useEffect(() => {
+        const fetchFreeSample = async () => {
+            try {
+                const query = `{
+                    products(first: 1, query: "title:\\"Ashwagandha 30 Tablets (Free sample)\\"") {
+                        edges {
+                            node {
+                                id
+                                title
+                                variants(first: 1) {
+                                    edges {
+                                        node {
+                                            id
+                                            title
+                                            price
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }`;
+                const res = await fetch('/shopify-v2/graphql.json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query }),
+                });
+                const data = await safeJson(res);
+                const product = data?.data?.products?.edges?.[0]?.node;
+                if (product) {
+                    const variantNode = product.variants?.edges?.[0]?.node;
+                    if (variantNode) {
+                        setFreeSampleVariant({
+                            id: parseInt(variantNode.id.split('/').pop(), 10) || variantNode.id,
+                            productTitle: product.title,
+                            variantTitle: variantNode.title,
+                            price: Math.round(parseFloat(variantNode.price) * 100),
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn('[Free Sample] Failed to fetch:', err);
+            }
+        };
+        fetchFreeSample();
+    }, []);
 
     useEffect(() => {
         if (!initialLead) return;
@@ -244,6 +320,71 @@ const OrderForm = ({
         };
     }, [pincode]);
 
+    // ─── Phone lookup to autofill customer details ───────────────────────────
+    useEffect(() => {
+        const digits = phone.replace(/\D/g, '');
+        if (digits.length === 10) {
+            // Only try autofill if they haven't already filled the name
+            if (customerFirstName.trim()) return;
+
+            const fetchCustomerByPhone = async () => {
+                const normalizedPhone = `+91${digits}`;
+                let existing = null;
+
+                try {
+                    // Try GraphQL first
+                    const gqlRes = await fetch('/shopify-v2/graphql.json', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: `{ customers(first:1, query:"phone:${normalizedPhone}") { edges { node { id firstName lastName email phone defaultAddress { address1 address2 city province zip } } } } }` }),
+                    });
+                    const gqlData = await safeJson(gqlRes);
+                    const match = (gqlData?.data?.customers?.edges || []).map(e => e.node).find(n => n.phone === normalizedPhone);
+                    if (match) {
+                        existing = {
+                            first_name: match.firstName,
+                            last_name: match.lastName,
+                            email: match.email,
+                            default_address: match.defaultAddress
+                        };
+                    }
+
+                    if (!existing) {
+                        // Try REST
+                        const res = await fetch(`/shopify-v2/customers.json?phone=${encodeURIComponent(normalizedPhone)}&limit=1`);
+                        const data = await safeJson(res);
+                        if (res.ok && data.customers?.length > 0) {
+                            existing = data.customers[0];
+                        }
+                    }
+
+                    if (existing && existing.first_name) {
+                        setCustomerFirstName(existing.first_name || '');
+                        setCustomerLastName(existing.last_name || '');
+                        
+                        if (existing.default_address) {
+                            const addr = existing.default_address;
+                            setAddress(addr.address1 || '');
+                            setLandmark(addr.address2 || '');
+                            setCity(addr.city || '');
+                            setStateName(addr.province || '');
+                            setPincode(addr.zip || '');
+                        }
+                        
+                        setAutofillActive(true);
+                        setTimeout(() => setAutofillActive(false), 1500);
+                        addToast({ type: 'success', title: 'Customer Found', message: `Autofilled details for ${existing.first_name}`, autoDismiss: 4000 });
+                    }
+                } catch (e) {
+                    console.warn('[Phone lookup] failed:', e);
+                }
+            };
+            
+            const timer = setTimeout(fetchCustomerByPhone, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [phone, customerFirstName, addToast]);
+
     // ─── Shipping rates ──────────────────────────────────────────────────────
 
     const fetchShippingRates = async () => {
@@ -338,20 +479,62 @@ const OrderForm = ({
     const fetchProducts = async (term) => {
         setIsSearching(true);
         try {
-            const response = await fetch(`/api-sehatup/search/suggest.json?q=${encodeURIComponent(term)}&resources[type]=product`);
-            const data = await response.json();
-            const basicProducts = data?.resources?.results?.products || [];
-            const detailed = await Promise.all(basicProducts.map(async (p) => {
-                try {
-                    const res = await fetch(`/api-sehatup/products/${p.handle}.js`);
-                    const full = await res.json();
-                    return { ...p, variants: full.variants };
-                } catch (e) {
-                    console.warn('[Product fetch] variant lookup failed for', p.handle, e);
-                    return { ...p, variants: [] };
+            const cleanTerm = term.replace(/"/g, '\\"');
+            const query = `{
+                products(first: 15, query: "${cleanTerm}*") {
+                    edges {
+                        node {
+                            id
+                            title
+                            handle
+                            featuredImage { url }
+                            variants(first: 50) {
+                                edges {
+                                    node {
+                                        id
+                                        title
+                                        price
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-            }));
-            setSearchResults(detailed.filter(p => p.variants && p.variants.length > 0));
+            }`;
+
+            const res = await fetch('/shopify-v2/graphql.json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query }),
+            });
+            const data = await res.json();
+            
+            if (data.errors) {
+                console.error('[Product search] GraphQL errors:', data.errors);
+                setSearchResults([]);
+                return;
+            }
+
+            const products = (data?.data?.products?.edges || []).map(edge => {
+                const node = edge.node;
+                return {
+                    id: parseInt(node.id.split('/').pop(), 10) || node.id,
+                    title: node.title,
+                    handle: node.handle,
+                    image: node.featuredImage?.url || null,
+                    variants: (node.variants?.edges || []).map(vEdge => {
+                        const vNode = vEdge.node;
+                        return {
+                            id: parseInt(vNode.id.split('/').pop(), 10) || vNode.id,
+                            title: vNode.title,
+                            // Existing logic expects price in cents (e.g. 1999 for $19.99)
+                            price: Math.round(parseFloat(vNode.price) * 100)
+                        };
+                    })
+                };
+            });
+
+            setSearchResults(products.filter(p => p.variants && p.variants.length > 0));
         } catch (err) {
             console.error('[Product search] failed:', err);
         } finally {
@@ -438,7 +621,64 @@ const OrderForm = ({
     const shippingLabel = useCustomShipping
         ? (customShippingTitle.trim() || 'Custom Shipping')
         : (selectedShipping ? selectedShipping.title : null);
-    const cartTotal = cartSubtotal + shippingCost;
+
+    let orderDiscountAmount = 0;
+    if (orderDiscountType !== 'none') {
+        const val = parseFloat(orderCustomDiscountValue) || 0;
+        if (orderCustomDiscountType === 'percentage') {
+            orderDiscountAmount = cartSubtotal * (val / 100);
+        } else {
+            orderDiscountAmount = val;
+        }
+    }
+
+    const cartTotal = Math.max(0, cartSubtotal - orderDiscountAmount) + shippingCost;
+
+    // ─── Free Sample Logic ───────────────────────────────────────────────────
+
+    const isPrepaid = !payDueLater && shippingCost === 0;
+
+    useEffect(() => {
+        if (!freeSampleVariant) return;
+        if (!isPrepaid && addFreeSample) {
+            setAddFreeSample(false);
+            setCart(prev => prev.filter(i => i.variant_id !== freeSampleVariant.id));
+            addToast({ type: 'warning', title: 'Removed Free Sample', message: 'Free sample is only available for Prepaid orders.', autoDismiss: 4000 });
+        }
+    }, [isPrepaid, addFreeSample, freeSampleVariant, addToast]);
+
+    useEffect(() => {
+        if (freeSampleVariant) {
+            const inCart = cart.some(i => i.variant_id === freeSampleVariant.id);
+            if (addFreeSample !== inCart) setAddFreeSample(inCart);
+        }
+    }, [cart, freeSampleVariant, addFreeSample]);
+
+    const toggleFreeSample = (checked) => {
+        if (!freeSampleVariant) return;
+        if (checked && !isPrepaid) {
+            addToast({ type: 'warning', title: 'Not Available', message: 'Free sample is only available for Prepaid orders.', autoDismiss: 3000 });
+            return;
+        }
+        
+        setAddFreeSample(checked);
+        if (checked) {
+            setCart(prev => {
+                if (prev.find(i => i.variant_id === freeSampleVariant.id)) return prev;
+                return [...prev, {
+                    variant_id: freeSampleVariant.id,
+                    title: freeSampleVariant.productTitle,
+                    variant_title: freeSampleVariant.variantTitle,
+                    price: freeSampleVariant.price / 100,
+                    quantity: 1,
+                    discountType: 'percentage',
+                    discountValue: 0,
+                }];
+            });
+        } else {
+            setCart(prev => prev.filter(i => i.variant_id !== freeSampleVariant.id));
+        }
+    };
 
     // ─── Payload builders ────────────────────────────────────────────────────
 
@@ -491,6 +731,23 @@ const OrderForm = ({
         if (paymentTermsType === 'NET15') return { payment_terms_type: 'NET', due_in_days: 15 };
         if (paymentTermsType === 'NET30') return { payment_terms_type: 'NET', due_in_days: 30 };
         if (paymentTermsType === 'FIXED') return { payment_terms_type: 'FIXED', payment_schedule: { due_at: fixedPaymentDate } };
+        return null;
+    };
+
+    const buildAppliedDiscount = () => {
+        if (orderDiscountType !== 'none') {
+            const val = parseFloat(orderCustomDiscountValue) || 0;
+            if (val > 0) {
+                // orderDiscountAmount is calculated in render, but we need it here.
+                // It's safer to recalculate or just provide value and value_type, Shopify usually computes amount automatically for Draft orders.
+                return {
+                    value_type: orderCustomDiscountType === 'percentage' ? 'percentage' : 'fixed_amount',
+                    value: String(val),
+                    title: orderCustomDiscountReason || (orderDiscountType === 'code' ? orderDiscountCode : 'Custom Discount'),
+                    description: orderCustomDiscountReason || (orderDiscountType === 'code' ? orderDiscountCode : 'Custom Discount')
+                };
+            }
+        }
         return null;
     };
 
@@ -713,7 +970,104 @@ const OrderForm = ({
         if (sl) payload.draft_order.shipping_line = sl;
         const pt = buildPaymentTerms();
         if (pt) payload.draft_order.payment_terms = pt;
+        const ad = buildAppliedDiscount();
+        if (ad) payload.draft_order.applied_discount = ad;
         return payload;
+    };
+
+    const handleApplyShipping = () => {
+        if (tempShippingSelectionMode === 'rates') {
+            setUseCustomShipping(false);
+            setSelectedShipping(tempSelectedShipping);
+        } else {
+            setUseCustomShipping(true);
+            setCustomShippingTitle(tempCustomShippingTitle);
+            setCustomShippingPrice(tempCustomShippingPrice);
+            setSelectedShipping(null);
+        }
+        setIsShippingModalOpen(false);
+    };
+
+    const handleApplyDiscount = async () => {
+        if (!tempApplyAutomatic && !tempAddCustom && !tempDiscountCode.trim()) {
+            setOrderDiscountType('none');
+            setIsDiscountModalOpen(false);
+            return;
+        }
+
+        if (tempAddCustom) {
+            setOrderDiscountType('custom');
+            setOrderCustomDiscountType(tempCustomType);
+            setOrderCustomDiscountValue(tempCustomValue);
+            setOrderCustomDiscountReason(tempCustomReason);
+            setIsDiscountModalOpen(false);
+            return;
+        }
+
+        if (tempDiscountCode.trim()) {
+            const tid = addToast({ type: 'loading', title: 'Validating code...', message: 'Please wait' });
+            try {
+                const res = await fetch('/shopify-v2/graphql.json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: `query {
+                            codeDiscountNodeByCode(code: "${tempDiscountCode.trim()}") {
+                                id
+                                codeDiscount {
+                                    ... on DiscountCodeBasic {
+                                        title
+                                        customerGets {
+                                            value {
+                                                ... on DiscountPercentage { percentage }
+                                                ... on DiscountAmount { amount { amount } }
+                                            }
+                                        }
+                                    }
+                                    ... on DiscountCodeFreeShipping {
+                                        title
+                                    }
+                                }
+                            }
+                        }`
+                    })
+                });
+                const data = await safeJson(res);
+                const discount = data?.data?.codeDiscountNodeByCode?.codeDiscount;
+                if (!discount) {
+                    updateToast(tid, { type: 'error', title: 'Invalid code', message: `Code "${tempDiscountCode}" not found or inactive.`, autoDismiss: 4000 });
+                    return;
+                }
+                
+                let valueType = 'fixed_amount';
+                let value = 0;
+                const v = discount.customerGets?.value;
+                if (v?.percentage) {
+                    valueType = 'percentage';
+                    value = v.percentage * 100;
+                } else if (v?.amount?.amount) {
+                    valueType = 'fixed_amount';
+                    value = parseFloat(v.amount.amount);
+                }
+
+                setOrderDiscountType('code');
+                setOrderDiscountCode(tempDiscountCode.trim());
+                setOrderCustomDiscountType(valueType);
+                setOrderCustomDiscountValue(value);
+                setOrderCustomDiscountReason(discount.title);
+                setIsDiscountModalOpen(false);
+                updateToast(tid, { type: 'success', title: 'Discount applied', message: `Applied ${discount.title}`, autoDismiss: 3000 });
+            } catch (err) {
+                console.error(err);
+                updateToast(tid, { type: 'error', title: 'Validation failed', message: err.message, autoDismiss: 4000 });
+            }
+            return;
+        }
+
+        if (tempApplyAutomatic) {
+            addToast({ type: 'info', message: 'Automatic discounts not fully supported yet.', autoDismiss: 5000 });
+            setIsDiscountModalOpen(false);
+        }
     };
 
     const validateForOrder = () => {
@@ -942,6 +1296,27 @@ const OrderForm = ({
             {/* Products */}
             <div style={{ ...cardStyle, marginBottom: 20 }}>
                 <h3 style={cardTitleStyle}>Add Products</h3>
+
+                {freeSampleVariant && (
+                    <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input 
+                            type="checkbox" 
+                            checked={addFreeSample}
+                            onChange={(e) => toggleFreeSample(e.target.checked)}
+                            disabled={!isPrepaid}
+                            style={{ width: 16, height: 16, cursor: isPrepaid ? 'pointer' : 'not-allowed', accentColor: '#3b82f6' }}
+                        />
+                        <span style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 500 }}>
+                            Include {freeSampleVariant.productTitle}
+                        </span>
+                        {!isPrepaid && (
+                            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>
+                                (Requires Prepaid + Free Shipping)
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 <input
                     placeholder="Search products by name..."
                     value={searchTerm}
@@ -1106,107 +1481,99 @@ const OrderForm = ({
                             </tbody>
                         </table>
 
-                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                            <div style={{ display: 'flex', gap: 48, fontSize: 13, color: '#64748b' }}>
-                                <span>Subtotal</span><span>₹{cartSubtotal.toFixed(2)}</span>
-                            </div>
-                            {shippingLabel && (
-                                <div style={{ display: 'flex', gap: 48, fontSize: 13, color: '#64748b' }}>
-                                    <span>{shippingLabel}</span>
-                                    <span>{shippingCost === 0 ? 'Free' : `₹${shippingCost.toFixed(2)}`}</span>
-                                </div>
-                            )}
-                            <div style={{ display: 'flex', gap: 48, fontSize: 15, color: '#e2e8f0', fontWeight: 700, marginTop: 4 }}>
-                                <span>Total</span><span>₹{cartTotal.toFixed(2)}</span>
-                            </div>
-                        </div>
+                        {/* We no longer put totals here, they go in the Payment block below */}
                     </div>
                 )}
             </div>
 
-            {/* Shipping */}
-            <div style={{ ...cardStyle, marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <h3 style={{ ...cardTitleStyle, margin: 0 }}>Shipping & Delivery</h3>
-                    <button onClick={fetchShippingRates} disabled={isLoadingShipping} style={refreshBtnStyle}>
-                        {isLoadingShipping ? 'Loading...' : '↻ Refresh rates'}
-                    </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {shippingRates.map(rate => (
-                        <label key={rate.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: `1px solid ${!useCustomShipping && selectedShipping?.id === rate.id ? '#3b82f6' : '#1e293b'}`, borderRadius: 8, cursor: 'pointer', background: !useCustomShipping && selectedShipping?.id === rate.id ? '#1e3a5f22' : 'transparent' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <input type="radio" name="shippingRate" checked={!useCustomShipping && selectedShipping?.id === rate.id} onChange={() => { setSelectedShipping(rate); setUseCustomShipping(false); }} style={{ accentColor: '#3b82f6' }} />
-                                <span style={{ color: '#e2e8f0', fontSize: 14 }}>{rate.title}</span>
-                            </div>
-                            <span style={{ color: rate.price === 0 ? '#4ade80' : '#e2e8f0', fontWeight: 600, fontSize: 14 }}>
-                                {rate.price === 0 ? 'Free' : `₹${rate.price.toFixed(2)}`}
-                            </span>
-                        </label>
-                    ))}
-
-                    {shippingRates.length === 0 && !isLoadingShipping && (
-                        <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>
-                            No rates from Shopify shipping zones. Use custom shipping below, or click Refresh.
-                        </div>
-                    )}
-                    {isLoadingShipping && (
-                        <div style={{ fontSize: 12, color: '#64748b' }}>Fetching rates...</div>
-                    )}
-
-                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: `1px solid ${useCustomShipping ? '#3b82f6' : '#1e293b'}`, borderRadius: 8, cursor: 'pointer', background: useCustomShipping ? '#1e3a5f22' : 'transparent' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <input type="radio" name="shippingRate" checked={useCustomShipping} onChange={() => { setUseCustomShipping(true); setSelectedShipping(null); }} style={{ accentColor: '#3b82f6' }} />
-                            <span style={{ color: '#94a3b8', fontSize: 14 }}>Custom shipping</span>
-                        </div>
-                    </label>
-
-                    {useCustomShipping && (
-                        <div style={{ display: 'flex', gap: 10, paddingLeft: 4 }}>
-                            <input
-                                placeholder="Shipping name (e.g. Cash on Delivery)"
-                                value={customShippingTitle}
-                                onChange={e => setCustomShippingTitle(e.target.value)}
-                                style={{ ...inputStyle, flex: 2, marginBottom: 0 }}
-                            />
-                            <input
-                                type="number"
-                                placeholder="₹ Price"
-                                value={customShippingPrice}
-                                onChange={e => setCustomShippingPrice(e.target.value)}
-                                style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
-                            />
-                        </div>
-                    )}
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', border: `1px solid ${!useCustomShipping && !selectedShipping ? '#3b82f6' : '#1e293b'}`, borderRadius: 8, cursor: 'pointer', background: !useCustomShipping && !selectedShipping ? '#1e3a5f22' : 'transparent' }}>
-                        <input type="radio" name="shippingRate" checked={!useCustomShipping && !selectedShipping} onChange={() => { setUseCustomShipping(false); setSelectedShipping(null); }} style={{ accentColor: '#3b82f6' }} />
-                        <span style={{ color: '#64748b', fontSize: 14 }}>No shipping</span>
-                    </label>
-                </div>
-            </div>
-
-            {/* Payment Terms */}
+            {/* Payment Summary & Settings */}
             <div style={{ ...cardStyle, marginBottom: 24 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={payDueLater} onChange={e => setPayDueLater(e.target.checked)} style={{ width: 16, height: 16 }} />
-                    <span style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 14 }}>Pay due later</span>
-                </label>
-                {payDueLater && (
-                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #1e293b' }}>
-                        <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Payment due</label>
-                        <select value={paymentTermsType} onChange={e => setPaymentTermsType(e.target.value)} style={{ ...inputStyle, marginBottom: paymentTermsType === 'FIXED' ? 10 : 0 }}>
-                            {PAYMENT_TERMS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        {paymentTermsType === 'FIXED' && (
-                            <>
-                                <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Due date</label>
-                                <input type="date" value={fixedPaymentDate} onChange={e => setFixedPaymentDate(e.target.value)} style={inputStyle} />
-                            </>
-                        )}
+                <h3 style={cardTitleStyle}>Payment</h3>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ color: '#94a3b8', fontSize: 14 }}>Subtotal <span style={{fontSize: 12}}>({cart.length} item{cart.length !== 1 ? 's' : ''})</span></span>
+                    <span style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 500 }}>₹{cartSubtotal.toFixed(2)}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span
+                        onClick={() => {
+                            setTempDiscountCode(orderDiscountCode);
+                            setTempAddCustom(orderDiscountType === 'custom');
+                            setTempCustomType(orderCustomDiscountType);
+                            setTempCustomValue(orderCustomDiscountValue);
+                            setTempCustomReason(orderCustomDiscountReason);
+                            setIsDiscountModalOpen(true);
+                        }}
+                        style={{ color: '#3b82f6', fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}
+                    >
+                        {orderDiscountType === 'none' ? 'Add discount' : (orderDiscountType === 'code' ? 'Discount code' : 'Custom discount')}
+                    </span>
+                    <span style={{ color: orderDiscountAmount > 0 ? '#ef4444' : '#64748b', fontSize: 14 }}>
+                        {orderDiscountAmount > 0 ? `-₹${orderDiscountAmount.toFixed(2)}` : '—'}
+                    </span>
+                </div>
+                {orderDiscountType !== 'none' && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12, marginTop: -6 }}>
+                        {orderDiscountType === 'code' ? orderDiscountCode : orderCustomDiscountReason}
+                        <button onClick={() => setOrderDiscountType('none')} style={{ background: 'none', border: 'none', color: '#ef4444', marginLeft: 8, cursor: 'pointer', fontSize: 11 }}>Remove</button>
                     </div>
                 )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span
+                        onClick={() => {
+                            setTempShippingSelectionMode(useCustomShipping ? 'custom' : 'rates');
+                            setTempSelectedShipping(selectedShipping);
+                            setTempCustomShippingTitle(customShippingTitle);
+                            setTempCustomShippingPrice(customShippingPrice);
+                            setIsShippingModalOpen(true);
+                        }}
+                        style={{ color: '#3b82f6', fontSize: 14, cursor: 'pointer' }}
+                    >
+                        Add shipping or delivery
+                    </span>
+                    <span style={{ color: '#e2e8f0', fontSize: 14 }}>
+                        {shippingLabel ? (shippingCost === 0 ? 'Free' : `₹${shippingCost.toFixed(2)}`) : '—'}
+                    </span>
+                </div>
+                {shippingLabel && (
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12, marginTop: -6 }}>
+                        {shippingLabel}
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <span style={{ color: '#94a3b8', fontSize: 14 }}>Estimated tax</span>
+                    <span style={{ color: '#64748b', fontSize: 14 }}>Not calculated</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid #1e293b', marginBottom: 20 }}>
+                    <span style={{ color: '#e2e8f0', fontSize: 16, fontWeight: 700 }}>Total</span>
+                    <span style={{ color: '#e2e8f0', fontSize: 16, fontWeight: 700 }}>₹{cartTotal.toFixed(2)}</span>
+                </div>
+
+                <div style={{ background: '#020817', padding: 14, borderRadius: 8, border: '1px solid #1e293b' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: payDueLater ? 10 : 0 }}>
+                        <input type="checkbox" checked={payDueLater} onChange={e => setPayDueLater(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} />
+                        <span style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 14 }}>Payment due later</span>
+                    </label>
+                    
+                    {payDueLater && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #0f172a' }}>
+                            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Payment terms</label>
+                            <select value={paymentTermsType} onChange={e => setPaymentTermsType(e.target.value)} style={{ ...inputStyle, marginBottom: paymentTermsType === 'FIXED' ? 10 : 0 }}>
+                                {PAYMENT_TERMS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                            {paymentTermsType === 'FIXED' && (
+                                <>
+                                    <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Due date</label>
+                                    <input type="date" value={fixedPaymentDate} onChange={e => setFixedPaymentDate(e.target.value)} style={inputStyle} />
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Actions */}
@@ -1231,6 +1598,130 @@ const OrderForm = ({
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: '#475569' }}>Sheet sync disabled</span>
                 )}
             </div>
+
+            {isDiscountModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+                    <div style={{ background: '#0f172a', padding: 24, borderRadius: 12, width: '100%', maxWidth: 400, border: '1px solid #1e293b' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: 18 }}>Add discount</h3>
+                            <button onClick={() => setIsDiscountModalOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18 }}>✕</button>
+                        </div>
+                        
+                        <input
+                            placeholder="Discount code"
+                            value={tempDiscountCode}
+                            onChange={e => { setTempDiscountCode(e.target.value); if (e.target.value) { setTempAddCustom(false); setTempApplyAutomatic(false); } }}
+                            style={{ ...inputStyle, marginBottom: 16 }}
+                            disabled={tempAddCustom || tempApplyAutomatic}
+                        />
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 12, opacity: tempDiscountCode || tempAddCustom ? 0.5 : 1 }}>
+                            <input type="checkbox" checked={tempApplyAutomatic} onChange={e => { setTempApplyAutomatic(e.target.checked); if (e.target.checked) { setTempAddCustom(false); setTempDiscountCode(''); } }} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} disabled={!!tempDiscountCode || tempAddCustom} />
+                            <span style={{ color: '#e2e8f0', fontSize: 14 }}>Apply all eligible automatic discounts</span>
+                        </label>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: tempAddCustom ? 16 : 24, opacity: tempDiscountCode || tempApplyAutomatic ? 0.5 : 1 }}>
+                            <input type="checkbox" checked={tempAddCustom} onChange={e => { setTempAddCustom(e.target.checked); if (e.target.checked) { setTempApplyAutomatic(false); setTempDiscountCode(''); } }} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} disabled={!!tempDiscountCode || tempApplyAutomatic} />
+                            <span style={{ color: '#e2e8f0', fontSize: 14 }}>Add custom order discount</span>
+                        </label>
+
+                        {tempAddCustom && (
+                            <div style={{ background: '#020817', padding: 16, borderRadius: 8, border: '1px solid #1e293b', marginBottom: 24 }}>
+                                <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Discount type</label>
+                                <select value={tempCustomType} onChange={e => setTempCustomType(e.target.value)} style={{ ...inputStyle, marginBottom: 12 }}>
+                                    <option value="fixed_amount">Amount</option>
+                                    <option value="percentage">Percentage</option>
+                                </select>
+                                
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Discount value</label>
+                                        <div style={{ position: 'relative' }}>
+                                            {tempCustomType === 'fixed_amount' && <span style={{ position: 'absolute', left: 12, top: 10, color: '#94a3b8' }}>₹</span>}
+                                            <input type="number" min="0" value={tempCustomValue} onChange={e => setTempCustomValue(e.target.value)} style={{ ...inputStyle, paddingLeft: tempCustomType === 'fixed_amount' ? 24 : 12 }} />
+                                            {tempCustomType === 'percentage' && <span style={{ position: 'absolute', right: 12, top: 10, color: '#94a3b8' }}>%</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6, marginTop: 12 }}>Reason for discount</label>
+                                <input value={tempCustomReason} onChange={e => setTempCustomReason(e.target.value)} style={{ ...inputStyle, marginBottom: 0 }} />
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                            <button onClick={() => setIsDiscountModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
+                            <button onClick={handleApplyDiscount} style={addBtnStyle}>Apply</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isShippingModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+                    <div style={{ background: '#0f172a', padding: 24, borderRadius: 12, width: '100%', maxWidth: 450, border: '1px solid #1e293b' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: 18 }}>Add shipping or delivery</h3>
+                            <button onClick={() => setIsShippingModalOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18 }}>✕</button>
+                        </div>
+
+                        <div style={{ marginBottom: 24 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', border: `1px solid ${tempShippingSelectionMode === 'rates' ? '#3b82f6' : '#1e293b'}`, borderRadius: '8px 8px 0 0', cursor: 'pointer', background: tempShippingSelectionMode === 'rates' ? '#1e3a5f22' : 'transparent', borderBottom: 'none' }}>
+                                <input type="radio" checked={tempShippingSelectionMode === 'rates'} onChange={() => setTempShippingSelectionMode('rates')} style={{ accentColor: '#3b82f6' }} />
+                                <span style={{ color: '#e2e8f0', fontSize: 14 }}>Shipping rates</span>
+                            </label>
+                            
+                            {tempShippingSelectionMode === 'rates' && (
+                                <div style={{ padding: '0 14px 14px 14px', border: `1px solid #3b82f6`, borderTop: 'none', background: '#1e3a5f22' }}>
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                        <select 
+                                            value={tempSelectedShipping?.id || ''} 
+                                            onChange={e => {
+                                                const rate = shippingRates.find(r => r.id === e.target.value);
+                                                setTempSelectedShipping(rate || null);
+                                            }}
+                                            style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                                        >
+                                            <option value="">Select a rate...</option>
+                                            {shippingRates.map(r => (
+                                                <option key={r.id} value={r.id}>{r.title} — {r.price === 0 ? 'Free' : `₹${r.price.toFixed(2)}`}</option>
+                                            ))}
+                                        </select>
+                                        <button onClick={fetchShippingRates} disabled={isLoadingShipping} style={{ ...refreshBtnStyle, height: 38 }}>
+                                            {isLoadingShipping ? '↻' : 'Refresh'}
+                                        </button>
+                                    </div>
+                                    {shippingRates.length === 0 && !isLoadingShipping && <div style={{ fontSize: 12, color: '#ef4444', marginTop: 8 }}>No rates available. Try refreshing or use custom shipping.</div>}
+                                </div>
+                            )}
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', border: `1px solid ${tempShippingSelectionMode === 'custom' ? '#3b82f6' : '#1e293b'}`, borderRadius: tempShippingSelectionMode === 'rates' ? '0 0 8px 8px' : '8px', cursor: 'pointer', background: tempShippingSelectionMode === 'custom' ? '#1e3a5f22' : 'transparent', marginTop: tempShippingSelectionMode === 'rates' ? -1 : 0 }}>
+                                <input type="radio" checked={tempShippingSelectionMode === 'custom'} onChange={() => setTempShippingSelectionMode('custom')} style={{ accentColor: '#3b82f6' }} />
+                                <span style={{ color: '#e2e8f0', fontSize: 14 }}>Custom shipping</span>
+                            </label>
+
+                            {tempShippingSelectionMode === 'custom' && (
+                                <div style={{ padding: '0 14px 14px 14px', border: `1px solid #3b82f6`, borderTop: 'none', borderRadius: '0 0 8px 8px', background: '#1e3a5f22', marginTop: -1 }}>
+                                    <div style={{ display: 'flex', gap: 10 }}>
+                                        <div style={{ flex: 2 }}>
+                                            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Rate name</label>
+                                            <input placeholder="e.g. Standard" value={tempCustomShippingTitle} onChange={e => setTempCustomShippingTitle(e.target.value)} style={{ ...inputStyle, marginBottom: 0 }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Price</label>
+                                            <input type="number" placeholder="₹ 0.00" value={tempCustomShippingPrice} onChange={e => setTempCustomShippingPrice(e.target.value)} style={{ ...inputStyle, marginBottom: 0 }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                            <button onClick={() => setIsShippingModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
+                            <button onClick={handleApplyShipping} style={addBtnStyle}>Apply</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <ToastStack toasts={toasts} onClose={removeToast} />
         </div>
