@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, ChevronLeft, ChevronRight, User, MoreHorizontal, Edit, MapPin, Mail, MessageSquare, Plus, FileText, CheckCircle, Package } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, User, Edit, FileText } from 'lucide-react';
 
 const safeJson = async (res) => {
     const text = await res.text();
