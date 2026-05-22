@@ -7,8 +7,9 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {
     ClipboardList, Settings, LogOut,
     Search, RefreshCw, ChevronDown,
-    Package, Save, CheckCircle
+    Package, Save, CheckCircle, Users
 } from 'lucide-react';
+import CustomersCRM from './CustomersCRM';
 
 export const DEFAULT_GSCRIPT_URL = '/api/leads';
 
@@ -26,6 +27,7 @@ const OrderCreationCRM = ({ user, onLogout }) => {
 
     const [view, setView] = useState('create');
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [selectedLead, setSelectedLead] = useState({});
 
     // User profile from Firestore
     const [profileName, setProfileName] = useState('');
@@ -145,17 +147,24 @@ const OrderCreationCRM = ({ user, onLogout }) => {
 
     useEffect(() => { if (view === 'history') fetchOrders(); }, [view, fetchOrders]);
 
+    const [showOnlyMyOrders, setShowOnlyMyOrders] = useState(false);
+
     const filteredOrders = useMemo(() => {
-        if (!historySearch.trim()) return orders;
+        let list = orders;
+        if (showOnlyMyOrders) {
+            list = list.filter(o => o['Updated By'] === displayName);
+        }
+
+        if (!historySearch.trim()) return list;
         const q = historySearch.toLowerCase();
-        return orders.filter(o =>
+        return list.filter(o =>
             (o['First Name'] || '').toLowerCase().includes(q) ||
             (o['Last Name'] || '').toLowerCase().includes(q) ||
             (o['Phone Number'] || '').toLowerCase().includes(q) ||
             (o['District/City'] || '').toLowerCase().includes(q) ||
             (o['State'] || '').toLowerCase().includes(q)
         );
-    }, [orders, historySearch]);
+    }, [orders, historySearch, displayName, showOnlyMyOrders]);
 
     // Close profile menu on outside click
     useEffect(() => {
@@ -170,6 +179,7 @@ const OrderCreationCRM = ({ user, onLogout }) => {
     const navItems = [
         { id: 'create', label: 'Create Order', icon: Package },
         { id: 'history', label: 'Order History', icon: ClipboardList },
+        { id: 'customers', label: 'Customers', icon: Users },
         { id: 'settings', label: 'Settings', icon: Settings },
     ];
 
@@ -272,18 +282,12 @@ const OrderCreationCRM = ({ user, onLogout }) => {
                         <h2 className="view-title">
                             {view === 'create' && 'Create Order'}
                             {view === 'history' && 'Order History'}
+                            {view === 'customers' && 'Customers'}
                             {view === 'settings' && 'CRM Settings'}
                         </h2>
                     </div>
                     <div className="header-right" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <span style={{
-                            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
-                            background: sheetEnabled ? 'rgba(74,222,128,0.1)' : 'rgba(245,158,11,0.1)',
-                            color: sheetEnabled ? '#4ade80' : '#f59e0b',
-                            border: `1px solid ${sheetEnabled ? 'rgba(74,222,128,0.3)' : 'rgba(245,158,11,0.3)'}`
-                        }}>
-                            {sheetEnabled ? `● Sheet sync ON${usingDefault ? ' (default)' : ''}` : '○ Sheet sync OFF'}
-                        </span>
+
                         {view === 'create' && (
                             <button className="btn ghost" onClick={resetOrderForm} style={{ height: 36, fontSize: 12 }}>
                                 <RefreshCw size={14} /> New Form
@@ -303,8 +307,9 @@ const OrderCreationCRM = ({ user, onLogout }) => {
                         <OrderForm
                             key={orderFormKey}
                             agentName={displayName}
-                            initialLead={{}}
+                            initialLead={selectedLead}
                             gscriptUrl={effectiveGscriptUrl}
+                            onOrderPlaced={resetOrderForm}
                         />
                     )}
 
@@ -312,15 +317,21 @@ const OrderCreationCRM = ({ user, onLogout }) => {
                     {view === 'history' && (
                         <div>
                             <div className="glass-panel" style={{ padding: 16, marginBottom: 24 }}>
-                                <div style={{ position: 'relative' }}>
-                                    <Search style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} size={16} />
-                                    <input
-                                        type="text" className="select"
-                                        style={{ width: '100%', paddingLeft: 40, height: 44 }}
-                                        placeholder="Search by name, phone, city, state..."
-                                        value={historySearch}
-                                        onChange={e => setHistorySearch(e.target.value)}
-                                    />
+                                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                    <div style={{ position: 'relative', flex: 1 }}>
+                                        <Search style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} size={16} />
+                                        <input
+                                            type="text" className="select"
+                                            style={{ width: '100%', paddingLeft: 40, height: 44 }}
+                                            placeholder="Search by name, phone, city, state..."
+                                            value={historySearch}
+                                            onChange={e => setHistorySearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                        <input type="checkbox" checked={showOnlyMyOrders} onChange={e => setShowOnlyMyOrders(e.target.checked)} />
+                                        Show only my orders
+                                    </label>
                                 </div>
                             </div>
 
@@ -341,7 +352,7 @@ const OrderCreationCRM = ({ user, onLogout }) => {
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                             <thead>
                                                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                                    {['#', 'Name', 'Phone', 'Address', 'City', 'State', 'Pin Code', 'Last Updated', 'Updated By'].map(h => (
+                                                    {['#', 'Name', 'Phone', 'Address', 'Last Updated', 'Updated By'].map(h => (
                                                         <th key={h} style={{
                                                             padding: '14px 16px', textAlign: 'left', fontWeight: 700,
                                                             fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px',
@@ -365,12 +376,12 @@ const OrderCreationCRM = ({ user, onLogout }) => {
                                                             {order['First Name'] || ''} {order['Last Name'] || ''}
                                                         </td>
                                                         <td style={tdStyle}>{order['Phone Number'] || ''}</td>
-                                                        <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        <td 
+                                                            style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'help' }}
+                                                            title={[order['Address'], order['District/City'], order['State'], order['Pin Code']].filter(Boolean).join(', ')}
+                                                        >
                                                             {order['Address'] || ''}
                                                         </td>
-                                                        <td style={tdStyle}>{order['District/City'] || ''}</td>
-                                                        <td style={tdStyle}>{order['State'] || ''}</td>
-                                                        <td style={tdStyle}>{order['Pin Code'] || ''}</td>
                                                         <td style={{ ...tdStyle, fontSize: 11, color: '#64748b' }}>{order['Last Updated'] || '-'}</td>
                                                         <td style={tdStyle}>
                                                             {order['Updated By'] ? (
@@ -392,6 +403,17 @@ const OrderCreationCRM = ({ user, onLogout }) => {
                                 )}
                             </div>
                         </div>
+                    )}
+
+                    {/* ── CUSTOMERS ── */}
+                    {view === 'customers' && (
+                        <CustomersCRM
+                            onCreateOrder={(customerData) => {
+                                setSelectedLead(customerData);
+                                setView('create');
+                                setOrderFormKey(`manual-${Date.now()}`); // force unmount/remount
+                            }}
+                        />
                     )}
 
                     {/* ── SETTINGS ── */}

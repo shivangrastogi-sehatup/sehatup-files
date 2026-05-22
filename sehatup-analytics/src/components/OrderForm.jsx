@@ -63,6 +63,9 @@ const OrderForm = ({
 }) => {
     // Customer
     const [customerFirstName, setCustomerFirstName] = useState('');
+    const [nameSuggestions, setNameSuggestions] = useState([]);
+    const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+    const [isNameSearching, setIsNameSearching] = useState(false);
     const [customerLastName, setCustomerLastName] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [phone, setPhone] = useState('');
@@ -195,21 +198,39 @@ const OrderForm = ({
             }
             return '';
         };
-        const fullName = get('userName', 'name', 'Full Name', 'fullName');
+        const fullName = get('userName', 'name', 'Full Name', 'fullName', 'displayName');
         const [splitFirst, ...splitRest] = String(fullName).trim().split(/\s+/);
         const splitLast = splitRest.join(' ');
         setCustomerFirstName(get('First Name', 'firstName', 'first_name') || splitFirst || '');
         setCustomerLastName(get('Last Name', 'lastName', 'last_name') || splitLast || '');
         setCustomerEmail(get('Email', 'email'));
         setPhone(get('Phone Number', 'phone'));
-        setAddress(get('Address', 'address'));
-        setLandmark(get('Landmark', 'landmark'));
-        setCity(get('District/City', 'city'));
-        setStateName(get('State', 'state'));
-        setPincode(get('Pin Code', 'pincode', 'pinCode', 'pin'));
-        setDifferentAddressName(false);
-        setAddressFirstName('');
-        setAddressLastName('');
+        
+        let addr = get('Address', 'address');
+        if (typeof addr === 'object') {
+            setAddress(addr.address1 || '');
+            setLandmark(addr.address2 || '');
+            setCity(addr.city || '');
+            setStateName(addr.province || '');
+            setPincode(addr.zip || '');
+            if (addr.firstName || addr.lastName) {
+                setDifferentAddressName(true);
+                setAddressFirstName(addr.firstName || '');
+                setAddressLastName(addr.lastName || '');
+            } else {
+                setDifferentAddressName(false);
+            }
+        } else {
+            setAddress(addr);
+            setLandmark(get('Landmark', 'landmark'));
+            setCity(get('District/City', 'city'));
+            setStateName(get('State', 'state'));
+            setPincode(get('Pin Code', 'pincode', 'pinCode', 'pin'));
+            setDifferentAddressName(false);
+            setAddressFirstName('');
+            setAddressLastName('');
+        }
+
         setCart([]);
         setDiscountActiveId(null);
         setPayDueLater(false);
@@ -223,10 +244,19 @@ const OrderForm = ({
         setCustomShippingPrice('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialLead]);
- 
+
+    // Track if pincode was manually typed or autofilled
+    const [lastAutoFilledPincode, setLastAutoFilledPincode] = useState('');
+    useEffect(() => {
+        if (initialLead && initialLead.address && initialLead.address.zip) {
+            setLastAutoFilledPincode(initialLead.address.zip);
+        }
+    }, [initialLead]);
+
     // ─── Pincode lookup to autofill city and state ───────────────────────────
     useEffect(() => {
         const pin = String(pincode || '').trim();
+        if (pin === lastAutoFilledPincode) return;
         let fallbackTimer = null;
 
         if (pin.length === 6 && /^\d+$/.test(pin)) {
@@ -318,7 +348,7 @@ const OrderForm = ({
         return () => {
             if (fallbackTimer) clearTimeout(fallbackTimer);
         };
-    }, [pincode]);
+    }, [pincode, lastAutoFilledPincode]);
 
     // ─── Phone lookup to autofill customer details ───────────────────────────
     useEffect(() => {
@@ -384,6 +414,58 @@ const OrderForm = ({
             return () => clearTimeout(timer);
         }
     }, [phone, customerFirstName, addToast]);
+
+    // ─── Name lookup for suggestions ─────────────────────────────────────────
+    useEffect(() => {
+        if (!customerFirstName.trim() || customerFirstName.length < 3) {
+            setNameSuggestions([]);
+            return;
+        }
+
+        const fetchNameSuggestions = async () => {
+            setIsNameSearching(true);
+            try {
+                const query = `name:${customerFirstName}*`;
+                const gqlRes = await fetch('/shopify-v2/graphql.json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: `{ customers(first:10, query:"${query}") { edges { node { id firstName lastName email phone defaultAddress { address1 address2 city province zip } addresses { id address1 address2 city province zip firstName lastName } } } } }` }),
+                });
+                const gqlData = await safeJson(gqlRes);
+                const matches = (gqlData?.data?.customers?.edges || []).map(e => e.node);
+                setNameSuggestions(matches);
+            } catch (e) {
+                console.warn('[Name lookup] failed:', e);
+            } finally {
+                setIsNameSearching(false);
+            }
+        };
+
+        const timer = setTimeout(fetchNameSuggestions, 400);
+        return () => clearTimeout(timer);
+    }, [customerFirstName]);
+
+    const handleSelectNameSuggestion = (existing) => {
+        setCustomerFirstName(existing.firstName || '');
+        setCustomerLastName(existing.lastName || '');
+        if (existing.email) setCustomerEmail(existing.email);
+        if (existing.phone) setPhone(existing.phone);
+        
+        if (existing.defaultAddress) {
+            const addr = existing.defaultAddress;
+            setAddress(addr.address1 || '');
+            setLandmark(addr.address2 || '');
+            setCity(addr.city || '');
+            setStateName(addr.province || '');
+            setPincode(addr.zip || '');
+            setLastAutoFilledPincode(addr.zip || '');
+        }
+        
+        setShowNameSuggestions(false);
+        setAutofillActive(true);
+        setTimeout(() => setAutofillActive(false), 1500);
+        addToast({ type: 'success', title: 'Customer Selected', message: `Autofilled details for ${existing.firstName}`, autoDismiss: 4000 });
+    };
 
     // ─── Shipping rates ──────────────────────────────────────────────────────
 
@@ -1108,6 +1190,7 @@ const OrderForm = ({
                     steps: ['Customer resolved', 'Draft order created', ...(sheetOk ? ['Sheet row synced'] : [])],
                     autoDismiss: 5000,
                 });
+                window.dispatchEvent(new Event('crm_refresh_customers'));
                 if (onOrderPlaced) onOrderPlaced({ type: 'Draft', id: draftId, sheetSynced: sheetOk });
             } else {
                 updateToast(tid, { type: 'error', title: 'Draft Failed', message: `${response.status}: ${JSON.stringify(data.errors || data.error)}` });
@@ -1165,6 +1248,7 @@ const OrderForm = ({
                 steps: ['Customer resolved', 'Draft order created', 'Order confirmed', ...(sheetOk ? ['Sheet row synced'] : [])],
                 autoDismiss: 7000,
             });
+            window.dispatchEvent(new Event('crm_refresh_customers'));
             if (onOrderPlaced) onOrderPlaced({ type: 'Order', id: orderNum, sheetSynced: sheetOk });
         } catch (err) {
             console.error('[Place Order] failed:', err);
@@ -1204,43 +1288,66 @@ const OrderForm = ({
         }
     };
 
-    const testConnection = async () => {
-        const tid = addToast({ type: 'loading', title: 'Testing Connection', message: 'Pinging Shopify store...' });
-        try {
-            const response = await fetch('/shopify-v2/shop.json');
-            const data = await safeJson(response);
-            if (response.ok) {
-                updateToast(tid, { type: 'success', title: 'Connected', message: data.shop.name, autoDismiss: 4000 });
-            } else {
-                updateToast(tid, { type: 'error', title: 'Connection Failed', message: `Status ${response.status}` });
-            }
-        } catch (err) {
-            updateToast(tid, { type: 'error', title: 'Connection Failed', message: err.message });
-        }
-    };
-
     // ─── Render ──────────────────────────────────────────────────────────────
 
     return (
         <div style={{ maxWidth: 900, color: '#e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <h2 style={{ color: '#fff', margin: 0, fontSize: compact ? 18 : 22 }}>
-                    {initialLead ? 'Create Order' : 'Create Manual Order'}
-                </h2>
-                {onClose && (
-                    <button onClick={onClose} style={{ background: 'transparent', border: '1px solid #334155', color: '#94a3b8', borderRadius: 6, padding: '6px 14px', cursor: 'pointer' }}>
-                        ✕ Close
-                    </button>
-                )}
-            </div>
+            {(onClose || compact) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                    <h2 style={{ color: '#fff', margin: 0, fontSize: compact ? 18 : 22 }}>
+                        {initialLead ? 'Create Order' : 'Create Manual Order'}
+                    </h2>
+                    {onClose && (
+                        <button onClick={onClose} style={{ background: 'transparent', border: '1px solid #334155', color: '#94a3b8', borderRadius: 6, padding: '6px 14px', cursor: 'pointer' }}>
+                            ✕ Close
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Customer + Address */}
             <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
                 <div style={{ ...cardStyle, minWidth: 280 }}>
                     <h3 style={cardTitleStyle}>Customer</h3>
                     <div style={{ display: 'flex', gap: 10 }}>
-                        <input placeholder="First Name *" value={customerFirstName} onChange={e => setCustomerFirstName(e.target.value)} style={inputStyle} />
-                        <input placeholder="Last Name *" value={customerLastName} onChange={e => setCustomerLastName(e.target.value)} style={inputStyle} />
+                        <div style={{ position: 'relative', flex: 1 }}>
+                            <input 
+                                placeholder="First Name *" 
+                                value={customerFirstName} 
+                                onChange={e => {
+                                    setCustomerFirstName(e.target.value);
+                                    setShowNameSuggestions(true);
+                                }} 
+                                onFocus={() => setShowNameSuggestions(true)}
+                                style={{...inputStyle, width: '100%', boxSizing: 'border-box'}} 
+                            />
+                            {showNameSuggestions && (nameSuggestions.length > 0 || isNameSearching) && customerFirstName.length >= 3 && (
+                                <>
+                                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowNameSuggestions(false)} />
+                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1e293b', border: '1px solid #334155', borderRadius: 6, marginTop: 4, zIndex: 50, maxHeight: 250, overflowY: 'auto', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}>
+                                        {isNameSearching ? (
+                                            <div style={{ padding: '8px 12px', color: '#94a3b8', fontSize: 13 }}>Searching...</div>
+                                        ) : nameSuggestions.length === 0 ? (
+                                            <div style={{ padding: '8px 12px', color: '#94a3b8', fontSize: 13 }}>No matches found</div>
+                                        ) : (
+                                            nameSuggestions.map(s => (
+                                                <div 
+                                                    key={s.id} 
+                                                    onClick={() => handleSelectNameSuggestion(s)} 
+                                                    style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #334155', color: '#f8fafc', fontSize: 13 }} 
+                                                    onMouseEnter={e => e.currentTarget.style.background = '#334155'} 
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                >
+                                                    <div style={{ fontWeight: 600 }}>{s.firstName} {s.lastName}</div>
+                                                    <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 2 }}>{s.phone || 'No phone'} • {s.email || 'No email'}</div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <input placeholder="Last Name *" value={customerLastName} onChange={e => setCustomerLastName(e.target.value)} style={{...inputStyle, flex: 1, boxSizing: 'border-box'}} />
                     </div>
                     <input placeholder="Email (optional)" type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} style={inputStyle} />
                     <input placeholder="Phone Number *" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} />
@@ -1255,6 +1362,42 @@ const OrderForm = ({
 
                 <div style={{ ...cardStyle, minWidth: 280 }}>
                     <h3 style={cardTitleStyle}>Shipping Address</h3>
+
+                    {initialLead && initialLead.addresses && initialLead.addresses.length > 0 && (
+                        <div style={{ marginBottom: 16 }}>
+                            <select
+                                className="select"
+                                style={inputStyle}
+                                onChange={(e) => {
+                                    const addr = initialLead.addresses.find(a => a.id === e.target.value);
+                                    if (addr) {
+                                        setAddress(addr.address1 || '');
+                                        setLandmark(addr.address2 || '');
+                                        setCity(addr.city || '');
+                                        setStateName(addr.province || '');
+                                        setPincode(addr.zip || '');
+                                        setLastAutoFilledPincode(addr.zip || '');
+                                        if (addr.firstName || addr.lastName) {
+                                            setDifferentAddressName(true);
+                                            setAddressFirstName(addr.firstName || '');
+                                            setAddressLastName(addr.lastName || '');
+                                        } else {
+                                            setDifferentAddressName(false);
+                                        }
+                                    }
+                                }}
+                                defaultValue=""
+                            >
+                                <option value="" disabled>Select an available address...</option>
+                                {initialLead.addresses.map(a => (
+                                    <option key={a.id} value={a.id}>
+                                        {a.address1}, {a.city}, {a.province} - {a.zip}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: '#94a3b8', cursor: 'pointer' }}>
                         <input type="checkbox" checked={differentAddressName} onChange={e => setDifferentAddressName(e.target.checked)} />
                         Different name on shipping address
@@ -1592,7 +1735,6 @@ const OrderForm = ({
                 >
                     {isSubmitting ? 'Placing Order...' : 'Place Order'}
                 </button>
-                <button onClick={testConnection} disabled={isSubmitting} style={{ ...testBtnStyle, opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>Test ⚡</button>
                 {sheetSyncEnabled() && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#4ade80' }}>✓ Sheet sync enabled</span>}
                 {!sheetSyncEnabled() && gscriptUrl !== null && (
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: '#475569' }}>Sheet sync disabled</span>
@@ -1606,19 +1748,20 @@ const OrderForm = ({
                             <h3 style={{ margin: 0, color: '#f8fafc', fontSize: 18 }}>Add discount</h3>
                             <button onClick={() => setIsDiscountModalOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18 }}>✕</button>
                         </div>
-                        
+                        <label style={{ fontSize: 13, color: '#f8fafc', fontWeight: 600, display: 'block', marginBottom: 8 }}>Discount codes</label>
                         <input
-                            placeholder="Discount code"
+                            placeholder="Enter a discount code"
                             value={tempDiscountCode}
                             onChange={e => { setTempDiscountCode(e.target.value); if (e.target.value) { setTempAddCustom(false); setTempApplyAutomatic(false); } }}
                             style={{ ...inputStyle, marginBottom: 16 }}
                             disabled={tempAddCustom || tempApplyAutomatic}
                         />
 
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 12, opacity: tempDiscountCode || tempAddCustom ? 0.5 : 1 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 4, opacity: tempDiscountCode || tempAddCustom ? 0.5 : 1 }}>
                             <input type="checkbox" checked={tempApplyAutomatic} onChange={e => { setTempApplyAutomatic(e.target.checked); if (e.target.checked) { setTempAddCustom(false); setTempDiscountCode(''); } }} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} disabled={!!tempDiscountCode || tempAddCustom} />
                             <span style={{ color: '#e2e8f0', fontSize: 14 }}>Apply all eligible automatic discounts</span>
                         </label>
+                        <div style={{ fontSize: 13, color: '#64748b', marginLeft: 26, marginBottom: 16, opacity: tempDiscountCode || tempAddCustom ? 0.5 : 1 }}>No eligible automatic discounts</div>
 
                         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: tempAddCustom ? 16 : 24, opacity: tempDiscountCode || tempApplyAutomatic ? 0.5 : 1 }}>
                             <input type="checkbox" checked={tempAddCustom} onChange={e => { setTempAddCustom(e.target.checked); if (e.target.checked) { setTempApplyAutomatic(false); setTempDiscountCode(''); } }} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} disabled={!!tempDiscountCode || tempApplyAutomatic} />
@@ -1626,31 +1769,33 @@ const OrderForm = ({
                         </label>
 
                         {tempAddCustom && (
-                            <div style={{ background: '#020817', padding: 16, borderRadius: 8, border: '1px solid #1e293b', marginBottom: 24 }}>
-                                <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Discount type</label>
-                                <select value={tempCustomType} onChange={e => setTempCustomType(e.target.value)} style={{ ...inputStyle, marginBottom: 12 }}>
-                                    <option value="fixed_amount">Amount</option>
-                                    <option value="percentage">Percentage</option>
-                                </select>
-                                
-                                <div style={{ display: 'flex', gap: 10 }}>
+                            <div style={{ marginBottom: 24, paddingLeft: 26 }}>
+                                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
                                     <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Discount value</label>
+                                        <label style={{ fontSize: 13, color: '#e2e8f0', display: 'block', marginBottom: 6 }}>Discount type</label>
+                                        <select value={tempCustomType} onChange={e => setTempCustomType(e.target.value)} style={{ ...inputStyle, marginBottom: 0 }}>
+                                            <option value="fixed_amount">Amount</option>
+                                            <option value="percentage">Percentage</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: 13, color: '#e2e8f0', display: 'block', marginBottom: 6 }}>Discount value</label>
                                         <div style={{ position: 'relative' }}>
-                                            {tempCustomType === 'fixed_amount' && <span style={{ position: 'absolute', left: 12, top: 10, color: '#94a3b8' }}>₹</span>}
-                                            <input type="number" min="0" value={tempCustomValue} onChange={e => setTempCustomValue(e.target.value)} style={{ ...inputStyle, paddingLeft: tempCustomType === 'fixed_amount' ? 24 : 12 }} />
-                                            {tempCustomType === 'percentage' && <span style={{ position: 'absolute', right: 12, top: 10, color: '#94a3b8' }}>%</span>}
+                                            <input type="number" min="0" value={tempCustomValue} onChange={e => setTempCustomValue(e.target.value)} style={{ ...inputStyle, marginBottom: 0, paddingRight: 40 }} />
+                                            {tempCustomType === 'fixed_amount' && <span style={{ position: 'absolute', right: 12, top: 10, color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>INR</span>}
+                                            {tempCustomType === 'percentage' && <span style={{ position: 'absolute', right: 12, top: 10, color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>%</span>}
                                         </div>
                                     </div>
                                 </div>
-                                <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6, marginTop: 12 }}>Reason for discount</label>
-                                <input value={tempCustomReason} onChange={e => setTempCustomReason(e.target.value)} style={{ ...inputStyle, marginBottom: 0 }} />
+                                <label style={{ fontSize: 13, color: '#e2e8f0', display: 'block', marginBottom: 6 }}>Reason for discount</label>
+                                <input value={tempCustomReason} onChange={e => setTempCustomReason(e.target.value)} style={{ ...inputStyle, marginBottom: 4 }} />
+                                <div style={{ fontSize: 13, color: '#64748b' }}>Visible to customer</div>
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid #1e293b', paddingTop: 16 }}>
                             <button onClick={() => setIsDiscountModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
-                            <button onClick={handleApplyDiscount} style={addBtnStyle}>Apply</button>
+                            <button onClick={handleApplyDiscount} style={addBtnStyle}>Done</button>
                         </div>
                     </div>
                 </div>
@@ -1665,13 +1810,13 @@ const OrderForm = ({
                         </div>
 
                         <div style={{ marginBottom: 24 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', border: `1px solid ${tempShippingSelectionMode === 'rates' ? '#3b82f6' : '#1e293b'}`, borderRadius: '8px 8px 0 0', cursor: 'pointer', background: tempShippingSelectionMode === 'rates' ? '#1e3a5f22' : 'transparent', borderBottom: 'none' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', cursor: 'pointer', background: tempShippingSelectionMode === 'rates' ? '#1e3a5f22' : 'transparent', borderRadius: '8px' }}>
                                 <input type="radio" checked={tempShippingSelectionMode === 'rates'} onChange={() => setTempShippingSelectionMode('rates')} style={{ accentColor: '#3b82f6' }} />
                                 <span style={{ color: '#e2e8f0', fontSize: 14 }}>Shipping rates</span>
                             </label>
                             
                             {tempShippingSelectionMode === 'rates' && (
-                                <div style={{ padding: '0 14px 14px 14px', border: `1px solid #3b82f6`, borderTop: 'none', background: '#1e3a5f22' }}>
+                                <div style={{ padding: '0 14px 14px 34px', background: '#1e3a5f22' }}>
                                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                                         <select 
                                             value={tempSelectedShipping?.id || ''} 
@@ -1694,13 +1839,13 @@ const OrderForm = ({
                                 </div>
                             )}
 
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', border: `1px solid ${tempShippingSelectionMode === 'custom' ? '#3b82f6' : '#1e293b'}`, borderRadius: tempShippingSelectionMode === 'rates' ? '0 0 8px 8px' : '8px', cursor: 'pointer', background: tempShippingSelectionMode === 'custom' ? '#1e3a5f22' : 'transparent', marginTop: tempShippingSelectionMode === 'rates' ? -1 : 0 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px', cursor: 'pointer', background: tempShippingSelectionMode === 'custom' ? '#1e3a5f22' : 'transparent', borderRadius: '8px' }}>
                                 <input type="radio" checked={tempShippingSelectionMode === 'custom'} onChange={() => setTempShippingSelectionMode('custom')} style={{ accentColor: '#3b82f6' }} />
                                 <span style={{ color: '#e2e8f0', fontSize: 14 }}>Custom shipping</span>
                             </label>
 
                             {tempShippingSelectionMode === 'custom' && (
-                                <div style={{ padding: '0 14px 14px 14px', border: `1px solid #3b82f6`, borderTop: 'none', borderRadius: '0 0 8px 8px', background: '#1e3a5f22', marginTop: -1 }}>
+                                <div style={{ padding: '0 14px 14px 34px', background: '#1e3a5f22' }}>
                                     <div style={{ display: 'flex', gap: 10 }}>
                                         <div style={{ flex: 2 }}>
                                             <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Rate name</label>
@@ -1737,6 +1882,5 @@ const addBtnStyle = { padding: '8px 16px', background: '#3b82f6', border: 'none'
 const refreshBtnStyle = { padding: '6px 12px', background: '#1e293b', color: '#94a3b8', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 };
 const draftBtnStyle = { padding: '13px 26px', background: '#eab308', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 15 };
 const orderBtnStyle = { padding: '13px 26px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 15 };
-const testBtnStyle = { padding: '13px 20px', background: '#334155', color: '#e2e8f0', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 15 };
 
 export default OrderForm;
