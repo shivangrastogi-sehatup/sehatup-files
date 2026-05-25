@@ -22,7 +22,8 @@
     "otplib": "^12.0.1",
     "pdfkit": "^0.17.1",
     "puppeteer": "^24.7.2",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "firebase-functions-test": "^3.1.0"

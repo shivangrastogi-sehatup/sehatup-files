@@ -2249,3 +2249,17 @@ exports.triggerEventForPartialSubmissions = onSchedule(
     }
   }
 );
+
+const {
+  nimbusLogin,
+  getShipmentTracking,
+  listShipments,
+  getShipmentAnalytics,
+  getNdrShipments,
+} = require('./src/shipments');
+exports.nimbusLogin = nimbusLogin;
+exports.getShipmentTracking = getShipmentTracking;
+exports.listShipments = listShipments;
+exports.getShipmentAnalytics = getShipmentAnalytics;
+exports.getNdrShipments = getNdrShipments;
+

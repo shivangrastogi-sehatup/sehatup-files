@@ -1,7 +1,8 @@
 // src/components/Dashboard.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
+import { signOut } from "firebase/auth";
 import ChartsPanel from "./ChartsPanel";
 import SubmissionsTable from "./SubmissionsTable";
 import ExportControls from "./ExportControls";
@@ -13,7 +14,11 @@ import {
   CheckCircle2,
   Clock,
   TrendingUp,
-  Target
+  Target,
+  UserCircle,
+  LayoutDashboard,
+  LogOut,
+  Package
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -35,15 +40,30 @@ const CustomDateInput = React.forwardRef(({ value, onClick, className }, ref) =>
 ));
 
 const GENDER_MAPPING = {
-  "Men": ["Mens Health", "Mens Vitality", "Male Wellness", "Mens Sexual Wellness", "Mens Weight Loss"],
-  "Women": ["Female Wellness", "Womens Personal Wellness", "Womens Weight Management", "Womens Wellness", "Womens Weight Loss", "Women's Wellness", "Women's Weight"]
+  "Men": ["Mens Health", "Mens Vitality", "Male Wellness", "Mens Sexual Wellness", "Mens Weight Loss", "mens-wellness", "mens-weight", "Men's Sexual Wellness", "Men's Weight Management"],
+  "Women": ["Female Wellness", "Womens Personal Wellness", "Womens Weight Management", "Womens Wellness", "Womens Weight Loss", "Women's Wellness", "Women's Weight", "womens-wellness", "womens-weight"]
 };
 
-export default function Dashboard() {
+const CATEGORY_MAPPING = {
+  "mens-wellness": ["Mens Health", "Mens Vitality", "Male Wellness", "Mens Sexual Wellness", "mens-wellness", "Men's Sexual Wellness"],
+  "womens-wellness": ["Female Wellness", "Womens Personal Wellness", "Womens Wellness", "Women's Wellness", "womens-wellness"],
+  "mens-weight": ["Mens Weight Loss", "mens-weight", "Men's Weight Management", "Men's Weight"],
+  "womens-weight": ["Womens Weight Management", "Womens Weight Loss", "Women's Weight", "womens-weight"]
+};
+
+export default function Dashboard({ roles = [] }) {
   const navigate = useNavigate();
   const [partialData, setPartialData] = useState([]);
   const [completedData, setCompletedData] = useState([]);
   const [manualData, setManualData] = useState([]);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((u) => {
+      setUser(u);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Filters
   const [fromDate, setFromDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 90); return d; });
@@ -89,7 +109,12 @@ export default function Dashboard() {
         if (!filterByDate(item)) return false;
 
         // Category Filter
-        if (categoryFilter !== "All" && item.reportCategory !== categoryFilter) return false;
+        if (categoryFilter !== "All") {
+          const allowedRawCategories = CATEGORY_MAPPING[categoryFilter] || [];
+          if (!allowedRawCategories.includes(item.reportCategory) && item.questionnaireId !== categoryFilter) {
+            return false;
+          }
+        }
 
         // Gender Filter
         if (genderFilter !== "All") {
@@ -144,15 +169,37 @@ export default function Dashboard() {
               </div>
             </motion.div>
 
-            <motion.button
-              className="btn"
-              style={{ padding: '10px 20px', fontSize: 13, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--card-border)' }}
-              onClick={() => navigate("/login")}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              Portal Access
-            </motion.button>
+            {user ? (
+              <div className="profile-dropdown-container">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 16px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: 100, border: '1px solid var(--card-border)' }}>
+                      <UserCircle size={18} />
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{user.displayName || user.email?.split('@')[0] || "My Profile"}</span>
+                  </div>
+                  <div className="profile-dropdown-menu">
+                      { (roles.includes("admin") || roles.includes("shipment_tracker")) && (
+                        <div className="profile-dropdown-item" onClick={() => navigate("/shipments")}>
+                            <Package size={16} /> Shipments Portal
+                        </div>
+                      )}
+                      <div className="profile-dropdown-item" onClick={() => navigate("/admin")}>
+                          <LayoutDashboard size={16} /> Admin Portal
+                      </div>
+                      <div className="profile-dropdown-item" style={{ color: 'var(--accent1)' }} onClick={() => signOut(auth)}>
+                          <LogOut size={16} /> Logout
+                      </div>
+                  </div>
+              </div>
+            ) : (
+              <motion.button
+                className="btn"
+                style={{ padding: '10px 20px', fontSize: 13, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--card-border)' }}
+                onClick={() => navigate("/login")}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                Portal Access
+              </motion.button>
+            )}
           </div>
         </header>
 
@@ -227,17 +274,10 @@ export default function Dashboard() {
             <span className="filter-label">Category:</span>
             <select className="native-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
               <option value="All">All Categories</option>
-              <option>Female Wellness</option>
-              <option>Womens Personal Wellness</option>
-              <option>Womens Weight Management</option>
-              <option>Womens Wellness</option>
-              <option>Womens Weight Loss</option>
-              <option>Women's Wellness</option>
-              <option>Women's Weight</option>
-              <option>Mens Health</option>
-              <option>Mens Vitality</option>
-              <option>Mens Sexual Wellness</option>
-              <option>Mens Weight Loss</option>
+              <option value="mens-wellness">Men's Wellness</option>
+              <option value="womens-wellness">Women's Wellness</option>
+              <option value="mens-weight">Men's Weight</option>
+              <option value="womens-weight">Women's Weight</option>
             </select>
           </div>
         </motion.div>
@@ -246,9 +286,7 @@ export default function Dashboard() {
           {[
             { label: "Started", num: analytics.totalStarted, icon: <Clock size={20} color="var(--accent3)" />, color: "var(--accent3)" },
             { label: "Completed", num: analytics.totalCompleted, icon: <CheckCircle2 size={20} color="#10b981" />, color: "#10b981" },
-            { label: "Completion", num: `${Math.round(analytics.completionRate || 0)}%`, icon: <TrendingUp size={20} color="var(--accent2)" />, color: "var(--accent2)" },
-            { label: "Health Score", num: Math.round(analytics.avgHealthScore || 0), icon: <Activity size={20} color="var(--accent1)" />, color: "var(--accent1)" },
-            { label: "Peer Avg", num: Math.round(analytics.peerAvg || 0), icon: <Target size={20} color="#f59e0b" />, color: "#f59e0b" },
+            { label: "Drop-off", num: `${Math.round(analytics.dropoffRate || 0)}%`, icon: <Target size={20} color="var(--muted)" />, color: "var(--muted)" },
           ].map((item, i) => (
             <motion.div
               key={item.label}

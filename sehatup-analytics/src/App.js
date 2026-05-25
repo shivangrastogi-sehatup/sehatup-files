@@ -7,12 +7,14 @@ import { auth, db } from "./firebase";
 
 // Components
 import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
 import AdminPanel from "./components/AdminPanel";
 import DoctorDashboard from "./components/DoctorDashboard";
 import UserDashboard from "./components/UserDashboard";
 import MarketingDashboard from "./components/MarketingDashboard";
 import OrderCreationCRM from "./components/OrderCreationCRM";
 import TeleSalesView from './components/TeleSalesView';
+import ShipmentDashboard from "./components/ShipmentDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { PermissionsProvider } from './context/PermissionsContext';
 
@@ -57,7 +59,10 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  const handleLogout = () => signOut(auth);
+  const handleLogout = () => {
+    sessionStorage.removeItem("nimbus_token");
+    return signOut(auth);
+  };
 
   if (loading) {
     return (
@@ -72,7 +77,7 @@ export default function App() {
     <Router>
       <PermissionsProvider>
         <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Dashboard roles={roles} />} />
         <Route
           path="/login"
           element={
@@ -90,6 +95,7 @@ export default function App() {
                     if (intendedRole === "performance_marketing") return <Navigate to="/marketing" />;
                     if (intendedRole === "tele_sales") return <Navigate to="/tele-sales" />;
                     if (intendedRole === "order_creator") return <Navigate to="/order-creator" />;
+                    if (intendedRole === "shipment_tracker") return <Navigate to="/shipments" />;
                   }
                 }
 
@@ -99,6 +105,7 @@ export default function App() {
                 if (roles.includes("performance_marketing")) return <Navigate to="/marketing" />;
                 if (roles.includes("tele_sales")) return <Navigate to="/tele-sales" />;
                 if (roles.includes("order_creator")) return <Navigate to="/order-creator" />;
+                if (roles.includes("shipment_tracker")) return <Navigate to="/shipments" />;
                 return <Navigate to="/me" />;
               })()
             )
@@ -147,6 +154,15 @@ export default function App() {
           element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={["order_creator"]}>
               <OrderCreationCRM onLogout={handleLogout} roles={roles} user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/shipments"
+          element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={["admin", "shipment_tracker"]}>
+              <ShipmentDashboard onLogout={handleLogout} roles={roles} user={user} />
             </ProtectedRoute>
           }
         />

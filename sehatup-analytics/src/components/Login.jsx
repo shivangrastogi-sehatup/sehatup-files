@@ -58,6 +58,7 @@ export default function Login() {
                     performance_marketing: "Performance Marketer",
                     tele_sales: "Tele-Sales Role",
                     order_creator: "Order Creating Role",
+                    shipment_tracker: "Shipment Tracker",
                     user: "Patient / User"
                 };
                 const userRealRole = userRoles.map(r => roleLabels[r] || r).join(" and ");
@@ -126,6 +127,7 @@ export default function Login() {
                                         <option value="performance_marketing">Performance Marketer</option>
                                         <option value="tele_sales">Tele-Sales Role</option>
                                         <option value="order_creator">Order Creating Role</option>
+                                        <option value="shipment_tracker">Shipment Tracker</option>
                                         <option value="admin">System Administrator</option>
                                     </select>
                                     <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }} />

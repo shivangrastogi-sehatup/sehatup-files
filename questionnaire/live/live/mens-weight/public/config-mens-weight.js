@@ -621,34 +621,43 @@ const questionnaireConfig = {
         hiDesc: "TSH बेहतर हो सकता है; बेहतर ऊर्जा, मनोदशा और नियंत्रण"
       }],
       "hypertension": [{
-        month: "Month 1",
-        timelineDesc: "May feel calmer, less heaviness, better sleep"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "May feel calmer, less heaviness, better sleep",
+        hiDesc: "अधिक शांत महसूस हो सकता है, कम भारीपन, बेहतर नींद"
       }, {
-        month: "Month 3",
-        timelineDesc: "BP may start to settle, better daily rhythm"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "BP may start to settle, better daily rhythm",
+        hiDesc: "रक्तचाप स्थिर होने लगता है, बेहतर दैनिक लय"
       }, {
-        month: "Month 6",
-        timelineDesc: "Noticeable BP control, better response to activity"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Noticeable BP control, better response to activity",
+        hiDesc: "उल्लेखनीय रक्तचाप नियंत्रण, गतिविधि के प्रति बेहतर प्रतिक्रिया"
       }],
       "diabetes": [{
-        month: "Month 1",
-        timelineDesc: "Sugar cravings may ease, energy steadier"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Sugar cravings may ease, energy steadier",
+        hiDesc: "मीठे की लालसा कम हो सकती है, अधिक स्थिर ऊर्जा"
       }, {
-        month: "Month 3",
-        timelineDesc: "Early improvements in glucose levels and weight"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Early improvements in glucose levels and weight",
+        hiDesc: "ग्लूकोज स्तर और वज़न में जल्दी सुधार"
       }, {
-        month: "Month 6",
-        timelineDesc: "Insulin sensitivity improves, fatigue decreases"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Insulin sensitivity improves, fatigue decreases",
+        hiDesc: "इंसुलिन संवेदनशीलता बेहतर होती है, थकान घटती है"
       }],
       "metabolic disorders": [{
-        month: "Month 1",
-        timelineDesc: "Reduced bloating and food sensitivity"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Reduced bloating and food sensitivity",
+        hiDesc: "सूजन और खाद्य संवेदनशीलता में कमी"
       }, {
-        month: "Month 3",
-        timelineDesc: "Digestion and fat metabolism begin to stabilize"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Digestion and fat metabolism begin to stabilize",
+        hiDesc: "पाचन और वसा मेटाबॉलिज्म स्थिर होने लगते हैं"
       }, {
-        month: "Month 6",
-        timelineDesc: "Weight and sugar balance feel more manageable"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Weight and sugar balance feel more manageable",
+        hiDesc: "वज़न और शुगर संतुलन अधिक प्रबंधनीय लगते हैं"
       }],
       "obesity": [{
         month: "Month 1", hi: "महीना 1",
@@ -692,34 +701,43 @@ const questionnaireConfig = {
         hiDesc: "यौन कल्याण और ऊर्जा में निरंतर सुधार"
       }],
       "hypertension": [{
-        month: "Month 1",
-        timelineDesc: "Slight dip in pressure sensation or headaches"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Slight dip in pressure sensation or headaches",
+        hiDesc: "रक्तचाप के दबाव या सिरदर्द में हल्की कमी"
       }, {
-        month: "Month 3",
-        timelineDesc: "Better stress tolerance, early BP stability"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Better stress tolerance, early BP stability",
+        hiDesc: "बेहतर तनाव सहनशीलता, रक्तचाप में जल्दी स्थिरता"
       }, {
-        month: "Month 6",
-        timelineDesc: "BP patterns more stable, less effort fatigue"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "BP patterns more stable, less effort fatigue",
+        hiDesc: "रक्तचाप अधिक स्थिर, मेहनत के बाद कम थकान"
       }],
       "diabetes": [{
-        month: "Month 1",
-        timelineDesc: "Calmer digestion, slightly more energy"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Calmer digestion, slightly more energy",
+        hiDesc: "शांत पाचन, थोड़ी अधिक ऊर्जा"
       }, {
-        month: "Month 3",
-        timelineDesc: "Weight and sugar readings may begin to shift"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Weight and sugar readings may begin to shift",
+        hiDesc: "वज़न और शुगर के स्तर में बदलाव शुरू हो सकता है"
       }, {
-        month: "Month 6",
-        timelineDesc: "Fewer post-meal crashes, lighter and more energetic"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Fewer post-meal crashes, lighter and more energetic",
+        hiDesc: "भोजन के बाद कम थकान, अधिक हल्कापन और ऊर्जा"
       }],
       "metabolic disorders": [{
-        month: "Month 1",
-        timelineDesc: "Appetite and cravings begin to regulate"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Appetite and cravings begin to regulate",
+        hiDesc: "भूख और लालसा नियंत्रित होने लगती है"
       }, {
-        month: "Month 3",
-        timelineDesc: "Cholesterol/sugar levels show positive trends"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Cholesterol/sugar levels show positive trends",
+        hiDesc: "कोलेस्ट्रॉल/शुगर स्तरों में सकारात्मक रुझान"
       }, {
-        month: "Month 6",
-        timelineDesc: "Digestion, weight, and inflammation improve"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Digestion, weight, and inflammation improve",
+        hiDesc: "पाचन, वज़न और सूजन में सुधार"
       }],
       "obesity": [{
         month: "Month 1", hi: "महीना 1",
@@ -763,34 +781,43 @@ const questionnaireConfig = {
         hiDesc: "बाल, त्वचा और भावनात्मक स्वास्थ्य बेहतर हो सकता है"
       }],
       "hypertension": [{
-        month: "Month 1",
-        timelineDesc: "BP may remain high but energy begins improving"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "BP may remain high but energy begins improving",
+        hiDesc: "रक्तचाप ऊँचा रह सकता है पर ऊर्जा बेहतर होने लगती है"
       }, {
-        month: "Month 3",
-        timelineDesc: "BP stabilizes slowly, less dizziness/fatigue"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "BP stabilizes slowly, less dizziness/fatigue",
+        hiDesc: "रक्तचाप धीरे-धीरे स्थिर होता है, कम चक्कर/थकान"
       }, {
-        month: "Month 6",
-        timelineDesc: "Cardiovascular endurance builds up, better flow"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Cardiovascular endurance builds up, better flow",
+        hiDesc: "हृदय सहनशक्ति बढ़ती है, बेहतर रक्त प्रवाह"
       }],
       "diabetes": [{
-        month: "Month 1",
-        timelineDesc: "Less bloating, sugar crashes reduce"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Less bloating, sugar crashes reduce",
+        hiDesc: "कम सूजन, शुगर का अचानक गिरना कम"
       }, {
-        month: "Month 3",
-        timelineDesc: "Glucose control better with consistent lifestyle"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Glucose control better with consistent lifestyle",
+        hiDesc: "नियमित जीवनशैली से ग्लूकोज नियंत्रण बेहतर"
       }, {
-        month: "Month 6",
-        timelineDesc: "Long-term glucose stability and lower cravings"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Long-term glucose stability and lower cravings",
+        hiDesc: "दीर्घकालिक ग्लूकोज स्थिरता और कम लालसा"
       }],
       "metabolic disorders": [{
-        month: "Month 1",
-        timelineDesc: "Improved digestion, easier hunger control"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Improved digestion, easier hunger control",
+        hiDesc: "बेहतर पाचन, भूख पर आसान नियंत्रण"
       }, {
-        month: "Month 3",
-        timelineDesc: "Weight loss trends begin showing steadily"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Weight loss trends begin showing steadily",
+        hiDesc: "वज़न घटने के रुझान लगातार दिखने लगते हैं"
       }, {
-        month: "Month 6",
-        timelineDesc: "Metabolism better tuned; cholesterol, sugar improve"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Metabolism better tuned; cholesterol, sugar improve",
+        hiDesc: "मेटाबॉलिज्म बेहतर ट्यून; कोलेस्ट्रॉल, शुगर में सुधार"
       }],
       "obesity": [{
         month: "Month 1", hi: "महीना 1",
@@ -834,34 +861,43 @@ const questionnaireConfig = {
         hiDesc: "हार्मोन अच्छी तरह प्रबंधित, बेहतर त्वचा/बाल/वज़न"
       }],
       "hypertension": [{
-        month: "Month 1",
-        timelineDesc: "Stable BP patterns, better alertness"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Stable BP patterns, better alertness",
+        hiDesc: "स्थिर रक्तचाप, बेहतर सजगता"
       }, {
-        month: "Month 3",
-        timelineDesc: "Calmness in body, better focus and blood flow"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Calmness in body, better focus and blood flow",
+        hiDesc: "शरीर में शांति, बेहतर एकाग्रता और रक्त प्रवाह"
       }, {
-        month: "Month 6",
-        timelineDesc: "Long-term BP control, endurance improves"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Long-term BP control, endurance improves",
+        hiDesc: "दीर्घकालिक रक्तचाप नियंत्रण, सहनशक्ति में सुधार"
       }],
       "diabetes": [{
-        month: "Month 1",
-        timelineDesc: "Reduced food swings, stable energy"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Reduced food swings, stable energy",
+        hiDesc: "भोजन के उतार-चढ़ाव में कमी, स्थिर ऊर्जा"
       }, {
-        month: "Month 3",
-        timelineDesc: "Sugar balance maintained, more flexibility"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Sugar balance maintained, more flexibility",
+        hiDesc: "शुगर संतुलन बना रहता है, अधिक लचीलापन"
       }, {
-        month: "Month 6",
-        timelineDesc: "Blood sugar levels under control, fatigue minimal"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Blood sugar levels under control, fatigue minimal",
+        hiDesc: "रक्त शर्करा स्तर नियंत्रण में, थकान न्यूनतम"
       }],
       "metabolic disorders": [{
-        month: "Month 1",
-        timelineDesc: "Digestion and metabolism feel consistent"
+        month: "Month 1", hi: "महीना 1",
+        timelineDesc: "Digestion and metabolism feel consistent",
+        hiDesc: "पाचन और मेटाबॉलिज्म एक समान महसूस होते हैं"
       }, {
-        month: "Month 3",
-        timelineDesc: "Healthy weight and cholesterol become sustainable"
+        month: "Month 3", hi: "महीना 3",
+        timelineDesc: "Healthy weight and cholesterol become sustainable",
+        hiDesc: "स्वस्थ वज़न और कोलेस्ट्रॉल टिकाऊ बनते हैं"
       }, {
-        month: "Month 6",
-        timelineDesc: "Long-term stability in sugar, lipids, and digestion"
+        month: "Month 6", hi: "महीना 6",
+        timelineDesc: "Long-term stability in sugar, lipids, and digestion",
+        hiDesc: "शुगर, लिपिड और पाचन में दीर्घकालिक स्थिरता"
       }],
       "obesity": [{
         month: "Month 1", hi: "महीना 1",

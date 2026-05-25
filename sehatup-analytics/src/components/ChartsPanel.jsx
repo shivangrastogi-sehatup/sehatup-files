@@ -32,6 +32,7 @@ export default function ChartsPanel({ analytics = {} }) {
   const {
     totalStarted = 0,
     totalCompleted = 0,
+    totalPurchased = 0,
     timeSeries = [],
     genders = {},
     riskCounts = {},
@@ -94,19 +95,23 @@ export default function ChartsPanel({ analytics = {} }) {
   };
 
   const tsLabels = timeSeries.map((t) => t.day);
-  const tsData = timeSeries.map((t) => t.count);
+  const tsDataCompleted = timeSeries.map((t) => t.count);
   const tsLine = {
     labels: tsLabels,
-    datasets: [{
-      label: "Trend",
-      data: tsData,
-      fill: true,
-      tension: 0.4,
-      borderColor: "#f43f5e",
-      backgroundColor: "rgba(244, 63, 94, 0.1)",
-      pointBackgroundColor: "#f43f5e",
-      borderWidth: 2,
-    }]
+    datasets: [
+      {
+        label: "Completed",
+        data: tsDataCompleted,
+        fill: true,
+        tension: 0.5,
+        borderColor: "#f43f5e",
+        backgroundColor: "rgba(244, 63, 94, 0.15)",
+        pointBackgroundColor: "#f43f5e",
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5
+      }
+    ]
   };
 
   const genderPie = {

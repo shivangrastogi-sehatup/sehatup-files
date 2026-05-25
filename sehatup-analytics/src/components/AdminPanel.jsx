@@ -12,6 +12,7 @@ import {
     FIREBASE_MODE,
     setFirebaseMode
 } from "../config/firebaseEnvironment";
+import { useNavigate } from "react-router-dom";
 import {
     Layers,
     Calendar as CalendarIcon,
@@ -27,7 +28,8 @@ import {
     Shield,
     LayoutDashboard,
     UserCircle,
-    Wand2
+    Wand2,
+    Home
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
@@ -81,6 +83,7 @@ const DELETED_COLLECTION = "deleted_submissions";
 
 
 export default function AdminPanel() {
+    const navigate = useNavigate();
     const [pageHistory, setPageHistory] = useState([null]);
     const [dbMode] = useState(FIREBASE_MODE);
     const [submissions, setSubmissions] = useState([]);
@@ -417,12 +420,13 @@ export default function AdminPanel() {
 
                 <nav className="sidebar-nav">
                     <div className="nav-section">Main</div>
+                    <button className="nav-item" onClick={() => navigate("/")}>
+                        <Home size={20} /> Home Page
+                    </button>
                     <button className={`nav-item ${view === 'submissions' ? 'active' : ''}`} onClick={() => setView('submissions')}>
                         <LayoutDashboard size={20} /> Submissions
                     </button>
-                    <button className={`nav-item ${view === 'analytics' ? 'active' : ''}`} onClick={() => setView('analytics')}>
-                        <PieChart size={20} /> Analytics
-                    </button>
+
 
                     <div className="nav-section">Management</div>
                     <button className={`nav-item ${view === 'requests' ? 'active' : ''}`} onClick={() => setView('requests')}>

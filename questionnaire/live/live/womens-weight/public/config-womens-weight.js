@@ -589,130 +589,130 @@ const questionnaireConfig = {
     conditionTimelineData: {
         '<25': {
             "pcos/pcod": [
-                { month: "Month 1", timelineDesc: "Bloating, mood improve", hiDesc: "सूजन, मनोदशा में सुधार" },
-                { month: "Month 3", timelineDesc: "Cycles begin regulating", hiDesc: "मासिक चक्र नियमित होने लगता है" },
-                { month: "Month 6", timelineDesc: "Ovulation regularises", hiDesc: "ओव्यूलेशन नियमित होता है" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Bloating, mood improve", hiDesc: "सूजन, मनोदशा में सुधार" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Cycles begin regulating", hiDesc: "मासिक चक्र नियमित होने लगता है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Ovulation regularises", hiDesc: "ओव्यूलेशन नियमित होता है" }
             ],
             "thyroid disorder": [
-                { month: "Month 1", timelineDesc: "Morning energy rises", hiDesc: "सुबह की ऊर्जा बढ़ती है" },
-                { month: "Month 3", timelineDesc: "Focus, fatigue improve", hiDesc: "एकाग्रता, थकान में सुधार" },
-                { month: "Month 6", timelineDesc: "Stable energy and mood", hiDesc: "स्थिर ऊर्जा और मनोदशा" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Morning energy rises", hiDesc: "सुबह की ऊर्जा बढ़ती है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Focus, fatigue improve", hiDesc: "एकाग्रता, थकान में सुधार" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Stable energy and mood", hiDesc: "स्थिर ऊर्जा और मनोदशा" }
             ],
             "hypertension": [
-                { month: "Month 1", timelineDesc: "Heaviness reduces", hiDesc: "भारीपन कम होता है" },
-                { month: "Month 3", timelineDesc: "BP shows improvement", hiDesc: "रक्तचाप में सुधार दिखता है" },
-                { month: "Month 6", timelineDesc: "BP easier to manage", hiDesc: "रक्तचाप प्रबंधित करना आसान" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Heaviness reduces", hiDesc: "भारीपन कम होता है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "BP shows improvement", hiDesc: "रक्तचाप में सुधार दिखता है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "BP easier to manage", hiDesc: "रक्तचाप प्रबंधित करना आसान" }
             ],
             "diabetes": [
-                { month: "Month 1", timelineDesc: "Cravings reduce", hiDesc: "लालसा कम होती है" },
-                { month: "Month 3", timelineDesc: "Sugar response improves", hiDesc: "शुगर प्रतिक्रिया में सुधार" },
-                { month: "Month 6", timelineDesc: "Sugar levels stabilise", hiDesc: "शुगर स्तर स्थिर होता है" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Cravings reduce", hiDesc: "लालसा कम होती है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Sugar response improves", hiDesc: "शुगर प्रतिक्रिया में सुधार" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Sugar levels stabilise", hiDesc: "शुगर स्तर स्थिर होता है" }
             ],
             "family history of obesity or metabolic disorders": [
-                { month: "Month 1", timelineDesc: "Digestion improves", hiDesc: "पाचन में सुधार" },
-                { month: "Month 3", timelineDesc: "Belly fat begins reducing", hiDesc: "पेट की चर्बी कम होने लगती है" },
-                { month: "Month 6", timelineDesc: "Liver health, energy improve", hiDesc: "लीवर स्वास्थ्य, ऊर्जा में सुधार" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Digestion improves", hiDesc: "पाचन में सुधार" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Belly fat begins reducing", hiDesc: "पेट की चर्बी कम होने लगती है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Liver health, energy improve", hiDesc: "लीवर स्वास्थ्य, ऊर्जा में सुधार" }
             ],
             "obesity": [
-                { month: "Month 1", timelineDesc: "Initial reduction in bloating, better energy, appetite and digestion.", hiDesc: "सूजन में शुरुआती कमी, बेहतर ऊर्जा, भूख और पाचन।" },
-                { month: "Month 3", timelineDesc: "Visible inch loss, better sleep, sustained stamina and improved metabolic rhythm.", hiDesc: "दिखने योग्य इंच लॉस, बेहतर नींद, निरंतर स्टैमिना और बेहतर मेटाबॉलिक लय।" },
-                { month: "Month 6", timelineDesc: "Improved tone, weight, control over eating and energy, enhanced daily functioning.", hiDesc: "बेहतर टोन, वज़न, खानपान और ऊर्जा पर नियंत्रण, बेहतर दैनिक कार्यक्षमता।" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Initial reduction in bloating, better energy, appetite and digestion.", hiDesc: "सूजन में शुरुआती कमी, बेहतर ऊर्जा, भूख और पाचन।" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Visible inch loss, better sleep, sustained stamina and improved metabolic rhythm.", hiDesc: "दिखने योग्य इंच लॉस, बेहतर नींद, निरंतर स्टैमिना और बेहतर मेटाबॉलिक लय।" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Improved tone, weight, control over eating and energy, enhanced daily functioning.", hiDesc: "बेहतर टोन, वज़न, खानपान और ऊर्जा पर नियंत्रण, बेहतर दैनिक कार्यक्षमता।" }
             ]
         },
         '25-60': {
             "pcos/pcod": [
-                { month: "Month 1", timelineDesc: "Period discomfort reduces", hiDesc: "मासिक धर्म की असुविधा कम होती है" },
-                { month: "Month 3", timelineDesc: "Cycles get regular", hiDesc: "मासिक चक्र नियमित होता है" },
-                { month: "Month 6", timelineDesc: "PMS and mood swings ease", hiDesc: "PMS और मूड स्विंग्स में राहत" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Period discomfort reduces", hiDesc: "मासिक धर्म की असुविधा कम होती है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Cycles get regular", hiDesc: "मासिक चक्र नियमित होता है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "PMS and mood swings ease", hiDesc: "PMS और मूड स्विंग्स में राहत" }
             ],
             "thyroid disorder": [
-                { month: "Month 1", timelineDesc: "Sleep, bowels improve", hiDesc: "नींद, मल त्याग में सुधार" },
-                { month: "Month 3", timelineDesc: "Hair, weight improve", hiDesc: "बाल, वज़न में सुधार" },
-                { month: "Month 6", timelineDesc: "Skin, hair healthier", hiDesc: "त्वचा, बाल अधिक स्वस्थ" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Sleep, bowels improve", hiDesc: "नींद, मल त्याग में सुधार" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Hair, weight improve", hiDesc: "बाल, वज़न में सुधार" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Skin, hair healthier", hiDesc: "त्वचा, बाल अधिक स्वस्थ" }
             ],
             "hypertension": [
-                { month: "Month 1", timelineDesc: "Puffiness lessens", hiDesc: "सूजन कम होती है" },
-                { month: "Month 3", timelineDesc: "BP starts stabilising", hiDesc: "रक्तचाप स्थिर होने लगता है" },
-                { month: "Month 6", timelineDesc: "BP becomes manageable", hiDesc: "रक्तचाप प्रबंधनीय हो जाता है" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Puffiness lessens", hiDesc: "सूजन कम होती है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "BP starts stabilising", hiDesc: "रक्तचाप स्थिर होने लगता है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "BP becomes manageable", hiDesc: "रक्तचाप प्रबंधनीय हो जाता है" }
             ],
             "diabetes": [
-                { month: "Month 1", timelineDesc: "Less fatigue after meals", hiDesc: "भोजन के बाद कम थकान" },
-                { month: "Month 3", timelineDesc: "Sugar control improves", hiDesc: "शुगर नियंत्रण में सुधार" },
-                { month: "Month 6", timelineDesc: "Rare sugar dips", hiDesc: "शुगर का गिरना दुर्लभ" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Less fatigue after meals", hiDesc: "भोजन के बाद कम थकान" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Sugar control improves", hiDesc: "शुगर नियंत्रण में सुधार" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Rare sugar dips", hiDesc: "शुगर का गिरना दुर्लभ" }
             ],
             "family history of obesity or metabolic disorders": [
-                { month: "Month 1", timelineDesc: "Cravings begin decreasing", hiDesc: "लालसा कम होने लगती है" },
-                { month: "Month 3", timelineDesc: "Digestion, bloating reduce", hiDesc: "पाचन में सुधार, सूजन कम" },
-                { month: "Month 6", timelineDesc: "Liver and cholesterol improve", hiDesc: "लीवर और कोलेस्ट्रॉल में सुधार" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Cravings begin decreasing", hiDesc: "लालसा कम होने लगती है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Digestion, bloating reduce", hiDesc: "पाचन में सुधार, सूजन कम" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Liver and cholesterol improve", hiDesc: "लीवर और कोलेस्ट्रॉल में सुधार" }
             ],
             "obesity": [
-                { month: "Month 1", timelineDesc: "Appetite settles, reduced snacking, better digestion and sleep.", hiDesc: "भूख स्थिर होती है, कम स्नैकिंग, बेहतर पाचन और नींद।" },
-                { month: "Month 3", timelineDesc: "Fat loss becomes visible, stamina rises, sleep deepens.", hiDesc: "वसा हानि दिखने लगती है, स्टैमिना बढ़ता है, नींद गहरी होती है।" },
-                { month: "Month 6", timelineDesc: "Noticeable inch loss, better metabolism, alertness, and physical ease.", hiDesc: "उल्लेखनीय इंच लॉस, बेहतर मेटाबॉलिज्म, सतर्कता और शारीरिक सहजता।" }
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Appetite settles, reduced snacking, better digestion and sleep.", hiDesc: "भूख स्थिर होती है, कम स्नैकिंग, बेहतर पाचन और नींद।" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Fat loss becomes visible, stamina rises, sleep deepens.", hiDesc: "वसा हानि दिखने लगती है, स्टैमिना बढ़ता है, नींद गहरी होती है।" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Noticeable inch loss, better metabolism, alertness, and physical ease.", hiDesc: "उल्लेखनीय इंच लॉस, बेहतर मेटाबॉलिज्म, सतर्कता और शारीरिक सहजता।" }
             ]
         },
         '61-80': {
             "pcos/pcod": [
-                { month: "Month 1", timelineDesc: "Acne, bloating ease", hiDesc: "मुंहासे, सूजन में राहत" },
-                { month: "Month 3", timelineDesc: "Periods more predictable", hiDesc: "मासिक धर्म अधिक अनुमानित" },
-                { month: "Month 6", timelineDesc: "PMS manageable", hiDesc: "PMS प्रबंधनीय" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Acne, bloating ease", hiDesc: "मुंहासे, सूजन में राहत" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Periods more predictable", hiDesc: "मासिक धर्म अधिक अनुमानित" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "PMS manageable", hiDesc: "PMS प्रबंधनीय" },
             ],
             "thyroid disorder": [
-                { month: "Month 1", timelineDesc: "Mood improves", hiDesc: "मनोदशा में सुधार" },
-                { month: "Month 3", timelineDesc: "Hair, focus better", hiDesc: "बाल, एकाग्रता बेहतर" },
-                { month: "Month 6", timelineDesc: "Hormonal rhythm stable", hiDesc: "हार्मोनल लय स्थिर" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Mood improves", hiDesc: "मनोदशा में सुधार" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Hair, focus better", hiDesc: "बाल, एकाग्रता बेहतर" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Hormonal rhythm stable", hiDesc: "हार्मोनल लय स्थिर" },
             ],
             "hypertension": [
-                { month: "Month 1", timelineDesc: "Puffiness reduces", hiDesc: "सूजन कम होती है" },
-                { month: "Month 3", timelineDesc: "BP readings stabilise", hiDesc: "रक्तचाप रीडिंग स्थिर" },
-                { month: "Month 6", timelineDesc: "BP stays steady", hiDesc: "रक्तचाप स्थिर रहता है" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Puffiness reduces", hiDesc: "सूजन कम होती है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "BP readings stabilise", hiDesc: "रक्तचाप रीडिंग स्थिर" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "BP stays steady", hiDesc: "रक्तचाप स्थिर रहता है" },
             ],
             "diabetes": [
-                { month: "Month 1", timelineDesc: "Sugar crashes decline", hiDesc: "शुगर का अचानक गिरना कम" },
-                { month: "Month 3", timelineDesc: "Sugar levels even out", hiDesc: "शुगर स्तर संतुलित" },
-                { month: "Month 6", timelineDesc: "Appetite remains balanced", hiDesc: "भूख संतुलित रहती है" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Sugar crashes decline", hiDesc: "शुगर का अचानक गिरना कम" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Sugar levels even out", hiDesc: "शुगर स्तर संतुलित" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Appetite remains balanced", hiDesc: "भूख संतुलित रहती है" },
             ],
             "family history of obesity or metabolic disorders": [
-                { month: "Month 1", timelineDesc: "Junk cravings reduce", hiDesc: "जंक फूड की लालसा कम" },
-                { month: "Month 3", timelineDesc: "Fat shifts, digestion improves", hiDesc: "वसा घटती है, पाचन सुधरता है" },
-                { month: "Month 6", timelineDesc: "Body lighter, more resilient", hiDesc: "शरीर हल्का, अधिक मज़बूत" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Junk cravings reduce", hiDesc: "जंक फूड की लालसा कम" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Fat shifts, digestion improves", hiDesc: "वसा घटती है, पाचन सुधरता है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Body lighter, more resilient", hiDesc: "शरीर हल्का, अधिक मज़बूत" },
             ],
             "obesity": [
-                { month: "Month 1", timelineDesc: "Light digestion, fewer cravings, mild sleep and energy improvement.", hiDesc: "हल्का पाचन, कम लालसा, नींद और ऊर्जा में हल्का सुधार।" },
-                { month: "Month 3", timelineDesc: "Energy improves, movement feels easier, eating becomes structured.", hiDesc: "ऊर्जा बढ़ती है, चलना-फिरना आसान लगता है, खानपान व्यवस्थित होता है।" },
-                { month: "Month 6", timelineDesc: "Better body tone, control over habits, lighter feeling.", hiDesc: "बेहतर बॉडी टोन, आदतों पर नियंत्रण, हल्कापन महसूस।" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Light digestion, fewer cravings, mild sleep and energy improvement.", hiDesc: "हल्का पाचन, कम लालसा, नींद और ऊर्जा में हल्का सुधार।" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Energy improves, movement feels easier, eating becomes structured.", hiDesc: "ऊर्जा बढ़ती है, चलना-फिरना आसान लगता है, खानपान व्यवस्थित होता है।" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Better body tone, control over habits, lighter feeling.", hiDesc: "बेहतर बॉडी टोन, आदतों पर नियंत्रण, हल्कापन महसूस।" },
             ]
         },
         '81+': {
             "pcos/pcod": [
-                { month: "Month 1", timelineDesc: "Skin, mood stable", hiDesc: "त्वचा, मनोदशा स्थिर" },
-                { month: "Month 3", timelineDesc: "Cycles consistent", hiDesc: "मासिक चक्र सुसंगत" },
-                { month: "Month 6", timelineDesc: "PMS under control", hiDesc: "PMS नियंत्रण में" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Skin, mood stable", hiDesc: "त्वचा, मनोदशा स्थिर" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Cycles consistent", hiDesc: "मासिक चक्र सुसंगत" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "PMS under control", hiDesc: "PMS नियंत्रण में" },
             ],
             "thyroid disorder": [
-                { month: "Month 1", timelineDesc: "Less daytime fatigue", hiDesc: "दिन में कम थकान" },
-                { month: "Month 3", timelineDesc: "Focus, alertness stable", hiDesc: "एकाग्रता, सतर्कता स्थिर" },
-                { month: "Month 6", timelineDesc: "Thyroid function steady", hiDesc: "थायरॉइड कार्य स्थिर" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Less daytime fatigue", hiDesc: "दिन में कम थकान" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Focus, alertness stable", hiDesc: "एकाग्रता, सतर्कता स्थिर" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Thyroid function steady", hiDesc: "थायरॉइड कार्य स्थिर" },
             ],
             "hypertension": [
-                { month: "Month 1", timelineDesc: "Mood, puffiness balanced", hiDesc: "मनोदशा, सूजन संतुलित" },
-                { month: "Month 3", timelineDesc: "BP remains controlled", hiDesc: "रक्तचाप नियंत्रित रहता है" },
-                { month: "Month 6", timelineDesc: "BP under long-term control", hiDesc: "रक्तचाप दीर्घकालिक नियंत्रण में" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Mood, puffiness balanced", hiDesc: "मनोदशा, सूजन संतुलित" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "BP remains controlled", hiDesc: "रक्तचाप नियंत्रित रहता है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "BP under long-term control", hiDesc: "रक्तचाप दीर्घकालिक नियंत्रण में" },
             ],
             "diabetes": [
-                { month: "Month 1", timelineDesc: "Cravings under control", hiDesc: "लालसा नियंत्रण में" },
-                { month: "Month 3", timelineDesc: "Sugar control sustained", hiDesc: "शुगर नियंत्रण बना रहता है" },
-                { month: "Month 6", timelineDesc: "Appetite, sugar balanced", hiDesc: "भूख, शुगर संतुलित" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Cravings under control", hiDesc: "लालसा नियंत्रण में" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Sugar control sustained", hiDesc: "शुगर नियंत्रण बना रहता है" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Appetite, sugar balanced", hiDesc: "भूख, शुगर संतुलित" },
             ],
             "family history of obesity or metabolic disorders": [
-                { month: "Month 1", timelineDesc: "Digestion remains smooth", hiDesc: "पाचन सुचारू रहता है" },
-                { month: "Month 3", timelineDesc: "Lipids, liver stay normal", hiDesc: "लिपिड, लीवर सामान्य रहते हैं" },
-                { month: "Month 6", timelineDesc: "Long-term wellness sustained", hiDesc: "दीर्घकालिक कल्याण बना रहता है" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Digestion remains smooth", hiDesc: "पाचन सुचारू रहता है" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Lipids, liver stay normal", hiDesc: "लिपिड, लीवर सामान्य रहते हैं" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Long-term wellness sustained", hiDesc: "दीर्घकालिक कल्याण बना रहता है" },
             ],
             "obesity": [
-                { month: "Month 1", timelineDesc: "Weight stable, digestion light, energy and food control consistent.", hiDesc: "वज़न स्थिर, पाचन हल्का, ऊर्जा और भोजन नियंत्रण सुसंगत।" },
-                { month: "Month 3", timelineDesc: "Agility improves, immune recovery and tone maintained.", hiDesc: "फुर्ती बढ़ती है, प्रतिरक्षा रिकवरी और टोन बनी रहती है।" },
-                { month: "Month 6", timelineDesc: "Metabolism, body shape, and stamina stay balanced and sustained.", hiDesc: "मेटाबॉलिज्म, शरीर का आकार और स्टैमिना संतुलित और बना रहता है।" },
+                { month: "Month 1", hi: "महीना 1", timelineDesc: "Weight stable, digestion light, energy and food control consistent.", hiDesc: "वज़न स्थिर, पाचन हल्का, ऊर्जा और भोजन नियंत्रण सुसंगत।" },
+                { month: "Month 3", hi: "महीना 3", timelineDesc: "Agility improves, immune recovery and tone maintained.", hiDesc: "फुर्ती बढ़ती है, प्रतिरक्षा रिकवरी और टोन बनी रहती है।" },
+                { month: "Month 6", hi: "महीना 6", timelineDesc: "Metabolism, body shape, and stamina stay balanced and sustained.", hiDesc: "मेटाबॉलिज्म, शरीर का आकार और स्टैमिना संतुलित और बना रहता है।" },
             ]
         }
     },
