@@ -3683,6 +3683,11 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
           latestPrescriptionId: docId,
           consultedByUid: auth?.currentUser?.uid || '',
           consultedByName: doctorName,
+          // Persist clinical fields back to the patient so prefill works on reopen
+          primaryDiagnosis,
+          clinicalFindings,
+          lifestyleChanges: finalData.lifestyleChanges,
+          recommendedProducts: finalData.recommendedProducts,
         });
         transaction.set(patientPrescriptionRef, { ...finalData, docId, savedAt: serverTimestamp() });
         // Also write to doctor's personal my_prescriptions subcollection
@@ -6063,8 +6068,9 @@ function OrderStatusBadge({ status }) {
 
 const STAGES = [
   { key: "Awaiting tracking", label: "Awaiting",          short: "AW", color: "var(--muted)" },
-  { key: "Shipped",           label: "In transit",         short: "SH", color: "#5b8def" },
+  { key: "Shipped",           label: "In transit",        short: "SH", color: "#5b8def" },
   { key: "Out for delivery",  label: "Out for delivery",  short: "OFD",color: "var(--risk-moderate)" },
+  { key: "Exception",         label: "Exception",         short: "EX", color: "#e8a44c" },
   { key: "Delivered",         label: "Delivered",         short: "DL", color: "var(--risk-low)" },
   { key: "Failed delivery",   label: "Failed",            short: "FL", color: "var(--risk-critical)" },
 ];
@@ -6152,10 +6158,19 @@ function ShipmentsScreen() {
       let status = 'Shipped';
       if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
       else if (ns.includes('out for delivery') || ns === 'out_for_delivery') status = 'Out for delivery';
+      else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
+      else if (ns.includes('exception') || ns.includes('hold') || ns.includes('pending') || ns.includes('delay')) status = 'Exception';
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
-      else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel')) status = 'Failed delivery';
-      else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch')) status = 'Shipped';
-      return { ...s, status, hasTracking: true, lastUpdate: latest.event_time || s.lastUpdate, lastLocation: latest.location || '' };
+      else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
+      return {
+        ...s,
+        status,
+        hasTracking: true,
+        rawStatus: latest.status || '',
+        lastUpdate: latest.event_time || s.lastUpdate,
+        lastLocation: latest.location || '',
+        lastMessage: latest.message || '',
+      };
     });
   }, [shipments, trackingMap]);
 
@@ -6302,6 +6317,7 @@ function ShipmentsScreen() {
               { label: "Awaiting", value: "Awaiting tracking", count: counts["Awaiting tracking"] },
               { label: "In transit", value: "Shipped", count: counts.Shipped },
               { label: "Out for delivery", value: "Out for delivery", count: counts["Out for delivery"] },
+              { label: "Exception", value: "Exception", count: counts.Exception },
               { label: "Delivered", value: "Delivered", count: counts.Delivered },
               { label: "Failed", value: "Failed delivery", count: counts["Failed delivery"] },
             ]} />

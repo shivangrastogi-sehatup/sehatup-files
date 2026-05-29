@@ -4,14 +4,23 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'sehatup-f96b5';
 const API_KEY    = process.env.FIREBASE_WEB_API_KEY  || '';
 const SECRET     = process.env.NIMBUS_WEBHOOK_SECRET || '';
 
+function toFirestoreValue(v) {
+  if (v === null || v === undefined)    return { nullValue: null };
+  if (typeof v === 'boolean')           return { booleanValue: v };
+  if (typeof v === 'number' && Number.isInteger(v)) return { integerValue: String(v) };
+  if (typeof v === 'number')            return { doubleValue: v };
+  if (Array.isArray(v))                 return { arrayValue: { values: v.map(toFirestoreValue) } };
+  if (typeof v === 'object') {
+    const fields = {};
+    for (const [k, val] of Object.entries(v)) fields[k] = toFirestoreValue(val);
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(v) };
+}
+
 function toFirestoreDoc(obj) {
   const fields = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === null || v === undefined) fields[k] = { nullValue: null };
-    else if (typeof v === 'boolean')   fields[k] = { booleanValue: v };
-    else if (typeof v === 'number')    fields[k] = { integerValue: String(v) };
-    else                               fields[k] = { stringValue: String(v) };
-  }
+  for (const [k, v] of Object.entries(obj)) fields[k] = toFirestoreValue(v);
   return { fields };
 }
 
@@ -20,14 +29,10 @@ async function writeToFirestore(payload) {
     console.error('FIREBASE_WEB_API_KEY is not set — skipping Firestore write');
     return;
   }
+  // Store the FULL payload + a receivedAt timestamp so we don't lose any field Nimbus sends
   const doc = toFirestoreDoc({
-    awb_number:  payload.awb_number  || '',
-    status:      payload.status      || '',
-    event_time:  payload.event_time  || '',
-    location:    payload.location    || '',
-    message:     payload.message     || '',
-    rto_awb:     payload.rto_awb     || '',
-    receivedAt:  new Date().toISOString(),
+    ...payload,
+    receivedAt: new Date().toISOString(),
   });
   const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/nimbus_tracking?key=${API_KEY}`;
   const fsRes = await fetch(url, {
@@ -56,8 +61,6 @@ export default async function handler(req, res) {
     const received = req.headers['x-hmac-sha256'] || '';
     if (expected !== received) {
       console.error('HMAC mismatch — received:', received, 'expected:', expected);
-      // Still return 200 so Nimbus does not disable the webhook;
-      // the bad payload is simply discarded.
       return res.status(200).json({ ok: true, warn: 'signature_mismatch' });
     }
   }
@@ -67,19 +70,21 @@ export default async function handler(req, res) {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   } catch (e) {
     console.error('Body parse error:', e);
-    // Return 200 — bad payload, but don't let Nimbus disable the webhook
     return res.status(200).json({ ok: true, warn: 'parse_error' });
   }
 
+  // Log the FULL payload so we can see every field Nimbus is actually sending
+  console.log('Nimbus webhook payload:', JSON.stringify(body));
+
   if (!body?.awb_number) {
-    console.warn('Missing awb_number in payload:', JSON.stringify(body));
+    console.warn('Missing awb_number in payload');
     return res.status(200).json({ ok: true, warn: 'missing_awb' });
   }
 
   // Respond 200 to Nimbus immediately — never block on Firestore
   res.status(200).json({ ok: true });
 
-  // Write to Firestore after the response is sent (Vercel keeps the fn alive until this returns)
+  // Write to Firestore after the response is sent
   try {
     await writeToFirestore(body);
   } catch (e) {
