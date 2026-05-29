@@ -5,7 +5,7 @@ import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
 import { searchCustomers, getOrders, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth } from './firebase';
-import { collection, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
 import { computeAnalytics } from "./utils/analytics";
 
 
@@ -7019,9 +7019,14 @@ function AdminScreen() {
 
   const openEdit = async (u) => {
     const editUser = { ...u };
-    const allRoles = Array.from(new Set([...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])]));
-    editUser.roles = allRoles.length ? allRoles : ['doctor'];
-    editUser.role = editUser.role || editUser.roles[0];
+    // Combine roles + legacy role field, deduplicate
+    const raw = [...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])];
+    const unique = [...new Set(raw)];
+    // Sort known roles by priority; keep any unknown ones at the end
+    const known = ADMIN_ROLES.filter(r => unique.includes(r));
+    const unknown = unique.filter(r => !ADMIN_ROLES.includes(r));
+    editUser.roles = [...known, ...unknown];
+    if (!editUser.roles.length) editUser.roles = ['doctor'];
     setSelected(editUser);
     setLoadingPerms(true);
     try {
@@ -7031,9 +7036,11 @@ function AdminScreen() {
     setLoadingPerms(false);
   };
 
-  const toggleRole = (role) => {
+  const toggleRole = (r) => {
     const cur = selected.roles || [];
-    setSelected({ ...selected, roles: cur.includes(role) ? cur.filter(r => r !== role) : [...cur, role] });
+    const next = cur.includes(r) ? cur.filter(x => x !== r) : [...cur, r];
+    // Always keep sorted by ADMIN_ROLES priority so highest is [0] (primary nav role)
+    setSelected({ ...selected, roles: ADMIN_ROLES.filter(x => next.includes(x)) });
   };
 
   const handleSave = async () => {
@@ -7043,8 +7050,8 @@ function AdminScreen() {
       const batch = writeBatch(db);
       batch.set(doc(db, 'users', selected.id), {
         name: (selected.name || '').trim(),
-        role: selected.role || selected.roles?.[0] || 'doctor',
-        roles: selected.roles || [],
+        roles: selected.roles?.length ? selected.roles : ['doctor'],
+        role: deleteField(),
         updatedAt: serverTimestamp(),
       }, { merge: true });
       batch.set(doc(db, 'users', selected.id, 'permissions', 'settings'), userPerms);
@@ -7071,7 +7078,7 @@ function AdminScreen() {
       await setDoc(doc(db, 'users', newUser.uid.trim()), {
         id: newUser.uid.trim(), uid: newUser.uid.trim(),
         email: newUser.email.trim(), name: newUser.name.trim(),
-        role: newUser.role, roles: [newUser.role], createdAt: serverTimestamp(),
+        roles: [newUser.role], createdAt: serverTimestamp(),
       });
       setShowCreate(false);
       setNewUser({ uid: '', email: '', name: '', role: 'doctor' });
@@ -7130,7 +7137,8 @@ function AdminScreen() {
               {loading && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>Loading…</td></tr>}
               {!loading && filtered.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>No users found.</td></tr>}
               {filtered.map(u => {
-                const allRoles = Array.from(new Set([...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])]));
+                const raw = [...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])];
+                const allRoles = [...new Set(raw)];
                 const isAdmin = allRoles.includes('admin');
                 return (
                   <tr key={u.id}>
@@ -7179,77 +7187,89 @@ function AdminScreen() {
         <>
           <div className="np-blur-layer" />
           <div className="np-backdrop" onClick={() => setSelected(null)}>
-            <div className="np-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                <div className="avatar" style={{ width: 48, height: 48, background: 'var(--accent-soft)', color: 'var(--accent-ink)', display: 'grid', placeItems: 'center', borderRadius: 12, fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
+            <div className="np-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 540, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', borderRadius: 16 }}>
+
+              {/* Modal header */}
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 11, background: 'var(--accent-soft)', color: 'var(--accent-ink)', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 17, flexShrink: 0 }}>
                   {(selected.name || selected.email || 'U')[0].toUpperCase()}
                 </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--fg)' }}>Edit User</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.email} · {selected.id}</div>
+                </div>
+                <button className="iconbtn" onClick={() => setSelected(null)} title="Close"><Icon name="x" size={16} /></button>
+              </div>
+
+              {/* Modal body */}
+              <div style={{ padding: '22px 22px 8px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+                {/* Name */}
                 <div>
-                  <div className="fw6" style={{ fontSize: 16 }}>Edit User</div>
-                  <div className="muted" style={{ fontSize: 11.5 }}>{selected.email} · {selected.id}</div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Full Name</label>
+                  <input className="input" value={selected.name || ''} onChange={e => setSelected({ ...selected, name: e.target.value })} placeholder="User's full name" style={{ width: '100%' }} />
                 </div>
-                <span className="spacer" />
-                <button className="btn sm ghost" onClick={() => setSelected(null)}><Icon name="x" size={16} /></button>
-              </div>
 
-              {/* Name */}
-              <div className="field" style={{ marginBottom: 20 }}>
-                <label className="lbl">Full Name</label>
-                <input className="input" value={selected.name || ''} onChange={e => setSelected({ ...selected, name: e.target.value })} placeholder="User's full name" />
-              </div>
-
-              {/* Primary Role */}
-              <div className="field" style={{ marginBottom: 20 }}>
-                <label className="lbl">Primary Role (used for nav)</label>
-                <select className="select" value={selected.role || 'doctor'} onChange={e => setSelected({ ...selected, role: e.target.value, roles: (selected.roles || []).filter(r => r !== e.target.value) })}>
-                  {ADMIN_ROLES.map(r => <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r}</option>)}
-                </select>
-              </div>
-
-              {/* Role Tags — additional roles only (primary role is set above) */}
-              <div style={{ marginBottom: 20 }}>
-                <div className="lbl" style={{ marginBottom: 6 }}>Additional Roles</div>
-                <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>Extra roles this user can access alongside their primary role.</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {ADMIN_ROLES.filter(r => r !== selected.role).map(r => {
-                    const has = selected.roles?.includes(r);
-                    return (
-                      <div key={r} onClick={() => toggleRole(r)} style={{ padding: '10px 14px', borderRadius: 10, border: `1px solid ${has ? 'var(--accent)' : 'var(--border)'}`, background: has ? 'var(--accent-soft)' : 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Icon name="shield" size={13} color={has ? 'var(--accent)' : 'var(--muted)'} />
-                          <span className="fw5" style={{ textTransform: 'capitalize' }}>{r}</span>
-                        </div>
-                        {has && <Icon name="check" size={13} color="var(--accent)" />}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Permissions */}
-              <div style={{ marginBottom: 24 }}>
-                <div className="lbl" style={{ marginBottom: 10 }}>Granular Permissions</div>
-                {loadingPerms ? (
-                  <div className="muted" style={{ fontSize: 12, padding: '12px 0' }}>Loading permissions…</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {PERMISSION_KEYS.filter(p => !p.roles || p.roles.some(r => selected?.roles?.includes(r) || selected?.role === r)).map(p => (
-                      <div key={p.key} onClick={() => setUserPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
-                        style={{ padding: '10px 14px', borderRadius: 10, border: `1px solid ${userPerms[p.key] ? 'var(--accent)' : 'var(--border)'}`, background: userPerms[p.key] ? 'var(--accent-soft)' : 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Icon name={p.icon} size={14} color={userPerms[p.key] ? 'var(--accent)' : 'var(--muted)'} />
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>{p.label}</span>
-                        </div>
-                        <Toggle on={!!userPerms[p.key]} onToggle={() => setUserPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))} />
-                      </div>
-                    ))}
+                {/* Roles — multi-select, sorted by priority; roles[0] = primary nav role */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Roles</label>
+                    <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>· top selected role sets the navigation</span>
                   </div>
-                )}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {ADMIN_ROLES.map(r => {
+                      const has = selected.roles?.includes(r);
+                      const isPrimary = selected.roles?.[0] === r;
+                      return (
+                        <div key={r} onClick={() => toggleRole(r)} style={{
+                          padding: '11px 14px', borderRadius: 10,
+                          border: `1.5px solid ${has ? 'var(--accent)' : 'var(--border)'}`,
+                          background: has ? 'var(--accent-soft)' : 'var(--surface-2)',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          userSelect: 'none',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Icon name="shield" size={13} color={has ? 'var(--accent)' : 'var(--muted)'} />
+                            <span style={{ fontSize: 13, fontWeight: 500, textTransform: 'capitalize', color: has ? 'var(--fg)' : 'var(--muted)' }}>{r}</span>
+                            {isPrimary && <span style={{ fontSize: 9, fontWeight: 700, background: 'var(--accent)', color: '#fff', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.05em' }}>NAV</span>}
+                          </div>
+                          <div style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${has ? 'var(--accent)' : 'var(--border)'}`, background: has ? 'var(--accent)' : 'transparent', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                            {has && <Icon name="check" size={11} color="#fff" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Granular Permissions */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Granular Permissions</label>
+                  {loadingPerms ? (
+                    <div style={{ fontSize: 12, color: 'var(--muted)', padding: '12px 0' }}>Loading permissions…</div>
+                  ) : PERMISSION_KEYS.filter(p => !p.roles || p.roles.some(r => selected?.roles?.includes(r))).length === 0 ? (
+                    <div style={{ fontSize: 12.5, color: 'var(--muted)', padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--border)' }}>No role-specific permissions for the assigned roles.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {PERMISSION_KEYS.filter(p => !p.roles || p.roles.some(r => selected?.roles?.includes(r))).map(p => (
+                        <div key={p.key} onClick={() => setUserPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
+                          style={{ padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${userPerms[p.key] ? 'var(--accent)' : 'var(--border)'}`, background: userPerms[p.key] ? 'var(--accent-soft)' : 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Icon name={p.icon} size={14} color={userPerms[p.key] ? 'var(--accent)' : 'var(--muted)'} />
+                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>{p.label}</span>
+                          </div>
+                          <Toggle on={!!userPerms[p.key]} onToggle={() => setUserPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn" style={{ flex: 1 }} onClick={() => setSelected(null)}>Cancel</button>
-                <button className="btn primary" style={{ flex: 1 }} onClick={handleSave} disabled={saving}>
+              {/* Modal footer */}
+              <div style={{ padding: '16px 22px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, flexShrink: 0 }}>
+                <button className="btn ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setSelected(null)}>Cancel</button>
+                <button className="btn primary" style={{ flex: 2, justifyContent: 'center' }} onClick={handleSave} disabled={saving}>
                   {saving ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
