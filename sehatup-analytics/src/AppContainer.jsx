@@ -281,29 +281,24 @@ export default function AppContainer() {
           }
 
           const pendingRole = localStorage.getItem("sehatup_pending_role");
-          
+          localStorage.removeItem("sehatup_pending_role");
+
           if (pendingRole) {
-            // Verify access
-            if (!userRoles.includes(pendingRole) && !userRoles.includes("admin")) {
-              await signOut(auth);
-              localStorage.setItem("sehatup_login_error", `Access denied. You do not have the ${pendingRole} role.`);
-              localStorage.removeItem("sehatup_pending_role");
-              setUser(null);
-              setRoles([]);
-            } else {
-              localStorage.setItem("sehatup_role", pendingRole);
-              localStorage.removeItem("sehatup_pending_role");
-              setRoles(userRoles);
-              setUser(currentUser);
-            }
-          } else {
-             // Normal session resume
-             setRoles(userRoles);
-             setUser(currentUser);
+            // Use selected role if user has it; admins can pick any role.
+            // If user doesn't have the selected role, fall back to their primary role.
+            const isAdmin = userRoles.includes("admin");
+            const hasRole = userRoles.includes(pendingRole);
+            const effectiveRole = (isAdmin || hasRole) ? pendingRole : (userRoles[0] || pendingRole);
+            localStorage.setItem("sehatup_role", effectiveRole);
           }
+          // Always allow authenticated Firebase users in — Firestore rules enforce data security
+          setRoles(userRoles);
+          setUser(currentUser);
         } catch (err) {
           console.error("Error fetching user role:", err);
-          setRoles(["user"]);
+          // Still allow login — Firestore rules handle actual security
+          const saved = localStorage.getItem("sehatup_role") || "doctor";
+          setRoles([saved]);
           setUser(currentUser);
         }
       } else {

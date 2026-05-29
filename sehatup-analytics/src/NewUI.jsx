@@ -3841,26 +3841,24 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
             <div className="field" style={{ marginBottom: 0, marginTop: 16 }}>
                 <span className="lbl">Lifestyle & Dietary Advice</span>
                 <div className="grid-12" style={{ gap: 12 }}>
-                    {(lifestyleAdvice ? lifestyleAdvice.split('\n') : []).map((line, idx) => (
+                    {(lifestyleAdvice || '').split('\n').map((line, idx) => (
                         <div key={idx} className="span-6 hstack-8">
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }}></div>
                             <input className="input" style={{ flex: 1, padding: '8px 12px' }} value={line} onChange={e => {
-                                const lines = lifestyleAdvice.split('\n');
+                                const lines = (lifestyleAdvice || '').split('\n');
                                 lines[idx] = e.target.value;
                                 setLifestyleAdvice(lines.join('\n'));
                             }} />
-                            <button className="btn sm ghost" style={{ padding: '0 8px', height: 36 }} onClick={() => {
-                                const lines = lifestyleAdvice.split('\n');
+                            <button type="button" className="btn sm ghost" style={{ padding: '0 8px', height: 36 }} onClick={() => {
+                                const lines = (lifestyleAdvice || '').split('\n');
                                 lines.splice(idx, 1);
                                 setLifestyleAdvice(lines.join('\n'));
                             }}><Icon name="x" size={14} /></button>
                         </div>
                     ))}
                     <div className="span-6 hstack-8">
-                        <button className="btn sm ghost" onClick={() => {
-                            const lines = lifestyleAdvice ? lifestyleAdvice.split('\n') : [];
-                            lines.push("");
-                            setLifestyleAdvice(lines.join('\n'));
+                        <button type="button" className="btn sm ghost" onClick={() => {
+                            setLifestyleAdvice(prev => (prev || '') + '\n');
                         }}><Icon name="plus" size={14} /> Add advice</button>
                     </div>
                 </div>
@@ -7611,7 +7609,7 @@ const NAV = {
   doctor:        ["doctor", "submissions", "customers", "prescriptions", "settings"],
   telesales:     ["home", "customers", "orders", "crm_orders", "order_create", "prescriptions", "settings"],
   order_creator: ["order_create", "orders", "crm_orders", "customers", "settings"],
-  marketing:     ["doctor", "marketing", "home", "customers", "prescriptions", "settings"],
+  marketing:     ["marketing", "home", "customers", "prescriptions", "doctor", "settings"],
   logistics:     ["shipments", "orders", "crm_orders", "customers", "settings"],
 };
 
@@ -7635,8 +7633,11 @@ function App({ user, roles, onLogout }) {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [role] = useState(() => {
     const saved = localStorage.getItem("sehatup_role");
-    if (saved) return saved;
-    return roles && roles.includes("admin") ? "admin" : (roles && roles[0] ? roles[0] : "user");
+    if (saved && NAV[saved]) return saved;
+    if (saved && !NAV[saved]) localStorage.removeItem("sehatup_role");
+    if (roles && roles.includes("admin")) return "admin";
+    const firstValid = roles && roles.find(r => NAV[r]);
+    return firstValid || "doctor";
   });
 
   useEffect(() => {
@@ -7688,7 +7689,7 @@ function App({ user, roles, onLogout }) {
   // Force the user's chosen route on role-switch to a sensible default
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const allowed = NAV[role];
+    const allowed = NAV[role] || NAV.doctor;
     const validRoutes = allowed.map(k => ITEMS[k].route);
     if (!validRoutes.includes(route.key)) {
       setRoute(ITEMS[allowed[0]].route);
@@ -7704,7 +7705,7 @@ function App({ user, roles, onLogout }) {
   };
   window.SehatData.me = me;
 
-  const navItems = NAV[role]
+  const navItems = (NAV[role] || NAV.doctor)
     .filter(k => {
       if (k === 'doctor' && role === 'marketing' && !isAdmin && !permissions.can_access_clinical_review) return false;
       if (k === 'prescriptions' && role === 'telesales' && !isAdmin && !permissions.can_view_prescriptions_tab) return false;
@@ -7715,6 +7716,16 @@ function App({ user, roles, onLogout }) {
       if (k === "submissions" && submissionsCount !== "...") ct = submissionsCount;
       return { ...ITEMS[k], key: k, ct };
     });
+
+  // If current route isn't visible in nav (e.g. permission removed), redirect to first visible item
+  useEffect(() => {
+    if (navItems.length === 0) return;
+    const visibleRoutes = navItems.map(i => i.route);
+    if (!visibleRoutes.includes(route.key)) {
+      setRoute(navItems[0].route);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navItems.map(i => i.key).join(','), route.key]);
 
   const themeClass = `theme-${t.theme} accent-${t.accent} density-${t.density}`;
 

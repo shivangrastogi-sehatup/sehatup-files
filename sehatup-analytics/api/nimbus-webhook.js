@@ -15,52 +15,74 @@ function toFirestoreDoc(obj) {
   return { fields };
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+async function writeToFirestore(payload) {
+  if (!API_KEY) {
+    console.error('FIREBASE_WEB_API_KEY is not set — skipping Firestore write');
+    return;
+  }
+  const doc = toFirestoreDoc({
+    awb_number:  payload.awb_number  || '',
+    status:      payload.status      || '',
+    event_time:  payload.event_time  || '',
+    location:    payload.location    || '',
+    message:     payload.message     || '',
+    rto_awb:     payload.rto_awb     || '',
+    receivedAt:  new Date().toISOString(),
+  });
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/nimbus_tracking?key=${API_KEY}`;
+  const fsRes = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(doc),
+  });
+  if (!fsRes.ok) {
+    const err = await fsRes.text();
+    console.error('Firestore write error:', err);
+  }
+}
 
-  // Verify HMAC signature if a secret is configured
+export default async function handler(req, res) {
+  // Respond to health-check pings (GET/HEAD) immediately
+  if (req.method !== 'POST') {
+    return res.status(200).json({ ok: true, service: 'nimbus-webhook' });
+  }
+
+  // Verify HMAC signature only if a secret is configured
   if (SECRET) {
     const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     const expected = Buffer.from(
       crypto.createHmac('sha256', SECRET).update(rawBody).digest()
     ).toString('base64');
     const received = req.headers['x-hmac-sha256'] || '';
-    if (expected !== received) return res.status(401).json({ error: 'Invalid signature' });
-  }
-
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  const { awb_number, status, event_time, location, message, rto_awb } = body || {};
-
-  if (!awb_number) return res.status(400).json({ error: 'Missing awb_number' });
-
-  const doc = toFirestoreDoc({
-    awb_number,
-    status:     status     || '',
-    event_time: event_time || '',
-    location:   location   || '',
-    message:    message    || '',
-    rto_awb:    rto_awb    || '',
-    receivedAt: new Date().toISOString(),
-  });
-
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/nimbus_tracking?key=${API_KEY}`;
-
-  try {
-    const fsRes = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(doc),
-    });
-    if (!fsRes.ok) {
-      const err = await fsRes.text();
-      console.error('Firestore write error:', err);
-      return res.status(500).json({ error: 'Firestore write failed' });
+    if (expected !== received) {
+      console.error('HMAC mismatch — received:', received, 'expected:', expected);
+      // Still return 200 so Nimbus does not disable the webhook;
+      // the bad payload is simply discarded.
+      return res.status(200).json({ ok: true, warn: 'signature_mismatch' });
     }
-  } catch (e) {
-    console.error('Nimbus webhook error:', e);
-    return res.status(500).json({ error: 'Internal error' });
   }
 
-  // Must return 200 within 5 seconds or Nimbus marks it failed
-  return res.status(200).json({ ok: true });
+  let body;
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  } catch (e) {
+    console.error('Body parse error:', e);
+    // Return 200 — bad payload, but don't let Nimbus disable the webhook
+    return res.status(200).json({ ok: true, warn: 'parse_error' });
+  }
+
+  if (!body?.awb_number) {
+    console.warn('Missing awb_number in payload:', JSON.stringify(body));
+    return res.status(200).json({ ok: true, warn: 'missing_awb' });
+  }
+
+  // Respond 200 to Nimbus immediately — never block on Firestore
+  res.status(200).json({ ok: true });
+
+  // Write to Firestore after the response is sent (Vercel keeps the fn alive until this returns)
+  try {
+    await writeToFirestore(body);
+  } catch (e) {
+    console.error('Async Firestore write failed:', e);
+  }
 }
