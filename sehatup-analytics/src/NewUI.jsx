@@ -6064,14 +6064,13 @@ function OrderStatusBadge({ status }) {
 
 
 const STAGES = [
-  { key: "Placed",            label: "Placed",            short: "PL", color: "var(--muted)" },
-  { key: "Packed",            label: "Packed",            short: "PK", color: "var(--accent-2)" },
-  { key: "Shipped",           label: "Shipped",           short: "SH", color: "#5b8def" },
+  { key: "Awaiting tracking", label: "Awaiting",          short: "AW", color: "var(--muted)" },
+  { key: "Shipped",           label: "In transit",         short: "SH", color: "#5b8def" },
   { key: "Out for delivery",  label: "Out for delivery",  short: "OFD",color: "var(--risk-moderate)" },
   { key: "Delivered",         label: "Delivered",         short: "DL", color: "var(--risk-low)" },
   { key: "Failed delivery",   label: "Failed",            short: "FL", color: "var(--risk-critical)" },
 ];
-const STAGE_ORDER = ["Placed","Packed","Shipped","Out for delivery","Delivered"];
+const STAGE_ORDER = ["Shipped","Out for delivery","Delivered"];
 function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 
 function ShipmentsScreen() {
@@ -6148,16 +6147,17 @@ function ShipmentsScreen() {
   const mergedShipments = useMemoS(() => {
     return shipments.map(s => {
       const events = trackingMap[s.awb] || [];
-      if (events.length === 0) return s;
+      // No Nimbus events yet — show as awaiting, not a guessed Shopify status
+      if (events.length === 0) return { ...s, status: 'Awaiting tracking', hasTracking: false };
       const latest = events[0];
       const ns = (latest.status || '').toLowerCase();
-      let status = s.status;
+      let status = 'Shipped';
       if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
       else if (ns.includes('out for delivery') || ns === 'out_for_delivery') status = 'Out for delivery';
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
       else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel')) status = 'Failed delivery';
       else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch')) status = 'Shipped';
-      return { ...s, status, lastUpdate: latest.event_time || s.lastUpdate, lastLocation: latest.location || '' };
+      return { ...s, status, hasTracking: true, lastUpdate: latest.event_time || s.lastUpdate, lastLocation: latest.location || '' };
     });
   }, [shipments, trackingMap]);
 
@@ -6189,8 +6189,8 @@ function ShipmentsScreen() {
     return list;
   }, [tab, mergedShipments, search]);
 
+  const awaiting = mergedShipments.filter(s => !s.hasTracking).length;
   const inTransit = mergedShipments.filter(s => s.status === 'Shipped').length;
-  const ofd = mergedShipments.filter(s => s.status === 'Out for delivery').length;
   const delivered = mergedShipments.filter(s => s.status === 'Delivered').length;
   const failed = mergedShipments.filter(s => s.status === 'Failed delivery').length;
 
@@ -6238,7 +6238,7 @@ function ShipmentsScreen() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Shipments</h1>
-          <p className="page-sub">{loading ? "Loading orders..." : mergedShipments.length + " shipments · live tracking via Nimbus webhook"}</p>
+          <p className="page-sub">{loading ? "Loading orders..." : `${mergedShipments.length} shipments · ${awaiting} awaiting tracking · live via Nimbus webhook`}</p>
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={handleRefresh}><Icon name="refresh" /> Refresh</button>
@@ -6247,8 +6247,8 @@ function ShipmentsScreen() {
 
       {/* KPIs */}
       <div className="grid-12">
+        <div className="span-3"><KPI         label="Awaiting tracking" value={awaiting.toString()}  icon="clock" /></div>
         <div className="span-3"><KPI feature label="In transit"        value={inTransit.toString()} icon="truck" /></div>
-        <div className="span-3"><KPI         label="Out for delivery"  value={ofd.toString()}       icon="package" /></div>
         <div className="span-3"><KPI         label="Delivered"         value={delivered.toString()} icon="check" /></div>
         <div className="span-3 needs-attention"><KPIAttention label="Needs attention" value={failed.toString()} sla={0} failed={failed} /></div>
       </div>
@@ -6301,6 +6301,7 @@ function ShipmentsScreen() {
           <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
             <Tabs value={tab} onChange={setTab} items={[
               { label: "All", value: "all", count: counts.all },
+              { label: "Awaiting", value: "Awaiting tracking", count: counts["Awaiting tracking"] },
               { label: "In transit", value: "Shipped", count: counts.Shipped },
               { label: "Out for delivery", value: "Out for delivery", count: counts["Out for delivery"] },
               { label: "Delivered", value: "Delivered", count: counts.Delivered },
@@ -6379,7 +6380,13 @@ function ShipmentRow({ s, selected, onClick }) {
         </div>
       </td>
       <td>
-        <StageProgress idx={idx} failed={failed} status={s.status} />
+        {s.hasTracking === false
+          ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 6, background: "var(--surface-2)", color: "var(--muted)", fontSize: 12, fontWeight: 500 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 99, background: "var(--muted)", display: "inline-block" }} />
+              Awaiting tracking
+            </span>
+          : <StageProgress idx={idx} failed={failed} status={s.status} />
+        }
       </td>
       <td className="muted" style={{ fontSize: 12 }}>{s.lastUpdate}</td>
       <td className="muted" style={{ fontSize: 12 }}>{s.lastLocation || '-'}</td>
@@ -6979,6 +6986,7 @@ const PERMISSION_KEYS = [
   { key: 'can_access_clinical_review',   label: 'Access Clinical Review',        icon: 'stethoscope' },
   { key: 'can_create_shopify_orders',    label: 'Create Shopify Orders',         icon: 'shopping' },
   { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers',      icon: 'users' },
+  { key: 'can_view_prescriptions_tab',   label: 'View Prescriptions Tab (Telesales)', icon: 'pill', roles: ['telesales'] },
 ];
 
 function AdminScreen() {
@@ -7224,7 +7232,7 @@ function AdminScreen() {
                   <div className="muted" style={{ fontSize: 12, padding: '12px 0' }}>Loading permissions…</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {PERMISSION_KEYS.map(p => (
+                    {PERMISSION_KEYS.filter(p => !p.roles || p.roles.some(r => selected?.roles?.includes(r) || selected?.role === r)).map(p => (
                       <div key={p.key} onClick={() => setUserPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
                         style={{ padding: '10px 14px', borderRadius: 10, border: `1px solid ${userPerms[p.key] ? 'var(--accent)' : 'var(--border)'}`, background: userPerms[p.key] ? 'var(--accent-soft)' : 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -7580,7 +7588,7 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 const NAV = {
   admin:         ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "shipments", "marketing", "users", "settings"],
   doctor:        ["doctor", "submissions", "customers", "prescriptions", "settings"],
-  telesales:     ["home", "customers", "orders", "crm_orders", "order_create", "settings"],
+  telesales:     ["home", "customers", "orders", "crm_orders", "order_create", "prescriptions", "settings"],
   order_creator: ["order_create", "orders", "crm_orders", "customers", "settings"],
   marketing:     ["doctor", "marketing", "home", "customers", "prescriptions", "settings"],
   logistics:     ["shipments", "orders", "crm_orders", "customers", "settings"],
@@ -7677,8 +7685,8 @@ function App({ user, roles, onLogout }) {
 
   const navItems = NAV[role]
     .filter(k => {
-      // For marketing role, hide Clinical Review unless they have the permission
       if (k === 'doctor' && role === 'marketing' && !isAdmin && !permissions.can_access_clinical_review) return false;
+      if (k === 'prescriptions' && role === 'telesales' && !isAdmin && !permissions.can_view_prescriptions_tab) return false;
       return true;
     })
     .map(k => {
