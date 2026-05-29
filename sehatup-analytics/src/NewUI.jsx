@@ -6078,55 +6078,30 @@ const STAGE_ORDER = ["Shipped","Out for delivery","Delivered"];
 function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 
 function ShipmentsScreen() {
-  const [shipments, setShipments] = useStateS([]);
   const [loading, setLoading] = useStateS(true);
   const [trackingMap, setTrackingMap] = useStateS({});
 
-  // Fetch orders from Shopify
+  // NOTE: Shopify orders integration is commented out — Shopify doesn't store AWB,
+  // and Nimbus webhook only sends AWB (not order_id), so we can't link them yet.
+  // Until we wire Nimbus's lookup API or add a manual AWB→order mapping, the
+  // Shipments screen is purely AWB-driven from the nimbus_tracking collection.
+  //
+  // useEffect(() => {
+  //   async function load() {
+  //     setLoading(true);
+  //     try {
+  //       const data = await getOrders({ limit: 100, status: 'any' });
+  //       // ... map Shopify order → shipment
+  //     } catch (err) { console.error('Shipments load error', err); }
+  //     finally { setLoading(false); }
+  //   }
+  //   load();
+  // }, []);
+
+  // Build shipments directly from Firestore nimbus_tracking — one row per unique AWB
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await getOrders({ limit: 100, status: 'any' });
-        const mapped = data.map(o => {
-          const awb = o.fulfillments?.[0]?.tracking_number || '-';
-          const courier = o.fulfillments?.[0]?.tracking_company || 'Nimbus';
-          const shopifyStatus = o.cancelled_at ? 'Failed delivery'
-            : o.fulfillment_status === 'fulfilled' ? 'Shipped'
-            : o.fulfillment_status === 'partial' ? 'Packed'
-            : 'Placed';
-          return {
-            id: '#' + (o.order_number || o.id),
-            awb,
-            courier,
-            status: shopifyStatus,
-            amount: parseFloat(o.total_price || 0),
-            paymentMode: (o.gateway || '').toLowerCase().includes('cash') ? 'COD' : (o.payment_gateway_names?.[0] || 'Prepaid'),
-            slaDaysLeft: 2,
-            lastUpdate: o.updated_at ? new Date(o.updated_at).toLocaleString() : '-',
-            lastLocation: '',
-            eta: '-',
-            origin: 'Warehouse',
-            attempts: 1,
-            items: o.line_items?.map(i => ({ qty: i.quantity, name: i.name || i.title })) || [],
-            customer: {
-              name: (`${o.customer?.first_name || ''} ${o.customer?.last_name || ''}`).trim() || 'Unknown',
-              phone: o.customer?.phone || o.shipping_address?.phone || '-',
-              city: o.shipping_address?.city || '-',
-              state: o.shipping_address?.province || '-',
-              avatarHue: Math.abs(o.customer?.id || 0) % 360,
-            },
-            shippingAddress: [o.shipping_address?.address1, o.shipping_address?.city, o.shipping_address?.province, o.shipping_address?.zip].filter(Boolean).join(', '),
-          };
-        });
-        setShipments(mapped);
-      } catch (err) {
-        console.error('Shipments load error', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    // no-op: load handled by tracking onSnapshot below
+    return undefined;
   }, []);
 
   // Live tracking events from Firestore nimbus_tracking
@@ -6147,13 +6122,12 @@ function ShipmentsScreen() {
     return unsub;
   }, []);
 
-  // Merge Nimbus tracking status into shipments
+  // Build shipments directly from Nimbus tracking events — one row per unique AWB
   const mergedShipments = useMemoS(() => {
-    return shipments.map(s => {
-      const events = trackingMap[s.awb] || [];
-      // No Nimbus events yet — show as awaiting, not a guessed Shopify status
-      if (events.length === 0) return { ...s, status: 'Awaiting tracking', hasTracking: false };
-      const latest = events[0];
+    const awbs = Object.keys(trackingMap);
+    return awbs.map(awb => {
+      const events = trackingMap[awb] || [];
+      const latest = events[0] || {};
       const ns = (latest.status || '').toLowerCase();
       let status = 'Shipped';
       if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
@@ -6163,21 +6137,30 @@ function ShipmentsScreen() {
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
       else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
       return {
-        ...s,
+        id: awb, // use AWB as the row id since we have no Shopify order link yet
+        awb,
+        courier: 'Nimbus',
         status,
-        hasTracking: true,
+        hasTracking: events.length > 0,
         rawStatus: latest.status || '',
-        lastUpdate: latest.event_time || s.lastUpdate,
+        lastUpdate: latest.event_time || '',
         lastLocation: latest.location || '',
         lastMessage: latest.message || '',
+        rtoAwb: latest.rto_awb || '',
+        eventCount: events.length,
       };
-    });
-  }, [shipments, trackingMap]);
+    }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
+  }, [trackingMap]);
 
   const [tab, setTab] = useStateS("all");
   const [sel, setSel] = useStateS(null);
   const [bannerOn, setBannerOn] = useStateS(true);
   const [search, setSearch] = useStateS('');
+
+  // First non-empty load: clear the loading flag
+  useEffect(() => {
+    if (loading && Object.keys(trackingMap).length >= 0) setLoading(false);
+  }, [trackingMap, loading]);
 
   useEffect(() => {
     if (!sel && mergedShipments.length > 0) setSel(mergedShipments[0]);
@@ -6197,53 +6180,18 @@ function ShipmentsScreen() {
       : mergedShipments.filter(s => s.status === tab);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(s => s.awb.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) || s.customer.name.toLowerCase().includes(q));
+      list = list.filter(s => (s.awb || '').toLowerCase().includes(q) || (s.lastLocation || '').toLowerCase().includes(q));
     }
     return list;
   }, [tab, mergedShipments, search]);
 
-  const awaiting = mergedShipments.filter(s => !s.hasTracking).length;
   const inTransit = mergedShipments.filter(s => s.status === 'Shipped').length;
   const delivered = mergedShipments.filter(s => s.status === 'Delivered').length;
   const failed = mergedShipments.filter(s => s.status === 'Failed delivery').length;
+  const exceptionCount = mergedShipments.filter(s => s.status === 'Exception').length;
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      const data = await getOrders({ limit: 100, status: 'any' });
-      const mapped = data.map(o => {
-        const fn = o.customer?.first_name || '';
-        const ln = o.customer?.last_name || '';
-        return {
-          id: '#' + (o.order_number || o.id),
-          awb: o.fulfillments?.[0]?.tracking_number || '-',
-          courier: o.fulfillments?.[0]?.tracking_company || 'Nimbus',
-          status: o.cancelled_at ? 'Failed delivery' : o.fulfillment_status === 'fulfilled' ? 'Shipped' : o.fulfillment_status === 'partial' ? 'Packed' : 'Placed',
-          amount: parseFloat(o.total_price || 0),
-          paymentMode: (o.gateway || '').toLowerCase().includes('cash') ? 'COD' : 'Prepaid',
-          slaDaysLeft: 2,
-          lastUpdate: o.updated_at ? new Date(o.updated_at).toLocaleString() : '-',
-          lastLocation: '',
-          eta: '-',
-          origin: 'Warehouse',
-          attempts: 1,
-          items: o.line_items?.map(i => ({ qty: i.quantity, name: i.name || i.title })) || [],
-          customer: {
-            name: (fn + ' ' + ln).trim() || 'Unknown',
-            phone: o.customer?.phone || o.shipping_address?.phone || '-',
-            city: o.shipping_address?.city || '-',
-            state: o.shipping_address?.province || '-',
-            avatarHue: Math.abs(o.customer?.id || 0) % 360,
-          },
-          shippingAddress: [o.shipping_address?.address1, o.shipping_address?.city, o.shipping_address?.province, o.shipping_address?.zip].filter(Boolean).join(', '),
-        };
-      });
-      setShipments(mapped);
-    } catch (e) {
-      console.error('Refresh error', e);
-    } finally {
-      setLoading(false);
-    }
+  const handleRefresh = () => {
+    // No-op for now — tracking is fully live via onSnapshot. Kept for UX consistency.
   };
 
   return (
@@ -6251,7 +6199,7 @@ function ShipmentsScreen() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Shipments</h1>
-          <p className="page-sub">{loading ? "Loading orders..." : `${mergedShipments.length} shipments · ${awaiting} awaiting tracking · live via Nimbus webhook`}</p>
+          <p className="page-sub">{loading ? "Connecting to Nimbus stream..." : `${mergedShipments.length} tracked AWBs · live via Nimbus webhook`}</p>
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={handleRefresh}><Icon name="refresh" /> Refresh</button>
@@ -6260,10 +6208,10 @@ function ShipmentsScreen() {
 
       {/* KPIs */}
       <div className="grid-12">
-        <div className="span-3"><KPI         label="Awaiting tracking" value={awaiting.toString()}  icon="clock" /></div>
-        <div className="span-3"><KPI feature label="In transit"        value={inTransit.toString()} icon="truck" /></div>
-        <div className="span-3"><KPI         label="Delivered"         value={delivered.toString()} icon="check" /></div>
-        <div className="span-3 needs-attention"><KPIAttention label="Needs attention" value={failed.toString()} sla={0} failed={failed} /></div>
+        <div className="span-3"><KPI feature label="In transit"        value={inTransit.toString()}       icon="truck" /></div>
+        <div className="span-3"><KPI         label="Out for delivery"  value={counts["Out for delivery"]?.toString() || "0"} icon="package" /></div>
+        <div className="span-3"><KPI         label="Delivered"         value={delivered.toString()}       icon="check" /></div>
+        <div className="span-3 needs-attention"><KPIAttention label="Needs attention" value={(failed + exceptionCount).toString()} sla={exceptionCount} failed={failed} /></div>
       </div>
 
       {/* Pipeline strip */}
@@ -6314,7 +6262,6 @@ function ShipmentsScreen() {
           <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
             <Tabs value={tab} onChange={setTab} items={[
               { label: "All", value: "all", count: counts.all },
-              { label: "Awaiting", value: "Awaiting tracking", count: counts["Awaiting tracking"] },
               { label: "In transit", value: "Shipped", count: counts.Shipped },
               { label: "Out for delivery", value: "Out for delivery", count: counts["Out for delivery"] },
               { label: "Exception", value: "Exception", count: counts.Exception },
@@ -6322,8 +6269,8 @@ function ShipmentsScreen() {
               { label: "Failed", value: "Failed delivery", count: counts["Failed delivery"] },
             ]} />
             <span className="spacer" />
-            <div style={{ position: "relative", width: 200 }}>
-              <input className="input" placeholder="AWB, order #, customer..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
+            <div style={{ position: "relative", width: 220 }}>
+              <input className="input" placeholder="AWB or location..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
               <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
             </div>
           </div>
@@ -6331,21 +6278,21 @@ function ShipmentsScreen() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Shipment</th>
-                  <th>Customer</th>
-                  <th style={{ minWidth: 230 }}>Progress</th>
+                  <th>AWB</th>
+                  <th style={{ minWidth: 200 }}>Status</th>
                   <th>Last update</th>
                   <th>Location</th>
+                  <th>Events</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="5"><div className="empty"><Icon name="refresh" size={20} /><div>Loading orders...</div></div></td></tr>
+                  <tr><td colSpan="5"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
                 ) : filteredList.map(s => (
                   <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} />
                 ))}
                 {!loading && filteredList.length === 0 && (
-                  <tr><td colSpan="5"><div className="empty"><Icon name="package" size={20} /><div>No shipments match this filter</div></div></td></tr>
+                  <tr><td colSpan="5"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
                 )}
               </tbody>
             </table>
@@ -6377,33 +6324,19 @@ function ShipmentRow({ s, selected, onClick }) {
     }}>
       <td>
         <div className="stack-2">
-          <div className="hstack-8">
-            <span className="mono fw6" style={{ fontSize: 12.5 }}>{s.awb !== '-' ? s.awb : <span className="muted">No AWB</span>}</span>
+          <span className="mono fw6" style={{ fontSize: 12.5 }}>{s.awb}</span>
+          <div className="hstack-6">
             <span className="badge" style={{ fontSize: 10.5, padding: "1px 6px" }}>{s.courier}</span>
-          </div>
-          <div className="muted mono" style={{ fontSize: 11 }}>{s.id}</div>
-        </div>
-      </td>
-      <td>
-        <div className="hstack-10">
-          <Avatar name={s.customer.name} hue={s.customer.avatarHue} size="sm" />
-          <div className="stack-2">
-            <div className="fw5">{s.customer.name}</div>
-            <div className="muted" style={{ fontSize: 11.5 }}>{s.customer.city}</div>
+            {s.rawStatus && <span className="muted" style={{ fontSize: 10.5, textTransform: 'lowercase' }}>{s.rawStatus}</span>}
           </div>
         </div>
       </td>
       <td>
-        {s.hasTracking === false
-          ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 6, background: "var(--surface-2)", color: "var(--muted)", fontSize: 12, fontWeight: 500 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 99, background: "var(--muted)", display: "inline-block" }} />
-              Awaiting tracking
-            </span>
-          : <StageProgress idx={idx} failed={failed} status={s.status} />
-        }
+        <StageProgress idx={idx} failed={failed} status={s.status} />
       </td>
-      <td className="muted" style={{ fontSize: 12 }}>{s.lastUpdate}</td>
+      <td className="muted" style={{ fontSize: 12 }}>{s.lastUpdate || '-'}</td>
       <td className="muted" style={{ fontSize: 12 }}>{s.lastLocation || '-'}</td>
+      <td className="muted num" style={{ fontSize: 12 }}>{s.eventCount}</td>
     </tr>
   );
 }
@@ -6481,39 +6414,34 @@ function KPIAttention({ label, value, sla, failed }) {
 /* â”€â”€ Detail panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function ShipmentDetail({ s, events }) {
-  if (!s) return null;
+  if (!s) return (
+    <div className="card" style={{ padding: 24, textAlign: 'center' }}>
+      <div className="muted" style={{ fontSize: 13 }}>Select an AWB to see its tracking history.</div>
+    </div>
+  );
   const failed = s.status === "Failed delivery";
   return (
     <>
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <RouteMap originLabel={s.origin.replace(" DC","")} destLabel={`${s.customer.city}, ${s.customer.state}`} status={s.status} />
-        <div style={{ padding: 16 }}>
-          <div className="hstack-8">
-            <div className="stack-2">
-              <div className="hstack-8">
-                <span className="fw6">{s.id}</span>
-                <span className="muted mono" style={{ fontSize: 12 }}>{s.awb}</span>
-              </div>
-              <div className="muted" style={{ fontSize: 12 }}>{s.courier} · {s.items.reduce((a, i) => a + i.qty, 0)} qty · Rs. {s.amount.toLocaleString()} · {s.paymentMode}</div>
+      <div className="card" style={{ padding: 16 }}>
+        <div className="hstack-8">
+          <div className="stack-2" style={{ flex: 1, minWidth: 0 }}>
+            <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>AWB</div>
+            <div className="hstack-8">
+              <span className="mono fw6" style={{ fontSize: 14 }}>{s.awb}</span>
+              <span className="badge" style={{ fontSize: 10.5, padding: "1px 6px" }}>{s.courier}</span>
             </div>
-            <span className="spacer" />
-            <OrderStatusBadge status={s.status} />
           </div>
-          <div className="divider" style={{ margin: "12px 0" }} />
-          <div className="hstack-12">
-            <Avatar name={s.customer.name} hue={s.customer.avatarHue} />
-            <div className="stack-2" style={{ flex: 1, minWidth: 0 }}>
-              <div className="fw5">{s.customer.name}</div>
-              <div className="muted num" style={{ fontSize: 12 }}>{s.customer.phone}</div>
-            </div>
-            <button className="iconbtn" title="Call"><Icon name="phone" /></button>
-            <button className="iconbtn" title="WhatsApp"><Icon name="whatsapp" /></button>
-          </div>
-          <div className="card flat" style={{ background: "var(--surface-2)", marginTop: 12, padding: 12 }}>
-            <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Shipping to</div>
-            <div style={{ fontSize: 13, lineHeight: 1.5 }}>{s.shippingAddress}</div>
-          </div>
+          <OrderStatusBadge status={s.status} />
         </div>
+        <div className="divider" style={{ margin: "12px 0" }} />
+        <div className="stack-6" style={{ fontSize: 12.5 }}>
+          {s.rawStatus && (<div><span className="muted">Raw status: </span><span className="mono">{s.rawStatus}</span></div>)}
+          {s.lastMessage && (<div><span className="muted">Message: </span>{s.lastMessage}</div>)}
+          {s.rtoAwb && (<div><span className="muted">RTO AWB: </span><span className="mono">{s.rtoAwb}</span></div>)}
+          <div><span className="muted">Events received: </span><span className="num">{s.eventCount}</span></div>
+        </div>
+        {/* Order/customer/shipping address commented out — no Shopify link yet.
+            See ShipmentsScreen header note for the plan. */}
       </div>
 
       <div className="card">
@@ -6524,20 +6452,6 @@ function ShipmentDetail({ s, events }) {
         </div>
         <TrackingTimeline events={events} status={s.status} failed={failed} />
       </div>
-
-      {failed && (
-        <div className="card" style={{ borderColor: "color-mix(in oklab, var(--risk-critical) 30%, var(--border))" }}>
-          <div className="hstack-8" style={{ marginBottom: 8 }}>
-            <Icon name="flag" size={14} color="var(--risk-critical)" />
-            <div className="section-title" style={{ color: "var(--risk-critical)" }}>Failed delivery</div>
-          </div>
-          <div className="stack-8">
-            <button className="btn"><Icon name="phone" /> Call customer</button>
-            <button className="btn"><Icon name="refresh" /> Schedule re-attempt</button>
-            <button className="btn primary"><Icon name="package" /> Initiate RTO</button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -6628,6 +6542,7 @@ function TrackingTimeline({ events, status, failed }) {
 
 /* â”€â”€ Route map (abstract India-shape SVG) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
+// eslint-disable-next-line no-unused-vars
 function RouteMap({ originLabel, destLabel, status }) {
   const failed = status === "Failed delivery";
   return (
@@ -7585,10 +7500,17 @@ function SecRow({ t, d, tail }) {
   );
 }
 
-function Toggle({ defaultOn }) {
-  const [on, setOn] = useStateM(!!defaultOn);
+function Toggle({ defaultOn, on: onProp, onToggle }) {
+  const [internalOn, setInternalOn] = useStateM(!!defaultOn);
+  const controlled = onProp !== undefined;
+  const on = controlled ? onProp : internalOn;
+  const handle = (e) => {
+    e.stopPropagation();
+    if (controlled) onToggle?.();
+    else setInternalOn(!internalOn);
+  };
   return (
-    <button onClick={() => setOn(!on)}
+    <button onClick={handle}
       style={{
         width: 38, height: 22, borderRadius: 99,
         background: on ? "var(--accent)" : "var(--surface-3)",
