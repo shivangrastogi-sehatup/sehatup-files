@@ -915,8 +915,8 @@ const questionnaireConfig = {
       return tips.map((text) => ({ text }));
     });
 
-    if (config.lifestyleTips['general']) {
-      config.lifestyleTips['general'].forEach((tip) => {
+    if (config.lifestyleTips['GENERAL']) {
+      config.lifestyleTips['GENERAL'].forEach((tip) => {
         lifestyleTipsArray.push({ text: tip });
       });
     }

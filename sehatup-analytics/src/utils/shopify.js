@@ -5,7 +5,7 @@
  * The proxy handles the X-Shopify-Access-Token header.
  */
 
-const API_BASE = '/api-shopify/admin/api/2024-10';
+const API_BASE = '/shopify-v2';
 
 /**
  * Search for customers by name or phone number.
@@ -76,15 +76,39 @@ export const getCustomers = async (params = {}) => {
 };
 
 /**
+ * Fetch orders from Shopify.
+ * @param {Object} params - { limit, status }
+ * @returns {Promise<Array>} - List of orders.
+ */
+export const getOrders = async (params = {}) => {
+    try {
+        const { limit = 50, status = 'any' } = params;
+        const url = `${API_BASE}/orders.json?status=${status}&limit=${limit}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Fetch orders failed: ${response.statusText}`);
+        const data = await response.json();
+        return data.orders || [];
+    } catch (error) {
+        console.error('Error fetching orders:', error);
+        throw error;
+    }
+};
+
+/**
  * Fetch total customer count.
  * @returns {Promise<number>}
  */
 export const getCustomersCount = async () => {
     try {
-        const response = await fetch(`${API_BASE}/customers/count.json`);
+        const response = await fetch('/shopify-v2/graphql.json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: "{ customersCount { count } }" })
+        });
         if (!response.ok) throw new Error(`Count failed: ${response.statusText}`);
         const data = await response.json();
-        return data.count || 0;
+        if (data.errors) throw new Error(data.errors[0].message);
+        return data.data.customersCount.count || 0;
     } catch (error) {
         console.error('Error getting customer count:', error);
         throw error;
