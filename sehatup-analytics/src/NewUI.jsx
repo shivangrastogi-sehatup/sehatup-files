@@ -7201,16 +7201,17 @@ function AdminScreen() {
               {/* Primary Role */}
               <div className="field" style={{ marginBottom: 20 }}>
                 <label className="lbl">Primary Role (used for nav)</label>
-                <select className="select" value={selected.role || 'doctor'} onChange={e => setSelected({ ...selected, role: e.target.value, roles: Array.from(new Set([...(selected.roles || []), e.target.value])) })}>
+                <select className="select" value={selected.role || 'doctor'} onChange={e => setSelected({ ...selected, role: e.target.value, roles: (selected.roles || []).filter(r => r !== e.target.value) })}>
                   {ADMIN_ROLES.map(r => <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r}</option>)}
                 </select>
               </div>
 
-              {/* Role Tags */}
+              {/* Role Tags — additional roles only (primary role is set above) */}
               <div style={{ marginBottom: 20 }}>
-                <div className="lbl" style={{ marginBottom: 10 }}>Role Assignment</div>
+                <div className="lbl" style={{ marginBottom: 6 }}>Additional Roles</div>
+                <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>Extra roles this user can access alongside their primary role.</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {ADMIN_ROLES.map(r => {
+                  {ADMIN_ROLES.filter(r => r !== selected.role).map(r => {
                     const has = selected.roles?.includes(r);
                     return (
                       <div key={r} onClick={() => toggleRole(r)} style={{ padding: '10px 14px', borderRadius: 10, border: `1px solid ${has ? 'var(--accent)' : 'var(--border)'}`, background: has ? 'var(--accent-soft)' : 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
