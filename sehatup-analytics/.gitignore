@@ -25,3 +25,5 @@ yarn-error.log*
 
 # External SehatUp tools
 sehatUP-product-direct-cart-main/
+.vercel
+.env*

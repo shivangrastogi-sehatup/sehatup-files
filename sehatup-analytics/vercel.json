@@ -29,7 +29,7 @@
             "destination": "/api/shopify.js"
         },
         {
-            "source": "/(.*)",
+            "source": "/((?!api/|static/|manifest\\.json|favicon\\.ico|robots\\.txt|logo.*\\.png|.*\\.(?:js|css|map|json|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot)).*)",
             "destination": "/index.html"
         }
     ]

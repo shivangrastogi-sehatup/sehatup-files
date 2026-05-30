@@ -95,6 +95,79 @@ export const getOrders = async (params = {}) => {
 };
 
 /**
+ * Fetch a single order by Shopify internal numeric ID.
+ * @param {string|number} orderId
+ * @returns {Promise<object|null>}
+ */
+export const getOrderById = async (orderId) => {
+    try {
+        const url = `${API_BASE}/orders/${orderId}.json`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            if (response.status === 404) return null;
+            throw new Error(`Fetch order ${orderId} failed: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.order || null;
+    } catch (error) {
+        console.error(`Error fetching order ${orderId}:`, error);
+        return null;
+    }
+};
+
+/**
+ * Fetch a single order by its order_number (e.g. "#1738" or "1738").
+ * Uses the orders.json?name= search since Shopify's by-id endpoint only takes
+ * the internal numeric id.
+ * @param {string|number} orderNumber
+ * @returns {Promise<object|null>}
+ */
+export const getOrderByNumber = async (orderNumber) => {
+    try {
+        const n = String(orderNumber).trim().replace(/^#+/, '');
+        // Shopify accepts the name parameter with or without "#"; we try both.
+        const candidates = [`#${n}`, n];
+        for (const name of candidates) {
+            const url = `${API_BASE}/orders.json?status=any&name=${encodeURIComponent(name)}&limit=1`;
+            const r = await fetch(url);
+            if (!r.ok) continue;
+            const data = await r.json();
+            if (data.orders?.length) return data.orders[0];
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching order #${orderNumber}:`, error);
+        return null;
+    }
+};
+
+/**
+ * Smart lookup — tries both order_number (search) and internal id (direct fetch).
+ * Use this when you have a value extracted from Nimbus and don't know which it is.
+ * @param {string} ref  Either "#1738", "1738", or "1779773265"
+ * @returns {Promise<object|null>}
+ */
+export const findShopifyOrder = async (ref) => {
+    if (!ref) return null;
+    const s = String(ref).trim();
+    const numeric = s.replace(/[^0-9]/g, '');
+    const hadHash = s.startsWith('#');
+
+    // Heuristic: short numbers (< 10 digits) or values with "#" are usually order_number.
+    // Long numbers are usually the internal id. Try the most-likely-first, then fall back.
+    const tryNumberFirst = hadHash || numeric.length < 10;
+    if (tryNumberFirst) {
+        const a = await getOrderByNumber(numeric);
+        if (a) return a;
+        return await getOrderById(numeric);
+    } else {
+        const b = await getOrderById(numeric);
+        if (b) return b;
+        return await getOrderByNumber(numeric);
+    }
+};
+
+/**
  * Fetch total customer count.
  * @returns {Promise<number>}
  */

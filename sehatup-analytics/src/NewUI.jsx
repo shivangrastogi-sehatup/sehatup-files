@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
-import { searchCustomers, getOrders, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { searchCustomers, getOrders, getOrderById, findShopifyOrder, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth } from './firebase';
 import { collection, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
@@ -5010,26 +5010,44 @@ function OrderCreate({ context = {}, setRoute }) {
     setShippingLastName(custLastName);
   }, [custLastName]);
 
-  // Shared helper: look up a pincode and call setters when resolved (or set error message)
+  // Shared helper: look up a pincode and call setters when resolved (or set error message).
+  // Tries zippopotam.us first (reliable, global) and falls back to postalpincode.in
+  // (more detail for India, but their SSL cert has been intermittently invalid).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const lookupPincode = React.useCallback(async (pin, { onCity, onState, onMessage, onLoading, signal }) => {
     onLoading(true);
-    try {
-      // Primary: postalpincode.in (free, India-only, no key)
+
+    const tryZippopotam = async () => {
+      const res = await fetch(`https://api.zippopotam.us/in/${pin}`, { signal });
+      if (!res.ok) throw new Error(`zippopotam ${res.status}`);
+      const data = await res.json();
+      const place = data?.places?.[0];
+      if (!place) throw new Error('no places');
+      return {
+        city:  place['place name'] || '',
+        state: place['state']      || '',
+      };
+    };
+
+    const tryPostalPincode = async () => {
       const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`, { signal });
       const data = await res.json();
-      if (data && data[0] && data[0].Status === 'Success' && Array.isArray(data[0].PostOffice) && data[0].PostOffice.length) {
-        const po = data[0].PostOffice[0];
-        onCity(po.District || '');
-        onState(po.State || '');
-        onMessage(`Auto-filled: ${po.District}, ${po.State}`);
-        setTimeout(() => onMessage(''), 3000);
-      } else {
-        onMessage("Pincode not found. Please enter city/state manually.");
-        setTimeout(() => onMessage(''), 4000);
-      }
+      const po = data?.[0]?.Status === 'Success' && data[0].PostOffice?.[0];
+      if (!po) throw new Error('not found');
+      return { city: po.District || '', state: po.State || '' };
+    };
+
+    try {
+      let result;
+      try { result = await tryZippopotam(); }
+      catch (_) { result = await tryPostalPincode(); }
+
+      onCity(result.city);
+      onState(result.state);
+      onMessage(`Auto-filled: ${result.city}, ${result.state}`);
+      setTimeout(() => onMessage(''), 3000);
     } catch (err) {
-      if (err.name === 'AbortError') return; // user changed pincode mid-fetch
+      if (err.name === 'AbortError') return;
       console.error("Pincode lookup failed:", err);
       onMessage("Could not look up pincode. Enter city/state manually.");
       setTimeout(() => onMessage(''), 4000);
@@ -6487,29 +6505,12 @@ function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 function ShipmentsScreen() {
   const [loading, setLoading] = useStateS(true);
   const [trackingMap, setTrackingMap] = useStateS({});
-
-  // NOTE: Shopify orders integration is commented out — Shopify doesn't store AWB,
-  // and Nimbus webhook only sends AWB (not order_id), so we can't link them yet.
-  // Until we wire Nimbus's lookup API or add a manual AWB→order mapping, the
-  // Shipments screen is purely AWB-driven from the nimbus_tracking collection.
-  //
-  // useEffect(() => {
-  //   async function load() {
-  //     setLoading(true);
-  //     try {
-  //       const data = await getOrders({ limit: 100, status: 'any' });
-  //       // ... map Shopify order → shipment
-  //     } catch (err) { console.error('Shipments load error', err); }
-  //     finally { setLoading(false); }
-  //   }
-  //   load();
-  // }, []);
-
-  // Build shipments directly from Firestore nimbus_tracking — one row per unique AWB
-  useEffect(() => {
-    // no-op: load handled by tracking onSnapshot below
-    return undefined;
-  }, []);
+  // awb -> { orderId, courier?, status? }  (resolved via /api/nimbus-awb-lookup)
+  const [awbOrderMap, setAwbOrderMap] = useStateS({});
+  // orderId -> Shopify order object (fetched via getOrderById)
+  const [orderDetails, setOrderDetails] = useStateS({});
+  // lookup-in-flight markers so we don't spam
+  const lookupCacheRef = useRef({ awbs: new Set(), orders: new Set() });
 
   // Live tracking events from Firestore nimbus_tracking
   useEffect(() => {
@@ -6529,7 +6530,48 @@ function ShipmentsScreen() {
     return unsub;
   }, []);
 
-  // Build shipments directly from Nimbus tracking events — one row per unique AWB
+  // For each unique AWB: scrape Nimbus tracking page to find the Shopify order ID,
+  // then fetch the Shopify order for customer/address/items. Cached so we only
+  // fire once per AWB (and once per order ID).
+  // Disables itself if the /api endpoint isn't available (e.g. running CRA without `vercel dev`).
+  const [lookupDisabled, setLookupDisabled] = useStateS(false);
+  useEffect(() => {
+    if (lookupDisabled) return;
+    const awbs = Object.keys(trackingMap);
+    awbs.forEach(async (awb) => {
+      if (lookupDisabled) return;
+      if (lookupCacheRef.current.awbs.has(awb)) return;
+      lookupCacheRef.current.awbs.add(awb);
+      try {
+        const r = await fetch(`/api/nimbus-awb-lookup?awb=${awb}`);
+        const ct = (r.headers.get('content-type') || '').toLowerCase();
+        if (!ct.includes('application/json')) {
+          console.warn(
+            '[Shipments] /api/nimbus-awb-lookup is not running (got HTML).\n' +
+            'For local dev, run `vercel dev` from the project root so Vercel functions are served.\n' +
+            'Or deploy to Vercel to test. Skipping further AWB lookups this session.'
+          );
+          setLookupDisabled(true);
+          return;
+        }
+        const data = await r.json();
+        if (!data?.ok || !data.orderId) return;
+        const orderRef = data.orderRef || `#${data.orderId}`;
+        setAwbOrderMap(prev => ({ ...prev, [awb]: { orderId: data.orderId, orderRef, courier: data.courier || null } }));
+
+        if (lookupCacheRef.current.orders.has(data.orderId)) return;
+        lookupCacheRef.current.orders.add(data.orderId);
+        // Try Shopify by order_number first (covers "#1738"), then by internal id (covers long numerics)
+        const order = await findShopifyOrder(orderRef);
+        if (order) setOrderDetails(prev => ({ ...prev, [data.orderId]: order }));
+      } catch (e) {
+        console.warn('AWB→order lookup failed for', awb, e?.message || e);
+      }
+    });
+  }, [trackingMap, lookupDisabled]);
+
+  // Build shipments directly from Nimbus tracking events — one row per unique AWB,
+  // enriched (when available) with Shopify order/customer/address from the lookup.
   const mergedShipments = useMemoS(() => {
     const awbs = Object.keys(trackingMap);
     return awbs.map(awb => {
@@ -6543,10 +6585,25 @@ function ShipmentsScreen() {
       else if (ns.includes('exception') || ns.includes('hold') || ns.includes('pending') || ns.includes('delay')) status = 'Exception';
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
       else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
+
+      const link = awbOrderMap[awb] || {};
+      const order = link.orderId ? orderDetails[link.orderId] : null;
+      const fn = order?.customer?.first_name || '';
+      const ln = order?.customer?.last_name || '';
+      const customer = order ? {
+        name: (fn + ' ' + ln).trim() || 'Unknown',
+        phone: order.customer?.phone || order.shipping_address?.phone || '',
+        email: order.customer?.email || order.email || '',
+        city: order.shipping_address?.city || '',
+        state: order.shipping_address?.province || '',
+        pincode: order.shipping_address?.zip || '',
+        address: [order.shipping_address?.address1, order.shipping_address?.address2].filter(Boolean).join(', '),
+      } : null;
+
       return {
-        id: awb, // use AWB as the row id since we have no Shopify order link yet
+        id: awb,
         awb,
-        courier: 'Nimbus',
+        courier: link.courier || 'Nimbus',
         status,
         hasTracking: events.length > 0,
         rawStatus: latest.status || '',
@@ -6555,9 +6612,18 @@ function ShipmentsScreen() {
         lastMessage: latest.message || '',
         rtoAwb: latest.rto_awb || '',
         eventCount: events.length,
+        // Enrichment
+        orderId: link.orderId || null,
+        orderName: order?.name || link.orderRef || (link.orderId ? `#${link.orderId}` : null),
+        orderTotal: order ? parseFloat(order.total_price || 0) : null,
+        paymentMode: order ? ((order.gateway || '').toLowerCase().includes('cash') ? 'COD' : (order.payment_gateway_names?.[0] || 'Prepaid')) : null,
+        itemCount: order?.line_items?.reduce((a, i) => a + (i.quantity || 0), 0) || null,
+        items: order?.line_items?.map(i => ({ qty: i.quantity, name: i.name || i.title })) || [],
+        customer,
+        enriching: !order && !lookupCacheRef.current.awbs.has(awb), // not yet looked up
       };
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
-  }, [trackingMap]);
+  }, [trackingMap, awbOrderMap, orderDetails]);
 
   const [tab, setTab] = useStateS("all");
   const [sel, setSel] = useStateS(null);
@@ -6587,7 +6653,13 @@ function ShipmentsScreen() {
       : mergedShipments.filter(s => s.status === tab);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(s => (s.awb || '').toLowerCase().includes(q) || (s.lastLocation || '').toLowerCase().includes(q));
+      list = list.filter(s =>
+        (s.awb || '').toLowerCase().includes(q)
+        || (s.lastLocation || '').toLowerCase().includes(q)
+        || (s.orderId || '').toString().includes(q)
+        || (s.customer?.name || '').toLowerCase().includes(q)
+        || (s.customer?.phone || '').includes(q)
+      );
     }
     return list;
   }, [tab, mergedShipments, search]);
@@ -6665,7 +6737,7 @@ function ShipmentsScreen() {
 
       {/* Main table + detail */}
       <div className="grid-12">
-        <div className="span-8 card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="span-12 card" style={{ padding: 0, overflow: "hidden" }}>
           <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
             <Tabs value={tab} onChange={setTab} items={[
               { label: "All", value: "all", count: counts.all },
@@ -6676,30 +6748,37 @@ function ShipmentsScreen() {
               { label: "Failed", value: "Failed delivery", count: counts["Failed delivery"] },
             ]} />
             <span className="spacer" />
-            <div style={{ position: "relative", width: 220 }}>
-              <input className="input" placeholder="AWB or location..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
+            <div style={{ position: "relative", width: 260 }}>
+              <input className="input" placeholder="AWB, order #, name, phone..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
               <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
             </div>
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table className="tbl">
+          <div style={{ overflowX: "auto", maxWidth: "100%" }}>
+            <table className="tbl" style={{ minWidth: 1500 }}>
               <thead>
                 <tr>
-                  <th>AWB</th>
-                  <th style={{ minWidth: 200 }}>Status</th>
-                  <th>Last update</th>
-                  <th>Location</th>
-                  <th>Events</th>
+                  <th style={{ whiteSpace: "nowrap" }}>AWB</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Order ID</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Customer</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Phone</th>
+                  <th style={{ minWidth: 240 }}>Address</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Items</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Amount</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Payment</th>
+                  <th style={{ minWidth: 200, whiteSpace: "nowrap" }}>Status</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Last update</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Location</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Events</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="5"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
+                  <tr><td colSpan="12"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
                 ) : filteredList.map(s => (
                   <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} />
                 ))}
                 {!loading && filteredList.length === 0 && (
-                  <tr><td colSpan="5"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
+                  <tr><td colSpan="12"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
                 )}
               </tbody>
             </table>
@@ -6712,7 +6791,7 @@ function ShipmentsScreen() {
         </div>
 
         {/* Detail panel */}
-        <div className="span-4 col">
+        <div className="span-12 col">
           <ShipmentDetail s={sel} events={trackingMap[sel?.awb] || []} />
         </div>
       </div>
@@ -6723,26 +6802,53 @@ function ShipmentsScreen() {
 function ShipmentRow({ s, selected, onClick }) {
   const idx = stageIndex(s.status);
   const failed = s.status === "Failed delivery";
+  const cust = s.customer;
+  const Skel = ({ w = 80 }) => <div className="skel-box" style={{ height: 12, width: w, borderRadius: 4 }} />;
   return (
     <tr onClick={onClick} style={{
       background: selected ? "var(--accent-soft)" : undefined,
       boxShadow: selected ? "inset 2px 0 0 var(--accent)" : undefined,
       cursor: "pointer",
     }}>
-      <td>
+      <td style={{ whiteSpace: "nowrap" }}>
         <div className="stack-2">
           <span className="mono fw6" style={{ fontSize: 12.5 }}>{s.awb}</span>
-          <div className="hstack-6">
-            <span className="badge" style={{ fontSize: 10.5, padding: "1px 6px" }}>{s.courier}</span>
-            {s.rawStatus && <span className="muted" style={{ fontSize: 10.5, textTransform: 'lowercase' }}>{s.rawStatus}</span>}
-          </div>
+          <span className="badge" style={{ fontSize: 10.5, padding: "1px 6px" }}>{s.courier}</span>
         </div>
+      </td>
+      <td className="mono num fw5" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>
+        {s.orderId ? (s.orderName || `#${s.orderId}`) : (s.enriching ? <Skel w={70} /> : <span className="muted">—</span>)}
+      </td>
+      <td style={{ whiteSpace: "nowrap" }}>
+        {cust ? <span className="fw5">{cust.name}</span> : (s.enriching ? <Skel /> : <span className="muted">—</span>)}
+      </td>
+      <td className="num" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>
+        {cust ? (cust.phone || '—') : (s.enriching ? <Skel w={90} /> : <span className="muted">—</span>)}
+      </td>
+      <td style={{ minWidth: 240 }}>
+        {cust ? (
+          <div className="stack-2" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>
+            <div style={{ fontSize: 12.5 }}>{cust.address || '—'}</div>
+            <div className="muted" style={{ fontSize: 11 }}>
+              {[cust.city, cust.state, cust.pincode].filter(Boolean).join(', ')}
+            </div>
+          </div>
+        ) : (s.enriching ? <Skel w={180} /> : <span className="muted">—</span>)}
+      </td>
+      <td className="num" style={{ textAlign: "center", whiteSpace: "nowrap" }}>
+        {s.itemCount !== null ? s.itemCount : (s.enriching ? <Skel w={30} /> : '—')}
+      </td>
+      <td className="num fw5" style={{ whiteSpace: "nowrap" }}>
+        {s.orderTotal !== null ? `Rs. ${s.orderTotal.toLocaleString()}` : (s.enriching ? <Skel w={70} /> : '—')}
+      </td>
+      <td style={{ whiteSpace: "nowrap" }}>
+        {s.paymentMode || (s.enriching ? <Skel w={50} /> : '—')}
       </td>
       <td>
         <StageProgress idx={idx} failed={failed} status={s.status} />
       </td>
-      <td className="muted" style={{ fontSize: 12 }}>{s.lastUpdate || '-'}</td>
-      <td className="muted" style={{ fontSize: 12 }}>{s.lastLocation || '-'}</td>
+      <td className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{s.lastUpdate || '-'}</td>
+      <td className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{s.lastLocation || '-'}</td>
       <td className="muted num" style={{ fontSize: 12 }}>{s.eventCount}</td>
     </tr>
   );
@@ -6842,14 +6948,40 @@ function ShipmentDetail({ s, events }) {
         </div>
         <div className="divider" style={{ margin: "12px 0" }} />
         <div className="stack-6" style={{ fontSize: 12.5 }}>
+          {s.orderId && (<div><span className="muted">Order ID: </span><span className="mono fw6">{s.orderName || `#${s.orderId}`}</span></div>)}
           {s.rawStatus && (<div><span className="muted">Raw status: </span><span className="mono">{s.rawStatus}</span></div>)}
           {s.lastMessage && (<div><span className="muted">Message: </span>{s.lastMessage}</div>)}
           {s.rtoAwb && (<div><span className="muted">RTO AWB: </span><span className="mono">{s.rtoAwb}</span></div>)}
           <div><span className="muted">Events received: </span><span className="num">{s.eventCount}</span></div>
         </div>
-        {/* Order/customer/shipping address commented out — no Shopify link yet.
-            See ShipmentsScreen header note for the plan. */}
       </div>
+
+      {s.customer && (
+        <div className="card" style={{ padding: 16 }}>
+          <div className="section-title" style={{ marginBottom: 12 }}>Customer & shipping</div>
+          <div className="stack-8" style={{ fontSize: 13 }}>
+            <div><span className="muted" style={{ fontSize: 11.5 }}>Name </span><div className="fw6">{s.customer.name}</div></div>
+            {s.customer.phone && <div><span className="muted" style={{ fontSize: 11.5 }}>Phone </span><div className="num">{s.customer.phone}</div></div>}
+            {s.customer.email && <div><span className="muted" style={{ fontSize: 11.5 }}>Email </span><div>{s.customer.email}</div></div>}
+            <div><span className="muted" style={{ fontSize: 11.5 }}>Address </span>
+              <div>{s.customer.address}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{[s.customer.city, s.customer.state, s.customer.pincode].filter(Boolean).join(', ')}</div>
+            </div>
+            {s.itemCount !== null && (
+              <div className="hstack-8" style={{ marginTop: 6, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                <span className="muted" style={{ fontSize: 12 }}>{s.itemCount} items · {s.paymentMode}</span>
+                <span className="spacer" />
+                <span className="fw6 num">Rs. {(s.orderTotal || 0).toLocaleString()}</span>
+              </div>
+            )}
+            {s.items?.length > 0 && (
+              <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: 'var(--muted)' }}>
+                {s.items.map((it, i) => <li key={i}>{it.name} <span className="num">× {it.qty}</span></li>)}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="hstack-8" style={{ marginBottom: 14 }}>
