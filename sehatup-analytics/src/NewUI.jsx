@@ -8235,75 +8235,35 @@ function PrescriptionsScreen({ me }) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const { isAdmin } = usePermissions();
 
-  const isAdmin = me?.role === 'admin';
+  // Doctor → only their own. Admin / Telesales / others → see all prescriptions.
+  const isDoctor = me?.role === 'doctor';
+  const scope = isDoctor && !isAdmin ? 'mine' : 'all';
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const uid = me?.uid;
+    if (!uid) { setLoading(false); return; }
 
-    console.group('%c[MyPrescriptions] Mount', 'color:#a78bfa;font-weight:bold');
-    console.log('me object:', me);
-    console.log('uid:', uid);
-    console.log('role:', me?.role);
-
-    if (!uid) {
-      console.warn('[MyPrescriptions] No UID found — cannot fetch. me =', me);
-      console.groupEnd();
-      setLoading(false);
-      return;
-    }
-
-    console.log('[MyPrescriptions] Attaching onSnapshot on prescriptions where doctorUid ==', uid);
-    console.groupEnd();
-
-    const q = query(collection(db, 'prescriptions'), where('doctorUid', '==', uid));
+    const q = scope === 'mine'
+      ? query(collection(db, 'prescriptions'), where('doctorUid', '==', uid))
+      : query(collection(db, 'prescriptions'));
     const unsub = onSnapshot(q, snap => {
-      console.group('%c[MyPrescriptions] Snapshot received', 'color:#34d399;font-weight:bold');
-      console.log('Total docs returned by Firestore:', snap.docs.length);
-      console.log('docId list:', snap.docs.map(d => d.id));
-
-      const list = snap.docs.map(d => {
-        const data = d.data();
-        console.log(`  doc ${d.id}:`, {
-          patientName: data.patientName,
-          prescriptionID: data.prescriptionID,
-          doctorUid: data.doctorUid,
-          consultationDate: data.consultationDate,
-          timestamp: data.timestamp,
-          savedAt: data.savedAt,
-          prescriptionDownloadUrl: data.prescriptionDownloadUrl || '(none)',
-        });
-        return { id: d.id, ...data };
-      });
-
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const getMs = p =>
         p.timestamp?.toMillis?.() ||
         p.savedAt?.toMillis?.() ||
         (p.consultationDate ? new Date(p.consultationDate).getTime() : 0);
       list.sort((a, b) => getMs(b) - getMs(a));
-
-      console.log('After sort — first 5 patients:', list.slice(0, 5).map(p => ({
-        id: p.id,
-        patientName: p.patientName,
-        prescriptionID: p.prescriptionID,
-        date: p.consultationDate || p.timestamp,
-      })));
-      console.groupEnd();
-
       setPrescriptions(list);
       setLoading(false);
     }, (err) => {
-      console.group('%c[MyPrescriptions] Snapshot ERROR', 'color:#f87171;font-weight:bold');
-      console.error('Error code:', err.code);
-      console.error('Error message:', err.message);
-      console.error('Full error:', err);
-      console.log('This is often a missing Firestore index. Check the message above for a direct link to create it.');
-      console.groupEnd();
+      console.error('[Prescriptions] Snapshot error:', err);
       setLoading(false);
     });
     return unsub;
-  }, [me?.uid]);
+  }, [me?.uid, scope]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return prescriptions;
@@ -8338,8 +8298,11 @@ function PrescriptionsScreen({ me }) {
     <div className="col fade-in">
       <div className="page-head">
         <div>
-          <h1 className="page-title">My Prescriptions</h1>
-          <p className="page-sub">{loading ? 'Loading…' : `${prescriptions.length} prescription${prescriptions.length !== 1 ? 's' : ''}`}</p>
+          <h1 className="page-title">{scope === 'mine' ? 'My Prescriptions' : 'All Prescriptions'}</h1>
+          <p className="page-sub">
+            {loading ? 'Loading…' : `${prescriptions.length} prescription${prescriptions.length !== 1 ? 's' : ''}`}
+            {scope === 'all' && !loading && <span className="muted"> · across all doctors</span>}
+          </p>
         </div>
       </div>
 

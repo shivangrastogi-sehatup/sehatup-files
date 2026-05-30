@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import NewUI from "./NewUI";
 import { Icon } from "./NewUI"; // assuming NewUI exports Icon
@@ -261,10 +261,49 @@ function ModernLogin() {
   );
 }
 
+// Role name normalization (Tele_sales / Order_creator → telesales / order_creator)
+const ROLE_ALIASES = {
+  'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
+  'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
+  'admin': 'admin', 'doctor': 'doctor', 'marketing': 'marketing', 'logistics': 'logistics',
+};
+const normRole = (r) => ROLE_ALIASES[(r || '').toLowerCase().trim()] || (r || '').toLowerCase().trim();
+const extractRoles = (data) => {
+  if (!data) return [];
+  const raw = Array.isArray(data.roles) ? data.roles : (data.role ? [data.role] : []);
+  return [...new Set(raw.map(normRole).filter(Boolean))];
+};
+
+async function forceSignOutWithMessage(message) {
+  localStorage.setItem("sehatup_login_error", message);
+  localStorage.removeItem("sehatup_role");
+  localStorage.removeItem("sehatup_pending_role");
+  try { await signOut(auth); } catch (_) {}
+}
+
 export default function AppContainer() {
   const [user, setUser] = useState(null);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Live subscription to the user's Firestore doc — auto-signout when roles are removed.
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
+      const liveRoles = snap.exists() ? extractRoles(snap.data()) : [];
+      const currentRole = localStorage.getItem("sehatup_role");
+      const isAdmin = liveRoles.includes("admin");
+      const stillValid = isAdmin || (currentRole && liveRoles.includes(currentRole));
+      if (!liveRoles.length || !stillValid) {
+        forceSignOutWithMessage("Your access has been revoked. Please contact an administrator.");
+        return;
+      }
+      setRoles(liveRoles);
+    }, (err) => {
+      console.error("User doc subscription error:", err);
+    });
+    return unsub;
+  }, [user?.uid]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
@@ -272,42 +311,44 @@ export default function AppContainer() {
       if (currentUser) {
         try {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          // Normalize role variants (Tele_sales / Order_creator → telesales / order_creator)
-          const ROLE_ALIASES = {
-            'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
-            'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
-            'admin': 'admin', 'doctor': 'doctor', 'marketing': 'marketing', 'logistics': 'logistics',
-          };
-          const norm = (r) => ROLE_ALIASES[(r || '').toLowerCase().trim()] || (r || '').toLowerCase().trim();
-          let userRoles = [];
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            const rawRoles = data.roles && Array.isArray(data.roles) ? data.roles : (data.role ? [data.role] : ["user"]);
-            userRoles = [...new Set(rawRoles.map(norm).filter(Boolean))];
-          } else {
-            userRoles = ["user"];
-          }
+          const userRoles = userDoc.exists() ? extractRoles(userDoc.data()) : [];
 
           const pendingRole = localStorage.getItem("sehatup_pending_role");
           localStorage.removeItem("sehatup_pending_role");
+          const isAdmin = userRoles.includes("admin");
+
+          // No roles at all? Deny.
+          if (!userRoles.length) {
+            await forceSignOutWithMessage("Your account has no assigned roles. Please contact an administrator.");
+            setUser(null); setRoles([]); setLoading(false);
+            return;
+          }
 
           if (pendingRole) {
-            // Use selected role if user has it; admins can pick any role.
-            // If user doesn't have the selected role, fall back to their primary role.
-            const isAdmin = userRoles.includes("admin");
-            const hasRole = userRoles.includes(pendingRole);
-            const effectiveRole = (isAdmin || hasRole) ? pendingRole : (userRoles[0] || pendingRole);
-            localStorage.setItem("sehatup_role", effectiveRole);
+            // User tried to log in as a specific role: must be admin OR have that role
+            if (!isAdmin && !userRoles.includes(pendingRole)) {
+              await forceSignOutWithMessage(`Access denied. You do not have the "${pendingRole}" role.`);
+              setUser(null); setRoles([]); setLoading(false);
+              return;
+            }
+            localStorage.setItem("sehatup_role", pendingRole);
+          } else {
+            // Session resume: make sure the saved role is still valid (admin can be any)
+            const saved = localStorage.getItem("sehatup_role");
+            if (saved && !isAdmin && !userRoles.includes(saved)) {
+              await forceSignOutWithMessage("Your access has been revoked. Please log in again.");
+              setUser(null); setRoles([]); setLoading(false);
+              return;
+            }
+            if (!saved) localStorage.setItem("sehatup_role", userRoles[0]);
           }
-          // Always allow authenticated Firebase users in — Firestore rules enforce data security
+
           setRoles(userRoles);
           setUser(currentUser);
         } catch (err) {
           console.error("Error fetching user role:", err);
-          // Still allow login — Firestore rules handle actual security
-          const saved = localStorage.getItem("sehatup_role") || "doctor";
-          setRoles([saved]);
-          setUser(currentUser);
+          await forceSignOutWithMessage("Could not verify your access. Please log in again.");
+          setUser(null); setRoles([]);
         }
       } else {
         setUser(null);
@@ -318,9 +359,7 @@ export default function AppContainer() {
     return () => unsub();
   }, []);
 
-  const handleLogout = () => {
-    return signOut(auth);
-  };
+  const handleLogout = () => signOut(auth);
 
   if (loading) {
     return (
