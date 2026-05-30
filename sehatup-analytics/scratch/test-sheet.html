@@ -18,11 +18,17 @@
   <h1>SehatUp Sheet Bridge Tester</h1>
   <div class="url" id="url"></div>
 
-  <button onclick="runHealth()">1. Health check (GET)</button>
+  <button onclick="runHealth()">1. Sheet health</button>
   <button onclick="runRead('shipments')">2. Read shipments</button>
   <button onclick="runRead('crm orders')">3. Read crm orders</button>
   <button onclick="runWrite()">4. Write test row to shipments</button>
+  <button onclick="runWebhook()">5. Trigger Nimbus webhook (end-to-end)</button>
   <button onclick="output.textContent = ''">Clear output</button>
+
+  <p style="font-size: 12px; color: #666;">
+    Test 5 hits your deployed Vercel webhook with a real AWB → enriches via Nimbus + Shopify → writes to Sheet.
+    Check the Sheet's <code>shipments</code> tab after ~3 seconds.
+  </p>
 
   <h3>Output</h3>
   <pre id="out">(click a button)</pre>
@@ -54,6 +60,28 @@ async function runRead(tab) {
     const j = await r.json();
     log('GET ' + url, j, !j.ok);
   } catch (e) { log('GET error', e.message, true); }
+}
+
+async function runWebhook() {
+  output.textContent = '';
+  const WEBHOOK_URL = 'https://sehatup-dashboard.vercel.app/api/nimbus-webhook';
+  const body = {
+    awb_number: '23645495390185',
+    status: 'In Transit',
+    event_time: '2026-05-30 15:00:00',
+    location: 'Surat Hub',
+    message: 'Test from HTML tester'
+  };
+  try {
+    const r = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    log('POST ' + WEBHOOK_URL + ' (AWB ' + body.awb_number + ')', j, !j.ok);
+    log('Now check Google Sheet "shipments" tab in 3-5 seconds', 'Should see row with AWB ' + body.awb_number);
+  } catch (e) { log('Webhook error', e.message, true); }
 }
 
 async function runWrite() {

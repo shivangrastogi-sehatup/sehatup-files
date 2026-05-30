@@ -144,6 +144,13 @@ async function enrichAndCacheToSheet(awb, latestEvent) {
 }
 
 export default async function handler(req, res) {
+  // CORS — allows manual testing from the browser. Nimbus → webhook is server-to-server
+  // so CORS doesn't apply there; this is purely for dev tools.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Hmac-Sha256');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method !== 'POST') {
     return res.status(200).json({ ok: true, service: 'nimbus-webhook' });
   }
