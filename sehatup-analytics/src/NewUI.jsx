@@ -7,6 +7,121 @@ import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils
 import { db, auth } from './firebase';
 import { collection, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
 import { computeAnalytics } from "./utils/analytics";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+
+// Curated list of exportable columns — `default: true` means pre-selected in the picker.
+// Each `get(r)` produces the cell value for a row. No `answers`/`rawState`/`html` etc.
+const EXPORT_COLUMNS = [
+  { key: 'docId',         label: 'Doc ID',          get: r => r.id || r.docId || '' },
+  { key: 'name',          label: 'Name',            get: r => r.name || r.userName || '', default: true },
+  { key: 'phone',         label: 'Phone',           get: r => r.phone || '',               default: true },
+  { key: 'email',         label: 'Email',           get: r => r.email || '' },
+  { key: 'age',           label: 'Age',             get: r => r.age || '',                 default: true },
+  { key: 'gender',        label: 'Gender',          get: r => r.gender || '',              default: true },
+  { key: 'dob',           label: 'Date of Birth',   get: r => r.dob || '' },
+  { key: 'city',          label: 'City',            get: r => r.city || '' },
+  { key: 'state',         label: 'State',           get: r => r.state || '' },
+  { key: 'category',      label: 'Category',        get: r => r.primaryGoal || r.reportCategory || '', default: true },
+  { key: 'score',         label: 'Health Score',    get: r => r.healthScore ?? r.score ?? '', default: true },
+  { key: 'risk',          label: 'Risk Level',      get: r => r.riskType || r.risk || '' },
+  { key: 'source',        label: 'Source',          get: r => r._source || r.source || '', default: true },
+  { key: 'consulted',     label: 'Consulted',       get: r => r.isConsulted ? 'Yes' : 'No', default: true },
+  { key: 'purchased',     label: 'Purchased',       get: r => r.isPurchased ? 'Yes' : 'No', default: true },
+  { key: 'date',          label: 'Date',            get: r => {
+      const ts = r.timestamp?.toDate ? r.timestamp.toDate() : (r.timestamp ? new Date(r.timestamp) : null);
+      return ts && !isNaN(ts.getTime()) ? ts.toLocaleDateString('en-IN') : '';
+    }, default: true },
+  { key: 'time',          label: 'Time',            get: r => {
+      const ts = r.timestamp?.toDate ? r.timestamp.toDate() : (r.timestamp ? new Date(r.timestamp) : null);
+      return ts && !isNaN(ts.getTime()) ? ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+    }, default: true },
+  { key: 'primaryDiagnosis', label: 'Primary Diagnosis', get: r => r.primaryDiagnosis || '' },
+  { key: 'consultedBy',   label: 'Consulted By',    get: r => r.consultedByName || '' },
+  { key: 'lastConsultedAt', label: 'Last Consulted At', get: r => {
+      const ts = r.lastConsultedAt?.toDate ? r.lastConsultedAt.toDate() : (r.lastConsultedAt ? new Date(r.lastConsultedAt) : null);
+      return ts && !isNaN(ts.getTime()) ? ts.toLocaleString('en-IN') : '';
+    } },
+];
+
+// Export rows to an XLSX file. `selectedKeys` is an array of EXPORT_COLUMNS keys.
+function exportToExcel(filename, rows, selectedKeys) {
+  if (!rows || rows.length === 0) { alert('No rows to export.'); return; }
+  const cols = (selectedKeys && selectedKeys.length)
+    ? EXPORT_COLUMNS.filter(c => selectedKeys.includes(c.key))
+    : EXPORT_COLUMNS.filter(c => c.default);
+  if (!cols.length) { alert('Select at least one column.'); return; }
+  const data = rows.map(r => {
+    const out = {};
+    cols.forEach(c => { out[c.label] = c.get(r); });
+    return out;
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Submissions');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `${filename}.xlsx`);
+}
+
+// Modal that asks the user which columns to include before downloading.
+function ColumnPickerModal({ open, mode, rowCount, onCancel, onConfirm }) {
+  const [selected, setSelected] = useState(() => EXPORT_COLUMNS.filter(c => c.default).map(c => c.key));
+  if (!open) return null;
+  const toggle = (k) => setSelected(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
+  const selectAll = () => setSelected(EXPORT_COLUMNS.map(c => c.key));
+  const selectNone = () => setSelected([]);
+  const selectDefaults = () => setSelected(EXPORT_COLUMNS.filter(c => c.default).map(c => c.key));
+  return createPortal(
+    <>
+      <div className="np-blur-layer" />
+      <div className="np-backdrop" onClick={onCancel}>
+        <div className="np-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, width: '100%', padding: 0, display: 'flex', flexDirection: 'column', maxHeight: '85vh', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Choose columns to export</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+              {mode === 'full' ? 'Full dataset' : 'Filtered view'} · {rowCount.toLocaleString()} rows · {selected.length}/{EXPORT_COLUMNS.length} columns selected
+            </div>
+          </div>
+          <div style={{ padding: '12px 22px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+            <button className="btn sm ghost" onClick={selectAll}>Select all</button>
+            <button className="btn sm ghost" onClick={selectNone}>Clear</button>
+            <button className="btn sm ghost" onClick={selectDefaults}>Reset to defaults</button>
+          </div>
+          <div style={{ padding: '14px 22px', overflowY: 'auto', flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {EXPORT_COLUMNS.map(c => {
+              const on = selected.includes(c.key);
+              return (
+                <label key={c.key} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8,
+                  border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+                  background: on ? 'var(--accent-soft)' : 'var(--surface-2)',
+                  cursor: 'pointer', fontSize: 13,
+                }}>
+                  <div onClick={() => toggle(c.key)} style={{
+                    width: 16, height: 16, borderRadius: 4,
+                    border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+                    background: on ? 'var(--accent)' : 'transparent',
+                    display: 'grid', placeItems: 'center', flexShrink: 0,
+                  }}>
+                    {on && <Icon name="check" size={10} color="#fff" />}
+                  </div>
+                  <span onClick={() => toggle(c.key)} style={{ flex: 1 }}>{c.label}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+            <button className="btn ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={onCancel}>Cancel</button>
+            <button className="btn primary" style={{ flex: 2, justifyContent: 'center' }} disabled={!selected.length} onClick={() => onConfirm(selected)}>
+              <Icon name="download" size={14} /> Download .xlsx
+            </button>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.querySelector('.app') || document.body
+  );
+}
 
 
 const useStateCx = useState;
@@ -459,10 +574,56 @@ function Sparkbars({ data = [], height = 28 }) {
 
 /* â”€â”€ Charts (lightweight inline SVG, no library) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-function LineChart({ data = [], height = 220, color = "var(--accent)", fill = true }) {
+function LineChart({ data = [], series = null, height = 220, color = "var(--accent)", fill = true }) {
   const [hoveredNode, setHoveredNode] = useState(null);
   const w = 700, h = height;
   const pad = { l: 36, r: 16, t: 16, b: 26 };
+
+  // Multi-series mode — render multiple lines on the same chart
+  if (series && Array.isArray(series) && series.length > 0) {
+    const labels = data.map(d => d.label);
+    const allValues = series.flatMap(s => s.values || []);
+    const maxY = Math.ceil(Math.max(...allValues, 1) / 20) * 20;
+    const scaleX = i => pad.l + (i / Math.max(1, labels.length - 1)) * (w - pad.l - pad.r);
+    const scaleY = v => pad.t + (1 - v / maxY) * (h - pad.t - pad.b);
+    const yticks = [0, maxY / 2, maxY];
+    const xticks = [0, Math.floor(labels.length / 4), Math.floor(labels.length / 2), Math.floor(labels.length * 3 / 4), labels.length - 1];
+    return (
+      <div className="chart-wrap" style={{ height }}>
+        <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ overflow: "visible" }}>
+          {yticks.map((t, i) => (
+            <g key={i}>
+              <line className="gridline" x1={pad.l} x2={w - pad.r} y1={scaleY(t)} y2={scaleY(t)} />
+              <text x={pad.l - 8} y={scaleY(t) + 3} textAnchor="end" fontSize="10" fill="var(--muted)" fontFamily="Geist Mono, monospace">{t}</text>
+            </g>
+          ))}
+          {series.map((s, sIdx) => {
+            const c = s.color || color;
+            const pts = (s.values || []).map((v, i) => `${scaleX(i)},${scaleY(v)}`).join(" ");
+            return (
+              <g key={sIdx}>
+                <polyline points={pts} fill="none" stroke={c} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                {(s.values || []).map((v, i) => (
+                  <circle key={i} cx={scaleX(i)} cy={scaleY(v)} r="2.5" fill="var(--surface)" stroke={c} strokeWidth="1.5" />
+                ))}
+              </g>
+            );
+          })}
+          {xticks.map((i, k) => (
+            <text key={k} x={scaleX(i)} y={h - 8} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="Geist Mono, monospace">
+              {labels[i]}
+            </text>
+          ))}
+        </svg>
+        <div className="hstack-12" style={{ justifyContent: 'center', marginTop: 8, fontSize: 11.5 }}>
+          {series.map((s, i) => (
+            <span key={i} className="hstack-6"><span style={{ width: 10, height: 2, background: s.color || color, display: 'inline-block' }} /><span className="muted">{s.name}</span></span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const ys = data.map(d => d.value);
   const maxY = Math.ceil(Math.max(...ys, 1) / 20) * 20;
   const scaleX = i => pad.l + (i / Math.max(1, data.length - 1)) * (w - pad.l - pad.r);
@@ -1213,10 +1374,22 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const [completedData, setCompletedData] = useState([]);
   const [manualData, setManualData] = useState([]);
 
-  // Filter states
-  const [daysFilter, setDaysFilter] = useState(30);
+  // Filter states — now use explicit from/to dates so custom ranges work
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+  const daysAgoISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+  const [dateFrom, setDateFrom] = useState(daysAgoISO(30));
+  const [dateTo, setDateTo] = useState(todayISO());
+  const [datePreset, setDatePreset] = useState(30); // null when custom
   const [genderFilter, setGenderFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const applyPreset = (days) => {
+    setDatePreset(days);
+    setDateFrom(daysAgoISO(days));
+    setDateTo(todayISO());
+    setShowDatePicker(false);
+  };
 
   useEffect(() => {
     const unsub1 = onSnapshot(query(collection(db, "partial_submissions"), orderBy("timestamp", "desc")), snap => {
@@ -1232,13 +1405,13 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   }, []);
 
   const filtered = useMemoCx(() => {
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - daysFilter);
+    const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+    const to   = new Date(dateTo);   to.setHours(23, 59, 59, 999);
 
     const filterItem = (item) => {
       if (!item.timestamp) return false;
       const ts = item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp);
-      if (ts < fromDate) return false;
+      if (ts < from || ts > to) return false;
       if (categoryFilter !== "All" && item.reportCategory !== categoryFilter && item.primaryGoal !== categoryFilter) return false;
       if (genderFilter !== "All") {
         const categories = GENDER_MAPPING[genderFilter] || [];
@@ -1252,20 +1425,52 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       completed: completedData.filter(filterItem),
       manual: manualData.filter(filterItem)
     };
-  }, [partialData, completedData, manualData, daysFilter, genderFilter, categoryFilter]);
+  }, [partialData, completedData, manualData, dateFrom, dateTo, genderFilter, categoryFilter]);
 
   const analytics = useMemoCx(() => computeAnalytics(filtered.partial, filtered.completed, filtered.manual), [filtered]);
 
   const D = window.SehatData;
   const layout = tweaks.homeLayout || "analytics";
   const [tab, setTab] = useState("completed");
+  const [timelineMode, setTimelineMode] = useState("completed"); // completed | started | both
+
+  // Build a merged, normalized list of all submissions (used for export + submissions history)
+  const allSubmissions = useMemoCx(() => {
+    return [
+      ...filtered.completed.map(d => ({ ...d, _source: 'completed' })),
+      ...filtered.partial.map(d => ({ ...d, _source: 'partial' })),
+      ...filtered.manual.map(d => ({ ...d, _source: 'manual' })),
+    ].map(d => ({
+      ...d,
+      id: d.id,
+      docId: d.id,
+      source: d._source,
+      name: d.name || d.userName || 'Unknown',
+      phone: d.phone || '-',
+      age: d.age || '-',
+      gender: d.gender || '-',
+      category: d.primaryGoal || d.reportCategory || 'General',
+      score: d.healthScore ?? d.score ?? '-',
+      risk: (d.healthScore ?? d.score) !== undefined
+        ? ((d.healthScore ?? d.score) < 40 ? 'Critical'
+          : (d.healthScore ?? d.score) < 60 ? 'High'
+          : (d.healthScore ?? d.score) < 80 ? 'Moderate' : 'Low')
+        : '-',
+      timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString() : (d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '-'),
+      avatarHue: Math.abs((d.id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 360,
+    })).sort((a, b) => {
+      const ta = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+      const tb = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+      return tb - ta;
+    });
+  }, [filtered]);
 
   const kpis = (
     <div className="grid-12">
-      <div className="span-3"><KPI feature label="Started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" delta="+8.2%" deltaDir="up" sparkline={analytics.timeSeries.slice(-14).map(d => d.count)} /></div>
-      <div className="span-3"><KPI label="Completed" value={analytics.totalCompleted.toLocaleString()} icon="check" delta="+12.4%" deltaDir="up" sparkline={analytics.timeSeries.slice(-14).map(d => d.count * 0.85)} /></div>
-      <div className="span-3"><KPI label="Drop-off" value={Math.round(analytics.dropoffRate || 0)} suffix="%" icon="trend_dn" delta="-2.1%" deltaDir="up" sparkline={analytics.timeSeries.slice(-14).map(d => 60 - d.count * 0.4)} /></div>
-      <div className="span-3"><KPI label="Avg. score" value={Math.round(analytics.avgHealthScore || 0)} suffix="/100" icon="pulse" delta="+1.3" deltaDir="up" sparkline={analytics.timeSeries.slice(-14).map(d => d.count * 0.6 + 20)} /></div>
+      <div className="span-3"><KPI feature label="Started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" sparkline={analytics.timeSeries.slice(-14).map(d => d.started)} /></div>
+      <div className="span-3"><KPI label="Completed" value={analytics.totalCompleted.toLocaleString()} icon="check" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed)} /></div>
+      <div className="span-3"><KPI label="Drop-off" value={Math.round(analytics.dropoffRate || 0)} suffix="%" icon="trend_dn" sparkline={analytics.timeSeries.slice(-14).map(d => d.partial)} /></div>
+      <div className="span-3"><KPI label="Avg. score" value={Math.round(analytics.avgHealthScore || 0)} suffix="/100" icon="pulse" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed * 0.6 + 20)} /></div>
     </div>
   );
 
@@ -1280,29 +1485,79 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     ];
   })();
 
-  const timeSeriesChartData = (analytics.timeSeries || []).map(d => ({
-    label: d.day.slice(5).replace("-", "/"),
-    value: d.count
+  // Build chart series based on selected timeline mode
+  const labels = (analytics.timeSeries || []).map(d => d.day.slice(5).replace('-', '/'));
+  const timelineSeries = timelineMode === 'completed'
+    ? [{ name: 'Completed', color: 'var(--accent)',   values: analytics.timeSeries.map(d => d.completed) }]
+    : timelineMode === 'started'
+    ? [{ name: 'Started',   color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) }]
+    : [
+        { name: 'Started',   color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) },
+        { name: 'Completed', color: 'var(--accent)',   values: analytics.timeSeries.map(d => d.completed) },
+      ];
+  const timelineFallback = (analytics.timeSeries || []).map(d => ({
+    label: d.day.slice(5).replace('-', '/'),
+    value: timelineMode === 'started' ? d.started : d.completed,
   }));
+
+  // Conversion funnel — real values from analytics
+  const funnelData = [
+    { stage: 'Started',   count: analytics.totalStarted   || 0 },
+    { stage: 'Completed', count: analytics.totalCompleted || 0 },
+    { stage: 'Consulted', count: analytics.totalConsulted || 0 },
+    { stage: 'Purchased', count: analytics.totalPurchased || 0 },
+  ];
+
+  // Category breakdown — top 6 from real data
+  const categoryData = Object.entries(analytics.concerns || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([cat, count]) => ({ label: (cat || 'Unknown').split(' ').slice(0, 2).join(' '), value: count }));
+
+  // Gender split — real data
+  const femaleCount = (analytics.genders?.Female || 0);
+  const maleCount   = (analytics.genders?.Male   || 0);
+  const unknownGenderCount = (analytics.genders?.Unknown || 0);
+  const totalGender = femaleCount + maleCount + unknownGenderCount;
+  const femalePct = totalGender > 0 ? Math.round((femaleCount / totalGender) * 100) : 0;
 
   return (
     <div className="col fade-in">
       <div className="page-head">
         <div>
           <h1 className="page-title">Health Score Questionnaire</h1>
-          <p className="page-sub">Real-time submission analytics · last 30 days</p>
+          <p className="page-sub">Real-time submission analytics · {dateFrom} to {dateTo}</p>
         </div>
         <div className="page-head-actions">
-          <div className="filterbar" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span className="chip" style={{ position: 'relative' }}>
-              <Icon name="calendar" /> Last {daysFilter} days <Icon name="chevron_down" />
-              <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={daysFilter} onChange={e => setDaysFilter(Number(e.target.value))}>
-                <option value={7}>Last 7 days</option>
-                <option value={30}>Last 30 days</option>
-                <option value={90}>Last 90 days</option>
-                <option value={365}>Last 1 year</option>
-              </select>
+          <div className="filterbar" style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
+            <span className="chip" style={{ cursor: 'pointer' }} onClick={() => setShowDatePicker(v => !v)}>
+              <Icon name="calendar" /> {datePreset ? `Last ${datePreset} days` : `${dateFrom} → ${dateTo}`} <Icon name="chevron_down" />
             </span>
+            {showDatePicker && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowDatePicker(false)} />
+                <div className="card shadow-lg" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, padding: 12, width: 290, zIndex: 100 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Presets</div>
+                  <div className="hstack-6" style={{ flexWrap: 'wrap', marginBottom: 14 }}>
+                    {[7, 30, 90, 180, 365].map(d => (
+                      <button key={d} className={`btn sm ${datePreset === d ? 'primary' : 'ghost'}`} onClick={() => applyPreset(d)}>Last {d}d</button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Custom range</div>
+                  <div className="stack-8">
+                    <div className="field">
+                      <label className="lbl" style={{ fontSize: 11 }}>From</label>
+                      <input type="date" className="input sm" value={dateFrom} max={dateTo} onChange={e => { setDateFrom(e.target.value); setDatePreset(null); }} />
+                    </div>
+                    <div className="field">
+                      <label className="lbl" style={{ fontSize: 11 }}>To</label>
+                      <input type="date" className="input sm" value={dateTo} min={dateFrom} max={todayISO()} onChange={e => { setDateTo(e.target.value); setDatePreset(null); }} />
+                    </div>
+                    <button className="btn sm primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowDatePicker(false)}>Apply</button>
+                  </div>
+                </div>
+              </>
+            )}
             <span className="chip" style={{ position: 'relative' }}>
               <Icon name="users" /> {genderFilter === 'All' ? 'All genders' : genderFilter} <Icon name="chevron_down" />
               <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
@@ -1325,13 +1580,12 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                 <option>Mens Weight Loss</option>
               </select>
             </span>
-            {(genderFilter !== 'All' || categoryFilter !== 'All' || daysFilter !== 30) && (
-              <span className="chip ghost" style={{ cursor: 'pointer', padding: "0 8px" }} onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); setDaysFilter(30); }}>
+            {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== 30) && (
+              <span className="chip ghost" style={{ cursor: 'pointer', padding: "0 8px" }} onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); applyPreset(30); }}>
                 Clear
               </span>
             )}
           </div>
-          <button className="btn"><Icon name="download" /> Export</button>
           <button className="btn primary"><Icon name="refresh" /> Refresh</button>
         </div>
       </div>
@@ -1344,15 +1598,18 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <div className="span-8 card">
               <div className="hstack-8" style={{ marginBottom: 14 }}>
                 <div className="section-title">Completion timeline</div>
-                <span className="muted" style={{ fontSize: 12 }}>· past 90 days</span>
+                <span className="muted" style={{ fontSize: 12 }}>· {dateFrom} to {dateTo}</span>
                 <span className="spacer" />
-                <Tabs value="completed" onChange={() => {}} items={[
+                <Tabs value={timelineMode} onChange={setTimelineMode} items={[
                   { label: "Completed", value: "completed" },
-                  { label: "Started", value: "started" },
-                  { label: "Both", value: "both" },
+                  { label: "Started",   value: "started" },
+                  { label: "Both",      value: "both" },
                 ]} />
               </div>
-              <LineChart data={timeSeriesChartData.length ? timeSeriesChartData : D.TIMELINE} height={240} />
+              {labels.length > 0
+                ? <LineChart data={timelineFallback} series={timelineSeries.length > 1 ? timelineSeries.map((s, i) => ({ ...s, values: s.values })) : null} height={240} />
+                : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No data for the selected range.</div></div>
+              }
             </div>
             <div className="span-4 card">
               <div className="hstack-8" style={{ marginBottom: 14 }}>
@@ -1374,38 +1631,40 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           <div className="grid-12">
             <div className="span-5 card">
               <div className="section-title" style={{ marginBottom: 10 }}>Conversion funnel</div>
-              <FunnelChart data={D.FUNNEL} />
+              <FunnelChart data={funnelData} />
             </div>
             <div className="span-4 card">
               <div className="section-title" style={{ marginBottom: 10 }}>Category breakdown</div>
-              <BarChart height={232} data={D.CATEGORIES.slice(0, 6).map((c, i) => ({
-                label: c.split(" ")[0],
-                value: [842, 612, 433, 387, 298, 174][i],
-              }))} />
+              {categoryData.length > 0
+                ? <BarChart height={232} data={categoryData} />
+                : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No category data</div></div>
+              }
             </div>
             <div className="span-3 card">
               <div className="section-title" style={{ marginBottom: 10 }}>Gender split</div>
               <div style={{ display: "grid", placeItems: "center", padding: "14px 0" }}>
-                <DonutChart size={150} thickness={22} centerValue="95%" centerLabel="female" data={[
-                  { label: "Female", value: D.GENDER_SPLIT.Female, color: "var(--accent)" },
-                  { label: "Male",   value: D.GENDER_SPLIT.Male,   color: "var(--accent-2)" },
+                <DonutChart size={150} thickness={22} centerValue={`${femalePct}%`} centerLabel="female" data={[
+                  { label: "Female",  value: femaleCount,        color: "var(--accent)" },
+                  { label: "Male",    value: maleCount,          color: "var(--accent-2)" },
+                  { label: "Unknown", value: unknownGenderCount, color: "var(--surface-3)" },
                 ]} />
               </div>
               <div className="stack-6" style={{ marginTop: 8 }}>
-                <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent)" }} /><span>Female</span><span className="spacer" /><span className="num muted">{D.GENDER_SPLIT.Female.toLocaleString()}</span></div>
-                <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent-2)" }} /><span>Male</span><span className="spacer" /><span className="num muted">{D.GENDER_SPLIT.Male.toLocaleString()}</span></div>
+                <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent)" }} /><span>Female</span><span className="spacer" /><span className="num muted">{femaleCount.toLocaleString()}</span></div>
+                <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent-2)" }} /><span>Male</span><span className="spacer" /><span className="num muted">{maleCount.toLocaleString()}</span></div>
+                {unknownGenderCount > 0 && <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--surface-3)" }} /><span>Unknown</span><span className="spacer" /><span className="num muted">{unknownGenderCount.toLocaleString()}</span></div>}
               </div>
             </div>
           </div>
 
-          <SubmissionsHistory recent={D.CUSTOMERS} openCustomer={openCustomer} openSubmission={openSubmission} tab={tab} setTab={setTab} />
+          <SubmissionsHistory recent={allSubmissions} openCustomer={openCustomer} openSubmission={openSubmission} tab={tab} setTab={setTab} />
         </>
       ) : (
         // ACTIVITY-FEED LAYOUT
         <>
           <div className="grid-12">
             <div className="span-8">
-              <SubmissionsHistory recent={D.CUSTOMERS} openCustomer={openCustomer} openSubmission={openSubmission} tab={tab} setTab={setTab} compact />
+              <SubmissionsHistory recent={allSubmissions} openCustomer={openCustomer} openSubmission={openSubmission} tab={tab} setTab={setTab} compact />
             </div>
             <div className="span-4 col">
               <div className="card">
@@ -1436,13 +1695,16 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <div className="span-8 card">
               <div className="hstack-8" style={{ marginBottom: 14 }}>
                 <div className="section-title">Completion timeline</div>
-                <span className="muted" style={{ fontSize: 12 }}>· past 90 days</span>
+                <span className="muted" style={{ fontSize: 12 }}>· {dateFrom} to {dateTo}</span>
               </div>
-              <LineChart data={timeSeriesChartData.length ? timeSeriesChartData : D.TIMELINE} height={220} />
+              {labels.length > 0
+                ? <LineChart data={timelineFallback} series={timelineSeries.length > 1 ? timelineSeries : null} height={220} />
+                : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No data for the selected range.</div></div>
+              }
             </div>
             <div className="span-4 card">
               <div className="section-title" style={{ marginBottom: 10 }}>Conversion funnel</div>
-              <FunnelChart data={D.FUNNEL} />
+              <FunnelChart data={funnelData} />
             </div>
           </div>
         </>
@@ -1528,6 +1790,7 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
 
 function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab, setTab, activeTabs, toggleTab, clearFilters, compact }) {
   const tabs = [
+    { label: "All",       value: "all" },
     { label: "Completed", value: "completed" },
     { label: "Partial",   value: "partial" },
     { label: "Manual",    value: "manual" },
@@ -1537,15 +1800,40 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
   ];
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState(null); // 'full' | 'filtered' | null
+  const [internalTab, setInternalTab] = useState('all');
+  const activeTab = tab !== undefined ? tab : internalTab;
+  const setActiveTab = setTab || setInternalTab;
   const pageSize = 14;
-  const totalCount = recent ? recent.length : 0;
+
+  // Apply tab filter inside the history component when controlled via single-tab mode
+  const tabbedList = (() => {
+    if (!recent) return [];
+    if (activeTabs !== undefined) return recent; // multi-tab mode (Submissions page) filters externally
+    if (activeTab === 'all') return recent;
+    if (activeTab === 'consulted') return recent.filter(r => r.isConsulted);
+    if (activeTab === 'purchased') return recent.filter(r => r.isPurchased);
+    if (activeTab === 'whatsapp')  return recent.filter(r => (r.source || '').toLowerCase().includes('whatsapp'));
+    return recent.filter(r => r.source === activeTab || r._source === activeTab);
+  })();
+
+  const totalCount = tabbedList.length;
   const maxPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  
+
   useEffect(() => {
     if (currentPage > maxPages) setCurrentPage(Math.max(1, maxPages));
   }, [maxPages, currentPage]);
 
-  const pagedList = recent ? recent.slice((currentPage - 1) * pageSize, currentPage * pageSize) : [];
+  const pagedList = tabbedList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const openPicker = (mode) => { setPickerMode(mode); setExportMenuOpen(false); };
+  const exportRows = pickerMode === 'full' ? (recent || []) : tabbedList;
+  const handleConfirmExport = (selectedKeys) => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    exportToExcel(`sehatup-submissions-${pickerMode}-${stamp}`, exportRows, selectedKeys);
+    setPickerMode(null);
+  };
 
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -1553,12 +1841,49 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
         <div className="section-title">Submissions history</div>
         <span className="muted num" style={{ fontSize: 12 }}>· {totalCount.toLocaleString()} entries</span>
         <span className="spacer" />
-        <Tabs value={activeTabs !== undefined ? activeTabs : tab} onChange={toggleTab || setTab} items={tabs.slice(0, compact ? 4 : 6)} />
+        <Tabs value={activeTabs !== undefined ? activeTabs : activeTab} onChange={toggleTab || setActiveTab} items={(activeTabs !== undefined ? tabs.filter(t => t.value !== 'all') : tabs).slice(0, compact ? 5 : 7)} />
         {activeTabs && activeTabs.length > 0 && (
           <button className="btn sm ghost" onClick={clearFilters}>Clear Filters</button>
         )}
-        <button className="btn sm primary"><Icon name="download" /> Export</button>
+        <div
+          style={{ position: 'relative' }}
+          onMouseEnter={() => setExportMenuOpen(true)}
+          onMouseLeave={() => setExportMenuOpen(false)}
+        >
+          <button className="btn sm primary"><Icon name="download" /> Export</button>
+          {exportMenuOpen && (
+            <div className="card shadow-lg" style={{
+              position: 'absolute', top: '100%', right: 0,
+              width: 240, padding: 6, zIndex: 100,
+              marginTop: 4,
+              animation: 'fadeInDown 120ms ease',
+            }}>
+              <button className="btn w-full" style={{ justifyContent: 'flex-start', padding: '10px 12px' }} onClick={() => openPicker('full')}>
+                <Icon name="download" size={14} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginLeft: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Download Full Data</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{(recent || []).length.toLocaleString()} rows</span>
+                </div>
+              </button>
+              <button className="btn w-full" style={{ justifyContent: 'flex-start', padding: '10px 12px' }} onClick={() => openPicker('filtered')}>
+                <Icon name="filter" size={14} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginLeft: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Download Filtered Data</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{tabbedList.length.toLocaleString()} rows · current tab</span>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+        <style>{`@keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
       </div>
+      <ColumnPickerModal
+        open={pickerMode !== null}
+        mode={pickerMode}
+        rowCount={exportRows.length}
+        onCancel={() => setPickerMode(null)}
+        onConfirm={handleConfirmExport}
+      />
       <div style={{ overflowX: "auto" }}>
         <table className="tbl">
           <thead>
@@ -6906,16 +7231,34 @@ function MarketingScreen() {
 
 const ADMIN_ROLES = ["admin", "doctor", "telesales", "order_creator", "marketing", "logistics"];
 
+// Map common variants of role names to the canonical form used in NAV/permissions.
+// Anything not in this map is kept as-is (so unknown roles remain visible/removable).
+const ROLE_ALIASES = {
+  'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
+  'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
+  'admin': 'admin', 'doctor': 'doctor', 'marketing': 'marketing', 'logistics': 'logistics',
+};
+function normalizeRole(r) {
+  if (!r || typeof r !== 'string') return '';
+  const k = r.toLowerCase().trim();
+  return ROLE_ALIASES[k] || k;
+}
+
+// PERMISSION_KEYS: top-level items can have `children: [...keys]`. Child items have
+// `parent: <parentKey>` and are auto-disabled/cleared when the parent is off.
 const PERMISSION_KEYS = [
-  { key: 'can_generate_prescription',    label: 'Generate & Sign Prescriptions', icon: 'pill' },
-  { key: 'can_edit_clinical_consulted',  label: 'Mark Patients as Consulted',    icon: 'check' },
-  { key: 'can_edit_clinical_purchased',  label: 'Mark Patients as Purchased',    icon: 'package' },
-  { key: 'can_edit_patient_info',        label: 'Edit Patient Information',      icon: 'edit' },
-  { key: 'can_create_manual_patient',    label: 'Create New Patient Records',    icon: 'user' },
-  { key: 'can_access_clinical_review',   label: 'Access Clinical Review',        icon: 'stethoscope' },
+  {
+    key: 'can_access_clinical_review', label: 'Access Clinical Review', icon: 'stethoscope',
+    children: ['can_edit_clinical_consulted', 'can_edit_clinical_purchased', 'can_edit_patient_info', 'can_create_manual_patient', 'can_generate_prescription'],
+  },
+  { key: 'can_edit_clinical_consulted',  label: 'Mark Patients as Consulted',    icon: 'check',       parent: 'can_access_clinical_review' },
+  { key: 'can_edit_clinical_purchased',  label: 'Mark Patients as Purchased',    icon: 'package',     parent: 'can_access_clinical_review' },
+  { key: 'can_edit_patient_info',        label: 'Edit Patient Information',      icon: 'edit',        parent: 'can_access_clinical_review' },
+  { key: 'can_create_manual_patient',    label: 'Create New Patient Records',    icon: 'user',        parent: 'can_access_clinical_review' },
+  { key: 'can_generate_prescription',    label: 'Generate & Sign Prescriptions', icon: 'pill',        parent: 'can_access_clinical_review' },
   { key: 'can_create_shopify_orders',    label: 'Create Shopify Orders',         icon: 'shopping' },
   { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers',      icon: 'users' },
-  { key: 'can_view_prescriptions_tab',   label: 'View Prescriptions Tab (Telesales)', icon: 'pill', roles: ['telesales'] },
+  { key: 'can_view_prescriptions_tab',   label: 'View Prescriptions Tab (Telesales)', icon: 'pill' },
 ];
 
 function AdminScreen() {
@@ -6948,10 +7291,11 @@ function AdminScreen() {
 
   const openEdit = async (u) => {
     const editUser = { ...u };
-    // Combine roles + legacy role field, deduplicate
+    // Combine roles + legacy role field, normalize, deduplicate
     const raw = [...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])];
-    const unique = [...new Set(raw)];
-    // Sort known roles by priority; keep any unknown ones at the end
+    const normalized = raw.map(normalizeRole).filter(Boolean);
+    const unique = [...new Set(normalized)];
+    // Sort known roles by ADMIN_ROLES priority; keep any unknown ones at the end
     const known = ADMIN_ROLES.filter(r => unique.includes(r));
     const unknown = unique.filter(r => !ADMIN_ROLES.includes(r));
     editUser.roles = [...known, ...unknown];
@@ -6968,8 +7312,10 @@ function AdminScreen() {
   const toggleRole = (r) => {
     const cur = selected.roles || [];
     const next = cur.includes(r) ? cur.filter(x => x !== r) : [...cur, r];
-    // Always keep sorted by ADMIN_ROLES priority so highest is [0] (primary nav role)
-    setSelected({ ...selected, roles: ADMIN_ROLES.filter(x => next.includes(x)) });
+    // Keep known roles sorted by ADMIN_ROLES priority (roles[0] = nav role), preserve unknowns at end
+    const known = ADMIN_ROLES.filter(x => next.includes(x));
+    const unknown = next.filter(x => !ADMIN_ROLES.includes(x));
+    setSelected({ ...selected, roles: [...known, ...unknown] });
   };
 
   const handleSave = async () => {
@@ -7067,7 +7413,8 @@ function AdminScreen() {
               {!loading && filtered.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>No users found.</td></tr>}
               {filtered.map(u => {
                 const raw = [...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])];
-                const allRoles = [...new Set(raw)];
+                const normalized = raw.map(normalizeRole).filter(Boolean);
+                const allRoles = [...new Set(normalized)];
                 const isAdmin = allRoles.includes('admin');
                 return (
                   <tr key={u.id}>
@@ -7171,25 +7518,66 @@ function AdminScreen() {
                   </div>
                 </div>
 
-                {/* Granular Permissions */}
+                {/* Granular Permissions — parent toggles cascade to children */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Granular Permissions</label>
                   {loadingPerms ? (
                     <div style={{ fontSize: 12, color: 'var(--muted)', padding: '12px 0' }}>Loading permissions…</div>
-                  ) : PERMISSION_KEYS.filter(p => !p.roles || p.roles.some(r => selected?.roles?.includes(r))).length === 0 ? (
-                    <div style={{ fontSize: 12.5, color: 'var(--muted)', padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--border)' }}>No role-specific permissions for the assigned roles.</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {PERMISSION_KEYS.filter(p => !p.roles || p.roles.some(r => selected?.roles?.includes(r))).map(p => (
-                        <div key={p.key} onClick={() => setUserPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))}
-                          style={{ padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${userPerms[p.key] ? 'var(--accent)' : 'var(--border)'}`, background: userPerms[p.key] ? 'var(--accent-soft)' : 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <Icon name={p.icon} size={14} color={userPerms[p.key] ? 'var(--accent)' : 'var(--muted)'} />
-                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>{p.label}</span>
+                      {PERMISSION_KEYS.filter(p => !p.parent).map(p => {
+                        const parentOn = !!userPerms[p.key];
+                        const togglePerm = (key) => {
+                          setUserPerms(prev => {
+                            const next = { ...prev, [key]: !prev[key] };
+                            // If turning OFF a parent, also clear all its children
+                            if (prev[key] && Array.isArray(PERMISSION_KEYS.find(x => x.key === key)?.children)) {
+                              PERMISSION_KEYS.find(x => x.key === key).children.forEach(c => { next[c] = false; });
+                            }
+                            return next;
+                          });
+                        };
+                        return (
+                          <div key={p.key}>
+                            <div onClick={() => togglePerm(p.key)}
+                              style={{ padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${parentOn ? 'var(--accent)' : 'var(--border)'}`, background: parentOn ? 'var(--accent-soft)' : 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <Icon name={p.icon} size={14} color={parentOn ? 'var(--accent)' : 'var(--muted)'} />
+                                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>{p.label}</span>
+                              </div>
+                              <Toggle on={parentOn} onToggle={() => togglePerm(p.key)} />
+                            </div>
+                            {/* Children — indented, disabled when parent is off */}
+                            {Array.isArray(p.children) && p.children.length > 0 && (
+                              <div style={{ marginLeft: 22, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6, borderLeft: '2px solid var(--border)', paddingLeft: 12 }}>
+                                {p.children.map(ck => {
+                                  const child = PERMISSION_KEYS.find(x => x.key === ck);
+                                  if (!child) return null;
+                                  const childOn = !!userPerms[ck] && parentOn;
+                                  const disabled = !parentOn;
+                                  return (
+                                    <div key={ck} onClick={() => { if (!disabled) togglePerm(ck); }}
+                                      style={{
+                                        padding: '9px 12px', borderRadius: 8,
+                                        border: `1px solid ${childOn ? 'var(--accent)' : 'var(--border)'}`,
+                                        background: childOn ? 'var(--accent-soft)' : 'var(--surface-2)',
+                                        cursor: disabled ? 'not-allowed' : 'pointer',
+                                        opacity: disabled ? 0.45 : 1,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                                      }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Icon name={child.icon} size={12} color={childOn ? 'var(--accent)' : 'var(--muted)'} />
+                                        <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--fg)' }}>{child.label}</span>
+                                      </div>
+                                      <Toggle on={childOn} onToggle={() => { if (!disabled) togglePerm(ck); }} />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
-                          <Toggle on={!!userPerms[p.key]} onToggle={() => setUserPerms(prev => ({ ...prev, [p.key]: !prev[p.key] }))} />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

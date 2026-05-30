@@ -272,10 +272,18 @@ export default function AppContainer() {
       if (currentUser) {
         try {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          // Normalize role variants (Tele_sales / Order_creator → telesales / order_creator)
+          const ROLE_ALIASES = {
+            'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
+            'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
+            'admin': 'admin', 'doctor': 'doctor', 'marketing': 'marketing', 'logistics': 'logistics',
+          };
+          const norm = (r) => ROLE_ALIASES[(r || '').toLowerCase().trim()] || (r || '').toLowerCase().trim();
           let userRoles = [];
           if (userDoc.exists()) {
             const data = userDoc.data();
-            userRoles = data.roles && Array.isArray(data.roles) ? data.roles : (data.role ? [data.role] : ["user"]);
+            const rawRoles = data.roles && Array.isArray(data.roles) ? data.roles : (data.role ? [data.role] : ["user"]);
+            userRoles = [...new Set(rawRoles.map(norm).filter(Boolean))];
           } else {
             userRoles = ["user"];
           }

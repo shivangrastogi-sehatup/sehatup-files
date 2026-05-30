@@ -51,29 +51,49 @@ export function computeAnalytics(partialList = [], completedList = [], manualLis
 
   const byDay = {};
   let totalPurchased = 0;
-  
-  (allCompleted || []).forEach((d) => {
-    if (d.isPurchased) totalPurchased++;
-    
+  let totalConsulted = 0;
+
+  const dayKey = (d) => {
     const ts = d.timestamp?.toDate ? d.timestamp.toDate() : (d.timestamp ? new Date(d.timestamp) : new Date());
-    const day = ts.toISOString().slice(0,10);
-    if (!byDay[day]) byDay[day] = { count: 0, purchases: 0 };
-    byDay[day].count += 1;
-    if (d.isPurchased) byDay[day].purchases += 1;
+    return ts.toISOString().slice(0, 10);
+  };
+  const bump = (day, field) => {
+    if (!byDay[day]) byDay[day] = { started: 0, completed: 0, partial: 0, purchases: 0, consulted: 0 };
+    byDay[day][field] += 1;
+  };
+
+  (partialList || []).forEach((d) => {
+    const day = dayKey(d);
+    bump(day, "started");
+    bump(day, "partial");
   });
-  const timeSeries = Object.keys(byDay).sort().map(day => ({ 
-    day, 
-    count: byDay[day].count,
-    purchases: byDay[day].purchases
+
+  (allCompleted || []).forEach((d) => {
+    const day = dayKey(d);
+    bump(day, "started");    // completed users also started
+    bump(day, "completed");
+    if (d.isPurchased) { totalPurchased++; bump(day, "purchases"); }
+    if (d.isConsulted) { totalConsulted++; bump(day, "consulted"); }
+  });
+
+  const timeSeries = Object.keys(byDay).sort().map(day => ({
+    day,
+    started:   byDay[day].started,
+    completed: byDay[day].completed,
+    partial:   byDay[day].partial,
+    purchases: byDay[day].purchases,
+    consulted: byDay[day].consulted,
+    // Backward compat
+    count:     byDay[day].completed,
   }));
 
   const purchaseRate = totalCompleted === 0 ? 0 : (totalPurchased / totalCompleted) * 100;
-
+  const consultedRate = totalCompleted === 0 ? 0 : (totalConsulted / totalCompleted) * 100;
   const concerns = _.countBy(allCompleted, (d) => d.reportCategory || "Unknown");
 
   return {
-    totalStarted, totalCompleted, totalPartial, totalManual, totalPurchased,
-    completionRate, dropoffRate, purchaseRate,
+    totalStarted, totalCompleted, totalPartial, totalManual, totalPurchased, totalConsulted,
+    completionRate, dropoffRate, purchaseRate, consultedRate,
     genders, avgHealthScore, riskCounts, timeSeries, concerns, peerAvg
   };
 }
