@@ -6510,6 +6510,8 @@ function ShipmentsScreen() {
   const [sheetMap, setSheetMap] = useStateS({});
   const [sheetSyncedAt, setSheetSyncedAt] = useStateS(null);
   const [sheetError, setSheetError] = useStateS(null);
+  // Backfill state: { running, total, done, failed }
+  const [backfill, setBackfill] = useStateS({ running: false, total: 0, done: 0, failed: 0 });
 
   // Live tracking events from Firestore nimbus_tracking
   useEffect(() => {
@@ -6660,6 +6662,50 @@ function ShipmentsScreen() {
 
   const handleRefresh = () => { loadFromSheet(); };
 
+  // Backfill: enrich every AWB that exists in Firestore but has no customer info in the Sheet.
+  // Processes in small batches to respect Shopify rate limits (~2 req/s).
+  const handleBackfill = async () => {
+    const needsEnrich = Object.keys(trackingMap).filter(awb => {
+      const row = sheetMap[awb];
+      return !row || !row['Customer Name'];
+    });
+    if (!needsEnrich.length) { alert('Nothing to backfill — every AWB is already enriched.'); return; }
+    if (!window.confirm(`Backfill ${needsEnrich.length} AWB${needsEnrich.length > 1 ? 's' : ''} into the Sheet? This may take ${Math.ceil(needsEnrich.length / 2)} seconds.`)) return;
+
+    setBackfill({ running: true, total: needsEnrich.length, done: 0, failed: 0 });
+    let done = 0;
+    let failed = 0;
+    const BATCH = 2; // 2 in parallel = ~2 req/s, safe for Shopify
+
+    for (let i = 0; i < needsEnrich.length; i += BATCH) {
+      const batch = needsEnrich.slice(i, i + BATCH);
+      const results = await Promise.all(batch.map(async (awb) => {
+        const latest = trackingMap[awb]?.[0] || {};
+        try {
+          const r = await fetch('/api/sheet-backfill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              awb,
+              status:     latest.status,
+              location:   latest.location,
+              event_time: latest.event_time,
+              message:    latest.message,
+            }),
+          });
+          const j = await r.json();
+          return j?.ok ? 'ok' : 'fail';
+        } catch (_) { return 'fail'; }
+      }));
+      results.forEach(r => r === 'ok' ? (done++) : (failed++));
+      setBackfill({ running: true, total: needsEnrich.length, done, failed });
+    }
+
+    setBackfill({ running: false, total: needsEnrich.length, done, failed });
+    await loadFromSheet(); // refresh the table with the new rows
+    alert(`Backfill complete: ${done} enriched${failed ? `, ${failed} failed (check logs)` : ''}.`);
+  };
+
   return (
     <div className="col fade-in">
       <div className="page-head">
@@ -6672,8 +6718,24 @@ function ShipmentsScreen() {
           </p>
         </div>
         <div className="page-head-actions">
+          {backfill.running && (
+            <span style={{ fontSize: 12.5, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                width: 12, height: 12, borderRadius: 99,
+                border: '2px solid var(--surface-3)',
+                borderTopColor: 'var(--accent)',
+                animation: 'spinx 0.7s linear infinite',
+                display: 'inline-block',
+              }} />
+              Backfilling {backfill.done}/{backfill.total}{backfill.failed ? ` (${backfill.failed} failed)` : ''}…
+            </span>
+          )}
+          <button className="btn" onClick={handleBackfill} disabled={backfill.running} title="Enrich all AWBs missing customer info into the Sheet">
+            <Icon name="upload" /> Backfill
+          </button>
           <button className="btn" onClick={handleRefresh}><Icon name="refresh" /> Refresh</button>
         </div>
+        <style>{`@keyframes spinx { to { transform: rotate(360deg); } }`}</style>
       </div>
 
       {/* KPIs */}
