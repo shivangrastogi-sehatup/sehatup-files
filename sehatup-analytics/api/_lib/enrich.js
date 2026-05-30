@@ -38,10 +38,10 @@ function toFsDoc(obj) {
   return { fields };
 }
 
-// PATCH a Firestore document at the given path. Uses updateMask so we only
-// overwrite the fields we provide (preserves anything not included).
+// PATCH a Firestore document at the given path. Throws on failure so the caller
+// can surface the error to the diagnostic endpoint / dashboard.
 async function patchFirestoreDoc(path, fields) {
-  if (!API_KEY) { console.error('FIREBASE_WEB_API_KEY missing'); return; }
+  if (!API_KEY) throw new Error('FIREBASE_WEB_API_KEY environment variable missing on Vercel');
   const mask = Object.keys(fields).map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
   const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}?${mask}&key=${API_KEY}`;
   const r = await fetch(url, {
@@ -49,7 +49,12 @@ async function patchFirestoreDoc(path, fields) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toFsDoc(fields)),
   });
-  if (!r.ok) console.error('Firestore PATCH failed:', path, await r.text());
+  if (!r.ok) {
+    const errBody = await r.text();
+    console.error('Firestore PATCH failed:', path, r.status, errBody);
+    throw new Error(`Firestore PATCH ${r.status} on ${path}: ${errBody.slice(0, 400)}`);
+  }
+  return await r.json();
 }
 
 // ─────── Nimbus + Shopify lookups ───────
@@ -161,11 +166,12 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       enrichmentSource: source,
       updatedAt:    new Date().toISOString(),
     };
-    await patchFirestoreDoc(`shipments/${phoneKey}/awbs/${awb}`, awbDoc);
+    const awbWrite = await patchFirestoreDoc(`shipments/${phoneKey}/awbs/${awb}`, awbDoc);
 
     // ─── Update parent customer summary (merge) ───
+    let parentWrite = null;
     if (customer.name || customer.phone || customer.email) {
-      await patchFirestoreDoc(`shipments/${phoneKey}`, {
+      parentWrite = await patchFirestoreDoc(`shipments/${phoneKey}`, {
         phone:       customer.phone || phoneKey,
         name:        customer.name  || '',
         email:       customer.email || '',
@@ -175,9 +181,20 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       });
     }
 
-    return { ok: true, awb, phoneKey, orderNumber, customerFound: !!order };
+    return {
+      ok: true,
+      awb,
+      phoneKey,
+      orderNumber,
+      customerFound: !!order,
+      wrote: {
+        awbPath: `shipments/${phoneKey}/awbs/${awb}`,
+        parentPath: parentWrite ? `shipments/${phoneKey}` : null,
+        awbDocName: awbWrite?.name || null,
+      },
+    };
   } catch (e) {
     console.error('Enrichment failed for AWB', awb, e?.message || e);
-    return { ok: false, awb, error: e?.message || String(e) };
+    return { ok: false, awb, error: e?.message || String(e), stage: e?.stage || 'unknown' };
   }
 }

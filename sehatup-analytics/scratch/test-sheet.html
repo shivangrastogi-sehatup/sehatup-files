@@ -23,6 +23,7 @@
   <button onclick="runRead('crm orders')">3. Read crm orders</button>
   <button onclick="runWrite()">4. Write test row to shipments</button>
   <button onclick="runWebhook()">5. Trigger Nimbus webhook (end-to-end)</button>
+  <button onclick="runEnrich()">6. Test enrichment (verbose)</button>
   <button onclick="output.textContent = ''">Clear output</button>
 
   <p style="font-size: 12px; color: #666;">
@@ -60,6 +61,29 @@ async function runRead(tab) {
     const j = await r.json();
     log('GET ' + url, j, !j.ok);
   } catch (e) { log('GET error', e.message, true); }
+}
+
+async function runEnrich() {
+  output.textContent = '';
+  const awb = prompt('Enter an AWB to test enrichment for:', '23645495390185');
+  if (!awb) return;
+  const url = 'https://sehatup-dashboard.vercel.app/api/sheet-backfill';
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ awb })
+    });
+    const j = await r.json();
+    log('POST ' + url + '  (AWB ' + awb + ')', j, !j.ok);
+    if (j.ok) {
+      log('Result interpretation', {
+        wrote_to: 'shipments/' + j.phoneKey + '/awbs/' + j.awb,
+        order_found_in_shopify: j.customerFound,
+        nimbus_order_number: j.orderNumber || '(none)',
+      });
+    }
+  } catch (e) { log('Enrich error', e.message, true); }
 }
 
 async function runWebhook() {
