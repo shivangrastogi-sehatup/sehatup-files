@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
-import { searchCustomers, getOrders, getOrderById, findShopifyOrder, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { searchCustomers, getOrders, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { getSheetRows } from './utils/sheetsApi';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth } from './firebase';
