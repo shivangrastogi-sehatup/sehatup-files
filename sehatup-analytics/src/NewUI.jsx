@@ -4694,6 +4694,8 @@ function OrderCreate({ context = {}, setRoute }) {
   const [isFetchingRecommendations, setIsFetchingRecommendations] = useStateO(false);
   const [focusedInput, setFocusedInput] = useStateO(null);
   const [autofillMessage, setAutofillMessage] = useStateO("");
+  const [pincodeLoading, setPincodeLoading] = useStateO(false);
+  const [billingPincodeLoading, setBillingPincodeLoading] = useStateO(false);
   const [shippingRates, setShippingRates] = useStateO([]);
   const [isLoadingShipping, setIsLoadingShipping] = useStateO(false);
   const [selectedShipping, setSelectedShipping] = useStateO(null);
@@ -5008,41 +5010,67 @@ function OrderCreate({ context = {}, setRoute }) {
     setShippingLastName(custLastName);
   }, [custLastName]);
 
+  // Shared helper: look up a pincode and call setters when resolved (or set error message)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (pincode && pincode.length === 6 && /^\d+$/.test(pincode)) {
-      fetch(`https://api.postalpincode.in/pincode/${pincode}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data[0] && data[0].Status === 'Success') {
-            const postOffice = data[0].PostOffice[0];
-            setCity(postOffice.District);
-            setStateName(postOffice.State);
-            setAutofillMessage("City and State auto-filled from pincode");
-            setTimeout(() => setAutofillMessage(""), 3000);
-          }
-        })
-        .catch(err => console.error("Error fetching pincode:", err));
+  const lookupPincode = React.useCallback(async (pin, { onCity, onState, onMessage, onLoading, signal }) => {
+    onLoading(true);
+    try {
+      // Primary: postalpincode.in (free, India-only, no key)
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`, { signal });
+      const data = await res.json();
+      if (data && data[0] && data[0].Status === 'Success' && Array.isArray(data[0].PostOffice) && data[0].PostOffice.length) {
+        const po = data[0].PostOffice[0];
+        onCity(po.District || '');
+        onState(po.State || '');
+        onMessage(`Auto-filled: ${po.District}, ${po.State}`);
+        setTimeout(() => onMessage(''), 3000);
+      } else {
+        onMessage("Pincode not found. Please enter city/state manually.");
+        setTimeout(() => onMessage(''), 4000);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return; // user changed pincode mid-fetch
+      console.error("Pincode lookup failed:", err);
+      onMessage("Could not look up pincode. Enter city/state manually.");
+      setTimeout(() => onMessage(''), 4000);
+    } finally {
+      onLoading(false);
     }
-  }, [pincode]);
+  }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (billingPincode && billingPincode.length === 6 && /^\d+$/.test(billingPincode)) {
-      fetch(`https://api.postalpincode.in/pincode/${billingPincode}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data[0] && data[0].Status === 'Success') {
-            const postOffice = data[0].PostOffice[0];
-            setBillingCity(postOffice.District);
-            setBillingStateName(postOffice.State);
-            setBillingAutofillMessage("City and State auto-filled from pincode");
-            setTimeout(() => setBillingAutofillMessage(""), 3000);
-          }
-        })
-        .catch(err => console.error("Error fetching pincode:", err));
+    if (!pincode || pincode.length !== 6 || !/^\d+$/.test(pincode)) {
+      setPincodeLoading(false);
+      return;
     }
-  }, [billingPincode]);
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      lookupPincode(pincode, {
+        onCity: setCity, onState: setStateName,
+        onMessage: setAutofillMessage, onLoading: setPincodeLoading,
+        signal: controller.signal,
+      });
+    }, 250); // small debounce while typing
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [pincode, lookupPincode]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!billingPincode || billingPincode.length !== 6 || !/^\d+$/.test(billingPincode)) {
+      setBillingPincodeLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      lookupPincode(billingPincode, {
+        onCity: setBillingCity, onState: setBillingStateName,
+        onMessage: setBillingAutofillMessage, onLoading: setBillingPincodeLoading,
+        signal: controller.signal,
+      });
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [billingPincode, lookupPincode]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -5523,22 +5551,55 @@ function OrderCreate({ context = {}, setRoute }) {
             </div>
             <div className="grid-12" style={{ marginTop: 12 }}>
               <div className="span-12 field"><span className="lbl">Address *</span><input className="input" value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} placeholder="House / flat / street" /></div>
-              <div className="span-5 field"><span className="lbl">Landmark</span><input className="input" value={shippingLandmark} onChange={e => setShippingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>
-              <div className="span-3 field"><span className="lbl">Pincode *</span><input className="input num" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" /></div>
-              <div className="span-4 field"><span className="lbl">City *</span><input className="input" value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" /></div>
-              <div className="span-6 field"><span className="lbl">State *</span>
-                <select className="select" value={stateName} onChange={e => setStateName(e.target.value)}>
-                  <option value="" disabled>Select State</option>
-                  {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
+              <div className="span-6 field"><span className="lbl">Landmark</span><input className="input" value={shippingLandmark} onChange={e => setShippingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>
               <div className="span-6 field"><span className="lbl">Country</span>
                 <select className="select" value={country} onChange={e => setCountry(e.target.value)}>
                   {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              {autofillMessage && <div className="span-12 hstack-6" style={{ color: "var(--risk-low)", fontSize: 12 }}><Icon name="check" size={13} /> {autofillMessage}</div>}
+              {/* City · State · Pincode — pincode is on the right; city/state autofill from pincode */}
+              <div className="span-4 field">
+                <span className="lbl">City *</span>
+                {pincodeLoading
+                  ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
+                  : <input className="input" value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />}
+              </div>
+              <div className="span-4 field">
+                <span className="lbl">State *</span>
+                {pincodeLoading
+                  ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
+                  : (
+                    <select className="select" value={stateName} onChange={e => setStateName(e.target.value)}>
+                      <option value="" disabled>Select State</option>
+                      {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )
+                }
+              </div>
+              <div className="span-4 field">
+                <span className="lbl">Pincode *</span>
+                <div style={{ position: 'relative' }}>
+                  <input className="input num" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: pincodeLoading ? 36 : undefined }} />
+                  {pincodeLoading && (
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex' }}>
+                      <span className="pincode-spinner" />
+                    </span>
+                  )}
+                </div>
+              </div>
+              {autofillMessage && <div className="span-12 hstack-6" style={{ color: autofillMessage.startsWith('Auto-filled') ? "var(--risk-low)" : "var(--risk-moderate)", fontSize: 12 }}><Icon name={autofillMessage.startsWith('Auto-filled') ? "check" : "alert_circle"} size={13} /> {autofillMessage}</div>}
             </div>
+            <style>{`
+              @keyframes pincode-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+              .pincode-spinner {
+                width: 14px; height: 14px; border-radius: 99px;
+                border: 2px solid var(--surface-3);
+                border-top-color: var(--accent);
+                animation: pincode-spin 0.7s linear infinite;
+              }
+              @keyframes shimmerPulse { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
+              .skel-box { background: var(--surface-3); border-radius: 4px; animation: shimmerPulse 1.4s ease-in-out infinite; }
+            `}</style>
             
             {differentBillingAddress && (
               <>
@@ -5549,21 +5610,42 @@ function OrderCreate({ context = {}, setRoute }) {
                 <div className="span-4 field"><span className="lbl">Last name</span><input className="input" value={billingLastName} onChange={e => setBillingLastName(e.target.value)} placeholder="Last name" /></div>
                 <div className="span-4 field"><span className="lbl">Phone number</span><input className="input" value={billingPhone} onChange={e => setBillingPhone(e.target.value)} placeholder="Phone" /></div>
                 <div className="span-12 field"><span className="lbl">Address *</span><input className="input" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="House / flat / street" /></div>
-                <div className="span-5 field"><span className="lbl">Landmark</span><input className="input" value={billingLandmark} onChange={e => setBillingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>
-                <div className="span-3 field"><span className="lbl">Pincode *</span><input className="input num" value={billingPincode} onChange={e => setBillingPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" /></div>
-                <div className="span-4 field"><span className="lbl">City *</span><input className="input" value={billingCity} onChange={e => setBillingCity(e.target.value)} placeholder="Mumbai" /></div>
-                <div className="span-6 field"><span className="lbl">State *</span>
-                  <select className="select" value={billingStateName} onChange={e => setBillingStateName(e.target.value)}>
-                    <option value="" disabled>Select State</option>
-                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
+                <div className="span-6 field"><span className="lbl">Landmark</span><input className="input" value={billingLandmark} onChange={e => setBillingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>
                 <div className="span-6 field"><span className="lbl">Country</span>
                   <select className="select" value={billingCountry} onChange={e => setBillingCountry(e.target.value)}>
                     {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                  {billingAutofillMessage && <div className="span-12 hstack-6" style={{ color: "var(--risk-low)", fontSize: 12 }}><Icon name="check" size={13} /> {billingAutofillMessage}</div>}
+                <div className="span-4 field">
+                  <span className="lbl">City *</span>
+                  {billingPincodeLoading
+                    ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
+                    : <input className="input" value={billingCity} onChange={e => setBillingCity(e.target.value)} placeholder="Mumbai" />}
+                </div>
+                <div className="span-4 field">
+                  <span className="lbl">State *</span>
+                  {billingPincodeLoading
+                    ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
+                    : (
+                      <select className="select" value={billingStateName} onChange={e => setBillingStateName(e.target.value)}>
+                        <option value="" disabled>Select State</option>
+                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    )
+                  }
+                </div>
+                <div className="span-4 field">
+                  <span className="lbl">Pincode *</span>
+                  <div style={{ position: 'relative' }}>
+                    <input className="input num" value={billingPincode} onChange={e => setBillingPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: billingPincodeLoading ? 36 : undefined }} />
+                    {billingPincodeLoading && (
+                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex' }}>
+                        <span className="pincode-spinner" />
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {billingAutofillMessage && <div className="span-12 hstack-6" style={{ color: billingAutofillMessage.startsWith('Auto-filled') ? "var(--risk-low)" : "var(--risk-moderate)", fontSize: 12 }}><Icon name={billingAutofillMessage.startsWith('Auto-filled') ? "check" : "alert_circle"} size={13} /> {billingAutofillMessage}</div>}
                 </div>
               </>
             )}
