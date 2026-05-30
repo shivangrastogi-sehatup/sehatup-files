@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } fr
 import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
 import { searchCustomers, getOrders, getOrderById, findShopifyOrder, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { getSheetRows } from './utils/sheetsApi';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth } from './firebase';
 import { collection, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
@@ -6505,12 +6506,10 @@ function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 function ShipmentsScreen() {
   const [loading, setLoading] = useStateS(true);
   const [trackingMap, setTrackingMap] = useStateS({});
-  // awb -> { orderId, courier?, status? }  (resolved via /api/nimbus-awb-lookup)
-  const [awbOrderMap, setAwbOrderMap] = useStateS({});
-  // orderId -> Shopify order object (fetched via getOrderById)
-  const [orderDetails, setOrderDetails] = useStateS({});
-  // lookup-in-flight markers so we don't spam
-  const lookupCacheRef = useRef({ awbs: new Set(), orders: new Set() });
+  // Cached shipment rows from the Google Sheet, keyed by AWB
+  const [sheetMap, setSheetMap] = useStateS({});
+  const [sheetSyncedAt, setSheetSyncedAt] = useStateS(null);
+  const [sheetError, setSheetError] = useStateS(null);
 
   // Live tracking events from Firestore nimbus_tracking
   useEffect(() => {
@@ -6530,55 +6529,40 @@ function ShipmentsScreen() {
     return unsub;
   }, []);
 
-  // For each unique AWB: scrape Nimbus tracking page to find the Shopify order ID,
-  // then fetch the Shopify order for customer/address/items. Cached so we only
-  // fire once per AWB (and once per order ID).
-  // Disables itself if the /api endpoint isn't available (e.g. running CRA without `vercel dev`).
-  const [lookupDisabled, setLookupDisabled] = useStateS(false);
-  useEffect(() => {
-    if (lookupDisabled) return;
-    const awbs = Object.keys(trackingMap);
-    awbs.forEach(async (awb) => {
-      if (lookupDisabled) return;
-      if (lookupCacheRef.current.awbs.has(awb)) return;
-      lookupCacheRef.current.awbs.add(awb);
-      try {
-        const r = await fetch(`/api/nimbus-awb-lookup?awb=${awb}`);
-        const ct = (r.headers.get('content-type') || '').toLowerCase();
-        if (!ct.includes('application/json')) {
-          console.warn(
-            '[Shipments] /api/nimbus-awb-lookup is not running (got HTML).\n' +
-            'For local dev, run `vercel dev` from the project root so Vercel functions are served.\n' +
-            'Or deploy to Vercel to test. Skipping further AWB lookups this session.'
-          );
-          setLookupDisabled(true);
-          return;
-        }
-        const data = await r.json();
-        if (!data?.ok || !data.orderId) return;
-        const orderRef = data.orderRef || `#${data.orderId}`;
-        setAwbOrderMap(prev => ({ ...prev, [awb]: { orderId: data.orderId, orderRef, courier: data.courier || null } }));
+  // Load cached shipment rows from the Google Sheet (populated by the Nimbus webhook).
+  // One HTTP call → all customer/order info, no per-row Shopify lookup needed.
+  const loadFromSheet = React.useCallback(async () => {
+    try {
+      const rows = await getSheetRows('shipments');
+      const map = {};
+      rows.forEach(r => {
+        const awb = String(r['AWB'] || '').trim();
+        if (!awb) return;
+        map[awb] = r;
+      });
+      setSheetMap(map);
+      setSheetSyncedAt(new Date());
+      setSheetError(null);
+    } catch (e) {
+      console.warn('Sheet load failed:', e?.message || e);
+      setSheetError(e?.message || 'Failed to load Sheet');
+    }
+  }, []);
 
-        if (lookupCacheRef.current.orders.has(data.orderId)) return;
-        lookupCacheRef.current.orders.add(data.orderId);
-        // Try Shopify by order_number first (covers "#1738"), then by internal id (covers long numerics)
-        const order = await findShopifyOrder(orderRef);
-        if (order) setOrderDetails(prev => ({ ...prev, [data.orderId]: order }));
-      } catch (e) {
-        console.warn('AWB→order lookup failed for', awb, e?.message || e);
-      }
-    });
-  }, [trackingMap, lookupDisabled]);
+  useEffect(() => { loadFromSheet(); }, [loadFromSheet]);
 
-  // Build shipments directly from Nimbus tracking events — one row per unique AWB,
-  // enriched (when available) with Shopify order/customer/address from the lookup.
+  // Build shipments: union of (AWBs in sheet) ∪ (AWBs in Firestore). Sheet provides
+  // the cached customer/order info; Firestore provides the latest live status.
   const mergedShipments = useMemoS(() => {
-    const awbs = Object.keys(trackingMap);
-    return awbs.map(awb => {
+    const allAwbs = new Set([...Object.keys(sheetMap), ...Object.keys(trackingMap)]);
+    return Array.from(allAwbs).map(awb => {
       const events = trackingMap[awb] || [];
       const latest = events[0] || {};
-      const ns = (latest.status || '').toLowerCase();
-      let status = 'Shipped';
+      const row = sheetMap[awb] || {};
+
+      // Latest status — prefer live Firestore event, fall back to what sheet has
+      const ns = (latest.status || row['Raw Status'] || row['Status'] || '').toLowerCase();
+      let status = row['Status'] || 'Shipped';
       if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
       else if (ns.includes('out for delivery') || ns === 'out_for_delivery') status = 'Out for delivery';
       else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
@@ -6586,44 +6570,49 @@ function ShipmentsScreen() {
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
       else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
 
-      const link = awbOrderMap[awb] || {};
-      const order = link.orderId ? orderDetails[link.orderId] : null;
-      const fn = order?.customer?.first_name || '';
-      const ln = order?.customer?.last_name || '';
-      const customer = order ? {
-        name: (fn + ' ' + ln).trim() || 'Unknown',
-        phone: order.customer?.phone || order.shipping_address?.phone || '',
-        email: order.customer?.email || order.email || '',
-        city: order.shipping_address?.city || '',
-        state: order.shipping_address?.province || '',
-        pincode: order.shipping_address?.zip || '',
-        address: [order.shipping_address?.address1, order.shipping_address?.address2].filter(Boolean).join(', '),
+      const hasCustomer = !!(row['Customer Name'] || row['Phone']);
+      const customer = hasCustomer ? {
+        name:    row['Customer Name'] || 'Unknown',
+        phone:   row['Phone']   || '',
+        email:   row['Email']   || '',
+        city:    row['City']    || '',
+        state:   row['State']   || '',
+        pincode: row['Pincode'] || '',
+        address: row['Address'] || '',
       } : null;
+
+      const itemCount = row['Item Count'] !== undefined && row['Item Count'] !== '' ? Number(row['Item Count']) : null;
+      const amount    = row['Amount']     !== undefined && row['Amount']     !== '' ? Number(row['Amount']) : null;
+      const itemsText = row['Items'] || '';
+      const items = itemsText ? itemsText.split(';').map(s => {
+        const m = s.trim().match(/^(.+?)\s*x\s*(\d+)$/i);
+        return m ? { name: m[1].trim(), qty: Number(m[2]) } : { name: s.trim(), qty: 1 };
+      }) : [];
 
       return {
         id: awb,
         awb,
-        courier: link.courier || 'Nimbus',
+        courier:      row['Courier'] || 'Nimbus',
         status,
-        hasTracking: events.length > 0,
-        rawStatus: latest.status || '',
-        lastUpdate: latest.event_time || '',
-        lastLocation: latest.location || '',
-        lastMessage: latest.message || '',
-        rtoAwb: latest.rto_awb || '',
-        eventCount: events.length,
-        // Enrichment
-        orderId: link.orderId || null,
-        orderName: order?.name || link.orderRef || (link.orderId ? `#${link.orderId}` : null),
-        orderTotal: order ? parseFloat(order.total_price || 0) : null,
-        paymentMode: order ? ((order.gateway || '').toLowerCase().includes('cash') ? 'COD' : (order.payment_gateway_names?.[0] || 'Prepaid')) : null,
-        itemCount: order?.line_items?.reduce((a, i) => a + (i.quantity || 0), 0) || null,
-        items: order?.line_items?.map(i => ({ qty: i.quantity, name: i.name || i.title })) || [],
+        hasTracking:  events.length > 0,
+        rawStatus:    latest.status   || row['Raw Status']      || '',
+        lastUpdate:   latest.event_time || row['Last Event Time'] || '',
+        lastLocation: latest.location || row['Last Location']   || '',
+        lastMessage:  latest.message  || '',
+        rtoAwb:       latest.rto_awb  || '',
+        eventCount:   events.length,
+        orderId:      row['Order ID'] || null,
+        orderName:    row['Order Number'] || (row['Order ID'] ? `#${row['Order ID']}` : null),
+        orderTotal:   amount,
+        paymentMode:  row['Payment'] || null,
+        itemCount,
+        items,
         customer,
-        enriching: !order && !lookupCacheRef.current.awbs.has(awb), // not yet looked up
+        // Cached row has no customer info yet (webhook may not have written it)
+        enriching: !customer && events.length > 0,
       };
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
-  }, [trackingMap, awbOrderMap, orderDetails]);
+  }, [trackingMap, sheetMap]);
 
   const [tab, setTab] = useStateS("all");
   const [sel, setSel] = useStateS(null);
@@ -6669,16 +6658,18 @@ function ShipmentsScreen() {
   const failed = mergedShipments.filter(s => s.status === 'Failed delivery').length;
   const exceptionCount = mergedShipments.filter(s => s.status === 'Exception').length;
 
-  const handleRefresh = () => {
-    // No-op for now — tracking is fully live via onSnapshot. Kept for UX consistency.
-  };
+  const handleRefresh = () => { loadFromSheet(); };
 
   return (
     <div className="col fade-in">
       <div className="page-head">
         <div>
           <h1 className="page-title">Shipments</h1>
-          <p className="page-sub">{loading ? "Connecting to Nimbus stream..." : `${mergedShipments.length} tracked AWBs · live via Nimbus webhook`}</p>
+          <p className="page-sub">
+            {loading ? "Connecting to Nimbus stream..." : `${mergedShipments.length} tracked AWBs · live status from Nimbus`}
+            {sheetSyncedAt && <span className="muted"> · sheet synced {sheetSyncedAt.toLocaleTimeString('en-IN')}</span>}
+            {sheetError && <span style={{ color: 'var(--risk-critical)' }}> · sheet error: {sheetError}</span>}
+          </p>
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={handleRefresh}><Icon name="refresh" /> Refresh</button>

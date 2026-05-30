@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SehatUp Sheet Bridge Tester</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }
+    h1 { margin: 0 0 8px; }
+    .url { font-family: monospace; font-size: 11px; color: #666; word-break: break-all; margin-bottom: 24px; }
+    button { padding: 10px 16px; font-size: 14px; cursor: pointer; border: 1px solid #888; background: #f5f5f5; border-radius: 6px; margin: 6px 6px 6px 0; }
+    button:hover { background: #ececec; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 14px; border-radius: 6px; overflow-x: auto; min-height: 80px; white-space: pre-wrap; word-break: break-word; }
+    .ok { color: #4ade80; }
+    .err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h1>SehatUp Sheet Bridge Tester</h1>
+  <div class="url" id="url"></div>
+
+  <button onclick="runHealth()">1. Health check (GET)</button>
+  <button onclick="runRead('shipments')">2. Read shipments</button>
+  <button onclick="runRead('crm orders')">3. Read crm orders</button>
+  <button onclick="runWrite()">4. Write test row to shipments</button>
+  <button onclick="output.textContent = ''">Clear output</button>
+
+  <h3>Output</h3>
+  <pre id="out">(click a button)</pre>
+
+<script>
+const URL_BASE = "https://script.google.com/macros/s/AKfycbxXzrd8K8FVX8tne9xbspQLLuVZctNniFTziUqn2X9WaGb25eo3JMqliuO1-Vse6lTM/exec";
+document.getElementById('url').textContent = URL_BASE;
+const output = document.getElementById('out');
+
+function log(label, data, isError) {
+  const tag = isError ? '<span class="err">[ERR]</span>' : '<span class="ok">[OK]</span>';
+  output.innerHTML += tag + ' ' + label + '\n' + JSON.stringify(data, null, 2) + '\n\n';
+}
+
+async function runHealth() {
+  output.textContent = '';
+  try {
+    const r = await fetch(URL_BASE);
+    const j = await r.json();
+    log('GET ' + URL_BASE, j, !j.status);
+  } catch (e) { log('GET error', e.message, true); }
+}
+
+async function runRead(tab) {
+  output.textContent = '';
+  try {
+    const url = URL_BASE + '?action=read&tab=' + encodeURIComponent(tab);
+    const r = await fetch(url);
+    const j = await r.json();
+    log('GET ' + url, j, !j.ok);
+  } catch (e) { log('GET error', e.message, true); }
+}
+
+async function runWrite() {
+  output.textContent = '';
+  const body = {
+    tab: 'shipments',
+    key: 'TEST123456',
+    updates: {
+      'Order Number': '#TEST',
+      'Courier': 'Test Courier',
+      'Customer Name': 'Test Customer',
+      'Phone': '9999999999',
+      'Status': 'Test'
+    },
+    updatedBy: 'html-tester'
+  };
+  try {
+    // Use text/plain to avoid CORS preflight — Apps Script reads the raw body anyway
+    const r = await fetch(URL_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body),
+      redirect: 'follow'
+    });
+    const j = await r.json();
+    log('POST (upsert TEST123456)', j, !j.ok);
+  } catch (e) { log('POST error', e.message, true); }
+}
+</script>
+</body>
+</html>
