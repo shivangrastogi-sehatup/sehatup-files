@@ -1,14 +1,58 @@
-// Shared enrichment helpers — used by the Nimbus webhook and by the backfill endpoint.
-// Given an AWB (and optionally a latest tracking event), looks up the Nimbus tracking
-// API + Shopify order, then upserts a row into the "shipments" tab of the Sheet.
+// Enrichment pipeline: AWB → Nimbus mapi → Shopify → Firestore subcollection.
+//
+// Firestore layout:
+//   shipments/{phone}                  → customer summary (name, email, lastOrderAt, awbCount)
+//   shipments/{phone}/awbs/{awb}       → full shipment + tracking data for one AWB
+//
+// If Shopify has no phone for the order, the AWB is bucketed under
+// `unknown_{awb}` so we never lose data.
 
-import { upsertSheetRow } from './sheets.js';
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'sehatup-f96b5';
+const API_KEY    = process.env.FIREBASE_WEB_API_KEY || '';
 
-const SHOPIFY_HOSTNAME = '0ec320-gj.myshopify.com';
+const SHOPIFY_HOSTNAME    = '0ec320-gj.myshopify.com';
 const SHOPIFY_API_VERSION = '2024-01';
-const SHOPIFY_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || '';
+const SHOPIFY_TOKEN       = process.env.SHOPIFY_ACCESS_TOKEN || '';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+
+// ─────── Firestore REST helpers ───────
+
+function toFsValue(v) {
+  if (v === null || v === undefined)    return { nullValue: null };
+  if (typeof v === 'boolean')           return { booleanValue: v };
+  if (typeof v === 'number' && Number.isInteger(v)) return { integerValue: String(v) };
+  if (typeof v === 'number')            return { doubleValue: v };
+  if (Array.isArray(v))                 return { arrayValue: { values: v.map(toFsValue) } };
+  if (typeof v === 'object') {
+    const fields = {};
+    for (const [k, val] of Object.entries(v)) fields[k] = toFsValue(val);
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(v) };
+}
+
+function toFsDoc(obj) {
+  const fields = {};
+  for (const [k, v] of Object.entries(obj)) fields[k] = toFsValue(v);
+  return { fields };
+}
+
+// PATCH a Firestore document at the given path. Uses updateMask so we only
+// overwrite the fields we provide (preserves anything not included).
+async function patchFirestoreDoc(path, fields) {
+  if (!API_KEY) { console.error('FIREBASE_WEB_API_KEY missing'); return; }
+  const mask = Object.keys(fields).map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}?${mask}&key=${API_KEY}`;
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(toFsDoc(fields)),
+  });
+  if (!r.ok) console.error('Firestore PATCH failed:', path, await r.text());
+}
+
+// ─────── Nimbus + Shopify lookups ───────
 
 export async function fetchNimbusDetails(awb) {
   const url = `https://ship.nimbuspost.com/mapi/v1/shipment/track/track-awb/${awb}`;
@@ -51,14 +95,21 @@ export async function fetchShopifyOrder(ref) {
   return (await tryId(numeric)) || (await tryName(`#${numeric}`)) || (await tryName(numeric));
 }
 
+// ─────── Main enrichment ───────
+
+function normalizePhone(p) {
+  return String(p || '').replace(/\D/g, '');
+}
+
 /**
- * Run the full enrichment pipeline for a single AWB and upsert into the Sheet.
- * @param {string} awb
- * @param {object} [latestEvent] - optional tracking event (status/location/event_time) to overlay
- * @param {string} [updatedBy] - who triggered this (default "system")
- * @returns {Promise<{ok: boolean, awb: string, orderNumber: ?string, customerFound: boolean, error?: string}>}
+ * Run the full enrichment pipeline for one AWB and write into Firestore.
+ *   shipments/{phone}/awbs/{awb}  ← full enriched doc
+ *   shipments/{phone}             ← customer summary doc (merged)
+ *
+ * Status fields (status, location, lastEventTime, etc.) get refreshed on every
+ * call; customer/order info is also refreshed (cheap — Shopify is single-fetch).
  */
-export async function enrichAwbAndCache(awb, latestEvent = {}, updatedBy = 'system') {
+export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook') {
   try {
     const details = await fetchNimbusDetails(awb);
     const orderNumber = details?.order_number || null;
@@ -68,40 +119,63 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, updatedBy = 'syst
     const order = await fetchShopifyOrder(orderNumber || orderId);
     const sh = order?.shipping_address || {};
     const fn = order?.customer?.first_name || '';
-    const ln = order?.customer?.last_name || '';
+    const ln = order?.customer?.last_name  || '';
 
-    const updates = {
-      'Order ID':       orderId  || '',
-      'Order Number':   orderNumber || '',
-      'Courier':        courier,
-      'Customer Name':  order ? ((fn + ' ' + ln).trim() || sh.name || '') : '',
-      'Phone':          order ? (order.customer?.phone || sh.phone || '') : '',
-      'Email':          order?.customer?.email || order?.email || '',
-      'Address':        [sh.address1, sh.address2].filter(Boolean).join(', '),
-      'City':           sh.city     || '',
-      'State':          sh.province || '',
-      'Pincode':        sh.zip      || '',
-      'Items':          order?.line_items?.map(i => `${i.name} x ${i.quantity}`).join('; ') || '',
-      'Item Count':     order?.line_items?.reduce((a, i) => a + (i.quantity || 0), 0) || 0,
-      'Amount':         order ? parseFloat(order.total_price || 0) : 0,
-      'Payment':        order ? ((order.gateway || '').toLowerCase().includes('cash') ? 'COD' : (order.payment_gateway_names?.[0] || 'Prepaid')) : '',
-      'Status':         latestEvent.status || details?.current_status || '',
-      'Raw Status':     latestEvent.status || '',
-      'Last Location':  latestEvent.location || '',
-      'Last Event Time': latestEvent.event_time || '',
-      'Order Created':  details?.created || (order?.created_at ? new Date(order.created_at).toLocaleString('en-IN') : ''),
-      'EDD':            details?.edd || '',
+    const customer = {
+      name:  order ? ((fn + ' ' + ln).trim() || sh.name || '') : '',
+      phone: order ? (order.customer?.phone || sh.phone || '') : '',
+      email: order?.customer?.email || order?.email || '',
     };
 
-    await upsertSheetRow({
-      tab: 'shipments',
-      key: awb,
-      keyField: 'AWB',
-      updates,
-      updatedBy,
-    });
+    const phoneKey = normalizePhone(customer.phone) || `unknown_${awb}`;
 
-    return { ok: true, awb, orderNumber, customerFound: !!order };
+    // ─── Write the AWB document ───
+    const awbDoc = {
+      awb,
+      phoneKey,
+      orderNumber: orderNumber || '',
+      orderId:     orderId     || '',
+      courier,
+      // Latest tracking event
+      status:        latestEvent.status     || details?.current_status || '',
+      rawStatus:     latestEvent.status     || '',
+      lastLocation:  latestEvent.location   || '',
+      lastEventTime: latestEvent.event_time || '',
+      lastMessage:   latestEvent.message    || '',
+      rtoAwb:        latestEvent.rto_awb    || '',
+      // Customer / order details from Shopify
+      customer,
+      shippingAddress: {
+        address: [sh.address1, sh.address2].filter(Boolean).join(', '),
+        city:    sh.city     || '',
+        state:   sh.province || '',
+        pincode: sh.zip      || '',
+      },
+      items:        order?.line_items?.map(i => ({ name: i.name || i.title, qty: i.quantity })) || [],
+      itemCount:    order?.line_items?.reduce((a, i) => a + (i.quantity || 0), 0) || 0,
+      amount:       order ? parseFloat(order.total_price || 0) : 0,
+      paymentMode:  order ? ((order.gateway || '').toLowerCase().includes('cash') ? 'COD' : (order.payment_gateway_names?.[0] || 'Prepaid')) : '',
+      // Bookkeeping
+      orderCreated: details?.created || (order?.created_at ? new Date(order.created_at).toLocaleString('en-IN') : ''),
+      edd:          details?.edd    || '',
+      enrichmentSource: source,
+      updatedAt:    new Date().toISOString(),
+    };
+    await patchFirestoreDoc(`shipments/${phoneKey}/awbs/${awb}`, awbDoc);
+
+    // ─── Update parent customer summary (merge) ───
+    if (customer.name || customer.phone || customer.email) {
+      await patchFirestoreDoc(`shipments/${phoneKey}`, {
+        phone:       customer.phone || phoneKey,
+        name:        customer.name  || '',
+        email:       customer.email || '',
+        latestAwb:   awb,
+        latestStatus: awbDoc.status,
+        lastOrderAt: new Date().toISOString(),
+      });
+    }
+
+    return { ok: true, awb, phoneKey, orderNumber, customerFound: !!order };
   } catch (e) {
     console.error('Enrichment failed for AWB', awb, e?.message || e);
     return { ok: false, awb, error: e?.message || String(e) };

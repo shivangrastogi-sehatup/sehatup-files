@@ -3,10 +3,9 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } fr
 import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
 import { searchCustomers, getOrders, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
-import { getSheetRows } from './utils/sheetsApi';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth } from './firebase';
-import { collection, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
+import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
 import { computeAnalytics } from "./utils/analytics";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -136,6 +135,25 @@ const useStateM = useState;
 // --- Permissions context ---
 const PermissionsCtx = React.createContext({ permissions: {}, hasPermission: () => false, isAdmin: false });
 const usePermissions = () => React.useContext(PermissionsCtx);
+
+// --- Logistics config (shared via Firestore: app_settings/logistics) ---
+const DEFAULT_TRACKING_URL_TEMPLATE = 'https://ship.nimbuspost.com/shipping/tracking/{awb}';
+function useLogisticsConfig() {
+  const [cfg, setCfg] = useState({ trackingUrlTemplate: DEFAULT_TRACKING_URL_TEMPLATE });
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'app_settings', 'logistics'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setCfg({ trackingUrlTemplate: data.trackingUrlTemplate || DEFAULT_TRACKING_URL_TEMPLATE });
+      }
+    }, () => { /* keep defaults on error */ });
+    return unsub;
+  }, []);
+  return cfg;
+}
+function buildTrackingUrl(template, awb) {
+  return String(template || DEFAULT_TRACKING_URL_TEMPLATE).replace('{awb}', encodeURIComponent(awb));
+}
 
 // --- data.js ---
 // data.js — mock data for the SehatUp CRM
@@ -6506,10 +6524,10 @@ function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 function ShipmentsScreen() {
   const [loading, setLoading] = useStateS(true);
   const [trackingMap, setTrackingMap] = useStateS({});
-  // Cached shipment rows from the Google Sheet, keyed by AWB
-  const [sheetMap, setSheetMap] = useStateS({});
-  const [sheetSyncedAt, setSheetSyncedAt] = useStateS(null);
-  const [sheetError, setSheetError] = useStateS(null);
+  const logisticsCfg = useLogisticsConfig();
+  // Enriched shipment docs from Firestore subcollection `shipments/{phone}/awbs/{awb}`
+  // Keyed by AWB for easy merge with live Firestore tracking events
+  const [enrichedMap, setEnrichedMap] = useStateS({});
   // Backfill state: { running, total, done, failed }
   const [backfill, setBackfill] = useStateS({ running: false, total: 0, done: 0, failed: 0 });
 
@@ -6531,40 +6549,35 @@ function ShipmentsScreen() {
     return unsub;
   }, []);
 
-  // Load cached shipment rows from the Google Sheet (populated by the Nimbus webhook).
-  // One HTTP call → all customer/order info, no per-row Shopify lookup needed.
-  const loadFromSheet = React.useCallback(async () => {
-    try {
-      const rows = await getSheetRows('shipments');
+  // Subscribe to the enriched shipments subcollection (shipments/{phone}/awbs/{awb}).
+  // Real-time — no manual refresh needed.
+  useEffect(() => {
+    const unsub = onSnapshot(collectionGroup(db, 'awbs'), (snap) => {
       const map = {};
-      rows.forEach(r => {
-        const awb = String(r['AWB'] || '').trim();
-        if (!awb) return;
-        map[awb] = r;
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data?.awb) map[data.awb] = data;
       });
-      setSheetMap(map);
-      setSheetSyncedAt(new Date());
-      setSheetError(null);
-    } catch (e) {
-      console.warn('Sheet load failed:', e?.message || e);
-      setSheetError(e?.message || 'Failed to load Sheet');
-    }
+      setEnrichedMap(map);
+    }, (err) => {
+      console.error('Enriched shipments subscription error:', err);
+    });
+    return unsub;
   }, []);
 
-  useEffect(() => { loadFromSheet(); }, [loadFromSheet]);
-
-  // Build shipments: union of (AWBs in sheet) ∪ (AWBs in Firestore). Sheet provides
-  // the cached customer/order info; Firestore provides the latest live status.
+  // Build shipments: union of (enriched AWBs) ∪ (raw tracking AWBs). The enriched
+  // doc has customer/order info; the live `trackingMap` provides the latest status
+  // event in case the enriched doc hasn't received the update yet.
   const mergedShipments = useMemoS(() => {
-    const allAwbs = new Set([...Object.keys(sheetMap), ...Object.keys(trackingMap)]);
+    const allAwbs = new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
     return Array.from(allAwbs).map(awb => {
       const events = trackingMap[awb] || [];
       const latest = events[0] || {};
-      const row = sheetMap[awb] || {};
+      const e = enrichedMap[awb] || {};
 
-      // Latest status — prefer live Firestore event, fall back to what sheet has
-      const ns = (latest.status || row['Raw Status'] || row['Status'] || '').toLowerCase();
-      let status = row['Status'] || 'Shipped';
+      // Prefer live tracking event, fall back to enriched doc's last status
+      const ns = (latest.status || e.rawStatus || e.status || '').toLowerCase();
+      let status = e.status || 'Shipped';
       if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
       else if (ns.includes('out for delivery') || ns === 'out_for_delivery') status = 'Out for delivery';
       else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
@@ -6572,59 +6585,53 @@ function ShipmentsScreen() {
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
       else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
 
-      const hasCustomer = !!(row['Customer Name'] || row['Phone']);
+      const customerObj = e.customer || {};
+      const sa = e.shippingAddress || {};
+      const hasCustomer = !!(customerObj.name || customerObj.phone);
       const customer = hasCustomer ? {
-        name:    row['Customer Name'] || 'Unknown',
-        phone:   row['Phone']   || '',
-        email:   row['Email']   || '',
-        city:    row['City']    || '',
-        state:   row['State']   || '',
-        pincode: row['Pincode'] || '',
-        address: row['Address'] || '',
+        name:    customerObj.name || 'Unknown',
+        phone:   customerObj.phone || '',
+        email:   customerObj.email || '',
+        city:    sa.city    || '',
+        state:   sa.state   || '',
+        pincode: sa.pincode || '',
+        address: sa.address || '',
       } : null;
-
-      const itemCount = row['Item Count'] !== undefined && row['Item Count'] !== '' ? Number(row['Item Count']) : null;
-      const amount    = row['Amount']     !== undefined && row['Amount']     !== '' ? Number(row['Amount']) : null;
-      const itemsText = row['Items'] || '';
-      const items = itemsText ? itemsText.split(';').map(s => {
-        const m = s.trim().match(/^(.+?)\s*x\s*(\d+)$/i);
-        return m ? { name: m[1].trim(), qty: Number(m[2]) } : { name: s.trim(), qty: 1 };
-      }) : [];
 
       return {
         id: awb,
         awb,
-        courier:      row['Courier'] || 'Nimbus',
+        courier:      e.courier || 'Nimbus',
         status,
         hasTracking:  events.length > 0,
-        rawStatus:    latest.status   || row['Raw Status']      || '',
-        lastUpdate:   latest.event_time || row['Last Event Time'] || '',
-        lastLocation: latest.location || row['Last Location']   || '',
-        lastMessage:  latest.message  || '',
-        rtoAwb:       latest.rto_awb  || '',
+        rawStatus:    latest.status   || e.rawStatus     || '',
+        lastUpdate:   latest.event_time || e.lastEventTime || '',
+        lastLocation: latest.location || e.lastLocation || '',
+        lastMessage:  latest.message  || e.lastMessage  || '',
+        rtoAwb:       latest.rto_awb  || e.rtoAwb       || '',
         eventCount:   events.length,
-        orderId:      row['Order ID'] || null,
-        orderName:    row['Order Number'] || (row['Order ID'] ? `#${row['Order ID']}` : null),
-        orderTotal:   amount,
-        paymentMode:  row['Payment'] || null,
-        itemCount,
-        items,
+        orderId:      e.orderId   || null,
+        orderName:    e.orderNumber || (e.orderId ? `#${e.orderId}` : null),
+        orderTotal:   typeof e.amount === 'number' ? e.amount : null,
+        paymentMode:  e.paymentMode || null,
+        itemCount:    typeof e.itemCount === 'number' ? e.itemCount : null,
+        items:        Array.isArray(e.items) ? e.items : [],
         customer,
-        // Cached row has no customer info yet (webhook may not have written it)
-        enriching: !customer && events.length > 0,
+        phoneKey:     e.phoneKey || null,
+        enriching:    !customer && events.length > 0,
       };
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
-  }, [trackingMap, sheetMap]);
+  }, [trackingMap, enrichedMap]);
 
   const [tab, setTab] = useStateS("all");
   const [sel, setSel] = useStateS(null);
   const [bannerOn, setBannerOn] = useStateS(true);
   const [search, setSearch] = useStateS('');
 
-  // First non-empty load: clear the loading flag
+  // Clear the loading flag once either snapshot delivers its first batch
   useEffect(() => {
-    if (loading && Object.keys(trackingMap).length >= 0) setLoading(false);
-  }, [trackingMap, loading]);
+    if (loading) setLoading(false);
+  }, [trackingMap, enrichedMap, loading]);
 
   useEffect(() => {
     if (!sel && mergedShipments.length > 0) setSel(mergedShipments[0]);
@@ -6660,50 +6667,54 @@ function ShipmentsScreen() {
   const failed = mergedShipments.filter(s => s.status === 'Failed delivery').length;
   const exceptionCount = mergedShipments.filter(s => s.status === 'Exception').length;
 
-  const handleRefresh = () => { loadFromSheet(); };
+  const handleRefresh = () => { /* live via onSnapshot — no-op */ };
 
-  // Backfill: enrich every AWB that exists in Firestore but has no customer info in the Sheet.
-  // Processes in small batches to respect Shopify rate limits (~2 req/s).
+  // Backfill: enrich every AWB that exists in trackingMap but is missing customer
+  // info in the enriched subcollection. Batched to respect Shopify rate limits (~2 req/s).
   const handleBackfill = async () => {
     const needsEnrich = Object.keys(trackingMap).filter(awb => {
-      const row = sheetMap[awb];
-      return !row || !row['Customer Name'];
+      const e = enrichedMap[awb];
+      return !e || !e.customer?.name;
     });
     if (!needsEnrich.length) { alert('Nothing to backfill — every AWB is already enriched.'); return; }
     if (!window.confirm(`Backfill ${needsEnrich.length} AWB${needsEnrich.length > 1 ? 's' : ''} into the Sheet? This may take ${Math.ceil(needsEnrich.length / 2)} seconds.`)) return;
 
-    setBackfill({ running: true, total: needsEnrich.length, done: 0, failed: 0 });
-    let done = 0;
-    let failed = 0;
+    const total = needsEnrich.length;
+    setBackfill({ running: true, total, done: 0, failed: 0 });
     const BATCH = 2; // 2 in parallel = ~2 req/s, safe for Shopify
 
+    const enrichOne = async (awb) => {
+      const latest = trackingMap[awb]?.[0] || {};
+      try {
+        const r = await fetch('/api/sheet-backfill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            awb,
+            status:     latest.status,
+            location:   latest.location,
+            event_time: latest.event_time,
+            message:    latest.message,
+          }),
+        });
+        const j = await r.json();
+        return j?.ok ? 'ok' : 'fail';
+      } catch (_) { return 'fail'; }
+    };
+
+    const counts = { done: 0, failed: 0 };
     for (let i = 0; i < needsEnrich.length; i += BATCH) {
       const batch = needsEnrich.slice(i, i + BATCH);
-      const results = await Promise.all(batch.map(async (awb) => {
-        const latest = trackingMap[awb]?.[0] || {};
-        try {
-          const r = await fetch('/api/sheet-backfill', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              awb,
-              status:     latest.status,
-              location:   latest.location,
-              event_time: latest.event_time,
-              message:    latest.message,
-            }),
-          });
-          const j = await r.json();
-          return j?.ok ? 'ok' : 'fail';
-        } catch (_) { return 'fail'; }
-      }));
-      results.forEach(r => r === 'ok' ? (done++) : (failed++));
-      setBackfill({ running: true, total: needsEnrich.length, done, failed });
+      const results = await Promise.all(batch.map(enrichOne));
+      for (const r of results) {
+        if (r === 'ok') counts.done += 1; else counts.failed += 1;
+      }
+      setBackfill({ running: true, total, done: counts.done, failed: counts.failed });
     }
 
-    setBackfill({ running: false, total: needsEnrich.length, done, failed });
-    await loadFromSheet(); // refresh the table with the new rows
-    alert(`Backfill complete: ${done} enriched${failed ? `, ${failed} failed (check logs)` : ''}.`);
+    setBackfill({ running: false, total, done: counts.done, failed: counts.failed });
+    // No manual refresh needed — collectionGroup onSnapshot picks up the new docs
+    alert(`Backfill complete: ${counts.done} enriched${counts.failed ? `, ${counts.failed} failed (check logs)` : ''}.`);
   };
 
   return (
@@ -6712,9 +6723,7 @@ function ShipmentsScreen() {
         <div>
           <h1 className="page-title">Shipments</h1>
           <p className="page-sub">
-            {loading ? "Connecting to Nimbus stream..." : `${mergedShipments.length} tracked AWBs · live status from Nimbus`}
-            {sheetSyncedAt && <span className="muted"> · sheet synced {sheetSyncedAt.toLocaleTimeString('en-IN')}</span>}
-            {sheetError && <span style={{ color: 'var(--risk-critical)' }}> · sheet error: {sheetError}</span>}
+            {loading ? "Loading shipments..." : `${mergedShipments.length} tracked AWBs · live from Firestore`}
           </p>
         </div>
         <div className="page-head-actions">
@@ -6828,7 +6837,7 @@ function ShipmentsScreen() {
                 {loading ? (
                   <tr><td colSpan="12"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
                 ) : filteredList.map(s => (
-                  <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} />
+                  <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} trackingUrlTemplate={logisticsCfg.trackingUrlTemplate} />
                 ))}
                 {!loading && filteredList.length === 0 && (
                   <tr><td colSpan="12"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
@@ -6852,11 +6861,12 @@ function ShipmentsScreen() {
   );
 }
 
-function ShipmentRow({ s, selected, onClick }) {
+function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
   const idx = stageIndex(s.status);
   const failed = s.status === "Failed delivery";
   const cust = s.customer;
   const Skel = ({ w = 80 }) => <div className="skel-box" style={{ height: 12, width: w, borderRadius: 4 }} />;
+  const trackUrl = buildTrackingUrl(trackingUrlTemplate, s.awb);
   return (
     <tr onClick={onClick} style={{
       background: selected ? "var(--accent-soft)" : undefined,
@@ -6865,7 +6875,12 @@ function ShipmentRow({ s, selected, onClick }) {
     }}>
       <td style={{ whiteSpace: "nowrap" }}>
         <div className="stack-2">
-          <span className="mono fw6" style={{ fontSize: 12.5 }}>{s.awb}</span>
+          <div className="hstack-6">
+            <span className="mono fw6" style={{ fontSize: 12.5 }}>{s.awb}</span>
+            <a href={trackUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} title="Open public tracking page" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--accent)' }}>
+              <Icon name="external_link" size={11} />
+            </a>
+          </div>
           <span className="badge" style={{ fontSize: 10.5, padding: "1px 6px" }}>{s.courier}</span>
         </div>
       </td>
@@ -7916,6 +7931,17 @@ function RolePill({ role }) {
 
 function SettingsScreen({ tweaks, me }) {
   const [tab, setTab] = useStateM("profile");
+  const isAdmin = me?.role === 'admin';
+  const isLogistics = me?.role === 'logistics' || isAdmin;
+  const tabs = [
+    ["profile", "Profile", "user"],
+    ["workspace", "Workspace", "settings"],
+    ...(isLogistics ? [["logistics", "Logistics", "truck"]] : []),
+    ["notifications", "Notifications", "bell"],
+    ["integrations", "Integrations", "link"],
+    ["security", "Security", "lock"],
+    ["billing", "Billing", "package"],
+  ];
   return (
     <div className="col fade-in">
       <div className="page-head">
@@ -7929,14 +7955,7 @@ function SettingsScreen({ tweaks, me }) {
         <div className="span-3">
           <div className="card" style={{ padding: 8 }}>
             <div className="stack-2">
-              {[
-                ["profile", "Profile", "user"],
-                ["workspace", "Workspace", "settings"],
-                ["notifications", "Notifications", "bell"],
-                ["integrations", "Integrations", "link"],
-                ["security", "Security", "lock"],
-                ["billing", "Billing", "package"],
-              ].map(([v, l, i]) => (
+              {tabs.map(([v, l, i]) => (
                 <button key={v} className={"rail-item" + (tab === v ? " active" : "")} onClick={() => setTab(v)} style={{ width: "100%", textAlign: "left", border: 0, cursor: "pointer" }}>
                   <Icon name={i} className="ic" />
                   <span>{l}</span>
@@ -7948,6 +7967,7 @@ function SettingsScreen({ tweaks, me }) {
         <div className="span-9 col">
           {tab === "profile" && <ProfilePane me={me} />}
           {tab === "workspace" && <WorkspacePane />}
+          {tab === "logistics" && <LogisticsSettingsPane />}
           {tab === "notifications" && <NotificationsPane />}
           {tab === "integrations" && <IntegrationsPane />}
           {tab === "security" && <SecurityPane />}
@@ -7996,6 +8016,76 @@ function ProfilePane({ me }) {
         </div>
       </div>
     </>
+  );
+}
+
+function LogisticsSettingsPane() {
+  const cfg = useLogisticsConfig();
+  const [url, setUrl] = useStateM(cfg.trackingUrlTemplate);
+  const [saving, setSaving] = useStateM(false);
+  const [savedAt, setSavedAt] = useStateM(null);
+
+  useEffect(() => { setUrl(cfg.trackingUrlTemplate); }, [cfg.trackingUrlTemplate]);
+
+  const dirty = url !== cfg.trackingUrlTemplate;
+  const valid = url && url.includes('{awb}');
+
+  const handleSave = async () => {
+    if (!valid) { alert('URL must contain the {awb} placeholder.'); return; }
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'app_settings', 'logistics'), { trackingUrlTemplate: url, updatedAt: serverTimestamp() }, { merge: true });
+      setSavedAt(new Date());
+    } catch (e) {
+      alert('Save failed: ' + e.message);
+    } finally { setSaving(false); }
+  };
+
+  const handleReset = () => setUrl(DEFAULT_TRACKING_URL_TEMPLATE);
+
+  return (
+    <div className="card">
+      <div className="section-title">Shipment tracking URL</div>
+      <p className="muted" style={{ fontSize: 12.5, marginTop: 4, marginBottom: 14 }}>
+        Public URL pattern used by the "Track" button on each shipment. Use <code style={{ background: 'var(--surface-2)', padding: '1px 5px', borderRadius: 4 }}>{'{awb}'}</code> as the placeholder for the AWB number. Update if Nimbus changes their tracking URL.
+      </p>
+
+      <div className="field" style={{ marginBottom: 12 }}>
+        <span className="lbl">URL Template</span>
+        <input
+          className="input mono"
+          value={url}
+          onChange={e => setUrl(e.target.value)}
+          placeholder={DEFAULT_TRACKING_URL_TEMPLATE}
+        />
+      </div>
+
+      {url && (
+        <div style={{ padding: 12, background: 'var(--surface-2)', borderRadius: 8, marginBottom: 14 }}>
+          <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Preview</div>
+          <a
+            href={buildTrackingUrl(url, '14355650039363')}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 12.5, wordBreak: 'break-all' }}
+          >
+            {buildTrackingUrl(url, '14355650039363')}
+          </a>
+        </div>
+      )}
+
+      <div className="hstack-8">
+        <button className="btn primary" onClick={handleSave} disabled={!dirty || saving || !valid}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        <button className="btn ghost" onClick={handleReset} disabled={url === DEFAULT_TRACKING_URL_TEMPLATE}>
+          Reset to default
+        </button>
+        <span className="spacer" />
+        {!valid && <span style={{ fontSize: 12, color: 'var(--risk-critical)' }}>URL must contain {'{awb}'}</span>}
+        {savedAt && !dirty && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
+      </div>
+    </div>
   );
 }
 
