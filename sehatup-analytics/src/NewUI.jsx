@@ -4721,6 +4721,10 @@ function OrderCreate({ context = {}, setRoute }) {
   const [useCustomShipping, setUseCustomShipping] = useStateO(false);
   const [customShippingTitle, setCustomShippingTitle] = useStateO('');
   const [customShippingPrice, setCustomShippingPrice] = useStateO('');
+  // Partial-payment-received mode for COD: zero shipping + advance amount deducted from COD total
+  const [partialPaymentMode, setPartialPaymentMode] = useStateO(false);
+  const [partialPaymentAmount, setPartialPaymentAmount] = useStateO('');
+  const [partialPaymentRef, setPartialPaymentRef] = useStateO('');
   const [orderDiscountPopupOpen, setOrderDiscountPopupOpen] = useStateO(false);
   const [orderDiscountCode, setOrderDiscountCode] = useStateO("");
   const [orderDiscountApplyAutomatic, setOrderDiscountApplyAutomatic] = useStateO(false);
@@ -4860,7 +4864,11 @@ function OrderCreate({ context = {}, setRoute }) {
       };
 
       // Shipping — COD uses selected rate; Prepaid uses "Prepaid Shipping" rate from Shopify
-      if (pay === "COD" && useCustomShipping) {
+      // Partial-payment mode takes precedence: zero-rupee shipping + advance discount.
+      if (pay === "COD" && partialPaymentMode) {
+          draftData.shipping_line = { title: 'Partial Payment Received', price: '0.00', code: 'PARTIAL_PAID' };
+          console.log('[Shipping] Partial payment mode — shipping set to Rs. 0');
+      } else if (pay === "COD" && useCustomShipping) {
           const title = customShippingTitle.trim() || 'Custom Shipping';
           const price = parseFloat(customShippingPrice) || 0;
           draftData.shipping_line = { title, price: price.toFixed(2), code: title };
@@ -4876,8 +4884,22 @@ function OrderCreate({ context = {}, setRoute }) {
           console.log('[Shipping] No shipping rate found — no shipping_line added');
       }
 
-      // Order Discount
-      if (orderDiscountType !== 'none') {
+      // Order Discount — partial payment overrides any manual discount for COD orders.
+      // (Shopify draft orders accept only one applied_discount per order.)
+      if (pay === "COD" && partialPaymentMode) {
+          const partialAmt = parseFloat(partialPaymentAmount) || 0;
+          if (partialAmt > 0) {
+              const ref = (partialPaymentRef || '').trim();
+              draftData.applied_discount = {
+                  value_type: 'fixed_amount',
+                  value: String(partialAmt),
+                  title: 'Advance Payment Received' + (ref ? ` (${ref})` : ''),
+                  description: `Customer paid Rs. ${partialAmt} in advance${ref ? `. Reference: ${ref}` : ''}. Remaining Rs. ${codDueOnDelivery} to be collected on delivery.`,
+              };
+              console.log('[Partial Payment] Advance Rs.', partialAmt, '→ COD due Rs.', codDueOnDelivery);
+          }
+          draftData.tags = ((draftData.tags || '') + ', partial-payment-received').replace(/^,\s*/, '');
+      } else if (orderDiscountType !== 'none') {
           const val = parseFloat(orderDiscountValue) || 0;
           if (val > 0) {
               draftData.applied_discount = {
@@ -5330,11 +5352,15 @@ function OrderCreate({ context = {}, setRoute }) {
   };
 
   const subtotal = items.reduce((s, p) => s + getDiscountedUnitPrice(p) * p.qty, 0);
-  const shipping = pay === "COD" 
-    ? (useCustomShipping ? (parseFloat(customShippingPrice) || 0) : (selectedShipping ? selectedShipping.price : 0))
+  const shipping = pay === "COD"
+    ? (partialPaymentMode ? 0
+      : useCustomShipping ? (parseFloat(customShippingPrice) || 0)
+      : (selectedShipping ? selectedShipping.price : 0))
     : 0;
   const shippingLabel = pay === "COD"
-    ? (useCustomShipping ? (customShippingTitle.trim() || 'Custom Shipping') : (selectedShipping ? selectedShipping.title : 'Free'))
+    ? (partialPaymentMode ? 'Partial Payment Received'
+      : useCustomShipping ? (customShippingTitle.trim() || 'Custom Shipping')
+      : (selectedShipping ? selectedShipping.title : 'Free'))
     : "Free";
   let discount = 0;
   if (orderDiscountIsCustom) {
@@ -5346,7 +5372,12 @@ function OrderCreate({ context = {}, setRoute }) {
     }
   }
   discount = Math.round(discount);
+  // Order total (full value of the order — items + shipping - manual discount)
   const total = Math.max(0, subtotal + shipping - discount);
+  // Amount already paid by the customer in advance (only when partial-payment mode is on)
+  const partialPaidAmount = partialPaymentMode ? (parseFloat(partialPaymentAmount) || 0) : 0;
+  // Final amount to collect on delivery for COD orders
+  const codDueOnDelivery = Math.max(0, total - partialPaidAmount);
 
   const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -5944,6 +5975,20 @@ function OrderCreate({ context = {}, setRoute }) {
                 <span className="spacer" />
                 <span className="fw5 num" style={{ fontSize: 20, letterSpacing: "-0.015em" }}>Rs. {total.toLocaleString()}</span>
               </div>
+              {pay === "COD" && partialPaymentMode && partialPaidAmount > 0 && (
+                <>
+                  <div className="hstack-8" style={{ marginTop: 6, fontSize: 12.5 }}>
+                    <span className="muted">– Advance received</span>
+                    <span className="spacer" />
+                    <span className="num" style={{ color: "var(--risk-low)" }}>Rs. {partialPaidAmount.toLocaleString()}</span>
+                  </div>
+                  <div className="hstack-8" style={{ marginTop: 2, padding: "8px 10px", background: "var(--accent-soft)", borderRadius: 6, alignItems: "baseline" }}>
+                    <span className="fw6" style={{ fontSize: 13 }}>COD to collect</span>
+                    <span className="spacer" />
+                    <span className="fw6 num" style={{ fontSize: 16, color: "var(--accent-ink)" }}>Rs. {codDueOnDelivery.toLocaleString()}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -5972,7 +6017,7 @@ function OrderCreate({ context = {}, setRoute }) {
                         <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
                       ) : (
                         <div className="stack-6">
-                          {!useCustomShipping && shippingRates
+                          {!useCustomShipping && !partialPaymentMode && shippingRates
                             .filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title))
                             .map((rate, i) => (
                             <label key={i} className="hstack-8" style={{ cursor: "pointer" }}>
@@ -5982,6 +6027,52 @@ function OrderCreate({ context = {}, setRoute }) {
                               <span className="num fw5" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
                             </label>
                           ))}
+
+                          {/* Partial Payment Received — Rs. 0 shipping, amount deducted from COD total */}
+                          {!useCustomShipping && (
+                            <label className="hstack-8" style={{ cursor: "pointer", padding: partialPaymentMode ? 10 : 0, borderRadius: 8, background: partialPaymentMode ? "var(--accent-soft)" : "transparent", border: partialPaymentMode ? "1px solid var(--accent)" : "none" }}>
+                              <input
+                                type="radio"
+                                name="shippingRate"
+                                checked={partialPaymentMode}
+                                onChange={() => { setPartialPaymentMode(true); setSelectedShipping(null); setUseCustomShipping(false); }}
+                              />
+                              <span style={{ fontSize: 13 }}>Partial Payment Received</span>
+                              <span className="muted" style={{ fontSize: 11.5 }}>(customer paid advance)</span>
+                              <span className="spacer" />
+                              <span className="num fw5" style={{ fontSize: 13 }}>Rs. 0</span>
+                            </label>
+                          )}
+
+                          {partialPaymentMode && (
+                            <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
+                              <div className="muted" style={{ fontSize: 11.5 }}>
+                                Enter the amount the customer already paid. It will be applied as an "Advance Payment Received" discount, and the remaining amount becomes the COD to collect on delivery.
+                              </div>
+                              <div className="hstack-8">
+                                <div className="field span-6" style={{ margin: 0 }}>
+                                  <span className="lbl">Amount Received (Rs.) *</span>
+                                  <input className="input num" type="number" value={partialPaymentAmount} onChange={e => setPartialPaymentAmount(e.target.value)} placeholder="500" min="0" />
+                                </div>
+                                <div className="field span-6" style={{ margin: 0 }}>
+                                  <span className="lbl">Reference (optional)</span>
+                                  <input className="input" value={partialPaymentRef} onChange={e => setPartialPaymentRef(e.target.value)} placeholder="UPI ID / Txn ID / Receipt #" />
+                                </div>
+                              </div>
+                              {parseFloat(partialPaymentAmount) > 0 && (
+                                <div style={{ padding: 10, background: "var(--surface-2)", borderRadius: 6, fontSize: 12.5 }}>
+                                  <div className="hstack-8"><span className="muted">Order total</span><span className="spacer" /><span className="num">Rs. {total.toLocaleString()}</span></div>
+                                  <div className="hstack-8"><span className="muted">– Advance received</span><span className="spacer" /><span className="num" style={{ color: "var(--risk-low)" }}>Rs. {partialPaidAmount.toLocaleString()}</span></div>
+                                  <div className="divider" style={{ margin: "6px 0" }} />
+                                  <div className="hstack-8"><span className="fw6">To collect on delivery</span><span className="spacer" /><span className="num fw6">Rs. {codDueOnDelivery.toLocaleString()}</span></div>
+                                </div>
+                              )}
+                              <button className="btn sm ghost" style={{ alignSelf: "flex-start" }} onClick={() => { setPartialPaymentMode(false); setPartialPaymentAmount(''); setPartialPaymentRef(''); }}>
+                                Cancel partial payment
+                              </button>
+                            </div>
+                          )}
+
                           {useCustomShipping ? (
                             <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
                               <div className="hstack-8">
@@ -5990,8 +6081,8 @@ function OrderCreate({ context = {}, setRoute }) {
                               </div>
                               <button className="btn sm ghost" onClick={() => setUseCustomShipping(false)}>Cancel custom rate</button>
                             </div>
-                          ) : (
-                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => setUseCustomShipping(true)}><Icon name="plus" size={14} /> Add custom shipping rate</button>
+                          ) : !partialPaymentMode && (
+                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setPartialPaymentMode(false); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
                           )}
                         </div>
                       )}
@@ -6669,15 +6760,25 @@ function ShipmentsScreen() {
 
   const handleRefresh = () => { /* live via onSnapshot — no-op */ };
 
-  // Backfill: enrich every AWB that exists in trackingMap but is missing customer
-  // info in the enriched subcollection. Batched to respect Shopify rate limits (~2 req/s).
+  // Refresh: re-pull every active AWB from Nimbus and re-enrich into Firestore.
+  // Includes:
+  //   - AWBs missing customer info (new entries from old webhook events)
+  //   - AWBs not yet in a terminal status (Delivered / Failed delivery)
+  // Skips already-delivered / failed AWBs to save Shopify API quota.
+  // Batched to respect Shopify rate limits (~2 req/s).
   const handleBackfill = async () => {
-    const needsEnrich = Object.keys(trackingMap).filter(awb => {
+    const allAwbs = Object.keys({ ...trackingMap, ...enrichedMap });
+    const needsEnrich = allAwbs.filter(awb => {
       const e = enrichedMap[awb];
-      return !e || !e.customer?.name;
+      if (!e) return true; // never enriched
+      if (!e.customer?.name) return true; // missing customer
+      const terminal = e.status === 'Delivered' || e.status === 'Failed delivery';
+      return !terminal; // refresh active (not yet delivered/failed)
     });
-    if (!needsEnrich.length) { alert('Nothing to backfill — every AWB is already enriched.'); return; }
-    if (!window.confirm(`Backfill ${needsEnrich.length} AWB${needsEnrich.length > 1 ? 's' : ''} into the Sheet? This may take ${Math.ceil(needsEnrich.length / 2)} seconds.`)) return;
+    if (!needsEnrich.length) { alert('Nothing to refresh — every AWB is already delivered/failed and fully enriched.'); return; }
+    const missing = needsEnrich.filter(awb => !enrichedMap[awb]?.customer?.name).length;
+    const active = needsEnrich.length - missing;
+    if (!window.confirm(`Refresh ${needsEnrich.length} AWB${needsEnrich.length > 1 ? 's' : ''} from Nimbus?\n• ${missing} missing customer info\n• ${active} active (not yet delivered)\n\nETA: ${Math.ceil(needsEnrich.length / 2)} seconds.`)) return;
 
     const total = needsEnrich.length;
     setBackfill({ running: true, total, done: 0, failed: 0 });
@@ -6739,8 +6840,8 @@ function ShipmentsScreen() {
               Backfilling {backfill.done}/{backfill.total}{backfill.failed ? ` (${backfill.failed} failed)` : ''}…
             </span>
           )}
-          <button className="btn" onClick={handleBackfill} disabled={backfill.running} title="Enrich all AWBs missing customer info into the Sheet">
-            <Icon name="upload" /> Backfill
+          <button className="btn" onClick={handleBackfill} disabled={backfill.running} title="Re-pull active AWBs from Nimbus → refresh status + customer info">
+            <Icon name="refresh" /> Sync from Nimbus
           </button>
           <button className="btn" onClick={handleRefresh}><Icon name="refresh" /> Refresh</button>
         </div>
