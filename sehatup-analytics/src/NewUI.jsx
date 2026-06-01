@@ -5211,7 +5211,7 @@ function OrderCreate({ context = {}, setRoute }) {
     onLoading(true);
 
     try {
-      const res = await fetch(`/api/pincode/${pin}`, { signal });
+      const res = await fetch(`/api/pincode?pin=${pin}`, { signal });
       if (!res.ok) throw new Error(`pincode lookup ${res.status}`);
       const data = await res.json();
 
@@ -5268,7 +5268,7 @@ function OrderCreate({ context = {}, setRoute }) {
     const timer = setTimeout(async () => {
       setPincodeLoading(true);
       try {
-        const res = await fetch(`/api/pincode/${pin}`, { signal });
+        const res = await fetch(`/api/pincode?pin=${pin}`, { signal });
         const data = await res.json();
 
         // postalpincode.in format
@@ -5374,9 +5374,22 @@ function OrderCreate({ context = {}, setRoute }) {
       country: addr.country || 'India',
       pincode: addr.zip ? String(addr.zip).replace(/\D/g, "").slice(0, 6) : '',
       avatarHue: Math.floor(Math.random() * 360),
+      allAddresses: c.addresses || (addr ? [addr] : []),
     });
     setFocusedInput(null);
     setCustomerRecommendations([]);
+  };
+
+  // Apply a specific saved address from the customer's address book into the shipping fields
+  const applyAddress = (addr) => {
+    const pin = addr.zip ? String(addr.zip).replace(/\D/g, '').slice(0, 6) : '';
+    setShippingAddress(addr.address1 || '');
+    setShippingLandmark(addr.address2 || '');
+    setCity(addr.city || '');
+    setStateName(normalizeState(addr.province || ''));
+    setCountry(addr.country || 'India');
+    setPincode(pin);
+    autoFilledPincodeRef.current = pin; // prevent overwrite by pincode effect
   };
 
   useEffect(() => {
@@ -5782,6 +5795,36 @@ function OrderCreate({ context = {}, setRoute }) {
               <span className="spacer" />
               <label className="checkbox"><input type="checkbox" checked={differentBillingAddress} onChange={e => setDifferentBillingAddress(e.target.checked)} /> Different billing address</label>
             </div>
+            {/* Address picker — shown when the selected customer has multiple saved addresses */}
+            {cust?.allAddresses?.length > 1 && (
+              <div style={{ marginTop: 8, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: 'var(--muted)', flexShrink: 0 }}>
+                  <Icon name="map_pin" size={12} /> {cust.allAddresses.length} saved addresses:
+                </span>
+                {cust.allAddresses.map((addr, i) => {
+                  const label = [addr.address1, addr.city, addr.zip].filter(Boolean).join(', ');
+                  const isActive = (addr.address1 || '') === shippingAddress && (addr.zip ? String(addr.zip).replace(/\D/g,'').slice(0,6) : '') === pincode;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => applyAddress(addr)}
+                      style={{
+                        fontSize: 11.5, padding: '4px 10px', borderRadius: 20, border: '1px solid',
+                        borderColor: isActive ? 'var(--accent)' : 'var(--border)',
+                        background: isActive ? 'var(--accent-soft)' : 'var(--surface)',
+                        color: isActive ? 'var(--accent-ink)' : 'var(--fg-soft)',
+                        cursor: 'pointer', fontWeight: isActive ? 600 : 400,
+                        maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}
+                      title={label}
+                    >
+                      {i === 0 ? '★ ' : ''}{label || `Address ${i + 1}`}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="grid-12" style={{ marginTop: 12 }}>
               <div className="span-12 field"><span className="lbl">Address *</span><input className="input" value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} placeholder="House / flat / street" /></div>
               <div className="span-6 field"><span className="lbl">Landmark</span><input className="input" value={shippingLandmark} onChange={e => setShippingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>
