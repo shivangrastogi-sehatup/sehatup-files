@@ -4870,6 +4870,7 @@ function OrderCreate({ context = {}, setRoute }) {
   const [discountShake, setDiscountShake] = useStateO(false);
   const [orderDiscountPopupClosing, setOrderDiscountPopupClosing] = useStateO(false);
   const [savingMode, setSavingMode] = useStateO(null);
+  const [cityManual, setCityManual] = useStateO(false); // true = free-text city input instead of locality dropdown
 
   const handleSaveToCRM = async (mode = 'draft') => {
     const rawPhone = (custPhone || preset?.phone || '').replace(/\D/g, '');
@@ -5835,17 +5836,25 @@ function OrderCreate({ context = {}, setRoute }) {
               </div>
               {/* City · State · Pincode — pincode is on the right; city/state autofill from pincode */}
               <div className="span-4 field">
-                <span className="lbl">City *</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span className="lbl">City *</span>
+                  {localityOptions.length > 1 && (
+                    <button type="button" onClick={() => setCityManual(m => !m)}
+                      style={{ fontSize: 10.5, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500 }}>
+                      {cityManual ? '↩ Show list' : '✎ Type manually'}
+                    </button>
+                  )}
+                </div>
                 {pincodeLoading
                   ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
-                  : localityOptions.length > 1
+                  : (localityOptions.length > 1 && !cityManual)
                     ? (
                       <select className="select" value={city} onChange={e => setCity(e.target.value)}>
                         {!localityOptions.includes(city) && <option value={city}>{city || "Select locality"}</option>}
                         {localityOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                       </select>
                     )
-                    : <input className="input" value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />}
+                    : <input className="input" value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" autoFocus={cityManual} />}
                 {district && localityOptions.length > 1 && (
                   <span className="muted" style={{ fontSize: 11, marginTop: 4 }}>District: {district}</span>
                 )}
