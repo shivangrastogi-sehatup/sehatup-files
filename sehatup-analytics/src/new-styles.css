@@ -479,6 +479,38 @@ input, select, textarea { font: inherit; color: inherit; }
   padding: 0 6px; border-radius: 99px;
 }
 
+/* Thin divider separating the two filter groups (type tabs vs status pills) */
+.filter-divider {
+  width: 1px; height: 20px;
+  background: var(--border);
+  margin: 0 2px;
+  align-self: center;
+}
+
+/* Status filter pills (Consulted / Purchased / WhatsApp) — color-coded toggles,
+   visually distinct from the segmented type tabs so the two kinds of filters
+   read as different controls. */
+.status-pills { display: inline-flex; align-items: center; gap: 6px; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; }
+.status-pill:hover { background: var(--hover); }
+.status-pill.on { font-weight: 600; }
+.status-pill.on .dot { opacity: 1; }
+.status-pill.consulted.on { background: rgba(34, 197, 94, 0.12);  color: #16a34a; border-color: rgba(34, 197, 94, 0.35); }
+.status-pill.purchased.on { background: rgba(139, 92, 246, 0.12); color: #7c3aed; border-color: rgba(139, 92, 246, 0.35); }
+.status-pill.whatsapp.on  { background: rgba(244, 63, 94, 0.12);  color: #e11d48; border-color: rgba(244, 63, 94, 0.35); }
+
 /* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ KPI tile Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .kpi {
   background: var(--surface);
@@ -971,4 +1003,45 @@ input, select, textarea { font: inherit; color: inherit; }
   .np-panels { flex-direction: column; }
   .np-left { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
 }
+
+/* ───────────── Data Studio (developer Firestore editor) ───────────── */
+.ds-env {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px; border-radius: 99px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+}
+.ds-env .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.ds-env-dev  { background: rgba(34, 197, 94, 0.12);  color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.3); }
+.ds-env-live { background: rgba(244, 63, 94, 0.12);  color: #e11d48; border: 1px solid rgba(244, 63, 94, 0.35); }
+
+.ds-tbl th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+.ds-tbl td { padding: 4px 8px; vertical-align: middle; }
+.ds-tbl .ds-id { font-family: monospace; font-size: 11px; color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-tbl .ds-row-sel { background: var(--hover); }
+.ds-tbl td.ds-edited { background: rgba(251, 191, 36, 0.16); box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.4); }
+
+.ds-input {
+  width: 100%; min-width: 90px;
+  padding: 4px 7px;
+  font-size: 12.5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+}
+.ds-input:hover  { border-color: var(--border); }
+.ds-input:focus  { outline: none; border-color: var(--accent); background: var(--surface); }
+.ds-json-chip { font-family: monospace; font-size: 11px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ds-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.45);
+  display: grid; place-items: center;
+  padding: 20px;
+}
+.ds-modal { width: 100%; max-width: 600px; padding: 18px; }
 

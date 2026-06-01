@@ -56,6 +56,7 @@ function ModernLogin() {
     { id: "order_creator", label: "Order Creator" },
     { id: "marketing", label: "Marketing" },
     { id: "logistics", label: "Logistics" },
+    { id: "website_developer", label: "Developer" },
     { id: "admin", label: "Admin" }
   ];
 
@@ -265,7 +266,10 @@ function ModernLogin() {
 const ROLE_ALIASES = {
   'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
   'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
-  'admin': 'admin', 'doctor': 'doctor', 'marketing': 'marketing', 'logistics': 'logistics',
+  'performance_marketing': 'marketing', 'marketing': 'marketing',
+  'shipment_tracker': 'logistics', 'logistics': 'logistics',
+  'website_developer': 'website_developer', 'developer': 'website_developer', 'webdev': 'website_developer',
+  'admin': 'admin', 'doctor': 'doctor',
 };
 const normRole = (r) => ROLE_ALIASES[(r || '').toLowerCase().trim()] || (r || '').toLowerCase().trim();
 const extractRoles = (data) => {

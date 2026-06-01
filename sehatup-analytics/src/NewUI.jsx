@@ -22,7 +22,7 @@ const EXPORT_COLUMNS = [
   { key: 'dob',           label: 'Date of Birth',   get: r => r.dob || '' },
   { key: 'city',          label: 'City',            get: r => r.city || '' },
   { key: 'state',         label: 'State',           get: r => r.state || '' },
-  { key: 'category',      label: 'Category',        get: r => r.primaryGoal || r.reportCategory || '', default: true },
+  { key: 'category',      label: 'Category',        get: r => r.category || r.primaryGoal || r.reportCategory || '', default: true },
   { key: 'score',         label: 'Health Score',    get: r => r.healthScore ?? r.score ?? '', default: true },
   { key: 'risk',          label: 'Risk Level',      get: r => r.riskType || r.risk || '' },
   { key: 'source',        label: 'Source',          get: r => r._source || r.source || '', default: true },
@@ -61,6 +61,37 @@ function exportToExcel(filename, rows, selectedKeys) {
   XLSX.utils.book_append_sheet(wb, ws, 'Submissions');
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   saveAs(new Blob([buf], { type: 'application/octet-stream' }), `${filename}.xlsx`);
+}
+
+// Derive age (from `dob`), gender and category (from the questionnaire / category
+// fields) for a raw submission doc. Submission docs store `dob` but no `age`, and
+// usually no `gender`, so these have to be computed. Mirrors the CRM derivation
+// (see ~line 3112) so the table and the exported sheet stay consistent.
+function deriveDemographics(d) {
+  let age = d.age || '-';
+  if (d.dob) {
+    const bd = new Date(d.dob);
+    if (!isNaN(bd)) {
+      const ageDate = new Date(Date.now() - bd.getTime());
+      age = Math.abs(ageDate.getUTCFullYear() - 1970).toString();
+    }
+  }
+
+  let gender = d.gender || '-';
+  let category = d.primaryGoal;
+  if (gender === '-' || gender === 'Not Selected' || !category) {
+    const qid = (d.questionnaireId || d.reportCategory || '').toLowerCase();
+    if (gender === '-' || gender === 'Not Selected') {
+      if (qid.includes('womens') || qid.includes("women's")) gender = 'Female';
+      else if (qid.includes('mens')) gender = 'Male';
+    }
+    if (!category) {
+      if (qid.includes('weight')) category = 'Weight Management';
+      else if (qid.includes('wellness')) category = 'Wellness';
+      else category = 'General';
+    }
+  }
+  return { age, gender, category: category || 'General' };
 }
 
 // Modal that asks the user which columns to include before downloading.
@@ -200,6 +231,22 @@ const INDIAN_STATES = [
   "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
 ];
+
+// Map a raw state string (from an address book or a pincode API) to the canonical
+// INDIAN_STATES spelling, so the <select> matches a real option instead of silently
+// falling back to the first one ("Andaman and Nicobar Islands"). Returns "" for blanks.
+const normalizeState = (raw) => {
+  if (!raw) return "";
+  const clean = String(raw).trim();
+  const exact = INDIAN_STATES.find(s => s.toLowerCase() === clean.toLowerCase());
+  if (exact) return exact;
+  const canon = (str) => str.toLowerCase().replace(/&/g, "and").replace(/[^a-z]/g, "");
+  const target = canon(clean);
+  const match = INDIAN_STATES.find(s => canon(s) === target);
+  if (match) return match;
+  const partial = INDIAN_STATES.find(s => canon(s).includes(target) || target.includes(canon(s)));
+  return partial || clean;
+};
 
 const NAMES = [
   "Aamina Jan","Madhu Sharma","Bhagyashree Pawara","Mitali Fale","Saloni Agarwal",
@@ -434,6 +481,7 @@ const I = {
   chat:      "M21 12a8 8 0 1 1-3.4-6.6L21 4l-1.4 3.4A8 8 0 0 1 21 12Z",
   whatsapp:  "M3 21l1.65-4.5A9 9 0 1 1 8 19.4L3 21Z M8 10c.5 3 2 4.5 5 5l1.3-1.5c.3-.4.9-.5 1.4-.3l2 1c.4.2.6.6.5 1-.4 1.7-2 2.3-3.6 2-3.7-.8-7-4-7.7-7.7-.3-1.6.3-3.2 2-3.6.4-.1.8.1 1 .5l1 2c.2.5.1 1.1-.3 1.4L8 10Z",
   package:   "M12 12 3 7l9-5 9 5-9 5Zm0 0v10M3 7v10l9 5M21 7v10l-9 5",
+  database:  "M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3Zm9 5c0 1.66-4.03 3-9 3s-9-1.34-9-3M3 6v12c0 1.66 4.03 3 9 3s9-1.34 9-3V6",
   truck:     "M3 5h11v11H3zM14 9h4l3 4v3h-7M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
   stethoscope:"M6 3v6a4 4 0 0 0 8 0V3M9 21v-4a5 5 0 0 1 5-5 5 5 0 0 1 5 5 2 2 0 1 1-4 0",
   pill:      "m10.5 20.5 10-10a5 5 0 0 0-7-7l-10 10a5 5 0 0 0 7 7Zm-3.5-3.5 7-7",
@@ -1396,6 +1444,8 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Filter states — now use explicit from/to dates so custom ranges work
   const todayISO = () => new Date().toISOString().slice(0, 10);
   const daysAgoISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+  // Compact label for the date chip, e.g. "1 May" (keeps custom ranges short)
+  const fmtShort = (iso) => { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
   const [dateFrom, setDateFrom] = useState(daysAgoISO(30));
   const [dateTo, setDateTo] = useState(todayISO());
   const [datePreset, setDatePreset] = useState(30); // null when custom
@@ -1459,16 +1509,18 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       ...filtered.completed.map(d => ({ ...d, _source: 'completed' })),
       ...filtered.partial.map(d => ({ ...d, _source: 'partial' })),
       ...filtered.manual.map(d => ({ ...d, _source: 'manual' })),
-    ].map(d => ({
+    ].map(d => {
+      const demo = deriveDemographics(d);
+      return {
       ...d,
       id: d.id,
       docId: d.id,
       source: d._source,
       name: d.name || d.userName || 'Unknown',
       phone: d.phone || '-',
-      age: d.age || '-',
-      gender: d.gender || '-',
-      category: d.primaryGoal || d.reportCategory || 'General',
+      age: demo.age,
+      gender: demo.gender,
+      category: demo.category,
       score: d.healthScore ?? d.score ?? '-',
       risk: (d.healthScore ?? d.score) !== undefined
         ? ((d.healthScore ?? d.score) < 40 ? 'Critical'
@@ -1477,7 +1529,8 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
         : '-',
       timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString() : (d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '-'),
       avatarHue: Math.abs((d.id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 360,
-    })).sort((a, b) => {
+    };
+    }).sort((a, b) => {
       const ta = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
       const tb = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
       return tb - ta;
@@ -1548,9 +1601,20 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           <p className="page-sub">Real-time submission analytics · {dateFrom} to {dateTo}</p>
         </div>
         <div className="page-head-actions">
-          <div className="filterbar" style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
+          <button
+            className="btn primary"
+            onClick={() => exportToExcel(`sehatup-health-score-${dateFrom}_to_${dateTo}`, allSubmissions, null)}
+            title="Download the current filtered view as an Excel sheet"
+          >
+            <Icon name="download" /> Export
+          </button>
+        </div>
+      </div>
+
+      {/* Dedicated filter row — kept on its own line so chips never wrap awkwardly next to the title */}
+      <div className="filterbar" style={{ marginBottom: 8, position: 'relative' }}>
             <span className="chip" style={{ cursor: 'pointer' }} onClick={() => setShowDatePicker(v => !v)}>
-              <Icon name="calendar" /> {datePreset ? `Last ${datePreset} days` : `${dateFrom} → ${dateTo}`} <Icon name="chevron_down" />
+              <Icon name="calendar" /> {datePreset ? `Last ${datePreset} days` : `${fmtShort(dateFrom)} – ${fmtShort(dateTo)}`} <Icon name="chevron_down" />
             </span>
             {showDatePicker && (
               <>
@@ -1600,13 +1664,15 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
               </select>
             </span>
             {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== 30) && (
-              <span className="chip ghost" style={{ cursor: 'pointer', padding: "0 8px" }} onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); applyPreset(30); }}>
-                Clear
+              <span
+                className="chip ghost"
+                style={{ cursor: 'pointer', color: 'var(--muted)' }}
+                onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); applyPreset(30); }}
+                title="Reset all filters"
+              >
+                <Icon name="x" /> Clear
               </span>
             )}
-          </div>
-          <button className="btn primary"><Icon name="refresh" /> Refresh</button>
-        </div>
       </div>
 
       {kpis}
@@ -1770,23 +1836,26 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
       const tb = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
       return tb - ta;
     })
-    .map(d => ({
+    .map(d => {
+    const demo = deriveDemographics(d);
+    return {
     ...d,
     id: d.id,
     docId: d.id,
     source: d._source,
     name: d.name || d.userName || "Unknown",
-    age: d.age || "-",
-    gender: d.gender || "-",
+    age: demo.age,
+    gender: demo.gender,
     phone: d.phone || "-",
-    category: d.primaryGoal || d.reportCategory || "General",
+    category: demo.category,
     score: d.healthScore ?? d.score ?? "-",
     risk: (d.healthScore ?? d.score) !== undefined ? ((d.healthScore ?? d.score) < 40 ? "Critical" : ((d.healthScore ?? d.score) < 60 ? "High" : ((d.healthScore ?? d.score) < 80 ? "Moderate" : "Low"))) : "-",
     city: d.city || "-", state: d.state || "-",
     timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString() : (d.timestamp ? new Date(d.timestamp).toLocaleDateString() : "-"),
     avatarHue: Math.floor(Math.random()*360),
     answers: d.answers || {}
-  }));
+  };
+  });
 
   useEffect(() => {
     if (setSubmissionsCount && activeTabs.length === 0) {
@@ -1807,6 +1876,15 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
   );
 }
 
+// Status filters are independent, multi-selectable attribute toggles (AND-combined).
+const STATUS_PREDICATES = {
+  consulted: r => !!r.isConsulted,
+  purchased: r => !!r.isPurchased,
+  // Matches the old dashboards: the WhatsApp request is tracked on the
+  // `isWhatsAppSent` boolean (not the submission source).
+  whatsapp:  r => !!r.isWhatsAppSent,
+};
+
 function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab, setTab, activeTabs, toggleTab, clearFilters, compact }) {
   const tabs = [
     { label: "All",       value: "all" },
@@ -1824,17 +1902,26 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
   const [internalTab, setInternalTab] = useState('all');
   const activeTab = tab !== undefined ? tab : internalTab;
   const setActiveTab = setTab || setInternalTab;
+  // Independent multi-select state for the status pills (Consulted/Purchased/WhatsApp)
+  const [statusFilters, setStatusFilters] = useState([]);
+  const toggleStatus = (v) => setStatusFilters(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
   const pageSize = 14;
 
-  // Apply tab filter inside the history component when controlled via single-tab mode
+  // Type filter (single/multi by source) runs first, then the multi-select status
+  // toggles are AND-combined on top — both modes share the same status logic.
   const tabbedList = (() => {
     if (!recent) return [];
-    if (activeTabs !== undefined) return recent; // multi-tab mode (Submissions page) filters externally
-    if (activeTab === 'all') return recent;
-    if (activeTab === 'consulted') return recent.filter(r => r.isConsulted);
-    if (activeTab === 'purchased') return recent.filter(r => r.isPurchased);
-    if (activeTab === 'whatsapp')  return recent.filter(r => (r.source || '').toLowerCase().includes('whatsapp'));
-    return recent.filter(r => r.source === activeTab || r._source === activeTab);
+    let list = recent;
+    if (activeTabs !== undefined) {
+      list = recent; // multi-tab mode (Submissions page) filters by source externally
+    } else if (activeTab !== 'all') {
+      list = recent.filter(r => r.source === activeTab || r._source === activeTab);
+    }
+    statusFilters.forEach(s => {
+      const pred = STATUS_PREDICATES[s];
+      if (pred) list = list.filter(pred);
+    });
+    return list;
   })();
 
   const totalCount = tabbedList.length;
@@ -1860,38 +1947,80 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
         <div className="section-title">Submissions history</div>
         <span className="muted num" style={{ fontSize: 12 }}>· {totalCount.toLocaleString()} entries</span>
         <span className="spacer" />
-        <Tabs value={activeTabs !== undefined ? activeTabs : activeTab} onChange={toggleTab || setActiveTab} items={(activeTabs !== undefined ? tabs.filter(t => t.value !== 'all') : tabs).slice(0, compact ? 5 : 7)} />
-        {activeTabs && activeTabs.length > 0 && (
-          <button className="btn sm ghost" onClick={clearFilters}>Clear Filters</button>
+        {(() => {
+          const curVal = activeTabs !== undefined ? activeTabs : activeTab;
+          const onChangeFn = toggleTab || setActiveTab;
+          const typeValues = ['all', 'completed', 'partial', 'manual'];
+          const statusValues = ['consulted', 'purchased', 'whatsapp'];
+          // Type filters describe what the submission *is* (segmented control);
+          // status filters describe attributes you can toggle (color-coded pills).
+          const typeItems = tabs.filter(t => typeValues.includes(t.value) && !(activeTabs !== undefined && t.value === 'all'));
+          const statusItems = tabs.filter(t => statusValues.includes(t.value));
+          return (
+            <>
+              <Tabs value={curVal} onChange={onChangeFn} items={typeItems} />
+              {!compact && <span className="filter-divider" />}
+              {!compact && (
+                <div className="status-pills">
+                  {statusItems.map(it => (
+                    <button
+                      key={it.value}
+                      className={`status-pill ${it.value}${statusFilters.includes(it.value) ? ' on' : ''}`}
+                      onClick={() => toggleStatus(it.value)}
+                    >
+                      <span className="dot" /> {it.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
+        {((activeTabs && activeTabs.length > 0) || statusFilters.length > 0) && (
+          <button
+            className="btn sm ghost"
+            onClick={() => { setStatusFilters([]); if (clearFilters) clearFilters(); }}
+          >
+            Clear Filters
+          </button>
         )}
-        <div
-          style={{ position: 'relative' }}
-          onMouseEnter={() => setExportMenuOpen(true)}
-          onMouseLeave={() => setExportMenuOpen(false)}
-        >
-          <button className="btn sm primary"><Icon name="download" /> Export</button>
+        <div style={{ position: 'relative' }}>
+          <button className="btn sm primary" onClick={() => setExportMenuOpen(v => !v)}>
+            <Icon name="download" /> Export <Icon name="chevron_down" size={14} />
+          </button>
           {exportMenuOpen && (
-            <div className="card shadow-lg" style={{
-              position: 'absolute', top: '100%', right: 0,
-              width: 240, padding: 6, zIndex: 100,
-              marginTop: 4,
-              animation: 'fadeInDown 120ms ease',
-            }}>
-              <button className="btn w-full" style={{ justifyContent: 'flex-start', padding: '10px 12px' }} onClick={() => openPicker('full')}>
-                <Icon name="download" size={14} />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginLeft: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>Download Full Data</span>
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{(recent || []).length.toLocaleString()} rows</span>
-                </div>
-              </button>
-              <button className="btn w-full" style={{ justifyContent: 'flex-start', padding: '10px 12px' }} onClick={() => openPicker('filtered')}>
-                <Icon name="filter" size={14} />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginLeft: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>Download Filtered Data</span>
-                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{tabbedList.length.toLocaleString()} rows · current tab</span>
-                </div>
-              </button>
-            </div>
+            <>
+              {/* Backdrop closes the menu on any outside click */}
+              <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setExportMenuOpen(false)} />
+              <div className="card shadow-lg" style={{
+                position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                width: 248, padding: 6, zIndex: 100,
+                animation: 'fadeInDown 120ms ease',
+              }}>
+                {[
+                  { mode: 'full',     icon: 'download', title: 'Download Full Data',     sub: `${(recent || []).length.toLocaleString()} rows` },
+                  { mode: 'filtered', icon: 'filter',   title: 'Download Filtered Data', sub: `${tabbedList.length.toLocaleString()} rows · current tab` },
+                ].map(item => (
+                  <button
+                    key={item.mode}
+                    onClick={() => openPicker(item.mode)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                      padding: '10px 12px', background: 'transparent', border: 'none',
+                      borderRadius: 8, cursor: 'pointer', textAlign: 'left', color: 'var(--fg)',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <Icon name={item.icon} size={16} color="var(--muted)" />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{item.title}</span>
+                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>{item.sub}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
         <style>{`@keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
@@ -4714,6 +4843,12 @@ function OrderCreate({ context = {}, setRoute }) {
   const [focusedInput, setFocusedInput] = useStateO(null);
   const [autofillMessage, setAutofillMessage] = useStateO("");
   const [pincodeLoading, setPincodeLoading] = useStateO(false);
+  // Localities (post offices) + district resolved from the shipping pincode lookup.
+  const [localityOptions, setLocalityOptions] = useStateO([]);
+  const [district, setDistrict] = useStateO("");
+  // Pincode that was filled directly from a customer's saved address — the auto
+  // lookup skips it so it doesn't overwrite the customer's real city/state.
+  const autoFilledPincodeRef = React.useRef(null);
   const [billingPincodeLoading, setBillingPincodeLoading] = useStateO(false);
   const [shippingRates, setShippingRates] = useStateO([]);
   const [isLoadingShipping, setIsLoadingShipping] = useStateO(false);
@@ -5015,18 +5150,35 @@ function OrderCreate({ context = {}, setRoute }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    setPincode(cust?.pincode ? String(cust.pincode) : "");
-    setCity(cust?.city || "");
-    setStateName(cust?.state || "");
-    setCountry(cust?.country || "India");
-    if (cust) {
+    if (!cust) {
+      autoFilledPincodeRef.current = null;
+      return;
+    }
+    // Prefer structured name fields from a selected Shopify customer; fall back to
+    // splitting a display name (used when navigating in with a preset lead).
+    if (cust.first_name || cust.last_name) {
+      setCustFirstName(cust.first_name || "");
+      setCustLastName(cust.last_name || "");
+    } else {
       const parts = (cust.name || "").split(" ");
       setCustFirstName(parts[0] || "");
       setCustLastName(parts.slice(1).join(" ") || "");
-      setCustPhone(cust.phone || "");
-      setCustEmail(cust.email || "");
     }
-  }, [cust, setCity, setPincode, setStateName, setCountry]);
+    setCustPhone(cust.phone || "");
+    setCustEmail(cust.email || "");
+
+    // Address pulled straight from the customer's Shopify profile.
+    if (cust.address !== undefined) setShippingAddress(cust.address || "");
+    if (cust.landmark !== undefined) setShippingLandmark(cust.landmark || "");
+    setCity(cust.city || "");
+    setStateName(normalizeState(cust.state));
+    setCountry(cust.country || "India");
+    const pin = cust.pincode ? String(cust.pincode).replace(/\D/g, "").slice(0, 6) : "";
+    setPincode(pin);
+    // Don't let the pincode lookup effect overwrite the saved city/state.
+    autoFilledPincodeRef.current = pin;
+    setLocalityOptions([]);
+  }, [cust]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -5058,34 +5210,29 @@ function OrderCreate({ context = {}, setRoute }) {
   const lookupPincode = React.useCallback(async (pin, { onCity, onState, onMessage, onLoading, signal }) => {
     onLoading(true);
 
-    const tryZippopotam = async () => {
-      const res = await fetch(`https://api.zippopotam.us/in/${pin}`, { signal });
-      if (!res.ok) throw new Error(`zippopotam ${res.status}`);
-      const data = await res.json();
-      const place = data?.places?.[0];
-      if (!place) throw new Error('no places');
-      return {
-        city:  place['place name'] || '',
-        state: place['state']      || '',
-      };
-    };
-
-    const tryPostalPincode = async () => {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`, { signal });
-      const data = await res.json();
-      const po = data?.[0]?.Status === 'Success' && data[0].PostOffice?.[0];
-      if (!po) throw new Error('not found');
-      return { city: po.District || '', state: po.State || '' };
-    };
-
     try {
-      let result;
-      try { result = await tryZippopotam(); }
-      catch (_) { result = await tryPostalPincode(); }
+      const res = await fetch(`/api/pincode/${pin}`, { signal });
+      if (!res.ok) throw new Error(`pincode lookup ${res.status}`);
+      const data = await res.json();
 
-      onCity(result.city);
-      onState(result.state);
-      onMessage(`Auto-filled: ${result.city}, ${result.state}`);
+      // postalpincode.in format
+      if (data?.[0]?.Status === 'Success' && data[0].PostOffice?.[0]) {
+        const po = data[0].PostOffice[0];
+        const normState = normalizeState(po.State || '');
+        onCity(po.District || '');
+        onState(normState);
+        onMessage(`Auto-filled: ${po.District}, ${normState}`);
+      }
+      // zippopotam fallback format
+      else if (data?._source === 'zippopotam' && data?.places?.[0]) {
+        const place = data.places[0];
+        const normState = normalizeState(place.state || '');
+        onCity(place['place name'] || '');
+        onState(normState);
+        onMessage(`Auto-filled: ${place['place name']}, ${normState}`);
+      } else {
+        throw new Error('not found');
+      }
       setTimeout(() => onMessage(''), 3000);
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -5097,22 +5244,72 @@ function OrderCreate({ context = {}, setRoute }) {
     }
   }, []);
 
+  // Shipping pincode → resolve state, district and the full list of post offices
+  // (localities) so the order-creator can pick the correct locality rather than us
+  // guessing the first one. Uses api.postalpincode.in (rich, India-specific) with a
+  // zippopotam fallback.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!pincode || pincode.length !== 6 || !/^\d+$/.test(pincode)) {
+    const pin = String(pincode || "").trim();
+    if (!/^\d{6}$/.test(pin)) {
+      setPincodeLoading(false);
+      setLocalityOptions([]);
+      setDistrict("");
+      return;
+    }
+    // Pincode came from a customer's saved address — keep their city/state as-is.
+    if (pin === autoFilledPincodeRef.current) {
       setPincodeLoading(false);
       return;
     }
+
     const controller = new AbortController();
-    const timer = setTimeout(() => {
-      lookupPincode(pincode, {
-        onCity: setCity, onState: setStateName,
-        onMessage: setAutofillMessage, onLoading: setPincodeLoading,
-        signal: controller.signal,
-      });
-    }, 250); // small debounce while typing
+    const signal = controller.signal;
+    const timer = setTimeout(async () => {
+      setPincodeLoading(true);
+      try {
+        const res = await fetch(`/api/pincode/${pin}`, { signal });
+        const data = await res.json();
+
+        // postalpincode.in format
+        if (data?.[0]?.Status === 'Success' && data[0].PostOffice?.length) {
+          const offices = data[0].PostOffice;
+          const localities = [...new Set(offices.map(o => o.Name).filter(Boolean))];
+          const resolvedState = normalizeState(offices[0].State);
+          const resolvedDistrict = offices[0].District || '';
+          setLocalityOptions(localities);
+          setDistrict(resolvedDistrict);
+          setStateName(resolvedState);
+          setCity(prev => (localities.includes(prev) ? prev : (localities[0] || resolvedDistrict || '')));
+          setAutofillMessage(`Auto-filled: ${resolvedDistrict}, ${resolvedState}`);
+          setTimeout(() => setAutofillMessage(''), 3000);
+        }
+        // zippopotam fallback format
+        else if (data?._source === 'zippopotam' && data?.places?.[0]) {
+          const place = data.places[0];
+          const zState = normalizeState(place.state);
+          setLocalityOptions([]);
+          setDistrict('');
+          setCity(place['place name'] || '');
+          setStateName(zState);
+          setAutofillMessage(`Auto-filled: ${place['place name']}, ${zState}`);
+          setTimeout(() => setAutofillMessage(''), 3000);
+        } else {
+          setAutofillMessage('Could not look up pincode. Enter city/state manually.');
+          setTimeout(() => setAutofillMessage(''), 4000);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setAutofillMessage('Could not look up pincode. Enter city/state manually.');
+          setTimeout(() => setAutofillMessage(''), 4000);
+        }
+      } finally {
+        setPincodeLoading(false);
+      }
+    }, 300); // debounce while typing
+
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [pincode, lookupPincode]);
+  }, [pincode]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -5159,35 +5356,25 @@ function OrderCreate({ context = {}, setRoute }) {
   }, [custFirstName, custPhone, focusedInput]);
 
   const handleSelectRecommendation = (c) => {
-    setCust({ 
-      ...c, 
+    // Pull the customer's address from their Shopify profile and hand the whole
+    // record to `cust`; the prefill effect fans it out into the form fields so the
+    // inputs stay visible (same styling) but pre-filled.
+    const addr = c.default_address || (c.addresses && c.addresses[0]) || {};
+    setCust({
+      ...c,
       name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || c.email || 'Unnamed',
-      phone: c.phone,
-      email: c.email,
-      avatarHue: Math.floor(Math.random() * 360)
+      first_name: c.first_name || '',
+      last_name: c.last_name || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      address: addr.address1 || '',
+      landmark: addr.address2 || '',
+      city: addr.city || '',
+      state: addr.province || '',
+      country: addr.country || 'India',
+      pincode: addr.zip ? String(addr.zip).replace(/\D/g, "").slice(0, 6) : '',
+      avatarHue: Math.floor(Math.random() * 360),
     });
-    setCustFirstName(c.first_name || "");
-    setCustLastName(c.last_name || "");
-    setCustPhone(c.phone || "");
-    setCustEmail(c.email || "");
-    
-    const defaultAddr = c.default_address || (c.addresses && c.addresses[0]);
-    if (defaultAddr) {
-      setShippingAddress(defaultAddr.address1 || "");
-      setShippingLandmark(defaultAddr.address2 || "");
-      setCity(defaultAddr.city || "");
-      setStateName(defaultAddr.province || "");
-      setCountry(defaultAddr.country || "India");
-      setPincode(defaultAddr.zip ? String(defaultAddr.zip).replace(/\D/g, "").slice(0, 6) : "");
-    } else {
-      setShippingAddress("");
-      setShippingLandmark("");
-      setCity("");
-      setStateName("");
-      setCountry("India");
-      setPincode("");
-    }
-    
     setFocusedInput(null);
     setCustomerRecommendations([]);
   };
@@ -5261,35 +5448,6 @@ function OrderCreate({ context = {}, setRoute }) {
     };
     fetchShippingRates();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const pin = String(pincode || "").trim();
-    if (!/^\d{6}$/.test(pin)) {
-      setAutofillMessage("");
-      return;
-    }
-
-    let cancelled = false;
-    const fetchLocation = async () => {
-      try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-        const data = await res.json();
-        const postOffice = data?.[0]?.Status === "Success" ? data?.[0]?.PostOffice?.[0] : null;
-        if (!cancelled && postOffice) {
-          setCity(postOffice.District || "");
-          setStateName(postOffice.State || "");
-          setAutofillMessage("City and state autofilled from pincode");
-        }
-      } catch (err) {
-        if (!cancelled) setAutofillMessage("");
-      }
-    };
-
-    fetchLocation();
-    return () => {
-      cancelled = true;
-    };
-  }, [pincode, setAutofillMessage, setCity, setStateName]);
 
   useEffect(() => {
     const fetchFreeSample = async () => {
@@ -5562,19 +5720,26 @@ function OrderCreate({ context = {}, setRoute }) {
           <div className="card">
             <div className="hstack-8">
               <div className="section-title">Customer</div>
+              {cust && (
+                <>
+                  <span className="spacer" />
+                  <span className="muted hstack-6" style={{ fontSize: 12 }}>
+                    <Icon name="check" size={13} /> Matched Shopify customer
+                  </span>
+                  <button
+                    className="btn sm ghost"
+                    title="Clear customer"
+                    onClick={() => {
+                      setCust(null);
+                      setCustFirstName(""); setCustLastName(""); setCustPhone(""); setCustEmail("");
+                      setShippingAddress(""); setShippingLandmark(""); setCity(""); setStateName(""); setPincode("");
+                      setLocalityOptions([]); setDistrict("");
+                    }}
+                  ><Icon name="x" /></button>
+                </>
+              )}
             </div>
-            {cust ? (
-              <div className="hstack-12" style={{ marginTop: 12, padding: 12, background: "var(--surface-2)", borderRadius: 10 }}>
-                <Avatar name={cust.name} hue={cust.avatarHue} />
-                <div className="stack-2">
-                  <div className="fw5">{cust.name}</div>
-                  <div className="muted" style={{ fontSize: 12 }}><span className="num">{cust.phone}</span> · {cust.email}</div>
-                </div>
-                <span className="spacer" />
-                <RiskBadge risk={cust.risk} />
-                <button className="btn sm ghost" onClick={() => setCust(null)}><Icon name="x" /></button>
-              </div>
-            ) : (
+            {(
               <div className="grid-12" style={{ marginTop: 12 }}>
                 <div className="span-6 field" style={{ position: "relative" }}>
                   <span className="lbl">First name *</span>
@@ -5630,14 +5795,24 @@ function OrderCreate({ context = {}, setRoute }) {
                 <span className="lbl">City *</span>
                 {pincodeLoading
                   ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
-                  : <input className="input" value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />}
+                  : localityOptions.length > 1
+                    ? (
+                      <select className="select" value={city} onChange={e => setCity(e.target.value)}>
+                        {!localityOptions.includes(city) && <option value={city}>{city || "Select locality"}</option>}
+                        {localityOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                      </select>
+                    )
+                    : <input className="input" value={city} onChange={e => setCity(e.target.value)} placeholder="Mumbai" />}
+                {district && localityOptions.length > 1 && (
+                  <span className="muted" style={{ fontSize: 11, marginTop: 4 }}>District: {district}</span>
+                )}
               </div>
               <div className="span-4 field">
                 <span className="lbl">State *</span>
                 {pincodeLoading
                   ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
                   : (
-                    <select className="select" value={stateName} onChange={e => setStateName(e.target.value)}>
+                    <select className="select" value={INDIAN_STATES.includes(stateName) ? stateName : ""} onChange={e => setStateName(e.target.value)}>
                       <option value="" disabled>Select State</option>
                       {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -5695,7 +5870,7 @@ function OrderCreate({ context = {}, setRoute }) {
                   {billingPincodeLoading
                     ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
                     : (
-                      <select className="select" value={billingStateName} onChange={e => setBillingStateName(e.target.value)}>
+                      <select className="select" value={INDIAN_STATES.includes(billingStateName) ? billingStateName : ""} onChange={e => setBillingStateName(e.target.value)}>
                         <option value="" disabled>Select State</option>
                         {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -6916,7 +7091,7 @@ function ShipmentsScreen() {
               <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
             </div>
           </div>
-          <div style={{ overflowX: "auto", maxWidth: "100%" }}>
+          <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 480, maxWidth: "100%" }}>
             <table className="tbl" style={{ minWidth: 1500 }}>
               <thead>
                 <tr>
@@ -6966,11 +7141,14 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
   const idx = stageIndex(s.status);
   const failed = s.status === "Failed delivery";
   const cust = s.customer;
+  const isNonShopify = s.orderName && !String(s.orderName).startsWith('#');
+  const isEnriching = s.enriching && !isNonShopify;
+  
   const Skel = ({ w = 80 }) => <div className="skel-box" style={{ height: 12, width: w, borderRadius: 4 }} />;
   const trackUrl = buildTrackingUrl(trackingUrlTemplate, s.awb);
   return (
     <tr onClick={onClick} style={{
-      background: selected ? "var(--accent-soft)" : undefined,
+      background: selected ? "var(--accent-soft)" : (isNonShopify ? "var(--surface-2)" : undefined),
       boxShadow: selected ? "inset 2px 0 0 var(--accent)" : undefined,
       cursor: "pointer",
     }}>
@@ -6986,13 +7164,20 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
         </div>
       </td>
       <td className="mono num fw5" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>
-        {s.orderId ? (s.orderName || `#${s.orderId}`) : (s.enriching ? <Skel w={70} /> : <span className="muted">—</span>)}
+        {s.orderId ? (
+          isNonShopify ? (
+            <div className="stack-2">
+              <span>{s.orderName}</span>
+              <Badge tone="moderate" style={{ fontSize: 9 }}>Non-Shopify</Badge>
+            </div>
+          ) : (s.orderName || `#${s.orderId}`)
+        ) : (isEnriching ? <Skel w={70} /> : <span className="muted">—</span>)}
       </td>
-      <td style={{ whiteSpace: "nowrap" }}>
-        {cust ? <span className="fw5">{cust.name}</span> : (s.enriching ? <Skel /> : <span className="muted">—</span>)}
+      <td className={isNonShopify && !cust ? "muted" : ""} style={{ whiteSpace: "nowrap" }}>
+        {cust ? <span className="fw5">{cust.name}</span> : (isEnriching ? <Skel /> : <span className="muted">—</span>)}
       </td>
       <td className="num" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>
-        {cust ? (cust.phone || '—') : (s.enriching ? <Skel w={90} /> : <span className="muted">—</span>)}
+        {cust ? (cust.phone || '—') : (isEnriching ? <Skel w={90} /> : <span className="muted">—</span>)}
       </td>
       <td style={{ minWidth: 240 }}>
         {cust ? (
@@ -7002,16 +7187,16 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
               {[cust.city, cust.state, cust.pincode].filter(Boolean).join(', ')}
             </div>
           </div>
-        ) : (s.enriching ? <Skel w={180} /> : <span className="muted">—</span>)}
+        ) : (isEnriching ? <Skel w={180} /> : <span className="muted">—</span>)}
       </td>
       <td className="num" style={{ textAlign: "center", whiteSpace: "nowrap" }}>
-        {s.itemCount !== null ? s.itemCount : (s.enriching ? <Skel w={30} /> : '—')}
+        {s.itemCount !== null ? s.itemCount : (isEnriching ? <Skel w={30} /> : '—')}
       </td>
       <td className="num fw5" style={{ whiteSpace: "nowrap" }}>
-        {s.orderTotal !== null ? `Rs. ${s.orderTotal.toLocaleString()}` : (s.enriching ? <Skel w={70} /> : '—')}
+        {s.orderTotal !== null ? `Rs. ${s.orderTotal.toLocaleString()}` : (isEnriching ? <Skel w={70} /> : '—')}
       </td>
       <td style={{ whiteSpace: "nowrap" }}>
-        {s.paymentMode || (s.enriching ? <Skel w={50} /> : '—')}
+        {s.paymentMode || (isEnriching ? <Skel w={50} /> : '—')}
       </td>
       <td>
         <StageProgress idx={idx} failed={failed} status={s.status} />
@@ -7612,14 +7797,17 @@ function MarketingScreen() {
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ROLES & USERS (ADMIN) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-const ADMIN_ROLES = ["admin", "doctor", "telesales", "order_creator", "marketing", "logistics"];
+const ADMIN_ROLES = ["admin", "doctor", "telesales", "order_creator", "marketing", "logistics", "website_developer"];
 
 // Map common variants of role names to the canonical form used in NAV/permissions.
 // Anything not in this map is kept as-is (so unknown roles remain visible/removable).
 const ROLE_ALIASES = {
   'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
   'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
-  'admin': 'admin', 'doctor': 'doctor', 'marketing': 'marketing', 'logistics': 'logistics',
+  'performance_marketing': 'marketing', 'marketing': 'marketing',
+  'shipment_tracker': 'logistics', 'logistics': 'logistics',
+  'website_developer': 'website_developer', 'developer': 'website_developer', 'webdev': 'website_developer',
+  'admin': 'admin', 'doctor': 'doctor',
 };
 function normalizeRole(r) {
   if (!r || typeof r !== 'string') return '';
@@ -7643,6 +7831,534 @@ const PERMISSION_KEYS = [
   { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers',      icon: 'users' },
   { key: 'can_view_prescriptions_tab',   label: 'View Prescriptions Tab (Telesales)', icon: 'pill' },
 ];
+
+/* ───────────────────── Data Studio (developer Firestore editor) ───────────────────── */
+
+// Curated list of editable top-level collections. The Firestore web SDK cannot
+// enumerate collections, so anything not listed can be typed into the custom box.
+const EDITABLE_COLLECTIONS = [
+  "users", "questionnaire_submissions", "partial_submissions", "manual_submissions",
+  "prescriptions", "doctor_details", "doctor_signature_requests", "nimbus_tracking",
+  "shipments", "crm_orders", "app_settings", "metadata", "admin_audit_logs",
+];
+
+const isTimestamp = (v) => v && typeof v === 'object' && typeof v.toDate === 'function';
+function cellKind(v) {
+  if (v === null || v === undefined) return 'null';
+  if (isTimestamp(v) || v instanceof Date) return 'timestamp';
+  if (typeof v === 'boolean') return 'boolean';
+  if (typeof v === 'number') return 'number';
+  if (typeof v === 'string') return 'string';
+  return 'json'; // objects & arrays
+}
+function tsToInputValue(v) {
+  const d = isTimestamp(v) ? v.toDate() : (v instanceof Date ? v : new Date(v));
+  if (isNaN(d)) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function previewValue(v) {
+  const k = cellKind(v);
+  if (k === 'null') return '';
+  if (k === 'timestamp') return (isTimestamp(v) ? v.toDate() : v).toLocaleString('en-IN');
+  if (k === 'boolean') return v ? 'true' : 'false';
+  if (k === 'json') { try { const s = JSON.stringify(v); return s.length > 60 ? s.slice(0, 57) + '…' : s; } catch { return '[object]'; } }
+  return String(v);
+}
+
+// One editable table cell. Primitives edit inline (committed on blur / change);
+// objects & arrays open the JSON editor via onEditJson.
+function DSCell({ original, staged, onStage, onEditJson }) {
+  const hasStaged = staged !== undefined;
+  const value = hasStaged ? staged : original;
+  // Kind is driven by the original value so a field keeps its type after staging.
+  const baseKind = cellKind(original !== undefined && original !== null ? original : value);
+  const [local, setLocal] = useState('');
+  useEffect(() => {
+    if (baseKind === 'number' || baseKind === 'string' || baseKind === 'null') {
+      setLocal(value === null || value === undefined ? '' : value);
+    }
+  }, [hasStaged, value, baseKind]);
+
+  if (baseKind === 'boolean') {
+    return <input type="checkbox" checked={!!value} onChange={e => onStage(e.target.checked)} />;
+  }
+  if (baseKind === 'timestamp') {
+    return <input className="ds-input" type="datetime-local" value={tsToInputValue(value)}
+      onChange={e => onStage(e.target.value ? new Date(e.target.value) : null)} />;
+  }
+  if (baseKind === 'json') {
+    return <button className="chip ds-json-chip" onClick={onEditJson} title="Edit JSON">{previewValue(value)} <Icon name="edit" size={11} /></button>;
+  }
+  return (
+    <input
+      className="ds-input"
+      type={baseKind === 'number' ? 'number' : 'text'}
+      value={local}
+      onChange={e => setLocal(e.target.value)}
+      onBlur={() => {
+        if (baseKind === 'number') {
+          if (local === '') { onStage(null); return; }
+          const n = Number(local);
+          if (!Number.isNaN(n)) onStage(n);
+        } else {
+          onStage(local);
+        }
+      }}
+    />
+  );
+}
+
+function DataStudioScreen({ me, initialView = 'full' }) {
+  const [coll, setColl] = useState('questionnaire_submissions');
+  const [customColl, setCustomColl] = useState('');
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [rowLimit, setRowLimit] = useState(250);
+  const [search, setSearch] = useState('');
+  const [dbQuery, setDbQuery] = useState({ field: '', value: '' });
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [pending, setPending] = useState({}); // { [docId]: { [field]: newValue } }
+  const [jsonEditor, setJsonEditor] = useState(null); // { id, field, text, error }
+  const [confirm, setConfirm] = useState(null); // { title, summary, action }
+  const [liveText, setLiveText] = useState('');
+  const [addModal, setAddModal] = useState(null); // { id, json, error }
+  const [bulk, setBulk] = useState({ field: '', type: 'text', value: '' });
+  const [toast, setToast] = useState(null);
+  const [committing, setCommitting] = useState(false);
+  // View is fixed by the nav entry: 'focused' (Quick Editor) or 'full' (Detailed View).
+  const viewMode = initialView; // 'full' | 'focused'
+  const [focusCols, setFocusCols] = useState([]);    // ordered extra columns appended to the right
+  const [rowFilters, setRowFilters] = useState([]);  // [{ field, op, value }]
+  const [colToAdd, setColToAdd] = useState('');       // free-text "add field as column"
+
+  const isLive = FIREBASE_MODE === 'live';
+  const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 3500); };
+
+  const load = async (collName = coll, lim = rowLimit, currentDbQuery = dbQuery) => {
+    if (!collName) return;
+    setLoading(true); setError(''); setPending({}); setSelectedIds(new Set());
+    try {
+      let q = collection(db, collName);
+      if (currentDbQuery.field.trim() && currentDbQuery.value.trim()) {
+        q = query(q, where(currentDbQuery.field.trim(), '==', currentDbQuery.value.trim()));
+      }
+      q = query(q, limit(lim));
+      const snap = await getDocs(q);
+      setRows(snap.docs.map(d => ({ _id: d.id, ...d.data() })));
+    } catch (e) {
+      setError(e.message || String(e)); setRows([]);
+    } finally { setLoading(false); }
+  };
+
+  // Load whenever the active collection or limit changes.
+  useEffect(() => { load(coll, rowLimit, dbQuery); /* eslint-disable-next-line */ }, [coll, rowLimit]);
+
+  // Column set = union of all keys across loaded rows (_id always first).
+  const columns = useMemo(() => {
+    const set = new Set();
+    rows.forEach(r => Object.keys(r).forEach(k => { if (k !== '_id') set.add(k); }));
+    return ['_id', ...[...set].sort()];
+  }, [rows]);
+
+  // Auto-detect the "name" column shown by default in focused view.
+  const NAME_FIELDS = ['userName', 'name', 'fullName', 'customerName'];
+  const nameField = useMemo(() => NAME_FIELDS.find(f => columns.includes(f)) || null, [columns]);
+
+  // Columns actually rendered: everything (full) or id + name + appended picks (focused).
+  const displayColumns = useMemo(() => {
+    if (viewMode === 'full') return columns;
+    const base = ['_id', ...(nameField ? [nameField] : [])];
+    const extra = focusCols.filter(c => c !== '_id' && c !== nameField);
+    return [...base, ...extra];
+  }, [viewMode, columns, nameField, focusCols]);
+
+  // Evaluate a single row filter against a row's ORIGINAL value (stable while editing).
+  const matchFilter = (row, f) => {
+    if (!f.field) return true;
+    const raw = row[f.field];
+    const empty = raw === null || raw === undefined || raw === '';
+    const s = String(raw ?? '');
+    switch (f.op) {
+      case 'empty':    return empty;
+      case 'notempty': return !empty;
+      case 'eq':       return s === f.value;
+      case 'neq':      return s !== f.value;
+      case 'contains': return s.toLowerCase().includes((f.value || '').toLowerCase());
+      case 'gt':       return Number(raw) > Number(f.value);
+      case 'lt':       return Number(raw) < Number(f.value);
+      default:         return true;
+    }
+  };
+
+  const visibleRows = useMemo(() => {
+    let list = rows;
+    if (rowFilters.length) list = list.filter(r => rowFilters.every(f => matchFilter(r, f)));
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(r => { try { return JSON.stringify(r).toLowerCase().includes(q); } catch { return false; } });
+    }
+    return list;
+    // eslint-disable-next-line
+  }, [rows, search, rowFilters]);
+
+  const addFocusCol = (c) => { if (c && !focusCols.includes(c)) setFocusCols(prev => [...prev, c]); };
+  const removeFocusCol = (c) => setFocusCols(prev => prev.filter(x => x !== c));
+  const addFilter = () => setRowFilters(prev => [...prev, { field: '', op: 'empty', value: '' }]);
+  const updateFilter = (i, patch) => setRowFilters(prev => prev.map((f, idx) => idx === i ? { ...f, ...patch } : f));
+  const removeFilter = (i) => setRowFilters(prev => prev.filter((_, idx) => idx !== i));
+
+  const stageEdit = (id, field, val) => setPending(p => ({ ...p, [id]: { ...p[id], [field]: val } }));
+  const getStaged = (id, field) => (pending[id] && field in pending[id]) ? pending[id][field] : undefined;
+  const pendingIds = Object.keys(pending).filter(id => Object.keys(pending[id] || {}).length);
+  const pendingChangeCount = pendingIds.reduce((n, id) => n + Object.keys(pending[id]).length, 0);
+
+  const toggleSelect = (id) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allVisibleSelected = visibleRows.length > 0 && visibleRows.every(r => selectedIds.has(r._id));
+  const toggleSelectAll = () => setSelectedIds(prev => {
+    if (allVisibleSelected) return new Set();
+    return new Set(visibleRows.map(r => r._id));
+  });
+
+  async function logAudit(action, docIds, details) {
+    try {
+      await addDoc(collection(db, 'admin_audit_logs'), {
+        actor: me?.email || 'unknown', actorUid: me?.uid || null,
+        action, collection: coll, env: FIREBASE_MODE, docIds,
+        details: JSON.parse(JSON.stringify(details ?? {})),
+        timestamp: serverTimestamp(),
+      });
+    } catch (e) { console.warn('[DataStudio] audit log failed:', e.message); }
+  }
+
+  // Gate destructive/live writes behind a confirm dialog (typed LIVE in production).
+  const requestConfirm = (title, summary, action) => { setLiveText(''); setConfirm({ title, summary, action }); };
+
+  const runConfirmed = async () => {
+    if (!confirm) return;
+    setCommitting(true);
+    try { await confirm.action(); }
+    catch (e) { showToast('error', 'Failed: ' + (e.message || e)); }
+    finally { setCommitting(false); setConfirm(null); }
+  };
+
+  const doCommitEdits = () => requestConfirm(
+    'Save field changes',
+    `${pendingChangeCount} change(s) across ${pendingIds.length} document(s) in "${coll}".`,
+    async () => {
+      const batch = writeBatch(db);
+      pendingIds.forEach(id => batch.update(doc(db, coll, id), pending[id]));
+      await batch.commit();
+      await logAudit('update', pendingIds, { changes: pending });
+      showToast('success', `Saved ${pendingChangeCount} change(s).`);
+      await load();
+    }
+  );
+
+  const doDelete = (ids) => requestConfirm(
+    'Delete documents',
+    `Permanently delete ${ids.length} document(s) from "${coll}". This cannot be undone.`,
+    async () => {
+      const batch = writeBatch(db);
+      ids.forEach(id => batch.delete(doc(db, coll, id)));
+      await batch.commit();
+      await logAudit('delete', ids, {});
+      showToast('success', `Deleted ${ids.length} document(s).`);
+      await load();
+    }
+  );
+
+  const doAdd = () => {
+    let data;
+    try { data = addModal.json.trim() ? JSON.parse(addModal.json) : {}; }
+    catch { setAddModal(m => ({ ...m, error: 'Invalid JSON' })); return; }
+    const wantId = addModal.id.trim();
+    requestConfirm(
+      'Create document',
+      `Create a new document in "${coll}"${wantId ? ` with id "${wantId}"` : ' (auto-generated id)'}.`,
+      async () => {
+        let newId = wantId;
+        if (wantId) await setDoc(doc(db, coll, wantId), data);
+        else { const ref = await addDoc(collection(db, coll), data); newId = ref.id; }
+        await logAudit('create', [newId], { data });
+        setAddModal(null);
+        showToast('success', 'Document created.');
+        await load();
+      }
+    );
+  };
+
+  const coerceBulk = () => {
+    const { type, value } = bulk;
+    if (type === 'number') return value === '' ? null : Number(value);
+    if (type === 'boolean') return value === 'true' || value === '1';
+    if (type === 'timestamp') return value ? new Date(value) : null;
+    if (type === 'json') return JSON.parse(value);
+    return value; // text
+  };
+
+  const applyBulk = () => {
+    if (!bulk.field) { showToast('error', 'Pick a field to bulk-edit.'); return; }
+    let coerced;
+    try { coerced = coerceBulk(); }
+    catch { showToast('error', 'Invalid value for selected type.'); return; }
+    selectedIds.forEach(id => stageEdit(id, bulk.field, coerced));
+    showToast('success', `Staged "${bulk.field}" on ${selectedIds.size} row(s). Review & Save to commit.`);
+  };
+
+  const openJson = (id, field, value) => setJsonEditor({ id, field, text: JSON.stringify(value, null, 2), error: '' });
+  const saveJson = () => {
+    let parsed;
+    try { parsed = JSON.parse(jsonEditor.text); }
+    catch { setJsonEditor(j => ({ ...j, error: 'Invalid JSON' })); return; }
+    stageEdit(jsonEditor.id, jsonEditor.field, parsed);
+    setJsonEditor(null);
+  };
+
+  const liveOk = !isLive || liveText === 'LIVE';
+
+  return (
+    <div className="col fade-in">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">{viewMode === 'focused' ? 'Quick Editor' : 'Detailed View'}</h1>
+          <p className="page-sub">{viewMode === 'focused' ? 'Curated columns + row filters · fill in missing fields inline' : 'Direct Firestore editor · full read/write across collections'}</p>
+        </div>
+        <div className="page-head-actions">
+          <span className={`ds-env ${isLive ? 'ds-env-live' : 'ds-env-dev'}`}>
+            <span className="dot" /> {isLive ? 'LIVE — production' : 'DEV — sandbox'}
+          </span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="card" style={{ padding: 14 }}>
+        {/* Focused-view builder: append columns + row filters */}
+        {viewMode === 'focused' && (
+          <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            <div className="hstack-8" style={{ flexWrap: 'wrap', rowGap: 8, alignItems: 'center' }}>
+              <span className="lbl" style={{ fontSize: 11 }}>Columns</span>
+              <span className="chip" style={{ opacity: 0.7 }}>_id</span>
+              {nameField && <span className="chip" style={{ opacity: 0.7 }}>{nameField}</span>}
+              {focusCols.map(c => (
+                <span key={c} className="chip" style={{ cursor: 'pointer' }} onClick={() => removeFocusCol(c)} title="Remove column">
+                  {c} <Icon name="x" size={11} />
+                </span>
+              ))}
+              <select className="input sm" style={{ width: 170 }} value="" onChange={e => { addFocusCol(e.target.value); e.target.value = ''; }}>
+                <option value="">+ Add column…</option>
+                {columns.filter(c => c !== '_id' && c !== nameField && !focusCols.includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <div className="hstack-6">
+                <input className="input sm" style={{ width: 150 }} placeholder="or new field name" value={colToAdd} onChange={e => setColToAdd(e.target.value)} />
+                <button className="btn sm" disabled={!colToAdd.trim()} onClick={() => { addFocusCol(colToAdd.trim()); setColToAdd(''); }}>Add</button>
+              </div>
+            </div>
+
+            <div className="stack-8" style={{ marginTop: 10 }}>
+              {rowFilters.map((f, i) => (
+                <div key={i} className="hstack-8" style={{ flexWrap: 'wrap', rowGap: 6 }}>
+                  <span className="lbl" style={{ fontSize: 11, width: 36 }}>{i === 0 ? 'Where' : 'and'}</span>
+                  <select className="input sm" style={{ width: 170 }} value={f.field} onChange={e => updateFilter(i, { field: e.target.value })}>
+                    <option value="">field…</option>
+                    {columns.filter(c => c !== '_id').map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select className="input sm" style={{ width: 130 }} value={f.op} onChange={e => updateFilter(i, { op: e.target.value })}>
+                    <option value="empty">is empty</option>
+                    <option value="notempty">is not empty</option>
+                    <option value="eq">equals</option>
+                    <option value="neq">not equals</option>
+                    <option value="contains">contains</option>
+                    <option value="gt">greater than</option>
+                    <option value="lt">less than</option>
+                  </select>
+                  {!['empty', 'notempty'].includes(f.op) && (
+                    <input className="input sm" style={{ width: 150 }} placeholder="value" value={f.value} onChange={e => updateFilter(i, { value: e.target.value })} />
+                  )}
+                  <button className="iconbtn" title="Remove filter" onClick={() => removeFilter(i)}><Icon name="x" size={14} /></button>
+                </div>
+              ))}
+              <div>
+                <button className="btn sm" onClick={addFilter}><Icon name="plus" size={13} /> Add row filter</button>
+                {rowFilters.length > 0 && <button className="btn sm ghost" style={{ marginLeft: 8 }} onClick={() => setRowFilters([])}>Clear filters</button>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="hstack-8" style={{ flexWrap: 'wrap', rowGap: 8, alignItems: 'flex-end' }}>
+          <div className="field" style={{ minWidth: 220 }}>
+            <label className="lbl" style={{ fontSize: 11 }}>Collection</label>
+            <select className="input sm" value={coll} onChange={e => { setColl(e.target.value); setCustomColl(''); }}>
+              {EDITABLE_COLLECTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+              {customColl && !EDITABLE_COLLECTIONS.includes(customColl) && <option value={customColl}>{customColl}</option>}
+            </select>
+          </div>
+          <div className="field" style={{ minWidth: 200 }}>
+            <label className="lbl" style={{ fontSize: 11 }}>Custom collection</label>
+            <div className="hstack-6">
+              <input className="input sm" placeholder="any/collection/name" value={customColl} onChange={e => setCustomColl(e.target.value)} />
+              <button className="btn sm" disabled={!customColl.trim()} onClick={() => setColl(customColl.trim())}>Open</button>
+            </div>
+          </div>
+          <div className="field" style={{ minWidth: 320 }}>
+            <label className="lbl" style={{ fontSize: 11 }}>Firestore Query (Field == Value)</label>
+            <div className="hstack-6">
+              <input className="input sm" style={{ width: 120 }} placeholder="Field" value={dbQuery.field} onChange={e => setDbQuery({ ...dbQuery, field: e.target.value })} onKeyDown={e => e.key === 'Enter' && load(coll, rowLimit, dbQuery)} />
+              <input className="input sm" style={{ width: 120 }} placeholder="Exact value" value={dbQuery.value} onChange={e => setDbQuery({ ...dbQuery, value: e.target.value })} onKeyDown={e => e.key === 'Enter' && load(coll, rowLimit, dbQuery)} />
+              <button className="btn sm" disabled={!dbQuery.field || !dbQuery.value} onClick={() => load(coll, rowLimit, dbQuery)}>Search DB</button>
+              {(dbQuery.field || dbQuery.value) && <button className="iconbtn" onClick={() => { const q = { field: '', value: '' }; setDbQuery(q); load(coll, rowLimit, q); }}><Icon name="x" size={13} /></button>}
+            </div>
+          </div>
+          <div className="field" style={{ minWidth: 110 }}>
+            <label className="lbl" style={{ fontSize: 11 }}>Row limit</label>
+            <select className="input sm" value={rowLimit} onChange={e => setRowLimit(Number(e.target.value))}>
+              {[100, 250, 500, 1000].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div className="field" style={{ flex: 1, minWidth: 180 }}>
+            <label className="lbl" style={{ fontSize: 11 }}>Search loaded rows</label>
+            <input className="input sm" placeholder="filter…" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <button className="btn sm" onClick={() => load()} disabled={loading}><Icon name="refresh" size={14} /> Reload</button>
+          <button className="btn sm" onClick={() => setAddModal({ id: '', json: '{\n  \n}', error: '' })}><Icon name="plus" size={14} /> Add doc</button>
+        </div>
+
+        {/* Bulk + save bar */}
+        <div className="hstack-8" style={{ flexWrap: 'wrap', rowGap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <span className="muted" style={{ fontSize: 12 }}>{selectedIds.size} selected</span>
+          <select className="input sm" style={{ width: 170 }} value={bulk.field} onChange={e => setBulk(b => ({ ...b, field: e.target.value }))}>
+            <option value="">Bulk field…</option>
+            {columns.filter(c => c !== '_id').map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="input sm" style={{ width: 110 }} value={bulk.type} onChange={e => setBulk(b => ({ ...b, type: e.target.value }))}>
+            {['text', 'number', 'boolean', 'timestamp', 'json'].map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          {bulk.type === 'boolean'
+            ? <select className="input sm" style={{ width: 120 }} value={bulk.value} onChange={e => setBulk(b => ({ ...b, value: e.target.value }))}><option value="">value…</option><option value="true">true</option><option value="false">false</option></select>
+            : <input className="input sm" style={{ width: 160 }} type={bulk.type === 'timestamp' ? 'datetime-local' : 'text'} placeholder="value" value={bulk.value} onChange={e => setBulk(b => ({ ...b, value: e.target.value }))} />}
+          <button className="btn sm" disabled={!selectedIds.size} onClick={applyBulk}>Stage on selected</button>
+          <button className="btn sm" disabled={!selectedIds.size} onClick={() => doDelete([...selectedIds])}><Icon name="trash" size={14} /> Delete selected</button>
+          <span className="spacer" />
+          {pendingChangeCount > 0 && <button className="btn sm ghost" onClick={() => setPending({})}>Discard {pendingChangeCount}</button>}
+          <button className="btn sm primary" disabled={!pendingChangeCount} onClick={doCommitEdits}>
+            <Icon name="check" size={14} /> Review & Save ({pendingChangeCount})
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>
+        {error && <div style={{ padding: 14, color: 'var(--risk-critical)', fontSize: 13 }}>Error: {error}</div>}
+        {loading ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
+        ) : visibleRows.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>No documents.</div>
+        ) : (
+          <div style={{ overflowX: 'auto', maxHeight: '60vh' }}>
+            <table className="tbl ds-tbl">
+              <thead>
+                <tr>
+                  <th style={{ width: 32 }}><input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} /></th>
+                  {displayColumns.map(c => <th key={c} style={c === '_id' ? { position: 'sticky', left: 0 } : undefined}>{c}{c === '_id' && ' (id)'}</th>)}
+                  <th style={{ width: 60 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRows.map(r => (
+                  <tr key={r._id} className={selectedIds.has(r._id) ? 'ds-row-sel' : ''}>
+                    <td><input type="checkbox" checked={selectedIds.has(r._id)} onChange={() => toggleSelect(r._id)} /></td>
+                    {displayColumns.map(c => {
+                      if (c === '_id') return <td key={c} className="ds-id" title={r._id}>{r._id}</td>;
+                      const staged = getStaged(r._id, c);
+                      const edited = staged !== undefined;
+                      return (
+                        <td key={c} className={edited ? 'ds-edited' : ''}>
+                          <DSCell
+                            original={r[c]}
+                            staged={staged}
+                            onStage={(v) => stageEdit(r._id, c, v)}
+                            onEditJson={() => openJson(r._id, c, staged !== undefined ? staged : r[c])}
+                          />
+                        </td>
+                      );
+                    })}
+                    <td><button className="iconbtn" title="Delete document" onClick={() => doDelete([r._id])}><Icon name="trash" size={14} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)' }}>
+          Showing {visibleRows.length} of {rows.length} loaded (limit {rowLimit}). Edit cells inline, or select rows to bulk-edit.
+        </div>
+      </div>
+
+      {/* JSON editor modal */}
+      {jsonEditor && createPortal(
+        <div className="ds-overlay" onClick={() => setJsonEditor(null)}>
+          <div className="card shadow-lg ds-modal" onClick={e => e.stopPropagation()}>
+            <div className="section-title" style={{ marginBottom: 8 }}>Edit JSON · {jsonEditor.field}</div>
+            <textarea className="input" style={{ width: '100%', height: 280, fontFamily: 'monospace', fontSize: 12 }}
+              value={jsonEditor.text} onChange={e => setJsonEditor(j => ({ ...j, text: e.target.value, error: '' }))} />
+            {jsonEditor.error && <div style={{ color: 'var(--risk-critical)', fontSize: 12, marginTop: 6 }}>{jsonEditor.error}</div>}
+            <div className="hstack-8" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
+              <button className="btn sm" onClick={() => setJsonEditor(null)}>Cancel</button>
+              <button className="btn sm primary" onClick={saveJson}>Stage change</button>
+            </div>
+          </div>
+        </div>, document.body)}
+
+      {/* Add document modal */}
+      {addModal && createPortal(
+        <div className="ds-overlay" onClick={() => setAddModal(null)}>
+          <div className="card shadow-lg ds-modal" onClick={e => e.stopPropagation()}>
+            <div className="section-title" style={{ marginBottom: 8 }}>Add document to "{coll}"</div>
+            <label className="lbl" style={{ fontSize: 11 }}>Document ID (blank = auto)</label>
+            <input className="input sm" style={{ width: '100%', marginBottom: 10 }} value={addModal.id} onChange={e => setAddModal(m => ({ ...m, id: e.target.value }))} placeholder="auto-generated" />
+            <label className="lbl" style={{ fontSize: 11 }}>Initial data (JSON)</label>
+            <textarea className="input" style={{ width: '100%', height: 200, fontFamily: 'monospace', fontSize: 12 }}
+              value={addModal.json} onChange={e => setAddModal(m => ({ ...m, json: e.target.value, error: '' }))} />
+            {addModal.error && <div style={{ color: 'var(--risk-critical)', fontSize: 12, marginTop: 6 }}>{addModal.error}</div>}
+            <div className="hstack-8" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
+              <button className="btn sm" onClick={() => setAddModal(null)}>Cancel</button>
+              <button className="btn sm primary" onClick={doAdd}>Create</button>
+            </div>
+          </div>
+        </div>, document.body)}
+
+      {/* Confirm modal (with LIVE typed gate) */}
+      {confirm && createPortal(
+        <div className="ds-overlay" onClick={() => !committing && setConfirm(null)}>
+          <div className="card shadow-lg ds-modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+            <div className="section-title" style={{ marginBottom: 8 }}>{confirm.title}</div>
+            <p style={{ fontSize: 13, color: 'var(--fg)', lineHeight: 1.5 }}>{confirm.summary}</p>
+            <div className={`ds-env ${isLive ? 'ds-env-live' : 'ds-env-dev'}`} style={{ margin: '8px 0' }}>
+              <span className="dot" /> Target: {isLive ? 'LIVE production' : 'DEV sandbox'}
+            </div>
+            {isLive && (
+              <div className="field" style={{ marginTop: 6 }}>
+                <label className="lbl" style={{ fontSize: 11, color: 'var(--risk-critical)' }}>Type LIVE to confirm</label>
+                <input className="input sm" value={liveText} onChange={e => setLiveText(e.target.value)} placeholder="LIVE" />
+              </div>
+            )}
+            <div className="hstack-8" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
+              <button className="btn sm" onClick={() => setConfirm(null)} disabled={committing}>Cancel</button>
+              <button className="btn sm primary" onClick={runConfirmed} disabled={!liveOk || committing}>{committing ? 'Working…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>, document.body)}
+
+      {toast && createPortal(
+        <div className="toast-container"><div className="toast-item">
+          <div className="toast-icon"><Icon name={toast.type === 'error' ? 'x' : 'check'} size={18} /></div>
+          <div className="toast-content"><div className="toast-title">{toast.type === 'error' ? 'Error' : 'Done'}</div><div className="toast-message">{toast.msg}</div></div>
+        </div></div>, document.body)}
+    </div>
+  );
+}
 
 function AdminScreen() {
   const [users, setUsers] = useState([]);
@@ -8389,12 +9105,13 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 const NAV = {
-  admin:         ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "shipments", "marketing", "users", "settings"],
+  admin:         ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "shipments", "marketing", "users", "focused_editor", "data_studio", "settings"],
   doctor:        ["doctor", "submissions", "customers", "prescriptions", "settings"],
   telesales:     ["home", "customers", "orders", "crm_orders", "order_create", "prescriptions", "settings"],
   order_creator: ["order_create", "orders", "crm_orders", "customers", "settings"],
   marketing:     ["marketing", "home", "customers", "prescriptions", "doctor", "settings"],
-  logistics:     ["shipments", "orders", "crm_orders", "customers", "settings"],
+  logistics:     ["shipments", "orders", "shipment_tracking", "crm_orders", "customers", "settings"],
+  website_developer: ["focused_editor", "data_studio", "settings"],
 };
 
 const ITEMS = {
@@ -8405,11 +9122,14 @@ const ITEMS = {
   doctor:        { label: "Clinical review",         icon: "stethoscope", route: "doctor",      ct: "12" },
   doctors:       { label: "Doctors queue",           icon: "stethoscope", route: "doctor",      ct: "12" },
   orders:        { label: "Shopify orders",          icon: "package",     route: "orders" },
+  shipment_tracking: { label: "Shipment tracking",       icon: "map", route: "shipment_tracking" },
   crm_orders:    { label: "CRM orders",              icon: "clipboard",   route: "crm_orders" },
   order_create:  { label: "Create order",            icon: "plus",        route: "order_create" },
   shipments:     { label: "Shipments",               icon: "truck",       route: "shipments",   ct: "117" },
   marketing:     { label: "Marketing analytics",     icon: "bar",         route: "marketing" },
   users:         { label: "Roles & users",           icon: "shield",      route: "admin" },
+  focused_editor:{ label: "Quick Editor",            icon: "filter",      route: "focused_editor" },
+  data_studio:   { label: "Detailed View",           icon: "database",    route: "data_studio" },
   settings:      { label: "Settings",                icon: "settings",    route: "settings" },
 };
 
@@ -8583,7 +9303,7 @@ function App({ user, roles, onLogout }) {
           <Breadcrumb route={route} role={role} />
           <div className="topbar-search">
             <Icon name="search" />
-            <input placeholder="Search customers, orders, AWB, doctors...   âŒ˜K" />
+            <input placeholder={"Search customers, orders, AWB, doctors...   Ctrl+K"} />
           </div>
           <div className="topbar-actions">
             <EnvToggle value={env} onChange={(newEnv) => {
@@ -8597,8 +9317,8 @@ function App({ user, roles, onLogout }) {
             </button>
             <div style={{ position: "relative" }}>
               <div 
-                className="avatar sm clickable" 
-                style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer" }}
+                className="avatar clickable" 
+                style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer", border: "1px solid var(--accent)" }}
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
               >
                 {me.initials}
@@ -8934,14 +9654,189 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubm
     case "prescriptions":  return <PrescriptionsScreen me={me} />;
     case "doctor":         return <DoctorScreen openCustomer={openCustomer} openSubmission={openSubmission} context={route.ctx} />;
     case "orders":       return <OrdersHistory setRoute={setRoute} openCustomer={openCustomer} />;
+    case "shipment_tracking": return <ShipmentTrackingScreen setRoute={setRoute} openCustomer={openCustomer} />;
     case "crm_orders":   return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
     case "shipments":    return <ShipmentsScreen />;
     case "marketing":    return <MarketingScreen />;
+    case "data_studio":  return <DataStudioScreen me={me} />;
+    case "focused_editor": return <DataStudioScreen me={me} initialView="focused" />;
     case "admin":        return <AdminScreen />;
     case "settings":     return <SettingsScreen tweaks={tweaks} me={me} />;
     default:             return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
   }
+}
+
+function ShipmentTrackingScreen({ setRoute, openCustomer }) {
+  const [loading, setLoading] = useState(true);
+  const [enrichedMap, setEnrichedMap] = useState({});
+  const [trackingMap, setTrackingMap] = useState({});
+  const logisticsCfg = useLogisticsConfig();
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const unsub = onSnapshot(collectionGroup(db, 'awbs'), (snap) => {
+      const map = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data?.awb) map[data.awb] = data;
+      });
+      setEnrichedMap(map);
+    }, (err) => {
+      console.error('Enriched shipments error:', err);
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'nimbus_tracking'), snap => {
+      const map = {};
+      snap.docs.forEach(d => {
+        const ev = d.data();
+        if (!ev.awb_number) return;
+        if (!map[ev.awb_number]) map[ev.awb_number] = [];
+        map[ev.awb_number].push(ev);
+      });
+      Object.keys(map).forEach(awb => {
+        map[awb].sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
+      });
+      setTrackingMap(map);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  const mergedShipments = useMemo(() => {
+    const allAwbs = new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
+    return Array.from(allAwbs).map(awb => {
+      const events = trackingMap[awb] || [];
+      const latest = events[0] || {};
+      const e = enrichedMap[awb] || {};
+
+      const ns = (latest.status || e.rawStatus || e.status || '').toLowerCase();
+      let status = e.status || 'Shipped';
+      if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
+      else if (ns.includes('out for delivery') || ns === 'out_for_delivery') status = 'Out for delivery';
+      else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
+      else if (ns.includes('exception') || ns.includes('hold') || ns.includes('pending') || ns.includes('delay')) status = 'Exception';
+      else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
+      else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
+
+      return {
+        awb,
+        status,
+        orderId: e.orderId || null,
+        orderName: e.orderNumber || (e.orderId ? `#${e.orderId}` : null),
+        nimbusOrderId: latest.order_number || latest.order_id || latest.order_name || latest.order || null,
+        customer: e.customer ? {
+          name: e.customer.name || 'Unknown',
+          phone: e.customer.phone || ''
+        } : null,
+        courier: e.courier || latest.courier_name || 'Nimbus',
+        timestamp: e.timestamp || null,
+        lastUpdate: latest.event_time || e.lastEventTime || '',
+      };
+    });
+  }, [trackingMap, enrichedMap]);
+
+  const handleCopy = (url) => {
+    navigator.clipboard.writeText(url);
+  };
+
+  const filtered = useMemo(() => {
+    let list = mergedShipments;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(e => 
+        (e.customer?.name || '').toLowerCase().includes(q) ||
+        (e.customer?.phone || '').includes(q) ||
+        (e.awb || '').toLowerCase().includes(q)
+      );
+    }
+    list.sort((a, b) => {
+      const ta = a.timestamp?.toMillis?.() || (a.lastUpdate ? new Date(a.lastUpdate).getTime() : 0);
+      const tb = b.timestamp?.toMillis?.() || (b.lastUpdate ? new Date(b.lastUpdate).getTime() : 0);
+      return tb - ta;
+    });
+    return list;
+  }, [mergedShipments, search]);
+
+  return (
+    <div className="col fade-in">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Shipment Tracking</h1>
+          <p className="page-sub">Quick tracking links for all shipments</p>
+        </div>
+      </div>
+      
+      <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ position: 'relative', width: 300 }}>
+            <div style={{ position: 'absolute', left: 10, top: 9, color: 'var(--muted)' }}><Icon name="search" size={14} /></div>
+            <input className="input" style={{ paddingLeft: 32 }} placeholder="Search name, phone, AWB..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+        </div>
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>AWB</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Tracking</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>No shipments found</td></tr>
+              ) : (
+                filtered.map(s => {
+                  const url = buildTrackingUrl(logisticsCfg.trackingUrlTemplate, s.awb);
+                  const isDirect = !s.orderId;
+                  return (
+                    <tr key={s.awb} style={{ background: isDirect ? 'var(--surface-2)' : undefined }}>
+                      <td className="mono fw5 num" style={{ fontSize: 12.5 }}>
+                        {isDirect ? (
+                          <div className="stack-2">
+                            <span>{s.nimbusOrderId || "Nimbus Direct"}</span>
+                            <Badge tone="moderate" style={{ fontSize: 9 }}>Non-Shopify</Badge>
+                          </div>
+                        ) : (s.orderName || `#${s.orderId}`)}
+                      </td>
+                      <td className={isDirect ? "muted" : "fw5"}>{s.customer?.name || (isDirect ? '—' : 'Unknown')}</td>
+                      <td className="num">{s.customer?.phone || '—'}</td>
+                      <td>
+                        <div className="stack-2">
+                          <span className="mono num">{s.awb}</span>
+                          {isDirect && <span className="badge" style={{ fontSize: 10.5, padding: "1px 6px" }}>{s.courier}</span>}
+                        </div>
+                      </td>
+                      <td>{s.status || 'Shipped'}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="hstack-8" style={{ justifyContent: 'flex-end' }}>
+                          <a href={url} target="_blank" rel="noreferrer" className="btn sm">
+                            <Icon name="external_link" size={14} /> Open
+                          </a>
+                          <button onClick={() => handleCopy(url)} className="btn sm ghost">
+                            <Icon name="copy" size={14} /> Copy
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function HeartLottieLogo() {
