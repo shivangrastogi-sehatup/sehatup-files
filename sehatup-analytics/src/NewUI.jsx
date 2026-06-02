@@ -4806,7 +4806,7 @@ function OrderCreate({ context = {}, setRoute }) {
   const [cust, setCust] = useStateO(preset || null);
   const [items, setItems] = useStateO([]);
   const [includeSample, setIncludeSample] = useStateO(false);
-  const [pay, setPay] = useStateO("Prepaid");
+  const [pay, setPay] = useStateO(""); // no payment type auto-selected — must be chosen explicitly
   const [custFirstName, setCustFirstName] = useStateO("");
   const [custLastName, setCustLastName] = useStateO("");
   const [custPhone, setCustPhone] = useStateO("");
@@ -4879,7 +4879,8 @@ function OrderCreate({ context = {}, setRoute }) {
     const normalizedPhone = digits.length === 10 ? `+91${digits}` : rawPhone;
 
     if (!items || items.length === 0) return alert('Please add at least one product to the order.');
-    
+    if (pay !== "Prepaid" && pay !== "COD") return alert('Please select a payment type (Prepaid or COD) before creating the order.');
+
     setSavingMode(mode);
     try {
       let finalCustomerId = null;
@@ -4996,7 +4997,9 @@ function OrderCreate({ context = {}, setRoute }) {
         billing_address: billingAddr,
         line_items,
         tax_exempt: false,
-        tags: 'Created via CRM'
+        // Record the chosen payment method on the order so Prepaid vs COD is visible
+        // on the draft itself (it has no financial status until completed).
+        tags: ['Created via CRM', pay].filter(Boolean).join(', ')
       };
 
       // Shipping — COD uses selected rate; Prepaid uses "Prepaid Shipping" rate from Shopify
@@ -5095,10 +5098,14 @@ function OrderCreate({ context = {}, setRoute }) {
       if (mode === 'active') {
           try {
               console.log('--- COMPLETING ACTIVE ORDER ---');
+              // Prepaid → payment_pending:false marks the order as PAID.
+              // COD (and COD partial-payment) → payment_pending:true leaves it pending,
+              // so the balance is collected on delivery.
+              const paymentPending = pay !== "Prepaid";
               const completeReq = await fetch(`/shopify-v2/draft_orders/${draftRes.id}/complete.json`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ payment_pending: true })
+                  body: JSON.stringify({ payment_pending: paymentPending })
               });
               const completeData = await completeReq.json();
               if (!completeReq.ok) {
@@ -6220,7 +6227,7 @@ function OrderCreate({ context = {}, setRoute }) {
           </div>
 
           <div className="card">
-            <div className="section-title" style={{ marginBottom: 10 }}>Payment</div>
+            <div className="section-title" style={{ marginBottom: 10 }}>Payment *</div>
             <div className="stack-8">
               {["Prepaid","COD"].map(p => (
                 <div key={p} className="stack-8">

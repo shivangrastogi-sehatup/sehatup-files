@@ -25,7 +25,6 @@ const _getBmiClass = (bmi) => {
     if (bmi <= 24.9) return "Normal weight";
     if (bmi <= 29.9) return "Overweight";
     if (bmi <= 34.9) return "Obese Class I";
-    if (bmi <= 34.9) return "Obese Class I";
     if (bmi <= 39.9) return "Obese Class II";
     return "Obese Class III";
 };

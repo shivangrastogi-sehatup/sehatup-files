@@ -8,6 +8,28 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // Public questionnaire: visitors are NOT logged in, so they must be able to
+    // submit without auth. Same inbound-write pattern as nimbus_tracking/shipments
+    // below. Reads of completed submissions stay auth-only (admin dashboard) via
+    // the catch-all rule above; only the writes the quiz needs are opened here.
+
+    // In-progress (partial) submissions: created, read (to resume a session),
+    // updated as the user answers, and deleted once the quiz is completed.
+    match /partial_submissions/{doc} {
+      allow create, read, update, delete: if true;
+    }
+
+    // Completed submissions: created on finish, and updated for the post-OTP
+    // phone-number sync. The whatsapp_requests subcollection is written when the
+    // user asks for their report on WhatsApp.
+    match /questionnaire_submissions/{doc} {
+      allow create, update: if true;
+
+      match /whatsapp_requests/{reqDoc} {
+        allow create: if true;
+      }
+    }
+
     // Nimbus webhook writes raw tracking events without auth (inbound push only)
     match /nimbus_tracking/{doc} {
       allow write: if true;
