@@ -5137,16 +5137,27 @@ function OrderCreate({ context = {}, setRoute }) {
         updatedBy: window.SehatData?.me?.name || 'CRM Order Creator'
       };
 
-      const res = await fetch(gscriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
-      
-      alert(mode === 'active' ? 'Active Order successfully created!' : 'Draft Order successfully saved!');
+      // Best-effort CRM Google-Sheet logging. The Shopify order is ALREADY created
+      // by this point, so a sheet-sync failure (e.g. /api/leads 404 from a stale
+      // Apps Script URL) must never be reported as an order failure.
+      let sheetSynced = false;
+      try {
+        const res = await fetch(gscriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        sheetSynced = res.ok && !data.error;
+        if (!sheetSynced) console.warn('[CRM Sheet] sync failed:', res.status, data.error || '');
+      } catch (sheetErr) {
+        console.warn('[CRM Sheet] sync error (order still created):', sheetErr.message);
+      }
+
+      alert(
+        (mode === 'active' ? 'Active Order successfully created!' : 'Draft Order successfully saved!') +
+        (sheetSynced ? '' : '\n\n(Note: the CRM sheet log did not update, but the order is created in Shopify.)')
+      );
       if (setRoute) setRoute('crm_orders');
     } catch (err) {
       console.error(err);

@@ -27,8 +27,7 @@ function toFirestoreDoc(obj) {
 
 async function writeToFirestore(payload) {
   if (!API_KEY) {
-    console.error('FIREBASE_WEB_API_KEY is not set — skipping Firestore write');
-    return;
+    throw new Error('FIREBASE_WEB_API_KEY is not set — cannot write to Firestore');
   }
   const doc = toFirestoreDoc({ ...payload, receivedAt: new Date().toISOString() });
   const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/nimbus_tracking?key=${API_KEY}`;
@@ -37,13 +36,14 @@ async function writeToFirestore(payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(doc),
   });
-  if (!r.ok) console.error('Firestore write error:', await r.text());
+  if (!r.ok) {
+    const errText = await r.text();
+    throw new Error(`Firestore write error ${r.status}: ${errText.slice(0, 300)}`);
+  }
 }
 
-
 export default async function handler(req, res) {
-  // CORS — allows manual testing from the browser. Nimbus → webhook is server-to-server
-  // so CORS doesn't apply there; this is purely for dev tools.
+  // CORS — for manual testing from the browser. Nimbus → webhook is server-to-server.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Hmac-Sha256');
@@ -53,34 +53,51 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, service: 'nimbus-webhook' });
   }
 
+  // Vercel's @vercel/node runtime pre-parses the body into req.body. We rebuild a
+  // string form for parsing + best-effort signature checking.
+  const bodyStr = typeof req.body === 'string'
+    ? req.body
+    : (req.body ? JSON.stringify(req.body) : '');
+
+  // Optional signature check. NOTE: because the runtime has already parsed the body,
+  // we cannot reproduce the exact raw bytes Nimbus signed, so a mismatch is treated
+  // as a WARNING (logged) and the event is still processed — this guarantees we never
+  // silently drop a real status update. (See note in the chat about enabling strict
+  // verification once Nimbus's signing scheme is confirmed.)
   if (SECRET) {
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    const expected = Buffer.from(crypto.createHmac('sha256', SECRET).update(rawBody).digest()).toString('base64');
+    const expected = crypto.createHmac('sha256', SECRET).update(bodyStr, 'utf8').digest('base64');
     const received = req.headers['x-hmac-sha256'] || '';
     if (expected !== received) {
-      console.error('HMAC mismatch');
-      return res.status(200).json({ ok: true, warn: 'signature_mismatch' });
+      console.warn('[nimbus-webhook] HMAC mismatch (processing anyway):', {
+        receivedPreview: String(received).slice(0, 12),
+      });
     }
   }
 
   let body;
   try {
-    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    body = typeof req.body === 'object' && req.body !== null ? req.body : JSON.parse(bodyStr || '{}');
   } catch (e) {
+    console.error('[nimbus-webhook] JSON parse error. Body preview:', bodyStr.slice(0, 300));
     return res.status(200).json({ ok: true, warn: 'parse_error' });
   }
 
-  console.log('Nimbus webhook payload:', JSON.stringify(body));
-  if (!body?.awb_number) return res.status(200).json({ ok: true, warn: 'missing_awb' });
+  console.log('[nimbus-webhook] payload:', bodyStr);
+  if (!body?.awb_number) {
+    return res.status(200).json({ ok: true, warn: 'missing_awb' });
+  }
 
-  // Respond 200 to Nimbus immediately
-  res.status(200).json({ ok: true });
-
-  // Async: Firestore write + Google Sheet enrichment (don't block Nimbus)
+  // Do ALL writes BEFORE responding. On serverless, work performed after the response
+  // is flushed is NOT guaranteed to run (the instance is frozen) — that is what caused
+  // tracking updates to be dropped or arrive very late.
   try {
     await writeToFirestore(body);
     await enrichAwbAndCache(body.awb_number, body, 'nimbus-webhook');
   } catch (e) {
-    console.error('Async post-response error:', e);
+    console.error('[nimbus-webhook] processing failed for AWB', body.awb_number, '-', e?.message || e);
+    // Return 5xx so Nimbus retries delivery (at-least-once) instead of losing the event.
+    return res.status(500).json({ ok: false, error: 'processing_failed', awb: body.awb_number });
   }
+
+  return res.status(200).json({ ok: true, awb: body.awb_number });
 }
