@@ -6907,11 +6907,24 @@ function ShipmentsScreen() {
   const mergedShipments = useMemoS(() => {
     const allAwbs = new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
     return Array.from(allAwbs).map(awb => {
-      const events = trackingMap[awb] || [];
-      const latest = events[0] || {};
       const e = enrichedMap[awb] || {};
+      const webhookEvents = trackingMap[awb] || [];
+      const histEvents = Array.isArray(e.history) ? e.history : [];
+      // Merge the authoritative pulled history with live webhook events, dedupe and
+      // sort newest-first. The pulled history (from "Sync from Nimbus" / webhook-triggered
+      // re-pull) fills gaps that Nimbus never pushed over the webhook.
+      const seenEv = new Set();
+      const events = [...histEvents, ...webhookEvents]
+        .filter(ev => {
+          const key = `${ev.event_time || ''}|${(ev.status || '').toLowerCase()}|${ev.message || ''}`;
+          if (seenEv.has(key)) return false;
+          seenEv.add(key);
+          return true;
+        })
+        .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
+      const latest = events[0] || {};
 
-      // Prefer live tracking event, fall back to enriched doc's last status
+      // Prefer the newest merged event, fall back to enriched doc's last status
       const ns = (latest.status || e.rawStatus || e.status || '').toLowerCase();
       let status = e.status || 'Shipped';
       if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
@@ -6955,6 +6968,7 @@ function ShipmentsScreen() {
         customer,
         phoneKey:     e.phoneKey || null,
         enriching:    !customer && events.length > 0,
+        timeline:     events,
       };
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
   }, [trackingMap, enrichedMap]);
@@ -7200,7 +7214,7 @@ function ShipmentsScreen() {
 
         {/* Detail panel */}
         <div className="span-12 col">
-          <ShipmentDetail s={sel} events={trackingMap[sel?.awb] || []} />
+          <ShipmentDetail s={sel} events={sel?.timeline || trackingMap[sel?.awb] || []} />
         </div>
       </div>
     </div>
@@ -9779,9 +9793,19 @@ function ShipmentTrackingScreen({ setRoute, openCustomer }) {
   const mergedShipments = useMemo(() => {
     const allAwbs = new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
     return Array.from(allAwbs).map(awb => {
-      const events = trackingMap[awb] || [];
-      const latest = events[0] || {};
       const e = enrichedMap[awb] || {};
+      const webhookEvents = trackingMap[awb] || [];
+      const histEvents = Array.isArray(e.history) ? e.history : [];
+      const seenEv = new Set();
+      const events = [...histEvents, ...webhookEvents]
+        .filter(ev => {
+          const key = `${ev.event_time || ''}|${(ev.status || '').toLowerCase()}|${ev.message || ''}`;
+          if (seenEv.has(key)) return false;
+          seenEv.add(key);
+          return true;
+        })
+        .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
+      const latest = events[0] || {};
 
       const ns = (latest.status || e.rawStatus || e.status || '').toLowerCase();
       let status = e.status || 'Shipped';

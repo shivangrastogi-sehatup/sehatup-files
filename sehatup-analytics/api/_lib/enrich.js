@@ -121,6 +121,41 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
     const orderId     = details?.order_id ? String(details.order_id) : null;
     const courier     = details?.courier_name || latestEvent.courier || 'Nimbus';
 
+    // Full event history from Nimbus's track API (newest-first). This is the
+    // authoritative timeline — webhook pushes are lossy/delayed, so we re-pull the
+    // complete history on every enrichment (webhook trigger OR manual sync).
+    const rawHistory = Array.isArray(details?.history) ? details.history : [];
+    const history = rawHistory.map(h => ({
+      status:        h.ship_status    || h.status || '',
+      statusCode:    h.status_code    || '',
+      courierStatus: h.courier_status || '',
+      location:      h.location       || '',
+      event_time:    h.event_time     || '',
+      message:       h.message        || '',
+    }));
+    // Fold in the webhook-provided event too (it may be newer than the pull), then
+    // dedupe and sort newest-first so history[0] is always the latest scan.
+    if (latestEvent && (latestEvent.status || latestEvent.event_time)) {
+      history.push({
+        status:        latestEvent.status     || '',
+        statusCode:    latestEvent.status_code || '',
+        courierStatus: '',
+        location:      latestEvent.location   || '',
+        event_time:    latestEvent.event_time || '',
+        message:       latestEvent.message    || '',
+      });
+    }
+    const seenEv = new Set();
+    const timeline = history
+      .filter(ev => {
+        const key = `${ev.event_time || ''}|${(ev.status || '').toLowerCase()}|${ev.message || ''}`;
+        if (seenEv.has(key)) return false;
+        seenEv.add(key);
+        return true;
+      })
+      .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
+    const newest = timeline[0] || {};
+
     const order = await fetchShopifyOrder(orderNumber || orderId);
     const sh = order?.shipping_address || {};
     const fn = order?.customer?.first_name || '';
@@ -141,13 +176,16 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       orderNumber: orderNumber || '',
       orderId:     orderId     || '',
       courier,
-      // Latest tracking event
-      status:        latestEvent.status     || details?.current_status || '',
-      rawStatus:     latestEvent.status     || '',
-      lastLocation:  latestEvent.location   || '',
-      lastEventTime: latestEvent.event_time || '',
-      lastMessage:   latestEvent.message    || '',
-      rtoAwb:        latestEvent.rto_awb    || '',
+      // Latest tracking event (derived from the newest event across pulled history + webhook)
+      status:        newest.status     || latestEvent.status || details?.status || '',
+      rawStatus:     newest.status     || latestEvent.status || '',
+      lastLocation:  newest.location   || latestEvent.location   || '',
+      lastEventTime: newest.event_time || latestEvent.event_time || '',
+      lastMessage:   newest.message    || latestEvent.message    || '',
+      rtoAwb:        latestEvent.rto_awb || details?.rto_awb || '',
+      // Full authoritative timeline (newest-first) + count
+      history:       timeline,
+      eventCount:    timeline.length,
       // Customer / order details from Shopify
       customer,
       shippingAddress: {
