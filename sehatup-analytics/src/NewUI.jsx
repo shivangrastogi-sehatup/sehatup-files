@@ -6927,9 +6927,12 @@ function ShipmentsScreen() {
       // Prefer the newest merged event, fall back to enriched doc's last status
       const ns = (latest.status || e.rawStatus || e.status || '').toLowerCase();
       let status = e.status || 'Shipped';
-      if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
+      // ⚠️ RTO / fail check MUST come before 'delivered' and 'out for delivery' checks
+      // because Nimbus sends statuses like "RTO Delivered" and "RTO Out For Delivery"
+      // which would otherwise be incorrectly classified as Delivered / Out for delivery.
+      if (ns.includes('rto') || ns.includes('return to origin') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
+      else if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
       else if (ns.includes('out for delivery') || ns === 'out_for_delivery') status = 'Out for delivery';
-      else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
       else if (ns.includes('exception') || ns.includes('hold') || ns.includes('pending') || ns.includes('delay')) status = 'Exception';
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
       else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
@@ -7440,23 +7443,45 @@ function TrackingTimeline({ events, status, failed }) {
       <div className="stack-12">
         {events.map((e, i) => {
           const isFirst = i === 0;
-          const isFail = (e.status || '').toLowerCase().includes('fail') || (e.status || '').toLowerCase().includes('rto');
-          const color = isFail ? "var(--risk-critical)" : (isFirst ? "var(--risk-moderate)" : "var(--accent)");
+          const evStatus = (e.status || '').toLowerCase();
+          const evMessage = (e.message || '').toLowerCase();
+          // Classify each individual event for timeline dot color and badge
+          const isRtoPhase = evStatus.includes('rto') || evMessage.includes('rto')
+            || evStatus.includes('return to origin') || evStatus.includes('return');
+          const isPlainFail = !isRtoPhase && (evStatus.includes('fail') || evStatus.includes('undeliver') || evStatus.includes('refuse'));
+          const isRtoDelivered = isRtoPhase && (evStatus.includes('delivered') || evMessage.includes('rto delivered'));
+          const isRtoOfd = isRtoPhase && (evStatus.includes('out for delivery') || evStatus.includes('out_for_delivery') || evMessage.includes('rto out for delivery'));
+          const isException = !isRtoPhase && !isPlainFail && (evStatus.includes('exception') || evStatus.includes('hold'));
+
+          // Dot color: RTO-phase events use orange, plain fail uses red, others use accent
+          const color = isPlainFail ? "var(--risk-critical)"
+            : isRtoPhase ? "#f97316"   /* orange for all RTO-phase events */
+            : isFirst ? "var(--risk-moderate)"
+            : "var(--accent)";
+
+          // Badge to show next to the event status text
+          let badge = null;
+          if (isRtoDelivered)   badge = <Badge tone="critical">RTO Delivered</Badge>;
+          else if (isRtoOfd)    badge = <Badge tone="moderate">RTO Out for Delivery</Badge>;
+          else if (isRtoPhase)  badge = <Badge tone="critical">RTO / In Transit</Badge>;
+          else if (isPlainFail) badge = <Badge tone="critical">Failed</Badge>;
+          else if (isException) badge = <Badge tone="moderate">Exception</Badge>;
+          else if (isFirst)     badge = <Badge tone="moderate">latest</Badge>;
+
           return (
             <div key={i} style={{ position: "relative", paddingLeft: 24 }}>
               <span style={{
                 position: "absolute", left: 0, top: 3, width: 12, height: 12, borderRadius: 99,
                 background: color, border: "2px solid " + color,
-                boxShadow: isFirst ? "0 0 0 4px color-mix(in oklab, var(--risk-moderate) 22%, transparent)" : "none",
+                boxShadow: isFirst ? `0 0 0 4px color-mix(in oklab, ${color} 22%, transparent)` : "none",
                 zIndex: 1,
               }} />
               {i < events.length - 1 && (
                 <span style={{ position: "absolute", left: 5, top: 16, bottom: -14, width: 2, background: "var(--border)" }} />
               )}
               <div className="hstack-8" style={{ fontSize: 13 }}>
-                <span className="fw5" style={{ color: isFail ? "var(--risk-critical)" : undefined }}>{e.status}</span>
-                {isFirst && !isFail && <Badge tone="moderate">latest</Badge>}
-                {isFail && <Badge tone="critical">RTO / Failed</Badge>}
+                <span className="fw5" style={{ color: isPlainFail ? "var(--risk-critical)" : isRtoPhase ? "#f97316" : undefined }}>{e.status}</span>
+                {badge}
                 <span className="spacer" />
                 <span className="muted" style={{ fontSize: 11.5 }}>{e.event_time}</span>
               </div>
@@ -9809,9 +9834,12 @@ function ShipmentTrackingScreen({ setRoute, openCustomer }) {
 
       const ns = (latest.status || e.rawStatus || e.status || '').toLowerCase();
       let status = e.status || 'Shipped';
-      if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
+      // ⚠️ RTO / fail check MUST come before 'delivered' and 'out for delivery' checks
+      // because Nimbus sends statuses like "RTO Delivered" and "RTO Out For Delivery"
+      // which would otherwise be incorrectly classified as Delivered / Out for delivery.
+      if (ns.includes('rto') || ns.includes('return to origin') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
+      else if (ns.includes('delivered') && !ns.includes('out')) status = 'Delivered';
       else if (ns.includes('out for delivery') || ns === 'out_for_delivery') status = 'Out for delivery';
-      else if (ns.includes('rto') || ns.includes('return') || ns.includes('fail') || ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) status = 'Failed delivery';
       else if (ns.includes('exception') || ns.includes('hold') || ns.includes('pending') || ns.includes('delay')) status = 'Exception';
       else if (ns.includes('transit') || ns === 'in transit') status = 'Shipped';
       else if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) status = 'Shipped';
