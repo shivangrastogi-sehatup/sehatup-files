@@ -1711,12 +1711,19 @@ input:focus {
 /* Login Specific Styles */
 .login-container {
   min-height: 100vh;
+  /* dvh accounts for mobile browser chrome so the card isn't pushed off-screen */
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
   position: relative;
-  overflow: hidden;
+  /* Only clip horizontally. Vertical stays scrollable so a card taller than the
+     viewport (small screens / browser zoom) can be scrolled to instead of being
+     clipped below the bottom edge. The mesh-gradient is position:fixed, so it is
+     unaffected by removing the vertical clip. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .login-card {

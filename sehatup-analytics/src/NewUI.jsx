@@ -5097,25 +5097,69 @@ function OrderCreate({ context = {}, setRoute }) {
       let finalOrderId = draftRes.id;
       if (mode === 'active') {
           try {
-              console.log('--- COMPLETING ACTIVE ORDER ---');
-              // Prepaid → payment_pending:false marks the order as PAID.
-              // COD (and COD partial-payment) → payment_pending:true leaves it pending,
-              // so the balance is collected on delivery.
-              const paymentPending = pay !== "Prepaid";
-              const completeReq = await fetch(`/shopify-v2/draft_orders/${draftRes.id}/complete.json`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ payment_pending: paymentPending })
-              });
-              const completeData = await completeReq.json();
-              if (!completeReq.ok) {
-                  throw new Error(completeData.errors ? JSON.stringify(completeData.errors) : completeReq.statusText);
+              console.log('--- CREATING ACTIVE ORDER (explicit payment method) ---');
+              // Shopify's draft-complete only ever records the payment as the generic "manual"
+              // gateway. To show a real payment method we instead build the order from the
+              // draft's already-computed totals and attach an explicit payment transaction:
+              //   Prepaid → paid, gateway "Standard (Prepaid)"
+              //   COD (incl. partial-payment) → payment pending, gateway "Cash on Delivery (COD)"
+              // then discard the draft. Totals are taken straight from the draft so they match.
+              const PAYMENT_GATEWAY_PREPAID = 'Standard (Prepaid)';
+              const PAYMENT_GATEWAY_COD = 'Cash on Delivery (COD)';
+              const isPrepaid = pay === "Prepaid";
+              const d = draftRes;
+              const orderPayload = { order: {
+                  line_items: (d.line_items || []).map(li => {
+                      const item = { quantity: li.quantity, price: li.price };
+                      if (li.variant_id) item.variant_id = li.variant_id;
+                      if (li.title) item.title = li.title;
+                      if (li.applied_discount) item.applied_discount = li.applied_discount;
+                      return item;
+                  }),
+                  shipping_lines: d.shipping_line
+                      ? [{ title: d.shipping_line.title, price: d.shipping_line.price, code: d.shipping_line.code || 'custom' }]
+                      : [],
+                  tags: d.tags || draftData.tags,
+                  financial_status: isPrepaid ? 'paid' : 'pending',
+                  transactions: [{
+                      kind: 'sale',
+                      status: isPrepaid ? 'success' : 'pending',
+                      amount: d.total_price,
+                      gateway: isPrepaid ? PAYMENT_GATEWAY_PREPAID : PAYMENT_GATEWAY_COD,
+                  }],
+                  send_receipt: false,
+                  inventory_behaviour: 'decrement_obeying_policy',
+              }};
+              if (d.customer?.id) orderPayload.order.customer = { id: d.customer.id };
+              if (d.email) orderPayload.order.email = d.email;
+              if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
+              if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
+              // Order-level discount → discount_codes (the Orders API has no order-level applied_discount).
+              if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
+                  orderPayload.order.discount_codes = [{
+                      code: d.applied_discount.title || 'Discount',
+                      amount: d.applied_discount.amount,
+                      type: 'fixed_amount',
+                  }];
               }
-              finalOrderId = completeData.draft_order?.order_id || draftRes.id;
-              console.log('--- ACTIVE ORDER COMPLETE ---', finalOrderId);
+
+              const orderReq = await fetch('/shopify-v2/orders.json', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(orderPayload),
+              });
+              const orderResData = await orderReq.json();
+              if (!orderReq.ok || !orderResData.order) {
+                  throw new Error(orderResData.errors ? JSON.stringify(orderResData.errors) : orderReq.statusText);
+              }
+              finalOrderId = orderResData.order.id;
+              console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, orderResData.order.payment_gateway_names);
+
+              // The draft was only needed to compute prices/shipping/discounts — discard it.
+              fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => {});
           } catch (compErr) {
-              console.error('--- COMPLETION ERROR ---', compErr);
-              throw new Error('Failed to complete active order: ' + compErr.message);
+              console.error('--- ACTIVE ORDER ERROR ---', compErr);
+              throw new Error('Failed to create active order: ' + compErr.message);
           }
       }
 
@@ -6263,14 +6307,17 @@ function OrderCreate({ context = {}, setRoute }) {
                         <div className="stack-6">
                           {!useCustomShipping && !partialPaymentMode && shippingRates
                             .filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title))
-                            .map((rate, i) => (
-                            <label key={i} className="hstack-8" style={{ cursor: "pointer" }}>
-                              <input type="radio" name="shippingRate" checked={selectedShipping?.id === rate.id} onChange={() => setSelectedShipping(rate)} />
+                            .map((rate, i) => {
+                            const isSel = selectedShipping?.id === rate.id;
+                            return (
+                            <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                              <input type="radio" name="shippingRate" checked={isSel} onChange={() => setSelectedShipping(rate)} style={{ accentColor: "var(--accent)" }} />
                               <span style={{ fontSize: 13 }}>{rate.title}</span>
                               <span className="spacer" />
-                              <span className="num fw5" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
+                              <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
                             </label>
-                          ))}
+                            );
+                          })}
 
                           {/* Partial Payment Received — Rs. 0 shipping, amount deducted from COD total */}
                           {!useCustomShipping && (
@@ -7016,9 +7063,20 @@ function ShipmentsScreen() {
   useEffect(() => {
     const unsub = onSnapshot(collectionGroup(db, 'awbs'), (snap) => {
       const map = {};
+      // An AWB can have two docs: a stale `unknown_<awb>` one written before Shopify
+      // returned a customer, plus the real one under the customer's phone. Prefer the
+      // doc that actually has customer info (then the most recently updated) so the
+      // empty placeholder never hides the enriched data.
+      const keep = (a, b) => {
+        const ca = !!(a?.customer?.name || a?.customer?.phone);
+        const cb = !!(b?.customer?.name || b?.customer?.phone);
+        if (ca !== cb) return cb ? b : a;
+        return (b?.updatedAt || '') > (a?.updatedAt || '') ? b : a;
+      };
       snap.docs.forEach(d => {
         const data = d.data();
-        if (data?.awb) map[data.awb] = data;
+        if (!data?.awb) return;
+        map[data.awb] = map[data.awb] ? keep(map[data.awb], data) : data;
       });
       setEnrichedMap(map);
     }, (err) => {
@@ -9947,9 +10005,20 @@ function ShipmentTrackingScreen({ setRoute, openCustomer }) {
   useEffect(() => {
     const unsub = onSnapshot(collectionGroup(db, 'awbs'), (snap) => {
       const map = {};
+      // An AWB can have two docs: a stale `unknown_<awb>` one written before Shopify
+      // returned a customer, plus the real one under the customer's phone. Prefer the
+      // doc that actually has customer info (then the most recently updated) so the
+      // empty placeholder never hides the enriched data.
+      const keep = (a, b) => {
+        const ca = !!(a?.customer?.name || a?.customer?.phone);
+        const cb = !!(b?.customer?.name || b?.customer?.phone);
+        if (ca !== cb) return cb ? b : a;
+        return (b?.updatedAt || '') > (a?.updatedAt || '') ? b : a;
+      };
       snap.docs.forEach(d => {
         const data = d.data();
-        if (data?.awb) map[data.awb] = data;
+        if (!data?.awb) return;
+        map[data.awb] = map[data.awb] ? keep(map[data.awb], data) : data;
       });
       setEnrichedMap(map);
     }, (err) => {

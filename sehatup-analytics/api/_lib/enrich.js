@@ -57,6 +57,18 @@ async function patchFirestoreDoc(path, fields) {
   return await r.json();
 }
 
+// Best-effort delete (used to clean up a stale `unknown_<awb>` placeholder doc once
+// the AWB has been re-enriched under the customer's real phone). Never throws.
+async function deleteFirestoreDoc(path) {
+  if (!API_KEY) return;
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}?key=${API_KEY}`;
+  try {
+    await fetch(url, { method: 'DELETE' });
+  } catch (e) {
+    console.warn('Firestore DELETE failed (non-fatal):', path, e?.message || e);
+  }
+}
+
 // ─────── Nimbus + Shopify lookups ───────
 
 export async function fetchNimbusDetails(awb) {
@@ -205,6 +217,14 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       updatedAt:    new Date().toISOString(),
     };
     const awbWrite = await patchFirestoreDoc(`shipments/${phoneKey}/awbs/${awb}`, awbDoc);
+
+    // If we resolved a real customer phone, remove any stale placeholder doc written
+    // under `unknown_<awb>` by an earlier enrichment (before Shopify returned a
+    // customer). Otherwise the dashboard sees two docs for one AWB and the empty one
+    // can hide the enriched data.
+    if (!String(phoneKey).startsWith('unknown_')) {
+      await deleteFirestoreDoc(`shipments/unknown_${awb}/awbs/${awb}`);
+    }
 
     // ─── Update parent customer summary (merge) ───
     let parentWrite = null;

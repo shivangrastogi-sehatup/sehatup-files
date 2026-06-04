@@ -39,6 +39,14 @@ const PAYMENT_TERMS_OPTIONS = [
     { value: 'FIXED', label: 'Fixed date' },
 ];
 
+// Payment-method labels for CRM orders. Shopify's draft-complete API only ever records
+// the generic "manual" gateway (and payment_gateway_id is ignored), so instead we create
+// the order directly with an explicit payment transaction carrying these gateway names —
+// verified to surface as the order's payment method. COD stays payment-pending; Prepaid
+// is marked paid.
+const PAYMENT_GATEWAY_COD = 'Cash on Delivery (COD)';
+const PAYMENT_GATEWAY_PREPAID = 'Standard (Prepaid)';
+
 // ─── OrderForm ───────────────────────────────────────────────────────────────
 // The reusable order-creation form. Used by:
 //   • OrderCreationCRM (right-hand panel, sheet sync enabled)
@@ -536,9 +544,8 @@ const OrderForm = ({
             });
 
             setShippingRates(rates);
-            if (rates.length > 0 && !selectedShipping && !useCustomShipping) {
-                setSelectedShipping(rates[0]);
-            }
+            // No auto-selection — the agent must consciously pick the shipping option
+            // (e.g. "Cash on Delivery (COD)" vs "Prepaid Shipping") for every order.
         } catch (err) {
             console.error('[Shipping] Failed to fetch rates:', err);
         } finally {
@@ -1224,19 +1231,65 @@ const OrderForm = ({
                 return;
             }
 
-            updateToast(tid, { message: 'Completing & confirming order...', steps: ['Customer resolved', 'Draft order created'] });
-            const completeRes = await fetch(`/shopify-v2/draft_orders/${draftData.draft_order.id}/complete.json`, {
-                method: 'PUT',
+            updateToast(tid, { message: 'Confirming order...', steps: ['Customer resolved', 'Draft order created'] });
+            // Shopify's draft-complete only ever records the payment as "manual" (and ignores
+            // payment_gateway_id). To show a real payment method we build the order from the
+            // draft's already-computed totals and attach an explicit payment transaction —
+            // COD → pending ("Cash on Delivery (COD)"), Prepaid → paid ("Standard (Prepaid)") —
+            // then discard the draft. Totals come straight from the draft so they match exactly.
+            const d = draftData.draft_order;
+            const orderPayload = {
+                order: {
+                    line_items: (d.line_items || []).map(li => {
+                        const item = { quantity: li.quantity, price: li.price };
+                        if (li.variant_id) item.variant_id = li.variant_id;
+                        if (li.title) item.title = li.title;
+                        if (li.applied_discount) item.applied_discount = li.applied_discount;
+                        return item;
+                    }),
+                    shipping_lines: d.shipping_line
+                        ? [{ title: d.shipping_line.title, price: d.shipping_line.price, code: d.shipping_line.code || 'custom' }]
+                        : [],
+                    tags: d.tags || 'Created via CRM',
+                    financial_status: payDueLater ? 'pending' : 'paid',
+                    transactions: [{
+                        kind: 'sale',
+                        status: payDueLater ? 'pending' : 'success',
+                        amount: d.total_price,
+                        gateway: payDueLater ? PAYMENT_GATEWAY_COD : PAYMENT_GATEWAY_PREPAID,
+                    }],
+                    send_receipt: false,
+                    inventory_behaviour: 'decrement_obeying_policy',
+                },
+            };
+            if (d.customer?.id) orderPayload.order.customer = { id: d.customer.id };
+            if (d.email) orderPayload.order.email = d.email;
+            if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
+            if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
+            // Order-level discount → discount_codes (the Orders API has no order-level applied_discount).
+            if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
+                orderPayload.order.discount_codes = [{
+                    code: d.applied_discount.title || 'Discount',
+                    amount: d.applied_discount.amount,
+                    type: 'fixed_amount',
+                }];
+            }
+
+            const orderRes = await fetch('/shopify-v2/orders.json', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: payDueLater ? JSON.stringify({ payment_pending: true }) : undefined,
+                body: JSON.stringify(orderPayload),
             });
-            const completeData = await safeJson(completeRes);
-            if (!completeRes.ok) {
-                updateToast(tid, { type: 'error', title: 'Completion Failed', message: `${completeRes.status}: ${JSON.stringify(completeData.errors || completeData.error)}` });
+            const orderData = await safeJson(orderRes);
+            if (!orderRes.ok || !orderData.order) {
+                updateToast(tid, { type: 'error', title: 'Order Failed', message: `${orderRes.status}: ${JSON.stringify(orderData.errors || orderData.error)}` });
                 return;
             }
-            const orderNum = completeData.draft_order?.order_id || draftData.draft_order.id;
-            const sheetRes = await updateSheetRow({ type: 'Order', id: orderNum });
+            // The draft was only needed to compute prices/shipping/discounts — discard it.
+            fetch(`/shopify-v2/draft_orders/${d.id}.json`, { method: 'DELETE' }).catch(() => {});
+
+            const orderNum = orderData.order.order_number || orderData.order.id;
+            const sheetRes = await updateSheetRow({ type: 'Order', id: orderData.order.id });
             const sheetOk = sheetRes.ok === true;
             const sheetSkipped = sheetRes.skipped === true;
             const payMsg = payDueLater ? 'Payment pending (COD / due later)' : 'Payment collected';
@@ -1249,7 +1302,7 @@ const OrderForm = ({
                 autoDismiss: 7000,
             });
             window.dispatchEvent(new Event('crm_refresh_customers'));
-            if (onOrderPlaced) onOrderPlaced({ type: 'Order', id: orderNum, sheetSynced: sheetOk });
+            if (onOrderPlaced) onOrderPlaced({ type: 'Order', id: orderData.order.id, sheetSynced: sheetOk });
         } catch (err) {
             console.error('[Place Order] failed:', err);
             updateToast(tid, { type: 'error', title: 'Order Failed', message: err.message });
