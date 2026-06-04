@@ -4961,12 +4961,10 @@ function OrderCreate({ context = {}, setRoute }) {
   const [partialPaymentRef, setPartialPaymentRef] = useStateO('');
   const [orderDiscountPopupOpen, setOrderDiscountPopupOpen] = useStateO(false);
   const [orderDiscountCode, setOrderDiscountCode] = useStateO("");
-  const [orderDiscountApplyAutomatic, setOrderDiscountApplyAutomatic] = useStateO(false);
   const [orderDiscountIsCustom, setOrderDiscountIsCustom] = useStateO(false);
   const [orderDiscountType, setOrderDiscountType] = useStateO("amount");
   const [orderDiscountValue, setOrderDiscountValue] = useStateO("");
   const [orderDiscountReason, setOrderDiscountReason] = useStateO("");
-  const [discountShake, setDiscountShake] = useStateO(false);
   const [orderDiscountPopupClosing, setOrderDiscountPopupClosing] = useStateO(false);
   // Active Shopify discount codes for the autocomplete, the resolved code currently
   // applied (so its value affects the total/order), and a snapshot of all discount
@@ -6531,7 +6529,7 @@ function OrderCreate({ context = {}, setRoute }) {
                     )}
                   </label>
                   {p === "COD" && pay === "COD" && (
-                    <div style={{ marginLeft: 32, padding: "12px", background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                    <div className="fade-in" style={{ padding: "12px", background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
                       <div className="fw6" style={{ marginBottom: 8, fontSize: 13 }}>Shipping method</div>
                       {isLoadingShipping ? (
                         <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
