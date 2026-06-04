@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
-import { searchCustomers, getOrders, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { searchCustomers, getAllOrders, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth } from './firebase';
 import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
@@ -6246,7 +6246,6 @@ function OrderCreate({ context = {}, setRoute }) {
                     <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
                     <div className="stack-2">
                       <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
-                      {p === "Prepaid" && <div className="muted" style={{ fontSize: 12 }}>Send Razorpay link via WhatsApp</div>}
                     </div>
                     {p === "COD" && (
                       <>
@@ -6615,13 +6614,16 @@ function OrdersHistory({ setRoute, openCustomer }) {
   const [orders, setOrders] = useStateO([]);
   const [loading, setLoading] = useStateO(true);
   const [expandedOrderId, setExpandedOrderId] = useStateO(null);
+  const [page, setPage] = useStateO(1);
+  const [selectedOrder, setSelectedOrder] = useStateO(null);
+  const PER_PAGE = 25;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     async function fetchOrders() {
       setLoading(true);
       try {
-        const data = await getOrders({ limit: 50, status: 'any' });
+        const data = await getAllOrders({ status: 'any' });
 
         let imageMap = {};
         const productIds = [...new Set(data.flatMap(o => o.line_items?.map(i => i.product_id)).filter(Boolean))];
@@ -6656,6 +6658,7 @@ function OrdersHistory({ setRoute, openCustomer }) {
 
         const mapped = data.map(o => ({
           id: o.order_number || o.id,
+          shopifyId: o.id,
           status: o.cancelled_at ? 'Cancelled' : (o.fulfillment_status === 'fulfilled' ? 'Shipped' : (o.financial_status === 'paid' ? 'Packed' : 'Placed')),
           amount: parseFloat(o.total_price || 0),
           paymentMode: o.gateway || 'COD',
@@ -6668,7 +6671,10 @@ function OrdersHistory({ setRoute, openCustomer }) {
             name: `${o.customer?.first_name || ""} ${o.customer?.last_name || ""}`.trim() || "Unknown",
             phone: o.customer?.phone || o.shipping_address?.phone || "-",
             avatarHue: Math.floor(Math.random() * 360)
-          }
+          },
+          // Full raw order + product images — used by the order detail drawer.
+          raw: o,
+          itemImages: imageMap,
         }));
         setOrders(mapped);
       } catch (err) {
@@ -6682,6 +6688,14 @@ function OrdersHistory({ setRoute, openCustomer }) {
 
   const counts = orders.reduce((m, o) => { m[o.status] = (m[o.status] || 0) + 1; return m; }, {});
   const totalRev = orders.reduce((s, o) => s + o.amount, 0);
+
+  // Filtering + client-side pagination (supports arbitrary "jump to page").
+  const filteredOrders = tab === "all" ? orders : orders.filter(o => o.status === tab);
+  const pageCount = Math.max(1, Math.ceil(filteredOrders.length / PER_PAGE));
+  const pageClamped = Math.min(Math.max(1, page), pageCount);
+  const pagedOrders = filteredOrders.slice((pageClamped - 1) * PER_PAGE, pageClamped * PER_PAGE);
+  const goTab = (v) => { setTab(v); setPage(1); };
+  const thSticky = { position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 2 };
 
   return (
     <div className="col fade-in">
@@ -6704,7 +6718,7 @@ function OrdersHistory({ setRoute, openCustomer }) {
       </div>
 
       <div className="toolbar">
-        <Tabs value={tab} onChange={setTab} items={[
+        <Tabs value={tab} onChange={goTab} items={[
           { label: "All", value: "all", count: orders.length },
           { label: "Placed", value: "Placed", count: counts.Placed || 0 },
           { label: "Packed", value: "Packed", count: counts.Packed || 0 },
@@ -6720,25 +6734,25 @@ function OrdersHistory({ setRoute, openCustomer }) {
       </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table className="tbl">
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 360px)" }}>
+          <table className="tbl" style={{ minWidth: 1080 }}>
             <thead>
               <tr>
-                <th>Order</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th style={{ textAlign: "center" }}>Items</th>
-                <th>Amount</th>
-                <th>Payment status</th>
-                <th>Status</th>
-                <th>Courier</th>
-                <th></th>
+                <th style={thSticky}>Order</th>
+                <th style={thSticky}>Date</th>
+                <th style={thSticky}>Customer</th>
+                <th style={{ ...thSticky, textAlign: "center" }}>Items</th>
+                <th style={thSticky}>Amount</th>
+                <th style={thSticky}>Payment status</th>
+                <th style={thSticky}>Status</th>
+                <th style={thSticky}>Courier</th>
+                <th style={thSticky}></th>
               </tr>
             </thead>
             <tbody>
-              {(tab === "all" ? orders : orders.filter(o => o.status === tab)).map(o => (
-                <tr key={o.id} style={{ textDecoration: o.status === 'Cancelled' ? 'line-through' : 'none', opacity: o.status === 'Cancelled' ? 0.6 : 1, transition: 'all 0.2s' }}>
-                  <td className="mono num fw5">#{o.id}</td>
+              {pagedOrders.map(o => (
+                <tr key={o.shopifyId} style={{ textDecoration: o.status === 'Cancelled' ? 'line-through' : 'none', opacity: o.status === 'Cancelled' ? 0.6 : 1, transition: 'all 0.2s' }}>
+                  <td className="mono num fw5" onClick={() => setSelectedOrder(o)} style={{ cursor: "pointer", color: "var(--accent)" }} title="View order details">#{o.id}</td>
                   <td className="muted num">{o.placedAt}</td>
                   <td>
                     <div className="hstack-10">
@@ -6786,14 +6800,126 @@ function OrdersHistory({ setRoute, openCustomer }) {
                       <div className="muted mono" style={{ fontSize: 11 }}>{o.awb}</div>
                     </div>
                   </td>
-                  <td className="right"><button className="btn sm ghost"><Icon name="more" /></button></td>
+                  <td className="right"><button className="btn sm ghost" onClick={() => setSelectedOrder(o)} title="View order details"><Icon name="eye" /></button></td>
                 </tr>
               ))}
+              {!loading && pagedOrders.length === 0 && (
+                <tr><td colSpan="9"><div className="empty" style={{ padding: 40, textAlign: "center" }}><Icon name="package" size={20} /><div>No orders found</div></div></td></tr>
+              )}
             </tbody>
           </table>
         </div>
+        {/* Pagination + jump */}
+        <div className="hstack-8" style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
+          <span className="muted" style={{ fontSize: 12.5 }}>
+            {filteredOrders.length === 0 ? "No orders" : `Showing ${(pageClamped - 1) * PER_PAGE + 1}–${Math.min(pageClamped * PER_PAGE, filteredOrders.length)} of ${filteredOrders.length}`}
+          </span>
+          <span className="spacer" />
+          <button className="btn sm ghost" disabled={pageClamped <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}><Icon name="chevron_left" /> Prev</button>
+          <span className="muted num" style={{ fontSize: 12.5 }}>Page {pageClamped} / {pageCount}</span>
+          <button className="btn sm ghost" disabled={pageClamped >= pageCount} onClick={() => setPage(p => Math.min(pageCount, p + 1))}>Next <Icon name="chevron_right" /></button>
+          <div className="hstack-6" style={{ marginLeft: 8 }}>
+            <span className="muted" style={{ fontSize: 12.5 }}>Jump to</span>
+            <input
+              className="input num" type="number" min={1} max={pageCount}
+              value={pageClamped}
+              onChange={e => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setPage(Math.min(pageCount, Math.max(1, v))); }}
+              style={{ width: 64, height: 30, padding: "4px 8px" }}
+            />
+          </div>
+        </div>
       </div>
+
+      {selectedOrder && <OrderDetailDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
     </div>
+  );
+}
+
+// Order detail drawer — full Shopify-style view (customer, address, products, totals).
+function OrderDetailDrawer({ order, onClose }) {
+  const o = order?.raw || {};
+  const sa = o.shipping_address || {};
+  const ba = o.billing_address || {};
+  const items = o.line_items || [];
+  const images = order?.itemImages || {};
+  const money = (v) => `Rs. ${parseFloat(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const addrLine = (a) => [a.address1, a.address2, a.city, a.province, a.zip, a.country].filter(Boolean).join(', ');
+  const fullName = `${o.customer?.first_name || sa.first_name || ''} ${o.customer?.last_name || sa.last_name || ''}`.trim() || sa.name || order.customer?.name || 'Unknown';
+  const shippingLine = (o.shipping_lines && o.shipping_lines[0]) || null;
+  const billDiffers = (ba.address1 || ba.city) && addrLine(ba) && addrLine(ba) !== addrLine(sa);
+
+  return (
+    <Drawer wide onClose={onClose}
+      title={`Order #${o.order_number || o.name || order.id}`}
+      subtitle={`${order.placedAt || formatOrderDate(o.created_at)} · ${money(o.total_price)}`}
+    >
+      <div className="hstack-8" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
+        <PaymentStatusBadge status={order.paymentStatus} />
+        <OrderStatusBadge status={order.status} />
+      </div>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="section-title" style={{ marginBottom: 10 }}>Customer</div>
+        <div className="stack-6" style={{ fontSize: 13 }}>
+          <div className="fw6">{fullName}</div>
+          {(o.customer?.phone || sa.phone) && <div className="num">{o.customer?.phone || sa.phone}</div>}
+          {(o.customer?.email || o.email) && <div className="muted">{o.customer?.email || o.email}</div>}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="section-title" style={{ marginBottom: 10 }}>Shipping address</div>
+        <div style={{ fontSize: 13 }}>
+          {sa.name && <div className="fw5">{sa.name}</div>}
+          <div className="muted">{addrLine(sa) || '—'}</div>
+          {sa.phone && <div className="muted num" style={{ marginTop: 4 }}>{sa.phone}</div>}
+        </div>
+      </div>
+
+      {billDiffers && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="section-title" style={{ marginBottom: 10 }}>Billing address</div>
+          <div style={{ fontSize: 13 }}>
+            {ba.name && <div className="fw5">{ba.name}</div>}
+            <div className="muted">{addrLine(ba)}</div>
+          </div>
+        </div>
+      )}
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="section-title" style={{ marginBottom: 12 }}>Products ({items.length})</div>
+        <div className="stack-12">
+          {items.map((it, i) => (
+            <div key={i} className="hstack-10">
+              <div style={{ width: 44, height: 44, background: 'var(--surface-2)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                {images[it.product_id] ? <img src={images[it.product_id]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon name="package" size={20} className="muted" />}
+              </div>
+              <div className="stack-2" style={{ flex: 1, minWidth: 0 }}>
+                <div className="fw5" style={{ fontSize: 13 }}>{it.name || it.title}</div>
+                {it.variant_title && it.variant_title !== 'Default Title' && <div className="muted" style={{ fontSize: 11.5 }}>{it.variant_title}</div>}
+              </div>
+              <div className="stack-2" style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div className="num" style={{ fontSize: 13 }}>{money(it.price)}</div>
+                <div className="muted" style={{ fontSize: 11.5 }}>× {it.quantity}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="section-title" style={{ marginBottom: 12 }}>Payment summary</div>
+        <div className="stack-8" style={{ fontSize: 13 }}>
+          <div className="hstack-8"><span className="muted">Subtotal</span><span className="spacer" /><span className="num">{money(o.subtotal_price)}</span></div>
+          <div className="hstack-8"><span className="muted">Shipping{shippingLine ? ` · ${shippingLine.title}` : ''}</span><span className="spacer" /><span className="num">{money(shippingLine ? shippingLine.price : 0)}</span></div>
+          <div className="hstack-8"><span className="muted">Tax</span><span className="spacer" /><span className="num">{money(o.total_tax)}</span></div>
+          <div className="divider" style={{ margin: '4px 0' }} />
+          <div className="hstack-8"><span className="fw6">Total</span><span className="spacer" /><span className="num fw6">{money(o.total_price)}</span></div>
+          <div className="hstack-8" style={{ marginTop: 4 }}><span className="muted">Payment</span><span className="spacer" /><PaymentStatusBadge status={order.paymentStatus} /></div>
+          {order.awb && order.awb !== '-' && <div className="hstack-8"><span className="muted">Tracking (AWB)</span><span className="spacer" /><span className="mono num">{order.awb}</span></div>}
+        </div>
+      </div>
+    </Drawer>
   );
 }
 
@@ -7030,7 +7156,12 @@ function ShipmentsScreen() {
   // Batched to respect Shopify rate limits (~2 req/s).
   const handleBackfill = async () => {
     const allAwbs = Object.keys({ ...trackingMap, ...enrichedMap });
+    // Only real AWBs (6–20 digits) can be enriched. Skipping malformed keys
+    // (stray test entries, junk awb_number values) avoids doomed POSTs that the
+    // server rejects with 400 invalid_awb — those were the red errors in the console.
+    const isValidAwb = (a) => /^\d{6,20}$/.test(a);
     const needsEnrich = allAwbs.filter(awb => {
+      if (!isValidAwb(awb)) return false;
       const e = enrichedMap[awb];
       if (!e) return true; // never enriched
       if (!e.customer?.name) return true; // missing customer
@@ -7939,6 +8070,7 @@ const PERMISSION_KEYS = [
   { key: 'can_create_shopify_orders',    label: 'Create Shopify Orders',         icon: 'shopping' },
   { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers',      icon: 'users' },
   { key: 'can_view_prescriptions_tab',   label: 'View Prescriptions Tab (Telesales)', icon: 'pill' },
+  { key: 'can_view_submissions_tab',     label: 'View Submissions Tab (Marketing/Telesales)', icon: 'clipboard' },
 ];
 
 /* ───────────────────── Data Studio (developer Firestore editor) ───────────────────── */
@@ -8018,6 +8150,11 @@ function DSCell({ original, staged, onStage, onEditJson }) {
   );
 }
 
+// Password required to commit any backend edit in the Quick Editor / Detailed View.
+// Conceptually owned by the website_developer role (not admin). Hardcoded for now —
+// later this should be issued/rotated from the website_developer role only.
+const DEV_EDIT_PASSWORD = 'code2026';
+
 function DataStudioScreen({ me, initialView = 'full' }) {
   const [coll, setColl] = useState('questionnaire_submissions');
   const [customColl, setCustomColl] = useState('');
@@ -8032,6 +8169,7 @@ function DataStudioScreen({ me, initialView = 'full' }) {
   const [jsonEditor, setJsonEditor] = useState(null); // { id, field, text, error }
   const [confirm, setConfirm] = useState(null); // { title, summary, action }
   const [liveText, setLiveText] = useState('');
+  const [editPassword, setEditPassword] = useState(''); // developer password gate for any write
   const [addModal, setAddModal] = useState(null); // { id, json, error }
   const [bulk, setBulk] = useState({ field: '', type: 'text', value: '' });
   const [toast, setToast] = useState(null);
@@ -8142,10 +8280,11 @@ function DataStudioScreen({ me, initialView = 'full' }) {
   }
 
   // Gate destructive/live writes behind a confirm dialog (typed LIVE in production).
-  const requestConfirm = (title, summary, action) => { setLiveText(''); setConfirm({ title, summary, action }); };
+  const requestConfirm = (title, summary, action) => { setLiveText(''); setEditPassword(''); setConfirm({ title, summary, action }); };
 
   const runConfirmed = async () => {
     if (!confirm) return;
+    if (editPassword !== DEV_EDIT_PASSWORD) { showToast('error', 'Incorrect edit password.'); return; }
     setCommitting(true);
     try { await confirm.action(); }
     catch (e) { showToast('error', 'Failed: ' + (e.message || e)); }
@@ -8226,6 +8365,7 @@ function DataStudioScreen({ me, initialView = 'full' }) {
   };
 
   const liveOk = !isLive || liveText === 'LIVE';
+  const passOk = editPassword === DEV_EDIT_PASSWORD;
 
   return (
     <div className="col fade-in">
@@ -8453,9 +8593,19 @@ function DataStudioScreen({ me, initialView = 'full' }) {
                 <input className="input sm" value={liveText} onChange={e => setLiveText(e.target.value)} placeholder="LIVE" />
               </div>
             )}
+            <div className="field" style={{ marginTop: 6 }}>
+              <label className="lbl" style={{ fontSize: 11 }}>Developer edit password</label>
+              <input
+                className="input sm" type="password" autoFocus
+                value={editPassword}
+                onChange={e => setEditPassword(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && liveOk && passOk && !committing) runConfirmed(); }}
+                placeholder="Enter password to apply changes"
+              />
+            </div>
             <div className="hstack-8" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
               <button className="btn sm" onClick={() => setConfirm(null)} disabled={committing}>Cancel</button>
-              <button className="btn sm primary" onClick={runConfirmed} disabled={!liveOk || committing}>{committing ? 'Working…' : 'Confirm'}</button>
+              <button className="btn sm primary" onClick={runConfirmed} disabled={!liveOk || !passOk || committing}>{committing ? 'Working…' : 'Confirm'}</button>
             </div>
           </div>
         </div>, document.body)}
@@ -9216,9 +9366,9 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 const NAV = {
   admin:         ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "shipments", "marketing", "users", "focused_editor", "data_studio", "settings"],
   doctor:        ["doctor", "submissions", "customers", "prescriptions", "settings"],
-  telesales:     ["home", "customers", "orders", "crm_orders", "order_create", "prescriptions", "settings"],
+  telesales:     ["home", "customers", "submissions", "orders", "crm_orders", "order_create", "prescriptions", "settings"],
   order_creator: ["order_create", "orders", "crm_orders", "customers", "settings"],
-  marketing:     ["marketing", "home", "customers", "prescriptions", "doctor", "settings"],
+  marketing:     ["marketing", "home", "submissions", "customers", "prescriptions", "doctor", "settings"],
   logistics:     ["shipments", "orders", "shipment_tracking", "crm_orders", "customers", "settings"],
   website_developer: ["focused_editor", "data_studio", "settings"],
 };
@@ -9322,6 +9472,7 @@ function App({ user, roles, onLogout }) {
     .filter(k => {
       if (k === 'doctor' && role === 'marketing' && !isAdmin && !permissions.can_access_clinical_review) return false;
       if (k === 'prescriptions' && role === 'telesales' && !isAdmin && !permissions.can_view_prescriptions_tab) return false;
+      if (k === 'submissions' && (role === 'marketing' || role === 'telesales') && !isAdmin && !permissions.can_view_submissions_tab) return false;
       return true;
     })
     .map(k => {
@@ -9341,6 +9492,16 @@ function App({ user, roles, onLogout }) {
   }, [navItems.map(i => i.key).join(','), route.key]);
 
   const themeClass = `theme-${t.theme} accent-${t.accent} density-${t.density}`;
+
+  // Mirror the theme classes onto <body> so content rendered via portals (modals,
+  // toasts, confirm dialogs) — which mount outside the .app wrapper — still inherit
+  // the theme CSS variables (--surface, --border, …). Without this, portaled cards
+  // resolve var(--surface) to nothing and render with no background.
+  useEffect(() => {
+    const classes = themeClass.split(' ').filter(Boolean);
+    document.body.classList.add(...classes);
+    return () => document.body.classList.remove(...classes);
+  }, [themeClass]);
 
   return (
     <PermissionsCtx.Provider value={permCtxValue}>

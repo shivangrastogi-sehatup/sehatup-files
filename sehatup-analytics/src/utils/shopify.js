@@ -95,6 +95,39 @@ export const getOrders = async (params = {}) => {
 };
 
 /**
+ * Fetch ALL orders by following Shopify's cursor (page_info) pagination.
+ * Returns the full array (capped by `max` for safety). Enables client-side
+ * pagination with arbitrary "jump to page".
+ * @param {Object} params - { status, max, perPage }
+ * @returns {Promise<Array>}
+ */
+export const getAllOrders = async ({ status = 'any', max = 2000, perPage = 250 } = {}) => {
+    const all = [];
+    let pageInfo = '';
+    for (let i = 0; i < 50 && all.length < max; i++) {
+        // When paginating with page_info, Shopify forbids other filters (status etc.) —
+        // they're already encoded in the cursor.
+        const url = pageInfo
+            ? `${API_BASE}/orders.json?limit=${perPage}&page_info=${encodeURIComponent(pageInfo)}`
+            : `${API_BASE}/orders.json?status=${status}&limit=${perPage}`;
+        const response = await fetch(url);
+        if (!response.ok) break;
+        const linkHeader = response.headers.get('Link') || '';
+        const data = await response.json();
+        all.push(...(data.orders || []));
+
+        let next = '';
+        if (linkHeader) {
+            const matches = linkHeader.matchAll(/<[^>]*page_info=([^>&]*)[^>]*>;\s*rel="([^"]*)"/g);
+            for (const m of matches) { if (m[2] === 'next') next = m[1]; }
+        }
+        if (!next) break;
+        pageInfo = next;
+    }
+    return all.slice(0, max);
+};
+
+/**
  * Fetch a single order by Shopify internal numeric ID.
  * @param {string|number} orderId
  * @returns {Promise<object|null>}

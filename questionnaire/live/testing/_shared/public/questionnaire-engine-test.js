@@ -1061,6 +1061,25 @@ class QuestionnaireEngine {
                 }).catch(err => console.warn('Sheets log failed (non-fatal):', err));
             } catch (err) { console.warn('Sheets log failed (non-fatal):', err); }
 
+            // Send the FULL submission to the customer-leads API. This runs only here,
+            // in the completion path — partial submissions never reach this code, so the
+            // lead is posted exactly once, only for a fully-filled questionnaire. Non-fatal.
+            try {
+                if (this.state.submissionData) {
+                    fetch("https://api.sehatup.com/api/customer-leads/", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            ...this.state.submissionData,
+                            // serverTimestamp() is a non-serializable Firestore sentinel — send a real ISO time.
+                            timestamp: new Date().toISOString(),
+                        }),
+                    }).catch(err => console.warn('customer-leads send failed (non-fatal):', err));
+                } else {
+                    console.warn('customer-leads skipped: submissionData not set by this questionnaire config.');
+                }
+            } catch (err) { console.warn('customer-leads send failed (non-fatal):', err); }
+
             try {
                 const docRef = this.db.collection('questionnaire_submissions').doc(finalDocId);
                 await docRef.collection('whatsapp_requests').add({

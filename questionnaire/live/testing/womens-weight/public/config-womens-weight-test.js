@@ -736,6 +736,7 @@ const questionnaireConfig = {
             recommendedProducts: finalRecommendedProducts,
         };
 
+        state.submissionData = data; // expose full payload for the customer-leads API
         try {
             const docRef = await db.collection('questionnaire_submissions').add(data);
             return docRef.id;
