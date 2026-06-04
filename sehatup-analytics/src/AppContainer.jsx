@@ -61,7 +61,7 @@ function ModernLogin() {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--bg)", overflow: "hidden" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", overflowY: "auto" }}>
       <style>{`
         @keyframes shakeLeftRight {
           0%, 100% { transform: translateX(0); }

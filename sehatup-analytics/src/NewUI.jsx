@@ -9,6 +9,8 @@ import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onS
 import { computeAnalytics } from "./utils/analytics";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 // Curated list of exportable columns — `default: true` means pre-selected in the picker.
 // Each `get(r)` produces the cell value for a row. No `answers`/`rawState`/`html` etc.
@@ -61,6 +63,103 @@ function exportToExcel(filename, rows, selectedKeys) {
   XLSX.utils.book_append_sheet(wb, ws, 'Submissions');
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   saveAs(new Blob([buf], { type: 'application/octet-stream' }), `${filename}.xlsx`);
+}
+
+// Quick date-range presets for the Shopify Orders filter.
+const DATE_PRESETS = [
+  { value: 'all',       label: 'All time' },
+  { value: 'today',     label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: '7d',        label: 'Last 7 days' },
+  { value: '30d',       label: 'Last 30 days' },
+  { value: 'month',     label: 'This month' },
+  { value: 'lastmonth', label: 'Last month' },
+];
+
+// Resolve a preset (or custom [start,end]) into an inclusive [start, end] Date pair.
+// Returns [null, null] for "all time" (no date filtering).
+function resolveDateRange(preset, custom) {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  if (preset === 'today') return [startOfToday, endOfToday];
+  if (preset === 'yesterday') {
+    const s = new Date(startOfToday); s.setDate(s.getDate() - 1);
+    const e = new Date(endOfToday);   e.setDate(e.getDate() - 1);
+    return [s, e];
+  }
+  if (preset === '7d')  { const s = new Date(startOfToday); s.setDate(s.getDate() - 6);  return [s, endOfToday]; }
+  if (preset === '30d') { const s = new Date(startOfToday); s.setDate(s.getDate() - 29); return [s, endOfToday]; }
+  if (preset === 'month') return [new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0), endOfToday];
+  if (preset === 'lastmonth') {
+    return [new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0),
+            new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)];
+  }
+  if (preset === 'custom') {
+    const [cs, ce] = custom || [];
+    if (cs && ce) {
+      const s = new Date(cs); s.setHours(0, 0, 0, 0);
+      const e = new Date(ce); e.setHours(23, 59, 59, 999);
+      return [s, e];
+    }
+    return [null, null];
+  }
+  return [null, null]; // 'all'
+}
+
+// Export the given (already-filtered) Shopify orders to XLSX — the full order record,
+// matching Shopify's native orders CSV export: exact column set, in order, with one
+// row per line item (the first line of an order carries the order-level fields; extra
+// line-item rows repeat only "Name"). XLSX + file-saver, like the submission export.
+const ORDER_EXPORT_HEADERS = [
+  'Name', 'Email', 'Financial Status', 'Paid at', 'Fulfillment Status', 'Fulfilled at',
+  'Accepts Marketing', 'Currency', 'Subtotal', 'Shipping', 'Taxes', 'Total',
+  'Discount Code', 'Discount Amount', 'Shipping Method', 'Created at',
+  'Lineitem quantity', 'Lineitem name', 'Lineitem price', 'Lineitem compare at price',
+];
+function exportOrdersToExcel(rows) {
+  if (!rows || rows.length === 0) { alert('No orders to export for the current filter.'); return; }
+  const blankOrderCols = {
+    'Email': '', 'Financial Status': '', 'Paid at': '', 'Fulfillment Status': '', 'Fulfilled at': '',
+    'Accepts Marketing': '', 'Currency': '', 'Subtotal': '', 'Shipping': '', 'Taxes': '', 'Total': '',
+    'Discount Code': '', 'Discount Amount': '', 'Shipping Method': '', 'Created at': '',
+  };
+  const data = [];
+  rows.forEach(({ raw: o }) => {
+    const items = (o.line_items && o.line_items.length) ? o.line_items : [{}];
+    items.forEach((li, idx) => {
+      const orderCols = idx === 0 ? {
+        'Email': o.email || o.customer?.email || '',
+        'Financial Status': o.financial_status || '',
+        'Paid at': o.financial_status === 'paid' ? (o.processed_at || o.created_at || '') : '',
+        'Fulfillment Status': o.fulfillment_status || 'unfulfilled',
+        'Fulfilled at': o.fulfillments?.[0]?.created_at || '',
+        'Accepts Marketing': o.buyer_accepts_marketing ? 'yes' : 'no',
+        'Currency': o.currency || '',
+        'Subtotal': o.subtotal_price || '',
+        'Shipping': o.total_shipping_price_set?.shop_money?.amount ?? (o.shipping_lines?.[0]?.price ?? '0.00'),
+        'Taxes': o.total_tax || '0.00',
+        'Total': o.total_price || '',
+        'Discount Code': o.discount_codes?.[0]?.code || '',
+        'Discount Amount': o.total_discounts || '0.00',
+        'Shipping Method': (o.shipping_lines || []).map(s => s.title).filter(Boolean).join(', '),
+        'Created at': o.created_at || '',
+      } : { ...blankOrderCols };
+      data.push({
+        'Name': o.name || `#${o.order_number || ''}`,
+        ...orderCols,
+        'Lineitem quantity': li.quantity ?? '',
+        'Lineitem name': li.name || li.title || '',
+        'Lineitem price': li.price ?? '',
+        'Lineitem compare at price': li.compare_at_price || '',
+      });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(data, { header: ORDER_EXPORT_HEADERS });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `orders_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 // Derive age (from `dob`), gender and category (from the questionnaire / category
@@ -4869,6 +4968,14 @@ function OrderCreate({ context = {}, setRoute }) {
   const [orderDiscountReason, setOrderDiscountReason] = useStateO("");
   const [discountShake, setDiscountShake] = useStateO(false);
   const [orderDiscountPopupClosing, setOrderDiscountPopupClosing] = useStateO(false);
+  // Active Shopify discount codes for the autocomplete, the resolved code currently
+  // applied (so its value affects the total/order), and a snapshot of all discount
+  // fields taken when the popup opens — used to revert on Cancel.
+  const [discountCodeOptions, setDiscountCodeOptions] = useStateO([]);
+  const [discountCodeLoading, setDiscountCodeLoading] = useStateO(false);
+  const [discountCodeError, setDiscountCodeError] = useStateO(null);
+  const [appliedCodeDiscount, setAppliedCodeDiscount] = useStateO(null); // { code, valueType, value }
+  const [discountSnapshot, setDiscountSnapshot] = useStateO(null);
   const [savingMode, setSavingMode] = useStateO(null);
   const [cityManual, setCityManual] = useStateO(false); // true = free-text city input instead of locality dropdown
 
@@ -5005,7 +5112,7 @@ function OrderCreate({ context = {}, setRoute }) {
       // Shipping — COD uses selected rate; Prepaid uses "Prepaid Shipping" rate from Shopify
       // Partial-payment mode takes precedence: zero-rupee shipping + advance discount.
       if (pay === "COD" && partialPaymentMode) {
-          draftData.shipping_line = { title: 'Partial Payment Received', price: '0.00', code: 'PARTIAL_PAID' };
+          draftData.shipping_line = { title: 'Shipping (partial)', price: '0.00', code: 'PARTIAL_PAID' };
           console.log('[Shipping] Partial payment mode — shipping set to Rs. 0');
       } else if (pay === "COD" && useCustomShipping) {
           const title = customShippingTitle.trim() || 'Custom Shipping';
@@ -5038,16 +5145,22 @@ function OrderCreate({ context = {}, setRoute }) {
               console.log('[Partial Payment] Advance Rs.', partialAmt, '→ COD due Rs.', codDueOnDelivery);
           }
           draftData.tags = ((draftData.tags || '') + ', partial-payment-received').replace(/^,\s*/, '');
-      } else if (orderDiscountType !== 'none') {
-          const val = parseFloat(orderDiscountValue) || 0;
-          if (val > 0) {
-              draftData.applied_discount = {
-                  value_type: orderDiscountType === 'percentage' ? 'percentage' : 'fixed_amount',
-                  value: String(val),
-                  title: orderDiscountReason || (orderDiscountType === 'code' ? orderDiscountCode : 'Custom Discount'),
-                  description: orderDiscountReason || (orderDiscountType === 'code' ? orderDiscountCode : 'Custom Discount')
-              };
-          }
+      } else if (orderDiscountIsCustom && (parseFloat(orderDiscountValue) || 0) > 0) {
+          // Custom amount/percentage discount
+          draftData.applied_discount = {
+              value_type: orderDiscountType === 'percentage' ? 'percentage' : 'fixed_amount',
+              value: String(parseFloat(orderDiscountValue) || 0),
+              title: orderDiscountReason || 'Custom Discount',
+              description: orderDiscountReason || 'Custom Discount',
+          };
+      } else if (appliedCodeDiscount && (parseFloat(appliedCodeDiscount.value) || 0) > 0) {
+          // Selected discount code — applied as its resolved value, labelled with the code.
+          draftData.applied_discount = {
+              value_type: appliedCodeDiscount.valueType === 'percentage' ? 'percentage' : 'fixed_amount',
+              value: String(parseFloat(appliedCodeDiscount.value) || 0),
+              title: appliedCodeDiscount.code,
+              description: `Discount code ${appliedCodeDiscount.code}`,
+          };
       }
 
       console.log('--- SHOPIFY DRAFT ORDER PAYLOAD ---');
@@ -5592,26 +5705,115 @@ function OrderCreate({ context = {}, setRoute }) {
       : (selectedShipping ? selectedShipping.price : 0))
     : 0;
   const shippingLabel = pay === "COD"
-    ? (partialPaymentMode ? 'Partial Payment Received'
+    ? (partialPaymentMode ? 'partial'
       : useCustomShipping ? (customShippingTitle.trim() || 'Custom Shipping')
       : (selectedShipping ? selectedShipping.title : 'Free'))
     : "Free";
+  // A manual order discount is either a custom amount/percentage OR a selected code.
+  // Partial-payment COD applies an "advance received" discount instead, and Shopify draft
+  // orders accept only one discount — so the manual discount is dropped while partial is on.
+  const partialCodActive = pay === "COD" && partialPaymentMode;
+  const hasManualDiscount = orderDiscountIsCustom
+    ? (Number(orderDiscountValue) || 0) > 0
+    : !!appliedCodeDiscount;
+  const discountRemovedByPartial = partialCodActive && hasManualDiscount;
+
   let discount = 0;
-  if (orderDiscountIsCustom) {
-    const val = Number(orderDiscountValue) || 0;
-    if (orderDiscountType === "percentage") {
-      discount = subtotal * (Math.min(val, 100) / 100);
-    } else {
-      discount = val;
+  if (!partialCodActive) {
+    if (orderDiscountIsCustom) {
+      const val = Number(orderDiscountValue) || 0;
+      discount = orderDiscountType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
+    } else if (appliedCodeDiscount) {
+      const val = Number(appliedCodeDiscount.value) || 0;
+      discount = appliedCodeDiscount.valueType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
     }
   }
-  discount = Math.round(discount);
+  discount = Math.round(Math.min(discount, subtotal));
   // Order total (full value of the order — items + shipping - manual discount)
   const total = Math.max(0, subtotal + shipping - discount);
   // Amount already paid by the customer in advance (only when partial-payment mode is on)
   const partialPaidAmount = partialPaymentMode ? (parseFloat(partialPaymentAmount) || 0) : 0;
   // Final amount to collect on delivery for COD orders
   const codDueOnDelivery = Math.max(0, total - partialPaidAmount);
+
+  // ── Discount popup helpers ─────────────────────────────────────────────────
+  const closeDiscountPopup = () => {
+    setOrderDiscountPopupClosing(true);
+    setTimeout(() => { setOrderDiscountPopupClosing(false); setOrderDiscountPopupOpen(false); }, 200);
+  };
+  const fetchDiscountCodes = async () => {
+    setDiscountCodeLoading(true);
+    setDiscountCodeError(null);
+    try {
+      const q = `query { codeDiscountNodes(first: 50, query: "status:active") { edges { node { codeDiscount {
+        __typename
+        ... on DiscountCodeBasic { title codes(first: 1) { edges { node { code } } } customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
+        ... on DiscountCodeBxgy { title codes(first: 1) { edges { node { code } } } }
+        ... on DiscountCodeFreeShipping { title codes(first: 1) { edges { node { code } } } }
+      } } } } }`;
+      const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+      const data = await res.json();
+      if (data?.errors?.length) {
+        const denied = data.errors.some(e => /access|scope|read_discounts/i.test(e.message || ''));
+        setDiscountCodeError(denied
+          ? "Can't load codes — the Shopify app needs the 'read_discounts' permission. Use a custom discount below for now."
+          : "Couldn't load discount codes.");
+        setDiscountCodeOptions([]);
+        return;
+      }
+      const edges = data?.data?.codeDiscountNodes?.edges || [];
+      const opts = edges.map(({ node }) => {
+        const cd = node?.codeDiscount || {};
+        const code = cd?.codes?.edges?.[0]?.node?.code || cd?.title || '';
+        const v = cd?.customerGets?.value;
+        let valueType = null, value = 0;
+        if (v?.percentage != null) { valueType = 'percentage'; value = Math.round(v.percentage * 100); }
+        else if (v?.amount?.amount != null) { valueType = 'amount'; value = parseFloat(v.amount.amount); }
+        return { code, title: cd?.title || code, valueType, value };
+      }).filter(o => o.code);
+      setDiscountCodeOptions(opts);
+    } catch (e) {
+      console.error('[Discount] code fetch failed', e);
+      setDiscountCodeOptions([]);
+    } finally {
+      setDiscountCodeLoading(false);
+    }
+  };
+  const openDiscountPopup = () => {
+    setDiscountSnapshot({
+      isCustom: orderDiscountIsCustom, type: orderDiscountType, value: orderDiscountValue,
+      reason: orderDiscountReason, code: orderDiscountCode, appliedCode: appliedCodeDiscount,
+    });
+    setOrderDiscountPopupOpen(true);
+    fetchDiscountCodes();
+  };
+  const cancelDiscountPopup = () => {
+    const s = discountSnapshot;
+    if (s) {
+      setOrderDiscountIsCustom(s.isCustom); setOrderDiscountType(s.type); setOrderDiscountValue(s.value);
+      setOrderDiscountReason(s.reason); setOrderDiscountCode(s.code); setAppliedCodeDiscount(s.appliedCode);
+    }
+    closeDiscountPopup();
+  };
+  const selectDiscountCode = (opt) => {
+    setOrderDiscountIsCustom(false);          // code & custom are mutually exclusive
+    setOrderDiscountValue(''); setOrderDiscountReason('');
+    setOrderDiscountCode(opt.code);
+    setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value });
+  };
+  const enableCustomDiscount = (checked) => {
+    setOrderDiscountIsCustom(checked);
+    if (checked) { setOrderDiscountCode(''); setAppliedCodeDiscount(null); } // drop any code
+    else { setOrderDiscountValue(''); setOrderDiscountReason(''); }          // drop custom values
+  };
+  const clearDiscount = () => {
+    setOrderDiscountIsCustom(false); setOrderDiscountType('amount'); setOrderDiscountValue('');
+    setOrderDiscountReason(''); setOrderDiscountCode(''); setAppliedCodeDiscount(null);
+  };
+  const filteredDiscountCodes = discountCodeOptions.filter(o => {
+    const q = (orderDiscountCode || '').toLowerCase();
+    return !q || o.code.toLowerCase().includes(q) || (o.title || '').toLowerCase().includes(q);
+  });
 
   const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -6178,50 +6380,76 @@ function OrderCreate({ context = {}, setRoute }) {
             <div className="stack-8" style={{ marginTop: 14 }}>
               <Row k="Subtotal" v={`Rs. ${subtotal.toLocaleString()}`} />
               <Row k={`Shipping${shippingLabel !== "Free" ? ` (${shippingLabel})` : ""}`} v={shipping ? `Rs. ${shipping}` : "Free"} />
-              <div 
-                className="hstack-8" 
-                style={{ fontSize: 13, cursor: "pointer" }} 
-                onClick={(e) => { e.stopPropagation(); setOrderDiscountPopupOpen(true); }}
-                title={discount > 0 ? `${orderDiscountIsCustom ? 'Custom discount' : 'Discount'}${orderDiscountReason ? ` - ${orderDiscountReason}` : ''}` : ''}
+              <div
+                className="hstack-8"
+                style={{ fontSize: 13, cursor: "pointer" }}
+                onClick={(e) => { e.stopPropagation(); openDiscountPopup(); }}
+                title={discount > 0 ? `${orderDiscountIsCustom ? 'Custom discount' : (appliedCodeDiscount ? `Code ${appliedCodeDiscount.code}` : 'Discount')}${orderDiscountReason ? ` - ${orderDiscountReason}` : ''}` : ''}
               >
-                <span style={{ color: "#3b82f6" }}>{discount > 0 ? 'Discount' : 'Add discount'}</span>
+                <span style={{ color: "#3b82f6" }}>{discount > 0 ? (appliedCodeDiscount && !orderDiscountIsCustom ? `Discount · ${appliedCodeDiscount.code}` : 'Discount') : 'Add discount'}</span>
                 <span className="spacer" />
                 <span className="num fw5" style={{ color: discount ? "var(--fg)" : "var(--muted)" }}>{discount ? `− Rs. ${discount}` : "—"}</span>
               </div>
+              {discountRemovedByPartial && (
+                <div className="hstack-8" style={{ fontSize: 11.5, color: "var(--risk-moderate)", marginTop: 4, alignItems: "flex-start" }}>
+                  <span>⚠ Discount removed — the partial (advance) COD payment is applied instead. Shopify allows only one order discount.</span>
+                </div>
+              )}
               {orderDiscountPopupOpen && createPortal(
                 <div className={`theme-light accent-rose ${orderDiscountPopupClosing ? 'fade-out' : 'fade-in'}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg)' }}>
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={(e) => {
-                    e.stopPropagation();
-                    if (orderDiscountIsCustom || orderDiscountCode) {
-                      setDiscountShake(true);
-                      setTimeout(() => setDiscountShake(false), 400);
-                    } else {
-                      setOrderDiscountPopupClosing(true);
-                      setTimeout(() => { setOrderDiscountPopupClosing(false); setOrderDiscountPopupOpen(false); }, 200);
-                    }
-                  }} />
-                  <div className={discountShake ? "shake" : ""} style={{ position: "relative", width: 440, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 24px 60px rgba(0,0,0,.2)", textAlign: "left", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={(e) => { e.stopPropagation(); cancelDiscountPopup(); }} />
+                  <div style={{ position: "relative", width: 440, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 24px 60px rgba(0,0,0,.2)", textAlign: "left", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
                     <div className="hstack-10" style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
                       <div className="fw6">Add discount</div>
                       <span className="spacer" />
-                      <button className="btn sm ghost icon" onClick={() => { setOrderDiscountPopupClosing(true); setTimeout(() => { setOrderDiscountPopupClosing(false); setOrderDiscountPopupOpen(false); }, 200); }}><Icon name="x" /></button>
+                      <button className="btn sm ghost icon" onClick={cancelDiscountPopup}><Icon name="x" /></button>
                     </div>
                     <div className="stack-12" style={{ padding: "20px" }}>
+                      {/* Discount code with active-code autocomplete (mutually exclusive with custom) */}
                       <div className="stack-4">
-                        <span className="fw5" style={{ fontSize: 13 }}>Discount codes</span>
-                        <input className="input" placeholder="Enter a discount code" value={orderDiscountCode} onChange={e => setOrderDiscountCode(e.target.value)} />
+                        <span className="fw5" style={{ fontSize: 13 }}>Discount code</span>
+                        <input
+                          className="input"
+                          placeholder={orderDiscountIsCustom ? "Disabled — custom discount is on" : "Type to search active codes…"}
+                          value={orderDiscountCode}
+                          disabled={orderDiscountIsCustom}
+                          onChange={e => { setOrderDiscountCode(e.target.value); setAppliedCodeDiscount(null); }}
+                        />
+                        {!orderDiscountIsCustom && (
+                          <div style={{ border: "1px solid var(--border)", borderRadius: 8, marginTop: 4, maxHeight: 180, overflowY: "auto", background: "var(--surface)" }}>
+                            {discountCodeLoading ? (
+                              <div className="muted" style={{ fontSize: 12.5, padding: "8px 12px" }}>Loading active codes…</div>
+                            ) : discountCodeError ? (
+                              <div style={{ fontSize: 12, padding: "8px 12px", color: "var(--risk-moderate)" }}>{discountCodeError}</div>
+                            ) : filteredDiscountCodes.length === 0 ? (
+                              <div className="muted" style={{ fontSize: 12.5, padding: "8px 12px" }}>No active codes{orderDiscountCode ? " match" : ""}.</div>
+                            ) : filteredDiscountCodes.map((o, i) => {
+                              const sel = appliedCodeDiscount?.code === o.code;
+                              return (
+                                <div key={o.code + i} onClick={() => selectDiscountCode(o)} className="hstack-8"
+                                  style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, background: sel ? "var(--accent-soft)" : "transparent", borderBottom: i < filteredDiscountCodes.length - 1 ? "1px solid var(--border)" : "none" }}>
+                                  <span className="fw5">{o.code}</span>
+                                  <span className="spacer" />
+                                  <span className="muted num" style={{ fontSize: 12 }}>
+                                    {o.valueType === "percentage" ? `${o.value}% off` : o.valueType === "amount" ? `Rs. ${o.value} off` : (o.title || "")}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {appliedCodeDiscount && (
+                          <div className="hstack-8" style={{ marginTop: 6, padding: "6px 10px", background: "var(--accent-soft)", borderRadius: 8, fontSize: 12.5 }}>
+                            <span className="fw6">{appliedCodeDiscount.code}</span>
+                            <span className="muted">{appliedCodeDiscount.valueType === "percentage" ? `${appliedCodeDiscount.value}% off` : `Rs. ${appliedCodeDiscount.value} off`}</span>
+                            <span className="spacer" />
+                            <button className="btn sm ghost" onClick={() => { setAppliedCodeDiscount(null); setOrderDiscountCode(''); }}>Remove</button>
+                          </div>
+                        )}
                       </div>
-                      
-                      <label className="hstack-8" style={{ alignItems: "flex-start", cursor: "pointer" }}>
-                        <input type="checkbox" checked={orderDiscountApplyAutomatic} onChange={e => setOrderDiscountApplyAutomatic(e.target.checked)} style={{ marginTop: 2 }} />
-                        <div className="stack-2">
-                          <span style={{ fontSize: 13 }}>Apply all eligible automatic discounts</span>
-                          <span className="muted" style={{ fontSize: 12 }}>No eligible automatic discounts</span>
-                        </div>
-                      </label>
 
                       <label className="hstack-8" style={{ alignItems: "center", cursor: "pointer" }}>
-                        <input type="checkbox" checked={orderDiscountIsCustom} onChange={e => setOrderDiscountIsCustom(e.target.checked)} />
+                        <input type="checkbox" checked={orderDiscountIsCustom} onChange={e => enableCustomDiscount(e.target.checked)} />
                         <span style={{ fontSize: 13 }}>Add custom order discount</span>
                       </label>
 
@@ -6251,9 +6479,13 @@ function OrderCreate({ context = {}, setRoute }) {
                         </div>
                       )}
                     </div>
-                    <div className="hstack-8" style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", justifyContent: "flex-end", background: "var(--surface-2)", borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}>
-                      <button className="btn ghost" onClick={() => { setOrderDiscountPopupClosing(true); setTimeout(() => { setOrderDiscountPopupClosing(false); setOrderDiscountPopupOpen(false); }, 200); }}>Cancel</button>
-                      <button className="btn primary" onClick={() => { setOrderDiscountPopupClosing(true); setTimeout(() => { setOrderDiscountPopupClosing(false); setOrderDiscountPopupOpen(false); }, 200); }}>Done</button>
+                    <div className="hstack-8" style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", alignItems: "center", background: "var(--surface-2)", borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}>
+                      {hasManualDiscount && (
+                        <button className="btn sm ghost" style={{ color: "var(--risk-critical)" }} onClick={clearDiscount}>Remove discount</button>
+                      )}
+                      <span className="spacer" />
+                      <button className="btn ghost" onClick={cancelDiscountPopup}>Cancel</button>
+                      <button className="btn primary" onClick={closeDiscountPopup}>Done</button>
                     </div>
                   </div>
                 </div>, document.querySelector('.app') || document.body
@@ -6656,6 +6888,96 @@ function CRMOrders({ setRoute, openCustomer }) {
   );
 }
 
+// Single Nimbus-style date-range control: a button showing the active range that opens
+// a popup with preset shortcuts on the left + a two-month range calendar, and Apply/Cancel.
+function OrderDateRangeFilter({ datePreset, customRange, onApply }) {
+  const [open, setOpen] = useState(false);
+  const [tmpPreset, setTmpPreset] = useState(datePreset);
+  const [tmp, setTmp] = useState([null, null]);
+  const ref = useRef(null);
+  const fmt = (d) => d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
+
+  const openPopup = () => {
+    setTmp(resolveDateRange(datePreset, customRange));
+    setTmpPreset(datePreset);
+    setOpen(true);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  const apply = () => {
+    if (tmpPreset === 'custom') {
+      if (!tmp[0] || !tmp[1]) return;
+      onApply('custom', tmp);
+    } else {
+      onApply(tmpPreset, [null, null]);
+    }
+    setOpen(false);
+  };
+
+  const triggerLabel = (() => {
+    if (datePreset === 'custom') {
+      const [s, e] = customRange || [];
+      return (s && e) ? `${fmt(s)} - ${fmt(e)}` : 'Custom range';
+    }
+    const p = DATE_PRESETS.find(x => x.value === datePreset);
+    return p ? p.label : 'Date range';
+  })();
+
+  const presetBtn = (value, label) => {
+    const active = tmpPreset === value;
+    return (
+      <button key={value} onClick={() => { setTmpPreset(value); if (value !== 'custom') setTmp(resolveDateRange(value, null)); }}
+        style={{ textAlign: 'left', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+          background: active ? 'var(--accent)' : 'transparent', color: active ? '#fff' : 'var(--text-main)' }}>
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button className="chip" onClick={() => (open ? setOpen(false) : openPopup())}
+        style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)' }}>
+        <Icon name="calendar" size={14} /> {triggerLabel} <Icon name="chevron_down" size={14} />
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 100, background: 'var(--surface)',
+          border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.35)', display: 'flex', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', padding: 8, borderRight: '1px solid var(--border)' }}>
+            {DATE_PRESETS.map(p => presetBtn(p.value, p.label))}
+            {presetBtn('custom', 'Custom Range')}
+          </div>
+          <div className="orders-daterange-cal" style={{ display: 'flex', flexDirection: 'column' }}>
+            <DatePicker
+              selected={tmp[0]}
+              startDate={tmp[0]}
+              endDate={tmp[1]}
+              onChange={(range) => { setTmp(range); setTmpPreset('custom'); }}
+              selectsRange
+              monthsShown={2}
+              maxDate={new Date()}
+              inline
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--border)' }}>
+              <span className="num" style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+                {tmp[0] && tmp[1] ? `${fmt(tmp[0])} - ${fmt(tmp[1])}` : (tmpPreset === 'all' ? 'All time' : 'Select a range')}
+              </span>
+              <div style={{ flex: 1 }} />
+              <button className="btn sm ghost" onClick={() => setOpen(false)}>Cancel</button>
+              <button className="btn sm primary" onClick={apply} disabled={tmpPreset === 'custom' && (!tmp[0] || !tmp[1])}>Apply</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OrdersHistory({ setRoute, openCustomer }) {
   const [tab, setTab] = useStateO("all");
   const [orders, setOrders] = useStateO([]);
@@ -6663,6 +6985,8 @@ function OrdersHistory({ setRoute, openCustomer }) {
   const [expandedOrderId, setExpandedOrderId] = useStateO(null);
   const [page, setPage] = useStateO(1);
   const [selectedOrder, setSelectedOrder] = useStateO(null);
+  const [datePreset, setDatePreset] = useStateO('all');
+  const [customRange, setCustomRange] = useStateO([null, null]);
   const PER_PAGE = 25;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6733,11 +7057,20 @@ function OrdersHistory({ setRoute, openCustomer }) {
     fetchOrders();
   }, []);
 
-  const counts = orders.reduce((m, o) => { m[o.status] = (m[o.status] || 0) + 1; return m; }, {});
-  const totalRev = orders.reduce((s, o) => s + o.amount, 0);
+  // Date range scoping (preset or custom from–to). Applied before the status tab so
+  // tab counts, KPIs, the table, and the export all reflect the selected period.
+  const [rangeStart, rangeEnd] = resolveDateRange(datePreset, customRange);
+  const inRange = (o) => {
+    if (!rangeStart || !rangeEnd) return true;
+    const c = o.raw?.created_at ? new Date(o.raw.created_at) : null;
+    return c && c >= rangeStart && c <= rangeEnd;
+  };
+  const dateScoped = rangeStart && rangeEnd ? orders.filter(inRange) : orders;
+  const counts = dateScoped.reduce((m, o) => { m[o.status] = (m[o.status] || 0) + 1; return m; }, {});
 
   // Filtering + client-side pagination (supports arbitrary "jump to page").
-  const filteredOrders = tab === "all" ? orders : orders.filter(o => o.status === tab);
+  const filteredOrders = tab === "all" ? dateScoped : dateScoped.filter(o => o.status === tab);
+  const totalRev = filteredOrders.reduce((s, o) => s + o.amount, 0);
   const pageCount = Math.max(1, Math.ceil(filteredOrders.length / PER_PAGE));
   const pageClamped = Math.min(Math.max(1, page), pageCount);
   const pagedOrders = filteredOrders.slice((pageClamped - 1) * PER_PAGE, pageClamped * PER_PAGE);
@@ -6752,21 +7085,23 @@ function OrdersHistory({ setRoute, openCustomer }) {
           <p className="page-sub">{loading ? "Syncing..." : "Synced from Shopify in real-time"}</p>
         </div>
         <div className="page-head-actions">
-          <button className="btn"><Icon name="download" /> Export</button>
+          <button className="btn" onClick={() => exportOrdersToExcel(filteredOrders)} disabled={loading || filteredOrders.length === 0} title="Download the filtered orders as an Excel file">
+            <Icon name="download" /> Export
+          </button>
           <button className="btn primary" onClick={() => setRoute && setRoute("order_create")}><Icon name="plus" /> New order</button>
         </div>
       </div>
 
       <div className="grid-12">
-        <div className="span-3"><KPI label="Orders (30d)" value={loading ? "..." : orders.length.toLocaleString()} icon="package" /></div>
-        <div className="span-3"><KPI label="Revenue (30d)" value={loading ? "..." : "Rs. " + totalRev.toLocaleString()} icon="trend_up" /></div>
-        <div className="span-3"><KPI label="Avg. order value" value={loading ? "..." : (orders.length ? "Rs. " + Math.round(totalRev / orders.length).toLocaleString() : "Rs. 0")} icon="bar" /></div>
+        <div className="span-3"><KPI label="Orders" value={loading ? "..." : filteredOrders.length.toLocaleString()} icon="package" /></div>
+        <div className="span-3"><KPI label="Revenue" value={loading ? "..." : "Rs. " + totalRev.toLocaleString()} icon="trend_up" /></div>
+        <div className="span-3"><KPI label="Avg. order value" value={loading ? "..." : (filteredOrders.length ? "Rs. " + Math.round(totalRev / filteredOrders.length).toLocaleString() : "Rs. 0")} icon="bar" /></div>
         <div className="span-3"><KPI label="COD share" value="-" icon="truck" /></div>
       </div>
 
       <div className="toolbar">
         <Tabs value={tab} onChange={goTab} items={[
-          { label: "All", value: "all", count: orders.length },
+          { label: "All", value: "all", count: dateScoped.length },
           { label: "Placed", value: "Placed", count: counts.Placed || 0 },
           { label: "Packed", value: "Packed", count: counts.Packed || 0 },
           { label: "Shipped", value: "Shipped", count: counts.Shipped || 0 },
@@ -6774,10 +7109,11 @@ function OrdersHistory({ setRoute, openCustomer }) {
           { label: "Failed", value: "Failed delivery", count: counts["Failed delivery"] || 0 },
         ]} />
         <span className="spacer" />
-        <FilterBar>
-          <span className="chip"><Icon name="calendar" /> Last 30 days <Icon name="chevron_down" /></span>
-          <span className="chip"><Icon name="truck" /> All couriers <Icon name="chevron_down" /></span>
-        </FilterBar>
+        <OrderDateRangeFilter
+          datePreset={datePreset}
+          customRange={customRange}
+          onApply={(p, r) => { setDatePreset(p); setCustomRange(r); setPage(1); }}
+        />
       </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>

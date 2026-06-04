@@ -795,6 +795,18 @@ input, select, textarea { font: inherit; color: inherit; }
 .filterbar .chip:hover { background: var(--hover); }
 .filterbar .chip svg { width: 12px; height: 12px; color: var(--muted); }
 
+/* Orders date-range popup: force the two months side by side. The wrapper is a flex
+   column (calendar above the Apply/Cancel footer), which would otherwise shrink the
+   float-based calendar and wrap the second month below the first. */
+.orders-daterange-cal .react-datepicker {
+  display: flex;
+  flex-direction: row;
+  width: max-content;
+}
+.orders-daterange-cal .react-datepicker__month-container {
+  float: none;
+}
+
 /* Status pill */
 .status {
   display: inline-flex; align-items: center; gap: 6px;
