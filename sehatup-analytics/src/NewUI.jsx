@@ -7375,6 +7375,7 @@ function ShipmentsScreen() {
                   <th style={{ whiteSpace: "nowrap" }}>Order ID</th>
                   <th style={{ whiteSpace: "nowrap" }}>Customer</th>
                   <th style={{ whiteSpace: "nowrap" }}>Phone</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Shipment tracking</th>
                   <th style={{ minWidth: 240 }}>Address</th>
                   <th style={{ whiteSpace: "nowrap" }}>Items</th>
                   <th style={{ whiteSpace: "nowrap" }}>Amount</th>
@@ -7387,12 +7388,12 @@ function ShipmentsScreen() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="12"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
+                  <tr><td colSpan="13"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
                 ) : filteredList.map(s => (
                   <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} trackingUrlTemplate={logisticsCfg.trackingUrlTemplate} />
                 ))}
                 {!loading && filteredList.length === 0 && (
-                  <tr><td colSpan="12"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
+                  <tr><td colSpan="13"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
                 )}
               </tbody>
             </table>
@@ -7422,6 +7423,13 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
   
   const Skel = ({ w = 80 }) => <div className="skel-box" style={{ height: 12, width: w, borderRadius: 4 }} />;
   const trackUrl = buildTrackingUrl(trackingUrlTemplate, s.awb);
+  const [copied, setCopied] = useState(false);
+  const copyTrack = (e) => {
+    e.stopPropagation();
+    navigator.clipboard?.writeText(trackUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
   return (
     <tr onClick={onClick} style={{
       background: selected ? "var(--accent-soft)" : (isNonShopify ? "var(--surface-2)" : undefined),
@@ -7454,6 +7462,14 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
       </td>
       <td className="num" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>
         {cust ? (cust.phone || '—') : (isEnriching ? <Skel w={90} /> : <span className="muted">—</span>)}
+      </td>
+      <td style={{ whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
+        <div className="hstack-6">
+          <a href={trackUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 12.5, fontWeight: 500 }}>track link</a>
+          <button className="btn sm ghost" title="Copy tracking link" onClick={copyTrack} style={{ padding: "2px 8px", fontSize: 11 }}>
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
       </td>
       <td style={{ minWidth: 240 }}>
         {cust ? (
