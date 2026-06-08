@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
-import { searchCustomers, getAllOrders, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { searchCustomers, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth } from './firebase';
 import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
@@ -116,13 +116,63 @@ const ORDER_EXPORT_HEADERS = [
   'Accepts Marketing', 'Currency', 'Subtotal', 'Shipping', 'Taxes', 'Total',
   'Discount Code', 'Discount Amount', 'Shipping Method', 'Created at',
   'Lineitem quantity', 'Lineitem name', 'Lineitem price', 'Lineitem compare at price',
+  'Lineitem sku', 'Lineitem requires shipping', 'Lineitem taxable', 'Lineitem fulfillment status',
+  'Billing Name', 'Billing Street', 'Billing Address1', 'Billing Address2', 'Billing Company',
+  'Billing City', 'Billing Zip', 'Billing Province', 'Billing Country', 'Billing Phone',
+  'Shipping Name', 'Shipping Street', 'Shipping Address1', 'Shipping Address2', 'Shipping Company',
+  'Shipping City', 'Shipping Zip', 'Shipping Province', 'Shipping Country', 'Shipping Phone',
+  'Notes', 'Note Attributes', 'Cancelled at', 'Payment Method', 'Payment Reference',
+  'Refunded Amount', 'Vendor', 'Outstanding Balance', 'Employee', 'Location', 'Device ID',
+  'Id', 'Tags', 'Risk Level', 'Source', 'Lineitem discount',
+  'Tax 1 Name', 'Tax 1 Value', 'Tax 2 Name', 'Tax 2 Value', 'Tax 3 Name', 'Tax 3 Value',
+  'Tax 4 Name', 'Tax 4 Value', 'Tax 5 Name', 'Tax 5 Value',
+  'Phone', 'Receipt Number', 'Duties', 'Billing Province Name', 'Shipping Province Name',
+  'Payment ID', 'Payment Terms Name', 'Next Payment Due At', 'Payment References',
+  // Not a native Shopify CSV column — the sales channel, sourced via GraphQL.
+  'Channel Name',
 ];
 function exportOrdersToExcel(rows) {
   if (!rows || rows.length === 0) { alert('No orders to export for the current filter.'); return; }
-  const blankOrderCols = {
-    'Email': '', 'Financial Status': '', 'Paid at': '', 'Fulfillment Status': '', 'Fulfilled at': '',
-    'Accepts Marketing': '', 'Currency': '', 'Subtotal': '', 'Shipping': '', 'Taxes': '', 'Total': '',
-    'Discount Code': '', 'Discount Amount': '', 'Shipping Method': '', 'Created at': '',
+  // Order-level columns that Shopify leaves blank on the 2nd+ line-item row of an order.
+  const blankOrderCols = Object.fromEntries(
+    ORDER_EXPORT_HEADERS
+      .filter(h => !['Name', 'Email', 'Id', 'Phone', 'Vendor',
+        'Lineitem quantity', 'Lineitem name', 'Lineitem price', 'Lineitem compare at price',
+        'Lineitem sku', 'Lineitem requires shipping', 'Lineitem taxable',
+        'Lineitem fulfillment status', 'Lineitem discount'].includes(h))
+      .map(h => [h, ''])
+  );
+  // "Billing/Shipping Street" in Shopify's CSV is address1 + address2 joined by ", ".
+  const street = (a) => [a?.address1, a?.address2].filter(Boolean).join(', ');
+  const addrCols = (a, prefix) => ({
+    [`${prefix} Name`]: a?.name || '',
+    [`${prefix} Street`]: street(a),
+    [`${prefix} Address1`]: a?.address1 || '',
+    [`${prefix} Address2`]: a?.address2 || '',
+    [`${prefix} Company`]: a?.company || '',
+    [`${prefix} City`]: a?.city || '',
+    [`${prefix} Zip`]: a?.zip || '',
+    [`${prefix} Province`]: a?.province_code || '',
+    [`${prefix} Country`]: a?.country_code || '',
+    [`${prefix} Phone`]: a?.phone || '',
+    [`${prefix} Province Name`]: a?.province || '',
+  });
+  // Sum of all refund transactions (Shopify's "Refunded Amount").
+  const refundedAmount = (o) => {
+    const sum = (o.refunds || []).reduce((acc, r) =>
+      acc + (r.transactions || []).reduce((t, tx) =>
+        t + (tx.kind === 'refund' ? parseFloat(tx.amount || 0) : 0), 0), 0);
+    return sum ? sum.toFixed(2) : '0.00';
+  };
+  // Up to 5 tax lines, each as a Name/Value pair.
+  const taxCols = (o) => {
+    const cols = {};
+    for (let i = 0; i < 5; i++) {
+      const tl = (o.tax_lines || [])[i];
+      cols[`Tax ${i + 1} Name`] = tl ? (tl.title || '') : '';
+      cols[`Tax ${i + 1} Value`] = tl ? (tl.price ?? '') : '';
+    }
+    return cols;
   };
   const data = [];
   rows.forEach(({ raw: o }) => {
@@ -144,14 +194,49 @@ function exportOrdersToExcel(rows) {
         'Discount Amount': o.total_discounts || '0.00',
         'Shipping Method': (o.shipping_lines || []).map(s => s.title).filter(Boolean).join(', '),
         'Created at': o.created_at || '',
+        ...addrCols(o.billing_address, 'Billing'),
+        ...addrCols(o.shipping_address, 'Shipping'),
+        'Notes': o.note || '',
+        'Note Attributes': (o.note_attributes || []).map(n => `${n.name}: ${n.value}`).join('\n'),
+        'Cancelled at': o.cancelled_at || '',
+        'Payment Method': (o.payment_gateway_names || []).join(', '),
+        'Payment Reference': '',
+        'Refunded Amount': refundedAmount(o),
+        'Outstanding Balance': o.total_outstanding ?? '0.00',
+        'Employee': '',
+        'Location': '',
+        'Device ID': '',
+        'Id': o.id || '',
+        'Tags': o.tags || '',
+        'Risk Level': '',
+        'Source': o.source_name || '',
+        ...taxCols(o),
+        'Phone': o.phone || o.customer?.phone || o.shipping_address?.phone || '',
+        'Receipt Number': '',
+        'Duties': o.current_total_duties_set?.shop_money?.amount ?? '',
+        'Payment ID': '',
+        'Payment Terms Name': o.payment_terms?.payment_terms_name || '',
+        'Next Payment Due At': o.payment_terms?.payment_schedules?.[0]?.due_at || '',
+        'Payment References': '',
+        'Channel Name': o._channel || '',
       } : { ...blankOrderCols };
       data.push({
         'Name': o.name || `#${o.order_number || ''}`,
+        // Shopify repeats Email / Id / Phone on every line-item row of an order.
+        'Email': o.email || o.customer?.email || '',
+        'Id': o.id || '',
+        'Phone': o.phone || o.customer?.phone || o.shipping_address?.phone || '',
+        'Vendor': li.vendor || '',
         ...orderCols,
         'Lineitem quantity': li.quantity ?? '',
         'Lineitem name': li.name || li.title || '',
         'Lineitem price': li.price ?? '',
         'Lineitem compare at price': li.compare_at_price || '',
+        'Lineitem sku': li.sku || '',
+        'Lineitem requires shipping': li.requires_shipping === undefined ? '' : (li.requires_shipping ? 'TRUE' : 'FALSE'),
+        'Lineitem taxable': li.taxable === undefined ? '' : (li.taxable ? 'TRUE' : 'FALSE'),
+        'Lineitem fulfillment status': li.fulfillment_status || 'pending',
+        'Lineitem discount': li.total_discount ?? '0.00',
       });
     });
   });
@@ -265,6 +350,18 @@ const useStateM = useState;
 // --- Permissions context ---
 const PermissionsCtx = React.createContext({ permissions: {}, hasPermission: () => false, isAdmin: false });
 const usePermissions = () => React.useContext(PermissionsCtx);
+
+// Normalise a stored/raw payment-mode value to a clean display label. Legacy
+// shipment docs stored "manual" for COD (Shopify normalises a pending COD
+// transaction's gateway to "manual"). Map that to "Cash on Delivery (COD)" so the
+// logistics table reads correctly even before those docs are re-enriched. Prepaid
+// is left untouched (stays "Standard (Prepaid)").
+function normalizePaymentLabel(v) {
+  if (!v) return v;
+  const s = String(v).toLowerCase();
+  if (s.includes('cash on delivery') || /\bcod\b/.test(s) || s === 'manual') return 'Cash on Delivery (COD)';
+  return v;
+}
 
 // --- Logistics config (shared via Firestore: app_settings/logistics) ---
 const DEFAULT_TRACKING_URL_TEMPLATE = 'https://ship.nimbuspost.com/shipping/tracking/{awb}';
@@ -1626,7 +1723,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           : (d.healthScore ?? d.score) < 60 ? 'High'
           : (d.healthScore ?? d.score) < 80 ? 'Moderate' : 'Low')
         : '-',
-      timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString() : (d.timestamp ? new Date(d.timestamp).toLocaleDateString() : '-'),
+      timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : '-'),
       avatarHue: Math.abs((d.id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 360,
     };
     }).sort((a, b) => {
@@ -1950,7 +2047,7 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
     score: d.healthScore ?? d.score ?? "-",
     risk: (d.healthScore ?? d.score) !== undefined ? ((d.healthScore ?? d.score) < 40 ? "Critical" : ((d.healthScore ?? d.score) < 60 ? "High" : ((d.healthScore ?? d.score) < 80 ? "Moderate" : "Low"))) : "-",
     city: d.city || "-", state: d.state || "-",
-    timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString() : (d.timestamp ? new Date(d.timestamp).toLocaleDateString() : "-"),
+    timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : "-"),
     avatarHue: Math.floor(Math.random()*360),
     answers: d.answers || {}
   };
@@ -2407,7 +2504,7 @@ function CustomersList({ openCustomer, openSubmission }) {
                 state: c.defaultAddress?.provinceCode || c.defaultAddress?.province || "-",
                 orders: c.numberOfOrders || 0,
                 ltv: parseFloat(c.amountSpent?.amount || "0"),
-                timestampShort: new Date(c.createdAt).toLocaleDateString(),
+                timestampShort: new Date(c.createdAt).toLocaleDateString('en-GB'),
                 avatarHue: Math.floor(Math.random() * 360)
             };
         });
@@ -3376,7 +3473,7 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
              city: val.city || "-", 
              state: val.state || "-",
              timestampObj: ts,
-             timestampShort: ts ? ts.toLocaleDateString() : "-",
+             timestampShort: ts ? ts.toLocaleDateString('en-GB') : "-",
              avatarHue: Math.floor(Math.random()*360),
              answers: val.answers || {}
           };
@@ -6994,6 +7091,15 @@ function OrdersHistory({ setRoute, openCustomer }) {
       try {
         const data = await getAllOrders({ status: 'any' });
 
+        // Sales channel ("shopify_oneclick" / "Custom") lives only in GraphQL, not in
+        // the REST order payload. Fetch it once (batched) and merge by order id below.
+        let channelMap = new Map();
+        try {
+          channelMap = await getOrdersChannelMap();
+        } catch (e) {
+          console.error('Failed to fetch order channels', e);
+        }
+
         let imageMap = {};
         const productIds = [...new Set(data.flatMap(o => o.line_items?.map(i => i.product_id)).filter(Boolean))];
         if (productIds.length > 0) {
@@ -7042,7 +7148,8 @@ function OrdersHistory({ setRoute, openCustomer }) {
             avatarHue: Math.floor(Math.random() * 360)
           },
           // Full raw order + product images — used by the order detail drawer.
-          raw: o,
+          // Stash the GraphQL-only sales channel onto the raw order for the export.
+          raw: { ...o, _channel: channelMap.get(String(o.id)) || '' },
           itemImages: imageMap,
         }));
         setOrders(mapped);
@@ -7364,7 +7471,7 @@ const STAGES = [
 const STAGE_ORDER = ["Shipped","Out for delivery","Delivered"];
 function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 
-function ShipmentsScreen() {
+function ShipmentsScreen({ ctx }) {
   const [loading, setLoading] = useStateS(true);
   const [trackingMap, setTrackingMap] = useStateS({});
   const logisticsCfg = useLogisticsConfig();
@@ -7442,6 +7549,14 @@ function ShipmentsScreen() {
         .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
       const latest = events[0] || {};
 
+      // "Reached at Destination" (RAD) — when the parcel arrived at the destination
+      // hub. Find that specific tracking event so we can show when it happened.
+      const radEvent = events.find(ev => {
+        const st = (ev.status || '').toLowerCase();
+        const code = (ev.statusCode || ev.status_code || '').toLowerCase();
+        return (st.includes('reached') && st.includes('dest')) || st === 'rad' || code === 'rad';
+      });
+
       // Prefer the newest merged event, fall back to enriched doc's last status
       const ns = (latest.status || e.rawStatus || e.status || '').toLowerCase();
       let status = e.status || 'Shipped';
@@ -7476,6 +7591,8 @@ function ShipmentsScreen() {
         hasTracking:  events.length > 0,
         rawStatus:    latest.status   || e.rawStatus     || '',
         lastUpdate:   latest.event_time || e.lastEventTime || '',
+        reachedAt:    radEvent?.event_time || '',
+        reachedLocation: radEvent?.location || '',
         lastLocation: latest.location || e.lastLocation || '',
         lastMessage:  latest.message  || e.lastMessage  || '',
         rtoAwb:       latest.rto_awb  || e.rtoAwb       || '',
@@ -7483,7 +7600,7 @@ function ShipmentsScreen() {
         orderId:      e.orderId   || null,
         orderName:    e.orderNumber || (e.orderId ? `#${e.orderId}` : null),
         orderTotal:   typeof e.amount === 'number' ? e.amount : null,
-        paymentMode:  e.paymentMode || null,
+        paymentMode:  normalizePaymentLabel(e.paymentMode) || null,
         itemCount:    typeof e.itemCount === 'number' ? e.itemCount : null,
         items:        Array.isArray(e.items) ? e.items : [],
         customer,
@@ -7497,7 +7614,13 @@ function ShipmentsScreen() {
   const [tab, setTab] = useStateS("all");
   const [sel, setSel] = useStateS(null);
   const [bannerOn, setBannerOn] = useStateS(true);
-  const [search, setSearch] = useStateS('');
+  const [search, setSearch] = useStateS(ctx?.search || '');
+
+  // When the global top-bar search navigates here with a term (e.g. an AWB or
+  // order #), seed this screen's search box so the row is pre-filtered.
+  useEffect(() => {
+    if (ctx?.search) { setSearch(ctx.search); setTab('all'); }
+  }, [ctx?.search]);
 
   // Clear the loading flag once either snapshot delivers its first batch
   useEffect(() => {
@@ -7715,6 +7838,7 @@ function ShipmentsScreen() {
                   <th style={{ whiteSpace: "nowrap" }}>Amount</th>
                   <th style={{ whiteSpace: "nowrap" }}>Payment</th>
                   <th style={{ minWidth: 200, whiteSpace: "nowrap" }}>Status</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Reached destination</th>
                   <th style={{ whiteSpace: "nowrap" }}>Last update</th>
                   <th style={{ whiteSpace: "nowrap" }}>Location</th>
                   <th style={{ whiteSpace: "nowrap" }}>Events</th>
@@ -7722,12 +7846,12 @@ function ShipmentsScreen() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="13"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
+                  <tr><td colSpan="14"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
                 ) : filteredList.map(s => (
                   <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} trackingUrlTemplate={logisticsCfg.trackingUrlTemplate} />
                 ))}
                 {!loading && filteredList.length === 0 && (
-                  <tr><td colSpan="13"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
+                  <tr><td colSpan="14"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
                 )}
               </tbody>
             </table>
@@ -7826,6 +7950,14 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
       </td>
       <td>
         <StageProgress idx={idx} failed={failed} status={s.status} />
+      </td>
+      <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        {s.reachedAt ? (
+          <div className="stack-2">
+            <span className="num">{s.reachedAt}</span>
+            {s.reachedLocation && <span className="muted" style={{ fontSize: 11 }}>{s.reachedLocation}</span>}
+          </div>
+        ) : <span className="muted">—</span>}
       </td>
       <td className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{s.lastUpdate || '-'}</td>
       <td className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{s.lastLocation || '-'}</td>
@@ -9800,6 +9932,243 @@ const ITEMS = {
   settings:      { label: "Settings",                icon: "settings",    route: "settings" },
 };
 
+// Guess what the user is searching for, purely to show a soft hint chip in the bar.
+function detectQueryType(raw) {
+  const s = (raw || '').trim();
+  if (!s) return null;
+  if (/^#/.test(s)) return 'Order ID';
+  if (/^\d+$/.test(s)) {
+    if (s.length <= 7) return 'Order ID';
+    if (s.length === 10) return 'Phone';
+    return 'AWB';
+  }
+  if (/[a-z]/i.test(s) && /\d/.test(s)) return 'AWB';
+  return 'Name';
+}
+
+const SEARCH_TYPE_COLOR = {
+  AWB:      { bg: 'color-mix(in oklab, #6366f1 16%, var(--surface))', fg: '#6366f1' },
+  Order:    { bg: 'color-mix(in oklab, var(--accent) 16%, var(--surface))', fg: 'var(--accent-ink)' },
+  Customer: { bg: 'color-mix(in oklab, #e11d48 14%, var(--surface))', fg: '#e11d48' },
+  Phone:    { bg: 'color-mix(in oklab, #0891b2 16%, var(--surface))', fg: '#0891b2' },
+};
+function SearchTypeChip({ type, small }) {
+  const c = SEARCH_TYPE_COLOR[type] || SEARCH_TYPE_COLOR.Customer;
+  return (
+    <span style={{
+      background: c.bg, color: c.fg, fontSize: small ? 9.5 : 10.5, fontWeight: 600,
+      padding: small ? '1px 6px' : '2px 8px', borderRadius: 99, whiteSpace: 'nowrap',
+      textTransform: 'uppercase', letterSpacing: '0.04em',
+    }}>{type}</span>
+  );
+}
+
+// Global top-bar search. Lazily loads shipments (AWBs) + submissions on first
+// focus, then filters them client-side so you can find an order by AWB, order #,
+// customer name or phone, with live suggestions and a per-result type chip.
+function GlobalSearch({ openSubmission, setRoute }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [shipments, setShipments] = useState([]);
+  const [people, setPeople] = useState([]);
+  const [active, setActive] = useState(0);
+  const inputRef = useRef(null);
+  const boxRef = useRef(null);
+
+  // Cmd/Ctrl+K focuses the bar; Esc closes the dropdown.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+        ensureLoaded();
+      } else if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close when clicking outside the bar.
+  useEffect(() => {
+    const h = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  useEffect(() => { setActive(0); }, [q]);
+
+  const riskFromScore = (n) => (n === undefined || n === null) ? '-'
+    : n < 40 ? 'Critical' : n < 60 ? 'High' : n < 80 ? 'Moderate' : 'Low';
+
+  // One-time load of the searchable datasets (cached for the session).
+  const ensureLoaded = async () => {
+    if (loaded || loading) return;
+    setLoading(true);
+    try {
+      const [awbSnap, partSnap, qSnap, manSnap] = await Promise.all([
+        getDocs(collectionGroup(db, 'awbs')),
+        getDocs(collection(db, 'partial_submissions')),
+        getDocs(collection(db, 'questionnaire_submissions')),
+        getDocs(collection(db, 'manual_submissions')),
+      ]);
+      const ships = awbSnap.docs.map(d => {
+        const x = d.data();
+        return {
+          awb: x.awb || '', orderId: x.orderId || '', orderNumber: x.orderNumber || '',
+          name: x.customer?.name || '', phone: x.customer?.phone || x.phoneKey || '',
+          status: x.status || '',
+        };
+      }).filter(s => s.awb);
+      const mapPerson = (d, coll) => {
+        const x = d.data();
+        const demo = deriveDemographics(x);
+        const score = x.healthScore ?? x.score ?? 0;
+        const ts = x.timestamp?.toDate ? x.timestamp.toDate() : (x.timestamp ? new Date(x.timestamp) : null);
+        return {
+          ...x,
+          id: d.id, docId: d.id, _collection: coll,
+          name: x.name || x.userName || 'Unknown',
+          phone: x.phone || '-',
+          age: demo.age, gender: demo.gender, category: demo.category,
+          city: x.city || '-', state: x.state || '-', source: x.source || coll,
+          score, risk: riskFromScore(score),
+          answers: x.answers || {},
+          timestampLong: ts && !isNaN(ts) ? ts.toLocaleString('en-GB') : '-',
+          timestampShort: ts && !isNaN(ts) ? ts.toLocaleDateString('en-GB') : '-',
+        };
+      };
+      const ppl = [
+        ...partSnap.docs.map(d => mapPerson(d, 'partial')),
+        ...qSnap.docs.map(d => mapPerson(d, 'completed')),
+        ...manSnap.docs.map(d => mapPerson(d, 'manual')),
+      ];
+      setShipments(ships);
+      setPeople(ppl);
+      setLoaded(true);
+    } catch (e) {
+      console.error('Global search load failed', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const results = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return [];
+    const out = [];
+    for (const sh of shipments) {
+      const mAwb = sh.awb.toLowerCase().includes(s);
+      const mOrder = String(sh.orderId).toLowerCase().includes(s) || String(sh.orderNumber).toLowerCase().includes(s);
+      const mName = sh.name.toLowerCase().includes(s);
+      const mPhone = String(sh.phone).toLowerCase().includes(s);
+      if (mAwb || mOrder || mName || mPhone) {
+        out.push({
+          kind: 'shipment',
+          type: (mOrder && !mAwb) ? 'Order' : 'AWB',
+          title: sh.awb,
+          subtitle: [sh.orderNumber || (sh.orderId ? `#${sh.orderId}` : ''), sh.name].filter(Boolean).join(' · '),
+          meta: sh.status,
+          data: sh,
+        });
+      }
+      if (out.length >= 40) break;
+    }
+    for (const p of people) {
+      const mName = (p.name || '').toLowerCase().includes(s);
+      const mPhone = String(p.phone || '').toLowerCase().includes(s);
+      if (mName || mPhone) {
+        out.push({
+          kind: 'person',
+          type: 'Customer',
+          title: p.name,
+          subtitle: [p.phone && p.phone !== '-' ? p.phone : '', p.city && p.city !== '-' ? p.city : ''].filter(Boolean).join(' · '),
+          meta: p._collection,
+          data: p,
+        });
+      }
+      if (out.length >= 80) break;
+    }
+    return out.slice(0, 8);
+  }, [q, shipments, people]);
+
+  const choose = (r) => {
+    if (!r) return;
+    setOpen(false);
+    setQ('');
+    if (r.kind === 'shipment') {
+      setRoute('shipments', { search: r.data.awb });
+    } else {
+      openSubmission(r.data);
+    }
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setActive(a => Math.min(a + 1, results.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); choose(results[active]); }
+  };
+
+  const hint = detectQueryType(q);
+
+  return (
+    <div className="topbar-search" ref={boxRef} style={{ position: 'relative' }}>
+      <Icon name="search" />
+      <input
+        ref={inputRef}
+        value={q}
+        placeholder={"Search customers, orders, AWB, doctors...   Ctrl+K"}
+        onChange={e => { setQ(e.target.value); setOpen(true); }}
+        onFocus={() => { setOpen(true); ensureLoaded(); }}
+        onKeyDown={onKeyDown}
+      />
+      {hint && q.trim() && (
+        <span style={{ marginLeft: 'auto', flexShrink: 0 }}><SearchTypeChip type={hint} /></span>
+      )}
+      {open && q.trim() && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 200,
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: 440,
+          overflowY: 'auto',
+        }}>
+          {loading && !loaded ? (
+            <div style={{ padding: '16px', fontSize: 13, color: 'var(--muted)' }}>Loading search index…</div>
+          ) : results.length === 0 ? (
+            <div style={{ padding: '16px', fontSize: 13, color: 'var(--muted)' }}>
+              No matches for “{q.trim()}”
+            </div>
+          ) : (
+            results.map((r, i) => (
+              <div
+                key={r.kind + i + r.title}
+                onMouseDown={(e) => { e.preventDefault(); choose(r); }}
+                onMouseEnter={() => setActive(i)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', cursor: 'pointer',
+                  background: i === active ? 'var(--accent-soft)' : 'transparent',
+                  borderBottom: i < results.length - 1 ? '1px solid var(--border)' : 'none',
+                }}>
+                <SearchTypeChip type={r.type} small />
+                <div className="stack-2" style={{ minWidth: 0, flex: 1 }}>
+                  <span className="fw5" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</span>
+                  {r.subtitle && <span className="muted" style={{ fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.subtitle}</span>}
+                </div>
+                {r.meta && <span className="muted" style={{ fontSize: 11, flexShrink: 0 }}>{r.meta}</span>}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App({ user, roles, onLogout }) {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [role] = useState(() => {
@@ -9979,10 +10348,7 @@ function App({ user, roles, onLogout }) {
       <main className="main">
         <header className="topbar">
           <Breadcrumb route={route} role={role} />
-          <div className="topbar-search">
-            <Icon name="search" />
-            <input placeholder={"Search customers, orders, AWB, doctors...   Ctrl+K"} />
-          </div>
+          <GlobalSearch openSubmission={setSubmissionDrawer} setRoute={setRoute} />
           <div className="topbar-actions">
             <EnvToggle value={env} onChange={(newEnv) => {
               setEnv(newEnv);
@@ -10335,7 +10701,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubm
     case "shipment_tracking": return <ShipmentTrackingScreen setRoute={setRoute} openCustomer={openCustomer} />;
     case "crm_orders":   return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
-    case "shipments":    return <ShipmentsScreen />;
+    case "shipments":    return <ShipmentsScreen ctx={route.ctx} />;
     case "marketing":    return <MarketingScreen />;
     case "data_studio":  return <DataStudioScreen me={me} />;
     case "focused_editor": return <DataStudioScreen me={me} initialView="focused" />;

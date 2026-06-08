@@ -128,6 +128,59 @@ export const getAllOrders = async ({ status = 'any', max = 2000, perPage = 250 }
 };
 
 /**
+ * Fetch the sales-channel of every order via GraphQL (the channel is NOT in the
+ * REST orders.json payload). Returns a Map of legacy numeric order id (string) ->
+ * channel label, e.g. "shopify_oneclick" or "Custom". Batched through the
+ * paginated `orders` query, so it costs only ~1 GraphQL call per 250 orders.
+ * @param {Object} params - { max, perPage }
+ * @returns {Promise<Map<string,string>>}
+ */
+export const getOrdersChannelMap = async ({ max = 2000, perPage = 250 } = {}) => {
+    const map = new Map();
+    let cursor = null;
+    const query = `
+      query($cursor: String) {
+        orders(first: ${perPage}, after: $cursor, sortKey: CREATED_AT, reverse: true) {
+          pageInfo { hasNextPage endCursor }
+          edges {
+            node {
+              legacyResourceId
+              app { name }
+              channelInformation {
+                channelDefinition { handle channelName }
+              }
+            }
+          }
+        }
+      }`;
+    try {
+        for (let i = 0; i < 50 && map.size < max; i++) {
+            const res = await fetch('/shopify-v2/graphql.json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, variables: { cursor } }),
+            });
+            if (!res.ok) break;
+            const json = await res.json();
+            const conn = json?.data?.orders;
+            if (!conn) break;
+            for (const { node } of conn.edges || []) {
+                const cd = node.channelInformation?.channelDefinition;
+                // Prefer the channel handle ("shopify_oneclick"), then its display
+                // name ("Custom"), then the app name as a last resort.
+                const label = cd?.handle || cd?.channelName || node.app?.name || '';
+                if (node.legacyResourceId) map.set(String(node.legacyResourceId), label);
+            }
+            if (!conn.pageInfo?.hasNextPage) break;
+            cursor = conn.pageInfo.endCursor;
+        }
+    } catch (e) {
+        console.error('Error fetching order channel map:', e);
+    }
+    return map;
+};
+
+/**
  * Fetch a single order by Shopify internal numeric ID.
  * @param {string|number} orderId
  * @returns {Promise<object|null>}

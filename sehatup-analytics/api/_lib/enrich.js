@@ -119,6 +119,33 @@ function normalizePhone(p) {
 }
 
 /**
+ * Decide COD vs Prepaid for a Shopify order.
+ *
+ * Why this is needed: when the CRM creates an order it attaches a payment
+ * transaction whose gateway is "Cash on Delivery (COD)" (pending) or
+ * "Standard (Prepaid)" (success). Shopify keeps the custom gateway name for a
+ * SUCCESSFUL (paid) transaction — so prepaid orders read back as
+ * "Standard (Prepaid)" — but it normalises a PENDING transaction's gateway to
+ * the generic "manual". That's why COD orders showed up as "manual".
+ *
+ * So `payment_gateway_names` / `gateway` alone can't be trusted for COD. We detect
+ * COD from the shipping-line title (the CRM sets "Cash on Delivery (COD)" there),
+ * tags and gateways; everything else keeps Shopify's real gateway name as-is
+ * (prepaid stays "Standard (Prepaid)").
+ */
+function derivePaymentMode(order) {
+  if (!order) return '';
+  const gateways = (order.payment_gateway_names || []).join(' ');
+  const shipTitles = (order.shipping_lines || []).map(s => s.title || '').join(' ');
+  const hay = `${gateways} ${shipTitles} ${order.tags || ''} ${order.gateway || ''}`.toLowerCase();
+  if (hay.includes('cash on delivery') || /\bcod\b/.test(hay)) return 'Cash on Delivery (COD)';
+  // Prepaid (and anything else): keep Shopify's real gateway name, e.g. "Standard (Prepaid)".
+  if (gateways && !/^\s*manual\s*$/i.test(gateways)) return order.payment_gateway_names[0];
+  if (order.financial_status === 'pending') return 'Cash on Delivery (COD)';
+  return order.payment_gateway_names?.[0] || (order.financial_status === 'paid' ? 'Prepaid' : '');
+}
+
+/**
  * Run the full enrichment pipeline for one AWB and write into Firestore.
  *   shipments/{phone}/awbs/{awb}  ← full enriched doc
  *   shipments/{phone}             ← customer summary doc (merged)
@@ -209,7 +236,7 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       items:        order?.line_items?.map(i => ({ name: i.name || i.title, qty: i.quantity })) || [],
       itemCount:    order?.line_items?.reduce((a, i) => a + (i.quantity || 0), 0) || 0,
       amount:       order ? parseFloat(order.total_price || 0) : 0,
-      paymentMode:  order ? ((order.gateway || '').toLowerCase().includes('cash') ? 'COD' : (order.payment_gateway_names?.[0] || 'Prepaid')) : '',
+      paymentMode:  derivePaymentMode(order),
       // Bookkeeping
       orderCreated: details?.created || (order?.created_at ? new Date(order.created_at).toLocaleString('en-IN') : ''),
       edd:          details?.edd    || '',
