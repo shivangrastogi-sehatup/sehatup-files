@@ -1,4 +1,10 @@
 {
+    "crons": [
+        {
+            "path": "/api/cron-sync-shipments",
+            "schedule": "0 */6 * * *"
+        }
+    ],
     "rewrites": [
         {
             "source": "/api-sehatup/:path*",

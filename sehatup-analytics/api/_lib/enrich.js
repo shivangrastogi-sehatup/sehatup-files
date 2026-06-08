@@ -14,6 +14,14 @@ const SHOPIFY_HOSTNAME    = '0ec320-gj.myshopify.com';
 const SHOPIFY_API_VERSION = '2024-01';
 const SHOPIFY_TOKEN       = process.env.SHOPIFY_ACCESS_TOKEN || '';
 
+// Google Apps Script web-app URL that fronts the CRM spreadsheet (same deployment
+// used by /api/leads). Every enrichment upserts the shipment row into its
+// "shipments" tab, keyed by AWB — making the sheet a live standalone tracker.
+const SHEETS_SCRIPT_URL = process.env.SHEETS_SCRIPT_URL || process.env.DEFAULT_GSCRIPT_URL || '';
+
+// Public Nimbus tracking page for an AWB (also used as the Referer when polling).
+const nimbusTrackingUrl = (awb) => `https://ship.nimbuspost.com/shipping/tracking/${awb}`;
+
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
 // ─────── Firestore REST helpers ───────
@@ -145,6 +153,62 @@ function derivePaymentMode(order) {
   return order.payment_gateway_names?.[0] || (order.financial_status === 'paid' ? 'Prepaid' : '');
 }
 
+// Normalise the raw courier status text into a clean lifecycle stage — mirrors the
+// CRM Logistics dashboard so the sheet's "Status" column matches what staff see.
+function classifyStatus(raw) {
+  const ns = (raw || '').toLowerCase();
+  if (!ns) return 'Pending';
+  if (ns.includes('rto') || ns.includes('return to origin') || ns.includes('fail') ||
+      ns.includes('cancel') || ns.includes('undeliver') || ns.includes('refuse')) return 'Failed/RTO';
+  if (ns.includes('delivered') && !ns.includes('out')) return 'Delivered';
+  if (ns.includes('out for delivery') || ns === 'out_for_delivery') return 'Out for delivery';
+  if (ns.includes('exception') || ns.includes('hold') || ns.includes('delay')) return 'Exception';
+  if (ns.includes('transit') || ns === 'in transit') return 'In transit';
+  if (ns.includes('picked') || ns.includes('shipped') || ns.includes('dispatch') || ns.includes('manifest')) return 'Shipped';
+  return raw;
+}
+
+// The earliest event_time in the timeline whose status matches a milestone — so we
+// can record WHEN the parcel was shipped / out for delivery / reached / delivered.
+function milestoneTime(timeline, pred) {
+  let earliest = '';
+  for (const ev of timeline) {
+    const st = (ev.status || '').toLowerCase();
+    const code = (ev.statusCode || '').toLowerCase();
+    if (pred(st, code)) {
+      const t = ev.event_time || '';
+      if (t && (!earliest || t < earliest)) earliest = t;
+    }
+  }
+  return earliest;
+}
+
+// Upsert one shipment row into the Google Sheet "shipments" tab (keyed by AWB) via
+// the Apps Script web app. Best-effort — never throws, so a sheet hiccup can't fail
+// the webhook (the Firestore write already succeeded by this point).
+async function pushShipmentToSheet(awb, updates) {
+  if (!SHEETS_SCRIPT_URL) return { ok: false, skipped: 'no_script_url' };
+  try {
+    const r = await fetch(SHEETS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ tab: 'shipments', keyField: 'AWB', key: awb, updates, updatedBy: 'Nimbus tracker' }),
+      redirect: 'follow',
+    });
+    const text = await r.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch (_) { /* Apps Script may wrap in HTML on error */ }
+    if (!r.ok || data.ok === false) {
+      console.warn('[sheet] shipment upsert non-ok for', awb, r.status, (data.error || text || '').slice(0, 200));
+      return { ok: false, status: r.status, error: data.error || 'non_ok' };
+    }
+    return { ok: true, row: data.row };
+  } catch (e) {
+    console.warn('[sheet] shipment upsert failed for', awb, e?.message || e);
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
+
 /**
  * Run the full enrichment pipeline for one AWB and write into Firestore.
  *   shipments/{phone}/awbs/{awb}  ← full enriched doc
@@ -152,6 +216,7 @@ function derivePaymentMode(order) {
  *
  * Status fields (status, location, lastEventTime, etc.) get refreshed on every
  * call; customer/order info is also refreshed (cheap — Shopify is single-fetch).
+ * Finally the row is mirrored into the Google Sheet "shipments" tab.
  */
 export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook') {
   try {
@@ -266,16 +331,60 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       });
     }
 
+    // ─── Mirror into the Google Sheet "shipments" tab (standalone tracker) ───
+    // Milestone timestamps derived from the full timeline.
+    const shippedAt        = milestoneTime(timeline, (st) => st.includes('picked') || st.includes('pickup') || st.includes('manifest') || st.includes('dispatch') || st.includes('shipped'));
+    const inTransitAt      = milestoneTime(timeline, (st) => st.includes('transit'));
+    const outForDeliveryAt = milestoneTime(timeline, (st, code) => st.includes('out for delivery') || st === 'out_for_delivery' || code === 'ofd');
+    const reachedAt        = milestoneTime(timeline, (st, code) => (st.includes('reached') && st.includes('dest')) || st === 'rad' || code === 'rad');
+    const deliveredAt      = milestoneTime(timeline, (st) => st.includes('delivered') && !st.includes('out') && !st.includes('rto'));
+    const rtoAt            = milestoneTime(timeline, (st) => st.includes('rto') || st.includes('return to origin'));
+
+    const sheetUpdates = {
+      'Order ID':            awbDoc.orderId,
+      'Order Number':        awbDoc.orderNumber,
+      'Courier':             awbDoc.courier,
+      'Customer Name':       customer.name,
+      'Phone':               customer.phone,
+      'Email':               customer.email,
+      'Address':             awbDoc.shippingAddress.address,
+      'City':                awbDoc.shippingAddress.city,
+      'State':               awbDoc.shippingAddress.state,
+      'Pincode':             awbDoc.shippingAddress.pincode,
+      'Items':               awbDoc.items.map(i => `${i.qty}× ${i.name}`).join(', '),
+      'Item Count':          awbDoc.itemCount,
+      'Amount':              awbDoc.amount,
+      'Payment':             awbDoc.paymentMode,
+      'Status':              classifyStatus(awbDoc.status),
+      'Raw Status':          awbDoc.rawStatus,
+      'Last Location':       awbDoc.lastLocation,
+      'Last Event Time':     awbDoc.lastEventTime,
+      'Shipped At':          shippedAt,
+      'In Transit At':       inTransitAt,
+      'Out For Delivery At': outForDeliveryAt,
+      'Reached At':          reachedAt,
+      'Delivered At':        deliveredAt,
+      'RTO At':              rtoAt,
+      'RTO AWB':             awbDoc.rtoAwb,
+      'Event Count':         awbDoc.eventCount,
+      'Tracking URL':        nimbusTrackingUrl(awb),
+      'Order Created':       awbDoc.orderCreated,
+      'EDD':                 awbDoc.edd,
+    };
+    const sheetResult = await pushShipmentToSheet(awb, sheetUpdates);
+
     return {
       ok: true,
       awb,
       phoneKey,
       orderNumber,
       customerFound: !!order,
+      sheetSynced: !!sheetResult.ok,
       wrote: {
         awbPath: `shipments/${phoneKey}/awbs/${awb}`,
         parentPath: parentWrite ? `shipments/${phoneKey}` : null,
         awbDocName: awbWrite?.name || null,
+        sheetRow: sheetResult.row || null,
       },
     };
   } catch (e) {

@@ -7832,7 +7832,6 @@ function ShipmentsScreen({ ctx }) {
                   <th style={{ whiteSpace: "nowrap" }}>Order ID</th>
                   <th style={{ whiteSpace: "nowrap" }}>Customer</th>
                   <th style={{ whiteSpace: "nowrap" }}>Phone</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Shipment tracking</th>
                   <th style={{ minWidth: 240 }}>Address</th>
                   <th style={{ whiteSpace: "nowrap" }}>Items</th>
                   <th style={{ whiteSpace: "nowrap" }}>Amount</th>
@@ -7842,6 +7841,7 @@ function ShipmentsScreen({ ctx }) {
                   <th style={{ whiteSpace: "nowrap" }}>Last update</th>
                   <th style={{ whiteSpace: "nowrap" }}>Location</th>
                   <th style={{ whiteSpace: "nowrap" }}>Events</th>
+                  <th style={{ whiteSpace: "nowrap", textAlign: "center" }}>Tracking</th>
                 </tr>
               </thead>
               <tbody>
@@ -7921,18 +7921,13 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
       <td className="num" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>
         {cust ? (cust.phone || '—') : (isEnriching ? <Skel w={90} /> : <span className="muted">—</span>)}
       </td>
-      <td style={{ whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
-        <div className="hstack-6">
-          <a href={trackUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 12.5, fontWeight: 500 }}>track link</a>
-          <button className="btn sm ghost" title="Copy tracking link" onClick={copyTrack} style={{ padding: "2px 8px", fontSize: 11 }}>
-            {copied ? "Copied!" : "Copy"}
-          </button>
-        </div>
-      </td>
-      <td style={{ minWidth: 240 }}>
+      <td style={{ minWidth: 240, maxWidth: 320 }}>
         {cust ? (
-          <div className="stack-2" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>
-            <div style={{ fontSize: 12.5 }}>{cust.address || '—'}</div>
+          <div className="stack-2">
+            <div title={cust.address || ''} style={{
+              fontSize: 12.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+              overflow: "hidden", wordBreak: "break-word", cursor: cust.address ? "help" : "default",
+            }}>{cust.address || '—'}</div>
             <div className="muted" style={{ fontSize: 11 }}>
               {[cust.city, cust.state, cust.pincode].filter(Boolean).join(', ')}
             </div>
@@ -7962,6 +7957,16 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
       <td className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{s.lastUpdate || '-'}</td>
       <td className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{s.lastLocation || '-'}</td>
       <td className="muted num" style={{ fontSize: 12 }}>{s.eventCount}</td>
+      <td style={{ whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
+        <div className="hstack-6" style={{ justifyContent: "center" }}>
+          <a href={trackUrl} target="_blank" rel="noopener noreferrer" className="btn sm" title="Open public tracking page" style={{ fontSize: 11.5, gap: 4 }}>
+            <Icon name="external_link" size={12} /> Track
+          </a>
+          <button className="btn sm" title="Copy tracking link" onClick={copyTrack} style={{ fontSize: 11.5, gap: 4 }}>
+            <Icon name={copied ? "check" : "copy"} size={12} /> {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </td>
     </tr>
   );
 }
@@ -9973,6 +9978,7 @@ function GlobalSearch({ openSubmission, setRoute }) {
   const [loading, setLoading] = useState(false);
   const [shipments, setShipments] = useState([]);
   const [people, setPeople] = useState([]);
+  const [remote, setRemote] = useState([]);
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
   const boxRef = useRef(null);
@@ -10003,21 +10009,74 @@ function GlobalSearch({ openSubmission, setRoute }) {
 
   useEffect(() => { setActive(0); }, [q]);
 
+  // Exact server lookup (debounced) so a specific AWB / order # / phone is found
+  // even when it's outside the recent client cache. Each query is a single-field
+  // equality with limit(3) — a few docs, not a bulk download.
+  useEffect(() => {
+    const s = q.trim();
+    if (s.length < 4) { setRemote([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const digits = s.replace(/\D/g, '');
+        const queries = [
+          getDocs(query(collectionGroup(db, 'awbs'), where('awb', '==', s), limit(3))),
+          getDocs(query(collectionGroup(db, 'awbs'), where('awb', '==', s.toUpperCase()), limit(3))),
+        ];
+        if (digits.length >= 4) {
+          queries.push(getDocs(query(collectionGroup(db, 'awbs'), where('orderNumber', '==', `#${digits}`), limit(3))));
+          queries.push(getDocs(query(collectionGroup(db, 'awbs'), where('phoneKey', '==', digits), limit(3))));
+        }
+        const settled = await Promise.allSettled(queries);
+        if (cancelled) return;
+        const seen = new Set();
+        const found = [];
+        settled.forEach(r => {
+          if (r.status !== 'fulfilled') return;
+          r.value.docs.forEach(d => {
+            const x = d.data();
+            if (!x.awb || seen.has(x.awb)) return;
+            seen.add(x.awb);
+            found.push({
+              awb: x.awb, orderId: x.orderId || '', orderNumber: x.orderNumber || '',
+              name: x.customer?.name || '', phone: x.customer?.phone || x.phoneKey || '',
+              status: x.status || '',
+            });
+          });
+        });
+        setRemote(found);
+      } catch {
+        if (!cancelled) setRemote([]);
+      }
+    }, 350);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [q]);
+
   const riskFromScore = (n) => (n === undefined || n === null) ? '-'
     : n < 40 ? 'Critical' : n < 60 ? 'High' : n < 80 ? 'Moderate' : 'Low';
 
-  // One-time load of the searchable datasets (cached for the session).
+  // Load a SMALL, recent slice for instant client-side fuzzy search (not the whole
+  // collections — bulk-downloading tens of thousands of docs floods the Firestore
+  // QUIC connection and times out). Anything older than this window is still found
+  // via the exact server lookup below.
   const ensureLoaded = async () => {
     if (loaded || loading) return;
     setLoading(true);
     try {
-      const [awbSnap, partSnap, qSnap, manSnap] = await Promise.all([
-        getDocs(collectionGroup(db, 'awbs')),
-        getDocs(collection(db, 'partial_submissions')),
-        getDocs(collection(db, 'questionnaire_submissions')),
-        getDocs(collection(db, 'manual_submissions')),
+      // Recent AWBs — newest-first if the single-field index allows it, else unordered.
+      let awbDocs = [];
+      try {
+        awbDocs = (await getDocs(query(collectionGroup(db, 'awbs'), orderBy('updatedAt', 'desc'), limit(600)))).docs;
+      } catch {
+        awbDocs = (await getDocs(query(collectionGroup(db, 'awbs'), limit(600)))).docs;
+      }
+      const [partRes, qRes, manRes] = await Promise.allSettled([
+        getDocs(query(collection(db, 'partial_submissions'), orderBy('timestamp', 'desc'), limit(300))),
+        getDocs(query(collection(db, 'questionnaire_submissions'), orderBy('timestamp', 'desc'), limit(300))),
+        getDocs(query(collection(db, 'manual_submissions'), orderBy('timestamp', 'desc'), limit(300))),
       ]);
-      const ships = awbSnap.docs.map(d => {
+      const docsOf = (res) => res.status === 'fulfilled' ? res.value.docs : [];
+      const ships = awbDocs.map(d => {
         const x = d.data();
         return {
           awb: x.awb || '', orderId: x.orderId || '', orderNumber: x.orderNumber || '',
@@ -10044,9 +10103,9 @@ function GlobalSearch({ openSubmission, setRoute }) {
         };
       };
       const ppl = [
-        ...partSnap.docs.map(d => mapPerson(d, 'partial')),
-        ...qSnap.docs.map(d => mapPerson(d, 'completed')),
-        ...manSnap.docs.map(d => mapPerson(d, 'manual')),
+        ...docsOf(partRes).map(d => mapPerson(d, 'partial')),
+        ...docsOf(qRes).map(d => mapPerson(d, 'completed')),
+        ...docsOf(manRes).map(d => mapPerson(d, 'manual')),
       ];
       setShipments(ships);
       setPeople(ppl);
@@ -10062,20 +10121,28 @@ function GlobalSearch({ openSubmission, setRoute }) {
     const s = q.trim().toLowerCase();
     if (!s) return [];
     const out = [];
+    const seenAwb = new Set();
+    const pushShip = (sh, type) => {
+      if (sh.awb && seenAwb.has(sh.awb)) return;
+      if (sh.awb) seenAwb.add(sh.awb);
+      out.push({
+        kind: 'shipment',
+        type,
+        title: sh.awb,
+        subtitle: [sh.orderNumber || (sh.orderId ? `#${sh.orderId}` : ''), sh.name].filter(Boolean).join(' · '),
+        meta: sh.status,
+        data: sh,
+      });
+    };
+    // Exact server hits first (these work even before/without the recent cache).
+    for (const sh of remote) pushShip(sh, 'AWB');
     for (const sh of shipments) {
       const mAwb = sh.awb.toLowerCase().includes(s);
       const mOrder = String(sh.orderId).toLowerCase().includes(s) || String(sh.orderNumber).toLowerCase().includes(s);
       const mName = sh.name.toLowerCase().includes(s);
       const mPhone = String(sh.phone).toLowerCase().includes(s);
       if (mAwb || mOrder || mName || mPhone) {
-        out.push({
-          kind: 'shipment',
-          type: (mOrder && !mAwb) ? 'Order' : 'AWB',
-          title: sh.awb,
-          subtitle: [sh.orderNumber || (sh.orderId ? `#${sh.orderId}` : ''), sh.name].filter(Boolean).join(' · '),
-          meta: sh.status,
-          data: sh,
-        });
+        pushShip(sh, (mOrder && !mAwb) ? 'Order' : 'AWB');
       }
       if (out.length >= 40) break;
     }
@@ -10095,7 +10162,7 @@ function GlobalSearch({ openSubmission, setRoute }) {
       if (out.length >= 80) break;
     }
     return out.slice(0, 8);
-  }, [q, shipments, people]);
+  }, [q, shipments, people, remote]);
 
   const choose = (r) => {
     if (!r) return;
@@ -10126,9 +10193,12 @@ function GlobalSearch({ openSubmission, setRoute }) {
         onChange={e => { setQ(e.target.value); setOpen(true); }}
         onFocus={() => { setOpen(true); ensureLoaded(); }}
         onKeyDown={onKeyDown}
+        style={hint && q.trim() ? { paddingRight: 92 } : undefined}
       />
       {hint && q.trim() && (
-        <span style={{ marginLeft: 'auto', flexShrink: 0 }}><SearchTypeChip type={hint} /></span>
+        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 1, pointerEvents: 'none' }}>
+          <SearchTypeChip type={hint} />
+        </span>
       )}
       {open && q.trim() && (
         <div style={{
@@ -10137,12 +10207,14 @@ function GlobalSearch({ openSubmission, setRoute }) {
           boxShadow: '0 12px 32px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: 440,
           overflowY: 'auto',
         }}>
-          {loading && !loaded ? (
-            <div style={{ padding: '16px', fontSize: 13, color: 'var(--muted)' }}>Loading search index…</div>
-          ) : results.length === 0 ? (
-            <div style={{ padding: '16px', fontSize: 13, color: 'var(--muted)' }}>
-              No matches for “{q.trim()}”
-            </div>
+          {results.length === 0 ? (
+            loading && !loaded ? (
+              <div style={{ padding: '16px', fontSize: 13, color: 'var(--muted)' }}>Searching…</div>
+            ) : (
+              <div style={{ padding: '16px', fontSize: 13, color: 'var(--muted)' }}>
+                No matches for “{q.trim()}”
+              </div>
+            )
           ) : (
             results.map((r, i) => (
               <div
