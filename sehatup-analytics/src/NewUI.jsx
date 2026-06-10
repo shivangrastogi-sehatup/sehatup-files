@@ -4,8 +4,9 @@ import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
 import { searchCustomers, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
-import { db, auth } from './firebase';
+import { db, auth, storage } from './firebase';
 import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { computeAnalytics } from "./utils/analytics";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -15,35 +16,41 @@ import 'react-datepicker/dist/react-datepicker.css';
 // Curated list of exportable columns — `default: true` means pre-selected in the picker.
 // Each `get(r)` produces the cell value for a row. No `answers`/`rawState`/`html` etc.
 const EXPORT_COLUMNS = [
-  { key: 'docId',         label: 'Doc ID',          get: r => r.id || r.docId || '' },
-  { key: 'name',          label: 'Name',            get: r => r.name || r.userName || '', default: true },
-  { key: 'phone',         label: 'Phone',           get: r => r.phone || '',               default: true },
-  { key: 'email',         label: 'Email',           get: r => r.email || '' },
-  { key: 'age',           label: 'Age',             get: r => r.age || '',                 default: true },
-  { key: 'gender',        label: 'Gender',          get: r => r.gender || '',              default: true },
-  { key: 'dob',           label: 'Date of Birth',   get: r => r.dob || '' },
-  { key: 'city',          label: 'City',            get: r => r.city || '' },
-  { key: 'state',         label: 'State',           get: r => r.state || '' },
-  { key: 'category',      label: 'Category',        get: r => r.category || r.primaryGoal || r.reportCategory || '', default: true },
-  { key: 'score',         label: 'Health Score',    get: r => r.healthScore ?? r.score ?? '', default: true },
-  { key: 'risk',          label: 'Risk Level',      get: r => r.riskType || r.risk || '' },
-  { key: 'source',        label: 'Source',          get: r => r._source || r.source || '', default: true },
-  { key: 'consulted',     label: 'Consulted',       get: r => r.isConsulted ? 'Yes' : 'No', default: true },
-  { key: 'purchased',     label: 'Purchased',       get: r => r.isPurchased ? 'Yes' : 'No', default: true },
-  { key: 'date',          label: 'Date',            get: r => {
+  { key: 'docId', label: 'Doc ID', get: r => r.id || r.docId || '' },
+  { key: 'name', label: 'Name', get: r => r.name || r.userName || '', default: true },
+  { key: 'phone', label: 'Phone', get: r => r.phone || '', default: true },
+  { key: 'email', label: 'Email', get: r => r.email || '' },
+  { key: 'age', label: 'Age', get: r => r.age || '', default: true },
+  { key: 'gender', label: 'Gender', get: r => r.gender || '', default: true },
+  { key: 'dob', label: 'Date of Birth', get: r => r.dob || '' },
+  { key: 'city', label: 'City', get: r => r.city || '' },
+  { key: 'state', label: 'State', get: r => r.state || '' },
+  { key: 'category', label: 'Category', get: r => r.category || r.primaryGoal || r.reportCategory || '', default: true },
+  { key: 'score', label: 'Health Score', get: r => r.healthScore ?? r.score ?? '', default: true },
+  { key: 'risk', label: 'Risk Level', get: r => r.riskType || r.risk || '' },
+  { key: 'source', label: 'Source', get: r => r._source || r.source || '', default: true },
+  { key: 'consulted', label: 'Consulted', get: r => r.isConsulted ? 'Yes' : 'No', default: true },
+  { key: 'purchased', label: 'Purchased', get: r => r.isPurchased ? 'Yes' : 'No', default: true },
+  {
+    key: 'date', label: 'Date', get: r => {
       const ts = r.timestamp?.toDate ? r.timestamp.toDate() : (r.timestamp ? new Date(r.timestamp) : null);
       return ts && !isNaN(ts.getTime()) ? ts.toLocaleDateString('en-IN') : '';
-    }, default: true },
-  { key: 'time',          label: 'Time',            get: r => {
+    }, default: true
+  },
+  {
+    key: 'time', label: 'Time', get: r => {
       const ts = r.timestamp?.toDate ? r.timestamp.toDate() : (r.timestamp ? new Date(r.timestamp) : null);
       return ts && !isNaN(ts.getTime()) ? ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
-    }, default: true },
+    }, default: true
+  },
   { key: 'primaryDiagnosis', label: 'Primary Diagnosis', get: r => r.primaryDiagnosis || '' },
-  { key: 'consultedBy',   label: 'Consulted By',    get: r => r.consultedByName || '' },
-  { key: 'lastConsultedAt', label: 'Last Consulted At', get: r => {
+  { key: 'consultedBy', label: 'Consulted By', get: r => r.consultedByName || '' },
+  {
+    key: 'lastConsultedAt', label: 'Last Consulted At', get: r => {
       const ts = r.lastConsultedAt?.toDate ? r.lastConsultedAt.toDate() : (r.lastConsultedAt ? new Date(r.lastConsultedAt) : null);
       return ts && !isNaN(ts.getTime()) ? ts.toLocaleString('en-IN') : '';
-    } },
+    }
+  },
 ];
 
 // Export rows to an XLSX file. `selectedKeys` is an array of EXPORT_COLUMNS keys.
@@ -67,12 +74,12 @@ function exportToExcel(filename, rows, selectedKeys) {
 
 // Quick date-range presets for the Shopify Orders filter.
 const DATE_PRESETS = [
-  { value: 'all',       label: 'All time' },
-  { value: 'today',     label: 'Today' },
+  { value: 'all', label: 'All time' },
+  { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
-  { value: '7d',        label: 'Last 7 days' },
-  { value: '30d',       label: 'Last 30 days' },
-  { value: 'month',     label: 'This month' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: 'month', label: 'This month' },
   { value: 'lastmonth', label: 'Last month' },
 ];
 
@@ -85,15 +92,15 @@ function resolveDateRange(preset, custom) {
   if (preset === 'today') return [startOfToday, endOfToday];
   if (preset === 'yesterday') {
     const s = new Date(startOfToday); s.setDate(s.getDate() - 1);
-    const e = new Date(endOfToday);   e.setDate(e.getDate() - 1);
+    const e = new Date(endOfToday); e.setDate(e.getDate() - 1);
     return [s, e];
   }
-  if (preset === '7d')  { const s = new Date(startOfToday); s.setDate(s.getDate() - 6);  return [s, endOfToday]; }
+  if (preset === '7d') { const s = new Date(startOfToday); s.setDate(s.getDate() - 6); return [s, endOfToday]; }
   if (preset === '30d') { const s = new Date(startOfToday); s.setDate(s.getDate() - 29); return [s, endOfToday]; }
   if (preset === 'month') return [new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0), endOfToday];
   if (preset === 'lastmonth') {
     return [new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0),
-            new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)];
+    new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)];
   }
   if (preset === 'custom') {
     const [cs, ce] = custom || [];
@@ -390,41 +397,41 @@ const RISKS = ["Low", "Moderate", "High", "Critical"];
 const CATEGORIES = ["Womens Wellness", "Mens Health", "Joint Care", "Diabetes Care", "Heart Care", "Sleep & Stress"];
 const SOURCES = ["Full", "Partial", "Manual", "Consulted", "Purchased", "WhatsApp"];
 const STATES_IN = ["Maharashtra", "Delhi", "Karnataka", "UP", "Gujarat", "Tamil Nadu", "West Bengal", "Punjab", "Rajasthan", "Telangana"];
-const CITIES = { Maharashtra:"Mumbai", Delhi:"New Delhi", Karnataka:"Bengaluru", UP:"Lucknow", Gujarat:"Ahmedabad", "Tamil Nadu":"Chennai", "West Bengal":"Kolkata", Punjab:"Ludhiana", Rajasthan:"Jaipur", Telangana:"Hyderabad" };
+const CITIES = { Maharashtra: "Mumbai", Delhi: "New Delhi", Karnataka: "Bengaluru", UP: "Lucknow", Gujarat: "Ahmedabad", "Tamil Nadu": "Chennai", "West Bengal": "Kolkata", Punjab: "Ludhiana", Rajasthan: "Jaipur", Telangana: "Hyderabad" };
 
 const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", 
-  "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", 
-  "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia", 
-  "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic", 
-  "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", 
-  "Fiji", "Finland", "France", 
-  "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", 
-  "Haiti", "Honduras", "Hungary", 
-  "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", 
-  "Jamaica", "Japan", "Jordan", 
-  "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", 
-  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", 
-  "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", 
-  "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", 
-  "Oman", 
-  "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", 
-  "Qatar", 
-  "Romania", "Russia", "Rwanda", 
-  "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", 
-  "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", 
-  "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States of America", "Uruguay", "Uzbekistan", 
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", 
-  "Yemen", 
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
+  "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
+  "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia",
+  "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+  "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+  "Fiji", "Finland", "France",
+  "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana",
+  "Haiti", "Honduras", "Hungary",
+  "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
+  "Jamaica", "Japan", "Jordan",
+  "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
+  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+  "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar",
+  "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway",
+  "Oman",
+  "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
+  "Qatar",
+  "Romania", "Russia", "Rwanda",
+  "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
+  "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
+  "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States of America", "Uruguay", "Uzbekistan",
+  "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
+  "Yemen",
   "Zambia", "Zimbabwe"
 ];
 
 const INDIAN_STATES = [
-  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", 
-  "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", 
-  "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka", 
-  "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", 
-  "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
+  "Chandigarh", "Chhattisgarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa",
+  "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Karnataka",
+  "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+  "Mizoram", "Nagaland", "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
 ];
 
@@ -445,12 +452,12 @@ const normalizeState = (raw) => {
 };
 
 const NAMES = [
-  "Aamina Jan","Madhu Sharma","Bhagyashree Pawara","Mitali Fale","Saloni Agarwal",
-  "Radhika Nonia","Mst Zinat Parveen","Purva Chambhare","Kirti Agrawal","Nisha Prajapati",
-  "Komal Verma","Shaya Thakur","Isha Mehta","Anjali Patel","Sneha Iyer",
-  "Divya Reddy","Pooja Singh","Riya Joshi","Tanvi Desai","Meera Nair",
-  "Lakshmi Rao","Priya Kapoor","Aditi Khan","Neha Bansal","Sakshi Choudhary",
-  "Anshika Yadav","Bhavna Mishra","Charul Pandey","Damini Sinha","Esha Saxena"
+  "Aamina Jan", "Madhu Sharma", "Bhagyashree Pawara", "Mitali Fale", "Saloni Agarwal",
+  "Radhika Nonia", "Mst Zinat Parveen", "Purva Chambhare", "Kirti Agrawal", "Nisha Prajapati",
+  "Komal Verma", "Shaya Thakur", "Isha Mehta", "Anjali Patel", "Sneha Iyer",
+  "Divya Reddy", "Pooja Singh", "Riya Joshi", "Tanvi Desai", "Meera Nair",
+  "Lakshmi Rao", "Priya Kapoor", "Aditi Khan", "Neha Bansal", "Sakshi Choudhary",
+  "Anshika Yadav", "Bhavna Mishra", "Charul Pandey", "Damini Sinha", "Esha Saxena"
 ];
 
 const RISK_TYPE_OF_SCORE = (s) => s < 25 ? "Critical" : s < 50 ? "High" : s < 75 ? "Moderate" : "Low";
@@ -491,10 +498,10 @@ const CUSTOMERS = NAMES.map((name, i) => {
   const d = timeAgo(i);
   return {
     id: "SU" + (1000 + i),
-    docId: ["h1IFeuyHPkDlgK8fmdo5","8ii5p92zIll5WYrMzzYq","Qf9NkA2pXr5T0aBjL1Cv","D7eU3oXq4mZ8b6sVcN0w","K2pHvA9LjMcXqR8tNn1Y","Z5oBeY1uJk0WgHsPq6T8","M4rXc2pVoLfA7uK3JhN1","E6tPzA9NhXqB0RkLcMv2","V8uXoCpL5JqA2NkR1ZcM","N3wKpA1RfM5UoCdJqBxL"][i] || ("xR" + Math.floor(seed(i+99) * 1e10).toString(36)),
+    docId: ["h1IFeuyHPkDlgK8fmdo5", "8ii5p92zIll5WYrMzzYq", "Qf9NkA2pXr5T0aBjL1Cv", "D7eU3oXq4mZ8b6sVcN0w", "K2pHvA9LjMcXqR8tNn1Y", "Z5oBeY1uJk0WgHsPq6T8", "M4rXc2pVoLfA7uK3JhN1", "E6tPzA9NhXqB0RkLcMv2", "V8uXoCpL5JqA2NkR1ZcM", "N3wKpA1RfM5UoCdJqBxL"][i] || ("xR" + Math.floor(seed(i + 99) * 1e10).toString(36)),
     name,
     phone: phoneOf(i),
-    email: name.split(" ")[0].toLowerCase() + "." + (name.split(" ")[1]||"x").toLowerCase() + "@gmail.com",
+    email: name.split(" ")[0].toLowerCase() + "." + (name.split(" ")[1] || "x").toLowerCase() + "@gmail.com",
     score,
     risk: RISK_TYPE_OF_SCORE(score),
     category: cat,
@@ -505,12 +512,12 @@ const CUSTOMERS = NAMES.map((name, i) => {
     age: 22 + Math.floor(seed(i + 3) * 35),
     gender: i % 7 === 3 ? "Male" : "Female",
     state, city: CITIES[state],
-    address: `${100 + i}, ${["Brigade Rd","MG Rd","Linking Rd","Lodhi Estate","Sector 18","Park Street","Civil Lines"][i % 7]}`,
+    address: `${100 + i}, ${["Brigade Rd", "MG Rd", "Linking Rd", "Lodhi Estate", "Sector 18", "Park Street", "Civil Lines"][i % 7]}`,
     pincode: 110000 + (i * 47) % 89999,
-    orders: i % 4 === 0 ? 0 : Math.floor(seed(i+11) * 4) + 1,
-    ltv: i % 4 === 0 ? 0 : (Math.floor(seed(i+13) * 12000) + 1500),
+    orders: i % 4 === 0 ? 0 : Math.floor(seed(i + 11) * 4) + 1,
+    ltv: i % 4 === 0 ? 0 : (Math.floor(seed(i + 13) * 12000) + 1500),
     consulted: i % 3 === 0,
-    callStatus: ["New","Contacted","Follow up","Converted","No answer"][i % 5],
+    callStatus: ["New", "Contacted", "Follow up", "Converted", "No answer"][i % 5],
     avatarHue: Math.floor(seed(i + 5) * 360),
   };
 });
@@ -529,29 +536,37 @@ const PRODUCTS = [
 const QUESTIONNAIRE = {
   category: "Womens Wellness",
   sections: [
-    { name: "Profile", qs: [
-      { q: "What is your age?", a: "29 years" },
-      { q: "What is your weight?", a: "68 kg" },
-      { q: "What is your height?", a: "162 cm" },
-    ]},
-    { name: "Cycle & Hormones", qs: [
-      { q: "How regular are your periods?", a: "Irregular — varies by 7+ days" },
-      { q: "Do you experience severe cramps?", a: "Yes, often", flag: true },
-      { q: "Have you been diagnosed with PCOS / PCOD?", a: "Suspected but not confirmed", flag: true },
-      { q: "How would you rate your mood during periods?", a: "Often low, anxious" },
-    ]},
-    { name: "Lifestyle", qs: [
-      { q: "How many hours do you sleep on average?", a: "5–6 hours", flag: true },
-      { q: "How would you rate your daily stress?", a: "High" },
-      { q: "Do you exercise regularly?", a: "1–2 times a week" },
-      { q: "How is your appetite?", a: "Frequent cravings, especially sweets" },
-    ]},
-    { name: "Symptoms (last 30 days)", qs: [
-      { q: "Fatigue or low energy?", a: "Most days", flag: true },
-      { q: "Hair fall?", a: "Noticeable" },
-      { q: "Acne or skin issues?", a: "Mild but recurring" },
-      { q: "Weight gain unexplained?", a: "Yes, ~3kg in 3 months" },
-    ]},
+    {
+      name: "Profile", qs: [
+        { q: "What is your age?", a: "29 years" },
+        { q: "What is your weight?", a: "68 kg" },
+        { q: "What is your height?", a: "162 cm" },
+      ]
+    },
+    {
+      name: "Cycle & Hormones", qs: [
+        { q: "How regular are your periods?", a: "Irregular — varies by 7+ days" },
+        { q: "Do you experience severe cramps?", a: "Yes, often", flag: true },
+        { q: "Have you been diagnosed with PCOS / PCOD?", a: "Suspected but not confirmed", flag: true },
+        { q: "How would you rate your mood during periods?", a: "Often low, anxious" },
+      ]
+    },
+    {
+      name: "Lifestyle", qs: [
+        { q: "How many hours do you sleep on average?", a: "5–6 hours", flag: true },
+        { q: "How would you rate your daily stress?", a: "High" },
+        { q: "Do you exercise regularly?", a: "1–2 times a week" },
+        { q: "How is your appetite?", a: "Frequent cravings, especially sweets" },
+      ]
+    },
+    {
+      name: "Symptoms (last 30 days)", qs: [
+        { q: "Fatigue or low energy?", a: "Most days", flag: true },
+        { q: "Hair fall?", a: "Noticeable" },
+        { q: "Acne or skin issues?", a: "Mild but recurring" },
+        { q: "Weight gain unexplained?", a: "Yes, ~3kg in 3 months" },
+      ]
+    },
   ],
 };
 
@@ -559,12 +574,12 @@ const ORDERS = CUSTOMERS.filter(c => c.orders > 0).slice(0, 14).map((c, i) => ({
   id: "#SU-" + (45230 + i),
   customer: c,
   items: PRODUCTS.slice(i % 3, (i % 3) + 2 + (i % 2)).map((p, idx) => ({ ...p, qty: 1 + (idx % 2) })),
-  status: ["Placed","Packed","Shipped","Out for delivery","Delivered","Returned","Failed delivery"][i % 7],
+  status: ["Placed", "Packed", "Shipped", "Out for delivery", "Delivered", "Returned", "Failed delivery"][i % 7],
   paymentMode: i % 3 === 0 ? "Prepaid" : "COD",
   amount: 599 + ((i * 137) % 4500),
   placedAt: c.timestampShort,
   awb: "NB" + (12000000 + i * 731),
-  courier: ["Delhivery","Bluedart","XpressBees","Ekart"][i % 4],
+  courier: ["Delhivery", "Bluedart", "XpressBees", "Ekart"][i % 4],
   shippingAddress: `${c.address}, ${c.city}, ${c.state} - ${c.pincode}`,
 }));
 
@@ -606,10 +621,10 @@ const GENDER_SPLIT = { Female: 3284, Male: 162 };
 
 const FUNNEL = [
   { stage: "Visited Quiz", count: 6210 },
-  { stage: "Started",      count: 4062 },
-  { stage: "Completed",    count: 3446 },
-  { stage: "Consulted",    count: 1289 },
-  { stage: "Ordered",      count: 842  },
+  { stage: "Started", count: 4062 },
+  { stage: "Completed", count: 3446 },
+  { stage: "Consulted", count: 1289 },
+  { stage: "Ordered", count: 842 },
 ];
 
 const ACTIVITY = [
@@ -623,12 +638,12 @@ const ACTIVITY = [
 ];
 
 const SHIPMENTS_STATUS = [
-  { stage: "Placed",            count: 38, color: "var(--muted)" },
-  { stage: "Packed",            count: 27, color: "var(--accent)" },
-  { stage: "Shipped",           count: 62, color: "var(--accent-2)" },
-  { stage: "Out for delivery",  count: 19, color: "var(--risk-moderate)" },
-  { stage: "Delivered",         count: 184, color: "var(--risk-low)" },
-  { stage: "Failed",            count: 11, color: "var(--risk-critical)" },
+  { stage: "Placed", count: 38, color: "var(--muted)" },
+  { stage: "Packed", count: 27, color: "var(--accent)" },
+  { stage: "Shipped", count: 62, color: "var(--accent-2)" },
+  { stage: "Out for delivery", count: 19, color: "var(--risk-moderate)" },
+  { stage: "Delivered", count: 184, color: "var(--risk-low)" },
+  { stage: "Failed", count: 11, color: "var(--risk-critical)" },
 ];
 
 window.SehatData = {
@@ -643,68 +658,68 @@ window.SehatData = {
 // Globally exposes Icon component: <Icon name="search" size={16} />
 
 const I = {
-  search:    "M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm10 2-4.35-4.35",
-  bell:      "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M14 21a2 2 0 0 1-4 0",
-  plus:      "M12 5v14M5 12h14",
-  filter:    "M3 5h18l-7 8v6l-4 2v-8L3 5Z",
-  download:  "M12 3v12m0 0 5-5m-5 5-5-5M5 21h14",
-  upload:    "M12 21V9m0 0 5 5m-5-5-5 5M5 3h14",
-  chevron_down:  "m6 9 6 6 6-6",
+  search: "M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm10 2-4.35-4.35",
+  bell: "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M14 21a2 2 0 0 1-4 0",
+  plus: "M12 5v14M5 12h14",
+  filter: "M3 5h18l-7 8v6l-4 2v-8L3 5Z",
+  download: "M12 3v12m0 0 5-5m-5 5-5-5M5 21h14",
+  upload: "M12 21V9m0 0 5 5m-5-5-5 5M5 3h14",
+  chevron_down: "m6 9 6 6 6-6",
   chevron_right: "m9 6 6 6-6 6",
-  chevron_left:  "m15 6-6 6 6 6",
-  chevron_up:    "m6 15 6-6 6 6",
-  x:         "M6 6l12 12M18 6 6 18",
-  check:     "M5 13l4 4L19 7",
-  copy:      "M9 9h10v10H9zM5 5h10v4H9v6H5z",
-  refresh:   "M3 12a9 9 0 0 1 15-6.7L21 8M3 16l3 2.7A9 9 0 0 0 21 12M21 3v5h-5M3 21v-5h5",
-  more:      "M6 12h.01M12 12h.01M18 12h.01",
-  edit:      "M4 20h4l11-11-4-4L4 16v4Zm10-15 4 4",
-  trash:     "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13",
-  external:  "M14 5h5v5M19 5 10 14M19 13v6H5V5h6",
-  user:      "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0",
-  users:     "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 10a7 7 0 0 1 14 0M16 3a4 4 0 0 1 0 8M17 21a7 7 0 0 0-4-6.3",
-  heart:     "M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9Z",
-  shield:    "M12 22s8-3 8-10V5l-8-3-8 3v7c0 7 8 10 8 10Z",
-  pulse:     "M3 12h4l3-8 4 16 3-8h4",
-  bar:       "M3 21V10m6 11V4m6 17v-9m6 9V8",
-  pie:       "M12 3a9 9 0 1 0 9 9h-9V3Z",
-  trend_up:  "M3 17l6-6 4 4 8-8M14 7h7v7",
-  trend_dn:  "M3 7l6 6 4-4 8 8M14 17h7v-7",
-  calendar:  "M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM8 3v4M16 3v4",
-  clock:     "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-15v5l3 3",
-  phone:     "M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z",
-  mail:      "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2 8 7 8-7",
-  chat:      "M21 12a8 8 0 1 1-3.4-6.6L21 4l-1.4 3.4A8 8 0 0 1 21 12Z",
-  whatsapp:  "M3 21l1.65-4.5A9 9 0 1 1 8 19.4L3 21Z M8 10c.5 3 2 4.5 5 5l1.3-1.5c.3-.4.9-.5 1.4-.3l2 1c.4.2.6.6.5 1-.4 1.7-2 2.3-3.6 2-3.7-.8-7-4-7.7-7.7-.3-1.6.3-3.2 2-3.6.4-.1.8.1 1 .5l1 2c.2.5.1 1.1-.3 1.4L8 10Z",
-  package:   "M12 12 3 7l9-5 9 5-9 5Zm0 0v10M3 7v10l9 5M21 7v10l-9 5",
-  database:  "M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3Zm9 5c0 1.66-4.03 3-9 3s-9-1.34-9-3M3 6v12c0 1.66 4.03 3 9 3s9-1.34 9-3V6",
-  truck:     "M3 5h11v11H3zM14 9h4l3 4v3h-7M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
-  stethoscope:"M6 3v6a4 4 0 0 0 8 0V3M9 21v-4a5 5 0 0 1 5-5 5 5 0 0 1 5 5 2 2 0 1 1-4 0",
-  pill:      "m10.5 20.5 10-10a5 5 0 0 0-7-7l-10 10a5 5 0 0 0 7 7Zm-3.5-3.5 7-7",
-  settings:  "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.4.6 1 1 1.6 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z",
-  home:      "M3 11 12 3l9 8v9a2 2 0 0 1-2 2h-3v-6h-8v6H5a2 2 0 0 1-2-2v-9Z",
-  inbox:     "M22 12h-6l-2 3h-4l-2-3H2M5 4h14l3 8v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6l3-8Z",
-  flag:      "M4 21V4h11l1 2h5v9h-6l-1-2H6v8H4Z",
-  link:      "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5",
-  bolt:      "M13 2 4 14h6l-1 8 9-12h-6l1-8Z",
-  sparkles:  "M12 3 13.5 9 19 10.5 13.5 12 12 18 10.5 12 5 10.5 10.5 9 12 3Z M19 17l.7 2.3L22 20l-2.3.7L19 23l-.7-2.3L16 20l2.3-.7L19 17Z",
-  eye:       "M2 12s4-8 10-8 10 8 10 8-4 8-10 8S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
-  arrow_right:"M5 12h14M13 5l7 7-7 7",
-  arrow_up_right:"M7 17 17 7M8 7h9v9",
-  layers:    "M12 2 2 7l10 5 10-5-10-5Zm10 10-10 5L2 12m20 5-10 5L2 17",
-  command:   "M6 3a3 3 0 0 0 0 6h12a3 3 0 0 0 0-6 3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 0-6H6a3 3 0 0 0 0 6 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Z",
-  side:      "M3 4h18v16H3zM9 4v16",
-  map:       "M3 6 9 4l6 2 6-2v14l-6 2-6-2-6 2V6Zm6-2v16m6-14v16",
+  chevron_left: "m15 6-6 6 6 6",
+  chevron_up: "m6 15 6-6 6 6",
+  x: "M6 6l12 12M18 6 6 18",
+  check: "M5 13l4 4L19 7",
+  copy: "M9 9h10v10H9zM5 5h10v4H9v6H5z",
+  refresh: "M3 12a9 9 0 0 1 15-6.7L21 8M3 16l3 2.7A9 9 0 0 0 21 12M21 3v5h-5M3 21v-5h5",
+  more: "M6 12h.01M12 12h.01M18 12h.01",
+  edit: "M4 20h4l11-11-4-4L4 16v4Zm10-15 4 4",
+  trash: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13",
+  external: "M14 5h5v5M19 5 10 14M19 13v6H5V5h6",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0",
+  users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 10a7 7 0 0 1 14 0M16 3a4 4 0 0 1 0 8M17 21a7 7 0 0 0-4-6.3",
+  heart: "M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9Z",
+  shield: "M12 22s8-3 8-10V5l-8-3-8 3v7c0 7 8 10 8 10Z",
+  pulse: "M3 12h4l3-8 4 16 3-8h4",
+  bar: "M3 21V10m6 11V4m6 17v-9m6 9V8",
+  pie: "M12 3a9 9 0 1 0 9 9h-9V3Z",
+  trend_up: "M3 17l6-6 4 4 8-8M14 7h7v7",
+  trend_dn: "M3 7l6 6 4-4 8 8M14 17h7v-7",
+  calendar: "M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM8 3v4M16 3v4",
+  clock: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-15v5l3 3",
+  phone: "M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z",
+  mail: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2 8 7 8-7",
+  chat: "M21 12a8 8 0 1 1-3.4-6.6L21 4l-1.4 3.4A8 8 0 0 1 21 12Z",
+  whatsapp: "M3 21l1.65-4.5A9 9 0 1 1 8 19.4L3 21Z M8 10c.5 3 2 4.5 5 5l1.3-1.5c.3-.4.9-.5 1.4-.3l2 1c.4.2.6.6.5 1-.4 1.7-2 2.3-3.6 2-3.7-.8-7-4-7.7-7.7-.3-1.6.3-3.2 2-3.6.4-.1.8.1 1 .5l1 2c.2.5.1 1.1-.3 1.4L8 10Z",
+  package: "M12 12 3 7l9-5 9 5-9 5Zm0 0v10M3 7v10l9 5M21 7v10l-9 5",
+  database: "M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3Zm9 5c0 1.66-4.03 3-9 3s-9-1.34-9-3M3 6v12c0 1.66 4.03 3 9 3s9-1.34 9-3V6",
+  truck: "M3 5h11v11H3zM14 9h4l3 4v3h-7M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  stethoscope: "M6 3v6a4 4 0 0 0 8 0V3M9 21v-4a5 5 0 0 1 5-5 5 5 0 0 1 5 5 2 2 0 1 1-4 0",
+  pill: "m10.5 20.5 10-10a5 5 0 0 0-7-7l-10 10a5 5 0 0 0 7 7Zm-3.5-3.5 7-7",
+  settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.4.6 1 1 1.6 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z",
+  home: "M3 11 12 3l9 8v9a2 2 0 0 1-2 2h-3v-6h-8v6H5a2 2 0 0 1-2-2v-9Z",
+  inbox: "M22 12h-6l-2 3h-4l-2-3H2M5 4h14l3 8v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6l3-8Z",
+  flag: "M4 21V4h11l1 2h5v9h-6l-1-2H6v8H4Z",
+  link: "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5",
+  bolt: "M13 2 4 14h6l-1 8 9-12h-6l1-8Z",
+  sparkles: "M12 3 13.5 9 19 10.5 13.5 12 12 18 10.5 12 5 10.5 10.5 9 12 3Z M19 17l.7 2.3L22 20l-2.3.7L19 23l-.7-2.3L16 20l2.3-.7L19 17Z",
+  eye: "M2 12s4-8 10-8 10 8 10 8-4 8-10 8S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
+  arrow_right: "M5 12h14M13 5l7 7-7 7",
+  arrow_up_right: "M7 17 17 7M8 7h9v9",
+  layers: "M12 2 2 7l10 5 10-5-10-5Zm10 10-10 5L2 12m20 5-10 5L2 17",
+  command: "M6 3a3 3 0 0 0 0 6h12a3 3 0 0 0 0-6 3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 0-6H6a3 3 0 0 0 0 6 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Z",
+  side: "M3 4h18v16H3zM9 4v16",
+  map: "M3 6 9 4l6 2 6-2v14l-6 2-6-2-6 2V6Zm6-2v16m6-14v16",
   clipboard: "M9 3h6v3H9zM7 5H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2",
-  message:   "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z",
-  star:      "m12 2 3 7 7 .6-5.3 4.7L18 21l-6-3.7L6 21l1.3-6.7L2 9.6 9 9l3-7Z",
+  message: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z",
+  star: "m12 2 3 7 7 .6-5.3 4.7L18 21l-6-3.7L6 21l1.3-6.7L2 9.6 9 9l3-7Z",
   layout_sidebar: "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5z M9 3v18",
-  lock:      "M5 11h14v10H5zM7 11V8a5 5 0 0 1 10 0v3",
-  arrow_left:"M19 12H5M12 5l-7 7 7 7",
+  lock: "M5 11h14v10H5zM7 11V8a5 5 0 0 1 10 0v3",
+  arrow_left: "M19 12H5M12 5l-7 7 7 7",
   user_plus: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm9 1v6m3-3h-6",
-  ruler:     "M1 20L20 1M7 7l2.5 2.5M4 10l3.5 3.5M10 4l3.5 3.5M14 14l2.5 2.5M17 11l2.5 2.5M11 17l2.5 2.5",
-  target:    "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-4a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
-  scale:     "M9 17H5a2 2 0 0 0-2 2h18a2 2 0 0 0-2-2h-4M12 3v14M3 6l3 6c.8 2 2.6 3 5.2 3M21 6l-3 6c-.8 2-2.6 3-5.2 3",
+  ruler: "M1 20L20 1M7 7l2.5 2.5M4 10l3.5 3.5M10 4l3.5 3.5M14 14l2.5 2.5M17 11l2.5 2.5M11 17l2.5 2.5",
+  target: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-4a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  scale: "M9 17H5a2 2 0 0 0-2 2h18a2 2 0 0 0-2-2h-4M12 3v14M3 6l3 6c.8 2 2.6 3 5.2 3M21 6l-3 6c-.8 2-2.6 3-5.2 3",
 };
 
 export function Icon({ name, size = 16, color = "currentColor", strokeWidth = 1.6, fill = "none", className = "" }) {
@@ -770,15 +785,15 @@ function Gauge({ value = 50, size = 96, stroke = 8, label = "Score", showLabel =
   const c = 2 * Math.PI * r;
   const pct = Math.max(0, Math.min(100, value));
   const color = pct >= 75 ? "var(--risk-low)"
-              : pct >= 50 ? "var(--risk-moderate)"
-              : pct >= 25 ? "var(--risk-high)"
-                          : "var(--risk-critical)";
+    : pct >= 50 ? "var(--risk-moderate)"
+      : pct >= 25 ? "var(--risk-high)"
+        : "var(--risk-critical)";
   const dash = (pct / 100) * c;
   return (
     <div className={"gauge" + (big ? " lg" : "")} style={{ width: size, height: size }}>
       <svg width={size} height={size}>
-        <circle cx={size/2} cy={size/2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
-        <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={stroke} fill="none"
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none"
           strokeDasharray={`${dash} ${c}`} strokeLinecap="round" />
       </svg>
       <div className="gv">
@@ -913,7 +928,7 @@ function LineChart({ data = [], series = null, height = 220, color = "var(--acce
         ))}
         {fill && <polygon points={area} fill="url(#lg-fill)" />}
         <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        
+
         {data.map((d, i) => (
           <g key={i}>
             <circle cx={scaleX(i)} cy={scaleY(d.value)} r={hoveredNode === i ? "4" : "2.5"} fill={hoveredNode === i ? color : "var(--surface)"} stroke={color} strokeWidth="1.5" style={{ transition: "all 0.2s" }} />
@@ -985,8 +1000,8 @@ function DonutChart({ data = [], size = 200, thickness = 26, centerLabel, center
     const [x1, y1] = p(a1, r - 1);
     const [xi1, yi1] = p(a1, inner);
     const [xi0, yi0] = p(a0, inner);
-    const d_ = `M ${x0} ${y0} A ${r-1} ${r-1} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${inner} ${inner} 0 ${large} 0 ${xi0} ${yi0} Z`;
-    
+    const d_ = `M ${x0} ${y0} A ${r - 1} ${r - 1} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${inner} ${inner} 0 ${large} 0 ${xi0} ${yi0} Z`;
+
     // Calculate center of the arc for 3D translation
     const midAngle = a0 + (a1 - a0) / 2;
     const popOutDistance = 6;
@@ -1003,7 +1018,7 @@ function DonutChart({ data = [], size = 200, thickness = 26, centerLabel, center
         {arcs.map((a, i) => {
           const isHovered = hoveredIndex === i;
           return (
-            <path key={i} d={a.d} fill={a.color} 
+            <path key={i} d={a.d} fill={a.color}
               style={{
                 transition: "transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1), filter 0.2s ease",
                 transform: isHovered ? `translate(${a.popX}px, ${a.popY}px) scale(1.05)` : "translate(0px, 0px) scale(1)",
@@ -1011,8 +1026,8 @@ function DonutChart({ data = [], size = 200, thickness = 26, centerLabel, center
                 filter: isHovered ? "drop-shadow(0px 8px 12px rgba(0,0,0,0.4))" : "none",
                 cursor: "pointer"
               }}
-              onMouseEnter={() => setHoveredIndex(i)} 
-              onMouseLeave={() => setHoveredIndex(null)} 
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
             />
           );
         })}
@@ -1050,6 +1065,7 @@ function FunnelChart({ data = [] }) {
   );
 }
 
+// eslint-disable-next-line no-unused-vars
 function FilterBar({ children }) {
   return <div className="filterbar">{children}</div>;
 }
@@ -1061,9 +1077,9 @@ function Pagination({ page, total, perPage, onChange }) {
     <div className="hstack-8" style={{ padding: "10px 0", fontSize: 13 }}>
       <span className="muted">Showing <b className="num" style={{ color: "var(--fg)" }}>{(page - 1) * perPage + 1}-{Math.min(page * perPage, total)}</b> of <b className="num" style={{ color: "var(--fg)" }}>{total.toLocaleString()}</b></span>
       <span className="spacer" />
-      <button className="btn sm" onClick={() => onChange(Math.max(1, page - 1))}><Icon name="chevron_left" size={14}/> Prev</button>
+      <button className="btn sm" onClick={() => onChange(Math.max(1, page - 1))}><Icon name="chevron_left" size={14} /> Prev</button>
       <span className="num muted">Page {page} of {pages}</span>
-      <button className="btn sm" onClick={() => onChange(Math.min(pages, page + 1))}>Next <Icon name="chevron_right" size={14}/></button>
+      <button className="btn sm" onClick={() => onChange(Math.min(pages, page + 1))}>Next <Icon name="chevron_right" size={14} /></button>
     </div>
   );
 }
@@ -1345,12 +1361,12 @@ function TweaksPanel({ title = 'Tweaks', children }) {
     <>
       <style>{__TWEAKS_STYLE}</style>
       <div ref={dragRef} className="twk-panel" data-omelette-chrome=""
-           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
         <div className="twk-hd" onMouseDown={onDragStart}>
           <b>{title}</b>
           <button className="twk-x" aria-label="Close tweaks"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={dismiss}>âœ•</button>
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={dismiss}>âœ•</button>
         </div>
         <div className="twk-body">
           {children}
@@ -1390,7 +1406,7 @@ function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', on
   return (
     <TweakRow label={label} value={`${value}${unit}`}>
       <input type="range" className="twk-slider" min={min} max={max} step={step}
-             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+        value={value} onChange={(e) => onChange(Number(e.target.value))} />
     </TweakRow>
   );
 }
@@ -1401,8 +1417,8 @@ function TweakToggle({ label, value, onChange }) {
     <div className="twk-row twk-row-h">
       <div className="twk-lbl"><span>{label}</span></div>
       <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
-              role="switch" aria-checked={!!value}
-              onClick={() => onChange(!value)}><i /></button>
+        role="switch" aria-checked={!!value}
+        onClick={() => onChange(!value)}><i /></button>
     </div>
   );
 }
@@ -1431,7 +1447,7 @@ function TweakRadio({ label, value, options, onChange }) {
       return m === undefined ? s : typeof m === 'object' ? m.value : m;
     };
     return <TweakSelect label={label} value={value} options={options}
-                        onChange={(s) => onChange(resolve(s))} />;
+      onChange={(s) => onChange(resolve(s))} />;
   }
   const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
   const idx = Math.max(0, opts.findIndex((o) => o.value === value));
@@ -1465,10 +1481,12 @@ function TweakRadio({ label, value, options, onChange }) {
   return (
     <TweakRow label={label}>
       <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
-           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
         <div className="twk-seg-thumb"
-             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
-                      width: `calc((100% - 4px) / ${n})` }} />
+          style={{
+            left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+            width: `calc((100% - 4px) / ${n})`
+          }} />
         {opts.map((o) => (
           <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
             {o.label}
@@ -1498,7 +1516,7 @@ function TweakText({ label, value, placeholder, onChange }) {
   return (
     <TweakRow label={label}>
       <input className="twk-field" type="text" value={value} placeholder={placeholder}
-             onChange={(e) => onChange(e.target.value)} />
+        onChange={(e) => onChange(e.target.value)} />
     </TweakRow>
   );
 }
@@ -1532,7 +1550,7 @@ function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) 
     <div className="twk-num">
       <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
       <input type="number" value={value} min={min} max={max} step={step}
-             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+        onChange={(e) => onChange(clamp(Number(e.target.value)))} />
       {unit && <span className="twk-num-unit">{unit}</span>}
     </div>
   );
@@ -1553,8 +1571,8 @@ function __twkIsLight(hex) {
 const TwkCheck = ({ light }) => (
   <svg viewBox="0 0 14 14" aria-hidden="true">
     <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
-          strokeLinecap="round" strokeLinejoin="round"
-          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+      strokeLinecap="round" strokeLinejoin="round"
+      stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
   </svg>
 );
 
@@ -1571,7 +1589,7 @@ function TweakColor({ label, value, options, onChange }) {
       <div className="twk-row twk-row-h">
         <div className="twk-lbl"><span>{label}</span></div>
         <input type="color" className="twk-swatch" value={value}
-               onChange={(e) => onChange(e.target.value)} />
+          onChange={(e) => onChange(e.target.value)} />
       </div>
     );
   }
@@ -1590,10 +1608,10 @@ function TweakColor({ label, value, options, onChange }) {
           const on = key(o) === cur;
           return (
             <button key={i} type="button" className="twk-chip" role="radio"
-                    aria-checked={on} data-on={on ? '1' : '0'}
-                    aria-label={colors.join(', ')} title={colors.join(' · ')}
-                    style={{ background: hero }}
-                    onClick={() => onChange(o)}>
+              aria-checked={on} data-on={on ? '1' : '0'}
+              aria-label={colors.join(', ')} title={colors.join(' · ')}
+              style={{ background: hero }}
+              onClick={() => onChange(o)}>
               {sup.length > 0 && (
                 <span>
                   {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
@@ -1612,7 +1630,7 @@ function TweakColor({ label, value, options, onChange }) {
 function TweakButton({ label, onClick, secondary = false }) {
   return (
     <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
-            onClick={onClick}>{label}</button>
+      onClick={onClick}>{label}</button>
   );
 }
 
@@ -1671,7 +1689,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
   const filtered = useMemoCx(() => {
     const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
-    const to   = new Date(dateTo);   to.setHours(23, 59, 59, 999);
+    const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
 
     const filterItem = (item) => {
       if (!item.timestamp) return false;
@@ -1708,24 +1726,24 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     ].map(d => {
       const demo = deriveDemographics(d);
       return {
-      ...d,
-      id: d.id,
-      docId: d.id,
-      source: d._source,
-      name: d.name || d.userName || 'Unknown',
-      phone: d.phone || '-',
-      age: demo.age,
-      gender: demo.gender,
-      category: demo.category,
-      score: d.healthScore ?? d.score ?? '-',
-      risk: (d.healthScore ?? d.score) !== undefined
-        ? ((d.healthScore ?? d.score) < 40 ? 'Critical'
-          : (d.healthScore ?? d.score) < 60 ? 'High'
-          : (d.healthScore ?? d.score) < 80 ? 'Moderate' : 'Low')
-        : '-',
-      timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : '-'),
-      avatarHue: Math.abs((d.id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 360,
-    };
+        ...d,
+        id: d.id,
+        docId: d.id,
+        source: d._source,
+        name: d.name || d.userName || 'Unknown',
+        phone: d.phone || '-',
+        age: demo.age,
+        gender: demo.gender,
+        category: demo.category,
+        score: d.healthScore ?? d.score ?? '-',
+        risk: (d.healthScore ?? d.score) !== undefined
+          ? ((d.healthScore ?? d.score) < 40 ? 'Critical'
+            : (d.healthScore ?? d.score) < 60 ? 'High'
+              : (d.healthScore ?? d.score) < 80 ? 'Moderate' : 'Low')
+          : '-',
+        timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : '-'),
+        avatarHue: Math.abs((d.id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 360,
+      };
     }).sort((a, b) => {
       const ta = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
       const tb = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
@@ -1745,23 +1763,23 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const riskDonut = (() => {
     const r = analytics.riskCounts || {};
     return [
-      { label: "Low",       value: r.Low || 0,       color: "var(--risk-low)" },
-      { label: "Moderate",  value: r.Moderate || 0,  color: "var(--risk-moderate)" },
-      { label: "High",      value: r.High || 0,      color: "var(--risk-high)" },
-      { label: "Critical",  value: r.Critical || 0,  color: "var(--risk-critical)" },
-      { label: "Unknown",   value: r.Unknown || 0,   color: "var(--risk-unknown)" },
+      { label: "Low", value: r.Low || 0, color: "var(--risk-low)" },
+      { label: "Moderate", value: r.Moderate || 0, color: "var(--risk-moderate)" },
+      { label: "High", value: r.High || 0, color: "var(--risk-high)" },
+      { label: "Critical", value: r.Critical || 0, color: "var(--risk-critical)" },
+      { label: "Unknown", value: r.Unknown || 0, color: "var(--risk-unknown)" },
     ];
   })();
 
   // Build chart series based on selected timeline mode
   const labels = (analytics.timeSeries || []).map(d => d.day.slice(5).replace('-', '/'));
   const timelineSeries = timelineMode === 'completed'
-    ? [{ name: 'Completed', color: 'var(--accent)',   values: analytics.timeSeries.map(d => d.completed) }]
+    ? [{ name: 'Completed', color: 'var(--accent)', values: analytics.timeSeries.map(d => d.completed) }]
     : timelineMode === 'started'
-    ? [{ name: 'Started',   color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) }]
-    : [
-        { name: 'Started',   color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) },
-        { name: 'Completed', color: 'var(--accent)',   values: analytics.timeSeries.map(d => d.completed) },
+      ? [{ name: 'Started', color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) }]
+      : [
+        { name: 'Started', color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) },
+        { name: 'Completed', color: 'var(--accent)', values: analytics.timeSeries.map(d => d.completed) },
       ];
   const timelineFallback = (analytics.timeSeries || []).map(d => ({
     label: d.day.slice(5).replace('-', '/'),
@@ -1770,7 +1788,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
   // Conversion funnel — real values from analytics
   const funnelData = [
-    { stage: 'Started',   count: analytics.totalStarted   || 0 },
+    { stage: 'Started', count: analytics.totalStarted || 0 },
     { stage: 'Completed', count: analytics.totalCompleted || 0 },
     { stage: 'Consulted', count: analytics.totalConsulted || 0 },
     { stage: 'Purchased', count: analytics.totalPurchased || 0 },
@@ -1784,7 +1802,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
   // Gender split — real data
   const femaleCount = (analytics.genders?.Female || 0);
-  const maleCount   = (analytics.genders?.Male   || 0);
+  const maleCount = (analytics.genders?.Male || 0);
   const unknownGenderCount = (analytics.genders?.Unknown || 0);
   const totalGender = femaleCount + maleCount + unknownGenderCount;
   const femalePct = totalGender > 0 ? Math.round((femaleCount / totalGender) * 100) : 0;
@@ -1809,66 +1827,66 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
       {/* Dedicated filter row — kept on its own line so chips never wrap awkwardly next to the title */}
       <div className="filterbar" style={{ marginBottom: 8, position: 'relative' }}>
-            <span className="chip" style={{ cursor: 'pointer' }} onClick={() => setShowDatePicker(v => !v)}>
-              <Icon name="calendar" /> {datePreset ? `Last ${datePreset} days` : `${fmtShort(dateFrom)} – ${fmtShort(dateTo)}`} <Icon name="chevron_down" />
-            </span>
-            {showDatePicker && (
-              <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowDatePicker(false)} />
-                <div className="card shadow-lg" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, padding: 12, width: 290, zIndex: 100 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Presets</div>
-                  <div className="hstack-6" style={{ flexWrap: 'wrap', marginBottom: 14 }}>
-                    {[7, 30, 90, 180, 365].map(d => (
-                      <button key={d} className={`btn sm ${datePreset === d ? 'primary' : 'ghost'}`} onClick={() => applyPreset(d)}>Last {d}d</button>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Custom range</div>
-                  <div className="stack-8">
-                    <div className="field">
-                      <label className="lbl" style={{ fontSize: 11 }}>From</label>
-                      <input type="date" className="input sm" value={dateFrom} max={dateTo} onChange={e => { setDateFrom(e.target.value); setDatePreset(null); }} />
-                    </div>
-                    <div className="field">
-                      <label className="lbl" style={{ fontSize: 11 }}>To</label>
-                      <input type="date" className="input sm" value={dateTo} min={dateFrom} max={todayISO()} onChange={e => { setDateTo(e.target.value); setDatePreset(null); }} />
-                    </div>
-                    <button className="btn sm primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowDatePicker(false)}>Apply</button>
-                  </div>
+        <span className="chip" style={{ cursor: 'pointer' }} onClick={() => setShowDatePicker(v => !v)}>
+          <Icon name="calendar" /> {datePreset ? `Last ${datePreset} days` : `${fmtShort(dateFrom)} – ${fmtShort(dateTo)}`} <Icon name="chevron_down" />
+        </span>
+        {showDatePicker && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowDatePicker(false)} />
+            <div className="card shadow-lg" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, padding: 12, width: 290, zIndex: 100 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Presets</div>
+              <div className="hstack-6" style={{ flexWrap: 'wrap', marginBottom: 14 }}>
+                {[7, 30, 90, 180, 365].map(d => (
+                  <button key={d} className={`btn sm ${datePreset === d ? 'primary' : 'ghost'}`} onClick={() => applyPreset(d)}>Last {d}d</button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Custom range</div>
+              <div className="stack-8">
+                <div className="field">
+                  <label className="lbl" style={{ fontSize: 11 }}>From</label>
+                  <input type="date" className="input sm" value={dateFrom} max={dateTo} onChange={e => { setDateFrom(e.target.value); setDatePreset(null); }} />
                 </div>
-              </>
-            )}
-            <span className="chip" style={{ position: 'relative' }}>
-              <Icon name="users" /> {genderFilter === 'All' ? 'All genders' : genderFilter} <Icon name="chevron_down" />
-              <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
-                <option value="All">All genders</option>
-                <option value="Men">Men</option>
-                <option value="Women">Women</option>
-              </select>
-            </span>
-            <span className="chip" style={{ position: 'relative' }}>
-              <Icon name="layers" /> {categoryFilter === 'All' ? 'All categories' : categoryFilter} <Icon name="chevron_down" />
-              <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                <option value="All">All categories</option>
-                <option>Female Wellness</option>
-                <option>Womens Personal Wellness</option>
-                <option>Womens Weight Management</option>
-                <option>Womens Wellness</option>
-                <option>Mens Health</option>
-                <option>Mens Vitality</option>
-                <option>Mens Sexual Wellness</option>
-                <option>Mens Weight Loss</option>
-              </select>
-            </span>
-            {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== 30) && (
-              <span
-                className="chip ghost"
-                style={{ cursor: 'pointer', color: 'var(--muted)' }}
-                onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); applyPreset(30); }}
-                title="Reset all filters"
-              >
-                <Icon name="x" /> Clear
-              </span>
-            )}
+                <div className="field">
+                  <label className="lbl" style={{ fontSize: 11 }}>To</label>
+                  <input type="date" className="input sm" value={dateTo} min={dateFrom} max={todayISO()} onChange={e => { setDateTo(e.target.value); setDatePreset(null); }} />
+                </div>
+                <button className="btn sm primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowDatePicker(false)}>Apply</button>
+              </div>
+            </div>
+          </>
+        )}
+        <span className="chip" style={{ position: 'relative' }}>
+          <Icon name="users" /> {genderFilter === 'All' ? 'All genders' : genderFilter} <Icon name="chevron_down" />
+          <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
+            <option value="All">All genders</option>
+            <option value="Men">Men</option>
+            <option value="Women">Women</option>
+          </select>
+        </span>
+        <span className="chip" style={{ position: 'relative' }}>
+          <Icon name="layers" /> {categoryFilter === 'All' ? 'All categories' : categoryFilter} <Icon name="chevron_down" />
+          <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+            <option value="All">All categories</option>
+            <option>Female Wellness</option>
+            <option>Womens Personal Wellness</option>
+            <option>Womens Weight Management</option>
+            <option>Womens Wellness</option>
+            <option>Mens Health</option>
+            <option>Mens Vitality</option>
+            <option>Mens Sexual Wellness</option>
+            <option>Mens Weight Loss</option>
+          </select>
+        </span>
+        {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== 30) && (
+          <span
+            className="chip ghost"
+            style={{ cursor: 'pointer', color: 'var(--muted)' }}
+            onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); applyPreset(30); }}
+            title="Reset all filters"
+          >
+            <Icon name="x" /> Clear
+          </span>
+        )}
       </div>
 
       {kpis}
@@ -1883,8 +1901,8 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                 <span className="spacer" />
                 <Tabs value={timelineMode} onChange={setTimelineMode} items={[
                   { label: "Completed", value: "completed" },
-                  { label: "Started",   value: "started" },
-                  { label: "Both",      value: "both" },
+                  { label: "Started", value: "started" },
+                  { label: "Both", value: "both" },
                 ]} />
               </div>
               {labels.length > 0
@@ -1925,8 +1943,8 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
               <div className="section-title" style={{ marginBottom: 10 }}>Gender split</div>
               <div style={{ display: "grid", placeItems: "center", padding: "14px 0" }}>
                 <DonutChart size={150} thickness={22} centerValue={`${femalePct}%`} centerLabel="female" data={[
-                  { label: "Female",  value: femaleCount,        color: "var(--accent)" },
-                  { label: "Male",    value: maleCount,          color: "var(--accent-2)" },
+                  { label: "Female", value: femaleCount, color: "var(--accent)" },
+                  { label: "Male", value: maleCount, color: "var(--accent-2)" },
                   { label: "Unknown", value: unknownGenderCount, color: "var(--surface-3)" },
                 ]} />
               </div>
@@ -2019,10 +2037,6 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
 
   const isLoading = !loaded.partial || !loaded.completed || !loaded.manual;
 
-  const toggleTab = (val) => {
-    setActiveTabs(prev => prev.includes(val) ? prev.filter(t => t !== val) : [...prev, val]);
-  };
-
   const clearFilters = () => setActiveTabs([]);
 
   const recent = [...completedData, ...partialData, ...manualData]
@@ -2033,25 +2047,27 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
       return tb - ta;
     })
     .map(d => {
-    const demo = deriveDemographics(d);
-    return {
-    ...d,
-    id: d.id,
-    docId: d.id,
-    source: d._source,
-    name: d.name || d.userName || "Unknown",
-    age: demo.age,
-    gender: demo.gender,
-    phone: d.phone || "-",
-    category: demo.category,
-    score: d.healthScore ?? d.score ?? "-",
-    risk: (d.healthScore ?? d.score) !== undefined ? ((d.healthScore ?? d.score) < 40 ? "Critical" : ((d.healthScore ?? d.score) < 60 ? "High" : ((d.healthScore ?? d.score) < 80 ? "Moderate" : "Low"))) : "-",
-    city: d.city || "-", state: d.state || "-",
-    timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : "-"),
-    avatarHue: Math.floor(Math.random()*360),
-    answers: d.answers || {}
-  };
-  });
+      const demo = deriveDemographics(d);
+      return {
+        ...d,
+        id: d.id,
+        docId: d.id,
+        source: d._source,
+        name: d.name || d.userName || "Unknown",
+        age: demo.age,
+        gender: demo.gender,
+        phone: d.phone || "-",
+        category: demo.category,
+        score: d.healthScore ?? d.score ?? "-",
+        risk: (d.healthScore ?? d.score) !== undefined ? ((d.healthScore ?? d.score) < 40 ? "Critical" : ((d.healthScore ?? d.score) < 60 ? "High" : ((d.healthScore ?? d.score) < 80 ? "Moderate" : "Low"))) : "-",
+        city: d.city || "-", state: d.state || "-",
+        timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : "-"),
+        // Deterministic hue (from id) so avatars don't flash a new colour on every
+        // re-render/filter — that random recompute was the table "jitter".
+        avatarHue: Math.abs((d.id || d.name || '').split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)) % 360,
+        answers: d.answers || {}
+      };
+    });
 
   useEffect(() => {
     if (setSubmissionsCount && activeTabs.length === 0) {
@@ -2067,7 +2083,7 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
           <p className="page-sub">View recent partial and completed assessments</p>
         </div>
       </div>
-      <SubmissionsHistory loading={isLoading} recent={recent} openCustomer={openCustomer} openSubmission={openSubmission} activeTabs={activeTabs} toggleTab={toggleTab} clearFilters={clearFilters} />
+      <SubmissionsHistory loading={isLoading} recent={recent} openCustomer={openCustomer} openSubmission={openSubmission} activeTabs={activeTabs} setActiveTabs={setActiveTabs} clearFilters={clearFilters} />
     </div>
   );
 }
@@ -2078,18 +2094,18 @@ const STATUS_PREDICATES = {
   purchased: r => !!r.isPurchased,
   // Matches the old dashboards: the WhatsApp request is tracked on the
   // `isWhatsAppSent` boolean (not the submission source).
-  whatsapp:  r => !!r.isWhatsAppSent,
+  whatsapp: r => !!r.isWhatsAppSent,
 };
 
-function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab, setTab, activeTabs, toggleTab, clearFilters, compact }) {
+function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, activeTabs, setActiveTabs, clearFilters, compact }) {
   const tabs = [
-    { label: "All",       value: "all" },
+    { label: "All", value: "all" },
     { label: "Completed", value: "completed" },
-    { label: "Partial",   value: "partial" },
-    { label: "Manual",    value: "manual" },
+    { label: "Partial", value: "partial" },
+    { label: "Manual", value: "manual" },
     { label: "Consulted", value: "consulted" },
     { label: "Purchased", value: "purchased" },
-    { label: "WhatsApp",  value: "whatsapp" },
+    { label: "WhatsApp", value: "whatsapp" },
   ];
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -2098,9 +2114,9 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
   const [internalTab, setInternalTab] = useState('all');
   const activeTab = tab !== undefined ? tab : internalTab;
   const setActiveTab = setTab || setInternalTab;
-  // Independent multi-select state for the status pills (Consulted/Purchased/WhatsApp)
+  // Independent multi-select state for the status filter (Consulted/Purchased/WhatsApp)
   const [statusFilters, setStatusFilters] = useState([]);
-  const toggleStatus = (v) => setStatusFilters(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+  const [search, setSearch] = useState('');
   const pageSize = 14;
 
   // Type filter (single/multi by source) runs first, then the multi-select status
@@ -2117,6 +2133,13 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
       const pred = STATUS_PREDICATES[s];
       if (pred) list = list.filter(pred);
     });
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(r =>
+        (r.name || '').toLowerCase().includes(q) ||
+        (r.phone || '').toLowerCase().includes(q)
+      );
+    }
     return list;
   })();
 
@@ -2143,43 +2166,60 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
         <div className="section-title">Submissions history</div>
         <span className="muted num" style={{ fontSize: 12 }}>· {totalCount.toLocaleString()} entries</span>
         <span className="spacer" />
+        {!compact && (
+          <div style={{ position: 'relative', width: 210 }}>
+            <input className="input" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search name, phone…"
+              style={{ paddingLeft: 30, height: 32, fontSize: 12.5 }} />
+            <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex', pointerEvents: 'none' }}>
+              <Icon name="search" size={13} />
+            </span>
+          </div>
+        )}
         {(() => {
           const curVal = activeTabs !== undefined ? activeTabs : activeTab;
-          const onChangeFn = toggleTab || setActiveTab;
+          const onChangeFn = setActiveTab;
           const typeValues = ['all', 'completed', 'partial', 'manual'];
           const statusValues = ['consulted', 'purchased', 'whatsapp'];
           // Type filters describe what the submission *is* (segmented control);
           // status filters describe attributes you can toggle (color-coded pills).
           const typeItems = tabs.filter(t => typeValues.includes(t.value) && !(activeTabs !== undefined && t.value === 'all'));
           const statusItems = tabs.filter(t => statusValues.includes(t.value));
+          const statusColor = { consulted: '#3b82f6', purchased: '#22c55e', whatsapp: '#25d366' };
           return (
             <>
-              <Tabs value={curVal} onChange={onChangeFn} items={typeItems} />
-              {!compact && <span className="filter-divider" />}
+              {activeTabs !== undefined ? (
+                <MultiCheckDropdown
+                  label="Type" icon="layers"
+                  selected={activeTabs} onChange={setActiveTabs}
+                  options={typeItems.map(it => ({ value: it.value, label: it.label }))}
+                />
+              ) : (
+                <Tabs value={curVal} onChange={onChangeFn} items={typeItems} />
+              )}
               {!compact && (
-                <div className="status-pills">
-                  {statusItems.map(it => (
-                    <button
-                      key={it.value}
-                      className={`status-pill ${it.value}${statusFilters.includes(it.value) ? ' on' : ''}`}
-                      onClick={() => toggleStatus(it.value)}
-                    >
-                      <span className="dot" /> {it.label}
-                    </button>
-                  ))}
-                </div>
+                <MultiCheckDropdown
+                  label="Status" icon="filter"
+                  selected={statusFilters} onChange={setStatusFilters}
+                  options={statusItems.map(it => ({ value: it.value, label: it.label, color: statusColor[it.value] }))}
+                />
               )}
             </>
           );
         })()}
-        {((activeTabs && activeTabs.length > 0) || statusFilters.length > 0) && (
-          <button
-            className="btn sm ghost"
-            onClick={() => { setStatusFilters([]); if (clearFilters) clearFilters(); }}
-          >
-            Clear Filters
-          </button>
-        )}
+        {!compact && (() => {
+          const hasFilters = (activeTabs && activeTabs.length > 0) || statusFilters.length > 0;
+          return (
+            <button
+              className="btn sm ghost"
+              disabled={!hasFilters}
+              onClick={() => { setStatusFilters([]); if (clearFilters) clearFilters(); }}
+              style={!hasFilters ? { opacity: 0.4, cursor: 'default' } : undefined}
+            >
+              Clear
+            </button>
+          );
+        })()}
         <div style={{ position: 'relative' }}>
           <button className="btn sm primary" onClick={() => setExportMenuOpen(v => !v)}>
             <Icon name="download" /> Export <Icon name="chevron_down" size={14} />
@@ -2194,8 +2234,8 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
                 animation: 'fadeInDown 120ms ease',
               }}>
                 {[
-                  { mode: 'full',     icon: 'download', title: 'Download Full Data',     sub: `${(recent || []).length.toLocaleString()} rows` },
-                  { mode: 'filtered', icon: 'filter',   title: 'Download Filtered Data', sub: `${tabbedList.length.toLocaleString()} rows · current tab` },
+                  { mode: 'full', icon: 'download', title: 'Download Full Data', sub: `${(recent || []).length.toLocaleString()} rows` },
+                  { mode: 'filtered', icon: 'filter', title: 'Download Filtered Data', sub: `${tabbedList.length.toLocaleString()} rows · current tab` },
                 ].map(item => (
                   <button
                     key={item.mode}
@@ -2229,7 +2269,7 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
         onConfirm={handleConfirmExport}
       />
       <div style={{ overflowX: "auto" }}>
-        <table className="tbl">
+        <table className="tbl" style={{ minWidth: 760 }}>
           <thead>
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" /></th>
@@ -2240,7 +2280,6 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
               <th>Category</th>
               <th>Source</th>
               <th>Timestamp</th>
-              <th style={{ width: 80 }}></th>
             </tr>
           </thead>
           <style>{`
@@ -2275,41 +2314,36 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
                   <td><div className="skel-box" style={{ width: 100, height: 14 }}></div></td>
                   <td><div className="skel-box" style={{ width: 80, height: 24, borderRadius: 99 }}></div></td>
                   <td><div className="skel-box" style={{ width: 80, height: 14 }}></div></td>
-                  <td></td>
                 </tr>
               ))
             ) : pagedList.length === 0 ? (
-               <tr><td colSpan="9" style={{ textAlign: "center", padding: 60 }} className="muted">No submissions found.</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: "center", padding: 60 }} className="muted">No submissions found.</td></tr>
             ) : (
               pagedList.map(c => (
                 <tr key={c.id} onClick={() => openCustomer(c)} className="fade-in">
-                <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
-                <td>
-                  <div className="hstack-10">
-                    <Avatar name={c.name} hue={c.avatarHue} size="sm" />
-                    <div className="stack-2">
-                      <div className="fw5">{c.name}</div>
-                      <div className="muted mono" style={{ fontSize: 11 }}>{(c.docId || c.id || "").slice(0, 12)}...</div>
+                  <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
+                  <td>
+                    <div className="hstack-10">
+                      <Avatar name={c.name} hue={c.avatarHue} size="sm" />
+                      <div className="stack-2">
+                        <div className="fw5">{c.name}</div>
+                        <div className="muted mono" style={{ fontSize: 11 }}>{(c.docId || c.id || "").slice(0, 12)}...</div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="num">{c.phone}</td>
-                <td>
-                  <div className="hstack-8">
-                    <ScoreChip score={c.score} />
-                  </div>
-                </td>
-                <td><RiskBadge risk={c.risk} /></td>
-                <td className="muted">{c.category}</td>
-                <td><Badge>{c.source}</Badge></td>
-                <td className="muted num">{c.timestampShort}</td>
-                <td className="right">
-                  <button className="btn sm ghost" onClick={(e) => { e.stopPropagation(); openSubmission(c); }} title="View submission"><Icon name="eye" /></button>
-                  <button className="btn sm ghost" onClick={(e) => e.stopPropagation()} title="More"><Icon name="more" /></button>
-                </td>
-              </tr>
-            ))
-          )}
+                  </td>
+                  <td className="num">{c.phone}</td>
+                  <td>
+                    <div className="hstack-8">
+                      <ScoreChip score={c.score} />
+                    </div>
+                  </td>
+                  <td><RiskBadge risk={c.risk} /></td>
+                  <td className="muted">{c.category}</td>
+                  <td><Badge>{c.source}</Badge></td>
+                  <td className="muted num">{c.timestampShort}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -2318,10 +2352,10 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
           <span className="muted">
             Showing <b className="num" style={{ color: "var(--fg)" }}>{totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)}</b> of <b className="num" style={{ color: "var(--fg)" }}>{totalCount.toLocaleString()}</b>
           </span>
-          
+
           <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
-            <select 
-              className="input sm" 
+            <select
+              className="input sm"
               style={{ padding: "2px 8px", fontSize: 13, minWidth: 100 }}
               value={currentPage}
               onChange={e => {
@@ -2343,39 +2377,39 @@ function SubmissionsHistory({ loading, recent, openCustomer, openSubmission, tab
           </div>
 
           <div className="hstack-4">
-            <button 
-                onClick={() => setCurrentPage(currentPage - 1)} 
-                disabled={currentPage <= 1}
-                className={`btn sm sq ghost ${currentPage <= 1 ? "disabled" : ""}`}
+            <button
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className={`btn sm sq ghost ${currentPage <= 1 ? "disabled" : ""}`}
             >
-                <Icon name="chevron_left" size={14}/>
+              <Icon name="chevron_left" size={14} />
             </button>
-            
+
             {(() => {
-               let start = Math.max(1, currentPage - 2);
-               let end = Math.min(start + 4, maxPages);
-               if (end - start < 4) start = Math.max(1, end - 4);
-               
-               return Array.from({ length: end - start + 1 }).map((_, i) => {
-                 const p = start + i;
-                 return (
-                   <button 
-                     key={p}
-                     onClick={() => setCurrentPage(p)}
-                     className={`btn sm sq ${currentPage === p ? "primary" : "ghost"}`}
-                   >
-                     {p}
-                   </button>
-                 );
-               });
+              let start = Math.max(1, currentPage - 2);
+              let end = Math.min(start + 4, maxPages);
+              if (end - start < 4) start = Math.max(1, end - 4);
+
+              return Array.from({ length: end - start + 1 }).map((_, i) => {
+                const p = start + i;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`btn sm sq ${currentPage === p ? "primary" : "ghost"}`}
+                  >
+                    {p}
+                  </button>
+                );
+              });
             })()}
 
-            <button 
-                onClick={() => setCurrentPage(currentPage + 1)} 
-                disabled={currentPage >= maxPages}
-                className={`btn sm sq ghost ${currentPage >= maxPages ? "disabled" : ""}`}
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage >= maxPages}
+              className={`btn sm sq ghost ${currentPage >= maxPages ? "disabled" : ""}`}
             >
-                <Icon name="chevron_right" size={14}/>
+              <Icon name="chevron_right" size={14} />
             </button>
           </div>
         </div>
@@ -2389,9 +2423,9 @@ function ScoreChip({ score }) {
     return <span className="muted num">-</span>;
   }
   const color = score >= 75 ? "var(--risk-low)"
-              : score >= 50 ? "var(--risk-moderate)"
-              : score >= 25 ? "var(--risk-high)"
-                            : "var(--risk-critical)";
+    : score >= 50 ? "var(--risk-moderate)"
+      : score >= 25 ? "var(--risk-high)"
+        : "var(--risk-critical)";
   return (
     <span className="hstack-8" style={{ fontVariantNumeric: "tabular-nums" }}>
       <span className="num fw6" style={{ color, fontSize: 14 }}>{score}</span>
@@ -2437,11 +2471,7 @@ const CUSTOMERS_GRAPHQL_QUERY = `
 `;
 
 function CustomersList({ openCustomer, openSubmission }) {
-  const D = window.SehatData;
   const [q, setQ] = useStateCx("");
-  const [risk, setRisk] = useStateCx("all");
-  const [src, setSrc] = useStateCx("all");
-  const [sort, setSort] = useStateCx("recent");
 
   const [customers, setCustomers] = useStateCx([]);
   const [loading, setLoading] = useStateCx(true);
@@ -2459,33 +2489,33 @@ function CustomersList({ openCustomer, openSubmission }) {
 
   useEffect(() => {
     let cancel = false;
-    
+
     const isQChange = lastQ.current !== q;
     lastQ.current = q;
-    
+
     setLoading(true);
     const delay = isQChange ? 400 : 0;
-    
+
     const t = setTimeout(async () => {
       try {
         const queryParts = [];
         if (q.trim()) {
-            queryParts.push(`(first_name:*${q.trim()}* OR last_name:*${q.trim()}* OR phone:*${q.trim()}*)`);
+          queryParts.push(`(first_name:*${q.trim()}* OR last_name:*${q.trim()}* OR phone:*${q.trim()}*)`);
         }
         const qString = queryParts.join(' AND ');
 
 
         const res = await fetch('/shopify-v2/graphql.json', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                query: CUSTOMERS_GRAPHQL_QUERY,
-                variables: {
-                    first: 14,
-                    after: pageCursors.length > 0 ? pageCursors[pageCursors.length - 1] : null,
-                    query: qString || null
-                }
-            })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: CUSTOMERS_GRAPHQL_QUERY,
+            variables: {
+              first: 14,
+              after: pageCursors.length > 0 ? pageCursors[pageCursors.length - 1] : null,
+              query: qString || null
+            }
+          })
         });
 
         if (cancel) return;
@@ -2494,21 +2524,21 @@ function CustomersList({ openCustomer, openSubmission }) {
 
         const connection = data.data.customers;
         const mapped = connection.edges.map(e => {
-            const c = e.node;
-            return {
-                id: c.id,
-                name: c.displayName || "Unknown",
-                age: "-", gender: "-",
-                phone: c.phone || c.defaultAddress?.phone || "-",
-                city: c.defaultAddress?.city || "-",
-                state: c.defaultAddress?.provinceCode || c.defaultAddress?.province || "-",
-                orders: c.numberOfOrders || 0,
-                ltv: parseFloat(c.amountSpent?.amount || "0"),
-                timestampShort: new Date(c.createdAt).toLocaleDateString('en-GB'),
-                avatarHue: Math.floor(Math.random() * 360)
-            };
+          const c = e.node;
+          return {
+            id: c.id,
+            name: c.displayName || "Unknown",
+            age: "-", gender: "-",
+            phone: c.phone || c.defaultAddress?.phone || "-",
+            city: c.defaultAddress?.city || "-",
+            state: c.defaultAddress?.provinceCode || c.defaultAddress?.province || "-",
+            orders: c.numberOfOrders || 0,
+            ltv: parseFloat(c.amountSpent?.amount || "0"),
+            timestampShort: new Date(c.createdAt).toLocaleDateString('en-GB'),
+            avatarHue: Math.floor(Math.random() * 360)
+          };
         });
-        
+
         setCustomers(mapped);
         setHasNextPage(connection.pageInfo.hasNextPage);
         setEndCursor(connection.pageInfo.endCursor);
@@ -2525,7 +2555,7 @@ function CustomersList({ openCustomer, openSubmission }) {
   // Reset pagination on search change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-      setPageCursors([]);
+    setPageCursors([]);
   }, [q]);
 
   const jumpToPage = async (targetPage) => {
@@ -2534,30 +2564,30 @@ function CustomersList({ openCustomer, openSubmission }) {
       setPageCursors(prev => prev.slice(0, targetPage - 1));
       return;
     }
-    
+
     setLoading(true);
     let tempCursors = [...pageCursors];
     let currentIdx = tempCursors.length + 1;
     let currentCursor = tempCursors.length > 0 ? tempCursors[tempCursors.length - 1] : null;
     const qString = q ? `name:*${q}* OR phone:*${q}* OR email:*${q}*` : "";
-    
+
     // Show progress if jumping more than 1 page
     if (targetPage - currentIdx > 1) {
       setJumpProgress({ current: currentIdx, target: targetPage });
     }
-    
+
     try {
       while (currentIdx < targetPage) {
         if (targetPage - currentIdx >= 1) {
-           setJumpProgress({ current: currentIdx, target: targetPage });
+          setJumpProgress({ current: currentIdx, target: targetPage });
         }
         const res = await fetch('/shopify-v2/graphql.json', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                query: CUSTOMERS_GRAPHQL_QUERY,
-                variables: { first: 14, after: currentCursor, query: qString || null }
-            })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: CUSTOMERS_GRAPHQL_QUERY,
+            variables: { first: 14, after: currentCursor, query: qString || null }
+          })
         });
         const data = await res.json();
         currentCursor = data.data.customers.pageInfo.endCursor;
@@ -2566,7 +2596,7 @@ function CustomersList({ openCustomer, openSubmission }) {
       }
       setPageCursors(tempCursors);
       setEndCursor(currentCursor);
-    } catch(e) {
+    } catch (e) {
       console.error(e);
       setLoading(false); // Only reset on error, success will be handled by useEffect
     } finally {
@@ -2574,15 +2604,9 @@ function CustomersList({ openCustomer, openSubmission }) {
     }
   };
 
-  const list = useMemoCx(() => {
-    let l = customers;
-    // Server-side search handles q. Client-side handles sorting by mock scores if applied.
-    if (risk !== "all") l = l.filter(c => c.risk === risk);
-    if (src !== "all")  l = l.filter(c => c.source === src);
-    if (sort === "score-hi") l = [...l].sort((a, b) => b.score - a.score);
-    if (sort === "score-lo") l = [...l].sort((a, b) => a.score - b.score);
-    return l;
-  }, [customers, risk, src, sort]);
+  // Shopify customers — no questionnaire risk/score/source to filter or sort on.
+  // Search is handled server-side; the list is shown as returned.
+  const list = customers;
 
   return (
     <div className="col fade-in">
@@ -2608,13 +2632,8 @@ function CustomersList({ openCustomer, openSubmission }) {
       <div className="toolbar">
         <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
           <input className="input" style={{ paddingLeft: 34 }} value={q} onChange={e => setQ(e.target.value)} placeholder="Search by name, phone, or symptom..." />
-          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }}><Icon name="search" size={14}/></span>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }}><Icon name="search" size={14} /></span>
         </div>
-        <FilterBar>
-          <SelectChip icon="flag" label="Risk" value={risk} onChange={setRisk} options={[["all","All risks"],...["Low","Moderate","High","Critical"].map(r => [r, r])]} />
-          <SelectChip icon="layers" label="Source" value={src} onChange={setSrc} options={[["all","All sources"],...D.SOURCES.map(s => [s, s])]} />
-          <SelectChip icon="bar" label="Sort" value={sort} onChange={setSort} options={[["recent","Most recent"],["score-hi","Score: high→low"],["score-lo","Score: low→high"]]} />
-        </FilterBar>
         <span className="spacer" />
       </div>
 
@@ -2649,18 +2668,18 @@ function CustomersList({ openCustomer, openSubmission }) {
             `}</style>
             <tbody>
               {loading && jumpProgress ? (
-                 <tr className="fade-in">
-                   <td colSpan="8" style={{ padding: "120px 20px", textAlign: "center" }}>
-                     <Icon name="refresh" size={28} className="spin" color="var(--accent)" />
-                     <div className="fw5" style={{ marginTop: 24, fontSize: 16 }}>Fast-forwarding to Page {jumpProgress.target}...</div>
-                     <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-                       Fetching {jumpProgress.current} of {jumpProgress.target}
-                     </div>
-                     <div style={{ background: "var(--border)", height: 6, borderRadius: 6, width: 240, margin: "20px auto 0", overflow: "hidden" }}>
-                       <div style={{ background: "var(--accent)", height: "100%", borderRadius: 6, width: `${Math.round((jumpProgress.current/jumpProgress.target)*100)}%`, transition: "width 0.2s ease-out" }} />
-                     </div>
-                   </td>
-                 </tr>
+                <tr className="fade-in">
+                  <td colSpan="8" style={{ padding: "120px 20px", textAlign: "center" }}>
+                    <Icon name="refresh" size={28} className="spin" color="var(--accent)" />
+                    <div className="fw5" style={{ marginTop: 24, fontSize: 16 }}>Fast-forwarding to Page {jumpProgress.target}...</div>
+                    <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+                      Fetching {jumpProgress.current} of {jumpProgress.target}
+                    </div>
+                    <div style={{ background: "var(--border)", height: 6, borderRadius: 6, width: 240, margin: "20px auto 0", overflow: "hidden" }}>
+                      <div style={{ background: "var(--accent)", height: "100%", borderRadius: 6, width: `${Math.round((jumpProgress.current / jumpProgress.target) * 100)}%`, transition: "width 0.2s ease-out" }} />
+                    </div>
+                  </td>
+                </tr>
               ) : loading ? (
                 Array.from({ length: 14 }).map((_, i) => (
                   <tr key={`skel-${i}`} className="fade-in">
@@ -2683,7 +2702,7 @@ function CustomersList({ openCustomer, openSubmission }) {
                   </tr>
                 ))
               ) : list.length === 0 ? (
-                 <tr><td colSpan="8" style={{ textAlign: "center", padding: 60 }} className="muted">No customers found.</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: "center", padding: 60 }} className="muted">No customers found.</td></tr>
               ) : (
                 list.slice(0, 14).map(c => (
                   <tr key={c.id} onClick={() => openCustomer(c)} className="fade-in">
@@ -2717,10 +2736,10 @@ function CustomersList({ openCustomer, openSubmission }) {
             <span className="muted">
               Showing <b className="num" style={{ color: "var(--fg)" }}>{(pageCursors.length) * 14 + 1}-{Math.min((pageCursors.length + 1) * 14, totalCount || 0)}</b> of <b className="num" style={{ color: "var(--fg)" }}>{(totalCount || 0).toLocaleString()}</b>
             </span>
-            
+
             <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
-              <select 
-                className="input sm" 
+              <select
+                className="input sm"
                 style={{ padding: "2px 8px", fontSize: 13, minWidth: 100 }}
                 value={pageCursors.length + 1}
                 onChange={e => {
@@ -2743,41 +2762,41 @@ function CustomersList({ openCustomer, openSubmission }) {
             </div>
 
             <div className="hstack-4">
-              <button 
-                  onClick={() => jumpToPage(pageCursors.length)} 
-                  disabled={pageCursors.length === 0 || loading}
-                  className={`btn sm sq ghost ${pageCursors.length === 0 ? "disabled" : ""}`}
+              <button
+                onClick={() => jumpToPage(pageCursors.length)}
+                disabled={pageCursors.length === 0 || loading}
+                className={`btn sm sq ghost ${pageCursors.length === 0 ? "disabled" : ""}`}
               >
-                  <Icon name="chevron_left" size={14}/>
+                <Icon name="chevron_left" size={14} />
               </button>
-              
+
               {(() => {
-                 const currentPage = pageCursors.length + 1;
-                 const maxPages = Math.max(1, Math.ceil((totalCount || 0) / 14));
-                 let start = Math.max(1, currentPage - 2);
-                 let end = Math.min(start + 4, maxPages);
-                 if (end - start < 4) start = Math.max(1, end - 4);
-                 
-                 return Array.from({ length: end - start + 1 }).map((_, i) => {
-                   const p = start + i;
-                   return (
-                     <button 
-                       key={p}
-                       onClick={() => jumpToPage(p)}
-                       className={`btn sm sq ${currentPage === p ? "primary" : "ghost"}`}
-                     >
-                       {p}
-                     </button>
-                   );
-                 });
+                const currentPage = pageCursors.length + 1;
+                const maxPages = Math.max(1, Math.ceil((totalCount || 0) / 14));
+                let start = Math.max(1, currentPage - 2);
+                let end = Math.min(start + 4, maxPages);
+                if (end - start < 4) start = Math.max(1, end - 4);
+
+                return Array.from({ length: end - start + 1 }).map((_, i) => {
+                  const p = start + i;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => jumpToPage(p)}
+                      className={`btn sm sq ${currentPage === p ? "primary" : "ghost"}`}
+                    >
+                      {p}
+                    </button>
+                  );
+                });
               })()}
 
-              <button 
-                  onClick={() => jumpToPage(pageCursors.length + 2)} 
-                  disabled={!hasNextPage || loading}
-                  className={`btn sm sq ghost ${!hasNextPage ? "disabled" : ""}`}
+              <button
+                onClick={() => jumpToPage(pageCursors.length + 2)}
+                disabled={!hasNextPage || loading}
+                className={`btn sm sq ghost ${!hasNextPage ? "disabled" : ""}`}
               >
-                  <Icon name="chevron_right" size={14}/>
+                <Icon name="chevron_right" size={14} />
               </button>
             </div>
           </div>
@@ -2787,6 +2806,7 @@ function CustomersList({ openCustomer, openSubmission }) {
   );
 }
 
+// eslint-disable-next-line no-unused-vars
 function SelectChip({ icon, label, value, options, onChange }) {
   // Lightweight custom select that looks like a chip
   return (
@@ -2808,8 +2828,32 @@ function SelectChip({ icon, label, value, options, onChange }) {
 function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
   const [isPurchased, setIsPurchased] = useStateCx(false);
   const [isConsulted, setIsConsulted] = useStateCx(false);
+  // Live Shopify order stats looked up by the patient's questionnaire phone number.
+  // orders = orders_count, lifetime value = total_spent. Falls back to 0 if no match.
+  const [shopStats, setShopStats] = useStateCx({ orders: null, ltv: null });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const ten = (customer?.phone || '').replace(/\D/g, '').slice(-10);
+    if (ten.length < 10) { setShopStats({ orders: 0, ltv: 0 }); return; }
+    let cancelled = false;
+    setShopStats({ orders: null, ltv: null });
+    searchCustomers(ten)
+      .then(list => {
+        if (cancelled) return;
+        const match = (list || []).find(cu => (cu.phone || '').replace(/\D/g, '').endsWith(ten)) || (list || [])[0];
+        setShopStats({
+          orders: match ? (match.orders_count ?? 0) : 0,
+          ltv: match ? parseFloat(match.total_spent ?? 0) : 0,
+        });
+      })
+      .catch(() => { if (!cancelled) setShopStats({ orders: 0, ltv: 0 }); });
+    return () => { cancelled = true; };
+  }, [customer?.phone]);
   if (!customer) return null;
   const c = customer;
+  const ten = (c.phone || '').replace(/\D/g, '').slice(-10);
+  const intlNumber = ten.length === 10 ? '91' + ten : (c.phone || '').replace(/\D/g, '');
+  const hasPhone = intlNumber.length >= 11;
   return (
     <Drawer onClose={onClose} title={c.name} subtitle={`${c.phone} · ${c.email}`}>
       <div className="hstack-12">
@@ -2826,14 +2870,15 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
       </div>
 
       <div className="grid-12">
-        <div className="span-4 card flat" style={{ background: "var(--surface-2)" }}>
-          <div className="mini-stat"><div className="l">Lifetime value</div><div className="v">{c.ltv ? "Rs. " + c.ltv.toLocaleString() : "—"}</div></div>
+        <div className="span-6 card flat" style={{ background: "var(--surface-2)" }}>
+          <div className="mini-stat"><div className="l">Lifetime value</div>
+            <div className="v">{shopStats.ltv === null ? <span className="skel-box" style={{ display: "inline-block", width: 96, height: 20, borderRadius: 5 }} /> : "Rs. " + shopStats.ltv.toLocaleString()}</div>
+          </div>
         </div>
-        <div className="span-4 card flat" style={{ background: "var(--surface-2)" }}>
-          <div className="mini-stat"><div className="l">Orders</div><div className="v">{c.orders}</div></div>
-        </div>
-        <div className="span-4 card flat" style={{ background: "var(--surface-2)" }}>
-          <div className="mini-stat"><div className="l">Call status</div><div className="v" style={{ fontSize: 15 }}>{c.callStatus}</div></div>
+        <div className="span-6 card flat" style={{ background: "var(--surface-2)" }}>
+          <div className="mini-stat"><div className="l">Orders</div>
+            <div className="v">{shopStats.orders === null ? <span className="skel-box" style={{ display: "inline-block", width: 40, height: 20, borderRadius: 5 }} /> : shopStats.orders}</div>
+          </div>
         </div>
       </div>
 
@@ -2856,46 +2901,16 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
             </div>
             <div className="divider" style={{ margin: "12px 0" }} />
             <div className="stack-6">
-              <div className="hstack-8" style={{ fontSize: 12.5 }}><Icon name="bolt" size={12} color="var(--risk-high)"/><span className="muted">Top concerns:</span><span>Irregular cycle · Low sleep · Fatigue · Cravings</span></div>
-              <div className="hstack-8" style={{ fontSize: 12.5 }}><Icon name="sparkles" size={12} color="var(--accent)"/><span className="muted">Suggested:</span><span>Femina Vitality + Iron Boost (8-week plan)</span></div>
+              <div className="hstack-8" style={{ fontSize: 12.5 }}><Icon name="bolt" size={12} color="var(--risk-high)" /><span className="muted">Top concerns:</span><span>Irregular cycle · Low sleep · Fatigue · Cravings</span></div>
             </div>
           </div>
         </div>
       )}
       <div className="stack-12">
         <div className="section-title">Activity timeline</div>
-        <div className="stack-12" style={{ paddingTop: 4 }}>
-          {c.score !== undefined && (
-            <div className="tl">
-              <div className="fw5" style={{ fontSize: 13 }}>Completed health questionnaire</div>
-              <div className="muted" style={{ fontSize: 12 }}>Score {c.score}/100 · {c.risk} risk · {c.category}</div>
-              <div className="faint" style={{ fontSize: 11.5, marginTop: 2 }}>{c.timestampLong}</div>
-            </div>
-          )}
-          <div className="tl">
-            <div className="fw5" style={{ fontSize: 13 }}>Tele-sales call · Karthik R.</div>
-            <div className="muted" style={{ fontSize: 12 }}>Outcome: interested, sending plan over WhatsApp</div>
-            <div className="faint" style={{ fontSize: 11.5, marginTop: 2 }}>3 hours ago · 4:12 PM</div>
-          </div>
-          {c.orders > 0 && (
-            <div className="tl">
-              <div className="fw5" style={{ fontSize: 13 }}>Order #SU-45239 placed</div>
-              <div className="muted" style={{ fontSize: 12 }}>2 items · Rs. {c.ltv?.toLocaleString()} · Prepaid</div>
-              <div className="faint" style={{ fontSize: 11.5, marginTop: 2 }}>Yesterday · 11:08 AM</div>
-            </div>
-          )}
-          <div className="tl">
-            <div className="fw5" style={{ fontSize: 13 }}>Profile created from quiz</div>
-            <div className="muted" style={{ fontSize: 12 }}>Source: Instagram → Quiz landing page</div>
-            <div className="faint" style={{ fontSize: 11.5, marginTop: 2 }}>12 days ago</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="stack-12">
-        <div className="section-title">Address on file</div>
-        <div className="card flat">
-          <div style={{ fontSize: 13 }}>{c.address}<br/>{c.city}, {c.state} – <span className="num">{c.pincode}</span></div>
+        {/* Real prescription + questionnaire history (same data as Clinical review) */}
+        <div className="card flat" style={{ padding: 0 }}>
+          <HistoryInline customer={c} />
         </div>
       </div>
 
@@ -2913,15 +2928,6 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
               Purchased
             </label>
           </div>
-          
-          <div className="section-title" style={{ marginTop: 8 }}>Recommended treatment</div>
-          <div className="card flat hstack-12" style={{ alignItems: "flex-start" }}>
-             <img src="https://sehatup.com/cdn/shop/files/femina.png" alt="Femina Vitality" style={{ width: 48, height: 48, borderRadius: 8, background: "#fff", objectFit: "contain", border: "1px solid var(--border)" }} onError={(e) => { e.target.onerror = null; e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width%3D%2248%22 height%3D%2248%22%3E%3Crect width%3D%2248%22 height%3D%2248%22 fill%3D%22%23f3f4f6%22%2F%3E%3C%2Fsvg%3E'; }} />
-             <div className="stack-2">
-               <div className="fw5" style={{ fontSize: 13 }}>Femina Vitality + Iron Boost (8-week plan)</div>
-               <div className="muted" style={{ fontSize: 12 }}>Rs. 1,299 · Qty: 1</div>
-             </div>
-          </div>
         </div>
       )}
 
@@ -2929,7 +2935,7 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
         {role === "doctor" ? (
           <>
             {c.reportDownloadUrl ? (
-              <a href={c.reportDownloadUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{textDecoration: 'none'}}>
+              <a href={c.reportDownloadUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none' }}>
                 <Icon name="file_text" /> Show medical report
               </a>
             ) : (
@@ -2937,13 +2943,21 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
             )}
             <span className="spacer" />
             <button className="btn primary" onClick={() => { onClose(); setRoute && setRoute("doctor", { customer: c }); }}>
-               <Icon name="file_plus" /> Create prescription
+              <Icon name="file_plus" /> Create prescription
             </button>
           </>
         ) : (
           <>
-            <button className="btn"><Icon name="phone" /> Call</button>
-            <button className="btn"><Icon name="whatsapp" /> WhatsApp</button>
+            {hasPhone ? (
+              <a href={`tel:+${intlNumber}`} className="btn" style={{ textDecoration: 'none' }}><Icon name="phone" /> Call</a>
+            ) : (
+              <button className="btn" disabled><Icon name="phone" /> Call</button>
+            )}
+            {hasPhone ? (
+              <a href={`https://wa.me/${intlNumber}`} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none' }}><Icon name="whatsapp" /> WhatsApp</a>
+            ) : (
+              <button className="btn" disabled><Icon name="whatsapp" /> WhatsApp</button>
+            )}
             <button className="btn"><Icon name="mail" /> Email</button>
             <span className="spacer" />
             <button className="btn primary" onClick={() => { onClose(); setRoute && setRoute("order_create", { customer: c }); }}><Icon name="package" /> Create order</button>
@@ -3071,7 +3085,7 @@ function Drawer({ children, onClose, title, subtitle, wide }) {
 function DrawerFooter({ children }) {
   // Render via portal-ish trick: just append into the drawer-body, styled like a footer block
   return (
-    <div className="card flat" style={{ position: "sticky", bottom: -22, marginTop: 8, background: "var(--surface)", borderTop: "1px solid var(--border)", borderRadius: 0, marginLeft: -22, marginRight: -22, marginBottom: -22, padding: "12px 22px" }}>
+    <div className="card flat" style={{ position: "sticky", bottom: -22, zIndex: 20, marginTop: 8, background: "var(--surface)", borderTop: "1px solid var(--border)", borderRadius: 0, marginLeft: -22, marginRight: -22, marginBottom: -22, padding: "12px 22px" }}>
       <div className="hstack-8">{children}</div>
     </div>
   );
@@ -3086,10 +3100,10 @@ function DrawerFooter({ children }) {
 
 
 const NP_PROGRAMS = [
-  { id: "Men's Sexual Wellness",     qid: "mens-wellness",   label: "Men's Wellness",   sub: "Sexual & hormonal",  icon: "user",  accent: "#0ea5e9" },
-  { id: "Women's Wellness",          qid: "womens-wellness",  label: "Women's Wellness", sub: "Hormones & cycles",  icon: "heart", accent: "#f43f5e" },
-  { id: "Men's Weight Management",   qid: "mens-weight",      label: "Men's Weight",     sub: "Metabolism & loss",  icon: "scale", accent: "#8b5cf6" },
-  { id: "Women's Weight Management", qid: "womens-weight",    label: "Women's Weight",   sub: "Nutrition & weight", icon: "scale", accent: "#10b981" },
+  { id: "Men's Sexual Wellness", qid: "mens-wellness", label: "Men's Wellness", sub: "Sexual & hormonal", icon: "user", accent: "#0ea5e9" },
+  { id: "Women's Wellness", qid: "womens-wellness", label: "Women's Wellness", sub: "Hormones & cycles", icon: "heart", accent: "#f43f5e" },
+  { id: "Men's Weight Management", qid: "mens-weight", label: "Men's Weight", sub: "Metabolism & loss", icon: "scale", accent: "#8b5cf6" },
+  { id: "Women's Weight Management", qid: "womens-weight", label: "Women's Weight", sub: "Nutrition & weight", icon: "scale", accent: "#10b981" },
 ];
 const NP_EMPTY = { name: '', phone: '', dob: '', reportCategory: '', height: '', currentWeight: '', targetWeight: '', gender: '' };
 
@@ -3110,14 +3124,14 @@ function CreateNewPatientModal({ isOpen, onClose, onUserCreated }) {
   const validate = () => {
     const e = {};
     if (!formData.reportCategory) e.reportCategory = 'Please select a program';
-    if (!formData.name.trim())    e.name = 'Required';
+    if (!formData.name.trim()) e.name = 'Required';
     if (!/^\d{10}$/.test(formData.phone)) e.phone = 'Enter 10-digit number';
     if (!formData.gender) e.gender = 'Required';
-    if (!formData.dob)    e.dob = 'Required';
+    if (!formData.dob) e.dob = 'Required';
     if (isWeight) {
-      if (!formData.height)        e.height = 'Required';
+      if (!formData.height) e.height = 'Required';
       if (!formData.currentWeight) e.currentWeight = 'Required';
-      if (!formData.targetWeight)  e.targetWeight = 'Required';
+      if (!formData.targetWeight) e.targetWeight = 'Required';
     }
     setErrors(e);
     return !Object.keys(e).length;
@@ -3151,151 +3165,343 @@ function CreateNewPatientModal({ isOpen, onClose, onUserCreated }) {
 
   return createPortal(
     <>
-    <div className="np-blur-layer" />
-    <div className="np-backdrop" onClick={close}>
-      <div className="np-modal" onClick={e => e.stopPropagation()}>
+      <div className="np-blur-layer" />
+      <div className="np-backdrop" onClick={close}>
+        <div className="np-modal" onClick={e => e.stopPropagation()}>
 
-        {/* ── Header ── */}
-        <div className="np-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="np-hdr-icon"><Icon name="user_plus" size={15} /></div>
-            <div>
-              <div className="np-title">New patient</div>
-              <div className="np-subtitle">Manual record · Doctor panel</div>
+          {/* ── Header ── */}
+          <div className="np-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="np-hdr-icon"><Icon name="user_plus" size={15} /></div>
+              <div>
+                <div className="np-title">New patient</div>
+                <div className="np-subtitle">Manual record · Doctor panel</div>
+              </div>
             </div>
-          </div>
-          <button type="button" className="np-close" onClick={close}><Icon name="x" size={15} /></button>
-        </div>
-
-        {/* ── Two-panel body ── */}
-        <form onSubmit={handleSubmit} className="np-panels">
-
-          {/* LEFT — program list */}
-          <div className="np-left">
-            <div className="np-panel-label">Care program</div>
-            {NP_PROGRAMS.map(p => {
-              const isSel = formData.reportCategory === p.id;
-              return (
-                <button key={p.id} type="button"
-                  className={`np-prog-item ${isSel ? 'sel' : ''}`}
-                  style={{ '--npa': p.accent }}
-                  onClick={() => {
-                    set('reportCategory', p.id);
-                    set('gender', p.id.toLowerCase().includes('women') ? 'Female' : 'Male');
-                  }}>
-                  <div className="np-prog-item-ic"><Icon name={p.icon} size={15} /></div>
-                  <div className="np-prog-item-text">
-                    <span className="np-prog-item-name">{p.label}</span>
-                    <span className="np-prog-item-sub">{p.sub}</span>
-                  </div>
-                  {isSel && <div className="np-prog-item-dot" />}
-                </button>
-              );
-            })}
-            {errors.reportCategory && <div className="np-err-msg" style={{ marginTop: 4 }}>{errors.reportCategory}</div>}
+            <button type="button" className="np-close" onClick={close}><Icon name="x" size={15} /></button>
           </div>
 
-          {/* Vertical separator */}
-          <div className="np-vsep" />
+          {/* ── Two-panel body ── */}
+          <form onSubmit={handleSubmit} className="np-panels">
 
-          {/* RIGHT — patient form */}
-          <div className="np-right">
-            <div className="np-panel-label">Patient details</div>
-
-            <div className="field" style={{ marginBottom: 10 }}>
-              <div className="lbl">Full name</div>
-              <input className={`input ${errors.name ? 'np-err-input' : ''}`} type="text"
-                placeholder="e.g. Rohan Sharma" value={formData.name}
-                onChange={e => set('name', e.target.value)} />
-              {errors.name && <div className="np-err-msg">{errors.name}</div>}
+            {/* LEFT — program list */}
+            <div className="np-left">
+              <div className="np-panel-label">Care program</div>
+              {NP_PROGRAMS.map(p => {
+                const isSel = formData.reportCategory === p.id;
+                return (
+                  <button key={p.id} type="button"
+                    className={`np-prog-item ${isSel ? 'sel' : ''}`}
+                    style={{ '--npa': p.accent }}
+                    onClick={() => {
+                      set('reportCategory', p.id);
+                      set('gender', p.id.toLowerCase().includes('women') ? 'Female' : 'Male');
+                    }}>
+                    <div className="np-prog-item-ic"><Icon name={p.icon} size={15} /></div>
+                    <div className="np-prog-item-text">
+                      <span className="np-prog-item-name">{p.label}</span>
+                      <span className="np-prog-item-sub">{p.sub}</span>
+                    </div>
+                    {isSel && <div className="np-prog-item-dot" />}
+                  </button>
+                );
+              })}
+              {errors.reportCategory && <div className="np-err-msg" style={{ marginTop: 4 }}>{errors.reportCategory}</div>}
             </div>
 
-            <div className="field" style={{ marginBottom: 10 }}>
-              <div className="lbl">Phone</div>
-              <div className={`np-phone-wrap ${errors.phone ? 'np-phone-err' : ''}`}>
-                <span className="np-phone-prefix">+91</span>
-                <input className="input np-phone-input" type="tel" inputMode="numeric"
-                  placeholder="98765 XXXXX" maxLength="10" value={formData.phone}
-                  onChange={e => set('phone', e.target.value.replace(/\D/g, ''))} />
-              </div>
-              {errors.phone && <div className="np-err-msg">{errors.phone}</div>}
-            </div>
+            {/* Vertical separator */}
+            <div className="np-vsep" />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div className="field">
-                <div className="lbl">Gender</div>
-                <select className={`select ${errors.gender ? 'np-err-input' : ''}`} value={formData.gender}
-                  onChange={e => set('gender', e.target.value)}>
-                  <option value="">Select…</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-                {errors.gender && <div className="np-err-msg">{errors.gender}</div>}
-              </div>
-              <div className="field">
-                <div className="lbl">Date of birth</div>
-                <input className={`input ${errors.dob ? 'np-err-input' : ''}`} type="date" max={today}
-                  value={formData.dob} onChange={e => set('dob', e.target.value)} />
-                {errors.dob && <div className="np-err-msg">{errors.dob}</div>}
-              </div>
-            </div>
+            {/* RIGHT — patient form */}
+            <div className="np-right">
+              <div className="np-panel-label">Patient details</div>
 
-            {isWeight && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div className="field">
-                    <div className="lbl">Height (cm)</div>
-                    <input className={`input ${errors.height ? 'np-err-input' : ''}`} type="number" inputMode="numeric" placeholder="170"
-                      value={formData.height} onChange={e => set('height', e.target.value)} />
-                    {errors.height && <div className="np-err-msg">{errors.height}</div>}
-                  </div>
-                  <div className="field">
-                    <div className="lbl">Current weight (kg)</div>
-                    <input className={`input ${errors.currentWeight ? 'np-err-input' : ''}`} type="number" inputMode="numeric" placeholder="80"
-                      value={formData.currentWeight} onChange={e => set('currentWeight', e.target.value)} />
-                    {errors.currentWeight && <div className="np-err-msg">{errors.currentWeight}</div>}
-                  </div>
+              <div className="field" style={{ marginBottom: 10 }}>
+                <div className="lbl">Full name</div>
+                <input className={`input ${errors.name ? 'np-err-input' : ''}`} type="text"
+                  placeholder="e.g. Rohan Sharma" value={formData.name}
+                  onChange={e => set('name', e.target.value)} />
+                {errors.name && <div className="np-err-msg">{errors.name}</div>}
+              </div>
+
+              <div className="field" style={{ marginBottom: 10 }}>
+                <div className="lbl">Phone</div>
+                <div className={`np-phone-wrap ${errors.phone ? 'np-phone-err' : ''}`}>
+                  <span className="np-phone-prefix">+91</span>
+                  <input className="input np-phone-input" type="tel" inputMode="numeric"
+                    placeholder="98765 XXXXX" maxLength="10" value={formData.phone}
+                    onChange={e => set('phone', e.target.value.replace(/\D/g, ''))} />
+                </div>
+                {errors.phone && <div className="np-err-msg">{errors.phone}</div>}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div className="field">
+                  <div className="lbl">Gender</div>
+                  <select className={`select ${errors.gender ? 'np-err-input' : ''}`} value={formData.gender}
+                    onChange={e => set('gender', e.target.value)}>
+                    <option value="">Select…</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {errors.gender && <div className="np-err-msg">{errors.gender}</div>}
                 </div>
                 <div className="field">
-                  <div className="lbl">Target weight (kg)</div>
-                  <input className={`input ${errors.targetWeight ? 'np-err-input' : ''}`} type="number" inputMode="numeric" placeholder="70"
-                    value={formData.targetWeight} onChange={e => set('targetWeight', e.target.value)} />
-                  {errors.targetWeight && <div className="np-err-msg">{errors.targetWeight}</div>}
+                  <div className="lbl">Date of birth</div>
+                  <input className={`input ${errors.dob ? 'np-err-input' : ''}`} type="date" max={today}
+                    value={formData.dob} onChange={e => set('dob', e.target.value)} />
+                  {errors.dob && <div className="np-err-msg">{errors.dob}</div>}
                 </div>
               </div>
-            )}
+
+              {isWeight && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div className="field">
+                      <div className="lbl">Height (cm)</div>
+                      <input className={`input ${errors.height ? 'np-err-input' : ''}`} type="number" inputMode="numeric" placeholder="170"
+                        value={formData.height} onChange={e => set('height', e.target.value)} />
+                      {errors.height && <div className="np-err-msg">{errors.height}</div>}
+                    </div>
+                    <div className="field">
+                      <div className="lbl">Current weight (kg)</div>
+                      <input className={`input ${errors.currentWeight ? 'np-err-input' : ''}`} type="number" inputMode="numeric" placeholder="80"
+                        value={formData.currentWeight} onChange={e => set('currentWeight', e.target.value)} />
+                      {errors.currentWeight && <div className="np-err-msg">{errors.currentWeight}</div>}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <div className="lbl">Target weight (kg)</div>
+                    <input className={`input ${errors.targetWeight ? 'np-err-input' : ''}`} type="number" inputMode="numeric" placeholder="70"
+                      value={formData.targetWeight} onChange={e => set('targetWeight', e.target.value)} />
+                    {errors.targetWeight && <div className="np-err-msg">{errors.targetWeight}</div>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </form>
+
+          {/* ── Footer ── */}
+          <div className="np-footer">
+            <button type="button" className="btn ghost" onClick={close}>Cancel</button>
+            <button type="submit" form="np-form-hidden" className="btn primary" disabled={loading}
+              onClick={handleSubmit}>
+              {loading ? <><Icon name="refresh" size={14} className="spin" /> Creating…</> : <><Icon name="user_plus" size={14} /> Create patient</>}
+            </button>
           </div>
 
-        </form>
-
-        {/* ── Footer ── */}
-        <div className="np-footer">
-          <button type="button" className="btn ghost" onClick={close}>Cancel</button>
-          <button type="submit" form="np-form-hidden" className="btn primary" disabled={loading}
-            onClick={handleSubmit}>
-            {loading ? <><Icon name="refresh" size={14} className="spin" /> Creating…</> : <><Icon name="user_plus" size={14} /> Create patient</>}
-          </button>
         </div>
-
       </div>
-    </div>
     </>,
     document.querySelector('.app') || document.body
   );
 }
 
+// Decide whether a popup should open downward/upward and align left/right based on
+// the trigger's position and the available viewport space around it.
+function popupPlacement(el, popupW = 580, popupH = 400) {
+  if (!el) return { openUp: false, alignRight: false };
+  const r = el.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - r.bottom;
+  const spaceAbove = r.top;
+  const spaceRight = window.innerWidth - r.left;
+  return {
+    openUp: spaceBelow < popupH && spaceAbove > spaceBelow,
+    alignRight: spaceRight < popupW,
+  };
+}
+
+// Date-range filter chip: opens a popup with preset shortcuts + a two-month range
+// calendar (Apply/Cancel). Auto-flips above/below and left/right to fit the screen.
+function DateRangeDropdown({ datePreset, customRange, onApply }) {
+  const [open, setOpen] = useState(false);
+  const [tmpPreset, setTmpPreset] = useState(datePreset);
+  const [tmp, setTmp] = useState([null, null]);
+  const [place, setPlace] = useState({ openUp: false, alignRight: false });
+  const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const fmt = (d) => d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
+
+  const openPopup = () => {
+    setTmp(resolveDateRange(datePreset, customRange));
+    setTmpPreset(datePreset);
+    // Open at list-size first; the calendar only appears once "Custom" is picked.
+    // Anchored to the right edge of the chip (it sits on the right of the header).
+    setPlace({ ...popupPlacement(triggerRef.current, 200, 320), alignRight: true });
+    setOpen(true);
+  };
+
+  // Non-custom presets apply immediately and close; "Custom" reveals the calendar.
+  const choosePreset = (value) => {
+    if (value === 'custom') {
+      setTmpPreset('custom');
+      setTmp(resolveDateRange(datePreset, customRange));
+      setPlace({ ...popupPlacement(triggerRef.current, 600, 410), alignRight: true });
+    } else {
+      onApply(value, [null, null]);
+      setOpen(false);
+    }
+  };
+  useEffect(() => {
+    if (!open) return;
+    const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  const apply = () => {
+    if (tmpPreset === 'custom') { if (!tmp[0] || !tmp[1]) return; onApply('custom', tmp); }
+    else onApply(tmpPreset, [null, null]);
+    setOpen(false);
+  };
+
+  const triggerLabel = (() => {
+    if (datePreset === 'custom') { const [s, e] = customRange || []; return (s && e) ? `${fmt(s)} – ${fmt(e)}` : 'Custom'; }
+    if (datePreset === 'all') return 'Date';
+    const p = DATE_PRESETS.find(x => x.value === datePreset);
+    return p ? p.label : 'Date';
+  })();
+  const active = datePreset !== 'all';
+
+  const presetBtn = (value, label) => {
+    const isActive = tmpPreset === value;
+    return (
+      <button key={value} onClick={() => choosePreset(value)}
+        style={{
+          textAlign: 'left', padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+          background: isActive ? 'var(--accent)' : 'transparent', color: isActive ? '#fff' : 'var(--text-main)'
+        }}>
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <span ref={triggerRef} className="chip" onClick={() => (open ? setOpen(false) : openPopup())}
+        style={{
+          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+          ...(active ? { background: 'var(--accent-soft)', color: 'var(--accent-ink)', borderColor: 'var(--accent)', fontWeight: 600 } : {})
+        }}>
+        <Icon name="calendar" size={14} /> {triggerLabel}
+        {active
+          ? <span title="Clear date filter" style={{ display: 'inline-flex', cursor: 'pointer' }}
+            onClick={(e) => { e.stopPropagation(); onApply('all', [null, null]); setOpen(false); }}><Icon name="x" size={13} /></span>
+          : <Icon name="chevron_down" size={14} />}
+      </span>
+      {open && (
+        <div style={{
+          position: 'absolute', zIndex: 200,
+          [place.openUp ? 'bottom' : 'top']: 'calc(100% + 6px)',
+          [place.alignRight ? 'right' : 'left']: 0,
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.35)', display: 'flex', overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'flex', flexDirection: 'column', padding: 8, minWidth: 160,
+            ...(tmpPreset === 'custom' ? { borderRight: '1px solid var(--border)' } : {})
+          }}>
+            {DATE_PRESETS.filter(p => p.value !== 'all').map(p => presetBtn(p.value, p.label))}
+            {presetBtn('custom', 'Custom')}
+          </div>
+          {tmpPreset === 'custom' && (
+            <div className="orders-daterange-cal dr-cal-in" style={{ display: 'flex', flexDirection: 'column' }}>
+              <DatePicker
+                selected={tmp[0]} startDate={tmp[0]} endDate={tmp[1]}
+                onChange={(range) => { setTmp(range); setTmpPreset('custom'); }}
+                selectsRange monthsShown={2} maxDate={new Date()} inline
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--border)' }}>
+                <span className="num" style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+                  {tmp[0] && tmp[1] ? `${fmt(tmp[0])} – ${fmt(tmp[1])}` : 'Select a range'}
+                </span>
+                <div style={{ flex: 1 }} />
+                <button className="btn sm ghost" onClick={() => setOpen(false)}>Cancel</button>
+                <button className="btn sm primary" onClick={apply} disabled={!tmp[0] || !tmp[1]}>Apply</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Multi-select checkbox dropdown chip (e.g. risk levels). Auto-flips to fit screen.
+function MultiCheckDropdown({ label, icon, options, selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [place, setPlace] = useState({ openUp: false, alignRight: false });
+  const ref = useRef(null);
+  const triggerRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  const toggle = (v) => onChange(selected.includes(v) ? selected.filter(x => x !== v) : [...selected, v]);
+  const active = selected.length > 0;
+  const triggerLabel = active ? (selected.length === 1 ? selected[0] : `${selected.length} selected`) : label;
+  const openPopup = () => { setPlace(popupPlacement(triggerRef.current, 200, 50 + options.length * 38)); setOpen(true); };
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <span ref={triggerRef} className="chip" onClick={() => (open ? setOpen(false) : openPopup())}
+        style={{
+          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+          ...(active ? { background: 'var(--accent-soft)', color: 'var(--accent-ink)', borderColor: 'var(--accent)', fontWeight: 600 } : {})
+        }}>
+        {icon && <Icon name={icon} size={14} />} {triggerLabel} <Icon name="chevron_down" size={14} />
+      </span>
+      {open && (
+        <div style={{
+          position: 'absolute', zIndex: 200, minWidth: 180,
+          [place.openUp ? 'bottom' : 'top']: 'calc(100% + 6px)',
+          [place.alignRight ? 'right' : 'left']: 0,
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.25)', padding: 6,
+        }}>
+          {options.map(opt => {
+            const checked = selected.includes(opt.value);
+            return (
+              <div key={opt.value} onClick={() => toggle(opt.value)}
+                style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <span style={{
+                  width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: 'grid', placeItems: 'center',
+                  border: '1.5px solid ' + (checked ? 'var(--accent)' : 'var(--border-strong)'), background: checked ? 'var(--accent)' : 'transparent'
+                }}>
+                  {checked && <Icon name="check" size={11} color="#fff" />}
+                </span>
+                {opt.color && <span style={{ width: 8, height: 8, borderRadius: 99, background: opt.color, flexShrink: 0 }} />}
+                {opt.label}
+              </div>
+            );
+          })}
+          {active && (
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 4 }}>
+              <button className="btn sm ghost" style={{ width: '100%', justifyContent: 'center' }} onClick={() => onChange([])}>Clear</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DoctorScreen({ openCustomer, openSubmission, context }) {
   const [allData, setAllData] = useStateD({
-      questionnaire_submissions: [], 
-      partial_submissions: [],
-      manual_submissions: [] 
+    questionnaire_submissions: [],
+    partial_submissions: [],
+    manual_submissions: []
   });
   const [loading, setLoading] = useStateD(true);
-  
+
   const [searchQuery, setSearchQuery] = useStateD("");
   const [debouncedSearch, setDebouncedSearch] = useStateD("");
-  
+
   const [selected, setSelected] = useStateD(context?.customer || null);
   const [tab, setTab] = useStateD("prescription");
   const [prefillPrescription, setPrefillPrescription] = useStateD(null);
@@ -3307,45 +3513,45 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-      setIsConsultedState(selected?.isConsulted || false);
-      setIsPurchasedState(selected?.isPurchased || false);
+    setIsConsultedState(selected?.isConsulted || false);
+    setIsPurchasedState(selected?.isPurchased || false);
   }, [selected]);
 
   const getCollectionName = (item) => {
-      if (!item) return 'questionnaire_submissions';
-      if (item._collection === 'full') return 'questionnaire_submissions';
-      if (item._collection === 'partial') return 'partial_submissions';
-      return 'manual_submissions';
+    if (!item) return 'questionnaire_submissions';
+    if (item._collection === 'full') return 'questionnaire_submissions';
+    if (item._collection === 'partial') return 'partial_submissions';
+    return 'manual_submissions';
   };
 
   const handleSaveConsultedState = async () => {
-      if (!selected) return;
-      setIsSavingStatus(true);
-      const wasNotPurchased = !selected.isPurchased;
-      try {
-          const collName = getCollectionName(selected);
-          const ref = doc(db, collName, selected.id);
-          await updateDoc(ref, {
-              isConsulted: isConsultedState,
-              isPurchased: isPurchasedState,
-              lastConsultedAt: serverTimestamp()
-          });
-          // Update the local selected object so UI reflects saved state
-          setSelected(prev => ({ ...prev, isConsulted: isConsultedState, isPurchased: isPurchasedState }));
+    if (!selected) return;
+    setIsSavingStatus(true);
+    const wasNotPurchased = !selected.isPurchased;
+    try {
+      const collName = getCollectionName(selected);
+      const ref = doc(db, collName, selected.id);
+      await updateDoc(ref, {
+        isConsulted: isConsultedState,
+        isPurchased: isPurchasedState,
+        lastConsultedAt: serverTimestamp()
+      });
+      // Update the local selected object so UI reflects saved state
+      setSelected(prev => ({ ...prev, isConsulted: isConsultedState, isPurchased: isPurchasedState }));
 
-          // Fire order_placed webhook only when newly marked as purchased
-          if (isPurchasedState && wasNotPurchased) {
-              triggerOrderPlacedWebhook(
-                  selected.userName || selected.name || 'Patient',
-                  selected.phone || ''
-              );
-          }
-      } catch (e) {
-          console.error('Failed to save consulted/purchased:', e);
-          alert('Failed to save status: ' + e.message);
-      } finally {
-          setIsSavingStatus(false);
+      // Fire order_placed webhook only when newly marked as purchased
+      if (isPurchasedState && wasNotPurchased) {
+        triggerOrderPlacedWebhook(
+          selected.userName || selected.name || 'Patient',
+          selected.phone || ''
+        );
       }
+    } catch (e) {
+      console.error('Failed to save consulted/purchased:', e);
+      alert('Failed to save status: ' + e.message);
+    } finally {
+      setIsSavingStatus(false);
+    }
   };
 
   // Queue tab: 'pending' shows non-consulted, 'consulted' shows consulted
@@ -3358,6 +3564,10 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
   const [purchasedOnly, setPurchasedOnly] = useStateD(false);
   const [whatsappOnly, setWhatsappOnly] = useStateD(false);
   const [myPatientsOnly, setMyPatientsOnly] = useStateD(false);
+  // Header quick-filters (the two dropdowns next to the title)
+  const [riskLevels, setRiskLevels] = useStateD([]);           // [] = all risks
+  const [datePreset, setDatePreset] = useStateD('all');        // 'all' = no date filter
+  const [customRange, setCustomRange] = useStateD([null, null]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useStateD(false);
 
@@ -3368,12 +3578,12 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     function handleClickOutside(e) {
-        if (filterRef.current && !filterRef.current.contains(e.target)) {
-            setShowFilters(false);
-        }
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
+        setShowFilters(false);
+      }
     }
     if (showFilters) {
-        document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFilters]);
@@ -3396,23 +3606,23 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
       loaded++;
       if (loaded >= 3) setLoading(false);
     };
-    
+
     const q1 = query(collection(db, "questionnaire_submissions"), orderBy("timestamp", "desc"));
     const unsub1 = onSnapshot(q1, (snap) => {
-        setAllData(prev => ({ ...prev, questionnaire_submissions: snap.docs.map(d => ({ id: d.id, ...d.data(), _collection: 'full' })) }));
-        checkLoaded();
+      setAllData(prev => ({ ...prev, questionnaire_submissions: snap.docs.map(d => ({ id: d.id, ...d.data(), _collection: 'full' })) }));
+      checkLoaded();
     }, (err) => { console.error(err); checkLoaded(); });
 
     const q2 = query(collection(db, "partial_submissions"), orderBy("timestamp", "desc"));
     const unsub2 = onSnapshot(q2, (snap) => {
-        setAllData(prev => ({ ...prev, partial_submissions: snap.docs.map(d => ({ id: d.id, ...d.data(), _collection: 'partial' })) }));
-        checkLoaded();
+      setAllData(prev => ({ ...prev, partial_submissions: snap.docs.map(d => ({ id: d.id, ...d.data(), _collection: 'partial' })) }));
+      checkLoaded();
     }, (err) => { console.error(err); checkLoaded(); });
 
     const q3 = query(collection(db, "manual_submissions"));
     const unsub3 = onSnapshot(q3, (snap) => {
-        setAllData(prev => ({ ...prev, manual_submissions: snap.docs.map(d => ({ id: d.id, ...d.data(), _collection: 'manual' })) }));
-        checkLoaded();
+      setAllData(prev => ({ ...prev, manual_submissions: snap.docs.map(d => ({ id: d.id, ...d.data(), _collection: 'manual' })) }));
+      checkLoaded();
     }, (err) => { console.error(err); checkLoaded(); });
 
     return () => { unsub1(); unsub2(); unsub3(); };
@@ -3420,104 +3630,111 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
 
   // Process and filter data
   const processedQueue = React.useMemo(() => {
-      let combined = [
-          ...allData.questionnaire_submissions,
-          ...allData.partial_submissions,
-          ...allData.manual_submissions
-      ].map(val => {
-          const score = val.healthScore !== undefined ? val.healthScore : null;
-          const risk = score === null ? "Unknown" : (score <= 30 ? "Critical" : (score <= 60 ? "High" : (score <= 84 ? "Moderate" : "Low")));
-          
-          let ts = null;
-          if (val.timestamp) {
-              if (val.timestamp.toDate) ts = val.timestamp.toDate();
-              else ts = new Date(val.timestamp);
-          }
-          
-          let calcAge = val.age || "-";
-          if (val.dob) {
-              const bd = new Date(val.dob);
-              if (!isNaN(bd)) {
-                  const ageDifMs = Date.now() - bd.getTime();
-                  const ageDate = new Date(ageDifMs);
-                  calcAge = Math.abs(ageDate.getUTCFullYear() - 1970).toString();
-              }
-          }
-          
-          let calcGender = val.gender || "-";
-          let calcCategory = val.primaryGoal;
-          
-          if (calcGender === "-" || calcGender === "Not Selected" || !calcCategory) {
-              const qid = (val.questionnaireId || val.reportCategory || "").toLowerCase();
-              if (calcGender === "-" || calcGender === "Not Selected") {
-                  if (qid.includes('womens') || qid.includes("women's")) calcGender = "Female";
-                  else if (qid.includes('mens')) calcGender = "Male";
-              }
-              if (!calcCategory) {
-                  if (qid.includes('weight')) calcCategory = "Weight Management";
-                  else if (qid.includes('wellness')) calcCategory = "Wellness";
-                  else calcCategory = "General";
-              }
-          }
-          
-          return {
-             ...val,
-             id: val.id,
-             name: val.name || val.userName || "Unknown",
-             age: calcAge,
-             gender: calcGender,
-             phone: val.phone || "-",
-             category: calcCategory || "General",
-             score: score,
-             risk: risk,
-             city: val.city || "-", 
-             state: val.state || "-",
-             timestampObj: ts,
-             timestampShort: ts ? ts.toLocaleDateString('en-GB') : "-",
-             avatarHue: Math.floor(Math.random()*360),
-             answers: val.answers || {}
-          };
-      });
+    let combined = [
+      ...allData.questionnaire_submissions,
+      ...allData.partial_submissions,
+      ...allData.manual_submissions
+    ].map(val => {
+      const score = val.healthScore !== undefined ? val.healthScore : null;
+      const risk = score === null ? "Unknown" : (score <= 30 ? "Critical" : (score <= 60 ? "High" : (score <= 84 ? "Moderate" : "Low")));
 
-      // Type filter
-      if (activeCollection !== 'all') {
-          combined = combined.filter(s => s._collection === activeCollection);
+      let ts = null;
+      if (val.timestamp) {
+        if (val.timestamp.toDate) ts = val.timestamp.toDate();
+        else ts = new Date(val.timestamp);
       }
 
-      // Status filters
-      if (purchasedOnly) combined = combined.filter(s => s.isPurchased);
-      if (whatsappOnly) combined = combined.filter(s => s.isWhatsAppSent);
-
-      // Fuzzy Search
-      if (debouncedSearch) {
-          const q = debouncedSearch.toLowerCase();
-          combined = combined.filter(s => {
-              const nameMatch = (s.name || "").toLowerCase().includes(q);
-              const phoneMatch = (s.phone || "").toLowerCase().includes(q);
-              let responseMatch = false;
-              if (s.answers && Array.isArray(s.answers)) {
-                  responseMatch = s.answers.some(qa =>
-                      (qa.question || "").toLowerCase().includes(q) ||
-                      (qa.answer || "").toLowerCase().includes(q)
-                  );
-              } else if (s.answers && typeof s.answers === 'object') {
-                  responseMatch = Object.values(s.answers).some(ans => 
-                      (ans || "").toString().toLowerCase().includes(q)
-                  );
-              }
-              return nameMatch || phoneMatch || responseMatch;
-          });
+      let calcAge = val.age || "-";
+      if (val.dob) {
+        const bd = new Date(val.dob);
+        if (!isNaN(bd)) {
+          const ageDifMs = Date.now() - bd.getTime();
+          const ageDate = new Date(ageDifMs);
+          calcAge = Math.abs(ageDate.getUTCFullYear() - 1970).toString();
+        }
       }
 
-      // Sort by timestamp desc
-      combined.sort((a, b) => {
-          const timeA = a.timestampObj ? a.timestampObj.getTime() : 0;
-          const timeB = b.timestampObj ? b.timestampObj.getTime() : 0;
-          return timeB - timeA;
-      });
+      let calcGender = val.gender || "-";
+      let calcCategory = val.primaryGoal;
 
-      return combined;
-  }, [allData, debouncedSearch, activeCollection, purchasedOnly, whatsappOnly]);
+      if (calcGender === "-" || calcGender === "Not Selected" || !calcCategory) {
+        const qid = (val.questionnaireId || val.reportCategory || "").toLowerCase();
+        if (calcGender === "-" || calcGender === "Not Selected") {
+          if (qid.includes('womens') || qid.includes("women's")) calcGender = "Female";
+          else if (qid.includes('mens')) calcGender = "Male";
+        }
+        if (!calcCategory) {
+          if (qid.includes('weight')) calcCategory = "Weight Management";
+          else if (qid.includes('wellness')) calcCategory = "Wellness";
+          else calcCategory = "General";
+        }
+      }
+
+      return {
+        ...val,
+        id: val.id,
+        name: val.name || val.userName || "Unknown",
+        age: calcAge,
+        gender: calcGender,
+        phone: val.phone || "-",
+        category: calcCategory || "General",
+        score: score,
+        risk: risk,
+        city: val.city || "-",
+        state: val.state || "-",
+        timestampObj: ts,
+        timestampShort: ts ? ts.toLocaleDateString('en-GB') : "-",
+        avatarHue: Math.floor(Math.random() * 360),
+        answers: val.answers || {}
+      };
+    });
+
+    // Type filter
+    if (activeCollection !== 'all') {
+      combined = combined.filter(s => s._collection === activeCollection);
+    }
+
+    // Status filters
+    if (purchasedOnly) combined = combined.filter(s => s.isPurchased);
+    if (whatsappOnly) combined = combined.filter(s => s.isWhatsAppSent);
+
+    // Header quick-filters: risk multi-select + date range
+    if (riskLevels.length > 0) combined = combined.filter(s => riskLevels.includes(s.risk));
+    const [rangeStart, rangeEnd] = resolveDateRange(datePreset, customRange);
+    if (rangeStart && rangeEnd) {
+      combined = combined.filter(s => s.timestampObj && s.timestampObj >= rangeStart && s.timestampObj <= rangeEnd);
+    }
+
+    // Fuzzy Search
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      combined = combined.filter(s => {
+        const nameMatch = (s.name || "").toLowerCase().includes(q);
+        const phoneMatch = (s.phone || "").toLowerCase().includes(q);
+        let responseMatch = false;
+        if (s.answers && Array.isArray(s.answers)) {
+          responseMatch = s.answers.some(qa =>
+            (qa.question || "").toLowerCase().includes(q) ||
+            (qa.answer || "").toLowerCase().includes(q)
+          );
+        } else if (s.answers && typeof s.answers === 'object') {
+          responseMatch = Object.values(s.answers).some(ans =>
+            (ans || "").toString().toLowerCase().includes(q)
+          );
+        }
+        return nameMatch || phoneMatch || responseMatch;
+      });
+    }
+
+    // Sort by timestamp desc
+    combined.sort((a, b) => {
+      const timeA = a.timestampObj ? a.timestampObj.getTime() : 0;
+      const timeB = b.timestampObj ? b.timestampObj.getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return combined;
+  }, [allData, debouncedSearch, activeCollection, purchasedOnly, whatsappOnly, riskLevels, datePreset, customRange]);
 
   const currentUid = auth?.currentUser?.uid;
   const pendingQueue = React.useMemo(() => processedQueue.filter(s => !s.isConsulted), [processedQueue]);
@@ -3535,6 +3752,13 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
     const d = c.lastConsultedAt.toDate ? c.lastConsultedAt.toDate() : new Date(c.lastConsultedAt);
     return d >= todayStart;
   }).length;
+  // With a header filter active, the cards describe the filtered set: "Purchased"
+  // counts everyone purchased within that scope; with no filter it's "today" only.
+  const anyHeaderFilter = riskLevels.length > 0 || datePreset !== 'all';
+  const purchasedCount = anyHeaderFilter ? processedQueue.filter(c => c.isPurchased).length : purchasedToday;
+  const purchasedLabel = anyHeaderFilter ? 'Purchased' : 'Purchased today';
+  const reviewedCount = anyHeaderFilter ? processedQueue.filter(c => c.isConsulted).length : reviewedToday;
+  const reviewedLabel = anyHeaderFilter ? 'Reviewed' : 'Reviewed today';
 
   // my_prescriptions patient IDs
   const [myPatientIds, setMyPatientIds] = useStateD(new Set());
@@ -3585,8 +3809,10 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
     if (!myPatientsOnly || myPatientIds.size === 0) return [];
     const result = processedQueue.filter(s => myPatientIds.has(s.id));
     console.log('%c[MyPatients] Queue filtered by my_prescriptions patientIds', 'color:#60a5fa;font-weight:bold',
-      { totalPatients: processedQueue.length, myPatientIdsCount: myPatientIds.size, matchedPatients: result.length,
-        matched: result.map(s => ({ id: s.id, name: s.userName || s.name })) });
+      {
+        totalPatients: processedQueue.length, myPatientIdsCount: myPatientIds.size, matchedPatients: result.length,
+        matched: result.map(s => ({ id: s.id, name: s.userName || s.name }))
+      });
     return result;
   }, [myPatientsOnly, myPatientIds, processedQueue]);
 
@@ -3599,20 +3825,20 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
   // Set initial selected
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-      if (!loading && pendingQueue.length > 0 && !selected) {
-          if (context?.customer) {
-              setSelected(context.customer);
-          } else {
-              setSelected(pendingQueue[0] || processedQueue[0]);
-          }
+    if (!loading && pendingQueue.length > 0 && !selected) {
+      if (context?.customer) {
+        setSelected(context.customer);
+      } else {
+        setSelected(pendingQueue[0] || processedQueue[0]);
       }
+    }
   }, [loading, pendingQueue, processedQueue, selected, context]);
 
   const handleScroll = (e) => {
-      const bottom = e.target.scrollHeight - e.target.scrollTop <= e.target.clientHeight + 50;
-      if (bottom && renderedCount < activeQueue.length) {
-          setRenderedCount(prev => prev + 20);
-      }
+    const bottom = e.target.scrollHeight - e.target.scrollTop <= e.target.clientHeight + 50;
+    if (bottom && renderedCount < activeQueue.length) {
+      setRenderedCount(prev => prev + 20);
+    }
   };
 
   const visibleQueue = activeQueue.slice(0, renderedCount);
@@ -3633,8 +3859,21 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
         </div>
         <div className="page-head-actions">
           <div className="filterbar">
-            <span className="chip"><Icon name="flag" /> Critical & High <Icon name="chevron_down" /></span>
-            <span className="chip"><Icon name="calendar" /> Today <Icon name="chevron_down" /></span>
+            <MultiCheckDropdown
+              label="Risk" icon="flag"
+              selected={riskLevels} onChange={setRiskLevels}
+              options={[
+                { value: 'Critical', label: 'Critical', color: '#ef4444' },
+                { value: 'High', label: 'High', color: '#f97316' },
+                { value: 'Moderate', label: 'Moderate', color: '#eab308' },
+                { value: 'Low', label: 'Low', color: '#22c55e' },
+                { value: 'Unknown', label: 'Unknown', color: '#94a3b8' },
+              ]}
+            />
+            <DateRangeDropdown
+              datePreset={datePreset} customRange={customRange}
+              onApply={(preset, range) => { setDatePreset(preset); setCustomRange(range); }}
+            />
           </div>
           <button
             onClick={() => { setMyPatientsOnly(p => !p); setMyPatientIds(new Set()); }}
@@ -3647,9 +3886,9 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
 
       <div className="grid-12">
         <div className="span-3"><KPI label="In queue" value={processedQueue.length} icon="inbox" /></div>
-        <div className="span-3"><KPI label="Reviewed today" value={reviewedToday} icon="check" /></div>
+        <div className="span-3"><KPI label={reviewedLabel} value={reviewedCount} icon="check" /></div>
         <div className="span-3"><KPI label="Pending critical" value={criticalCount} icon="flag" /></div>
-        <div className="span-3"><KPI label="Purchased today" value={purchasedToday} icon="trend_up" /></div>
+        <div className="span-3"><KPI label={purchasedLabel} value={purchasedCount} icon="trend_up" /></div>
       </div>
 
       <div className="grid-12" style={{ flex: 1, minHeight: 0 }}>
@@ -3663,63 +3902,63 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
                 <span style={{ fontSize: 11, fontWeight: 600, background: 'rgba(124,58,237,0.1)', color: '#7c3aed', padding: '1px 7px', borderRadius: 100 }}>{myPatientsQueue.length}</span>
               </div>
             ) : (
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
                 {[
-                    { key: 'pending',   label: 'Pending',   count: pendingQueue.length },
-                    { key: 'consulted', label: 'Consulted', count: consultedQueue.length },
+                  { key: 'pending', label: 'Pending', count: pendingQueue.length },
+                  { key: 'consulted', label: 'Consulted', count: consultedQueue.length },
                 ].map(t => (
-                    <button key={t.key} onClick={() => { setQueueTab(t.key); setRenderedCount(20); }}
-                        style={{ flex: 1, padding: '10px 0', fontSize: 12.5, fontWeight: queueTab === t.key ? 600 : 400, color: queueTab === t.key ? 'var(--accent)' : 'var(--muted)', background: 'none', border: 'none', borderBottom: queueTab === t.key ? '2px solid var(--accent)' : '2px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: -1 }}>
-                        {t.label}
-                        <span style={{ fontSize: 11, fontWeight: 600, background: queueTab === t.key ? 'var(--accent-soft)' : 'var(--surface-3)', color: queueTab === t.key ? 'var(--accent-ink)' : 'var(--muted)', padding: '1px 7px', borderRadius: 100 }}>{t.count}</span>
-                    </button>
+                  <button key={t.key} onClick={() => { setQueueTab(t.key); setRenderedCount(20); }}
+                    style={{ flex: 1, padding: '10px 0', fontSize: 12.5, fontWeight: queueTab === t.key ? 600 : 400, color: queueTab === t.key ? 'var(--accent)' : 'var(--muted)', background: 'none', border: 'none', borderBottom: queueTab === t.key ? '2px solid var(--accent)' : '2px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: -1 }}>
+                    {t.label}
+                    <span style={{ fontSize: 11, fontWeight: 600, background: queueTab === t.key ? 'var(--accent-soft)' : 'var(--surface-3)', color: queueTab === t.key ? 'var(--accent-ink)' : 'var(--muted)', padding: '1px 7px', borderRadius: 100 }}>{t.count}</span>
+                  </button>
                 ))}
-            </div>
+              </div>
             )}
             <div style={{ padding: "10px 14px" }}>
-                <div style={{ position: 'relative' }} ref={filterRef}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ position: 'relative', flex: 1 }}>
-                            <div style={{ position: 'absolute', left: 10, top: 9, color: 'var(--muted)', display: 'flex' }}>
-                                <Icon name="search" size={14} />
-                            </div>
-                            <input
-                                className="input"
-                                placeholder="Search name, phone..."
-                                style={{ paddingLeft: 32, borderRadius: 8 }}
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <button className="btn sm ghost" onClick={() => setShowFilters(!showFilters)} style={{ position: 'relative', flexShrink: 0 }}>
-                            <Icon name="filter" />
-                            {(activeCollection !== 'all' || purchasedOnly || whatsappOnly) && (
-                                <div style={{ position: 'absolute', top: 2, right: 2, width: 6, height: 6, background: 'var(--accent)', borderRadius: '50%' }} />
-                            )}
-                        </button>
+              <div style={{ position: 'relative' }} ref={filterRef}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <div style={{ position: 'absolute', left: 10, top: 9, color: 'var(--muted)', display: 'flex' }}>
+                      <Icon name="search" size={14} />
                     </div>
-                    {showFilters && (
-                        <div className="card shadow" style={{ position: 'absolute', top: '100%', right: 0, width: 210, zIndex: 100, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Source</div>
-                                {(activeCollection !== 'all' || purchasedOnly || whatsappOnly) && (
-                                    <button onClick={() => { setActiveCollection('all'); setPurchasedOnly(false); setWhatsappOnly(false); }} style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Clear all</button>
-                                )}
-                            </div>
-                            <div className="hstack-8" style={{ flexWrap: 'wrap', gap: 6 }}>
-                                {[['all','All'],['full','Completed'],['partial','Partial'],['manual','Manual']].map(([v,l]) => (
-                                    <Badge key={v} tone={activeCollection === v ? 'high' : ''} className="clickable" style={{ cursor: 'pointer' }} onClick={() => setActiveCollection(v)}>{l}</Badge>
-                                ))}
-                            </div>
-                            <div className="divider" style={{ margin: '2px 0' }} />
-                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</div>
-                            <div className="hstack-8" style={{ flexWrap: 'wrap', gap: 6 }}>
-                                <Badge tone={purchasedOnly ? 'high' : ''} className="clickable" style={{ cursor: 'pointer' }} onClick={() => setPurchasedOnly(!purchasedOnly)}>Purchased</Badge>
-                                <Badge tone={whatsappOnly ? 'high' : ''} className="clickable" style={{ cursor: 'pointer' }} onClick={() => setWhatsappOnly(!whatsappOnly)}>WhatsApp</Badge>
-                            </div>
-                        </div>
+                    <input
+                      className="input"
+                      placeholder="Search name, phone..."
+                      style={{ paddingLeft: 32, borderRadius: 8 }}
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <button className="btn sm ghost" onClick={() => setShowFilters(!showFilters)} style={{ position: 'relative', flexShrink: 0 }}>
+                    <Icon name="filter" />
+                    {(activeCollection !== 'all' || purchasedOnly || whatsappOnly) && (
+                      <div style={{ position: 'absolute', top: 2, right: 2, width: 6, height: 6, background: 'var(--accent)', borderRadius: '50%' }} />
                     )}
+                  </button>
                 </div>
+                {showFilters && (
+                  <div className="card shadow" style={{ position: 'absolute', top: '100%', right: 0, width: 210, zIndex: 100, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Source</div>
+                      {(activeCollection !== 'all' || purchasedOnly || whatsappOnly) && (
+                        <button onClick={() => { setActiveCollection('all'); setPurchasedOnly(false); setWhatsappOnly(false); }} style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Clear all</button>
+                      )}
+                    </div>
+                    <div className="hstack-8" style={{ flexWrap: 'wrap', gap: 6 }}>
+                      {[['all', 'All'], ['full', 'Completed'], ['partial', 'Partial'], ['manual', 'Manual']].map(([v, l]) => (
+                        <Badge key={v} tone={activeCollection === v ? 'high' : ''} className="clickable" style={{ cursor: 'pointer' }} onClick={() => setActiveCollection(v)}>{l}</Badge>
+                      ))}
+                    </div>
+                    <div className="divider" style={{ margin: '2px 0' }} />
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</div>
+                    <div className="hstack-8" style={{ flexWrap: 'wrap', gap: 6 }}>
+                      <Badge tone={purchasedOnly ? 'high' : ''} className="clickable" style={{ cursor: 'pointer' }} onClick={() => setPurchasedOnly(!purchasedOnly)}>Purchased</Badge>
+                      <Badge tone={whatsappOnly ? 'high' : ''} className="clickable" style={{ cursor: 'pointer' }} onClick={() => setWhatsappOnly(!whatsappOnly)}>WhatsApp</Badge>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div style={{ overflowY: "auto", flex: 1 }} onScroll={handleScroll}>
@@ -3749,16 +3988,16 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
                   </div>
                 </div>
                 {c.score !== null ? (
-                    <Gauge value={c.score} size={42} stroke={4} showLabel={false} />
+                  <Gauge value={c.score} size={42} stroke={4} showLabel={false} />
                 ) : (
-                    <div style={{ width: 42, height: 42, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>N/A</div>
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', border: '2px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>N/A</div>
                 )}
               </div>
             ))}
             {renderedCount < activeQueue.length && (
-                <div style={{ padding: 16, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
-                    Loading more...
-                </div>
+              <div style={{ padding: 16, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>
+                Loading more...
+              </div>
             )}
           </div>
         </div>
@@ -3766,73 +4005,73 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
         {/* Detail / composer */}
         <div className="span-8 col">
           {selected && (
-              <>
-                <div className="card" style={{ padding: "18px 20px" }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                        <Avatar name={selected.name} hue={selected.avatarHue} size="lg" />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="hstack-8" style={{ flexWrap: 'wrap', marginBottom: 4 }}>
-                                <span className="fw6" style={{ fontSize: 18, letterSpacing: "-0.01em" }}>{selected.name}</span>
-                                {selected.risk !== "Unknown" && <RiskBadge risk={selected.risk} />}
-                            </div>
-                            <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
-                                {selected.age} yr · {selected.gender} · <span className="num">{selected.phone}</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, padding: '4px 12px', borderRadius: 100, background: isConsultedState ? 'var(--accent-soft)' : 'var(--surface-3)', color: isConsultedState ? 'var(--accent-ink)' : 'var(--muted)', transition: 'all 0.15s' }}>
-                                    <input type="checkbox" checked={isConsultedState} onChange={e => setIsConsultedState(e.target.checked)} style={{ accentColor: 'var(--accent)', margin: 0 }} />
-                                    Consulted
-                                </label>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, padding: '4px 12px', borderRadius: 100, background: isPurchasedState ? '#dcfce7' : 'var(--surface-3)', color: isPurchasedState ? '#15803d' : 'var(--muted)', transition: 'all 0.15s' }}>
-                                    <input type="checkbox" checked={isPurchasedState} onChange={e => setIsPurchasedState(e.target.checked)} style={{ accentColor: '#16a34a', margin: 0 }} />
-                                    Purchased
-                                </label>
-                                <button className="btn sm primary" onClick={handleSaveConsultedState} disabled={isSavingStatus} style={{ padding: '4px 12px', fontSize: 12 }}>
-                                    {isSavingStatus ? 'Saving…' : 'Save'}
-                                </button>
-                            </div>
-                        </div>
-                        {selected.score !== null ? (
-                            <Gauge value={selected.score} size={80} stroke={8} label="Score" />
-                        ) : (
-                            <div style={{ width: 80, height: 80, borderRadius: '50%', border: '3px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--muted)', flexShrink: 0 }}>
-                                <span style={{ fontSize: 20, fontWeight: 600 }}>N/A</span>
-                                <span style={{ fontSize: 11 }}>Score</span>
-                            </div>
-                        )}
+            <>
+              <div className="card" style={{ padding: "18px 20px" }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                  <Avatar name={selected.name} hue={selected.avatarHue} size="lg" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="hstack-8" style={{ flexWrap: 'wrap', marginBottom: 4 }}>
+                      <span className="fw6" style={{ fontSize: 18, letterSpacing: "-0.01em" }}>{selected.name}</span>
+                      {selected.risk !== "Unknown" && <RiskBadge risk={selected.risk} />}
                     </div>
-                    {(selected.symptoms?.length > 0 || selected.tags?.length > 0) && (
-                        <>
-                            <div className="divider" style={{ margin: "14px 0" }} />
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                {(selected.symptoms || selected.tags || []).map(s => (
-                                    <Badge key={s} tone="high" dot="var(--risk-high)">{s}</Badge>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                <div className="card" style={{ padding: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', padding: "10px 16px", borderBottom: "1px solid var(--border)", gap: 8 }}>
-                        <Tabs value={tab} onChange={setTab} items={[
-                            { label: "Prescription", value: "prescription" },
-                            { label: "Assessment", value: "assessment" },
-                            { label: "History", value: "history" },
-                        ]} />
-                        <span className="spacer" />
+                    <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+                      {selected.age} yr · {selected.gender} · <span className="num">{selected.phone}</span>
                     </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, padding: '4px 12px', borderRadius: 100, background: isConsultedState ? 'var(--accent-soft)' : 'var(--surface-3)', color: isConsultedState ? 'var(--accent-ink)' : 'var(--muted)', transition: 'all 0.15s' }}>
+                        <input type="checkbox" checked={isConsultedState} onChange={e => setIsConsultedState(e.target.checked)} style={{ accentColor: 'var(--accent)', margin: 0 }} />
+                        Consulted
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, padding: '4px 12px', borderRadius: 100, background: isPurchasedState ? '#dcfce7' : 'var(--surface-3)', color: isPurchasedState ? '#15803d' : 'var(--muted)', transition: 'all 0.15s' }}>
+                        <input type="checkbox" checked={isPurchasedState} onChange={e => setIsPurchasedState(e.target.checked)} style={{ accentColor: '#16a34a', margin: 0 }} />
+                        Purchased
+                      </label>
+                      <button className="btn sm primary" onClick={handleSaveConsultedState} disabled={isSavingStatus} style={{ padding: '4px 12px', fontSize: 12 }}>
+                        {isSavingStatus ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                  {selected.score !== null ? (
+                    <Gauge value={selected.score} size={80} stroke={8} label="Score" />
+                  ) : (
+                    <div style={{ width: 80, height: 80, borderRadius: '50%', border: '3px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--muted)', flexShrink: 0 }}>
+                      <span style={{ fontSize: 20, fontWeight: 600 }}>N/A</span>
+                      <span style={{ fontSize: 11 }}>Score</span>
+                    </div>
+                  )}
+                </div>
+                {(selected.symptoms?.length > 0 || selected.tags?.length > 0) && (
+                  <>
+                    <div className="divider" style={{ margin: "14px 0" }} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {(selected.symptoms || selected.tags || []).map(s => (
+                        <Badge key={s} tone="high" dot="var(--risk-high)">{s}</Badge>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
 
-                    {tab === "prescription" && <PrescriptionComposer customer={selected} prefillOverride={prefillPrescription} onPrefillConsumed={() => setPrefillPrescription(null)} />}
-                    {tab === "assessment" && <AssessmentInline customer={selected} />}
-                    {tab === "history" && <HistoryInline customer={selected} onUsePrescription={data => { setPrefillPrescription(data); setTab('prescription'); }} />}
+              <div className="card" style={{ padding: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', padding: "10px 16px", borderBottom: "1px solid var(--border)", gap: 8 }}>
+                  <Tabs value={tab} onChange={setTab} items={[
+                    { label: "Prescription", value: "prescription" },
+                    { label: "Assessment", value: "assessment" },
+                    { label: "History", value: "history" },
+                  ]} />
+                  <span className="spacer" />
                 </div>
 
-                <div className="hstack-8">
-                    <button className="btn"><Icon name="message" /> Send to patient</button>
-                    <button className="btn"><Icon name="whatsapp" /> WhatsApp summary</button>
-                </div>
-              </>
+                {tab === "prescription" && <PrescriptionComposer customer={selected} prefillOverride={prefillPrescription} onPrefillConsumed={() => setPrefillPrescription(null)} />}
+                {tab === "assessment" && <AssessmentInline customer={selected} />}
+                {tab === "history" && <HistoryInline customer={selected} onUsePrescription={data => { setPrefillPrescription(data); setTab('prescription'); }} />}
+              </div>
+
+              <div className="hstack-8">
+                <button className="btn"><Icon name="message" /> Send to patient</button>
+                <button className="btn"><Icon name="whatsapp" /> WhatsApp summary</button>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -3852,8 +4091,8 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
   );
 }
 
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const WEEKDAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 function MiniDatePicker({ value, onChange, placeholder = 'Select date' }) {
   const [open, setOpen] = useState(false);
@@ -3882,7 +4121,7 @@ function MiniDatePicker({ value, onChange, placeholder = 'Select date' }) {
 
   const handleSelect = (day) => {
     const d = new Date(viewYear, viewMonth, day);
-    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     onChange(iso);
     setOpen(false);
   };
@@ -3895,7 +4134,7 @@ function MiniDatePicker({ value, onChange, placeholder = 'Select date' }) {
         onClick={() => setOpen(o => !o)}>
         <span style={{ flex: 1, fontSize: 13, color: parsed ? 'var(--fg)' : 'var(--faint)' }}>{displayStr}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--muted)', flexShrink: 0 }}>
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
         </svg>
       </div>
 
@@ -3947,12 +4186,12 @@ function MiniDatePicker({ value, onChange, placeholder = 'Select date' }) {
 }
 
 const DIET_TEMPLATES = {
-  lean_to_weight_gain:       { label: "PCOD – Lean Type (Weight Gain)",            advice: [] },
-  weight_to_lean:            { label: "PCOD – Overweight Type (Weight Loss)",       advice: [] },
-  infertility_pcod_pcos:     { label: "PCOD – Infertility & Irregular Periods",     advice: [] },
-  thyroid_diabetes_pcod:     { label: "PCOD – Thyroid + Diabetes (Leucorrhea)",     advice: [] },
-  pcod_mood_anxiety_insomnia:{ label: "PCOD – Mood Swings, Anxiety & Insomnia",     advice: [] },
-  general_pcod_pcos:         { label: "PCOD – General (Irregular Periods)",         advice: [] },
+  lean_to_weight_gain: { label: "PCOD – Lean Type (Weight Gain)", advice: [] },
+  weight_to_lean: { label: "PCOD – Overweight Type (Weight Loss)", advice: [] },
+  infertility_pcod_pcos: { label: "PCOD – Infertility & Irregular Periods", advice: [] },
+  thyroid_diabetes_pcod: { label: "PCOD – Thyroid + Diabetes (Leucorrhea)", advice: [] },
+  pcod_mood_anxiety_insomnia: { label: "PCOD – Mood Swings, Anxiety & Insomnia", advice: [] },
+  general_pcod_pcos: { label: "PCOD – General (Irregular Periods)", advice: [] },
 };
 
 function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) {
@@ -3961,109 +4200,136 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   const [patientName, setPatientName] = useStateD(customer?.name || "");
   const [patientGender, setPatientGender] = useStateD(customer?.gender || "Not Selected");
   const [patientAge, setPatientAge] = useStateD(() => {
-      if (customer?.dob) {
-          const bd = new Date(customer.dob);
-          const ageDifMs = Date.now() - bd.getTime();
-          const ageDate = new Date(ageDifMs);
-          return Math.abs(ageDate.getUTCFullYear() - 1970).toString();
-      }
-      return customer?.age || "";
+    if (customer?.dob) {
+      const bd = new Date(customer.dob);
+      const ageDifMs = Date.now() - bd.getTime();
+      const ageDate = new Date(ageDifMs);
+      return Math.abs(ageDate.getUTCFullYear() - 1970).toString();
+    }
+    return customer?.age || "";
   });
   const [numericPatientId, setNumericPatientId] = useStateD("");
   const [consultationDate, setConsultationDate] = useStateD(new Date().toISOString().split('T')[0]);
   const [followUpDate, setFollowUpDate] = useStateD("");
-  
+
+  // Doctors that have a saved signature — embedded into the prescription doc so the
+  // PDF Cloud Function (templates/prescriptionTemplateV3.html → {{#each doctors}} →
+  // {{#each this.signatures}}) can stamp the signatures. The new UI previously dropped
+  // these, which is why generated PDFs had no doctor signature.
+  const [allDoctors, setAllDoctors] = useStateD([]);
+  useEffect(() => {
+    getDocs(collection(db, 'doctor_details')).then(snap => {
+      const docs = snap.docs.map(d => {
+        const x = d.data();
+        return {
+          id: d.id,
+          name: x.name || x.displayName || '',
+          qualification: x.qualification || x.degrees || '',
+          registrationNo: x.registrationNo || x.regNo || '',
+          specialization: x.specialization || x.designation || '',
+          signatures: (x.signatures || []).map(s => s.url || s), // template needs URL strings
+          showQual: x.showQual !== false,
+          showSpec: x.showSpec !== false,
+          showReg: x.showReg !== false,
+          showPhone: !!x.showPhone,
+          phone: x.phone || '',
+        };
+      }).filter(d => d.signatures.length > 0); // only doctors who actually have a signature
+      setAllDoctors(docs);
+    }).catch(e => console.warn('Could not load doctor signatures:', e.message));
+  }, []);
+
   // Clinical Diagnosis States
   const [prescriptionTemplate, setPrescriptionTemplate] = useStateD("");
   const [primaryDiagnosis, setPrimaryDiagnosis] = useStateD(customer?.doctorComments || customer?.primaryDiagnosis || "");
   const [clinicalFindings, setClinicalFindings] = useStateD("");
   const [lifestyleAdvice, setLifestyleAdvice] = useStateD(() => {
-      if (customer?.lifestyleChanges && Array.isArray(customer.lifestyleChanges)) {
-          return customer.lifestyleChanges.map(l => l.text || l).join('\n');
-      }
-      const initial = [];
-      if (customer?.dietAdvice) initial.push(customer.dietAdvice);
-      if (customer?.lifestyleAdvice) initial.push(customer.lifestyleAdvice);
-      return initial.join('\n');
+    if (customer?.lifestyleChanges && Array.isArray(customer.lifestyleChanges)) {
+      return customer.lifestyleChanges.map(l => l.text || l).join('\n');
+    }
+    const initial = [];
+    if (customer?.dietAdvice) initial.push(customer.dietAdvice);
+    if (customer?.lifestyleAdvice) initial.push(customer.lifestyleAdvice);
+    return initial.join('\n');
   });
 
   // Load next Prescription ID on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-      const fetchNextId = async () => {
-          try {
-              const counterSnap = await getDoc(doc(db, 'metadata', 'counters'));
-              if (counterSnap.exists()) {
-                  setNumericPatientId((counterSnap.data().prescriptionId + 1).toString());
-              } else {
-                  setNumericPatientId("1000");
-              }
-          } catch (e) {
-              console.error('Failed to fetch prescription counter:', e);
-          }
-      };
-      if (!customer?.prescriptionId && !numericPatientId) {
-          fetchNextId();
+    const fetchNextId = async () => {
+      try {
+        const counterSnap = await getDoc(doc(db, 'metadata', 'counters'));
+        if (counterSnap.exists()) {
+          setNumericPatientId((counterSnap.data().prescriptionId + 1).toString());
+        } else {
+          setNumericPatientId("1000");
+        }
+      } catch (e) {
+        console.error('Failed to fetch prescription counter:', e);
       }
+    };
+    if (!customer?.prescriptionId && !numericPatientId) {
+      fetchNextId();
+    }
   }, []);
 
   // Normalize a product (from saved prescription or questionnaire) into the items shape
   const toItem = (prod) => ({
-    name:           prod.name || '',
-    image:          prod.image || '',
-    productId:      prod.productId || '',
-    variantId:      prod.variantId || '',
-    qty:            prod.qty || 1,
-    dosageType:     prod.dosageType || 'schedule',
-    dosage:         prod.dosage || ['0', '0', '0', '0'],
-    dosageValue:    prod.dosageValue || '',
-    dosageFrequency:prod.dosageFrequency || '',
-    detailsHeader:  prod.detailsHeader || (prod.type || prod.timing ? [prod.type, prod.timing].filter(Boolean).join(' | ') : ''),
+    name: prod.name || '',
+    image: prod.image || '',
+    productId: prod.productId || '',
+    variantId: prod.variantId || '',
+    qty: prod.qty || 1,
+    dosageType: prod.dosageType || 'schedule',
+    dosage: prod.dosage || ['0', '0', '0', '0'],
+    dosageValue: prod.dosageValue || '',
+    dosageFrequency: prod.dosageFrequency || '',
+    detailsHeader: prod.detailsHeader || (prod.type || prod.timing ? [prod.type, prod.timing].filter(Boolean).join(' | ') : ''),
     detailsSubtext: prod.detailsSubtext || prod.instruction || '',
-    durationValue:  prod.durationValue || 1,
-    durationUnit:   prod.durationUnit || 'month',
+    durationValue: prod.durationValue || 1,
+    durationUnit: prod.durationUnit || 'month',
   });
 
   // Load latest saved prescription from subcollection to prefill lifestyle, diagnosis & products
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-      if (!customer?.id || !customer?._collection) return;
-      const collName = customer._collection === 'full' ? 'questionnaire_submissions'
-          : customer._collection === 'partial' ? 'partial_submissions'
-          : 'manual_submissions';
-      const loadLatest = async () => {
-          try {
-              const q = query(
-                  collection(db, `${collName}/${customer.id}/prescriptions`),
-                  orderBy('savedAt', 'desc'),
-                  limit(1)
-              );
-              const snap = await getDocs(q);
-              if (!snap.empty) {
-                  // Has prescription history — prefill from last prescription
-                  const latest = snap.docs[0].data();
-                  if (latest.lifestyleAdvice) {
-                      setLifestyleAdvice(Array.isArray(latest.lifestyleAdvice)
-                          ? latest.lifestyleAdvice.join('\n')
-                          : latest.lifestyleAdvice);
-                  }
-                  if (latest.primaryDiagnosis || latest.doctorComments) {
-                      setPrimaryDiagnosis(latest.primaryDiagnosis || latest.doctorComments);
-                  }
-                  if (Array.isArray(latest.recommendedProducts) && latest.recommendedProducts.length > 0) {
-                      setItems(latest.recommendedProducts.map(toItem));
-                  }
-              } else {
-                  // No prescription history — prefill products from questionnaire data
-                  if (Array.isArray(customer.recommendedProducts) && customer.recommendedProducts.length > 0) {
-                      setItems(customer.recommendedProducts.map(toItem));
-                  }
-              }
-          } catch (e) {
-              console.warn('Could not load latest prescription:', e.message);
+    if (!customer?.id || !customer?._collection) return;
+    const collName = customer._collection === 'full' ? 'questionnaire_submissions'
+      : customer._collection === 'partial' ? 'partial_submissions'
+        : 'manual_submissions';
+    const loadLatest = async () => {
+      try {
+        const q = query(
+          collection(db, `${collName}/${customer.id}/prescriptions`),
+          orderBy('savedAt', 'desc'),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          // Has prescription history — prefill from last prescription
+          const latest = snap.docs[0].data();
+          if (latest.lifestyleAdvice) {
+            setLifestyleAdvice(Array.isArray(latest.lifestyleAdvice)
+              ? latest.lifestyleAdvice.join('\n')
+              : latest.lifestyleAdvice);
           }
-      };
-      loadLatest();
+          if (latest.primaryDiagnosis || latest.doctorComments) {
+            setPrimaryDiagnosis(latest.primaryDiagnosis || latest.doctorComments);
+          }
+          if (Array.isArray(latest.recommendedProducts) && latest.recommendedProducts.length > 0) {
+            setItems(latest.recommendedProducts.map(toItem));
+          }
+        } else {
+          // No prescription history — prefill products from questionnaire data
+          if (Array.isArray(customer.recommendedProducts) && customer.recommendedProducts.length > 0) {
+            setItems(customer.recommendedProducts.map(toItem));
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load latest prescription:', e.message);
+      }
+    };
+    loadLatest();
   }, [customer?.id]);
 
   const [items, setItems] = useStateD([]);
@@ -4178,32 +4444,32 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   }, [fetchProducts, productSearch, setSearchResults]);
 
   const toggleProduct = (product, variant) => {
-      const vid = variant ? variant.id : null;
-      const existingIdx = items.findIndex(it => it.variantId === vid && it.productId === product.id);
-      
-      if (existingIdx >= 0) {
-          setItems(prev => prev.filter((_, i) => i !== existingIdx));
-      } else {
-          setItems(prev => [...prev, {
-              name: variant && variant.title !== "Default Title" ? `${product.title} - ${variant.title}` : product.title,
-              dose: "",
-              freq: "",
-              durationValue: 1,
-              durationUnit: "month",
-              productId: product.id,
-              variantId: vid,
-              image: product.image,
-              qty: 1
-          }]);
-          setProductSearch("");
-          setSearchResults([]);
-      }
+    const vid = variant ? variant.id : null;
+    const existingIdx = items.findIndex(it => it.variantId === vid && it.productId === product.id);
+
+    if (existingIdx >= 0) {
+      setItems(prev => prev.filter((_, i) => i !== existingIdx));
+    } else {
+      setItems(prev => [...prev, {
+        name: variant && variant.title !== "Default Title" ? `${product.title} - ${variant.title}` : product.title,
+        dose: "",
+        freq: "",
+        durationValue: 1,
+        durationUnit: "month",
+        productId: product.id,
+        variantId: vid,
+        image: product.image,
+        qty: 1
+      }]);
+      setProductSearch("");
+      setSearchResults([]);
+    }
   };
 
   const removeItem = (index) => {
-      setItems(prev => prev.filter((_, i) => i !== index));
+    setItems(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   // Helper for gender detection
   const detectGender = (name) => {
     if (!name) return "";
@@ -4272,7 +4538,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
 
   const collectionName = customer?._collection === 'full' ? 'questionnaire_submissions'
     : customer?._collection === 'partial' ? 'partial_submissions'
-    : 'manual_submissions';
+      : 'manual_submissions';
 
   const handleApproveSign = async () => {
     if (!patientName.trim()) { alert('Patient name is required.'); return; }
@@ -4317,6 +4583,9 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         }),
         submissionCollectionName: collectionName,
         doctorUid: auth?.currentUser?.uid || '',
+        // Doctor signatures for the PDF (see allDoctors loader above).
+        doctors: allDoctors,
+        doctorSignatures: allDoctors.flatMap(dr => dr.signatures || []),
         timestamp: serverTimestamp(),
       };
 
@@ -4370,7 +4639,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
       if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
         const projectId = auth?.app?.options?.projectId || 'sehatup-f96b5';
         const targetEnv = projectId.includes('dev') ? 'dev' : 'live';
-        fetch(`http://localhost:5505/generatePrescriptionPDF?docId=${docId}&env=${targetEnv}`).catch(() => {});
+        fetch(`http://localhost:5505/generatePrescriptionPDF?docId=${docId}&env=${targetEnv}`).catch(() => { });
       }
 
       // Poll for prescriptionDownloadUrl + cartUrl, update UI and fire webhook (fire-and-forget)
@@ -4398,7 +4667,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
                 return;
               }
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       })();
 
@@ -4488,279 +4757,279 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         </div>
 
         <div className="hstack-8" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
-            <span className="fw6">Clinical Diagnosis</span>
+          <span className="fw6">Clinical Diagnosis</span>
         </div>
         <div className="card flat" style={{ marginBottom: 32 }}>
-            <div className="field">
-                <span className="lbl">Prescription Template (Diet & Lifestyle)</span>
-                <select className="select" value={prescriptionTemplate} onChange={e => {
-                    setPrescriptionTemplate(e.target.value);
-                }}>
-                    <option value="">N/A (No Diet Template)</option>
-                    {Object.entries(DIET_TEMPLATES).map(([key, t]) => (
-                        <option key={key} value={key}>{t.label}</option>
-                    ))}
-                </select>
+          <div className="field">
+            <span className="lbl">Prescription Template (Diet & Lifestyle)</span>
+            <select className="select" value={prescriptionTemplate} onChange={e => {
+              setPrescriptionTemplate(e.target.value);
+            }}>
+              <option value="">N/A (No Diet Template)</option>
+              {Object.entries(DIET_TEMPLATES).map(([key, t]) => (
+                <option key={key} value={key}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid-12" style={{ gap: 16, marginTop: 16 }}>
+            <div className="span-6 field">
+              <span className="lbl">Primary Diagnosis</span>
+              <textarea className="input" style={{ resize: 'vertical', minHeight: 60 }} placeholder="Main condition or diagnosis..." value={primaryDiagnosis} onChange={e => setPrimaryDiagnosis(e.target.value)} />
             </div>
-            <div className="grid-12" style={{ gap: 16, marginTop: 16 }}>
-                <div className="span-6 field">
-                    <span className="lbl">Primary Diagnosis</span>
-                    <textarea className="input" style={{ resize: 'vertical', minHeight: 60 }} placeholder="Main condition or diagnosis..." value={primaryDiagnosis} onChange={e => setPrimaryDiagnosis(e.target.value)} />
-                </div>
-                <div className="span-6 field">
-                    <span className="lbl">Clinical Findings & Observations</span>
-                    <textarea className="input" style={{ resize: 'vertical', minHeight: 60 }} placeholder="Physical exam findings, symptoms..." value={clinicalFindings} onChange={e => setClinicalFindings(e.target.value)} />
-                </div>
+            <div className="span-6 field">
+              <span className="lbl">Clinical Findings & Observations</span>
+              <textarea className="input" style={{ resize: 'vertical', minHeight: 60 }} placeholder="Physical exam findings, symptoms..." value={clinicalFindings} onChange={e => setClinicalFindings(e.target.value)} />
             </div>
-            <div className="field" style={{ marginBottom: 0, marginTop: 16 }}>
-                <span className="lbl">Lifestyle & Dietary Advice</span>
-                <div className="grid-12" style={{ gap: 12 }}>
-                    {(lifestyleAdvice || '').split('\n').map((line, idx) => (
-                        <div key={idx} className="span-6 hstack-8">
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }}></div>
-                            <input className="input" style={{ flex: 1, padding: '8px 12px' }} value={line} onChange={e => {
-                                const lines = (lifestyleAdvice || '').split('\n');
-                                lines[idx] = e.target.value;
-                                setLifestyleAdvice(lines.join('\n'));
-                            }} />
-                            <button type="button" className="btn sm ghost" style={{ padding: '0 8px', height: 36 }} onClick={() => {
-                                const lines = (lifestyleAdvice || '').split('\n');
-                                lines.splice(idx, 1);
-                                setLifestyleAdvice(lines.join('\n'));
-                            }}><Icon name="x" size={14} /></button>
-                        </div>
-                    ))}
-                    <div className="span-6 hstack-8">
-                        <button type="button" className="btn sm ghost" onClick={() => {
-                            setLifestyleAdvice(prev => (prev || '') + '\n');
-                        }}><Icon name="plus" size={14} /> Add advice</button>
-                    </div>
+          </div>
+          <div className="field" style={{ marginBottom: 0, marginTop: 16 }}>
+            <span className="lbl">Lifestyle & Dietary Advice</span>
+            <div className="grid-12" style={{ gap: 12 }}>
+              {(lifestyleAdvice || '').split('\n').map((line, idx) => (
+                <div key={idx} className="span-6 hstack-8">
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }}></div>
+                  <input className="input" style={{ flex: 1, padding: '8px 12px' }} value={line} onChange={e => {
+                    const lines = (lifestyleAdvice || '').split('\n');
+                    lines[idx] = e.target.value;
+                    setLifestyleAdvice(lines.join('\n'));
+                  }} />
+                  <button type="button" className="btn sm ghost" style={{ padding: '0 8px', height: 36 }} onClick={() => {
+                    const lines = (lifestyleAdvice || '').split('\n');
+                    lines.splice(idx, 1);
+                    setLifestyleAdvice(lines.join('\n'));
+                  }}><Icon name="x" size={14} /></button>
                 </div>
+              ))}
+              <div className="span-6 hstack-8">
+                <button type="button" className="btn sm ghost" onClick={() => {
+                  setLifestyleAdvice(prev => (prev || '') + '\n');
+                }}><Icon name="plus" size={14} /> Add advice</button>
+              </div>
             </div>
+          </div>
         </div>
-        
+
         <div className="section-title">Medications & Products</div>
         <div style={{ position: 'relative', zIndex: 50, marginBottom: 16 }}>
-            <div className="input-with-icon" style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', left: 10, top: 9, color: 'var(--muted)', display: 'flex' }}>
-                    <Icon name="search" size={14} />
-                </div>
-                <input 
-                    className="input" 
-                    placeholder="Search medications and products..." 
-                    style={{ paddingLeft: 32, borderRadius: 8 }}
-                    value={productSearch}
-                    onChange={e => setProductSearch(e.target.value)}
-                />
-                {isSearchingProducts && (
-                    <div style={{ position: 'absolute', right: 10, top: 11, fontSize: 11, color: 'var(--muted)' }}>Loading...</div>
-                )}
+          <div className="input-with-icon" style={{ position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 10, top: 9, color: 'var(--muted)', display: 'flex' }}>
+              <Icon name="search" size={14} />
             </div>
-            
-            {searchResults.length > 0 && (
-                <div className="card shadow" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 300, overflowY: 'auto', padding: 0 }}>
-                    {searchResults.map(product => {
-                        const isSingleVariant = product.variants.length === 1 && product.variants[0].title === "Default Title";
-                        if (isSingleVariant) {
-                            return (
-                                <label key={product.id} className="hstack-12 clickable" style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
-                                    <input type="checkbox" checked={items.some(it => it.productId === product.id && it.variantId === product.variants[0].id)} onChange={() => toggleProduct(product, product.variants[0])} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
-                                    {product.image ? <img src={product.image} alt="" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} /> : <Icon name="pill" size={18} />}
-                                    <span className="fw5">{product.title}</span>
-                                </label>
-                            );
-                        }
-                        return (
-                            <div key={product.id} className="col" style={{ borderBottom: "1px solid var(--border)", padding: "8px 0" }}>
-                                <div className="hstack-12" style={{ padding: "4px 12px" }}>
-                                    {product.image ? <img src={product.image} alt="" style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--border)" }} /> : <Icon name="pill" size={14} />}
-                                    <span className="fw6" style={{ fontSize: 13 }}>{product.title}</span>
-                                </div>
-                                {product.variants.map(variant => (
-                                    <label key={variant.id} className="hstack-12 clickable" style={{ padding: "8px 12px 8px 48px", cursor: "pointer" }}>
-                                        <input type="checkbox" checked={items.some(it => it.variantId === variant.id)} onChange={() => toggleProduct(product, variant)} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
-                                        <span style={{ fontSize: 13 }}>{variant.title}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        );
-                    })}
-                </div>
+            <input
+              className="input"
+              placeholder="Search medications and products..."
+              style={{ paddingLeft: 32, borderRadius: 8 }}
+              value={productSearch}
+              onChange={e => setProductSearch(e.target.value)}
+            />
+            {isSearchingProducts && (
+              <div style={{ position: 'absolute', right: 10, top: 11, fontSize: 11, color: 'var(--muted)' }}>Loading...</div>
             )}
+          </div>
+
+          {searchResults.length > 0 && (
+            <div className="card shadow" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, maxHeight: 300, overflowY: 'auto', padding: 0 }}>
+              {searchResults.map(product => {
+                const isSingleVariant = product.variants.length === 1 && product.variants[0].title === "Default Title";
+                if (isSingleVariant) {
+                  return (
+                    <label key={product.id} className="hstack-12 clickable" style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
+                      <input type="checkbox" checked={items.some(it => it.productId === product.id && it.variantId === product.variants[0].id)} onChange={() => toggleProduct(product, product.variants[0])} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+                      {product.image ? <img src={product.image} alt="" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} /> : <Icon name="pill" size={18} />}
+                      <span className="fw5">{product.title}</span>
+                    </label>
+                  );
+                }
+                return (
+                  <div key={product.id} className="col" style={{ borderBottom: "1px solid var(--border)", padding: "8px 0" }}>
+                    <div className="hstack-12" style={{ padding: "4px 12px" }}>
+                      {product.image ? <img src={product.image} alt="" style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--border)" }} /> : <Icon name="pill" size={14} />}
+                      <span className="fw6" style={{ fontSize: 13 }}>{product.title}</span>
+                    </div>
+                    {product.variants.map(variant => (
+                      <label key={variant.id} className="hstack-12 clickable" style={{ padding: "8px 12px 8px 48px", cursor: "pointer" }}>
+                        <input type="checkbox" checked={items.some(it => it.variantId === variant.id)} onChange={() => toggleProduct(product, variant)} style={{ width: 16, height: 16, accentColor: 'var(--accent)' }} />
+                        <span style={{ fontSize: 13 }}>{variant.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {items.length === 0 ? (
-            <div className="muted" style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, background: 'var(--surface-2)', borderRadius: 8, border: '1px dashed var(--border)' }}>
-                No medications added yet. Search and select products above.
-            </div>
+          <div className="muted" style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, background: 'var(--surface-2)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+            No medications added yet. Search and select products above.
+          </div>
         ) : (
-            items.map((it, i) => (
-              <div key={i} className="card flat" style={{ background: "var(--surface-2)", marginBottom: 12 }}>
-                <div className="hstack-8">
-                  <div className="hstack-10">
-                    {it.image ? (
-                        <img src={it.image} alt="" style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--border)" }} />
-                    ) : (
-                        <div className="avatar sm" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{i + 1}</div>
-                    )}
-                    <div className="fw5">{it.name}</div>
-                  </div>
-                  <span className="spacer" />
-                  <input type="number" min="1" className="input num" style={{ width: 60, height: 32, padding: "0 8px", textAlign: "center", marginRight: 8, fontSize: 13, background: 'var(--bg)', borderColor: 'var(--border)' }} value={it.qty || 1} onChange={e => {
-                      const newItems = [...items];
-                      newItems[i].qty = Math.max(1, Number(e.target.value) || 1);
-                      setItems(newItems);
-                  }} />
-                  <button className="btn sm ghost" onClick={() => removeItem(i)}><Icon name="trash" /></button>
+          items.map((it, i) => (
+            <div key={i} className="card flat" style={{ background: "var(--surface-2)", marginBottom: 12 }}>
+              <div className="hstack-8">
+                <div className="hstack-10">
+                  {it.image ? (
+                    <img src={it.image} alt="" style={{ width: 24, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--border)" }} />
+                  ) : (
+                    <div className="avatar sm" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{i + 1}</div>
+                  )}
+                  <div className="fw5">{it.name}</div>
                 </div>
-                <div className="grid-12" style={{ marginTop: 10 }}>
-                  {/* DOSAGE COLUMN */}
-                  <div className="span-4 field">
-                    <div className="hstack-8" style={{ marginBottom: 6, justifyContent: 'space-between' }}>
-                        <span className="lbl" style={{ margin: 0 }}>Dosage</span>
-                        <select className="select" style={{ width: 'auto', height: 28, fontSize: 12, borderRadius: 6 }} value={it.dosageType || 'schedule'} onChange={e => {
-                            const newItems = [...items];
-                            newItems[i].dosageType = e.target.value;
-                            setItems(newItems);
-                        }}>
-                            <option value="schedule">Capsule</option>
-                            <option value="drops">Drops</option>
-                            <option value="topical">Topical</option>
-                        </select>
-                    </div>
-
-                    {(!it.dosageType || it.dosageType === 'schedule') && (
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: 6 }}>
-                                {[0,1,2,3].map(dIdx => (
-                                    <React.Fragment key={dIdx}>
-                                        <input 
-                                            id={`dosage-${i}-${dIdx}`}
-                                            className="input num" 
-                                            style={{ width: '100%', height: 32, textAlign: 'center', padding: 0, background: 'var(--bg)', borderRadius: 6, fontSize: 14, fontWeight: 'bold' }} 
-                                            value={it.dosage?.[dIdx] || '0'} 
-                                            onChange={e => {
-                                                const val = e.target.value.replace(/[^0-9]/g, '').slice(-1);
-                                                const newItems = [...items];
-                                                if (!newItems[i].dosage) newItems[i].dosage = ['0','0','0','0'];
-                                                newItems[i].dosage[dIdx] = val || '0';
-                                                setItems(newItems);
-                                                if (val && dIdx < 3 && e.target.value !== '') {
-                                                    const nextEl = document.getElementById(`dosage-${i}-${dIdx + 1}`);
-                                                    if (nextEl) { nextEl.focus(); setTimeout(() => nextEl.select(), 0); }
-                                                }
-                                            }} 
-                                            onKeyDown={e => {
-                                                if (e.key === 'Backspace') {
-                                                    if ((!it.dosage?.[dIdx] || it.dosage?.[dIdx] === '0' || e.currentTarget.value === '') && dIdx > 0) {
-                                                        e.preventDefault();
-                                                        const prevEl = document.getElementById(`dosage-${i}-${dIdx - 1}`);
-                                                        if (prevEl) { prevEl.focus(); setTimeout(() => prevEl.select(), 0); }
-                                                    } else {
-                                                        const newItems = [...items];
-                                                        if (!newItems[i].dosage) newItems[i].dosage = ['0','0','0','0'];
-                                                        newItems[i].dosage[dIdx] = '0';
-                                                        setItems(newItems);
-                                                        const currentTarget = e.currentTarget;
-                                                        setTimeout(() => { if (currentTarget) currentTarget.select(); }, 0);
-                                                    }
-                                                } else if (e.key === 'ArrowLeft' && dIdx > 0) {
-                                                    e.preventDefault();
-                                                    const prevEl = document.getElementById(`dosage-${i}-${dIdx - 1}`);
-                                                    if (prevEl) { prevEl.focus(); setTimeout(() => prevEl.select(), 0); }
-                                                } else if (e.key === 'ArrowRight' && dIdx < 3) {
-                                                    e.preventDefault();
-                                                    const nextEl = document.getElementById(`dosage-${i}-${dIdx + 1}`);
-                                                    if (nextEl) { nextEl.focus(); setTimeout(() => nextEl.select(), 0); }
-                                                }
-                                            }}
-                                            onFocus={e => e.target.select()} 
-                                        />
-                                        {dIdx < 3 && <span style={{ color: 'var(--muted)', fontWeight: 'bold' }}>-</span>}
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, padding: '0 6px' }}>
-                                {[0,1,2,3].map(dIdx => (
-                                    <React.Fragment key={dIdx}>
-                                        <div style={{ width: '100%', textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: 'var(--muted)' }}>{['M','A','E','N'][dIdx]}</div>
-                                        {dIdx < 3 && <span style={{ color: 'transparent', fontWeight: 'bold' }}>-</span>}
-                                    </React.Fragment>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {it.dosageType === 'drops' && (
-                        <div className="col" style={{ gap: 8 }}>
-                            <div className="input hstack-8" style={{ padding: '0 12px', height: 40, borderRadius: 8 }}>
-                                <input type="number" style={{ width: 40, background: 'transparent', border: 'none', outline: 'none', fontWeight: 'bold', fontSize: 14 }} value={it.dosageValue || ''} onChange={e => {
-                                    const newItems = [...items];
-                                    newItems[i].dosageValue = e.target.value;
-                                    setItems(newItems);
-                                }} placeholder="5" />
-                                <span className="muted fw6" style={{ fontSize: 13 }}>Drops</span>
-                            </div>
-                            <div className="input hstack-8" style={{ padding: '0 12px', height: 40, borderRadius: 8 }}>
-                                <input type="number" style={{ width: 40, background: 'transparent', border: 'none', outline: 'none', fontWeight: 'bold', fontSize: 14 }} value={it.dosageFrequency || ''} onChange={e => {
-                                    const newItems = [...items];
-                                    newItems[i].dosageFrequency = e.target.value;
-                                    setItems(newItems);
-                                }} placeholder="2" />
-                                <span className="muted fw6" style={{ fontSize: 13 }}>Times / Day</span>
-                            </div>
-                        </div>
-                    )}
-
-                    {it.dosageType === 'topical' && (
-                        <textarea className="input" rows="2" style={{ resize: 'vertical', minHeight: 88, borderRadius: 8 }} value={it.dosageValue || ''} onChange={e => {
-                            const newItems = [...items];
-                            newItems[i].dosageValue = e.target.value;
-                            setItems(newItems);
-                        }} placeholder="e.g. Apply 1ml twice daily..." />
-                    )}
+                <span className="spacer" />
+                <input type="number" min="1" className="input num" style={{ width: 60, height: 32, padding: "0 8px", textAlign: "center", marginRight: 8, fontSize: 13, background: 'var(--bg)', borderColor: 'var(--border)' }} value={it.qty || 1} onChange={e => {
+                  const newItems = [...items];
+                  newItems[i].qty = Math.max(1, Number(e.target.value) || 1);
+                  setItems(newItems);
+                }} />
+                <button className="btn sm ghost" onClick={() => removeItem(i)}><Icon name="trash" /></button>
+              </div>
+              <div className="grid-12" style={{ marginTop: 10 }}>
+                {/* DOSAGE COLUMN */}
+                <div className="span-4 field">
+                  <div className="hstack-8" style={{ marginBottom: 6, justifyContent: 'space-between' }}>
+                    <span className="lbl" style={{ margin: 0 }}>Dosage</span>
+                    <select className="select" style={{ width: 'auto', height: 28, fontSize: 12, borderRadius: 6 }} value={it.dosageType || 'schedule'} onChange={e => {
+                      const newItems = [...items];
+                      newItems[i].dosageType = e.target.value;
+                      setItems(newItems);
+                    }}>
+                      <option value="schedule">Capsule</option>
+                      <option value="drops">Drops</option>
+                      <option value="topical">Topical</option>
+                    </select>
                   </div>
 
-                  {/* DETAILS COLUMN */}
-                  <div className="span-4 field">
-                    <span className="lbl" style={{ marginBottom: 6 }}>Medicine Details</span>
+                  {(!it.dosageType || it.dosageType === 'schedule') && (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: 6 }}>
+                        {[0, 1, 2, 3].map(dIdx => (
+                          <React.Fragment key={dIdx}>
+                            <input
+                              id={`dosage-${i}-${dIdx}`}
+                              className="input num"
+                              style={{ width: '100%', height: 32, textAlign: 'center', padding: 0, background: 'var(--bg)', borderRadius: 6, fontSize: 14, fontWeight: 'bold' }}
+                              value={it.dosage?.[dIdx] || '0'}
+                              onChange={e => {
+                                const val = e.target.value.replace(/[^0-9]/g, '').slice(-1);
+                                const newItems = [...items];
+                                if (!newItems[i].dosage) newItems[i].dosage = ['0', '0', '0', '0'];
+                                newItems[i].dosage[dIdx] = val || '0';
+                                setItems(newItems);
+                                if (val && dIdx < 3 && e.target.value !== '') {
+                                  const nextEl = document.getElementById(`dosage-${i}-${dIdx + 1}`);
+                                  if (nextEl) { nextEl.focus(); setTimeout(() => nextEl.select(), 0); }
+                                }
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Backspace') {
+                                  if ((!it.dosage?.[dIdx] || it.dosage?.[dIdx] === '0' || e.currentTarget.value === '') && dIdx > 0) {
+                                    e.preventDefault();
+                                    const prevEl = document.getElementById(`dosage-${i}-${dIdx - 1}`);
+                                    if (prevEl) { prevEl.focus(); setTimeout(() => prevEl.select(), 0); }
+                                  } else {
+                                    const newItems = [...items];
+                                    if (!newItems[i].dosage) newItems[i].dosage = ['0', '0', '0', '0'];
+                                    newItems[i].dosage[dIdx] = '0';
+                                    setItems(newItems);
+                                    const currentTarget = e.currentTarget;
+                                    setTimeout(() => { if (currentTarget) currentTarget.select(); }, 0);
+                                  }
+                                } else if (e.key === 'ArrowLeft' && dIdx > 0) {
+                                  e.preventDefault();
+                                  const prevEl = document.getElementById(`dosage-${i}-${dIdx - 1}`);
+                                  if (prevEl) { prevEl.focus(); setTimeout(() => prevEl.select(), 0); }
+                                } else if (e.key === 'ArrowRight' && dIdx < 3) {
+                                  e.preventDefault();
+                                  const nextEl = document.getElementById(`dosage-${i}-${dIdx + 1}`);
+                                  if (nextEl) { nextEl.focus(); setTimeout(() => nextEl.select(), 0); }
+                                }
+                              }}
+                              onFocus={e => e.target.select()}
+                            />
+                            {dIdx < 3 && <span style={{ color: 'var(--muted)', fontWeight: 'bold' }}>-</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, padding: '0 6px' }}>
+                        {[0, 1, 2, 3].map(dIdx => (
+                          <React.Fragment key={dIdx}>
+                            <div style={{ width: '100%', textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: 'var(--muted)' }}>{['M', 'A', 'E', 'N'][dIdx]}</div>
+                            {dIdx < 3 && <span style={{ color: 'transparent', fontWeight: 'bold' }}>-</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {it.dosageType === 'drops' && (
                     <div className="col" style={{ gap: 8 }}>
-                        <input className="input" value={it.detailsHeader || ''} onChange={e => {
-                            const newItems = [...items];
-                            newItems[i].detailsHeader = e.target.value;
-                            setItems(newItems);
-                        }} placeholder="Type | Timing" style={{ height: 36, borderRadius: 8, fontWeight: 500 }} />
-                        <input className="input" value={it.detailsSubtext || ''} onChange={e => {
-                            const newItems = [...items];
-                            newItems[i].detailsSubtext = e.target.value;
-                            setItems(newItems);
-                        }} placeholder="Instruction..." style={{ height: 36, borderRadius: 8, background: 'var(--surface-3)', border: '1px solid transparent' }} />
+                      <div className="input hstack-8" style={{ padding: '0 12px', height: 40, borderRadius: 8 }}>
+                        <input type="number" style={{ width: 40, background: 'transparent', border: 'none', outline: 'none', fontWeight: 'bold', fontSize: 14 }} value={it.dosageValue || ''} onChange={e => {
+                          const newItems = [...items];
+                          newItems[i].dosageValue = e.target.value;
+                          setItems(newItems);
+                        }} placeholder="5" />
+                        <span className="muted fw6" style={{ fontSize: 13 }}>Drops</span>
+                      </div>
+                      <div className="input hstack-8" style={{ padding: '0 12px', height: 40, borderRadius: 8 }}>
+                        <input type="number" style={{ width: 40, background: 'transparent', border: 'none', outline: 'none', fontWeight: 'bold', fontSize: 14 }} value={it.dosageFrequency || ''} onChange={e => {
+                          const newItems = [...items];
+                          newItems[i].dosageFrequency = e.target.value;
+                          setItems(newItems);
+                        }} placeholder="2" />
+                        <span className="muted fw6" style={{ fontSize: 13 }}>Times / Day</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* DURATION COLUMN */}
-                  <div className="span-4 field">
-                    <span className="lbl" style={{ marginBottom: 6 }}>Duration</span>
-                    <div className="hstack-8" style={{ gap: 4 }}>
-                      <input type="number" min="1" className="input num" style={{ width: 56, padding: "0 8px", textAlign: "center", height: 36, borderRadius: 8 }} value={it.durationValue || 1} onChange={e => {
-                          const newItems = [...items];
-                          newItems[i].durationValue = Math.max(1, Number(e.target.value) || 1);
-                          setItems(newItems);
-                      }} />
-                      <select className="select" style={{ flex: 1, height: 36, borderRadius: 8 }} value={it.durationUnit || 'month'} onChange={e => {
-                          const newItems = [...items];
-                          newItems[i].durationUnit = e.target.value;
-                          setItems(newItems);
-                      }}>
-                        <option value="day">Day(s)</option>
-                        <option value="week">Week(s)</option>
-                        <option value="month">Month(s)</option>
-                      </select>
-                    </div>
+                  {it.dosageType === 'topical' && (
+                    <textarea className="input" rows="2" style={{ resize: 'vertical', minHeight: 88, borderRadius: 8 }} value={it.dosageValue || ''} onChange={e => {
+                      const newItems = [...items];
+                      newItems[i].dosageValue = e.target.value;
+                      setItems(newItems);
+                    }} placeholder="e.g. Apply 1ml twice daily..." />
+                  )}
+                </div>
+
+                {/* DETAILS COLUMN */}
+                <div className="span-4 field">
+                  <span className="lbl" style={{ marginBottom: 6 }}>Medicine Details</span>
+                  <div className="col" style={{ gap: 8 }}>
+                    <input className="input" value={it.detailsHeader || ''} onChange={e => {
+                      const newItems = [...items];
+                      newItems[i].detailsHeader = e.target.value;
+                      setItems(newItems);
+                    }} placeholder="Type | Timing" style={{ height: 36, borderRadius: 8, fontWeight: 500 }} />
+                    <input className="input" value={it.detailsSubtext || ''} onChange={e => {
+                      const newItems = [...items];
+                      newItems[i].detailsSubtext = e.target.value;
+                      setItems(newItems);
+                    }} placeholder="Instruction..." style={{ height: 36, borderRadius: 8, background: 'var(--surface-3)', border: '1px solid transparent' }} />
+                  </div>
+                </div>
+
+                {/* DURATION COLUMN */}
+                <div className="span-4 field">
+                  <span className="lbl" style={{ marginBottom: 6 }}>Duration</span>
+                  <div className="hstack-8" style={{ gap: 4 }}>
+                    <input type="number" min="1" className="input num" style={{ width: 56, padding: "0 8px", textAlign: "center", height: 36, borderRadius: 8 }} value={it.durationValue || 1} onChange={e => {
+                      const newItems = [...items];
+                      newItems[i].durationValue = Math.max(1, Number(e.target.value) || 1);
+                      setItems(newItems);
+                    }} />
+                    <select className="select" style={{ flex: 1, height: 36, borderRadius: 8 }} value={it.durationUnit || 'month'} onChange={e => {
+                      const newItems = [...items];
+                      newItems[i].durationUnit = e.target.value;
+                      setItems(newItems);
+                    }}>
+                      <option value="day">Day(s)</option>
+                      <option value="week">Week(s)</option>
+                      <option value="month">Month(s)</option>
+                    </select>
                   </div>
                 </div>
               </div>
-            ))
+            </div>
+          ))
         )}
       </div>
 
@@ -4849,13 +5118,16 @@ function HistoryInline({ customer, onUsePrescription }) {
   const [pdfUrls, setPdfUrls] = useState({});
   const [loading, setLoading] = useState(true);
 
-  const collName = customer?._collection === 'full' ? 'questionnaire_submissions'
-    : customer?._collection === 'partial' ? 'partial_submissions'
-    : 'manual_submissions';
+  // Works whether the caller tags the source as `_collection` (Clinical review:
+  // 'full'/'partial'/'manual') or `_source` (Submissions tab: 'completed'/'partial'/'manual').
+  const src = customer?._collection || customer?._source;
+  const collName = (src === 'full' || src === 'completed') ? 'questionnaire_submissions'
+    : src === 'partial' ? 'partial_submissions'
+      : 'manual_submissions';
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!customer?.id) return;
+    if (!customer?.id) { setLoading(false); return; }
     setLoading(true);
     setPrescriptions([]);
     setPdfUrls({});
@@ -4877,7 +5149,7 @@ function HistoryInline({ customer, onUsePrescription }) {
         try {
           const snap = await getDoc(doc(db, 'prescriptions', id));
           if (snap.exists()) urlMap[id] = snap.data().prescriptionDownloadUrl || null;
-        } catch (_) {}
+        } catch (_) { }
       }));
       setPdfUrls(urlMap);
     }, () => setLoading(false));
@@ -4944,10 +5216,12 @@ function HistoryInline({ customer, onUsePrescription }) {
                           <Icon name="refresh" size={11} className="spin" /> Generating…
                         </span>
                       ) : null}
-                      <button className="btn sm" style={{ fontSize: 12 }} onClick={() => onUsePrescription?.(p)}
-                        title="Prefill prescription form with this prescription's values">
-                        <Icon name="copy" size={12} /> Use
-                      </button>
+                      {onUsePrescription && (
+                        <button className="btn sm" style={{ fontSize: 12 }} onClick={() => onUsePrescription(p)}
+                          title="Prefill prescription form with this prescription's values">
+                          <Icon name="copy" size={12} /> Use
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -5119,77 +5393,77 @@ function OrderCreate({ context = {}, setRoute }) {
 
       // Force update customer profile with phone to ensure Contact Info populates in Draft
       if (finalCustomerId) {
-          try {
-              const updateBody = {
-                  customer: {
-                      id: finalCustomerId,
-                      phone: normalizedPhone
-                  }
-              };
-              if (custFirstName) updateBody.customer.first_name = custFirstName;
-              if (custLastName) updateBody.customer.last_name = custLastName;
-              if (custEmail && custEmail.trim()) updateBody.customer.email = custEmail.trim();
+        try {
+          const updateBody = {
+            customer: {
+              id: finalCustomerId,
+              phone: normalizedPhone
+            }
+          };
+          if (custFirstName) updateBody.customer.first_name = custFirstName;
+          if (custLastName) updateBody.customer.last_name = custLastName;
+          if (custEmail && custEmail.trim()) updateBody.customer.email = custEmail.trim();
 
-              const updateRes = await fetch(`/shopify-v2/customers/${finalCustomerId}.json`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(updateBody),
-              });
-              if (!updateRes.ok) {
-                  console.warn('Failed to update customer profile phone:', await updateRes.text());
-              }
-          } catch (updateErr) {
-              console.warn('Customer update error:', updateErr);
+          const updateRes = await fetch(`/shopify-v2/customers/${finalCustomerId}.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateBody),
+          });
+          if (!updateRes.ok) {
+            console.warn('Failed to update customer profile phone:', await updateRes.text());
           }
+        } catch (updateErr) {
+          console.warn('Customer update error:', updateErr);
+        }
       }
 
       // Build advanced draft payload
       const getDiscountedPrice = (item) => {
-          const dv = parseFloat(item.discountValue) || 0;
-          if (dv <= 0) return item.price;
-          if (item.discountType === 'percentage') return item.price * (1 - dv / 100);
-          return Math.max(0, item.price - dv);
+        const dv = parseFloat(item.discountValue) || 0;
+        if (dv <= 0) return item.price;
+        if (item.discountType === 'percentage') return item.price * (1 - dv / 100);
+        return Math.max(0, item.price - dv);
       };
 
       const line_items = items.map(item => {
-          const li = { variant_id: item.variantId, quantity: item.qty, taxable: true };
-          const dv = parseFloat(item.discountValue) || 0;
-          if (dv > 0) {
-              const discountedPrice = getDiscountedPrice(item);
-              const discountAmt = ((item.price - discountedPrice) * item.qty).toFixed(2);
-              li.applied_discount = {
-                  value_type: item.discountType === 'percentage' ? 'percentage' : 'fixed_amount',
-                  value: String(dv),
-                  amount: discountAmt,
-                  title: item.discountReason || 'Discount',
-                  description: item.discountReason || 'Discount'
-              };
-          }
-          return li;
+        const li = { variant_id: item.variantId, quantity: item.qty, taxable: true };
+        const dv = parseFloat(item.discountValue) || 0;
+        if (dv > 0) {
+          const discountedPrice = getDiscountedPrice(item);
+          const discountAmt = ((item.price - discountedPrice) * item.qty).toFixed(2);
+          li.applied_discount = {
+            value_type: item.discountType === 'percentage' ? 'percentage' : 'fixed_amount',
+            value: String(dv),
+            amount: discountAmt,
+            title: item.discountReason || 'Discount',
+            description: item.discountReason || 'Discount'
+          };
+        }
+        return li;
       });
 
       const shippingAddr = {
-          first_name: custFirstName || preset?.name?.split(' ')[0] || '',
-          last_name: custLastName || preset?.name?.split(' ').slice(1).join(' ') || '',
-          address1: shippingAddress || billingAddress || 'No Address',
-          address2: shippingLandmark || billingLandmark || '',
-          city: city || billingCity || 'Unknown',
-          province: stateName || billingStateName || '',
-          zip: pincode || billingPincode || '',
-          country: "India",
-          phone: normalizedPhone
+        first_name: custFirstName || preset?.name?.split(' ')[0] || '',
+        last_name: custLastName || preset?.name?.split(' ').slice(1).join(' ') || '',
+        address1: shippingAddress || billingAddress || 'No Address',
+        address2: shippingLandmark || billingLandmark || '',
+        city: city || billingCity || 'Unknown',
+        province: stateName || billingStateName || '',
+        zip: pincode || billingPincode || '',
+        country: "India",
+        phone: normalizedPhone
       };
 
       const billingAddr = differentBillingAddress ? {
-          first_name: billingFirstName || custFirstName || preset?.name?.split(' ')[0] || '',
-          last_name: billingLastName || custLastName || preset?.name?.split(' ').slice(1).join(' ') || '',
-          address1: billingAddress || 'No Address',
-          address2: billingLandmark || '',
-          city: billingCity || 'Unknown',
-          province: billingStateName || '',
-          zip: billingPincode || '',
-          country: "India",
-          phone: billingPhone ? (billingPhone.replace(/\D/g, '').slice(-10).length === 10 ? `+91${billingPhone.replace(/\D/g, '').slice(-10)}` : billingPhone) : normalizedPhone
+        first_name: billingFirstName || custFirstName || preset?.name?.split(' ')[0] || '',
+        last_name: billingLastName || custLastName || preset?.name?.split(' ').slice(1).join(' ') || '',
+        address1: billingAddress || 'No Address',
+        address2: billingLandmark || '',
+        city: billingCity || 'Unknown',
+        province: billingStateName || '',
+        zip: billingPincode || '',
+        country: "India",
+        phone: billingPhone ? (billingPhone.replace(/\D/g, '').slice(-10).length === 10 ? `+91${billingPhone.replace(/\D/g, '').slice(-10)}` : billingPhone) : normalizedPhone
       } : shippingAddr;
 
       const draftData = {
@@ -5207,55 +5481,55 @@ function OrderCreate({ context = {}, setRoute }) {
       // Shipping — COD uses selected rate; Prepaid uses "Prepaid Shipping" rate from Shopify
       // Partial-payment mode takes precedence: zero-rupee shipping + advance discount.
       if (pay === "COD" && partialPaymentMode) {
-          draftData.shipping_line = { title: 'Shipping (partial)', price: '0.00', code: 'PARTIAL_PAID' };
-          console.log('[Shipping] Partial payment mode — shipping set to Rs. 0');
+        draftData.shipping_line = { title: 'Shipping (partial)', price: '0.00', code: 'PARTIAL_PAID' };
+        console.log('[Shipping] Partial payment mode — shipping set to Rs. 0');
       } else if (pay === "COD" && useCustomShipping) {
-          const title = customShippingTitle.trim() || 'Custom Shipping';
-          const price = parseFloat(customShippingPrice) || 0;
-          draftData.shipping_line = { title, price: price.toFixed(2), code: title };
-          console.log('[Shipping] Custom COD rate applied:', title, price);
+        const title = customShippingTitle.trim() || 'Custom Shipping';
+        const price = parseFloat(customShippingPrice) || 0;
+        draftData.shipping_line = { title, price: price.toFixed(2), code: title };
+        console.log('[Shipping] Custom COD rate applied:', title, price);
       } else if (selectedShipping) {
-          draftData.shipping_line = {
-              title: selectedShipping.title,
-              price: selectedShipping.price.toFixed(2),
-              code: selectedShipping.code || selectedShipping.title
-          };
-          console.log('[Shipping] Rate applied:', selectedShipping.title, 'Rs.', selectedShipping.price);
+        draftData.shipping_line = {
+          title: selectedShipping.title,
+          price: selectedShipping.price.toFixed(2),
+          code: selectedShipping.code || selectedShipping.title
+        };
+        console.log('[Shipping] Rate applied:', selectedShipping.title, 'Rs.', selectedShipping.price);
       } else {
-          console.log('[Shipping] No shipping rate found — no shipping_line added');
+        console.log('[Shipping] No shipping rate found — no shipping_line added');
       }
 
       // Order Discount — partial payment overrides any manual discount for COD orders.
       // (Shopify draft orders accept only one applied_discount per order.)
       if (pay === "COD" && partialPaymentMode) {
-          const partialAmt = parseFloat(partialPaymentAmount) || 0;
-          if (partialAmt > 0) {
-              const ref = (partialPaymentRef || '').trim();
-              draftData.applied_discount = {
-                  value_type: 'fixed_amount',
-                  value: String(partialAmt),
-                  title: 'Advance Payment Received' + (ref ? ` (${ref})` : ''),
-                  description: `Customer paid Rs. ${partialAmt} in advance${ref ? `. Reference: ${ref}` : ''}. Remaining Rs. ${codDueOnDelivery} to be collected on delivery.`,
-              };
-              console.log('[Partial Payment] Advance Rs.', partialAmt, '→ COD due Rs.', codDueOnDelivery);
-          }
-          draftData.tags = ((draftData.tags || '') + ', partial-payment-received').replace(/^,\s*/, '');
+        const partialAmt = parseFloat(partialPaymentAmount) || 0;
+        if (partialAmt > 0) {
+          const ref = (partialPaymentRef || '').trim();
+          draftData.applied_discount = {
+            value_type: 'fixed_amount',
+            value: String(partialAmt),
+            title: 'Advance Payment Received' + (ref ? ` (${ref})` : ''),
+            description: `Customer paid Rs. ${partialAmt} in advance${ref ? `. Reference: ${ref}` : ''}. Remaining Rs. ${codDueOnDelivery} to be collected on delivery.`,
+          };
+          console.log('[Partial Payment] Advance Rs.', partialAmt, '→ COD due Rs.', codDueOnDelivery);
+        }
+        draftData.tags = ((draftData.tags || '') + ', partial-payment-received').replace(/^,\s*/, '');
       } else if (orderDiscountIsCustom && (parseFloat(orderDiscountValue) || 0) > 0) {
-          // Custom amount/percentage discount
-          draftData.applied_discount = {
-              value_type: orderDiscountType === 'percentage' ? 'percentage' : 'fixed_amount',
-              value: String(parseFloat(orderDiscountValue) || 0),
-              title: orderDiscountReason || 'Custom Discount',
-              description: orderDiscountReason || 'Custom Discount',
-          };
+        // Custom amount/percentage discount
+        draftData.applied_discount = {
+          value_type: orderDiscountType === 'percentage' ? 'percentage' : 'fixed_amount',
+          value: String(parseFloat(orderDiscountValue) || 0),
+          title: orderDiscountReason || 'Custom Discount',
+          description: orderDiscountReason || 'Custom Discount',
+        };
       } else if (appliedCodeDiscount && (parseFloat(appliedCodeDiscount.value) || 0) > 0) {
-          // Selected discount code — applied as its resolved value, labelled with the code.
-          draftData.applied_discount = {
-              value_type: appliedCodeDiscount.valueType === 'percentage' ? 'percentage' : 'fixed_amount',
-              value: String(parseFloat(appliedCodeDiscount.value) || 0),
-              title: appliedCodeDiscount.code,
-              description: `Discount code ${appliedCodeDiscount.code}`,
-          };
+        // Selected discount code — applied as its resolved value, labelled with the code.
+        draftData.applied_discount = {
+          value_type: appliedCodeDiscount.valueType === 'percentage' ? 'percentage' : 'fixed_amount',
+          value: String(parseFloat(appliedCodeDiscount.value) || 0),
+          title: appliedCodeDiscount.code,
+          description: `Discount code ${appliedCodeDiscount.code}`,
+        };
       }
 
       console.log('--- SHOPIFY DRAFT ORDER PAYLOAD ---');
@@ -5272,107 +5546,109 @@ function OrderCreate({ context = {}, setRoute }) {
 
       // REST API does not support top-level `phone` on draft orders — use GraphQL to set Contact Information
       try {
-          const gqlInput = { phone: normalizedPhone };
-          if (custEmail && custEmail.trim()) gqlInput.email = custEmail.trim();
-          const gqlRes = await fetch('/shopify-v2/graphql.json', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  query: `mutation draftOrderUpdate($id: ID!, $input: DraftOrderInput!) {
+        const gqlInput = { phone: normalizedPhone };
+        if (custEmail && custEmail.trim()) gqlInput.email = custEmail.trim();
+        const gqlRes = await fetch('/shopify-v2/graphql.json', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `mutation draftOrderUpdate($id: ID!, $input: DraftOrderInput!) {
                       draftOrderUpdate(id: $id, input: $input) {
                           draftOrder { id phone email }
                           userErrors { field message }
                       }
                   }`,
-                  variables: {
-                      id: draftRes.admin_graphql_api_id,
-                      input: gqlInput
-                  }
-              })
-          });
-          const gqlData = await gqlRes.json();
-          const errs = gqlData?.data?.draftOrderUpdate?.userErrors;
-          if (errs && errs.length > 0) {
-              console.warn('--- DRAFT PHONE UPDATE ERRORS ---', errs);
-          } else {
-              console.log('--- DRAFT CONTACT INFO UPDATED ---', gqlData?.data?.draftOrderUpdate?.draftOrder);
-          }
+            variables: {
+              id: draftRes.admin_graphql_api_id,
+              input: gqlInput
+            }
+          })
+        });
+        const gqlData = await gqlRes.json();
+        const errs = gqlData?.data?.draftOrderUpdate?.userErrors;
+        if (errs && errs.length > 0) {
+          console.warn('--- DRAFT PHONE UPDATE ERRORS ---', errs);
+        } else {
+          console.log('--- DRAFT CONTACT INFO UPDATED ---', gqlData?.data?.draftOrderUpdate?.draftOrder);
+        }
       } catch (gqlErr) {
-          console.warn('--- DRAFT PHONE UPDATE FAILED (non-fatal) ---', gqlErr.message);
+        console.warn('--- DRAFT PHONE UPDATE FAILED (non-fatal) ---', gqlErr.message);
       }
 
       // Complete to Active Order if requested
       let finalOrderId = draftRes.id;
       if (mode === 'active') {
-          try {
-              console.log('--- CREATING ACTIVE ORDER (explicit payment method) ---');
-              // Shopify's draft-complete only ever records the payment as the generic "manual"
-              // gateway. To show a real payment method we instead build the order from the
-              // draft's already-computed totals and attach an explicit payment transaction:
-              //   Prepaid → paid, gateway "Standard (Prepaid)"
-              //   COD (incl. partial-payment) → payment pending, gateway "Cash on Delivery (COD)"
-              // then discard the draft. Totals are taken straight from the draft so they match.
-              const PAYMENT_GATEWAY_PREPAID = 'Standard (Prepaid)';
-              const PAYMENT_GATEWAY_COD = 'Cash on Delivery (COD)';
-              const isPrepaid = pay === "Prepaid";
-              const d = draftRes;
-              const orderPayload = { order: {
-                  line_items: (d.line_items || []).map(li => {
-                      const item = { quantity: li.quantity, price: li.price };
-                      if (li.variant_id) item.variant_id = li.variant_id;
-                      if (li.title) item.title = li.title;
-                      if (li.applied_discount) item.applied_discount = li.applied_discount;
-                      return item;
-                  }),
-                  shipping_lines: d.shipping_line
-                      ? [{ title: d.shipping_line.title, price: d.shipping_line.price, code: d.shipping_line.code || 'custom' }]
-                      : [],
-                  tags: d.tags || draftData.tags,
-                  financial_status: isPrepaid ? 'paid' : 'pending',
-                  transactions: [{
-                      kind: 'sale',
-                      status: isPrepaid ? 'success' : 'pending',
-                      amount: d.total_price,
-                      gateway: isPrepaid ? PAYMENT_GATEWAY_PREPAID : PAYMENT_GATEWAY_COD,
-                  }],
-                  send_receipt: false,
-                  inventory_behaviour: 'decrement_obeying_policy',
-              }};
-              if (d.customer?.id) orderPayload.order.customer = { id: d.customer.id };
-              if (d.email) orderPayload.order.email = d.email;
-              if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
-              if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
-              // Order-level discount → discount_codes (the Orders API has no order-level applied_discount).
-              if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
-                  orderPayload.order.discount_codes = [{
-                      code: d.applied_discount.title || 'Discount',
-                      amount: d.applied_discount.amount,
-                      type: 'fixed_amount',
-                  }];
-              }
-
-              const orderReq = await fetch('/shopify-v2/orders.json', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(orderPayload),
-              });
-              const orderResData = await orderReq.json();
-              if (!orderReq.ok || !orderResData.order) {
-                  throw new Error(orderResData.errors ? JSON.stringify(orderResData.errors) : orderReq.statusText);
-              }
-              finalOrderId = orderResData.order.id;
-              console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, orderResData.order.payment_gateway_names);
-
-              // The draft was only needed to compute prices/shipping/discounts — discard it.
-              fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => {});
-          } catch (compErr) {
-              console.error('--- ACTIVE ORDER ERROR ---', compErr);
-              throw new Error('Failed to create active order: ' + compErr.message);
+        try {
+          console.log('--- CREATING ACTIVE ORDER (explicit payment method) ---');
+          // Shopify's draft-complete only ever records the payment as the generic "manual"
+          // gateway. To show a real payment method we instead build the order from the
+          // draft's already-computed totals and attach an explicit payment transaction:
+          //   Prepaid → paid, gateway "Standard (Prepaid)"
+          //   COD (incl. partial-payment) → payment pending, gateway "Cash on Delivery (COD)"
+          // then discard the draft. Totals are taken straight from the draft so they match.
+          const PAYMENT_GATEWAY_PREPAID = 'Standard (Prepaid)';
+          const PAYMENT_GATEWAY_COD = 'Cash on Delivery (COD)';
+          const isPrepaid = pay === "Prepaid";
+          const d = draftRes;
+          const orderPayload = {
+            order: {
+              line_items: (d.line_items || []).map(li => {
+                const item = { quantity: li.quantity, price: li.price };
+                if (li.variant_id) item.variant_id = li.variant_id;
+                if (li.title) item.title = li.title;
+                if (li.applied_discount) item.applied_discount = li.applied_discount;
+                return item;
+              }),
+              shipping_lines: d.shipping_line
+                ? [{ title: d.shipping_line.title, price: d.shipping_line.price, code: d.shipping_line.code || 'custom' }]
+                : [],
+              tags: d.tags || draftData.tags,
+              financial_status: isPrepaid ? 'paid' : 'pending',
+              transactions: [{
+                kind: 'sale',
+                status: isPrepaid ? 'success' : 'pending',
+                amount: d.total_price,
+                gateway: isPrepaid ? PAYMENT_GATEWAY_PREPAID : PAYMENT_GATEWAY_COD,
+              }],
+              send_receipt: false,
+              inventory_behaviour: 'decrement_obeying_policy',
+            }
+          };
+          if (d.customer?.id) orderPayload.order.customer = { id: d.customer.id };
+          if (d.email) orderPayload.order.email = d.email;
+          if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
+          if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
+          // Order-level discount → discount_codes (the Orders API has no order-level applied_discount).
+          if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
+            orderPayload.order.discount_codes = [{
+              code: d.applied_discount.title || 'Discount',
+              amount: d.applied_discount.amount,
+              type: 'fixed_amount',
+            }];
           }
+
+          const orderReq = await fetch('/shopify-v2/orders.json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderPayload),
+          });
+          const orderResData = await orderReq.json();
+          if (!orderReq.ok || !orderResData.order) {
+            throw new Error(orderResData.errors ? JSON.stringify(orderResData.errors) : orderReq.statusText);
+          }
+          finalOrderId = orderResData.order.id;
+          console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, orderResData.order.payment_gateway_names);
+
+          // The draft was only needed to compute prices/shipping/discounts — discard it.
+          fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => { });
+        } catch (compErr) {
+          console.error('--- ACTIVE ORDER ERROR ---', compErr);
+          throw new Error('Failed to create active order: ' + compErr.message);
+        }
       }
 
       const gscriptUrl = localStorage.getItem('crm_gscript_url') || '/api/leads';
-      
+
       const payload = {
         phone: rawPhone,
         updates: {
@@ -5460,8 +5736,8 @@ function OrderCreate({ context = {}, setRoute }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (shippingRates.length === 0) return;
-    const codRates     = shippingRates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
-    const prepaidRate  = shippingRates.find(r => /prepaid/i.test(r.title));
+    const codRates = shippingRates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
+    const prepaidRate = shippingRates.find(r => /prepaid/i.test(r.title));
     if (pay === "COD" && codRates.length > 0) {
       setSelectedShipping(codRates[0]);
     } else if (pay === "Prepaid") {
@@ -5721,7 +5997,7 @@ function OrderCreate({ context = {}, setRoute }) {
         // Auto-select based on initial payment method (default is Prepaid)
         if (!selectedShipping && !useCustomShipping) {
           const prepaidRate = rates.find(r => /prepaid/i.test(r.title));
-          const codRates    = rates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
+          const codRates = rates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
           setSelectedShipping(prepaidRate || codRates[0] || null);
         }
       } catch (err) {
@@ -5797,12 +6073,12 @@ function OrderCreate({ context = {}, setRoute }) {
   const shipping = pay === "COD"
     ? (partialPaymentMode ? 0
       : useCustomShipping ? (parseFloat(customShippingPrice) || 0)
-      : (selectedShipping ? selectedShipping.price : 0))
+        : (selectedShipping ? selectedShipping.price : 0))
     : 0;
   const shippingLabel = pay === "COD"
     ? (partialPaymentMode ? 'partial'
       : useCustomShipping ? (customShippingTitle.trim() || 'Custom Shipping')
-      : (selectedShipping ? selectedShipping.title : 'Free'))
+        : (selectedShipping ? selectedShipping.title : 'Free'))
     : "Free";
   // A manual order discount is either a custom amount/percentage OR a selected code.
   // Partial-payment COD applies an "advance received" discount instead, and Shopify draft
@@ -6163,7 +6439,7 @@ function OrderCreate({ context = {}, setRoute }) {
                 </span>
                 {cust.allAddresses.map((addr, i) => {
                   const label = [addr.address1, addr.city, addr.zip].filter(Boolean).join(', ');
-                  const isActive = (addr.address1 || '') === shippingAddress && (addr.zip ? String(addr.zip).replace(/\D/g,'').slice(0,6) : '') === pincode;
+                  const isActive = (addr.address1 || '') === shippingAddress && (addr.zip ? String(addr.zip).replace(/\D/g, '').slice(0, 6) : '') === pincode;
                   return (
                     <button
                       key={i}
@@ -6254,52 +6530,52 @@ function OrderCreate({ context = {}, setRoute }) {
               @keyframes shimmerPulse { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
               .skel-box { background: var(--surface-3); border-radius: 4px; animation: shimmerPulse 1.4s ease-in-out infinite; }
             `}</style>
-            
+
             {differentBillingAddress && (
               <>
                 <div className="divider" style={{ margin: "20px -20px" }} />
                 <div className="section-title" style={{ marginBottom: 12 }}>Billing address</div>
                 <div className="grid-12">
-                <div className="span-4 field"><span className="lbl">First name</span><input className="input" value={billingFirstName} onChange={e => setBillingFirstName(e.target.value)} placeholder="First name" /></div>
-                <div className="span-4 field"><span className="lbl">Last name</span><input className="input" value={billingLastName} onChange={e => setBillingLastName(e.target.value)} placeholder="Last name" /></div>
-                <div className="span-4 field"><span className="lbl">Phone number</span><input className="input" value={billingPhone} onChange={e => setBillingPhone(e.target.value)} placeholder="Phone" /></div>
-                <div className="span-12 field"><span className="lbl">Address *</span><input className="input" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="House / flat / street" /></div>
-                <div className="span-6 field"><span className="lbl">Landmark</span><input className="input" value={billingLandmark} onChange={e => setBillingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>
-                <div className="span-6 field"><span className="lbl">Country</span>
-                  <select className="select" value={billingCountry} onChange={e => setBillingCountry(e.target.value)}>
-                    {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="span-4 field">
-                  <span className="lbl">City *</span>
-                  {billingPincodeLoading
-                    ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
-                    : <input className="input" value={billingCity} onChange={e => setBillingCity(e.target.value)} placeholder="Mumbai" />}
-                </div>
-                <div className="span-4 field">
-                  <span className="lbl">State *</span>
-                  {billingPincodeLoading
-                    ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
-                    : (
-                      <select className="select" value={INDIAN_STATES.includes(billingStateName) ? billingStateName : ""} onChange={e => setBillingStateName(e.target.value)}>
-                        <option value="" disabled>Select State</option>
-                        {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    )
-                  }
-                </div>
-                <div className="span-4 field">
-                  <span className="lbl">Pincode *</span>
-                  <div style={{ position: 'relative' }}>
-                    <input className="input num" value={billingPincode} onChange={e => setBillingPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: billingPincodeLoading ? 36 : undefined }} />
-                    {billingPincodeLoading && (
-                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex' }}>
-                        <span className="pincode-spinner" />
-                      </span>
-                    )}
+                  <div className="span-4 field"><span className="lbl">First name</span><input className="input" value={billingFirstName} onChange={e => setBillingFirstName(e.target.value)} placeholder="First name" /></div>
+                  <div className="span-4 field"><span className="lbl">Last name</span><input className="input" value={billingLastName} onChange={e => setBillingLastName(e.target.value)} placeholder="Last name" /></div>
+                  <div className="span-4 field"><span className="lbl">Phone number</span><input className="input" value={billingPhone} onChange={e => setBillingPhone(e.target.value)} placeholder="Phone" /></div>
+                  <div className="span-12 field"><span className="lbl">Address *</span><input className="input" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="House / flat / street" /></div>
+                  <div className="span-6 field"><span className="lbl">Landmark</span><input className="input" value={billingLandmark} onChange={e => setBillingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>
+                  <div className="span-6 field"><span className="lbl">Country</span>
+                    <select className="select" value={billingCountry} onChange={e => setBillingCountry(e.target.value)}>
+                      {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </div>
-                </div>
-                {billingAutofillMessage && <div className="span-12 hstack-6" style={{ color: billingAutofillMessage.startsWith('Auto-filled') ? "var(--risk-low)" : "var(--risk-moderate)", fontSize: 12 }}><Icon name={billingAutofillMessage.startsWith('Auto-filled') ? "check" : "alert_circle"} size={13} /> {billingAutofillMessage}</div>}
+                  <div className="span-4 field">
+                    <span className="lbl">City *</span>
+                    {billingPincodeLoading
+                      ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
+                      : <input className="input" value={billingCity} onChange={e => setBillingCity(e.target.value)} placeholder="Mumbai" />}
+                  </div>
+                  <div className="span-4 field">
+                    <span className="lbl">State *</span>
+                    {billingPincodeLoading
+                      ? <div className="skel-box" style={{ height: 36, borderRadius: 8 }} />
+                      : (
+                        <select className="select" value={INDIAN_STATES.includes(billingStateName) ? billingStateName : ""} onChange={e => setBillingStateName(e.target.value)}>
+                          <option value="" disabled>Select State</option>
+                          {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      )
+                    }
+                  </div>
+                  <div className="span-4 field">
+                    <span className="lbl">Pincode *</span>
+                    <div style={{ position: 'relative' }}>
+                      <input className="input num" value={billingPincode} onChange={e => setBillingPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: billingPincodeLoading ? 36 : undefined }} />
+                      {billingPincodeLoading && (
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex' }}>
+                          <span className="pincode-spinner" />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {billingAutofillMessage && <div className="span-12 hstack-6" style={{ color: billingAutofillMessage.startsWith('Auto-filled') ? "var(--risk-low)" : "var(--risk-moderate)", fontSize: 12 }}><Icon name={billingAutofillMessage.startsWith('Auto-filled') ? "check" : "alert_circle"} size={13} /> {billingAutofillMessage}</div>}
                 </div>
               </>
             )}
@@ -6316,7 +6592,7 @@ function OrderCreate({ context = {}, setRoute }) {
             </div>
             <div style={{ position: "relative", margin: "12px 0 8px" }}>
               <input className="input" value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search products by name..." style={{ paddingLeft: 34 }} />
-              <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={14}/></span>
+              <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={14} /></span>
             </div>
             {isSearchingProducts && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Searching products...</div>}
             {searchResults.length > 0 && (
@@ -6381,8 +6657,8 @@ function OrderCreate({ context = {}, setRoute }) {
                       <div className="fw5" style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>{p.name}</div>
                       <div className="muted" style={{ fontSize: 12 }}>{p.subtitle} · SKU <span className="mono">{p.sku}</span></div>
                     </div>
-                    <div 
-                      className="stack-2 num fw6" 
+                    <div
+                      className="stack-2 num fw6"
                       style={{ width: 92, position: "relative", textAlign: "right" }}
                     >
                       <button
@@ -6403,14 +6679,14 @@ function OrderCreate({ context = {}, setRoute }) {
                         Rs. {money(getDiscountedUnitPrice(p))}
                         {hoveredDiscountItemId === p.id && hasItemDiscount(p) && (
                           <div style={{ position: "absolute", bottom: "100%", right: "50%", transform: "translateX(50%)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 12px 32px rgba(15,23,42,.18)", color: "var(--fg)", fontWeight: 500, whiteSpace: "nowrap", zIndex: 10 }}>
-                            <Icon name="settings" size={15} color="var(--muted)" /> 
+                            <Icon name="settings" size={15} color="var(--muted)" />
                             {p.discountReason ? `${p.discountReason}: ` : 'discount: '}-Rs. {money(discountAmount)}
                           </div>
                         )}
                       </button>
                       {hasItemDiscount(p) && (
-                        <div 
-                          className="muted" 
+                        <div
+                          className="muted"
                           style={{ textDecoration: "line-through", fontSize: 12, cursor: "default", position: "relative" }}
                         >
                           Rs. {money(p.price)}
@@ -6418,36 +6694,36 @@ function OrderCreate({ context = {}, setRoute }) {
                       )}
                       {activeDiscountItemId === p.id && (
                         <>
-                          <div 
-                            style={{ position: 'fixed', inset: 0, zIndex: 19 }} 
-                            onClick={(e) => { e.stopPropagation(); setActiveDiscountItemId(null); }} 
+                          <div
+                            style={{ position: 'fixed', inset: 0, zIndex: 19 }}
+                            onClick={(e) => { e.stopPropagation(); setActiveDiscountItemId(null); }}
                           />
                           <div style={{ position: "absolute", ...(discountPopupPos === 'top' ? { bottom: 30 } : { top: 30 }), right: -160, width: 280, padding: 18, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 18px 48px rgba(15,23,42,.18)", zIndex: 20, textAlign: "left" }}>
                             <div className="field" style={{ marginBottom: 14 }}>
-                            <span className="lbl" style={{ color: "var(--fg)" }}>Discount type</span>
-                            <select className="select" style={{ paddingRight: 32 }} value={p.discountType || "amount"} onChange={e => updateItemDiscount(p.id, "discountType", e.target.value)}>
-                              <option value="amount">Amount</option>
-                              <option value="percentage">Percentage</option>
-                            </select>
-                          </div>
-                          <div className="field" style={{ marginBottom: 14 }}>
-                            <span className="lbl" style={{ color: "var(--fg)" }}>Discount value (per unit)</span>
-                            <div style={{ display: "flex", alignItems: "center", height: 40, border: "1px solid var(--accent)", borderRadius: 8, boxShadow: "0 0 0 2px var(--accent-soft)", overflow: "hidden" }}>
-                              <span className="muted" style={{ paddingLeft: 12 }}>{p.discountType === "percentage" ? "%" : "Rs."}</span>
-                              <input className="input" type="number" min="0" max={p.discountType === "percentage" ? 100 : p.price} value={p.discountValue || ""} onChange={e => updateItemDiscount(p.id, "discountValue", e.target.value)} placeholder="0.00" style={{ height: "100%", border: 0, boxShadow: "none", paddingLeft: 8 }} />
-                              <span className="muted" style={{ paddingRight: 12 }}>{p.discountType === "percentage" ? "" : "INR"}</span>
+                              <span className="lbl" style={{ color: "var(--fg)" }}>Discount type</span>
+                              <select className="select" style={{ paddingRight: 32 }} value={p.discountType || "amount"} onChange={e => updateItemDiscount(p.id, "discountType", e.target.value)}>
+                                <option value="amount">Amount</option>
+                                <option value="percentage">Percentage</option>
+                              </select>
                             </div>
-                          </div>
-                          <div className="field" style={{ marginBottom: 8 }}>
-                            <span className="lbl" style={{ color: "var(--fg)" }}>Reason for discount</span>
-                            <input className="input" value={p.discountReason || ""} onChange={e => updateItemDiscount(p.id, "discountReason", e.target.value)} />
-                          </div>
-                          <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>Visible to customer</div>
-                          <div className="hstack-8">
-                            {hasItemDiscount(p) && <button className="btn sm ghost" onClick={() => updateItemDiscount(p.id, "discountValue", "")}>Clear</button>}
-                            <span className="spacer" />
-                            <button className="btn sm primary" onClick={() => setActiveDiscountItemId(null)}>Done</button>
-                          </div>
+                            <div className="field" style={{ marginBottom: 14 }}>
+                              <span className="lbl" style={{ color: "var(--fg)" }}>Discount value (per unit)</span>
+                              <div style={{ display: "flex", alignItems: "center", height: 40, border: "1px solid var(--accent)", borderRadius: 8, boxShadow: "0 0 0 2px var(--accent-soft)", overflow: "hidden" }}>
+                                <span className="muted" style={{ paddingLeft: 12 }}>{p.discountType === "percentage" ? "%" : "Rs."}</span>
+                                <input className="input" type="number" min="0" max={p.discountType === "percentage" ? 100 : p.price} value={p.discountValue || ""} onChange={e => updateItemDiscount(p.id, "discountValue", e.target.value)} placeholder="0.00" style={{ height: "100%", border: 0, boxShadow: "none", paddingLeft: 8 }} />
+                                <span className="muted" style={{ paddingRight: 12 }}>{p.discountType === "percentage" ? "" : "INR"}</span>
+                              </div>
+                            </div>
+                            <div className="field" style={{ marginBottom: 8 }}>
+                              <span className="lbl" style={{ color: "var(--fg)" }}>Reason for discount</span>
+                              <input className="input" value={p.discountReason || ""} onChange={e => updateItemDiscount(p.id, "discountReason", e.target.value)} />
+                            </div>
+                            <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>Visible to customer</div>
+                            <div className="hstack-8">
+                              {hasItemDiscount(p) && <button className="btn sm ghost" onClick={() => updateItemDiscount(p.id, "discountValue", "")}>Clear</button>}
+                              <span className="spacer" />
+                              <button className="btn sm primary" onClick={() => setActiveDiscountItemId(null)}>Done</button>
+                            </div>
                           </div>
                         </>
                       )}
@@ -6611,7 +6887,7 @@ function OrderCreate({ context = {}, setRoute }) {
           <div className="card">
             <div className="section-title" style={{ marginBottom: 10 }}>Payment *</div>
             <div className="stack-8">
-              {["Prepaid","COD"].map(p => (
+              {["Prepaid", "COD"].map(p => (
                 <div key={p} className="stack-8">
                   <label className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
                     <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
@@ -6635,16 +6911,16 @@ function OrderCreate({ context = {}, setRoute }) {
                           {!useCustomShipping && !partialPaymentMode && shippingRates
                             .filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title))
                             .map((rate, i) => {
-                            const isSel = selectedShipping?.id === rate.id;
-                            return (
-                            <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                              <input type="radio" name="shippingRate" checked={isSel} onChange={() => setSelectedShipping(rate)} style={{ accentColor: "var(--accent)" }} />
-                              <span style={{ fontSize: 13 }}>{rate.title}</span>
-                              <span className="spacer" />
-                              <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
-                            </label>
-                            );
-                          })}
+                              const isSel = selectedShipping?.id === rate.id;
+                              return (
+                                <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                                  <input type="radio" name="shippingRate" checked={isSel} onChange={() => setSelectedShipping(rate)} style={{ accentColor: "var(--accent)" }} />
+                                  <span style={{ fontSize: 13 }}>{rate.title}</span>
+                                  <span className="spacer" />
+                                  <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
+                                </label>
+                              );
+                            })}
 
                           {/* Partial Payment Received — Rs. 0 shipping, amount deducted from COD total */}
                           {!useCustomShipping && (
@@ -6732,14 +7008,14 @@ const formatOrderDate = (dateString) => {
   const d = new Date(dateString);
   const now = new Date();
   const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  
+
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   const isYesterday = d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear();
 
   const diffTime = Math.abs(now - d);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
   let dayStr = "";
   if (isToday) {
     dayStr = "Today";
@@ -6750,7 +7026,7 @@ const formatOrderDate = (dateString) => {
   } else {
     dayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
   }
-  
+
   const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
   return `${dayStr} at ${timeStr}`;
 };
@@ -6807,7 +7083,7 @@ function CRMOrders({ setRoute, openCustomer }) {
     if (showOnlyMyOrders) { list = list.filter(o => o['Updated By'] === myName); }
     if (!search.trim()) return list;
     const q = search.toLowerCase();
-    return list.filter(o => 
+    return list.filter(o =>
       (o['First Name'] || '').toLowerCase().includes(q) ||
       (o['Last Name'] || '').toLowerCase().includes(q) ||
       (o['Phone Number'] || '').toLowerCase().includes(q) ||
@@ -6903,8 +7179,8 @@ function CRMOrders({ setRoute, openCustomer }) {
                       <td className="muted" style={{ textAlign: "center", position: "relative" }}>
                         {shopifyOrder && shopifyOrder.items ? (
                           <>
-                            <button 
-                              className="item-hover-btn" 
+                            <button
+                              className="item-hover-btn"
                               style={{ display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", fontWeight: "normal", padding: "4px 8px" }}
                               onClick={(e) => { e.stopPropagation(); setExpandedOrderId(expandedOrderId === i ? null : i); }}
                             >
@@ -6946,21 +7222,21 @@ function CRMOrders({ setRoute, openCustomer }) {
                         {o['Updated By'] ? <Badge tone='low'>{o['Updated By']}</Badge> : '-'}
                       </td>
                       <td style={{ whiteSpace: "nowrap", textAlign: "right" }}>
-                        <button 
-                          className="btn sm" 
+                        <button
+                          className="btn sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (setRoute) {
-                              setRoute('order_create', { 
-                                customer: { 
-                                  name: ((o['First Name'] || '') + ' ' + (o['Last Name'] || '')).trim(), 
-                                  phone: o['Phone Number'] || '', 
-                                  pincode: o['Pin Code'] || '', 
-                                  city: o['District/City'] || '', 
-                                  state: o['State'] || '', 
+                              setRoute('order_create', {
+                                customer: {
+                                  name: ((o['First Name'] || '') + ' ' + (o['Last Name'] || '')).trim(),
+                                  phone: o['Phone Number'] || '',
+                                  pincode: o['Pin Code'] || '',
+                                  city: o['District/City'] || '',
+                                  state: o['State'] || '',
                                   address: o['Address'] || '',
                                   landmark: o['Landmark'] || ''
-                                } 
+                                }
                               });
                             }
                           }}
@@ -7027,8 +7303,10 @@ function OrderDateRangeFilter({ datePreset, customRange, onApply }) {
     const active = tmpPreset === value;
     return (
       <button key={value} onClick={() => { setTmpPreset(value); if (value !== 'custom') setTmp(resolveDateRange(value, null)); }}
-        style={{ textAlign: 'left', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-          background: active ? 'var(--accent)' : 'transparent', color: active ? '#fff' : 'var(--text-main)' }}>
+        style={{
+          textAlign: 'left', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+          background: active ? 'var(--accent)' : 'transparent', color: active ? '#fff' : 'var(--text-main)'
+        }}>
         {label}
       </button>
     );
@@ -7041,8 +7319,10 @@ function OrderDateRangeFilter({ datePreset, customRange, onApply }) {
         <Icon name="calendar" size={14} /> {triggerLabel} <Icon name="chevron_down" size={14} />
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 100, background: 'var(--surface)',
-          border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.35)', display: 'flex', overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 100, background: 'var(--surface)',
+          border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.35)', display: 'flex', overflow: 'hidden'
+        }}>
           <div style={{ display: 'flex', flexDirection: 'column', padding: 8, borderRight: '1px solid var(--border)' }}>
             {DATE_PRESETS.map(p => presetBtn(p.value, p.label))}
             {presetBtn('custom', 'Custom Range')}
@@ -7252,8 +7532,8 @@ function OrdersHistory({ setRoute, openCustomer }) {
                     </div>
                   </td>
                   <td className="muted" style={{ textAlign: "center", position: "relative" }}>
-                    <button 
-                      className="item-hover-btn" 
+                    <button
+                      className="item-hover-btn"
                       style={{ display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", fontWeight: "normal", padding: "4px 8px" }}
                       onClick={(e) => { e.stopPropagation(); setExpandedOrderId(expandedOrderId === o.id ? null : o.id); }}
                     >
@@ -7461,14 +7741,14 @@ function OrderStatusBadge({ status }) {
 
 
 const STAGES = [
-  { key: "Awaiting tracking", label: "Awaiting",          short: "AW", color: "var(--muted)" },
-  { key: "Shipped",           label: "In transit",        short: "SH", color: "#5b8def" },
-  { key: "Out for delivery",  label: "Out for delivery",  short: "OFD",color: "var(--risk-moderate)" },
-  { key: "Exception",         label: "Exception",         short: "EX", color: "#e8a44c" },
-  { key: "Delivered",         label: "Delivered",         short: "DL", color: "var(--risk-low)" },
-  { key: "Failed delivery",   label: "Failed",            short: "FL", color: "var(--risk-critical)" },
+  { key: "Awaiting tracking", label: "Awaiting", short: "AW", color: "var(--muted)" },
+  { key: "Shipped", label: "In transit", short: "SH", color: "#5b8def" },
+  { key: "Out for delivery", label: "Out for delivery", short: "OFD", color: "var(--risk-moderate)" },
+  { key: "Exception", label: "Exception", short: "EX", color: "#e8a44c" },
+  { key: "Delivered", label: "Delivered", short: "DL", color: "var(--risk-low)" },
+  { key: "Failed delivery", label: "Failed", short: "FL", color: "var(--risk-critical)" },
 ];
-const STAGE_ORDER = ["Shipped","Out for delivery","Delivered"];
+const STAGE_ORDER = ["Shipped", "Out for delivery", "Delivered"];
 function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 
 function ShipmentsScreen({ ctx }) {
@@ -7574,11 +7854,11 @@ function ShipmentsScreen({ ctx }) {
       const sa = e.shippingAddress || {};
       const hasCustomer = !!(customerObj.name || customerObj.phone);
       const customer = hasCustomer ? {
-        name:    customerObj.name || 'Unknown',
-        phone:   customerObj.phone || '',
-        email:   customerObj.email || '',
-        city:    sa.city    || '',
-        state:   sa.state   || '',
+        name: customerObj.name || 'Unknown',
+        phone: customerObj.phone || '',
+        email: customerObj.email || '',
+        city: sa.city || '',
+        state: sa.state || '',
         pincode: sa.pincode || '',
         address: sa.address || '',
       } : null;
@@ -7586,27 +7866,27 @@ function ShipmentsScreen({ ctx }) {
       return {
         id: awb,
         awb,
-        courier:      e.courier || 'Nimbus',
+        courier: e.courier || 'Nimbus',
         status,
-        hasTracking:  events.length > 0,
-        rawStatus:    latest.status   || e.rawStatus     || '',
-        lastUpdate:   latest.event_time || e.lastEventTime || '',
-        reachedAt:    radEvent?.event_time || '',
+        hasTracking: events.length > 0,
+        rawStatus: latest.status || e.rawStatus || '',
+        lastUpdate: latest.event_time || e.lastEventTime || '',
+        reachedAt: radEvent?.event_time || '',
         reachedLocation: radEvent?.location || '',
         lastLocation: latest.location || e.lastLocation || '',
-        lastMessage:  latest.message  || e.lastMessage  || '',
-        rtoAwb:       latest.rto_awb  || e.rtoAwb       || '',
-        eventCount:   events.length,
-        orderId:      e.orderId   || null,
-        orderName:    e.orderNumber || (e.orderId ? `#${e.orderId}` : null),
-        orderTotal:   typeof e.amount === 'number' ? e.amount : null,
-        paymentMode:  normalizePaymentLabel(e.paymentMode) || null,
-        itemCount:    typeof e.itemCount === 'number' ? e.itemCount : null,
-        items:        Array.isArray(e.items) ? e.items : [],
+        lastMessage: latest.message || e.lastMessage || '',
+        rtoAwb: latest.rto_awb || e.rtoAwb || '',
+        eventCount: events.length,
+        orderId: e.orderId || null,
+        orderName: e.orderNumber || (e.orderId ? `#${e.orderId}` : null),
+        orderTotal: typeof e.amount === 'number' ? e.amount : null,
+        paymentMode: normalizePaymentLabel(e.paymentMode) || null,
+        itemCount: typeof e.itemCount === 'number' ? e.itemCount : null,
+        items: Array.isArray(e.items) ? e.items : [],
         customer,
-        phoneKey:     e.phoneKey || null,
-        enriching:    !customer && events.length > 0,
-        timeline:     events,
+        phoneKey: e.phoneKey || null,
+        enriching: !customer && events.length > 0,
+        timeline: events,
       };
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
   }, [trackingMap, enrichedMap]);
@@ -7642,7 +7922,7 @@ function ShipmentsScreen({ ctx }) {
   const filteredList = useMemoS(() => {
     let list = tab === 'all' ? mergedShipments
       : tab === 'attention' ? mergedShipments.filter(s => s.status === 'Failed delivery')
-      : mergedShipments.filter(s => s.status === tab);
+        : mergedShipments.filter(s => s.status === tab);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(s =>
@@ -7700,10 +7980,10 @@ function ShipmentsScreen({ ctx }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             awb,
-            status:     latest.status,
-            location:   latest.location,
+            status: latest.status,
+            location: latest.location,
             event_time: latest.event_time,
-            message:    latest.message,
+            message: latest.message,
           }),
         });
         const j = await r.json();
@@ -7758,9 +8038,9 @@ function ShipmentsScreen({ ctx }) {
 
       {/* KPIs */}
       <div className="grid-12">
-        <div className="span-3"><KPI feature label="In transit"        value={inTransit.toString()}       icon="truck" /></div>
-        <div className="span-3"><KPI         label="Out for delivery"  value={counts["Out for delivery"]?.toString() || "0"} icon="package" /></div>
-        <div className="span-3"><KPI         label="Delivered"         value={delivered.toString()}       icon="check" /></div>
+        <div className="span-3"><KPI feature label="In transit" value={inTransit.toString()} icon="truck" /></div>
+        <div className="span-3"><KPI label="Out for delivery" value={counts["Out for delivery"]?.toString() || "0"} icon="package" /></div>
+        <div className="span-3"><KPI label="Delivered" value={delivered.toString()} icon="check" /></div>
         <div className="span-3 needs-attention"><KPIAttention label="Needs attention" value={(failed + exceptionCount).toString()} sla={exceptionCount} failed={failed} /></div>
       </div>
 
@@ -7878,7 +8158,7 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
   const cust = s.customer;
   const isNonShopify = s.orderName && !String(s.orderName).startsWith('#');
   const isEnriching = s.enriching && !isNonShopify;
-  
+
   const Skel = ({ w = 80 }) => <div className="skel-box" style={{ height: 12, width: w, borderRadius: 4 }} />;
   const trackUrl = buildTrackingUrl(trackingUrlTemplate, s.awb);
   const [copied, setCopied] = useState(false);
@@ -8008,11 +8288,11 @@ function StageProgress({ idx, failed, status }) {
 
 // eslint-disable-next-line no-unused-vars
 function SLAChip({ days, failed, delivered }) {
-  if (failed)    return <Badge tone="critical" dot="var(--risk-critical)">Breached</Badge>;
+  if (failed) return <Badge tone="critical" dot="var(--risk-critical)">Breached</Badge>;
   if (delivered) return <Badge tone="low" dot="var(--risk-low)">On time</Badge>;
-  if (days < 0)  return <Badge tone="critical" dot="var(--risk-critical)">{Math.abs(days)}d over</Badge>;
+  if (days < 0) return <Badge tone="critical" dot="var(--risk-critical)">{Math.abs(days)}d over</Badge>;
   if (days === 0) return <Badge tone="moderate" dot="var(--risk-moderate)">Due today</Badge>;
-  if (days <= 1)  return <Badge tone="moderate" dot="var(--risk-moderate)">{days}d left</Badge>;
+  if (days <= 1) return <Badge tone="moderate" dot="var(--risk-moderate)">{days}d left</Badge>;
   return <Badge tone="low" dot="var(--risk-low)">{days}d left</Badge>;
 }
 
@@ -8132,17 +8412,17 @@ function TrackingTimeline({ events, status, failed }) {
           // Dot color: RTO-phase events use orange, plain fail uses red, others use accent
           const color = isPlainFail ? "var(--risk-critical)"
             : isRtoPhase ? "#f97316"   /* orange for all RTO-phase events */
-            : isFirst ? "var(--risk-moderate)"
-            : "var(--accent)";
+              : isFirst ? "var(--risk-moderate)"
+                : "var(--accent)";
 
           // Badge to show next to the event status text
           let badge = null;
-          if (isRtoDelivered)   badge = <Badge tone="critical">RTO Delivered</Badge>;
-          else if (isRtoOfd)    badge = <Badge tone="moderate">RTO Out for Delivery</Badge>;
-          else if (isRtoPhase)  badge = <Badge tone="critical">RTO / In Transit</Badge>;
+          if (isRtoDelivered) badge = <Badge tone="critical">RTO Delivered</Badge>;
+          else if (isRtoOfd) badge = <Badge tone="moderate">RTO Out for Delivery</Badge>;
+          else if (isRtoPhase) badge = <Badge tone="critical">RTO / In Transit</Badge>;
           else if (isPlainFail) badge = <Badge tone="critical">Failed</Badge>;
           else if (isException) badge = <Badge tone="moderate">Exception</Badge>;
-          else if (isFirst)     badge = <Badge tone="moderate">latest</Badge>;
+          else if (isFirst) badge = <Badge tone="moderate">latest</Badge>;
 
           return (
             <div key={i} style={{ position: "relative", paddingLeft: 24 }}>
@@ -8176,11 +8456,11 @@ function TrackingTimeline({ events, status, failed }) {
   // Fallback: show Shopify-based status-only timeline
   const idx = stageIndex(status);
   const fallbackEvents = [
-    { stage: "Placed",           desc: "Order received" },
-    { stage: "Packed",           desc: "Ready to ship" },
-    { stage: "Shipped",          desc: "Handed to courier" },
+    { stage: "Placed", desc: "Order received" },
+    { stage: "Packed", desc: "Ready to ship" },
+    { stage: "Shipped", desc: "Handed to courier" },
     { stage: "Out for delivery", desc: "Out for delivery" },
-    { stage: "Delivered",        desc: "Delivered" },
+    { stage: "Delivered", desc: "Delivered" },
   ];
   return (
     <div>
@@ -8237,7 +8517,7 @@ function RouteMap({ originLabel, destLabel, status }) {
             <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--border)" strokeWidth="0.5" opacity="0.6" />
           </pattern>
           <linearGradient id="route-grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="var(--accent)" stopOpacity="0.3" />
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.3" />
             <stop offset="100%" stopColor="var(--accent)" stopOpacity="1" />
           </linearGradient>
         </defs>
@@ -8312,10 +8592,10 @@ function RouteMap({ originLabel, destLabel, status }) {
 // eslint-disable-next-line no-unused-vars
 function CourierPerformance() {
   const rows = [
-    { name: "Delhivery",  shipped: 2410, success: 96.4, ot: 91.8, color: "var(--accent)" },
-    { name: "Bluedart",   shipped: 1880, success: 94.2, ot: 89.4, color: "var(--accent-2)" },
+    { name: "Delhivery", shipped: 2410, success: 96.4, ot: 91.8, color: "var(--accent)" },
+    { name: "Bluedart", shipped: 1880, success: 94.2, ot: 89.4, color: "var(--accent-2)" },
     { name: "XpressBees", shipped: 1102, success: 92.7, ot: 86.1, color: "var(--risk-moderate)" },
-    { name: "Ekart",      shipped: 840,  success: 89.1, ot: 81.2, color: "var(--risk-high)" },
+    { name: "Ekart", shipped: 840, success: 89.1, ot: 81.2, color: "var(--risk-high)" },
   ];
   return (
     <div className="stack-12">
@@ -8388,9 +8668,9 @@ function MarketingScreen() {
 
     const CATS = [
       { key: "womens-wellness", label: "Women's Wellness", color: "var(--accent)" },
-      { key: "mens-wellness",   label: "Men's Wellness",   color: "var(--accent-2)" },
-      { key: "womens-weight",   label: "Women's Weight",   color: "var(--risk-low)" },
-      { key: "mens-weight",     label: "Men's Weight",     color: "var(--risk-moderate)" },
+      { key: "mens-wellness", label: "Men's Wellness", color: "var(--accent-2)" },
+      { key: "womens-weight", label: "Women's Weight", color: "var(--risk-low)" },
+      { key: "mens-weight", label: "Men's Weight", color: "var(--risk-moderate)" },
     ];
 
     const byQid = {};
@@ -8439,10 +8719,10 @@ function MarketingScreen() {
   const { totalAll, totalFull, totalPartial, totalManual, totalConsulted, totalPurchased, whatsappLeads, compRate, catRows, female, male, other } = stats;
   const maxCat = Math.max(...catRows.map(c => c.count), 1);
   const funnelData = [
-    { stage: "Quiz started",  count: totalFull + totalPartial },
-    { stage: "Completed",     count: totalFull },
-    { stage: "Consulted",     count: totalConsulted },
-    { stage: "Purchased",     count: totalPurchased },
+    { stage: "Quiz started", count: totalFull + totalPartial },
+    { stage: "Completed", count: totalFull },
+    { stage: "Consulted", count: totalConsulted },
+    { stage: "Purchased", count: totalPurchased },
   ];
   const totalGender = female + male + other || 1;
   const femalePct = Math.round((female / totalGender) * 100);
@@ -8501,8 +8781,8 @@ function MarketingScreen() {
           <div style={{ display: "grid", placeItems: "center", padding: "8px 0" }}>
             <DonutChart size={160} thickness={22} centerValue={femalePct + "%"} centerLabel="female" data={[
               { label: "Female", value: female, color: "var(--accent)" },
-              { label: "Male",   value: male,   color: "var(--accent-2)" },
-              { label: "Other",  value: other,  color: "var(--border)" },
+              { label: "Male", value: male, color: "var(--accent-2)" },
+              { label: "Other", value: other, color: "var(--border)" },
             ]} />
           </div>
           <div className="stack-8" style={{ marginTop: 8 }}>
@@ -8520,10 +8800,10 @@ function MarketingScreen() {
           <div className="section-title" style={{ marginBottom: 10 }}>Source breakdown</div>
           <div className="stack-12" style={{ marginTop: 6 }}>
             {[
-              ["Completed quiz", totalFull,    "var(--risk-low)"],
-              ["Partial quiz",   totalPartial, "var(--risk-moderate)"],
-              ["Manual entry",   totalManual,  "var(--accent-2)"],
-              ["WhatsApp leads", whatsappLeads,"var(--risk-high)"],
+              ["Completed quiz", totalFull, "var(--risk-low)"],
+              ["Partial quiz", totalPartial, "var(--risk-moderate)"],
+              ["Manual entry", totalManual, "var(--accent-2)"],
+              ["WhatsApp leads", whatsappLeads, "var(--risk-high)"],
             ].map(([n, v, col]) => {
               const pct = totalAll > 0 ? (v / totalAll) * 100 : 0;
               return (
@@ -8607,15 +8887,15 @@ const PERMISSION_KEYS = [
     key: 'can_access_clinical_review', label: 'Access Clinical Review', icon: 'stethoscope',
     children: ['can_edit_clinical_consulted', 'can_edit_clinical_purchased', 'can_edit_patient_info', 'can_create_manual_patient', 'can_generate_prescription'],
   },
-  { key: 'can_edit_clinical_consulted',  label: 'Mark Patients as Consulted',    icon: 'check',       parent: 'can_access_clinical_review' },
-  { key: 'can_edit_clinical_purchased',  label: 'Mark Patients as Purchased',    icon: 'package',     parent: 'can_access_clinical_review' },
-  { key: 'can_edit_patient_info',        label: 'Edit Patient Information',      icon: 'edit',        parent: 'can_access_clinical_review' },
-  { key: 'can_create_manual_patient',    label: 'Create New Patient Records',    icon: 'user',        parent: 'can_access_clinical_review' },
-  { key: 'can_generate_prescription',    label: 'Generate & Sign Prescriptions', icon: 'pill',        parent: 'can_access_clinical_review' },
-  { key: 'can_create_shopify_orders',    label: 'Create Shopify Orders',         icon: 'shopping' },
-  { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers',      icon: 'users' },
-  { key: 'can_view_prescriptions_tab',   label: 'View Prescriptions Tab (Telesales)', icon: 'pill' },
-  { key: 'can_view_submissions_tab',     label: 'View Submissions Tab (Marketing/Telesales)', icon: 'clipboard' },
+  { key: 'can_edit_clinical_consulted', label: 'Mark Patients as Consulted', icon: 'check', parent: 'can_access_clinical_review' },
+  { key: 'can_edit_clinical_purchased', label: 'Mark Patients as Purchased', icon: 'package', parent: 'can_access_clinical_review' },
+  { key: 'can_edit_patient_info', label: 'Edit Patient Information', icon: 'edit', parent: 'can_access_clinical_review' },
+  { key: 'can_create_manual_patient', label: 'Create New Patient Records', icon: 'user', parent: 'can_access_clinical_review' },
+  { key: 'can_generate_prescription', label: 'Generate & Sign Prescriptions', icon: 'pill', parent: 'can_access_clinical_review' },
+  { key: 'can_create_shopify_orders', label: 'Create Shopify Orders', icon: 'shopping' },
+  { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers', icon: 'users' },
+  { key: 'can_view_prescriptions_tab', label: 'View Prescriptions Tab (Telesales)', icon: 'pill' },
+  { key: 'can_view_submissions_tab', label: 'View Submissions Tab (Marketing/Telesales)', icon: 'clipboard' },
 ];
 
 /* ───────────────────── Data Studio (developer Firestore editor) ───────────────────── */
@@ -8773,14 +9053,14 @@ function DataStudioScreen({ me, initialView = 'full' }) {
     const empty = raw === null || raw === undefined || raw === '';
     const s = String(raw ?? '');
     switch (f.op) {
-      case 'empty':    return empty;
+      case 'empty': return empty;
       case 'notempty': return !empty;
-      case 'eq':       return s === f.value;
-      case 'neq':      return s !== f.value;
+      case 'eq': return s === f.value;
+      case 'neq': return s !== f.value;
       case 'contains': return s.toLowerCase().includes((f.value || '').toLowerCase());
-      case 'gt':       return Number(raw) > Number(f.value);
-      case 'lt':       return Number(raw) < Number(f.value);
-      default:         return true;
+      case 'gt': return Number(raw) > Number(f.value);
+      case 'lt': return Number(raw) < Number(f.value);
+      default: return true;
     }
   };
 
@@ -9164,7 +9444,219 @@ function DataStudioScreen({ me, initialView = 'full' }) {
   );
 }
 
+// Doctors & signatures manager (writes the `doctor_details` collection used by the
+// prescription generator). Mirrors the legacy DoctorManager, native to the new UI.
+function DoctorSignaturesAdmin() {
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const fileRef = useRef(null);
+  const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 3000); };
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'doctor_details'), snap => {
+      setDoctors(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return doctors;
+    return doctors.filter(d => (d.name || '').toLowerCase().includes(q) || (d.registrationNo || '').toLowerCase().includes(q));
+  }, [doctors, search]);
+
+  const openNew = () => setEditing({ id: `doc_${Date.now()}`, name: '', qualification: '', specialization: '', registrationNo: '', phone: '', signatures: [], _isNew: true });
+  const openEdit = (d) => setEditing({ ...d, signatures: d.signatures || [] });
+
+  const save = async () => {
+    if (!editing?.name?.trim()) return showToast('error', 'Doctor name is required.');
+    setSaving(true);
+    try {
+      const { _isNew, ...data } = editing;
+      await setDoc(doc(db, 'doctor_details', editing.id), { ...data, id: editing.id, updatedAt: serverTimestamp() }, { merge: true });
+      setEditing(null);
+      showToast('success', 'Doctor saved.');
+    } catch (e) { showToast('error', 'Save failed: ' + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const uploadSig = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !editing) return;
+    setUploading(true);
+    try {
+      const path = `doctors/${editing.id}/signatures/admin_${Date.now()}`;
+      const r = storageRef(storage, path);
+      await uploadBytes(r, file);
+      const url = await getDownloadURL(r);
+      const updated = [...(editing.signatures || []), { url, storagePath: path }];
+      setEditing(prev => ({ ...prev, signatures: updated }));
+      await setDoc(doc(db, 'doctor_details', editing.id), { ...editing, _isNew: undefined, signatures: updated, id: editing.id }, { merge: true });
+    } catch (err) { showToast('error', 'Upload failed: ' + err.message); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
+  };
+
+  const deleteSig = async (sig, idx) => {
+    if (!window.confirm('Remove this signature?')) return;
+    try {
+      if (sig.storagePath) { try { await deleteObject(storageRef(storage, sig.storagePath)); } catch (_) {} }
+      const updated = (editing.signatures || []).filter((_, i) => i !== idx);
+      setEditing(prev => ({ ...prev, signatures: updated }));
+      await setDoc(doc(db, 'doctor_details', editing.id), { signatures: updated }, { merge: true });
+    } catch (e) { showToast('error', 'Delete failed.'); }
+  };
+
+  const deleteDoctor = async (d) => {
+    if (!window.confirm(`Permanently delete Dr. ${d.name || 'Unnamed'} and all their signatures?`)) return;
+    try {
+      for (const sig of (d.signatures || [])) {
+        if (sig.storagePath) { try { await deleteObject(storageRef(storage, sig.storagePath)); } catch (_) {} }
+      }
+      await deleteDoc(doc(db, 'doctor_details', d.id));
+      showToast('success', 'Doctor deleted.');
+    } catch (e) { showToast('error', 'Delete failed.'); }
+  };
+
+  const Toggle = ({ on, onToggle }) => (
+    <div onClick={onToggle} style={{ width: 36, height: 20, borderRadius: 10, background: on ? 'var(--accent)' : 'var(--border)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
+      <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: on ? 19 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+    </div>
+  );
+  const lbl = { display: 'block', fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 };
+
+  return (
+    <>
+      {toast && (
+        <div style={{ position: 'fixed', top: 20, right: 24, zIndex: 9999, padding: '10px 18px', borderRadius: 10, background: toast.type === 'success' ? 'var(--risk-low)' : (toast.type === 'error' ? '#ef4444' : 'var(--accent)'), color: '#fff', fontSize: 13, fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>{toast.msg}</div>
+      )}
+
+      <div className="hstack-8" style={{ marginBottom: 8 }}>
+        <div style={{ position: 'relative', maxWidth: 320, flex: 1 }}>
+          <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex' }}><Icon name="search" size={14} /></div>
+          <input className="input" style={{ paddingLeft: 32, width: '100%' }} placeholder="Search doctors…" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <span className="spacer" />
+        <button className="btn primary" onClick={openNew}><Icon name="plus" /> Add Doctor</button>
+      </div>
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tbl" style={{ minWidth: 640 }}>
+            <thead><tr>
+              <th>Doctor</th><th>Qualification</th><th>Reg. No</th><th>Signatures</th><th></th>
+            </tr></thead>
+            <tbody>
+              {loading && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>Loading…</td></tr>}
+              {!loading && filtered.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>No doctors found.</td></tr>}
+              {filtered.map(d => (
+                <tr key={d.id} style={{ cursor: 'pointer' }} onClick={() => openEdit(d)}>
+                  <td>
+                    <div className="hstack-10">
+                      <div className="avatar sm" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)', fontWeight: 700 }}>{(d.name || 'D')[0].toUpperCase()}</div>
+                      <div className="fw5" style={{ fontSize: 13 }}>{d.name || 'Unnamed'}</div>
+                    </div>
+                  </td>
+                  <td className="muted" style={{ fontSize: 12.5 }}>{d.qualification || '—'}</td>
+                  <td className="muted" style={{ fontSize: 12.5 }}>{d.registrationNo || '—'}</td>
+                  <td>
+                    {(d.signatures && d.signatures.length) ? (
+                      <div className="hstack-6">
+                        {d.signatures.slice(0, 3).map((s, i) => (
+                          <img key={i} src={s.url || s} alt="sig" style={{ height: 26, width: 'auto', maxWidth: 70, objectFit: 'contain', background: '#fff', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }} />
+                        ))}
+                        <span className="muted" style={{ fontSize: 11.5 }}>{d.signatures.length}</span>
+                      </div>
+                    ) : <span className="muted" style={{ fontSize: 12 }}>None</span>}
+                  </td>
+                  <td className="right" onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button className="btn sm ghost" onClick={() => openEdit(d)}><Icon name="edit" size={13} /> Edit</button>
+                      <button className="btn sm ghost" style={{ color: '#ef4444' }} onClick={() => deleteDoctor(d)}><Icon name="trash" size={13} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {editing && createPortal(
+        <>
+          <div className="np-blur-layer" />
+          <div className="np-backdrop" onClick={() => setEditing(null)}>
+            <div className="np-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', borderRadius: 16 }}>
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 11, background: 'var(--accent-soft)', color: 'var(--accent-ink)', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 17 }}>{(editing.name || 'D')[0].toUpperCase()}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{editing._isNew ? 'Add Doctor' : 'Edit Doctor'}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>doctor_details · {editing.id}</div>
+                </div>
+                <button className="iconbtn" onClick={() => setEditing(null)} title="Close"><Icon name="x" size={16} /></button>
+              </div>
+
+              <div style={{ padding: '20px 22px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div><label style={lbl}>Full name</label><input className="input" value={editing.name || ''} onChange={e => setEditing({ ...editing, name: e.target.value })} placeholder="Dr. …" style={{ width: '100%' }} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div><label style={lbl}>Qualification</label><input className="input" value={editing.qualification || ''} onChange={e => setEditing({ ...editing, qualification: e.target.value })} placeholder="BHMS, MD" style={{ width: '100%' }} /></div>
+                  <div><label style={lbl}>Specialization</label><input className="input" value={editing.specialization || ''} onChange={e => setEditing({ ...editing, specialization: e.target.value })} style={{ width: '100%' }} /></div>
+                  <div><label style={lbl}>Registration No</label><input className="input" value={editing.registrationNo || ''} onChange={e => setEditing({ ...editing, registrationNo: e.target.value })} style={{ width: '100%' }} /></div>
+                  <div><label style={lbl}>Phone</label><input className="input" value={editing.phone || ''} onChange={e => setEditing({ ...editing, phone: e.target.value })} style={{ width: '100%' }} /></div>
+                </div>
+
+                <div className="card flat" style={{ background: 'var(--surface-2)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Show on prescription</div>
+                  {[['showQual', 'Qualification', true], ['showSpec', 'Specialization', true], ['showReg', 'Registration No', true], ['showPhone', 'Phone', false]].map(([k, label, def]) => {
+                    const val = editing[k] === undefined ? def : !!editing[k];
+                    return (
+                      <div key={k} className="hstack-8" style={{ fontSize: 13 }}>
+                        <span>{label}</span><span className="spacer" />
+                        <Toggle on={val} onToggle={() => setEditing({ ...editing, [k]: !val })} />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div>
+                  <div className="hstack-8" style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Digital signatures ({(editing.signatures || []).length})</div>
+                    <span className="spacer" />
+                    <button className="btn sm" onClick={() => fileRef.current?.click()} disabled={uploading}><Icon name="plus" size={12} /> {uploading ? 'Uploading…' : 'Add signature'}</button>
+                    <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadSig} />
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    {(editing.signatures || []).map((sig, i) => (
+                      <div key={i} style={{ position: 'relative', width: 120, height: 64, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', display: 'grid', placeItems: 'center' }}>
+                        <img src={sig.url || sig} alt="Signature" style={{ maxWidth: '90%', maxHeight: '85%', objectFit: 'contain' }} />
+                        <button onClick={() => deleteSig(sig, i)} title="Remove" style={{ position: 'absolute', top: -8, right: -8, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center' }}><Icon name="x" size={12} /></button>
+                      </div>
+                    ))}
+                    {(editing.signatures || []).length === 0 && <div className="muted" style={{ fontSize: 12.5, fontStyle: 'italic' }}>No signatures yet. Upload a transparent PNG for best results.</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexShrink: 0 }}>
+                <span className="spacer" />
+                <button className="btn" onClick={() => setEditing(null)}>Cancel</button>
+                <button className="btn primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+              </div>
+            </div>
+          </div>
+        </>, document.body
+      )}
+    </>
+  );
+}
+
 function AdminScreen() {
+  const [adminTab, setAdminTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -9284,14 +9776,27 @@ function AdminScreen() {
 
       <div className="page-head">
         <div>
-          <h1 className="page-title">Roles & Users</h1>
-          <p className="page-sub">Manage access and permissions across the SehatUp platform</p>
+          <h1 className="page-title">Administration</h1>
+          <p className="page-sub">Manage users, roles, and doctor signatures across the SehatUp platform</p>
         </div>
         <div className="page-head-actions">
-          <button className="btn primary" onClick={() => setShowCreate(true)}><Icon name="plus" /> Add User Record</button>
+          {adminTab === 'users' && <button className="btn primary" onClick={() => setShowCreate(true)}><Icon name="plus" /> Add User Record</button>}
         </div>
       </div>
 
+      {/* Section tabs */}
+      <div className="hstack-8" style={{ borderBottom: '1px solid var(--border)', marginBottom: 14 }}>
+        {[['users', 'Roles & Users'], ['doctors', 'Doctors & Signatures']].map(([v, label]) => (
+          <button key={v} onClick={() => setAdminTab(v)}
+            style={{ padding: '8px 2px', marginRight: 20, background: 'none', border: 'none', borderBottom: adminTab === v ? '2px solid var(--accent)' : '2px solid transparent', color: adminTab === v ? 'var(--accent)' : 'var(--muted)', fontWeight: adminTab === v ? 600 : 500, fontSize: 13, cursor: 'pointer', marginBottom: -1 }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {adminTab === 'doctors' && <DoctorSignaturesAdmin />}
+
+      {adminTab === 'users' && (<>
       {/* Search */}
       <div style={{ position: 'relative', maxWidth: 320, marginBottom: 8 }}>
         <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex' }}><Icon name="search" size={14} /></div>
@@ -9360,6 +9865,7 @@ function AdminScreen() {
           </table>
         </div>
       </div>
+      </>)}
 
       {/* Edit User Modal */}
       {selected && createPortal(
@@ -9766,52 +10272,52 @@ function IntegrationsPane() {
 
   const ints = [
     { n: "Firebase", d: "Realtime DB · Auth · Cloud Functions", on: true, ic: "bolt" },
-    { n: "Shopify",  d: "Customers, products, orders", on: true, ic: "package" },
-    { n: "Nimbus",   d: "Shipment tracking & AWB sync", on: true, ic: "truck" },
+    { n: "Shopify", d: "Customers, products, orders", on: true, ic: "package" },
+    { n: "Nimbus", d: "Shipment tracking & AWB sync", on: true, ic: "truck" },
     { n: "Google Sheets", d: "Lead import / customer sync", on: true, ic: "layers" },
     { n: "WhatsApp Business", d: "Outbound messaging via Gupshup", on: false, ic: "whatsapp" },
     { n: "Razorpay", d: "Payment links & webhooks", on: false, ic: "package" },
   ];
   return (
     <div className="col">
-    <div className="grid-12">
-      {ints.map(it => (
-        <div className="span-6" key={it.n}>
-          <div className="card">
-            <div className="hstack-12">
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--surface-2)", display: "grid", placeItems: "center" }}>
-                <Icon name={it.ic} size={20} color="var(--accent-ink)" />
+      <div className="grid-12">
+        {ints.map(it => (
+          <div className="span-6" key={it.n}>
+            <div className="card">
+              <div className="hstack-12">
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--surface-2)", display: "grid", placeItems: "center" }}>
+                  <Icon name={it.ic} size={20} color="var(--accent-ink)" />
+                </div>
+                <div className="stack-2" style={{ flex: 1 }}>
+                  <div className="fw6">{it.n}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{it.d}</div>
+                </div>
+                {it.on ? <Badge tone="low" dot="var(--risk-low)">connected</Badge> : <Badge>off</Badge>}
               </div>
-              <div className="stack-2" style={{ flex: 1 }}>
-                <div className="fw6">{it.n}</div>
-                <div className="muted" style={{ fontSize: 12 }}>{it.d}</div>
+              <div className="divider" style={{ margin: "14px 0" }} />
+              <div className="hstack-8">
+                <span className="muted" style={{ fontSize: 12 }}>{it.on ? "Last sync: 12 min ago" : "Not connected"}</span>
+                <span className="spacer" />
+                {it.on ? <button className="btn sm">Configure</button> : <button className="btn sm primary">Connect</button>}
               </div>
-              {it.on ? <Badge tone="low" dot="var(--risk-low)">connected</Badge> : <Badge>off</Badge>}
-            </div>
-            <div className="divider" style={{ margin: "14px 0" }} />
-            <div className="hstack-8">
-              <span className="muted" style={{ fontSize: 12 }}>{it.on ? "Last sync: 12 min ago" : "Not connected"}</span>
-              <span className="spacer" />
-              {it.on ? <button className="btn sm">Configure</button> : <button className="btn sm primary">Connect</button>}
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-    <div className="card" style={{ marginTop: 24 }}>
-      <div className="section-title" style={{ marginBottom: 12 }}>Google Sheets CRM Sync</div>
-      <div className="stack-8">
-        <label className="fw5">Apps Script Web App URL</label>
-        <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Used to push new CRM orders to the Google Sheet automatically.</div>
-        <input 
-          className="input" 
-          placeholder="https://script.google.com/macros/s/.../exec" 
-          value={gscriptUrl} 
-          onChange={e => saveUrl(e.target.value)} 
-        />
-        {gscriptUrl && <div className="muted" style={{ fontSize: 12, color: 'var(--risk-low)' }}>Url is saved locally.</div>}
+        ))}
       </div>
-    </div>
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="section-title" style={{ marginBottom: 12 }}>Google Sheets CRM Sync</div>
+        <div className="stack-8">
+          <label className="fw5">Apps Script Web App URL</label>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Used to push new CRM orders to the Google Sheet automatically.</div>
+          <input
+            className="input"
+            placeholder="https://script.google.com/macros/s/.../exec"
+            value={gscriptUrl}
+            onChange={e => saveUrl(e.target.value)}
+          />
+          {gscriptUrl && <div className="muted" style={{ fontSize: 12, color: 'var(--risk-low)' }}>Url is saved locally.</div>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -9909,32 +10415,32 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 const NAV = {
-  admin:         ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "shipments", "marketing", "users", "focused_editor", "data_studio", "settings"],
-  doctor:        ["doctor", "submissions", "customers", "prescriptions", "settings"],
-  telesales:     ["home", "customers", "submissions", "orders", "crm_orders", "order_create", "prescriptions", "settings"],
+  admin: ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "order_create", "shipments", "marketing", "users", "focused_editor", "data_studio", "settings"],
+  doctor: ["doctor", "submissions", "customers", "prescriptions", "settings"],
+  telesales: ["submissions", "prescriptions", "settings"],
   order_creator: ["order_create", "orders", "crm_orders", "customers", "settings"],
-  marketing:     ["marketing", "home", "submissions", "customers", "prescriptions", "doctor", "settings"],
-  logistics:     ["shipments", "orders", "shipment_tracking", "crm_orders", "customers", "settings"],
+  marketing: ["marketing", "home", "submissions", "customers", "prescriptions", "doctor", "settings"],
+  logistics: ["shipments", "orders", "shipment_tracking", "crm_orders", "order_create", "customers", "settings"],
   website_developer: ["focused_editor", "data_studio", "settings"],
 };
 
 const ITEMS = {
-  home:          { label: "Health Score Dashboard",  icon: "pulse",       route: "home" },
-  submissions:   { label: "Submissions",             icon: "clipboard",   route: "submissions", ct: "3.4k" },
-  customers:     { label: "Customers",               icon: "users",       route: "customers",   ct: "30" },
-  prescriptions: { label: "Prescriptions",           icon: "pill",        route: "prescriptions" },
-  doctor:        { label: "Clinical review",         icon: "stethoscope", route: "doctor",      ct: "12" },
-  doctors:       { label: "Doctors queue",           icon: "stethoscope", route: "doctor",      ct: "12" },
-  orders:        { label: "Shopify orders",          icon: "package",     route: "orders" },
-  shipment_tracking: { label: "Shipment tracking",       icon: "map", route: "shipment_tracking" },
-  crm_orders:    { label: "CRM orders",              icon: "clipboard",   route: "crm_orders" },
-  order_create:  { label: "Create order",            icon: "plus",        route: "order_create" },
-  shipments:     { label: "Shipments",               icon: "truck",       route: "shipments",   ct: "117" },
-  marketing:     { label: "Marketing analytics",     icon: "bar",         route: "marketing" },
-  users:         { label: "Roles & users",           icon: "shield",      route: "admin" },
-  focused_editor:{ label: "Quick Editor",            icon: "filter",      route: "focused_editor" },
-  data_studio:   { label: "Detailed View",           icon: "database",    route: "data_studio" },
-  settings:      { label: "Settings",                icon: "settings",    route: "settings" },
+  home: { label: "Health Score Dashboard", icon: "pulse", route: "home" },
+  submissions: { label: "Submissions", icon: "clipboard", route: "submissions", ct: "3.4k" },
+  customers: { label: "Customers", icon: "users", route: "customers", ct: "30" },
+  prescriptions: { label: "Prescriptions", icon: "pill", route: "prescriptions" },
+  doctor: { label: "Clinical review", icon: "stethoscope", route: "doctor", ct: "12" },
+  doctors: { label: "Doctors queue", icon: "stethoscope", route: "doctor", ct: "12" },
+  orders: { label: "Shopify orders", icon: "package", route: "orders" },
+  shipment_tracking: { label: "Shipment tracking", icon: "map", route: "shipment_tracking" },
+  crm_orders: { label: "CRM orders", icon: "clipboard", route: "crm_orders" },
+  order_create: { label: "Create order", icon: "plus", route: "order_create" },
+  shipments: { label: "Shipments", icon: "truck", route: "shipments", ct: "117" },
+  marketing: { label: "Marketing analytics", icon: "bar", route: "marketing" },
+  users: { label: "Roles & users", icon: "shield", route: "admin" },
+  focused_editor: { label: "Quick Editor", icon: "filter", route: "focused_editor" },
+  data_studio: { label: "Detailed View", icon: "database", route: "data_studio" },
+  settings: { label: "Settings", icon: "settings", route: "settings" },
 };
 
 // Guess what the user is searching for, purely to show a soft hint chip in the bar.
@@ -9952,10 +10458,10 @@ function detectQueryType(raw) {
 }
 
 const SEARCH_TYPE_COLOR = {
-  AWB:      { bg: 'color-mix(in oklab, #6366f1 16%, var(--surface))', fg: '#6366f1' },
-  Order:    { bg: 'color-mix(in oklab, var(--accent) 16%, var(--surface))', fg: 'var(--accent-ink)' },
+  AWB: { bg: 'color-mix(in oklab, #6366f1 16%, var(--surface))', fg: '#6366f1' },
+  Order: { bg: 'color-mix(in oklab, var(--accent) 16%, var(--surface))', fg: 'var(--accent-ink)' },
   Customer: { bg: 'color-mix(in oklab, #e11d48 14%, var(--surface))', fg: '#e11d48' },
-  Phone:    { bg: 'color-mix(in oklab, #0891b2 16%, var(--surface))', fg: '#0891b2' },
+  Phone: { bg: 'color-mix(in oklab, #0891b2 16%, var(--surface))', fg: '#0891b2' },
 };
 function SearchTypeChip({ type, small }) {
   const c = SEARCH_TYPE_COLOR[type] || SEARCH_TYPE_COLOR.Customer;
@@ -10337,7 +10843,7 @@ function App({ user, roles, onLogout }) {
     if (!visibleRoutes.includes(route.key)) {
       setRoute(navItems[0].route);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navItems.map(i => i.key).join(','), route.key]);
 
   const themeClass = `theme-${t.theme} accent-${t.accent} density-${t.density}`;
@@ -10354,17 +10860,21 @@ function App({ user, roles, onLogout }) {
 
   return (
     <PermissionsCtx.Provider value={permCtxValue}>
-    <div className={"app " + themeClass} style={sidebarCollapsed ? { "--rail-w": "68px" } : {}}>
-      <style>{`
+      <div className={"app " + themeClass} style={sidebarCollapsed ? { "--rail-w": "68px" } : {}}>
+        <style>{`
         .app { transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .rail { overflow: hidden; }
-        .rail.collapsed .brand-mark,
-        .rail.collapsed .brand-name,
         .rail.collapsed .rail-section,
         .rail.collapsed .rail-item span,
         .rail.collapsed .rail-item .ct,
         .rail.collapsed .rail-ft .stack-2 {
           display: none;
+        }
+        /* "SehatUp CRM" reveals/clips smoothly instead of hard-hiding */
+        .rail.collapsed .brand-name {
+          max-width: 0;
+          max-height: 0;
+          opacity: 0;
         }
         .rail.collapsed .rail-hd {
           padding: 16px 0;
@@ -10385,114 +10895,114 @@ function App({ user, roles, onLogout }) {
         }
       `}</style>
 
-      {/* Sidebar */}
-      <aside className={`rail ${sidebarCollapsed ? "collapsed" : ""}`}>
-        <div className="rail-hd">
-          <div className="brand-mark">
-            <HeartLottieLogo />
-          </div>
-          <div className="brand-name">SehatUp <span>CRM</span></div>
-          <button 
-            className="iconbtn" 
-            title="Toggle Sidebar"
-            style={{ marginLeft: sidebarCollapsed ? "0" : "auto", width: 28, height: 28, border: "none", background: "transparent", color: "var(--muted)", flexShrink: 0 }}
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
-            <Icon name="layout_sidebar" size={16} />
-          </button>
-        </div>
-
-        <div className="rail-section">Workspace</div>
-        <nav className="rail-nav">
-          {navItems.filter(it => !["settings"].includes(it.key)).map(it => (
-            <div key={it.key} className={"rail-item" + (route.key === it.route ? " active" : "")}
-              onClick={() => setRoute(it.route)}>
-              <Icon name={it.icon} className="ic" />
-              <span>{it.label}</span>
-              {it.ct && <span className="ct">{it.ct}</span>}
+        {/* Sidebar */}
+        <aside className={`rail ${sidebarCollapsed ? "collapsed" : ""}`}>
+          <div className="rail-hd">
+            <div className="brand-mark">
+              <HeartLottieLogo />
             </div>
-          ))}
-        </nav>
-
-      </aside>
-
-      {/* Main */}
-      <main className="main">
-        <header className="topbar">
-          <Breadcrumb route={route} role={role} />
-          <GlobalSearch openSubmission={setSubmissionDrawer} setRoute={setRoute} />
-          <div className="topbar-actions">
-            <EnvToggle value={env} onChange={(newEnv) => {
-              setEnv(newEnv);
-              setFirebaseMode(newEnv);
-              window.location.reload();
-            }} />
-            <button className="iconbtn" title="Notifications">
-              <Icon name="bell" size={16} />
-              <span className="badge num">3</span>
+            <div className="brand-name">SehatUp <span>CRM</span></div>
+            <button
+              className="iconbtn"
+              title="Toggle Sidebar"
+              style={{ marginLeft: sidebarCollapsed ? "0" : "auto", width: 28, height: 28, border: "none", background: "transparent", color: "var(--muted)", flexShrink: 0 }}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+              <Icon name="layout_sidebar" size={16} />
             </button>
-            <div style={{ position: "relative" }}>
-              <div 
-                className="avatar clickable" 
-                style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer", border: "1px solid var(--accent)" }}
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-              >
-                {me.initials}
-              </div>
-              {showProfileMenu && (
-                <>
-                  <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setShowProfileMenu(false)} />
-                  <div className="card shadow-lg" style={{ position: "absolute", top: "100%", right: 0, marginTop: 8, width: 220, padding: 8, zIndex: 100 }}>
-                    <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", marginBottom: 4 }}>
-                      <div className="fw6">{me.name}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>{me.email}</div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <button className="btn w-full" style={{ justifyContent: "flex-start" }} onClick={() => { setShowProfileMenu(false); setRoute("settings"); }}>
-                        <Icon name="settings" size={16} /> Settings
-                      </button>
-                      <button className="btn w-full" style={{ justifyContent: "flex-start", color: "var(--risk-critical)" }} onClick={() => { setShowProfileMenu(false); onLogout(); }}>
-                        <Icon name="log_out" size={16} /> Log out
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
           </div>
-        </header>
 
-        <div className="content">
-          <Screen route={route} setRoute={setRoute} tweaks={t}
-            openCustomer={setCustomerDrawer}
-            openSubmission={setSubmissionDrawer}
-            setSubmissionsCount={setSubmissionsCount}
-            me={me} />
-        </div>
-      </main>
+          <div className="rail-section">Workspace</div>
+          <nav className="rail-nav">
+            {navItems.filter(it => !["settings"].includes(it.key)).map(it => (
+              <div key={it.key} className={"rail-item" + (route.key === it.route ? " active" : "")}
+                onClick={() => setRoute(it.route)}>
+                <Icon name={it.icon} className="ic" />
+                <span>{it.label}</span>
+                {it.ct && <span className="ct">{it.ct}</span>}
+              </div>
+            ))}
+          </nav>
 
-      {/* Drawers */}
-      {customerDrawer && <CustomerDrawer customer={customerDrawer} onClose={() => setCustomerDrawer(null)} openSubmission={setSubmissionDrawer} setRoute={setRoute} role={role} />}
-      {submissionDrawer && <SubmissionDrawer customer={submissionDrawer} onClose={() => setSubmissionDrawer(null)} />}
+        </aside>
 
-      {/* Tweaks */}
-      <TweaksPanel title="Tweaks">
-        <TweakSection label="Appearance" />
-        <TweakRadio label="Theme"  value={t.theme}  options={["light", "dark"]}
-          onChange={v => setTweak("theme", v)} />
-        <TweakSelect label="Accent" value={t.accent}
-          options={[{value:"vital",label:"Vital · teal"},{value:"rose",label:"Rose · brand"},{value:"indigo",label:"Indigo · calm"}]}
-          onChange={v => setTweak("accent", v)} />
-        <TweakRadio label="Density" value={t.density}
-          options={["comfortable", "compact"]}
-          onChange={v => setTweak("density", v)} />
+        {/* Main */}
+        <main className="main">
+          <header className="topbar">
+            <Breadcrumb route={route} role={role} />
+            <GlobalSearch openSubmission={setSubmissionDrawer} setRoute={setRoute} />
+            <div className="topbar-actions">
+              <EnvToggle value={env} onChange={(newEnv) => {
+                setEnv(newEnv);
+                setFirebaseMode(newEnv);
+                window.location.reload();
+              }} />
+              <button className="iconbtn" title="Notifications">
+                <Icon name="bell" size={16} />
+                <span className="badge num">3</span>
+              </button>
+              <div style={{ position: "relative" }}>
+                <div
+                  className="avatar clickable"
+                  style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer", border: "1px solid var(--accent)" }}
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                >
+                  {me.initials}
+                </div>
+                {showProfileMenu && (
+                  <>
+                    <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={() => setShowProfileMenu(false)} />
+                    <div className="card shadow-lg" style={{ position: "absolute", top: "100%", right: 0, marginTop: 8, width: 220, padding: 8, zIndex: 100 }}>
+                      <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", marginBottom: 4 }}>
+                        <div className="fw6">{me.name}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>{me.email}</div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <button className="btn w-full" style={{ justifyContent: "flex-start" }} onClick={() => { setShowProfileMenu(false); setRoute("settings"); }}>
+                          <Icon name="settings" size={16} /> Settings
+                        </button>
+                        <button className="btn w-full" style={{ justifyContent: "flex-start", color: "var(--risk-critical)" }} onClick={() => { setShowProfileMenu(false); onLogout(); }}>
+                          <Icon name="log_out" size={16} /> Log out
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </header>
 
-        <TweakSection label="Home page" />
-        <TweakRadio label="Layout" value={t.homeLayout}
-          options={[{value:"analytics",label:"Analytics"},{value:"activity",label:"Activity"}]}
-          onChange={v => setTweak("homeLayout", v)} />
-      </TweaksPanel>
-    </div>
+          <div className="content">
+            <Screen route={route} setRoute={setRoute} tweaks={t}
+              openCustomer={setCustomerDrawer}
+              openSubmission={setSubmissionDrawer}
+              setSubmissionsCount={setSubmissionsCount}
+              me={me} />
+          </div>
+        </main>
+
+        {/* Drawers */}
+        {customerDrawer && <CustomerDrawer customer={customerDrawer} onClose={() => setCustomerDrawer(null)} openSubmission={setSubmissionDrawer} setRoute={setRoute} role={role} />}
+        {submissionDrawer && <SubmissionDrawer customer={submissionDrawer} onClose={() => setSubmissionDrawer(null)} />}
+
+        {/* Tweaks */}
+        <TweaksPanel title="Tweaks">
+          <TweakSection label="Appearance" />
+          <TweakRadio label="Theme" value={t.theme} options={["light", "dark"]}
+            onChange={v => setTweak("theme", v)} />
+          <TweakSelect label="Accent" value={t.accent}
+            options={[{ value: "vital", label: "Vital · teal" }, { value: "rose", label: "Rose · brand" }, { value: "indigo", label: "Indigo · calm" }]}
+            onChange={v => setTweak("accent", v)} />
+          <TweakRadio label="Density" value={t.density}
+            options={["comfortable", "compact"]}
+            onChange={v => setTweak("density", v)} />
+
+          <TweakSection label="Home page" />
+          <TweakRadio label="Layout" value={t.homeLayout}
+            options={[{ value: "analytics", label: "Analytics" }, { value: "activity", label: "Activity" }]}
+            onChange={v => setTweak("homeLayout", v)} />
+        </TweaksPanel>
+      </div>
     </PermissionsCtx.Provider>
   );
 }
@@ -10764,22 +11274,22 @@ function PrescriptionsScreen({ me }) {
 
 function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubmissionsCount, me }) {
   switch (route.key) {
-    case "home":         return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
-    case "submissions":  return <SubmissionsScreen openCustomer={openCustomer} openSubmission={openSubmission} setSubmissionsCount={setSubmissionsCount} />;
-    case "customers":      return <CustomersList openCustomer={openCustomer} openSubmission={openSubmission} />;
-    case "prescriptions":  return <PrescriptionsScreen me={me} />;
-    case "doctor":         return <DoctorScreen openCustomer={openCustomer} openSubmission={openSubmission} context={route.ctx} />;
-    case "orders":       return <OrdersHistory setRoute={setRoute} openCustomer={openCustomer} />;
+    case "home": return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
+    case "submissions": return <SubmissionsScreen openCustomer={openCustomer} openSubmission={openSubmission} setSubmissionsCount={setSubmissionsCount} />;
+    case "customers": return <CustomersList openCustomer={openCustomer} openSubmission={openSubmission} />;
+    case "prescriptions": return <PrescriptionsScreen me={me} />;
+    case "doctor": return <DoctorScreen openCustomer={openCustomer} openSubmission={openSubmission} context={route.ctx} />;
+    case "orders": return <OrdersHistory setRoute={setRoute} openCustomer={openCustomer} />;
     case "shipment_tracking": return <ShipmentTrackingScreen setRoute={setRoute} openCustomer={openCustomer} />;
-    case "crm_orders":   return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
+    case "crm_orders": return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
-    case "shipments":    return <ShipmentsScreen ctx={route.ctx} />;
-    case "marketing":    return <MarketingScreen />;
-    case "data_studio":  return <DataStudioScreen me={me} />;
+    case "shipments": return <ShipmentsScreen ctx={route.ctx} />;
+    case "marketing": return <MarketingScreen />;
+    case "data_studio": return <DataStudioScreen me={me} />;
     case "focused_editor": return <DataStudioScreen me={me} initialView="focused" />;
-    case "admin":        return <AdminScreen />;
-    case "settings":     return <SettingsScreen tweaks={tweaks} me={me} />;
-    default:             return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
+    case "admin": return <AdminScreen />;
+    case "settings": return <SettingsScreen tweaks={tweaks} me={me} />;
+    default: return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
   }
 }
 
@@ -10887,7 +11397,7 @@ function ShipmentTrackingScreen({ setRoute, openCustomer }) {
     let list = mergedShipments;
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(e => 
+      list = list.filter(e =>
         (e.customer?.name || '').toLowerCase().includes(q) ||
         (e.customer?.phone || '').includes(q) ||
         (e.awb || '').toLowerCase().includes(q)
@@ -10909,7 +11419,7 @@ function ShipmentTrackingScreen({ setRoute, openCustomer }) {
           <p className="page-sub">Quick tracking links for all shipments</p>
         </div>
       </div>
-      
+
       <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ position: 'relative', width: 300 }}>
@@ -11003,7 +11513,7 @@ function HeartLottieLogo() {
       {/* Beating heart */}
       <svg viewBox="0 0 24 24" width="17" height="17" fill="white"
         style={{ position: 'relative', zIndex: 1, animation: 'heartBeat 1.2s ease-in-out infinite', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))' }}>
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
       </svg>
     </div>
   );
