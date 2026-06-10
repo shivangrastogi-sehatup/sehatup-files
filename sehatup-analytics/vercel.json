@@ -2,7 +2,7 @@
     "crons": [
         {
             "path": "/api/cron-sync-shipments",
-            "schedule": "0 */6 * * *"
+            "schedule": "0 1 * * *"
         }
     ],
     "rewrites": [
