@@ -5215,11 +5215,12 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
       {showConfirm && createPortal(
         <>
           <div className="np-blur-layer" />
-          <div className="np-backdrop" onClick={() => !isSaving && setShowConfirm(false)}>
+          <div className="np-backdrop" onClick={() => !isSaving && setShowConfirm(false)}
+            style={{ overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 16px' }}>
             <div className="np-modal" onClick={e => e.stopPropagation()}
-              style={{ maxWidth: 440, width: '100%', padding: 0, borderRadius: 18, overflow: 'hidden' }}>
-              {/* Header */}
-              <div style={{ padding: '20px 24px 16px', background: 'var(--accent-soft)', borderBottom: '1px solid var(--border)' }}>
+              style={{ maxWidth: 440, width: '100%', padding: 0, borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 64px)' }}>
+              {/* Header — always visible */}
+              <div style={{ padding: '20px 24px 16px', background: 'var(--accent-soft)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                     <Icon name="pill" size={18} color="#fff" />
@@ -5231,8 +5232,8 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
                 </div>
               </div>
 
-              {/* Body */}
-              <div style={{ padding: '18px 24px' }}>
+              {/* Scrollable body */}
+              <div style={{ padding: '18px 24px', overflowY: 'auto', flex: 1 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                   {[
                     ['Patient', patientName || '—'],
@@ -5287,23 +5288,24 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
                   </div>
                 )}
 
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
                   This will generate a signed prescription and mark the patient as <strong>consulted</strong>. This action cannot be undone.
                 </div>
+              </div>
 
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button className="btn ghost" style={{ flex: 1, justifyContent: 'center' }}
-                    onClick={() => setShowConfirm(false)} disabled={isSaving}>
-                    Cancel
-                  </button>
-                  <button className="btn primary" style={{ flex: 2, justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.18)' }}
-                    onClick={async () => { setShowConfirm(false); await handleApproveSign(); }}
-                    disabled={isSaving}>
-                    {isSaving
-                      ? <><Icon name="refresh" size={14} className="spin" /> Saving…</>
-                      : <><Icon name="check" size={14} /> Confirm &amp; sign</>}
-                  </button>
-                </div>
+              {/* Action buttons — always pinned to bottom */}
+              <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, flexShrink: 0, background: 'var(--surface)' }}>
+                <button className="btn ghost" style={{ flex: 1, justifyContent: 'center' }}
+                  onClick={() => setShowConfirm(false)} disabled={isSaving}>
+                  Cancel
+                </button>
+                <button className="btn primary" style={{ flex: 2, justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.18)' }}
+                  onClick={async () => { setShowConfirm(false); await handleApproveSign(); }}
+                  disabled={isSaving}>
+                  {isSaving
+                    ? <><Icon name="refresh" size={14} className="spin" /> Saving…</>
+                    : <><Icon name="check" size={14} /> Confirm &amp; sign</>}
+                </button>
               </div>
             </div>
           </div>
