@@ -1,6 +1,28 @@
 // src/utils/analytics.js
 import _ from "lodash";
 
+// Buckets a submission into Low / Moderate / High / Critical / Unknown.
+// The questionnaires save riskType as "Critical Risk", "High Risk",
+// "Moderate Risk" or "Low Risk" (see questionnaire config getRiskType);
+// match on the keyword so suffix/casing variants all land in the right bucket.
+// If riskType is missing, derive it from healthScore using the same
+// thresholds the questionnaires use: <=30 Critical, <=60 High, <=84 Moderate, >84 Low.
+export function riskBucket(d) {
+  const raw = (d?.riskType || "").toString().toLowerCase();
+  if (raw.includes("critical")) return "Critical";
+  if (raw.includes("moderate")) return "Moderate";
+  if (raw.includes("high")) return "High";
+  if (raw.includes("low")) return "Low";
+  const score = Number(d?.healthScore ?? d?.score);
+  if (Number.isFinite(score)) {
+    if (score <= 30) return "Critical";
+    if (score <= 60) return "High";
+    if (score <= 84) return "Moderate";
+    return "Low";
+  }
+  return "Unknown";
+}
+
 export function computeAnalytics(partialList = [], completedList = [], manualList = []) {
   const allCompleted = [...(completedList || []), ...(manualList || [])];
   const totalStarted = (partialList?.length || 0) + (allCompleted?.length || 0);
@@ -46,7 +68,7 @@ export function computeAnalytics(partialList = [], completedList = [], manualLis
   });
 
   const avgHealthScore = totalCompleted === 0 ? 0 : _.meanBy(allCompleted, (d) => d.healthScore || d.score || 0);
-  const riskCounts = _.countBy(allCompleted, (d) => d.riskType || "Unknown");
+  const riskCounts = _.countBy(allCompleted, riskBucket);
   const peerAvg = _.mean(allCompleted.map(d => d.peerAverage || NaN).filter(Number.isFinite));
 
   const byDay = {};

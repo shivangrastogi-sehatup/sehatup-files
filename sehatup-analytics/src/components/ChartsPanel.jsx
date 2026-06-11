@@ -128,16 +128,20 @@ export default function ChartsPanel({ analytics = {} }) {
     }]
   };
 
+  // Fixed severity order so each bucket always gets the same color,
+  // regardless of which bucket appears first in the data.
+  const riskOrder = [
+    { label: "Low",      color: "rgba(16, 185, 129, 0.7)" },
+    { label: "Moderate", color: "rgba(245, 158, 11, 0.7)" },
+    { label: "High",     color: "rgba(244, 63, 94, 0.7)" },
+    { label: "Critical", color: "rgba(139, 92, 246, 0.7)" },
+    { label: "Unknown",  color: "rgba(148, 163, 184, 0.7)" }
+  ].filter(r => riskCounts[r.label]);
   const riskDoughnut = {
-    labels: Object.keys(riskCounts),
+    labels: riskOrder.map(r => r.label),
     datasets: [{
-      data: Object.values(riskCounts),
-      backgroundColor: [
-        "rgba(16, 185, 129, 0.7)",
-        "rgba(245, 158, 11, 0.7)",
-        "rgba(244, 63, 94, 0.7)",
-        "rgba(139, 92, 246, 0.7)"
-      ],
+      data: riskOrder.map(r => riskCounts[r.label]),
+      backgroundColor: riskOrder.map(r => r.color),
       borderWidth: 0,
       hoverOffset: 15
     }]

@@ -6,6 +6,7 @@ import {
 import { db, auth } from "../firebase";
 import SubmissionList from "./SubmissionList";
 import ChartsPanel from "./ChartsPanel";
+import { riskBucket } from "../utils/analytics";
 import { signOut } from "firebase/auth";
 
 import {
@@ -249,7 +250,7 @@ export default function AdminPanel() {
     const analyticsData = useMemo(() => {
         const completed = submissions.filter(s => s.healthScore !== undefined);
         const riskCounts = completed.reduce((acc, s) => {
-            const risk = s.riskType || 'Unknown';
+            const risk = riskBucket(s);
             acc[risk] = (acc[risk] || 0) + 1;
             return acc;
         }, {});

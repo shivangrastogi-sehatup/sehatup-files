@@ -1024,13 +1024,22 @@ function DonutChart({ data = [], size = 200, thickness = 26, centerLabel, center
                 transform: isHovered ? `translate(${a.popX}px, ${a.popY}px) scale(1.05)` : "translate(0px, 0px) scale(1)",
                 transformOrigin: "center",
                 filter: isHovered ? "drop-shadow(0px 8px 12px rgba(0,0,0,0.4))" : "none",
-                cursor: "pointer"
+                // The visible arc moves on hover; if it also handled mouse events the
+                // pop-out would slide it out from under the cursor and cause an
+                // enter/leave flicker loop. Hit-testing lives on the static overlay below.
+                pointerEvents: "none"
               }}
-              onMouseEnter={() => setHoveredIndex(i)}
-              onMouseLeave={() => setHoveredIndex(null)}
             />
           );
         })}
+        {/* Static invisible hit areas — identical geometry, never animated */}
+        {arcs.map((a, i) => (
+          <path key={`hit-${i}`} d={a.d} fill="transparent"
+            style={{ cursor: "pointer" }}
+            onMouseEnter={() => setHoveredIndex(i)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          />
+        ))}
       </svg>
       {(centerLabel || centerValue) && (
         <div style={{ position: "absolute", textAlign: "center", pointerEvents: "none" }}>
@@ -1712,6 +1721,59 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
   const analytics = useMemoCx(() => computeAnalytics(filtered.partial, filtered.completed, filtered.manual), [filtered]);
 
+  // Marketing analytics — merged from the old Marketing dashboard so the same
+  // date/gender/category filters drive every panel on this screen.
+  const marketingStats = useMemoCx(() => {
+    const tag = (list, src) => list.map(d => ({ ...d, _src: src }));
+    const all = [...tag(filtered.completed, 'completed'), ...tag(filtered.partial, 'partial'), ...tag(filtered.manual, 'manual')];
+    const CATS = [
+      { key: "womens-wellness", label: "Women's Wellness", color: "var(--accent)" },
+      { key: "mens-wellness", label: "Men's Wellness", color: "var(--accent-2)" },
+      { key: "womens-weight", label: "Women's Weight", color: "var(--risk-low)" },
+      { key: "mens-weight", label: "Men's Weight", color: "var(--risk-moderate)" },
+      { key: "other", label: "Other", color: "var(--border)" },
+    ];
+    const catKey = (r) => {
+      const q = (r.questionnaireId || r.reportCategory || r.primaryGoal || "").toLowerCase();
+      if (!q) return "other";
+      const women = q.includes("women") || q.includes("female");
+      const men = !women && (q.includes("men") || q.includes("male"));
+      const weight = q.includes("weight");
+      if (women) return weight ? "womens-weight" : "womens-wellness";
+      if (men) return weight ? "mens-weight" : "mens-wellness";
+      return "other";
+    };
+    const groups = {};
+    all.forEach(r => {
+      const k = catKey(r);
+      if (!groups[k]) groups[k] = { all: 0, completed: 0, partial: 0, consulted: 0, purchased: 0 };
+      const g = groups[k];
+      g.all += 1;
+      if (r._src === 'completed') g.completed += 1;
+      if (r._src === 'partial') g.partial += 1;
+      if (r.isConsulted) g.consulted += 1;
+      if (r.isPurchased) g.purchased += 1;
+    });
+    const catRows = CATS
+      .map(c => {
+        const g = groups[c.key] || { all: 0, completed: 0, partial: 0, consulted: 0, purchased: 0 };
+        // Completion % uses quiz traffic only (manual entries are neither started nor abandoned)
+        const denom = g.completed + g.partial;
+        return { ...c, count: g.all, completed: g.completed, consulted: g.consulted, purchased: g.purchased, cr: denom > 0 ? Math.round((g.completed / denom) * 100) : null };
+      })
+      .filter(c => c.key !== 'other' || c.count > 0);
+    const whatsappLeads = all.filter(r => r.isWhatsAppSent).length;
+    return {
+      catRows, whatsappLeads,
+      sources: {
+        completed: filtered.completed.length,
+        partial: filtered.partial.length,
+        manual: filtered.manual.length,
+        total: all.length,
+      },
+    };
+  }, [filtered]);
+
   const D = window.SehatData;
   const layout = tweaks.homeLayout || "analytics";
   const [tab, setTab] = useState("completed");
@@ -1752,12 +1814,20 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   }, [filtered]);
 
   const kpis = (
-    <div className="grid-12">
-      <div className="span-3"><KPI feature label="Started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" sparkline={analytics.timeSeries.slice(-14).map(d => d.started)} /></div>
-      <div className="span-3"><KPI label="Completed" value={analytics.totalCompleted.toLocaleString()} icon="check" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed)} /></div>
-      <div className="span-3"><KPI label="Drop-off" value={Math.round(analytics.dropoffRate || 0)} suffix="%" icon="trend_dn" sparkline={analytics.timeSeries.slice(-14).map(d => d.partial)} /></div>
-      <div className="span-3"><KPI label="Avg. score" value={Math.round(analytics.avgHealthScore || 0)} suffix="/100" icon="pulse" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed * 0.6 + 20)} /></div>
-    </div>
+    <>
+      <div className="grid-12">
+        <div className="span-3"><KPI feature label="Started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" sparkline={analytics.timeSeries.slice(-14).map(d => d.started)} /></div>
+        <div className="span-3"><KPI label="Completed" value={analytics.totalCompleted.toLocaleString()} icon="check" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed)} /></div>
+        <div className="span-3"><KPI label="Drop-off" value={Math.round(analytics.dropoffRate || 0)} suffix="%" icon="trend_dn" sparkline={analytics.timeSeries.slice(-14).map(d => d.partial)} /></div>
+        <div className="span-3"><KPI label="Avg. score" value={Math.round(analytics.avgHealthScore || 0)} suffix="/100" icon="pulse" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed * 0.6 + 20)} /></div>
+      </div>
+      <div className="grid-12">
+        <div className="span-3"><KPI label="Completion rate" value={Math.round(analytics.completionRate || 0)} suffix="%" icon="target" /></div>
+        <div className="span-3"><KPI label="Consulted" value={(analytics.totalConsulted || 0).toLocaleString()} icon="stethoscope" /></div>
+        <div className="span-3"><KPI label="Purchased" value={(analytics.totalPurchased || 0).toLocaleString()} icon="package" /></div>
+        <div className="span-3"><KPI label="WhatsApp leads" value={marketingStats.whatsappLeads.toLocaleString()} icon="whatsapp" /></div>
+      </div>
+    </>
   );
 
   const riskDonut = (() => {
@@ -1794,11 +1864,10 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     { stage: 'Purchased', count: analytics.totalPurchased || 0 },
   ];
 
-  // Category breakdown — top 6 from real data
-  const categoryData = Object.entries(analytics.concerns || {})
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([cat, count]) => ({ label: (cat || 'Unknown').split(' ').slice(0, 2).join(' '), value: count }));
+  // Category breakdown — canonical questionnaires (shared with the performance table)
+  const categoryData = marketingStats.catRows
+    .filter(c => c.count > 0)
+    .map(c => ({ label: c.label.replace("'s", ""), value: c.count, color: c.color }));
 
   // Gender split — real data
   const femaleCount = (analytics.genders?.Female || 0);
@@ -1811,8 +1880,8 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     <div className="col fade-in">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Health Score Questionnaire</h1>
-          <p className="page-sub">Real-time submission analytics · {dateFrom} to {dateTo}</p>
+          <h1 className="page-title">Analytics Dashboard</h1>
+          <p className="page-sub">Health score, marketing & funnel analytics · {dateFrom} to {dateTo}</p>
         </div>
         <div className="page-head-actions">
           <button
@@ -1933,7 +2002,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
               <FunnelChart data={funnelData} />
             </div>
             <div className="span-4 card">
-              <div className="section-title" style={{ marginBottom: 10 }}>Category breakdown</div>
+              <div className="section-title" style={{ marginBottom: 10 }}>Submissions by questionnaire</div>
               {categoryData.length > 0
                 ? <BarChart height={232} data={categoryData} />
                 : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No category data</div></div>
@@ -1952,6 +2021,67 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                 <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent)" }} /><span>Female</span><span className="spacer" /><span className="num muted">{femaleCount.toLocaleString()}</span></div>
                 <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent-2)" }} /><span>Male</span><span className="spacer" /><span className="num muted">{maleCount.toLocaleString()}</span></div>
                 {unknownGenderCount > 0 && <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--surface-3)" }} /><span>Unknown</span><span className="spacer" /><span className="num muted">{unknownGenderCount.toLocaleString()}</span></div>}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid-12">
+            <div className="span-8 card" style={{ padding: 0, overflow: "hidden" }}>
+              <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+                <div className="section-title">Questionnaire performance</div>
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Questionnaire</th>
+                      <th>Starts</th>
+                      <th>Completed</th>
+                      <th>Consulted</th>
+                      <th>Purchased</th>
+                      <th>Completion %</th>
+                      <th>Purchase rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marketingStats.catRows.map(row => (
+                      <tr key={row.key}>
+                        <td className="fw5">{row.label}</td>
+                        <td className="num">{row.count.toLocaleString()}</td>
+                        <td className="num">{row.completed.toLocaleString()}</td>
+                        <td className="num">{row.consulted.toLocaleString()}</td>
+                        <td className="num">{row.purchased.toLocaleString()}</td>
+                        <td className="num">{row.cr != null ? row.cr + "%" : "-"}</td>
+                        <td className="num fw5" style={{ color: "var(--risk-low)" }}>
+                          {row.count > 0 ? ((row.purchased / row.count) * 100).toFixed(1) + "%" : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="span-4 card">
+              <div className="section-title" style={{ marginBottom: 10 }}>Source breakdown</div>
+              <div className="stack-12" style={{ marginTop: 6 }}>
+                {[
+                  ["Completed quiz", marketingStats.sources.completed, "var(--risk-low)"],
+                  ["Partial quiz", marketingStats.sources.partial, "var(--risk-moderate)"],
+                  ["Manual entry", marketingStats.sources.manual, "var(--accent-2)"],
+                  ["WhatsApp leads", marketingStats.whatsappLeads, "var(--risk-high)"],
+                ].map(([n, v, col]) => {
+                  const pct = marketingStats.sources.total > 0 ? (v / marketingStats.sources.total) * 100 : 0;
+                  return (
+                    <div key={n}>
+                      <div className="hstack-8" style={{ fontSize: 12.5, marginBottom: 4 }}>
+                        <span className="fw5">{n}</span>
+                        <span className="spacer" />
+                        <span className="muted num">{v.toLocaleString()}</span>
+                      </div>
+                      <div className="fbar"><i style={{ width: pct + "%", background: col }} /></div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -4350,6 +4480,23 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
     onPrefillConsumed?.();
   }, [prefillOverride]);
 
+  // Medicine catalog + autofill preference
+  const [medCatalog, setMedCatalog] = useStateD({});
+  const [autofillEnabled, setAutofillEnabled] = useStateD(false);
+  useEffect(() => {
+    const uid = auth?.currentUser?.uid;
+    const prefUnsub = uid
+      ? onSnapshot(doc(db, 'users', uid, 'preferences', 'settings'), snap => {
+          setAutofillEnabled(snap.exists() ? !!snap.data()?.prescriptionAutofill : false);
+        }, () => {})
+      : () => {};
+    getDoc(doc(db, 'app_settings', 'medicine_catalog')).then(snap => {
+      if (snap.exists()) setMedCatalog(snap.data()?.catalog || {});
+    }).catch(() => {});
+    return prefUnsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Product Search State
   const [productSearch, setProductSearch] = useStateD("");
   const [searchResults, setSearchResults] = useStateD([]);
@@ -4450,16 +4597,22 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
     if (existingIdx >= 0) {
       setItems(prev => prev.filter((_, i) => i !== existingIdx));
     } else {
+      const catalogEntry = autofillEnabled ? (medCatalog[`${product.id}_${vid}`] || null) : null;
       setItems(prev => [...prev, {
         name: variant && variant.title !== "Default Title" ? `${product.title} - ${variant.title}` : product.title,
-        dose: "",
-        freq: "",
-        durationValue: 1,
-        durationUnit: "month",
         productId: product.id,
         variantId: vid,
         image: product.image,
-        qty: 1
+        qty: 1,
+        // Catalog autofill — values from catalog if enabled, else blank defaults
+        dosageType: catalogEntry?.dosageType || 'schedule',
+        dosage: catalogEntry?.dosage || ['0', '0', '0', '0'],
+        dosageValue: catalogEntry?.dosageValue || '',
+        dosageFrequency: catalogEntry?.dosageFrequency || '',
+        detailsHeader: catalogEntry?.detailsHeader || '',
+        detailsSubtext: catalogEntry?.detailsSubtext || '',
+        durationValue: catalogEntry?.durationValue || 1,
+        durationUnit: catalogEntry?.durationUnit || 'month',
       }]);
       setProductSearch("");
       setSearchResults([]);
@@ -4535,6 +4688,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   const [saveStatus, setSaveStatus] = useStateD(null); // null | 'success' | 'error'
   const [savedCartLink, setSavedCartLink] = useStateD('');
   const [copiedCart, setCopiedCart] = useStateD(false);
+  const [showConfirm, setShowConfirm] = useStateD(false);
 
   const collectionName = customer?._collection === 'full' ? 'questionnaire_submissions'
     : customer?._collection === 'partial' ? 'partial_submissions'
@@ -5057,6 +5211,106 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         </div>
       )}
 
+      {/* Prescription confirmation modal */}
+      {showConfirm && createPortal(
+        <>
+          <div className="np-blur-layer" />
+          <div className="np-backdrop" onClick={() => !isSaving && setShowConfirm(false)}>
+            <div className="np-modal" onClick={e => e.stopPropagation()}
+              style={{ maxWidth: 440, width: '100%', padding: 0, borderRadius: 18, overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '20px 24px 16px', background: 'var(--accent-soft)', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <Icon name="pill" size={18} color="#fff" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>Confirm prescription</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Review before signing</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '18px 24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+                  {[
+                    ['Patient', patientName || '—'],
+                    ['Gender', patientGender !== 'Not Selected' ? patientGender : '—'],
+                    ['Age', patientAge ? `${patientAge} yrs` : '—'],
+                    ['Consultation date', consultationDate || '—'],
+                  ].map(([lbl, val]) => (
+                    <div key={lbl} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '10px 13px', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{lbl}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {items.length > 0 && (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+                    <div style={{ padding: '8px 13px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Medications · {items.length}
+                    </div>
+                    {items.map((it, i) => {
+                      let doseStr = '';
+                      if (it.dosageType === 'drops') doseStr = `${it.dosageValue || '5'} drops, ${it.dosageFrequency || '2'}×/day`;
+                      else if (it.dosageType === 'topical') doseStr = it.dosageValue || 'Apply as directed';
+                      else if (Array.isArray(it.dosage)) doseStr = it.dosage.join('-');
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                          {it.image
+                            ? <img src={it.image} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 5, border: '1px solid var(--border)', flexShrink: 0 }} />
+                            : <div style={{ width: 28, height: 28, borderRadius: 5, background: 'var(--surface-3)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="pill" size={14} /></div>}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</div>
+                            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                              {[doseStr, `${it.durationValue || 1} ${it.durationUnit || 'month'}${(it.durationValue || 1) > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 12, color: 'var(--muted)', flexShrink: 0 }}>qty {it.qty || 1}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {items.length === 0 && (
+                  <div style={{ padding: '10px 14px', borderRadius: 10, background: 'color-mix(in oklab, var(--risk-moderate) 12%, var(--surface))', border: '1px solid color-mix(in oklab, var(--risk-moderate) 30%, var(--border))', fontSize: 13, color: 'var(--fg)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Icon name="bell" size={14} color="var(--risk-moderate)" /> No medications added
+                  </div>
+                )}
+
+                {primaryDiagnosis && (
+                  <div style={{ padding: '10px 13px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 12.5, color: 'var(--muted)', marginBottom: 16 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--fg)' }}>Diagnosis: </span>{primaryDiagnosis}
+                  </div>
+                )}
+
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.5 }}>
+                  This will generate a signed prescription and mark the patient as <strong>consulted</strong>. This action cannot be undone.
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button className="btn ghost" style={{ flex: 1, justifyContent: 'center' }}
+                    onClick={() => setShowConfirm(false)} disabled={isSaving}>
+                    Cancel
+                  </button>
+                  <button className="btn primary" style={{ flex: 2, justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.18)' }}
+                    onClick={async () => { setShowConfirm(false); await handleApproveSign(); }}
+                    disabled={isSaving}>
+                    {isSaving
+                      ? <><Icon name="refresh" size={14} className="spin" /> Saving…</>
+                      : <><Icon name="check" size={14} /> Confirm &amp; sign</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
       {/* Approve & Sign — floating, no background */}
       <div style={{ position: 'sticky', bottom: 16, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 24, pointerEvents: 'none' }}>
         {saveStatus === 'success' && (
@@ -5067,7 +5321,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         {canSign ? (
           <button
             className="btn primary"
-            onClick={handleApproveSign}
+            onClick={() => setShowConfirm(true)}
             disabled={isSaving}
             style={{ pointerEvents: 'all', minWidth: 160, boxShadow: '0 4px 18px rgba(0,0,0,0.22)' }}
           >
@@ -8621,244 +8875,10 @@ function CourierPerformance() {
 
 
 // --- screens-misc.jsx ---
-// screens-misc.jsx — Marketing analytics, Roles & Users admin, Settings
+// screens-misc.jsx — Roles & Users admin, Settings
 
 
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MARKETING ANALYTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-
-function MarketingScreen() {
-  const [allData, setAllData] = React.useState({ full: [], partial: [], manual: [] });
-  const [loading, setLoading] = React.useState(true);
-
-  useEffect(() => {
-    let counts = { full: false, partial: false, manual: false };
-    const check = () => { if (counts.full && counts.partial && counts.manual) setLoading(false); };
-
-    const u1 = onSnapshot(collection(db, "questionnaire_submissions"), snap => {
-      setAllData(p => ({ ...p, full: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
-      counts.full = true; check();
-    }, () => { counts.full = true; check(); });
-
-    const u2 = onSnapshot(collection(db, "partial_submissions"), snap => {
-      setAllData(p => ({ ...p, partial: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
-      counts.partial = true; check();
-    }, () => { counts.partial = true; check(); });
-
-    const u3 = onSnapshot(collection(db, "manual_submissions"), snap => {
-      setAllData(p => ({ ...p, manual: snap.docs.map(d => ({ id: d.id, ...d.data() })) }));
-      counts.manual = true; check();
-    }, () => { counts.manual = true; check(); });
-
-    return () => { u1(); u2(); u3(); };
-  }, []);
-
-  const stats = React.useMemo(() => {
-    const { full, partial, manual } = allData;
-    const all = [...full, ...partial, ...manual];
-
-    const getQid = r => (r.questionnaireId || r.reportCategory || "").toLowerCase();
-    const getGender = r => {
-      if (r.gender && r.gender !== "Not Selected" && r.gender !== "-") return r.gender;
-      const qid = getQid(r);
-      if (qid.includes("womens") || qid.includes("women's")) return "Female";
-      if (qid.includes("mens") || qid.includes("men's")) return "Male";
-      return "Other";
-    };
-
-    const CATS = [
-      { key: "womens-wellness", label: "Women's Wellness", color: "var(--accent)" },
-      { key: "mens-wellness", label: "Men's Wellness", color: "var(--accent-2)" },
-      { key: "womens-weight", label: "Women's Weight", color: "var(--risk-low)" },
-      { key: "mens-weight", label: "Men's Weight", color: "var(--risk-moderate)" },
-    ];
-
-    const byQid = {};
-    all.forEach(r => {
-      const qid = getQid(r);
-      let key = "Other";
-      if (qid.includes("womens-wellness") || (qid.includes("women") && !qid.includes("weight"))) key = "womens-wellness";
-      else if (qid.includes("womens-weight") || (qid.includes("women") && qid.includes("weight"))) key = "womens-weight";
-      else if (qid.includes("mens-wellness") || (qid.includes("mens") && !qid.includes("weight"))) key = "mens-wellness";
-      else if (qid.includes("mens-weight") || (qid.includes("men") && qid.includes("weight"))) key = "mens-weight";
-      if (!byQid[key]) byQid[key] = { fullArr: [], partialArr: [], allArr: [] };
-      byQid[key].allArr.push(r);
-      if (full.find(x => x.id === r.id)) byQid[key].fullArr.push(r);
-      else if (partial.find(x => x.id === r.id)) byQid[key].partialArr.push(r);
-    });
-
-    const catRows = CATS.map(cat => {
-      const grp = byQid[cat.key] || { fullArr: [], partialArr: [], allArr: [] };
-      const starts = grp.allArr.length;
-      const completed = grp.fullArr.length;
-      const consulted = grp.allArr.filter(r => r.isConsulted).length;
-      const purchased = grp.allArr.filter(r => r.isPurchased).length;
-      const denomCR = grp.fullArr.length + grp.partialArr.length;
-      const cr = denomCR > 0 ? ((completed / denomCR) * 100).toFixed(0) : null;
-      return { ...cat, count: starts, completed, consulted, purchased, cr };
-    });
-
-    const female = all.filter(r => getGender(r) === "Female").length;
-    const male = all.filter(r => getGender(r) === "Male").length;
-    const other = all.length - female - male;
-
-    const totalFull = full.length;
-    const totalPartial = partial.length;
-    const totalManual = manual.length;
-    const totalAll = all.length;
-    const totalConsulted = all.filter(r => r.isConsulted).length;
-    const totalPurchased = all.filter(r => r.isPurchased).length;
-    const whatsappLeads = all.filter(r => r.isWhatsAppSent).length;
-    const denomComp = totalFull + totalPartial;
-    const compRate = denomComp > 0 ? ((totalFull / denomComp) * 100).toFixed(1) : "0.0";
-    return { totalAll, totalFull, totalPartial, totalManual, totalConsulted, totalPurchased, whatsappLeads, compRate, catRows, female, male, other };
-  }, [allData]);
-
-  if (loading) return <div className="col fade-in" style={{ display: 'grid', placeItems: 'center', minHeight: 300 }}><span className="muted">Loading analytics...</span></div>;
-
-  const { totalAll, totalFull, totalPartial, totalManual, totalConsulted, totalPurchased, whatsappLeads, compRate, catRows, female, male, other } = stats;
-  const maxCat = Math.max(...catRows.map(c => c.count), 1);
-  const funnelData = [
-    { stage: "Quiz started", count: totalFull + totalPartial },
-    { stage: "Completed", count: totalFull },
-    { stage: "Consulted", count: totalConsulted },
-    { stage: "Purchased", count: totalPurchased },
-  ];
-  const totalGender = female + male + other || 1;
-  const femalePct = Math.round((female / totalGender) * 100);
-
-  return (
-    <div className="col fade-in">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">Marketing analytics</h1>
-          <p className="page-sub">Acquisition, conversion &amp; demographics</p>
-        </div>
-      </div>
-
-      <div className="grid-12">
-        <div className="span-3"><KPI feature label="Quiz starts" value={totalAll.toLocaleString()} icon="clipboard" /></div>
-        <div className="span-3"><KPI label="Completion rate" value={compRate + "%"} icon="check" /></div>
-        <div className="span-3"><KPI label="Consulted" value={totalConsulted.toLocaleString()} icon="stethoscope" /></div>
-        <div className="span-3"><KPI label="Purchased" value={totalPurchased.toLocaleString()} icon="trend_up" /></div>
-      </div>
-
-      <div className="grid-12">
-        <div className="span-8 card">
-          <div className="hstack-8" style={{ marginBottom: 14 }}>
-            <div className="section-title">Submissions by questionnaire</div>
-          </div>
-          <BarChart height={260} data={catRows.map(c => ({
-            label: c.label.replace("'s", "").trim(),
-            value: c.count,
-            color: c.color,
-          }))} />
-        </div>
-        <div className="span-4 card">
-          <div className="section-title" style={{ marginBottom: 10 }}>Funnel</div>
-          <FunnelChart data={funnelData} />
-        </div>
-      </div>
-
-      <div className="grid-12">
-        <div className="span-6 card">
-          <div className="section-title" style={{ marginBottom: 10 }}>Category demand</div>
-          <div className="stack-12" style={{ marginTop: 6 }}>
-            {catRows.map(c => (
-              <div key={c.key}>
-                <div className="hstack-8" style={{ fontSize: 12.5, marginBottom: 4 }}>
-                  <span className="fw5">{c.label}</span>
-                  <span className="spacer" />
-                  <span className="muted num">{c.count}</span>
-                </div>
-                <div className="fbar"><i style={{ width: (c.count / maxCat) * 100 + "%", background: c.color }} /></div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="span-3 card">
-          <div className="section-title" style={{ marginBottom: 10 }}>Gender split</div>
-          <div style={{ display: "grid", placeItems: "center", padding: "8px 0" }}>
-            <DonutChart size={160} thickness={22} centerValue={femalePct + "%"} centerLabel="female" data={[
-              { label: "Female", value: female, color: "var(--accent)" },
-              { label: "Male", value: male, color: "var(--accent-2)" },
-              { label: "Other", value: other, color: "var(--border)" },
-            ]} />
-          </div>
-          <div className="stack-8" style={{ marginTop: 8 }}>
-            {[["Female", female, "var(--accent)"], ["Male", male, "var(--accent-2)"], ["Other", other, "var(--border)"]].map(([l, v, col]) => (
-              <div key={l} className="hstack-8" style={{ fontSize: 12 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: col, flexShrink: 0 }} />
-                <span>{l}</span>
-                <span className="spacer" />
-                <span className="muted num">{v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="span-3 card">
-          <div className="section-title" style={{ marginBottom: 10 }}>Source breakdown</div>
-          <div className="stack-12" style={{ marginTop: 6 }}>
-            {[
-              ["Completed quiz", totalFull, "var(--risk-low)"],
-              ["Partial quiz", totalPartial, "var(--risk-moderate)"],
-              ["Manual entry", totalManual, "var(--accent-2)"],
-              ["WhatsApp leads", whatsappLeads, "var(--risk-high)"],
-            ].map(([n, v, col]) => {
-              const pct = totalAll > 0 ? (v / totalAll) * 100 : 0;
-              return (
-                <div key={n}>
-                  <div className="hstack-8" style={{ fontSize: 12.5, marginBottom: 4 }}>
-                    <span className="fw5">{n}</span>
-                    <span className="spacer" />
-                    <span className="muted num">{v}</span>
-                  </div>
-                  <div className="fbar"><i style={{ width: pct + "%", background: col }} /></div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
-          <div className="section-title">Questionnaire performance</div>
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Questionnaire</th>
-                <th>Starts</th>
-                <th>Completed</th>
-                <th>Consulted</th>
-                <th>Purchased</th>
-                <th>Completion %</th>
-                <th>Purchase rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {catRows.map(row => (
-                <tr key={row.label}>
-                  <td className="fw5">{row.label}</td>
-                  <td className="num">{row.count.toLocaleString()}</td>
-                  <td className="num">{row.completed.toLocaleString()}</td>
-                  <td className="num">{row.consulted.toLocaleString()}</td>
-                  <td className="num">{row.purchased.toLocaleString()}</td>
-                  <td className="num">{row.cr != null ? row.cr + "%" : "-"}</td>
-                  <td className="num fw5" style={{ color: "var(--risk-low)" }}>
-                    {row.count > 0 ? ((row.purchased / row.count) * 100).toFixed(1) + "%" : "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ROLES & USERS (ADMIN) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
@@ -10060,10 +10080,13 @@ function SettingsScreen({ tweaks, me }) {
   const [tab, setTab] = useStateM("profile");
   const isAdmin = me?.role === 'admin';
   const isLogistics = me?.role === 'logistics' || isAdmin;
+  const { hasPermission } = usePermissions();
+  const canClinical = hasPermission('can_access_clinical_review');
   const tabs = [
     ["profile", "Profile", "user"],
     ["workspace", "Workspace", "settings"],
     ...(isLogistics ? [["logistics", "Logistics", "truck"]] : []),
+    ...(canClinical ? [["clinical", "Clinical", "pill"]] : []),
     ["notifications", "Notifications", "bell"],
     ["integrations", "Integrations", "link"],
     ["security", "Security", "lock"],
@@ -10095,6 +10118,7 @@ function SettingsScreen({ tweaks, me }) {
           {tab === "profile" && <ProfilePane me={me} />}
           {tab === "workspace" && <WorkspacePane />}
           {tab === "logistics" && <LogisticsSettingsPane />}
+          {tab === "clinical" && <ClinicalSettingsPane me={me} />}
           {tab === "notifications" && <NotificationsPane />}
           {tab === "integrations" && <IntegrationsPane />}
           {tab === "security" && <SecurityPane />}
@@ -10211,6 +10235,319 @@ function LogisticsSettingsPane() {
         <span className="spacer" />
         {!valid && <span style={{ fontSize: 12, color: 'var(--risk-critical)' }}>URL must contain {'{awb}'}</span>}
         {savedAt && !dirty && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
+      </div>
+    </div>
+  );
+}
+
+function ClinicalSettingsPane({ me }) {
+  // ── Autofill preference (per-user) ──────────────────────────────────────
+  const [autofill, setAutofill] = useState(false);
+  const [autofillLoading, setAutofillLoading] = useState(true);
+  useEffect(() => {
+    if (!me?.uid) { setAutofillLoading(false); return; }
+    const unsub = onSnapshot(doc(db, 'users', me.uid, 'preferences', 'settings'), snap => {
+      setAutofill(snap.exists() ? !!snap.data()?.prescriptionAutofill : false);
+      setAutofillLoading(false);
+    }, () => setAutofillLoading(false));
+    return unsub;
+  }, [me?.uid]);
+  const toggleAutofill = async () => {
+    if (!me?.uid) return;
+    const next = !autofill;
+    setAutofill(next);
+    await setDoc(doc(db, 'users', me.uid, 'preferences', 'settings'), { prescriptionAutofill: next }, { merge: true });
+  };
+
+  // ── Medicine catalog (shared) ───────────────────────────────────────────
+  const [catalog, setCatalog] = useState({});       // { key: {...fields} }
+  const [products, setProducts] = useState([]);     // Shopify product list
+  const [syncing, setSyncing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  const [expanded, setExpanded] = useState({});     // { key: bool }
+
+  // Load saved catalog from Firestore on mount
+  useEffect(() => {
+    getDoc(doc(db, 'app_settings', 'medicine_catalog')).then(snap => {
+      if (snap.exists()) setCatalog(snap.data()?.catalog || {});
+    }).catch(() => {});
+  }, []);
+
+  const catKey = (productId, variantId) => `${productId}_${variantId}`;
+
+  // Fetch ALL Shopify products via GraphQL cursor pagination
+  const syncFromShopify = async () => {
+    setSyncing(true);
+    setSyncDone(false);
+    try {
+      let all = [];
+      let cursor = null;
+      let hasNext = true;
+      while (hasNext) {
+        const afterClause = cursor ? `, after: "${cursor}"` : '';
+        const gql = `{
+          products(first: 250${afterClause}) {
+            pageInfo { hasNextPage endCursor }
+            edges {
+              node {
+                id title
+                featuredImage { url }
+                variants(first: 50) {
+                  edges {
+                    node { id title sku }
+                  }
+                }
+              }
+            }
+          }
+        }`;
+        const res = await fetch('/shopify-v2/graphql.json', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: gql }),
+        });
+        const data = await res.json();
+        const conn = data?.data?.products;
+        if (!conn) break;
+        (conn.edges || []).forEach(({ node }) => {
+          const numId = parseInt(node.id.split('/').pop(), 10) || node.id;
+          const variants = (node.variants?.edges || []).map(({ node: v }) => ({
+            id: parseInt(v.id.split('/').pop(), 10) || v.id,
+            title: v.title,
+            sku: v.sku || '',
+          }));
+          all.push({ id: numId, title: node.title, image: node.featuredImage?.url || null, variants });
+        });
+        hasNext = conn.pageInfo?.hasNextPage;
+        cursor = conn.pageInfo?.endCursor;
+      }
+      setProducts(all);
+      setSyncDone(true);
+    } catch (e) {
+      alert('Shopify sync failed: ' + e.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const getEntry = (pId, vId) => catalog[catKey(pId, vId)] || {
+    dosageType: 'schedule', dosage: ['1', '0', '1', '0'],
+    dosageValue: '', dosageFrequency: '2',
+    detailsHeader: 'TABLET | After food', detailsSubtext: '',
+    durationValue: 1, durationUnit: 'month',
+  };
+
+  const updateEntry = (pId, vId, field, value) => {
+    const key = catKey(pId, vId);
+    setCatalog(prev => ({ ...prev, [key]: { ...getEntry(pId, vId), ...prev[key], [field]: value } }));
+  };
+
+  const saveCatalog = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'app_settings', 'medicine_catalog'), { catalog, updatedAt: serverTimestamp() }, { merge: true });
+      setSavedAt(new Date());
+    } catch (e) {
+      alert('Save failed: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleExpand = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+
+  return (
+    <div className="col">
+      {/* ── Autofill preference ── */}
+      <div className="card">
+        <div className="section-title" style={{ marginBottom: 4 }}>Prescription autofill</div>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 16 }}>
+          When enabled, selecting a product from the medicine search bar will automatically fill in its default dosage, type, duration, and instructions from the catalog below.
+        </p>
+        <div className="hstack-12" style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 10 }}>
+          <div className="stack-2" style={{ flex: 1 }}>
+            <div className="fw5">Autofill from medicine catalog</div>
+            <div className="muted" style={{ fontSize: 12 }}>Applies to you only — other doctors keep their own preference</div>
+          </div>
+          {autofillLoading
+            ? <span className="muted" style={{ fontSize: 12 }}>Loading…</span>
+            : <Toggle on={autofill} onToggle={toggleAutofill} />}
+        </div>
+      </div>
+
+      {/* ── Medicine catalog ── */}
+      <div className="card">
+        <div className="hstack-8" style={{ marginBottom: 6 }}>
+          <div>
+            <div className="section-title">Medicine catalog</div>
+            <p className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+              Set default dosage defaults for each Shopify product. Shared across all clinical users.
+            </p>
+          </div>
+          <span className="spacer" />
+          <button className="btn primary" onClick={syncFromShopify} disabled={syncing}>
+            <Icon name="refresh" size={14} /> {syncing ? 'Syncing…' : 'Sync from Shopify'}
+          </button>
+        </div>
+
+        {syncDone && products.length === 0 && (
+          <div className="muted" style={{ fontSize: 13, padding: '12px 0' }}>No products found in Shopify.</div>
+        )}
+
+        {products.length > 0 && (
+          <div className="stack-8" style={{ marginTop: 12 }}>
+            {products.map(p => {
+              const isSingle = p.variants.length === 1 && p.variants[0].title === 'Default Title';
+              if (isSingle) {
+                const v = p.variants[0];
+                const key = catKey(p.id, v.id);
+                const entry = catalog[key];
+                const isOpen = !!expanded[key];
+                return (
+                  <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                    <button className="hstack-10" style={{ width: '100%', padding: '10px 14px', background: 'none', border: 0, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => toggleExpand(key)}>
+                      {p.image
+                        ? <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0 }} />
+                        : <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--surface-2)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="pill" size={16} /></div>}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span className="fw5" style={{ fontSize: 13 }}>{p.title}</span>
+                        {v.title !== 'Default Title' && <span className="muted" style={{ fontSize: 11 }}>{v.title}{v.sku ? ` · ${v.sku}` : ''}</span>}
+                      </div>
+                      {entry && <span className="badge" style={{ fontSize: 11, marginRight: 4 }}>configured</span>}
+                      <Icon name={isOpen ? 'chevron_up' : 'chevron_down'} size={14} />
+                    </button>
+                    {isOpen && <CatalogEntryEditor entry={getEntry(p.id, v.id)} onChange={(f, val) => updateEntry(p.id, v.id, f, val)} />}
+                  </div>
+                );
+              }
+              return p.variants.map(v => {
+                const key = catKey(p.id, v.id);
+                const entry = catalog[key];
+                const isOpen = !!expanded[key];
+                return (
+                  <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                    <button className="hstack-10" style={{ width: '100%', padding: '10px 14px', background: 'none', border: 0, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => toggleExpand(key)}>
+                      {p.image
+                        ? <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0 }} />
+                        : <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--surface-2)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="pill" size={16} /></div>}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span className="fw5" style={{ fontSize: 13 }}>{p.title}</span>
+                        <span className="muted" style={{ fontSize: 11 }}>{v.title}{v.sku ? ` · ${v.sku}` : ''}</span>
+                      </div>
+                      {entry && <span className="badge" style={{ fontSize: 11, marginRight: 4 }}>configured</span>}
+                      <Icon name={isOpen ? 'chevron_up' : 'chevron_down'} size={14} />
+                    </button>
+                    {isOpen && <CatalogEntryEditor entry={getEntry(p.id, v.id)} onChange={(f, val) => updateEntry(p.id, v.id, f, val)} />}
+                  </div>
+                );
+              });
+            })}
+          </div>
+        )}
+
+        {!syncing && products.length === 0 && !syncDone && (
+          <div className="muted" style={{ fontSize: 13, padding: '12px 0', borderTop: '1px solid var(--border)', marginTop: 12 }}>
+            Click "Sync from Shopify" to load your product list and configure default dosages.
+          </div>
+        )}
+
+        {products.length > 0 && (
+          <div className="hstack-8" style={{ marginTop: 16 }}>
+            <span className="spacer" />
+            {savedAt && !saving && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
+            <button className="btn primary" onClick={saveCatalog} disabled={saving}>{saving ? 'Saving…' : 'Save catalog'}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Inline editor for one product-variant catalog entry.
+function CatalogEntryEditor({ entry, onChange }) {
+  return (
+    <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+      <div className="grid-12" style={{ gap: 12 }}>
+        {/* Dosage type */}
+        <div className="span-3 field" style={{ margin: 0 }}>
+          <span className="lbl">Type</span>
+          <select className="select" value={entry.dosageType || 'schedule'} onChange={e => onChange('dosageType', e.target.value)}>
+            <option value="schedule">Capsule / Tablet</option>
+            <option value="drops">Drops</option>
+            <option value="topical">Topical</option>
+          </select>
+        </div>
+
+        {/* Dosage inputs — vary by type */}
+        {(!entry.dosageType || entry.dosageType === 'schedule') && (
+          <div className="span-4 field" style={{ margin: 0 }}>
+            <span className="lbl">Dosage</span>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {['M', 'A', 'E', 'N'].map((label, dIdx) => (
+                <React.Fragment key={label}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <input className="input num" style={{ width: 38, height: 32, textAlign: 'center', padding: 0 }}
+                      value={(entry.dosage || ['0', '0', '0', '0'])[dIdx] || '0'}
+                      onChange={e => {
+                        const d = [...(entry.dosage || ['0', '0', '0', '0'])];
+                        d[dIdx] = e.target.value.replace(/[^0-9]/, '').slice(-1) || '0';
+                        onChange('dosage', d);
+                      }} />
+                    <span style={{ fontSize: 9, color: 'var(--muted)', lineHeight: 1 }}>{label}</span>
+                  </div>
+                  {dIdx < 3 && <span style={{ color: 'var(--muted)', fontWeight: 500, marginBottom: 10 }}>–</span>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+        {entry.dosageType === 'drops' && (
+          <>
+            <div className="span-2 field" style={{ margin: 0 }}>
+              <span className="lbl">Drops</span>
+              <input className="input num" placeholder="5" value={entry.dosageValue || ''} onChange={e => onChange('dosageValue', e.target.value)} />
+            </div>
+            <div className="span-2 field" style={{ margin: 0 }}>
+              <span className="lbl">Times/day</span>
+              <input className="input num" placeholder="2" value={entry.dosageFrequency || ''} onChange={e => onChange('dosageFrequency', e.target.value)} />
+            </div>
+          </>
+        )}
+        {entry.dosageType === 'topical' && (
+          <div className="span-4 field" style={{ margin: 0 }}>
+            <span className="lbl">Application instruction</span>
+            <input className="input" placeholder="Apply as directed" value={entry.dosageValue || ''} onChange={e => onChange('dosageValue', e.target.value)} />
+          </div>
+        )}
+
+        {/* Duration */}
+        <div className="span-2 field" style={{ margin: 0 }}>
+          <span className="lbl">Duration</span>
+          <input type="number" min="1" className="input num" value={entry.durationValue || 1} onChange={e => onChange('durationValue', Math.max(1, Number(e.target.value) || 1))} />
+        </div>
+        <div className="span-2 field" style={{ margin: 0 }}>
+          <span className="lbl">Unit</span>
+          <select className="select" value={entry.durationUnit || 'month'} onChange={e => onChange('durationUnit', e.target.value)}>
+            <option value="day">Day(s)</option>
+            <option value="week">Week(s)</option>
+            <option value="month">Month(s)</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid-12" style={{ gap: 12, marginTop: 10 }}>
+        <div className="span-6 field" style={{ margin: 0 }}>
+          <span className="lbl">Type &amp; Timing (e.g. TABLET | After food)</span>
+          <input className="input" placeholder="TABLET | After food" value={entry.detailsHeader || ''} onChange={e => onChange('detailsHeader', e.target.value)} />
+        </div>
+        <div className="span-6 field" style={{ margin: 0 }}>
+          <span className="lbl">Instructions (printed below product name)</span>
+          <input className="input" placeholder="Take with warm water" value={entry.detailsSubtext || ''} onChange={e => onChange('detailsSubtext', e.target.value)} />
+        </div>
       </div>
     </div>
   );
@@ -10415,17 +10752,17 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 const NAV = {
-  admin: ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "order_create", "shipments", "marketing", "users", "focused_editor", "data_studio", "settings"],
+  admin: ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
   doctor: ["doctor", "submissions", "customers", "prescriptions", "settings"],
   telesales: ["submissions", "prescriptions", "settings"],
   order_creator: ["order_create", "orders", "crm_orders", "customers", "settings"],
-  marketing: ["marketing", "home", "submissions", "customers", "prescriptions", "doctor", "settings"],
+  marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "settings"],
   logistics: ["shipments", "orders", "shipment_tracking", "crm_orders", "order_create", "customers", "settings"],
   website_developer: ["focused_editor", "data_studio", "settings"],
 };
 
 const ITEMS = {
-  home: { label: "Health Score Dashboard", icon: "pulse", route: "home" },
+  home: { label: "Analytics Dashboard", icon: "pulse", route: "home" },
   submissions: { label: "Submissions", icon: "clipboard", route: "submissions", ct: "3.4k" },
   customers: { label: "Customers", icon: "users", route: "customers", ct: "30" },
   prescriptions: { label: "Prescriptions", icon: "pill", route: "prescriptions" },
@@ -10436,7 +10773,6 @@ const ITEMS = {
   crm_orders: { label: "CRM orders", icon: "clipboard", route: "crm_orders" },
   order_create: { label: "Create order", icon: "plus", route: "order_create" },
   shipments: { label: "Shipments", icon: "truck", route: "shipments", ct: "117" },
-  marketing: { label: "Marketing analytics", icon: "bar", route: "marketing" },
   users: { label: "Roles & users", icon: "shield", route: "admin" },
   focused_editor: { label: "Quick Editor", icon: "filter", route: "focused_editor" },
   data_studio: { label: "Detailed View", icon: "database", route: "data_studio" },
@@ -11011,7 +11347,7 @@ function Breadcrumb({ route, role }) {
   const D = window.SehatData;
   const roleDef = D.ROLES.find(r => r.key === role);
   const labels = {
-    home: "Health Score Dashboard",
+    home: "Analytics Dashboard",
     submissions: "Submissions",
     customers: "Customers",
     doctor: "Clinical review",
@@ -11019,7 +11355,6 @@ function Breadcrumb({ route, role }) {
     crm_orders: "CRM orders",
     order_create: "Create order",
     shipments: "Shipments",
-    marketing: "Marketing analytics",
     admin: "Roles & users",
     settings: "Settings",
   };
@@ -11284,7 +11619,8 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubm
     case "crm_orders": return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
     case "shipments": return <ShipmentsScreen ctx={route.ctx} />;
-    case "marketing": return <MarketingScreen />;
+    // "marketing" was merged into the unified Analytics Dashboard ("home");
+    // stale saved routes fall through to the default Dashboard render.
     case "data_studio": return <DataStudioScreen me={me} />;
     case "focused_editor": return <DataStudioScreen me={me} initialView="focused" />;
     case "admin": return <AdminScreen />;
