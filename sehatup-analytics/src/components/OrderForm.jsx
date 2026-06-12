@@ -1266,6 +1266,8 @@ const OrderForm = ({
             if (d.email) orderPayload.order.email = d.email;
             if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
             if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
+            const pt = buildPaymentTerms();
+            if (pt) orderPayload.order.payment_terms = pt;
             // Order-level discount → discount_codes (the Orders API has no order-level applied_discount).
             if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
                 orderPayload.order.discount_codes = [{
