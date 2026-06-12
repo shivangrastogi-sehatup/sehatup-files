@@ -8247,9 +8247,6 @@ function ShipmentsScreen({ ctx }) {
   // Enriched shipment docs from Firestore subcollection `shipments/{phone}/awbs/{awb}`
   // Keyed by AWB for easy merge with live Firestore tracking events
   const [enrichedMap, setEnrichedMap] = useStateS({});
-  const [testEnrichedMap, setTestEnrichedMap] = useStateS({});
-  // testMode: when true the UI shows shipments_test collection instead of shipments
-  const [testMode, setTestMode] = useStateS(false);
   // Backfill state: { running, total, done, failed }
   const [backfill, setBackfill] = useStateS({ running: false, total: 0, done: 0, failed: 0 });
   // Nimbus Excel upload state
@@ -8274,9 +8271,10 @@ function ShipmentsScreen({ ctx }) {
     return unsub;
   }, []);
 
-  // Subscribe to all `awbs` subcollections — covers both `shipments/` (production)
-  // and `shipments_test/` (test uploads). Docs are split into separate maps by
-  // their Firestore path prefix so testMode can switch views without re-subscribing.
+  // Subscribe to all `awbs` subcollections under `shipments/`. Docs left over in
+  // the retired `shipments_test` sandbox are ignored. When the same AWB exists
+  // under two parents (e.g. an `unknown_` placeholder), prefer the doc with
+  // customer info, then the most recently updated one.
   useEffect(() => {
     const keep = (a, b) => {
       const ca = !!(a?.customer?.name || a?.customer?.phone);
@@ -8286,16 +8284,13 @@ function ShipmentsScreen({ ctx }) {
     };
     const unsub = onSnapshot(collectionGroup(db, 'awbs'), (snap) => {
       const prod = {};
-      const test = {};
       snap.docs.forEach(d => {
         const data = d.data();
         if (!data?.awb) return;
-        const isTest = d.ref.path.startsWith('shipments_test/');
-        const map = isTest ? test : prod;
-        map[data.awb] = map[data.awb] ? keep(map[data.awb], data) : data;
+        if (d.ref.path.startsWith('shipments_test/')) return;
+        prod[data.awb] = prod[data.awb] ? keep(prod[data.awb], data) : data;
       });
       setEnrichedMap(prod);
-      setTestEnrichedMap(test);
     }, (err) => {
       console.error('Enriched shipments subscription error:', err);
     });
@@ -8305,15 +8300,11 @@ function ShipmentsScreen({ ctx }) {
   // Build shipments: union of (enriched AWBs) ∪ (raw tracking AWBs). The enriched
   // doc has customer/order info; the live `trackingMap` provides the latest status
   // event in case the enriched doc hasn't received the update yet.
-  // In test mode we show ONLY the test collection (no production data, no trackingMap).
   const mergedShipments = useMemoS(() => {
-    const activeMap = testMode ? testEnrichedMap : enrichedMap;
-    const allAwbs = testMode
-      ? new Set(Object.keys(testEnrichedMap))
-      : new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
+    const allAwbs = new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
     return Array.from(allAwbs).map(awb => {
-      const e = activeMap[awb] || {};
-      const webhookEvents = testMode ? [] : (trackingMap[awb] || []);
+      const e = enrichedMap[awb] || {};
+      const webhookEvents = trackingMap[awb] || [];
       const histEvents = Array.isArray(e.history) ? e.history : [];
       // Merge the authoritative pulled history with live webhook events, dedupe and
       // sort newest-first. The pulled history (from "Sync from Nimbus" / webhook-triggered
@@ -8363,6 +8354,8 @@ function ShipmentsScreen({ ctx }) {
         address: sa.address || '',
       } : null;
 
+      const orderName = e.orderNumber || (e.orderId ? `#${e.orderId}` : null);
+
       return {
         id: awb,
         awb,
@@ -8378,7 +8371,10 @@ function ShipmentsScreen({ ctx }) {
         rtoAwb: latest.rto_awb || e.rtoAwb || '',
         eventCount: events.length,
         orderId: e.orderId || null,
-        orderName: e.orderNumber || (e.orderId ? `#${e.orderId}` : null),
+        orderName,
+        // Shopify orders carry the "#1234" order name (same heuristic as the row
+        // badge); custom-channel Nimbus orders and unmatched AWBs are non-Shopify.
+        source: orderName && String(orderName).startsWith('#') ? 'shopify' : 'non_shopify',
         orderTotal: typeof e.amount === 'number' ? e.amount : null,
         paymentMode: normalizePaymentLabel(e.paymentMode) || null,
         itemCount: typeof e.itemCount === 'number' ? e.itemCount : null,
@@ -8389,12 +8385,15 @@ function ShipmentsScreen({ ctx }) {
         timeline: events,
       };
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
-  }, [trackingMap, enrichedMap, testEnrichedMap, testMode]);
+  }, [trackingMap, enrichedMap]);
 
   const [tab, setTab] = useStateS("all");
   const [sel, setSel] = useStateS(null);
   const [bannerOn, setBannerOn] = useStateS(true);
   const [search, setSearch] = useStateS(ctx?.search || '');
+  // Order source filter: 'all' | 'shopify' | 'non_shopify'. Applied upstream of
+  // everything (KPIs, pipeline, status tabs, table) so the whole page reflects it.
+  const [sourceFilter, setSourceFilter] = useStateS('all');
 
   // When the global top-bar search navigates here with a term (e.g. an AWB or
   // order #), seed this screen's search box so the row is pre-filtered.
@@ -8411,54 +8410,100 @@ function ShipmentsScreen({ ctx }) {
     if (!sel && mergedShipments.length > 0) setSel(mergedShipments[0]);
   }, [mergedShipments, sel]);
 
+  // Shipments narrowed by order source — the base list for every widget below.
+  const sourcedShipments = useMemoS(() => (
+    sourceFilter === 'all' ? mergedShipments : mergedShipments.filter(s => s.source === sourceFilter)
+  ), [mergedShipments, sourceFilter]);
+
+  // Source breakdown over the FULL set, so the filter buttons keep their totals.
+  const sourceCounts = useMemoS(() => ({
+    all: mergedShipments.length,
+    shopify: mergedShipments.filter(s => s.source === 'shopify').length,
+    non_shopify: mergedShipments.filter(s => s.source === 'non_shopify').length,
+  }), [mergedShipments]);
+
   const counts = useMemoS(() => {
     const m = {};
-    STAGES.forEach(s => m[s.key] = mergedShipments.filter(x => x.status === s.key).length);
-    m.attention = mergedShipments.filter(x => x.status === 'Failed delivery').length;
-    m.all = mergedShipments.length;
+    STAGES.forEach(s => m[s.key] = sourcedShipments.filter(x => x.status === s.key).length);
+    m.attention = sourcedShipments.filter(x => x.status === 'Failed delivery').length;
+    m.all = sourcedShipments.length;
     return m;
-  }, [mergedShipments]);
+  }, [sourcedShipments]);
 
   const filteredList = useMemoS(() => {
-    let list = tab === 'all' ? mergedShipments
-      : tab === 'attention' ? mergedShipments.filter(s => s.status === 'Failed delivery')
-        : mergedShipments.filter(s => s.status === tab);
+    let list = tab === 'all' ? sourcedShipments
+      : tab === 'attention' ? sourcedShipments.filter(s => s.status === 'Failed delivery')
+        : sourcedShipments.filter(s => s.status === tab);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(s =>
         (s.awb || '').toLowerCase().includes(q)
         || (s.lastLocation || '').toLowerCase().includes(q)
         || (s.orderId || '').toString().includes(q)
+        || (s.orderName || '').toLowerCase().includes(q)
         || (s.customer?.name || '').toLowerCase().includes(q)
         || (s.customer?.phone || '').includes(q)
       );
     }
     return list;
-  }, [tab, mergedShipments, search]);
+  }, [tab, sourcedShipments, search]);
 
-  const inTransit = mergedShipments.filter(s => s.status === 'Shipped').length;
-  const delivered = mergedShipments.filter(s => s.status === 'Delivered').length;
-  const failed = mergedShipments.filter(s => s.status === 'Failed delivery').length;
-  const exceptionCount = mergedShipments.filter(s => s.status === 'Exception').length;
+  const inTransit = sourcedShipments.filter(s => s.status === 'Shipped').length;
+  const delivered = sourcedShipments.filter(s => s.status === 'Delivered').length;
+  const failed = sourcedShipments.filter(s => s.status === 'Failed delivery').length;
+  const exceptionCount = sourcedShipments.filter(s => s.status === 'Exception').length;
 
   const handleRefresh = () => { /* live via onSnapshot — no-op */ };
 
-  // Refresh: re-pull every active AWB from Nimbus and re-enrich into Firestore.
-  // Includes:
-  //   - AWBs missing customer info (new entries from old webhook events)
-  //   - AWBs not yet in a terminal status (Delivered / Failed delivery)
-  // Skips already-delivered / failed AWBs to save Shopify API quota.
-  // Batched to respect Shopify rate limits (~2 req/s).
+  // Re-enrich one AWB server-side: re-pulls the Nimbus tracking history + Shopify
+  // order and rewrites the Firestore doc (picked up live by onSnapshot). Hints from
+  // the existing doc (Nimbus order ref, customer phone) let the server match the
+  // Shopify order and keep non-Shopify order refs.
+  const syncAwb = async (awb) => {
+    const e = enrichedMap[awb] || {};
+    const latest = trackingMap[awb]?.[0] || {};
+    const phoneHint = e.customer?.phone
+      || (e.phoneKey && !String(e.phoneKey).startsWith('unknown_') ? e.phoneKey : '');
+    try {
+      const r = await fetch('/api/sheet-backfill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          awb,
+          status: latest.status,
+          location: latest.location,
+          event_time: latest.event_time,
+          message: latest.message,
+          orderRef: e.nimbusOrderRef || e.orderNumber || '',
+          customerPhone: phoneHint,
+        }),
+      });
+      const j = await r.json();
+      return j?.ok ? { ok: true } : { ok: false, error: j?.error || 'enrichment failed' };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  };
+
+  // Per-row sync state: awb → 'running' | 'err' (cleared on success)
+  const [rowSync, setRowSync] = useStateS({});
+  const syncOne = async (awb) => {
+    setRowSync(m => ({ ...m, [awb]: 'running' }));
+    const r = await syncAwb(awb);
+    setRowSync(m => {
+      const n = { ...m };
+      if (r.ok) delete n[awb]; else n[awb] = 'err';
+      return n;
+    });
+    if (!r.ok) alert(`Sync failed for ${awb}: ${r.error}`);
+  };
+
   const handleNimbusFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
 
-    // Use a separate Firestore root collection in test mode so production data
-    // is never touched. The view automatically shows the test collection when
-    // testMode is on (both collections share the same 'awbs' subcollection name
-    // so collectionGroup picks them both up and splits them by path prefix).
-    const rootColl = testMode ? 'shipments_test' : 'shipments';
+    const rootColl = 'shipments';
 
     setNimbusUpload({ running: true, total: 0, done: 0, failed: 0, errors: [], phase: 'seeding', enrichDone: 0, enrichTotal: 0 });
     try {
@@ -8491,8 +8536,7 @@ function ShipmentsScreen({ ctx }) {
 
         for (const row of chunk) {
           const awb = String(row['AWB Number']).trim();
-          const activeMap = testMode ? testEnrichedMap : enrichedMap;
-          const existing = activeMap[awb];
+          const existing = enrichedMap[awb];
 
           // Skip: already enriched from Shopify in the active collection (not just an Excel seed).
           if (existing && existing.importSource !== 'nimbus_excel' && existing.customer?.name) {
@@ -8570,6 +8614,7 @@ function ShipmentsScreen({ ctx }) {
       // Pass orderRef (from Excel "Order Id" column) and customerPhone as hints so
       // the enrichment API can find the Shopify order even when the Nimbus tracking
       // API doesn't return an order reference.
+      const enrichErrors = [];
       if (newAwbs.length > 0) {
         setNimbusUpload(u => ({ ...u, phase: 'enriching', enrichTotal: newAwbs.length, enrichDone: 0 }));
         const BATCH_SZ = 2;
@@ -8579,8 +8624,11 @@ function ShipmentsScreen({ ctx }) {
             fetch('/api/sheet-backfill', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ awb, orderRef, customerPhone, rootCollection: rootColl }),
-            }).catch(() => {})
+              body: JSON.stringify({ awb, orderRef, customerPhone }),
+            })
+              .then(r => r.json())
+              .then(j => { if (!j?.ok) enrichErrors.push(`AWB ${awb}: ${j?.error || 'enrichment failed'}`); })
+              .catch(err => { enrichErrors.push(`AWB ${awb}: ${err.message}`); })
           ));
           enrichDone += Math.min(BATCH_SZ, newAwbs.length - i);
           const enrichedSoFar = enrichDone;
@@ -8589,11 +8637,14 @@ function ShipmentsScreen({ ctx }) {
       }
 
       const skipped = valid.length - done - errors.length;
-      setNimbusUpload({ running: false, total: valid.length, done, failed: errors.length, errors, phase: null, enrichDone: 0, enrichTotal: 0 });
+      const allErrors = [...errors, ...enrichErrors];
+      if (allErrors.length) console.error('[Nimbus Upload] failures:', allErrors);
+      setNimbusUpload({ running: false, total: valid.length, done, failed: allErrors.length, errors: allErrors, phase: null, enrichDone: 0, enrichTotal: 0 });
       const parts = [
         newAwbs.length ? `${newAwbs.length} new AWBs seeded & synced with Nimbus` : null,
         skipped ? `${skipped} already enriched (skipped)` : null,
-        errors.length ? `${errors.length} failed` : null,
+        errors.length ? `${errors.length} failed to seed` : null,
+        enrichErrors.length ? `${enrichErrors.length} failed to enrich (use the row Sync button to retry)` : null,
       ].filter(Boolean);
       alert(`Upload complete. ${parts.join(' · ')}.`);
     } catch (err) {
@@ -8603,61 +8654,32 @@ function ShipmentsScreen({ ctx }) {
     }
   };
 
+  // "Sync from Nimbus": re-pull EVERY tracked AWB — tracking history, order refs
+  // and Shopify customer info — and update all of them. Only malformed keys (junk
+  // awb_number values) are skipped; the server would reject those with 400.
+  // Batched at 2 in parallel ≈ 2 req/s, safe for Shopify rate limits.
   const handleBackfill = async () => {
-    const allAwbs = Object.keys({ ...trackingMap, ...enrichedMap });
-    // Only real AWBs (6–20 digits) can be enriched. Skipping malformed keys
-    // (stray test entries, junk awb_number values) avoids doomed POSTs that the
-    // server rejects with 400 invalid_awb — those were the red errors in the console.
     const isValidAwb = (a) => /^\d{6,20}$/.test(a);
-    const needsEnrich = allAwbs.filter(awb => {
-      if (!isValidAwb(awb)) return false;
-      const e = enrichedMap[awb];
-      if (!e) return true; // never enriched
-      if (!e.customer?.name) return true; // missing customer
-      const terminal = e.status === 'Delivered' || e.status === 'Failed delivery';
-      return !terminal; // refresh active (not yet delivered/failed)
-    });
-    if (!needsEnrich.length) { alert('Nothing to refresh — every AWB is already delivered/failed and fully enriched.'); return; }
-    const missing = needsEnrich.filter(awb => !enrichedMap[awb]?.customer?.name).length;
-    const active = needsEnrich.length - missing;
-    if (!window.confirm(`Refresh ${needsEnrich.length} AWB${needsEnrich.length > 1 ? 's' : ''} from Nimbus?\n• ${missing} missing customer info\n• ${active} active (not yet delivered)\n\nETA: ${Math.ceil(needsEnrich.length / 2)} seconds.`)) return;
+    const targets = Array.from(new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)])).filter(isValidAwb);
+    if (!targets.length) { alert('No AWBs to sync yet.'); return; }
+    if (!window.confirm(`Sync all ${targets.length} AWB${targets.length > 1 ? 's' : ''} with Nimbus?\nRe-pulls tracking history, order refs and Shopify customer info for every AWB.\n\nETA: ~${Math.ceil(targets.length / 2)} seconds.`)) return;
 
-    const total = needsEnrich.length;
+    const total = targets.length;
     setBackfill({ running: true, total, done: 0, failed: 0 });
-    const BATCH = 2; // 2 in parallel = ~2 req/s, safe for Shopify
-
-    const enrichOne = async (awb) => {
-      const latest = trackingMap[awb]?.[0] || {};
-      try {
-        const r = await fetch('/api/sheet-backfill', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            awb,
-            status: latest.status,
-            location: latest.location,
-            event_time: latest.event_time,
-            message: latest.message,
-          }),
-        });
-        const j = await r.json();
-        return j?.ok ? 'ok' : 'fail';
-      } catch (_) { return 'fail'; }
-    };
+    const BATCH = 2;
 
     const counts = { done: 0, failed: 0 };
-    for (let i = 0; i < needsEnrich.length; i += BATCH) {
-      const batch = needsEnrich.slice(i, i + BATCH);
-      const results = await Promise.all(batch.map(enrichOne));
+    for (let i = 0; i < targets.length; i += BATCH) {
+      const results = await Promise.all(targets.slice(i, i + BATCH).map(syncAwb));
       for (const r of results) {
-        if (r === 'ok') counts.done += 1; else counts.failed += 1;
+        if (r.ok) counts.done += 1; else counts.failed += 1;
       }
       setBackfill({ running: true, total, done: counts.done, failed: counts.failed });
     }
 
     setBackfill({ running: false, total, done: counts.done, failed: counts.failed });
     // No manual refresh needed — collectionGroup onSnapshot picks up the new docs
-    alert(`Backfill complete: ${counts.done} enriched${counts.failed ? `, ${counts.failed} failed (check logs)` : ''}.`);
+    alert(`Sync complete: ${counts.done} updated${counts.failed ? `, ${counts.failed} failed (retry individual rows with their Sync button)` : ''}.`);
   };
 
   return (
@@ -8666,7 +8688,7 @@ function ShipmentsScreen({ ctx }) {
         <div>
           <h1 className="page-title">Shipments</h1>
           <p className="page-sub">
-            {loading ? "Loading shipments..." : `${mergedShipments.length} tracked AWBs · live from Firestore`}
+            {loading ? "Loading shipments..." : `${mergedShipments.length} tracked AWBs · ${sourceCounts.shopify} Shopify / ${sourceCounts.non_shopify} non-Shopify · live from Firestore`}
           </p>
         </div>
         <div className="page-head-actions">
@@ -8703,37 +8725,16 @@ function ShipmentsScreen({ ctx }) {
             style={{ display: 'none' }}
             onChange={handleNimbusFileUpload}
           />
-          <button
-            onClick={() => setTestMode(m => !m)}
-            title={testMode ? 'Viewing test collection — click to switch to production' : 'Click to switch to test collection (safe upload sandbox)'}
-            style={{
-              padding: '0 12px', height: 32, borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
-              background: testMode ? 'rgba(245,158,11,0.18)' : 'var(--surface-2)',
-              color: testMode ? '#f59e0b' : 'var(--muted)',
-              outline: testMode ? '1px solid rgba(245,158,11,0.4)' : 'none',
-            }}
-          >
-            {testMode ? '⚗ Test mode' : '⚗ Test mode'}
+          <button className="btn" onClick={() => nimbusFileRef.current?.click()} disabled={nimbusUpload.running} title="Upload Nimbus Excel → seeds shipments + enriches them">
+            <Icon name="upload" /> Upload
           </button>
-          <button className="btn" onClick={() => nimbusFileRef.current?.click()} disabled={nimbusUpload.running} title={`Upload Nimbus Excel → writes to ${testMode ? 'shipments_test (safe sandbox)' : 'shipments (production)'}`}>
-            <Icon name="upload" /> Upload{testMode ? ' (test)' : ''}
-          </button>
-          <button className="btn" onClick={handleBackfill} disabled={backfill.running} title="Re-pull active AWBs from Nimbus → refresh status + customer info">
+          <button className="btn" onClick={handleBackfill} disabled={backfill.running} title="Re-pull ALL AWBs from Nimbus → refresh status, order refs + customer info">
             <Icon name="refresh" /> Sync from Nimbus
           </button>
           <button className="btn" onClick={handleRefresh}><Icon name="refresh" /> Refresh</button>
         </div>
         <style>{`@keyframes spinx { to { transform: rotate(360deg); } }`}</style>
       </div>
-
-      {/* Test mode banner */}
-      {testMode && (
-        <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '8px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-          <span style={{ color: '#f59e0b', fontWeight: 700 }}>⚗ Test mode</span>
-          <span style={{ color: '#cbd5e1' }}>Showing <strong>shipments_test</strong> collection — production data is untouched. Uploads and enrichment write here only.</span>
-          <button onClick={() => setTestMode(false)} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: 5, padding: '2px 10px', cursor: 'pointer', fontSize: 12 }}>Exit test mode</button>
-        </div>
-      )}
 
       {/* KPIs */}
       <div className="grid-12">
@@ -8747,6 +8748,11 @@ function ShipmentsScreen({ ctx }) {
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
           <div className="section-title">Pipeline</div>
+          {sourceFilter !== 'all' && (
+            <Badge tone="moderate" style={{ fontSize: 10.5 }}>
+              {sourceFilter === 'shopify' ? 'Shopify orders only' : 'Non-Shopify orders only'}
+            </Badge>
+          )}
           <span className="spacer" />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${STAGES.length}, 1fr)`, gap: 0 }}>
@@ -8788,7 +8794,7 @@ function ShipmentsScreen({ ctx }) {
       {/* Main table + detail */}
       <div className="grid-12">
         <div className="span-12 card" style={{ padding: 0, overflow: "hidden" }}>
-          <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, rowGap: 8 }}>
             <Tabs value={tab} onChange={setTab} items={[
               { label: "All", value: "all", count: counts.all },
               { label: "In transit", value: "Shipped", count: counts.Shipped },
@@ -8798,10 +8804,23 @@ function ShipmentsScreen({ ctx }) {
               { label: "Failed", value: "Failed delivery", count: counts["Failed delivery"] },
             ]} />
             <span className="spacer" />
-            <div style={{ position: "relative", width: 260 }}>
+            <div className="hstack-6">
+              <span className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Source</span>
+              <Tabs value={sourceFilter} onChange={setSourceFilter} items={[
+                { label: "Both", value: "all", count: sourceCounts.all },
+                { label: "Shopify", value: "shopify", count: sourceCounts.shopify },
+                { label: "Non-Shopify", value: "non_shopify", count: sourceCounts.non_shopify },
+              ]} />
+            </div>
+            <div style={{ position: "relative", width: 240 }}>
               <input className="input" placeholder="AWB, order #, name, phone..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
               <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
             </div>
+            {(tab !== 'all' || sourceFilter !== 'all' || search.trim()) && (
+              <button className="btn sm" onClick={() => { setTab('all'); setSourceFilter('all'); setSearch(''); }} title="Reset status, source and search filters" style={{ fontSize: 11.5, gap: 4 }}>
+                <Icon name="x" size={12} /> Clear
+              </button>
+            )}
           </div>
           <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 480, maxWidth: "100%" }}>
             <table className="tbl" style={{ minWidth: 1500 }}>
@@ -8827,7 +8846,7 @@ function ShipmentsScreen({ ctx }) {
                 {loading ? (
                   <tr><td colSpan="14"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
                 ) : filteredList.map(s => (
-                  <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} trackingUrlTemplate={logisticsCfg.trackingUrlTemplate} />
+                  <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} trackingUrlTemplate={logisticsCfg.trackingUrlTemplate} onSync={syncOne} syncState={rowSync[s.awb]} />
                 ))}
                 {!loading && filteredList.length === 0 && (
                   <tr><td colSpan="14"><div className="empty"><Icon name="package" size={20} /><div>No AWBs match this filter</div></div></td></tr>
@@ -8837,7 +8856,7 @@ function ShipmentsScreen({ ctx }) {
           </div>
           <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)" }}>
             <div className="hstack-8" style={{ fontSize: 12.5 }}>
-              <span className="muted num">{filteredList.length} shown</span>
+              <span className="muted num">{filteredList.length} shown{filteredList.length !== mergedShipments.length ? ` of ${mergedShipments.length}` : ''}</span>
             </div>
           </div>
         </div>
@@ -8851,7 +8870,7 @@ function ShipmentsScreen({ ctx }) {
   );
 }
 
-function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
+function ShipmentRow({ s, selected, onClick, trackingUrlTemplate, onSync, syncState }) {
   const idx = stageIndex(s.status);
   const failed = s.status === "Failed delivery";
   const cust = s.customer;
@@ -8943,6 +8962,18 @@ function ShipmentRow({ s, selected, onClick, trackingUrlTemplate }) {
           </a>
           <button className="btn sm" title="Copy tracking link" onClick={copyTrack} style={{ fontSize: 11.5, gap: 4 }}>
             <Icon name={copied ? "check" : "copy"} size={12} /> {copied ? "Copied" : "Copy"}
+          </button>
+          <button
+            className="btn sm"
+            title="Re-sync this AWB from Nimbus — refreshes tracking, order ref + customer info"
+            disabled={syncState === 'running'}
+            onClick={() => onSync?.(s.awb)}
+            style={{ fontSize: 11.5, gap: 4, color: syncState === 'err' ? 'var(--risk-critical)' : undefined }}
+          >
+            <span style={{ display: 'inline-flex', animation: syncState === 'running' ? 'spinx 0.7s linear infinite' : 'none' }}>
+              <Icon name="refresh" size={12} />
+            </span>
+            {syncState === 'running' ? 'Syncing…' : syncState === 'err' ? 'Retry' : 'Sync'}
           </button>
         </div>
       </td>

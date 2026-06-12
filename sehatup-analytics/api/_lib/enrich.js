@@ -150,7 +150,9 @@ export async function fetchShopifyOrderByPhone(phone) {
 // ─────── Main enrichment ───────
 
 function normalizePhone(p) {
-  return String(p || '').replace(/\D/g, '');
+  // Last 10 digits — matches the Excel-seed / CRM key, so enrichment updates the
+  // SAME parent doc instead of creating a duplicate under a 91-prefixed key.
+  return String(p || '').replace(/\D/g, '').slice(-10);
 }
 
 /**
@@ -307,17 +309,19 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       email: order?.customer?.email || order?.email || '',
     };
 
-    const phoneKey = normalizePhone(customer.phone) || `unknown_${awb}`;
+    // Prefer the Shopify phone, then the caller's hint (Excel seed / existing doc),
+    // so the enriched data lands on the SAME doc the seed created — not a hidden
+    // `unknown_<awb>` duplicate.
+    const phoneKey = normalizePhone(customer.phone) || normalizePhone(latestEvent.customerPhone) || `unknown_${awb}`;
 
     // ─── Write the AWB document ───
-    // When Nimbus didn't provide order refs, fall back to the Shopify order we found.
+    // Order refs: Nimbus first, then the Shopify order we found, then the caller's
+    // hint (Excel "Order Id") — so non-Shopify orders still get their order ref.
     const resolvedOrderId     = orderId     || (order?.id     ? String(order.id)           : '');
-    const resolvedOrderNumber = orderNumber || (order?.name   ? String(order.name)         : '');
+    const resolvedOrderNumber = orderNumber || (order?.name   ? String(order.name)         : '') || String(latestEvent.orderRef || '');
     const awbDoc = {
       awb,
       phoneKey,
-      orderNumber: resolvedOrderNumber,
-      orderId:     resolvedOrderId,
       courier,
       // Latest tracking event (derived from the newest event across pulled history + webhook)
       status:        newest.status     || latestEvent.status || details?.status || '',
@@ -329,24 +333,31 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       // Full authoritative timeline (newest-first) + count
       history:       timeline,
       eventCount:    timeline.length,
-      // Customer / order details from Shopify
-      customer,
-      shippingAddress: {
-        address: [sh.address1, sh.address2].filter(Boolean).join(', '),
-        city:    sh.city     || '',
-        state:   sh.province || '',
-        pincode: sh.zip      || '',
-      },
-      items:        order?.line_items?.map(i => ({ name: i.name || i.title, qty: i.quantity })) || [],
-      itemCount:    order?.line_items?.reduce((a, i) => a + (i.quantity || 0), 0) || 0,
-      amount:       order ? parseFloat(order.total_price || 0) : 0,
-      paymentMode:  derivePaymentMode(order),
       // Bookkeeping
       orderCreated: details?.created || (order?.created_at ? new Date(order.created_at).toLocaleString('en-IN') : ''),
       edd:          details?.edd    || '',
       enrichmentSource: source,
       updatedAt:    new Date().toISOString(),
     };
+    if (resolvedOrderId)     awbDoc.orderId     = resolvedOrderId;
+    if (resolvedOrderNumber) awbDoc.orderNumber = resolvedOrderNumber;
+    // Shopify-owned fields are only written when the order was actually found —
+    // a failed lookup must never blank out customer/address/amount data that the
+    // Excel seed (or a previous successful enrichment) already wrote. The PATCH
+    // updateMask only touches the keys present here, so omitted keys are preserved.
+    if (order) {
+      awbDoc.customer = customer;
+      awbDoc.shippingAddress = {
+        address: [sh.address1, sh.address2].filter(Boolean).join(', '),
+        city:    sh.city     || '',
+        state:   sh.province || '',
+        pincode: sh.zip      || '',
+      };
+      awbDoc.items       = order.line_items?.map(i => ({ name: i.name || i.title, qty: i.quantity })) || [];
+      awbDoc.itemCount   = order.line_items?.reduce((a, i) => a + (i.quantity || 0), 0) || 0;
+      awbDoc.amount      = parseFloat(order.total_price || 0);
+      awbDoc.paymentMode = derivePaymentMode(order);
+    }
     const awbWrite = await patchFirestoreDoc(`${rootCollection}/${phoneKey}/awbs/${awb}`, awbDoc);
 
     // If we resolved a real customer phone, remove any stale placeholder doc written
@@ -380,20 +391,9 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
     const rtoAt            = milestoneTime(timeline, (st) => st.includes('rto') || st.includes('return to origin'));
 
     const sheetUpdates = {
-      'Order ID':            awbDoc.orderId,
-      'Order Number':        awbDoc.orderNumber,
+      'Order ID':            resolvedOrderId,
+      'Order Number':        resolvedOrderNumber,
       'Courier':             awbDoc.courier,
-      'Customer Name':       customer.name,
-      'Phone':               customer.phone,
-      'Email':               customer.email,
-      'Address':             awbDoc.shippingAddress.address,
-      'City':                awbDoc.shippingAddress.city,
-      'State':               awbDoc.shippingAddress.state,
-      'Pincode':             awbDoc.shippingAddress.pincode,
-      'Items':               awbDoc.items.map(i => `${i.qty}× ${i.name}`).join(', '),
-      'Item Count':          awbDoc.itemCount,
-      'Amount':              awbDoc.amount,
-      'Payment':             awbDoc.paymentMode,
       'Status':              classifyStatus(awbDoc.status),
       'Raw Status':          awbDoc.rawStatus,
       'Last Location':       awbDoc.lastLocation,
@@ -410,6 +410,22 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       'Order Created':       awbDoc.orderCreated,
       'EDD':                 awbDoc.edd,
     };
+    // Shopify-owned columns only when the order was found — never blank existing rows.
+    if (order) {
+      Object.assign(sheetUpdates, {
+        'Customer Name': customer.name,
+        'Phone':         customer.phone,
+        'Email':         customer.email,
+        'Address':       awbDoc.shippingAddress.address,
+        'City':          awbDoc.shippingAddress.city,
+        'State':         awbDoc.shippingAddress.state,
+        'Pincode':       awbDoc.shippingAddress.pincode,
+        'Items':         awbDoc.items.map(i => `${i.qty}× ${i.name}`).join(', '),
+        'Item Count':    awbDoc.itemCount,
+        'Amount':        awbDoc.amount,
+        'Payment':       awbDoc.paymentMode,
+      });
+    }
     const sheetResult = await pushShipmentToSheet(awb, sheetUpdates);
 
     return {

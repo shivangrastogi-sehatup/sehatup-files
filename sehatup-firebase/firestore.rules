@@ -48,5 +48,16 @@ service cloud.firestore {
       allow write: if true;
       allow read: if request.auth != null;
     }
+
+    // Test-mode mirror of shipments (CRM "Test mode" uploads/enrichment) — same
+    // inbound-write pattern, kept separate so production data is never touched.
+    match /shipments_test/{phone} {
+      allow write: if true;
+      allow read: if request.auth != null;
+    }
+    match /shipments_test/{phone}/awbs/{awb} {
+      allow write: if true;
+      allow read: if request.auth != null;
+    }
   }
 }
