@@ -8,7 +8,7 @@
 // The real-time path is still the webhook (api/nimbus-webhook.js); this is the
 // safety net that guarantees eventual freshness.
 
-import { enrichAwbAndCache } from './_lib/enrich.js';
+import { enrichAwbAndCache, isValidAwb } from './_lib/enrich.js';
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'sehatup-f96b5';
 const API_KEY    = process.env.FIREBASE_WEB_API_KEY || '';
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     const seen = new Set();
     const active = [];
     for (const x of all) {
-      if (!/^\d{6,20}$/.test(x.awb)) continue;   // skip junk / placeholder keys
+      if (!isValidAwb(x.awb)) continue;          // skip junk / placeholder keys
       if (isTerminal(x.status)) continue;         // skip delivered / returned
       if (seen.has(x.awb)) continue;              // dedupe (unknown_<awb> + real doc)
       seen.add(x.awb);

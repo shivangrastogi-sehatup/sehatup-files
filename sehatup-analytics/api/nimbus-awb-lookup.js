@@ -18,6 +18,8 @@
 // Usage:  GET /api/nimbus-awb-lookup?awb=23645495390185
 //         (+ &debug=1 → also returns the raw upstream payload)
 
+import { isValidAwb } from './_lib/enrich.js';
+
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
 export default async function handler(req, res) {
@@ -27,7 +29,7 @@ export default async function handler(req, res) {
 
   const awb = (req.query?.awb || req.body?.awb || '').toString().trim();
   const debug = req.query?.debug === '1';
-  if (!awb || !/^\d{6,20}$/.test(awb)) {
+  if (!isValidAwb(awb)) {
     return res.status(200).json({ ok: false, error: 'invalid_awb' });
   }
 

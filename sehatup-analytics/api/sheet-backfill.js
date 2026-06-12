@@ -6,7 +6,7 @@
 //   POST /api/sheet-backfill
 //   Body: { awb: "23645495390185", status?: "...", location?: "...", event_time?: "..." }
 
-import { enrichAwbAndCache } from './_lib/enrich.js';
+import { enrichAwbAndCache, isValidAwb } from './_lib/enrich.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   }
 
   const awb = String(body.awb || '').trim();
-  if (!awb || !/^\d{6,20}$/.test(awb)) {
+  if (!isValidAwb(awb)) {
     return res.status(400).json({ ok: false, error: 'invalid_awb' });
   }
 

@@ -8240,6 +8240,11 @@ const STAGES = [
 const STAGE_ORDER = ["Shipped", "Out for delivery", "Delivered"];
 function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 
+// Real AWBs: 6–25 alphanumeric chars with at least one digit (Ekart AWBs like
+// NMBC1001014747 are alphanumeric, not digits-only). Junk keys like "awb_number"
+// have no digit and stay excluded. Mirrors isValidAwb in api/_lib/enrich.js.
+const isValidAwb = (a) => /^(?=.*\d)[A-Za-z0-9]{6,25}$/.test(String(a || '').trim());
+
 function ShipmentsScreen({ ctx }) {
   const [loading, setLoading] = useStateS(true);
   const [trackingMap, setTrackingMap] = useStateS({});
@@ -8511,8 +8516,9 @@ function ShipmentsScreen({ ctx }) {
       const workbook = XLSX.read(buffer, { type: 'array' });
       const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' });
 
-      // Only rows with a real numeric AWB (6–20 digits)
-      const valid = rows.filter(r => /^\d{6,20}$/.test(String(r['AWB Number'] || '').trim()));
+      // Only rows with a real AWB — 6–25 alphanumeric chars incl. at least one
+      // digit (Ekart AWBs like NMBC1001014747 are alphanumeric, not digits-only)
+      const valid = rows.filter(r => isValidAwb(String(r['AWB Number'] || '').trim()));
       if (!valid.length) {
         alert('No valid AWB numbers found. Ensure the file uses the Nimbus export format.');
         setNimbusUpload({ running: false, total: 0, done: 0, failed: 0, errors: [], phase: null, enrichDone: 0, enrichTotal: 0 });
@@ -8659,7 +8665,6 @@ function ShipmentsScreen({ ctx }) {
   // awb_number values) are skipped; the server would reject those with 400.
   // Batched at 2 in parallel ≈ 2 req/s, safe for Shopify rate limits.
   const handleBackfill = async () => {
-    const isValidAwb = (a) => /^\d{6,20}$/.test(a);
     const targets = Array.from(new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)])).filter(isValidAwb);
     if (!targets.length) { alert('No AWBs to sync yet.'); return; }
     if (!window.confirm(`Sync all ${targets.length} AWB${targets.length > 1 ? 's' : ''} with Nimbus?\nRe-pulls tracking history, order refs and Shopify customer info for every AWB.\n\nETA: ~${Math.ceil(targets.length / 2)} seconds.`)) return;

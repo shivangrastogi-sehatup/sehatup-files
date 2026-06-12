@@ -22,6 +22,11 @@ const SHEETS_SCRIPT_URL = process.env.SHEETS_SCRIPT_URL || process.env.DEFAULT_G
 // Public Nimbus tracking page for an AWB (also used as the Referer when polling).
 const nimbusTrackingUrl = (awb) => `https://ship.nimbuspost.com/shipping/tracking/${awb}`;
 
+// Real AWBs are 6–25 alphanumeric chars with at least one digit. Couriers like
+// Ekart use alphanumeric formats (e.g. NMBC1001014747) — digits-only is too
+// strict. The at-least-one-digit rule still rejects junk keys like "awb_number".
+export const isValidAwb = (a) => /^(?=.*\d)[A-Za-z0-9]{6,25}$/.test(String(a || '').trim());
+
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
 // ─────── Firestore REST helpers ───────
