@@ -8562,7 +8562,8 @@ function ShipmentsScreen({ ctx }) {
         }
 
         await batch.commit();
-        setNimbusUpload(u => ({ ...u, done, errors }));
+        const doneSoFar = done;
+        setNimbusUpload(u => ({ ...u, done: doneSoFar, errors }));
       }
 
       // ── Phase 2: trigger Nimbus tracker enrichment for newly seeded AWBs ────
@@ -8582,7 +8583,8 @@ function ShipmentsScreen({ ctx }) {
             }).catch(() => {})
           ));
           enrichDone += Math.min(BATCH_SZ, newAwbs.length - i);
-          setNimbusUpload(u => ({ ...u, enrichDone }));
+          const enrichedSoFar = enrichDone;
+          setNimbusUpload(u => ({ ...u, enrichDone: enrichedSoFar }));
         }
       }
 
