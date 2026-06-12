@@ -1803,7 +1803,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
   const D = window.SehatData;
   const layout = tweaks.homeLayout || "analytics";
-  const [tab, setTab] = useState("completed");
+  const [dashActiveTabs, setDashActiveTabs] = useState([]);
   const [timelineMode, setTimelineMode] = useState("completed"); // completed | started | both
 
   // Build a merged, normalized list of all submissions (used for export + submissions history)
@@ -1814,6 +1814,9 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       ...filtered.manual.map(d => ({ ...d, _source: 'manual' })),
     ].map(d => {
       const demo = deriveDemographics(d);
+      const _ts = d.timestamp?.toDate ? d.timestamp.toDate()
+        : d.timestamp ? new Date(d.timestamp) : null;
+      const ts = (_ts && !isNaN(_ts)) ? _ts : null;
       return {
         ...d,
         id: d.id,
@@ -1830,15 +1833,23 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             : (d.healthScore ?? d.score) < 60 ? 'High'
               : (d.healthScore ?? d.score) < 80 ? 'Moderate' : 'Low')
           : '-',
-        timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : '-'),
+        _ts: ts,
+        timestampShort: ts ? ts.toLocaleDateString('en-GB') : '-',
+        timeShort: ts ? ts.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-',
         avatarHue: Math.abs((d.id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 360,
       };
     }).sort((a, b) => {
-      const ta = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
-      const tb = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+      const ta = a._ts || new Date(a.timestamp || 0);
+      const tb = b._ts || new Date(b.timestamp || 0);
       return tb - ta;
     });
   }, [filtered]);
+
+  const dashRecent = useMemoCx(() =>
+    dashActiveTabs.length === 0
+      ? allSubmissions
+      : allSubmissions.filter(d => dashActiveTabs.includes(d.source)),
+  [allSubmissions, dashActiveTabs]);
 
   const kpis = (
     <>
@@ -2066,8 +2077,8 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                       <th>Completed</th>
                       <th>Consulted</th>
                       <th>Purchased</th>
-                      <th>Completion %</th>
-                      <th>Purchase rate</th>
+                      <th style={{ whiteSpace: 'nowrap', minWidth: 100 }}>Completion %</th>
+                      <th style={{ whiteSpace: 'nowrap', minWidth: 100 }}>Purchase rate</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2113,14 +2124,14 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             </div>
           </div>
 
-          <SubmissionsHistory recent={allSubmissions} openCustomer={openCustomer} openSubmission={openSubmission} tab={tab} setTab={setTab} />
+          <SubmissionsHistory recent={dashRecent} openCustomer={openCustomer} openSubmission={openSubmission} activeTabs={dashActiveTabs} setActiveTabs={setDashActiveTabs} clearFilters={() => setDashActiveTabs([])} />
         </>
       ) : (
         // ACTIVITY-FEED LAYOUT
         <>
           <div className="grid-12">
             <div className="span-8">
-              <SubmissionsHistory recent={allSubmissions} openCustomer={openCustomer} openSubmission={openSubmission} tab={tab} setTab={setTab} compact />
+              <SubmissionsHistory recent={dashRecent} openCustomer={openCustomer} openSubmission={openSubmission} activeTabs={dashActiveTabs} setActiveTabs={setDashActiveTabs} clearFilters={() => setDashActiveTabs([])} compact />
             </div>
             <div className="span-4 col">
               <div className="card">
@@ -2206,6 +2217,9 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
       })
       .map(d => {
         const demo = deriveDemographics(d);
+        const _ts = d.timestamp?.toDate ? d.timestamp.toDate()
+          : d.timestamp ? new Date(d.timestamp) : null;
+        const ts = (_ts && !isNaN(_ts)) ? _ts : null;
         return {
           ...d,
           id: d.id,
@@ -2224,15 +2238,9 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
             : '-',
           city: d.city || '-',
           state: d.state || '-',
-          timestampShort: d.timestamp?.toDate
-            ? d.timestamp.toDate().toLocaleDateString('en-GB')
-            : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : '-'),
-          timeShort: (() => {
-            const ts = d.timestamp?.toDate ? d.timestamp.toDate()
-              : d.timestamp ? new Date(d.timestamp) : null;
-            if (!ts || isNaN(ts)) return '-';
-            return ts.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-          })(),
+          _ts: ts,
+          timestampShort: ts ? ts.toLocaleDateString('en-GB') : '-',
+          timeShort: ts ? ts.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-',
           avatarHue: Math.abs((d.id || d.name || '').split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)) % 360,
           answers: d.answers || {}
         };
@@ -2323,10 +2331,8 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
     const [rangeStart, rangeEnd] = resolveDateRange(datePreset, customRange);
     if (rangeStart && rangeEnd) {
       list = list.filter(r => {
-        const ts = r.timestamp?.toDate ? r.timestamp.toDate()
-          : r.timestamp ? new Date(r.timestamp) : null;
-        if (!ts) return false;
-        return ts >= rangeStart && ts <= rangeEnd;
+        const ts = r._ts ?? (r.timestamp?.toDate ? r.timestamp.toDate() : r.timestamp ? new Date(r.timestamp) : null);
+        return ts && ts >= rangeStart && ts <= rangeEnd;
       });
     }
     const q = search.trim().toLowerCase();
@@ -2337,11 +2343,14 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
       );
     }
     return list;
-  }, [recent, activeTabs, activeTab, statusFilters, categoryFilter, datePreset, customRange, search]);
+  }, [recent, activeTab, statusFilters, categoryFilter, datePreset, customRange, search]);
 
   const totalCount = tabbedList.length;
   const maxPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
+  // Reset to page 1 whenever the filtered dataset changes so the user never
+  // lands on a now-empty page after switching filters.
+  useEffect(() => { setCurrentPage(1); }, [recent, statusFilters, datePreset, categoryFilter]);
   useEffect(() => {
     if (currentPage > maxPages) setCurrentPage(Math.max(1, maxPages));
   }, [maxPages, currentPage]);
@@ -2357,7 +2366,7 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
   };
 
   return (
-    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+    <div className="card" style={{ padding: 0, overflow: "visible" }}>
       {/* ── Row 1: title · search · export · clear ── */}
       <div className="hstack-8" style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", gap: 10 }}>
         <div className="section-title">Submissions history</div>
@@ -8238,8 +8247,14 @@ function ShipmentsScreen({ ctx }) {
   // Enriched shipment docs from Firestore subcollection `shipments/{phone}/awbs/{awb}`
   // Keyed by AWB for easy merge with live Firestore tracking events
   const [enrichedMap, setEnrichedMap] = useStateS({});
+  const [testEnrichedMap, setTestEnrichedMap] = useStateS({});
+  // testMode: when true the UI shows shipments_test collection instead of shipments
+  const [testMode, setTestMode] = useStateS(false);
   // Backfill state: { running, total, done, failed }
   const [backfill, setBackfill] = useStateS({ running: false, total: 0, done: 0, failed: 0 });
+  // Nimbus Excel upload state
+  const [nimbusUpload, setNimbusUpload] = useStateS({ running: false, total: 0, done: 0, failed: 0, errors: [] });
+  const nimbusFileRef = useRef(null);
 
   // Live tracking events from Firestore nimbus_tracking
   useEffect(() => {
@@ -8259,27 +8274,28 @@ function ShipmentsScreen({ ctx }) {
     return unsub;
   }, []);
 
-  // Subscribe to the enriched shipments subcollection (shipments/{phone}/awbs/{awb}).
-  // Real-time — no manual refresh needed.
+  // Subscribe to all `awbs` subcollections — covers both `shipments/` (production)
+  // and `shipments_test/` (test uploads). Docs are split into separate maps by
+  // their Firestore path prefix so testMode can switch views without re-subscribing.
   useEffect(() => {
+    const keep = (a, b) => {
+      const ca = !!(a?.customer?.name || a?.customer?.phone);
+      const cb = !!(b?.customer?.name || b?.customer?.phone);
+      if (ca !== cb) return cb ? b : a;
+      return (b?.updatedAt || '') > (a?.updatedAt || '') ? b : a;
+    };
     const unsub = onSnapshot(collectionGroup(db, 'awbs'), (snap) => {
-      const map = {};
-      // An AWB can have two docs: a stale `unknown_<awb>` one written before Shopify
-      // returned a customer, plus the real one under the customer's phone. Prefer the
-      // doc that actually has customer info (then the most recently updated) so the
-      // empty placeholder never hides the enriched data.
-      const keep = (a, b) => {
-        const ca = !!(a?.customer?.name || a?.customer?.phone);
-        const cb = !!(b?.customer?.name || b?.customer?.phone);
-        if (ca !== cb) return cb ? b : a;
-        return (b?.updatedAt || '') > (a?.updatedAt || '') ? b : a;
-      };
+      const prod = {};
+      const test = {};
       snap.docs.forEach(d => {
         const data = d.data();
         if (!data?.awb) return;
+        const isTest = d.ref.path.startsWith('shipments_test/');
+        const map = isTest ? test : prod;
         map[data.awb] = map[data.awb] ? keep(map[data.awb], data) : data;
       });
-      setEnrichedMap(map);
+      setEnrichedMap(prod);
+      setTestEnrichedMap(test);
     }, (err) => {
       console.error('Enriched shipments subscription error:', err);
     });
@@ -8289,11 +8305,15 @@ function ShipmentsScreen({ ctx }) {
   // Build shipments: union of (enriched AWBs) ∪ (raw tracking AWBs). The enriched
   // doc has customer/order info; the live `trackingMap` provides the latest status
   // event in case the enriched doc hasn't received the update yet.
+  // In test mode we show ONLY the test collection (no production data, no trackingMap).
   const mergedShipments = useMemoS(() => {
-    const allAwbs = new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
+    const activeMap = testMode ? testEnrichedMap : enrichedMap;
+    const allAwbs = testMode
+      ? new Set(Object.keys(testEnrichedMap))
+      : new Set([...Object.keys(enrichedMap), ...Object.keys(trackingMap)]);
     return Array.from(allAwbs).map(awb => {
-      const e = enrichedMap[awb] || {};
-      const webhookEvents = trackingMap[awb] || [];
+      const e = activeMap[awb] || {};
+      const webhookEvents = testMode ? [] : (trackingMap[awb] || []);
       const histEvents = Array.isArray(e.history) ? e.history : [];
       // Merge the authoritative pulled history with live webhook events, dedupe and
       // sort newest-first. The pulled history (from "Sync from Nimbus" / webhook-triggered
@@ -8369,7 +8389,7 @@ function ShipmentsScreen({ ctx }) {
         timeline: events,
       };
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
-  }, [trackingMap, enrichedMap]);
+  }, [trackingMap, enrichedMap, testEnrichedMap, testMode]);
 
   const [tab, setTab] = useStateS("all");
   const [sel, setSel] = useStateS(null);
@@ -8429,6 +8449,158 @@ function ShipmentsScreen({ ctx }) {
   //   - AWBs not yet in a terminal status (Delivered / Failed delivery)
   // Skips already-delivered / failed AWBs to save Shopify API quota.
   // Batched to respect Shopify rate limits (~2 req/s).
+  const handleNimbusFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    // Use a separate Firestore root collection in test mode so production data
+    // is never touched. The view automatically shows the test collection when
+    // testMode is on (both collections share the same 'awbs' subcollection name
+    // so collectionGroup picks them both up and splits them by path prefix).
+    const rootColl = testMode ? 'shipments_test' : 'shipments';
+
+    setNimbusUpload({ running: true, total: 0, done: 0, failed: 0, errors: [], phase: 'seeding', enrichDone: 0, enrichTotal: 0 });
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' });
+
+      // Only rows with a real numeric AWB (6–20 digits)
+      const valid = rows.filter(r => /^\d{6,20}$/.test(String(r['AWB Number'] || '').trim()));
+      if (!valid.length) {
+        alert('No valid AWB numbers found. Ensure the file uses the Nimbus export format.');
+        setNimbusUpload({ running: false, total: 0, done: 0, failed: 0, errors: [], phase: null, enrichDone: 0, enrichTotal: 0 });
+        return;
+      }
+
+      setNimbusUpload(u => ({ ...u, total: valid.length }));
+
+      const newAwbs = []; // newly seeded — need Nimbus enrichment
+      let done = 0;
+      const errors = [];
+      const CHUNK = 400; // writeBatch max ≈ 500 ops
+
+      // ── Phase 1: seed Firestore with basic metadata ─────────────────────────
+      // Intentionally omits status / rawStatus / lastEventTime / edd / deliveredAt /
+      // history — those are owned by the Nimbus tracker API and webhook flow.
+      // AWBs that already have Shopify-enriched data are skipped entirely.
+      for (let start = 0; start < valid.length; start += CHUNK) {
+        const chunk = valid.slice(start, start + CHUNK);
+        const batch = writeBatch(db);
+
+        for (const row of chunk) {
+          const awb = String(row['AWB Number']).trim();
+          const activeMap = testMode ? testEnrichedMap : enrichedMap;
+          const existing = activeMap[awb];
+
+          // Skip: already enriched from Shopify in the active collection (not just an Excel seed).
+          if (existing && existing.importSource !== 'nimbus_excel' && existing.customer?.name) {
+            done++;
+            continue;
+          }
+
+          try {
+            const rawPhone = String(row['Phone Number'] || '').replace(/\D/g, '').slice(-10);
+            const phone = rawPhone.length >= 8 ? rawPhone : `unknown_${awb}`;
+
+            const products = [];
+            for (let i = 1; i <= 10; i++) {
+              const name = row[`Product(${i})*`] || row[`Product(${i})`] || '';
+              if (!name) break;
+              products.push({
+                name: String(name),
+                qty: Number(row[`Quantity(${i})*`] || row[`Quantity(${i})`]) || 1,
+                price: Number(row[`Price(${i})*`] || row[`Price(${i})`]) || 0,
+                sku: String(row[`SKU(${i})`] || ''),
+              });
+            }
+
+            const payMode = String(row['Payment Mode'] || '');
+            const isCOD = /cod|cash on delivery/i.test(payMode);
+
+            const seedDoc = {
+              awb,
+              courier: String(row['Courier'] || 'Nimbus'),
+              shipmentId: String(row['Shipment ID'] || row['ID'] || ''),
+              zone: String(row['Zone'] || ''),
+              channel: String(row['Channel Name'] || ''),
+              storeName: String(row['Store Name'] || ''),
+              paymentMode: isCOD ? 'Cash on Delivery (COD)' : (payMode || 'Prepaid'),
+              amount: Number(row['Payment'] || row['Collectable Amount'] || 0),
+              shippedAt: String(row['Shipment Date'] || ''),
+              orderDate: String(row['Order Date'] || ''),
+              rtoAwb: String(row['RTO AWB'] || ''),
+              products,
+              customer: {
+                name: String(row['Customer Name'] || ''),
+                phone: rawPhone || '',
+              },
+              shippingAddress: {
+                address: [String(row['Address'] || ''), String(row['Address 2'] || '')].filter(Boolean).join(', '),
+                city: String(row['City'] || ''),
+                state: String(row['State'] || ''),
+                pincode: String(row['Zip Code'] || ''),
+              },
+              nimbusOrderRef: String(row['Order Id'] || ''),
+              importedAt: new Date().toISOString(),
+              importSource: 'nimbus_excel',
+            };
+
+            batch.set(doc(db, rootColl, phone, 'awbs', awb), seedDoc, { merge: true });
+            batch.set(doc(db, rootColl, phone), {
+              phone: rawPhone || '',
+              name: String(row['Customer Name'] || ''),
+              updatedAt: new Date().toISOString(),
+            }, { merge: true });
+
+            newAwbs.push({ awb, orderRef: String(row['Order Id'] || ''), customerPhone: rawPhone });
+            done++;
+          } catch (err) {
+            errors.push(`AWB ${awb}: ${err.message}`);
+          }
+        }
+
+        await batch.commit();
+        setNimbusUpload(u => ({ ...u, done, errors }));
+      }
+
+      // ── Phase 2: trigger Nimbus tracker enrichment for newly seeded AWBs ────
+      // Pass orderRef (from Excel "Order Id" column) and customerPhone as hints so
+      // the enrichment API can find the Shopify order even when the Nimbus tracking
+      // API doesn't return an order reference.
+      if (newAwbs.length > 0) {
+        setNimbusUpload(u => ({ ...u, phase: 'enriching', enrichTotal: newAwbs.length, enrichDone: 0 }));
+        const BATCH_SZ = 2;
+        let enrichDone = 0;
+        for (let i = 0; i < newAwbs.length; i += BATCH_SZ) {
+          await Promise.all(newAwbs.slice(i, i + BATCH_SZ).map(({ awb, orderRef, customerPhone }) =>
+            fetch('/api/sheet-backfill', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ awb, orderRef, customerPhone, rootCollection: rootColl }),
+            }).catch(() => {})
+          ));
+          enrichDone += Math.min(BATCH_SZ, newAwbs.length - i);
+          setNimbusUpload(u => ({ ...u, enrichDone }));
+        }
+      }
+
+      const skipped = valid.length - done - errors.length;
+      setNimbusUpload({ running: false, total: valid.length, done, failed: errors.length, errors, phase: null, enrichDone: 0, enrichTotal: 0 });
+      const parts = [
+        newAwbs.length ? `${newAwbs.length} new AWBs seeded & synced with Nimbus` : null,
+        skipped ? `${skipped} already enriched (skipped)` : null,
+        errors.length ? `${errors.length} failed` : null,
+      ].filter(Boolean);
+      alert(`Upload complete. ${parts.join(' · ')}.`);
+    } catch (err) {
+      console.error('[Nimbus Upload] failed:', err);
+      setNimbusUpload({ running: false, total: 0, done: 0, failed: 0, errors: [err.message], phase: null, enrichDone: 0, enrichTotal: 0 });
+      alert('Upload failed: ' + err.message);
+    }
+  };
+
   const handleBackfill = async () => {
     const allAwbs = Object.keys({ ...trackingMap, ...enrichedMap });
     // Only real AWBs (6–20 digits) can be enriched. Skipping malformed keys
@@ -8508,6 +8680,42 @@ function ShipmentsScreen({ ctx }) {
               Backfilling {backfill.done}/{backfill.total}{backfill.failed ? ` (${backfill.failed} failed)` : ''}…
             </span>
           )}
+          {nimbusUpload.running && (
+            <span style={{ fontSize: 12.5, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                width: 12, height: 12, borderRadius: 99,
+                border: '2px solid var(--surface-3)',
+                borderTopColor: 'var(--accent)',
+                animation: 'spinx 0.7s linear infinite',
+                display: 'inline-block',
+              }} />
+              {nimbusUpload.phase === 'enriching'
+                ? `Syncing ${nimbusUpload.enrichDone}/${nimbusUpload.enrichTotal} with Nimbus…`
+                : `Seeding ${nimbusUpload.done}/${nimbusUpload.total}…`}
+            </span>
+          )}
+          <input
+            ref={nimbusFileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            style={{ display: 'none' }}
+            onChange={handleNimbusFileUpload}
+          />
+          <button
+            onClick={() => setTestMode(m => !m)}
+            title={testMode ? 'Viewing test collection — click to switch to production' : 'Click to switch to test collection (safe upload sandbox)'}
+            style={{
+              padding: '0 12px', height: 32, borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+              background: testMode ? 'rgba(245,158,11,0.18)' : 'var(--surface-2)',
+              color: testMode ? '#f59e0b' : 'var(--muted)',
+              outline: testMode ? '1px solid rgba(245,158,11,0.4)' : 'none',
+            }}
+          >
+            {testMode ? '⚗ Test mode' : '⚗ Test mode'}
+          </button>
+          <button className="btn" onClick={() => nimbusFileRef.current?.click()} disabled={nimbusUpload.running} title={`Upload Nimbus Excel → writes to ${testMode ? 'shipments_test (safe sandbox)' : 'shipments (production)'}`}>
+            <Icon name="upload" /> Upload{testMode ? ' (test)' : ''}
+          </button>
           <button className="btn" onClick={handleBackfill} disabled={backfill.running} title="Re-pull active AWBs from Nimbus → refresh status + customer info">
             <Icon name="refresh" /> Sync from Nimbus
           </button>
@@ -8515,6 +8723,15 @@ function ShipmentsScreen({ ctx }) {
         </div>
         <style>{`@keyframes spinx { to { transform: rotate(360deg); } }`}</style>
       </div>
+
+      {/* Test mode banner */}
+      {testMode && (
+        <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 8, padding: '8px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+          <span style={{ color: '#f59e0b', fontWeight: 700 }}>⚗ Test mode</span>
+          <span style={{ color: '#cbd5e1' }}>Showing <strong>shipments_test</strong> collection — production data is untouched. Uploads and enrichment write here only.</span>
+          <button onClick={() => setTestMode(false)} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: 5, padding: '2px 10px', cursor: 'pointer', fontSize: 12 }}>Exit test mode</button>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid-12">

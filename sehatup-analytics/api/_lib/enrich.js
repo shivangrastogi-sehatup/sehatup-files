@@ -120,6 +120,33 @@ export async function fetchShopifyOrder(ref) {
   return (await tryId(numeric)) || (await tryName(`#${numeric}`)) || (await tryName(numeric));
 }
 
+// Find the most recent Shopify order for a given phone number (last 10 digits).
+// Used as a last-resort fallback when no order reference is available from Nimbus.
+export async function fetchShopifyOrderByPhone(phone) {
+  if (!phone || !SHOPIFY_TOKEN) return null;
+  const digits = String(phone).replace(/\D/g, '').slice(-10);
+  if (digits.length < 7) return null;
+  const headers = { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Accept': 'application/json' };
+  try {
+    // Search customers by phone, take the first match
+    const custUrl = `https://${SHOPIFY_HOSTNAME}/admin/api/${SHOPIFY_API_VERSION}/customers/search.json?query=phone:${encodeURIComponent('+91' + digits)}&limit=1&fields=id,phone`;
+    const cr = await fetch(custUrl, { headers });
+    if (!cr.ok) return null;
+    const cj = await cr.json();
+    const customerId = cj?.customers?.[0]?.id;
+    if (!customerId) return null;
+    // Get their most recent order
+    const ordUrl = `https://${SHOPIFY_HOSTNAME}/admin/api/${SHOPIFY_API_VERSION}/customers/${customerId}/orders.json?status=any&limit=1`;
+    const or = await fetch(ordUrl, { headers });
+    if (!or.ok) return null;
+    const oj = await or.json();
+    return oj?.orders?.[0] || null;
+  } catch (e) {
+    console.warn('[Shopify phone lookup] failed:', e?.message);
+    return null;
+  }
+}
+
 // ─────── Main enrichment ───────
 
 function normalizePhone(p) {
@@ -218,7 +245,7 @@ async function pushShipmentToSheet(awb, updates) {
  * call; customer/order info is also refreshed (cheap — Shopify is single-fetch).
  * Finally the row is mirrored into the Google Sheet "shipments" tab.
  */
-export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook') {
+export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook', rootCollection = 'shipments') {
   try {
     const details = await fetchNimbusDetails(awb);
     const orderNumber = details?.order_number || null;
@@ -260,7 +287,16 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       .sort((a, b) => (b.event_time || '').localeCompare(a.event_time || ''));
     const newest = timeline[0] || {};
 
-    const order = await fetchShopifyOrder(orderNumber || orderId);
+    // ── Shopify order lookup: try Nimbus refs first, then Excel hint, then phone ──
+    let order = await fetchShopifyOrder(orderNumber || orderId);
+    if (!order && latestEvent.orderRef) {
+      // Fallback 1: use the order reference from the Excel upload (e.g. "#1025")
+      order = await fetchShopifyOrder(latestEvent.orderRef);
+    }
+    if (!order && latestEvent.customerPhone) {
+      // Fallback 2: find the most recent Shopify order for this customer's phone
+      order = await fetchShopifyOrderByPhone(latestEvent.customerPhone);
+    }
     const sh = order?.shipping_address || {};
     const fn = order?.customer?.first_name || '';
     const ln = order?.customer?.last_name  || '';
@@ -274,11 +310,14 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
     const phoneKey = normalizePhone(customer.phone) || `unknown_${awb}`;
 
     // ─── Write the AWB document ───
+    // When Nimbus didn't provide order refs, fall back to the Shopify order we found.
+    const resolvedOrderId     = orderId     || (order?.id     ? String(order.id)           : '');
+    const resolvedOrderNumber = orderNumber || (order?.name   ? String(order.name)         : '');
     const awbDoc = {
       awb,
       phoneKey,
-      orderNumber: orderNumber || '',
-      orderId:     orderId     || '',
+      orderNumber: resolvedOrderNumber,
+      orderId:     resolvedOrderId,
       courier,
       // Latest tracking event (derived from the newest event across pulled history + webhook)
       status:        newest.status     || latestEvent.status || details?.status || '',
@@ -308,20 +347,20 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       enrichmentSource: source,
       updatedAt:    new Date().toISOString(),
     };
-    const awbWrite = await patchFirestoreDoc(`shipments/${phoneKey}/awbs/${awb}`, awbDoc);
+    const awbWrite = await patchFirestoreDoc(`${rootCollection}/${phoneKey}/awbs/${awb}`, awbDoc);
 
     // If we resolved a real customer phone, remove any stale placeholder doc written
     // under `unknown_<awb>` by an earlier enrichment (before Shopify returned a
     // customer). Otherwise the dashboard sees two docs for one AWB and the empty one
     // can hide the enriched data.
     if (!String(phoneKey).startsWith('unknown_')) {
-      await deleteFirestoreDoc(`shipments/unknown_${awb}/awbs/${awb}`);
+      await deleteFirestoreDoc(`${rootCollection}/unknown_${awb}/awbs/${awb}`);
     }
 
     // ─── Update parent customer summary (merge) ───
     let parentWrite = null;
     if (customer.name || customer.phone || customer.email) {
-      parentWrite = await patchFirestoreDoc(`shipments/${phoneKey}`, {
+      parentWrite = await patchFirestoreDoc(`${rootCollection}/${phoneKey}`, {
         phone:       customer.phone || phoneKey,
         name:        customer.name  || '',
         email:       customer.email || '',
@@ -381,8 +420,8 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       customerFound: !!order,
       sheetSynced: !!sheetResult.ok,
       wrote: {
-        awbPath: `shipments/${phoneKey}/awbs/${awb}`,
-        parentPath: parentWrite ? `shipments/${phoneKey}` : null,
+        awbPath: `${rootCollection}/${phoneKey}/awbs/${awb}`,
+        parentPath: parentWrite ? `${rootCollection}/${phoneKey}` : null,
         awbDocName: awbWrite?.name || null,
         sheetRow: sheetResult.row || null,
       },

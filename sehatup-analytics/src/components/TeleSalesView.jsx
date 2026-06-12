@@ -1206,6 +1206,20 @@ export default function TeleSalesView({ onLogout, roles = [] }) {
                 gscriptUrl=""
                 onOrderPlaced={(info) => {
                     showStatus('success', 'Order Created', `Shopify ${info.type} #${info.id} created.`);
+                    // Write the Shopify order ID back to the CRM submission doc
+                    if (orderModalLead?.id && orderModalLead?._collection) {
+                        const collMap = { full: 'questionnaire_submissions', partial: 'partial_submissions', manual: 'manual_submissions' };
+                        const coll = collMap[orderModalLead._collection];
+                        if (coll) {
+                            const docRef = doc(db, coll, orderModalLead.id);
+                            updateDoc(docRef, {
+                                shopifyOrderId: String(info.id),
+                                shopifyOrderType: info.type,
+                                shopifyOrderAt: new Date().toISOString(),
+                                isPurchased: true,
+                            }).catch(err => console.warn('[CRM] Failed to save order ID:', err));
+                        }
+                    }
                 }}
             />
         </div>

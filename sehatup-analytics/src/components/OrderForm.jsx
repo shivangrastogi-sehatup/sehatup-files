@@ -77,6 +77,9 @@ const OrderForm = ({
     const [customerLastName, setCustomerLastName] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [phone, setPhone] = useState('');
+    const [phoneSuggestions, setPhoneSuggestions] = useState([]);
+    const [showPhoneSuggestions, setShowPhoneSuggestions] = useState(false);
+    const [isPhoneSearching, setIsPhoneSearching] = useState(false);
 
     // Address
     const [address, setAddress] = useState('');
@@ -250,6 +253,38 @@ const OrderForm = ({
         setUseCustomShipping(false);
         setCustomShippingTitle('');
         setCustomShippingPrice('');
+
+        // Refresh address + email from Shopify so we always show the latest data,
+        // not whatever was stored in the CRM submission doc.
+        const rawPhone = get('Phone Number', 'phone');
+        const digits = String(rawPhone || '').replace(/\D/g, '').slice(-10);
+        if (digits.length === 10) {
+            const normalizedPhone = `+91${digits}`;
+            fetch('/shopify-v2/graphql.json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: `{ customers(first:1, query:"phone:${normalizedPhone}") { edges { node { firstName lastName email phone defaultAddress { address1 address2 city province zip } } } } }` }),
+            })
+                .then(r => r.json())
+                .then(gqlData => {
+                    const node = (gqlData?.data?.customers?.edges || []).map(e => e.node).find(n => n.phone === normalizedPhone);
+                    if (!node) return;
+                    if (node.firstName) setCustomerFirstName(node.firstName);
+                    if (node.lastName) setCustomerLastName(node.lastName);
+                    if (node.email) setCustomerEmail(node.email);
+                    const addr = node.defaultAddress;
+                    if (addr) {
+                        setAddress(addr.address1 || '');
+                        setLandmark(addr.address2 || '');
+                        setCity(addr.city || '');
+                        setStateName(addr.province || '');
+                        setPincode(addr.zip || '');
+                        setLastAutoFilledPincode(addr.zip || '');
+                        setDifferentAddressName(false);
+                    }
+                })
+                .catch(() => {});
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialLead]);
 
@@ -358,70 +393,76 @@ const OrderForm = ({
         };
     }, [pincode, lastAutoFilledPincode]);
 
-    // ─── Phone lookup to autofill customer details ───────────────────────────
-    useEffect(() => {
-        const digits = phone.replace(/\D/g, '');
-        if (digits.length === 10) {
-            // Only try autofill if they haven't already filled the name
-            if (customerFirstName.trim()) return;
+    // ─── Shared helper: fill all customer fields from a Shopify customer node ──
+    // Used by both the phone and name suggestion dropdowns.
+    const applyShopifyCustomer = (node, showToast = true) => {
+        const firstName = node.firstName || node.first_name || '';
+        const lastName = node.lastName || node.last_name || '';
+        const email = node.email || '';
+        const phone10 = (node.phone || '').replace(/\D/g, '').slice(-10);
 
-            const fetchCustomerByPhone = async () => {
-                const normalizedPhone = `+91${digits}`;
-                let existing = null;
+        setCustomerFirstName(firstName);
+        setCustomerLastName(lastName);
+        if (email) setCustomerEmail(email);
+        if (phone10) setPhone(phone10);
 
-                try {
-                    // Try GraphQL first
-                    const gqlRes = await fetch('/shopify-v2/graphql.json', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ query: `{ customers(first:1, query:"phone:${normalizedPhone}") { edges { node { id firstName lastName email phone defaultAddress { address1 address2 city province zip } } } } }` }),
-                    });
-                    const gqlData = await safeJson(gqlRes);
-                    const match = (gqlData?.data?.customers?.edges || []).map(e => e.node).find(n => n.phone === normalizedPhone);
-                    if (match) {
-                        existing = {
-                            first_name: match.firstName,
-                            last_name: match.lastName,
-                            email: match.email,
-                            default_address: match.defaultAddress
-                        };
-                    }
-
-                    if (!existing) {
-                        // Try REST
-                        const res = await fetch(`/shopify-v2/customers.json?phone=${encodeURIComponent(normalizedPhone)}&limit=1`);
-                        const data = await safeJson(res);
-                        if (res.ok && data.customers?.length > 0) {
-                            existing = data.customers[0];
-                        }
-                    }
-
-                    if (existing && existing.first_name) {
-                        setCustomerFirstName(existing.first_name || '');
-                        setCustomerLastName(existing.last_name || '');
-                        
-                        if (existing.default_address) {
-                            const addr = existing.default_address;
-                            setAddress(addr.address1 || '');
-                            setLandmark(addr.address2 || '');
-                            setCity(addr.city || '');
-                            setStateName(addr.province || '');
-                            setPincode(addr.zip || '');
-                        }
-                        
-                        setAutofillActive(true);
-                        setTimeout(() => setAutofillActive(false), 1500);
-                        addToast({ type: 'success', title: 'Customer Found', message: `Autofilled details for ${existing.first_name}`, autoDismiss: 4000 });
-                    }
-                } catch (e) {
-                    console.warn('[Phone lookup] failed:', e);
-                }
-            };
-            
-            const timer = setTimeout(fetchCustomerByPhone, 500);
-            return () => clearTimeout(timer);
+        const addr = node.defaultAddress || node.default_address;
+        if (addr) {
+            setAddress(addr.address1 || '');
+            setLandmark(addr.address2 || '');
+            setCity(addr.city || '');
+            setStateName(addr.province || '');
+            setPincode(addr.zip || '');
+            setLastAutoFilledPincode(addr.zip || '');
+            setDifferentAddressName(false);
         }
-    }, [phone, customerFirstName, addToast]);
+
+        setAutofillActive(true);
+        setTimeout(() => setAutofillActive(false), 1500);
+        if (showToast) addToast({ type: 'success', title: 'Customer Selected', message: `Autofilled details for ${firstName}`, autoDismiss: 4000 });
+    };
+
+    const handleSelectPhoneSuggestion = (customer) => {
+        applyShopifyCustomer(customer, true);
+        setShowPhoneSuggestions(false);
+        setPhoneSuggestions([]);
+    };
+
+    // ─── Phone search — suggestions dropdown + autofill ─────────────────────
+    // Always searches Shopify (not CRM submission data) so address is always fresh.
+    useEffect(() => {
+        const digits = phone.replace(/\D/g, '').slice(-10);
+        if (digits.length < 6) {
+            setPhoneSuggestions([]);
+            return;
+        }
+
+        const search = async () => {
+            setIsPhoneSearching(true);
+            try {
+                const gqlRes = await fetch('/shopify-v2/graphql.json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: `{ customers(first:5, query:"phone:*${digits}*") { edges { node { id firstName lastName email phone defaultAddress { address1 address2 city province zip } } } } }` }),
+                });
+                const gqlData = await safeJson(gqlRes);
+                const matches = (gqlData?.data?.customers?.edges || []).map(e => e.node).filter(n => n.phone);
+                setPhoneSuggestions(matches);
+
+                // If exactly 10 digits and only one match, auto-fill silently
+                if (matches.length === 1 && digits.length === 10 && !customerFirstName.trim()) {
+                    applyShopifyCustomer(matches[0], false);
+                }
+            } catch (e) {
+                console.warn('[Phone search] failed:', e);
+            } finally {
+                setIsPhoneSearching(false);
+            }
+        };
+
+        const timer = setTimeout(search, 400);
+        return () => clearTimeout(timer);
+    }, [phone]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Name lookup for suggestions ─────────────────────────────────────────
     useEffect(() => {
@@ -453,26 +494,10 @@ const OrderForm = ({
         return () => clearTimeout(timer);
     }, [customerFirstName]);
 
-    const handleSelectNameSuggestion = (existing) => {
-        setCustomerFirstName(existing.firstName || '');
-        setCustomerLastName(existing.lastName || '');
-        if (existing.email) setCustomerEmail(existing.email);
-        if (existing.phone) setPhone(existing.phone);
-        
-        if (existing.defaultAddress) {
-            const addr = existing.defaultAddress;
-            setAddress(addr.address1 || '');
-            setLandmark(addr.address2 || '');
-            setCity(addr.city || '');
-            setStateName(addr.province || '');
-            setPincode(addr.zip || '');
-            setLastAutoFilledPincode(addr.zip || '');
-        }
-        
+    const handleSelectNameSuggestion = (customer) => {
+        applyShopifyCustomer(customer, true);
         setShowNameSuggestions(false);
-        setAutofillActive(true);
-        setTimeout(() => setAutofillActive(false), 1500);
-        addToast({ type: 'success', title: 'Customer Selected', message: `Autofilled details for ${existing.firstName}`, autoDismiss: 4000 });
+        setNameSuggestions([]);
     };
 
     // ─── Shipping rates ──────────────────────────────────────────────────────
@@ -1405,7 +1430,40 @@ const OrderForm = ({
                         <input placeholder="Last Name *" value={customerLastName} onChange={e => setCustomerLastName(e.target.value)} style={{...inputStyle, flex: 1, boxSizing: 'border-box'}} />
                     </div>
                     <input placeholder="Email (optional)" type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} style={inputStyle} />
-                    <input placeholder="Phone Number *" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} />
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            placeholder="Phone Number *"
+                            value={phone}
+                            onChange={e => { setPhone(e.target.value); setShowPhoneSuggestions(true); }}
+                            onFocus={() => setShowPhoneSuggestions(true)}
+                            style={inputStyle}
+                        />
+                        {showPhoneSuggestions && (phoneSuggestions.length > 0 || isPhoneSearching) && phone.replace(/\D/g, '').length >= 6 && (
+                            <>
+                                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowPhoneSuggestions(false)} />
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1e293b', border: '1px solid #334155', borderRadius: 6, marginTop: 4, zIndex: 50, maxHeight: 220, overflowY: 'auto', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}>
+                                    {isPhoneSearching ? (
+                                        <div style={{ padding: '8px 12px', color: '#94a3b8', fontSize: 13 }}>Searching...</div>
+                                    ) : phoneSuggestions.length === 0 ? (
+                                        <div style={{ padding: '8px 12px', color: '#94a3b8', fontSize: 13 }}>No matches found</div>
+                                    ) : (
+                                        phoneSuggestions.map(s => (
+                                            <div
+                                                key={s.id}
+                                                onClick={() => handleSelectPhoneSuggestion(s)}
+                                                style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #334155', color: '#f8fafc', fontSize: 13 }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#334155'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <div style={{ fontWeight: 600 }}>{s.firstName} {s.lastName}</div>
+                                                <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 2 }}>{s.phone} • {s.email || 'No email'}</div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
                     <button
                         onClick={handleSaveCustomer}
                         disabled={isSubmitting}

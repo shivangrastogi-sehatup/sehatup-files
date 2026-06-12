@@ -27,14 +27,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'invalid_awb' });
   }
 
-  // Latest event (optional) — webhook caller would normally pass the live status
   const latestEvent = {
-    status:     body.status     || '',
-    location:   body.location   || '',
-    event_time: body.event_time || '',
-    message:    body.message    || '',
+    status:        body.status        || '',
+    location:      body.location      || '',
+    event_time:    body.event_time    || '',
+    message:       body.message       || '',
+    // Hints from the Excel upload: fallback Shopify order ref + customer phone
+    orderRef:      body.orderRef      || '',
+    customerPhone: body.customerPhone || '',
   };
 
-  const result = await enrichAwbAndCache(awb, latestEvent, 'backfill');
+  const rootCollection = body.rootCollection || 'shipments';
+  const result = await enrichAwbAndCache(awb, latestEvent, 'backfill', rootCollection);
   return res.status(200).json(result);
 }
