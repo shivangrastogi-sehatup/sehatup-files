@@ -258,6 +258,17 @@ function exportOrdersToExcel(rows) {
 // fields) for a raw submission doc. Submission docs store `dob` but no `age`, and
 // usually no `gender`, so these have to be computed. Mirrors the CRM derivation
 // (see ~line 3112) so the table and the exported sheet stay consistent.
+// Moved outside deriveDemographics so the object is not recreated on every call
+const CATEGORY_LABEL_MAP = {
+  "Men's Sexual Wellness":       "Men's Wellness",
+  "Women's Wellness":            "Women's Wellness",
+  "Men's Weight Management":     "Men's Weight Management",
+  "Women's Weight Management":   "Women's Weight Management",
+  "Womens Sexual Wellness":      "Women's Wellness",
+  "Womens Wellness":             "Women's Wellness",
+  "Mens Wellness":               "Men's Wellness",
+};
+
 function deriveDemographics(d) {
   let age = d.age || '-';
   if (d.dob) {
@@ -270,18 +281,34 @@ function deriveDemographics(d) {
 
   let gender = d.gender || '-';
   let category = d.primaryGoal;
-  if (gender === '-' || gender === 'Not Selected' || !category) {
-    const qid = (d.questionnaireId || d.reportCategory || '').toLowerCase();
-    if (gender === '-' || gender === 'Not Selected') {
-      if (qid.includes('womens') || qid.includes("women's")) gender = 'Female';
-      else if (qid.includes('mens')) gender = 'Male';
-    }
-    if (!category) {
-      if (qid.includes('weight')) category = 'Weight Management';
-      else if (qid.includes('wellness')) category = 'Wellness';
-      else category = 'General';
+  // Derive gender and category from reportCategory or questionnaireId
+  const rawCat = (d.reportCategory || '').trim();
+  const qid = (d.questionnaireId || rawCat || '').toLowerCase();
+
+  if (gender === '-' || gender === 'Not Selected') {
+    if (qid.includes('womens') || qid.includes("women's")) gender = 'Female';
+    else if (qid.includes('mens') || qid.includes("men's")) gender = 'Male';
+  }
+
+  if (!category) {
+    if (rawCat && CATEGORY_LABEL_MAP[rawCat]) {
+      category = CATEGORY_LABEL_MAP[rawCat];
+    } else if (rawCat) {
+      const lower = rawCat.toLowerCase();
+      const genderPrefix = lower.includes('women') ? "Women's " : lower.includes('men') ? "Men's " : '';
+      const stripped = rawCat.replace(/^(women'?s?\s*|mens?\s*)/i, '').trim();
+      const base = stripped.replace('Sexual Wellness', 'Wellness');
+      category = genderPrefix ? `${genderPrefix}${base}` : rawCat;
+    } else {
+      const isWeight = qid.includes('weight');
+      const isWomens = qid.includes('womens') || qid.includes("women's");
+      const isMens   = qid.includes('mens')   || qid.includes("men's");
+      const gPfx = isWomens ? "Women's " : isMens ? "Men's " : '';
+      const base = isWeight ? 'Weight Management' : qid.includes('wellness') ? 'Wellness' : 'General';
+      category = `${gPfx}${base}`.trim();
     }
   }
+
   return { age, gender, category: category || 'General' };
 }
 
@@ -2165,45 +2192,66 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
     return () => { unsub1(); unsub2(); unsub3(); };
   }, []);
 
+  // ── PERF: Stable normalized list — only recomputes when raw Firestore data changes.
+  // deriveDemographics is called here once per doc, not on every filter interaction.
   const isLoading = !loaded.partial || !loaded.completed || !loaded.manual;
-
   const clearFilters = () => setActiveTabs([]);
 
-  const recent = [...completedData, ...partialData, ...manualData]
-    .filter(d => activeTabs.length === 0 || activeTabs.includes(d._source))
-    .sort((a, b) => {
-      const ta = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
-      const tb = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
-      return tb - ta;
-    })
-    .map(d => {
-      const demo = deriveDemographics(d);
-      return {
-        ...d,
-        id: d.id,
-        docId: d.id,
-        source: d._source,
-        name: d.name || d.userName || "Unknown",
-        age: demo.age,
-        gender: demo.gender,
-        phone: d.phone || "-",
-        category: demo.category,
-        score: d.healthScore ?? d.score ?? "-",
-        risk: (d.healthScore ?? d.score) !== undefined ? ((d.healthScore ?? d.score) < 40 ? "Critical" : ((d.healthScore ?? d.score) < 60 ? "High" : ((d.healthScore ?? d.score) < 80 ? "Moderate" : "Low"))) : "-",
-        city: d.city || "-", state: d.state || "-",
-        timestampShort: d.timestamp?.toDate ? d.timestamp.toDate().toLocaleDateString('en-GB') : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : "-"),
-        // Deterministic hue (from id) so avatars don't flash a new colour on every
-        // re-render/filter — that random recompute was the table "jitter".
-        avatarHue: Math.abs((d.id || d.name || '').split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)) % 360,
-        answers: d.answers || {}
-      };
-    });
+  const allNormalized = useMemo(() =>
+    [...completedData, ...partialData, ...manualData]
+      .sort((a, b) => {
+        const ta = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+        const tb = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+        return tb - ta;
+      })
+      .map(d => {
+        const demo = deriveDemographics(d);
+        return {
+          ...d,
+          id: d.id,
+          docId: d.id,
+          source: d._source,
+          name: d.name || d.userName || 'Unknown',
+          age: demo.age,
+          gender: demo.gender,
+          phone: d.phone || '-',
+          category: demo.category,
+          score: d.healthScore ?? d.score ?? '-',
+          risk: (d.healthScore ?? d.score) !== undefined
+            ? ((d.healthScore ?? d.score) < 40 ? 'Critical'
+              : (d.healthScore ?? d.score) < 60 ? 'High'
+              : (d.healthScore ?? d.score) < 80 ? 'Moderate' : 'Low')
+            : '-',
+          city: d.city || '-',
+          state: d.state || '-',
+          timestampShort: d.timestamp?.toDate
+            ? d.timestamp.toDate().toLocaleDateString('en-GB')
+            : (d.timestamp ? new Date(d.timestamp).toLocaleDateString('en-GB') : '-'),
+          timeShort: (() => {
+            const ts = d.timestamp?.toDate ? d.timestamp.toDate()
+              : d.timestamp ? new Date(d.timestamp) : null;
+            if (!ts || isNaN(ts)) return '-';
+            return ts.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+          })(),
+          avatarHue: Math.abs((d.id || d.name || '').split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)) % 360,
+          answers: d.answers || {}
+        };
+      }),
+  [completedData, partialData, manualData]);
+
+  // ── Cheap type filter — runs only when activeTabs or allNormalized changes
+  const recent = useMemo(() =>
+    activeTabs.length === 0
+      ? allNormalized
+      : allNormalized.filter(d => activeTabs.includes(d.source)),
+  [allNormalized, activeTabs]);
 
   useEffect(() => {
     if (setSubmissionsCount && activeTabs.length === 0) {
       setSubmissionsCount(recent.length.toLocaleString());
     }
   }, [recent.length, activeTabs.length, setSubmissionsCount]);
+
 
   return (
     <div className="col fade-in">
@@ -2247,22 +2295,40 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
   // Independent multi-select state for the status filter (Consulted/Purchased/WhatsApp)
   const [statusFilters, setStatusFilters] = useState([]);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState([]);
+  const [datePreset, setDatePreset] = useState('all');
+  const [customRange, setCustomRange] = useState([null, null]);
   const pageSize = 14;
 
-  // Type filter (single/multi by source) runs first, then the multi-select status
-  // toggles are AND-combined on top — both modes share the same status logic.
-  const tabbedList = (() => {
+  // ── PERF: Memoized filter chain — only re-runs when its specific inputs change.
+  // This prevents 5,000+ item filtering on every unrelated render (e.g. typing).
+  const tabbedList = useMemo(() => {
     if (!recent) return [];
     let list = recent;
-    if (activeTabs !== undefined) {
-      list = recent; // multi-tab mode (Submissions page) filters by source externally
-    } else if (activeTab !== 'all') {
+    // When activeTabs is passed from SubmissionsScreen, type-filtering already
+    // happened upstream in the cheap memo — no extra pass needed here.
+    if (activeTabs === undefined && activeTab !== 'all') {
       list = recent.filter(r => r.source === activeTab || r._source === activeTab);
     }
-    statusFilters.forEach(s => {
-      const pred = STATUS_PREDICATES[s];
-      if (pred) list = list.filter(pred);
-    });
+    if (statusFilters.length > 0) {
+      statusFilters.forEach(s => {
+        const pred = STATUS_PREDICATES[s];
+        if (pred) list = list.filter(pred);
+      });
+    }
+    if (categoryFilter.length > 0) {
+      list = list.filter(r => categoryFilter.includes(r.category || ''));
+    }
+    // Date range filter — resolve once, then filter
+    const [rangeStart, rangeEnd] = resolveDateRange(datePreset, customRange);
+    if (rangeStart && rangeEnd) {
+      list = list.filter(r => {
+        const ts = r.timestamp?.toDate ? r.timestamp.toDate()
+          : r.timestamp ? new Date(r.timestamp) : null;
+        if (!ts) return false;
+        return ts >= rangeStart && ts <= rangeEnd;
+      });
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(r =>
@@ -2271,7 +2337,7 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
       );
     }
     return list;
-  })();
+  }, [recent, activeTabs, activeTab, statusFilters, categoryFilter, datePreset, customRange, search]);
 
   const totalCount = tabbedList.length;
   const maxPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -2292,71 +2358,34 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
 
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="hstack-8" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", flexWrap: "wrap", rowGap: "8px" }}>
+      {/* ── Row 1: title · search · export · clear ── */}
+      <div className="hstack-8" style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", gap: 10 }}>
         <div className="section-title">Submissions history</div>
-        <span className="muted num" style={{ fontSize: 12 }}>· {totalCount.toLocaleString()} entries</span>
-        <span className="spacer" />
+        <span className="muted num" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>· {totalCount.toLocaleString()} entries</span>
+
+        {/* Expanded search — takes all remaining space */}
         {!compact && (
-          <div style={{ position: 'relative', width: 210 }}>
-            <input className="input" value={search} onChange={e => setSearch(e.target.value)}
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <input
+              className="input"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
               placeholder="Search name, phone…"
-              style={{ paddingLeft: 30, height: 32, fontSize: 12.5 }} />
+              style={{ paddingLeft: 30, height: 32, fontSize: 12.5, width: '100%' }}
+            />
             <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex', pointerEvents: 'none' }}>
               <Icon name="search" size={13} />
             </span>
           </div>
         )}
-        {(() => {
-          const curVal = activeTabs !== undefined ? activeTabs : activeTab;
-          const onChangeFn = setActiveTab;
-          const typeValues = ['all', 'completed', 'partial', 'manual'];
-          const statusValues = ['consulted', 'purchased', 'whatsapp'];
-          // Type filters describe what the submission *is* (segmented control);
-          // status filters describe attributes you can toggle (color-coded pills).
-          const typeItems = tabs.filter(t => typeValues.includes(t.value) && !(activeTabs !== undefined && t.value === 'all'));
-          const statusItems = tabs.filter(t => statusValues.includes(t.value));
-          const statusColor = { consulted: '#3b82f6', purchased: '#22c55e', whatsapp: '#25d366' };
-          return (
-            <>
-              {activeTabs !== undefined ? (
-                <MultiCheckDropdown
-                  label="Type" icon="layers"
-                  selected={activeTabs} onChange={setActiveTabs}
-                  options={typeItems.map(it => ({ value: it.value, label: it.label }))}
-                />
-              ) : (
-                <Tabs value={curVal} onChange={onChangeFn} items={typeItems} />
-              )}
-              {!compact && (
-                <MultiCheckDropdown
-                  label="Status" icon="filter"
-                  selected={statusFilters} onChange={setStatusFilters}
-                  options={statusItems.map(it => ({ value: it.value, label: it.label, color: statusColor[it.value] }))}
-                />
-              )}
-            </>
-          );
-        })()}
-        {!compact && (() => {
-          const hasFilters = (activeTabs && activeTabs.length > 0) || statusFilters.length > 0;
-          return (
-            <button
-              className="btn sm ghost"
-              disabled={!hasFilters}
-              onClick={() => { setStatusFilters([]); if (clearFilters) clearFilters(); }}
-              style={!hasFilters ? { opacity: 0.4, cursor: 'default' } : undefined}
-            >
-              Clear
-            </button>
-          );
-        })()}
-        <div style={{ position: 'relative' }}>
+
+        {/* Export — pinned to the right, dropdown opens left (right:0) so it never clips */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
           <button className="btn sm primary" onClick={() => setExportMenuOpen(v => !v)}>
             <Icon name="download" /> Export <Icon name="chevron_down" size={14} />
           </button>
           {exportMenuOpen && (
             <>
-              {/* Backdrop closes the menu on any outside click */}
               <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setExportMenuOpen(false)} />
               <div className="card shadow-lg" style={{
                 position: 'absolute', top: 'calc(100% + 6px)', right: 0,
@@ -2389,8 +2418,81 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
             </>
           )}
         </div>
-        <style>{`@keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+        {/* Clear — right of Export, only visible when filters active */}
+        {!compact && (() => {
+          const hasFilters = (activeTabs && activeTabs.length > 0) || statusFilters.length > 0 || categoryFilter.length > 0 || datePreset !== 'all';
+          return (
+            <button
+              className="btn sm ghost"
+              disabled={!hasFilters}
+              onClick={() => {
+                setStatusFilters([]);
+                setCategoryFilter([]);
+                setDatePreset('all');
+                setCustomRange([null, null]);
+                if (clearFilters) clearFilters();
+              }}
+              style={{ flexShrink: 0, ...(!hasFilters ? { opacity: 0.4, cursor: 'default' } : {}) }}
+            >
+              Clear
+            </button>
+          );
+        })()}
       </div>
+
+      {/* ── Row 2: filter chips ── */}
+      {!compact && (
+        <div className="hstack-8" style={{ padding: "8px 18px", borderBottom: "1px solid var(--border)", flexWrap: "wrap", rowGap: 6 }}>
+          {(() => {
+            const typeValues = ['all', 'completed', 'partial', 'manual'];
+            const statusValues = ['consulted', 'purchased', 'whatsapp'];
+            const typeItems = tabs.filter(t => typeValues.includes(t.value) && !(activeTabs !== undefined && t.value === 'all'));
+            const statusItems = tabs.filter(t => statusValues.includes(t.value));
+            const statusColor = { consulted: '#3b82f6', purchased: '#22c55e', whatsapp: '#25d366' };
+            return (
+              <>
+                {activeTabs !== undefined ? (
+                  <MultiCheckDropdown
+                    label="Type" icon="layers"
+                    selected={activeTabs} onChange={setActiveTabs}
+                    options={typeItems.map(it => ({ value: it.value, label: it.label }))}
+                  />
+                ) : (
+                  <Tabs value={activeTabs !== undefined ? activeTabs : activeTab} onChange={setActiveTab} items={typeItems} />
+                )}
+                <MultiCheckDropdown
+                  label="Status" icon="filter"
+                  selected={statusFilters} onChange={setStatusFilters}
+                  options={statusItems.map(it => ({ value: it.value, label: it.label, color: statusColor[it.value] }))}
+                />
+                <MultiCheckDropdown
+                  label="Category" icon="layers"
+                  selected={categoryFilter} onChange={v => { setCategoryFilter(v); setCurrentPage(1); }}
+                  options={[
+                    { value: "Men's Wellness",             label: "Men's Wellness" },
+                    { value: "Women's Wellness",           label: "Women's Wellness" },
+                    { value: "Men's Weight Management",   label: "Men's Weight Management" },
+                    { value: "Women's Weight Management", label: "Women's Weight Management" },
+                  ]}
+                />
+                <DateRangeDropdown
+                  datePreset={datePreset}
+                  customRange={customRange}
+                  onApply={(preset, range) => {
+                    setDatePreset(preset);
+                    setCustomRange(range);
+                    setCurrentPage(1);
+                  }}
+                />
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      <style>{`@keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
       <ColumnPickerModal
         open={pickerMode !== null}
         mode={pickerMode}
@@ -2399,7 +2501,7 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
         onConfirm={handleConfirmExport}
       />
       <div style={{ overflowX: "auto" }}>
-        <table className="tbl" style={{ minWidth: 760 }}>
+        <table className="tbl" style={{ minWidth: 940 }}>
           <thead>
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" /></th>
@@ -2409,7 +2511,8 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
               <th>Risk</th>
               <th>Category</th>
               <th>Source</th>
-              <th>Timestamp</th>
+              <th>Date</th>
+              <th>Time</th>
             </tr>
           </thead>
           <style>{`
@@ -2447,7 +2550,7 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
                 </tr>
               ))
             ) : pagedList.length === 0 ? (
-              <tr><td colSpan="8" style={{ textAlign: "center", padding: 60 }} className="muted">No submissions found.</td></tr>
+              <tr><td colSpan="9" style={{ textAlign: "center", padding: 60 }} className="muted">No submissions found.</td></tr>
             ) : (
               pagedList.map(c => (
                 <tr key={c.id} onClick={() => openCustomer(c)} className="fade-in">
@@ -2468,9 +2571,28 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
                     </div>
                   </td>
                   <td><RiskBadge risk={c.risk} /></td>
-                  <td className="muted">{c.category}</td>
+                  <td>
+                    {(() => {
+                      const cat = c.category || '-';
+                      const styleMap = {
+                        "Men's Wellness":            { bg: 'rgba(6,182,212,0.12)',   color: '#06b6d4' },
+                        "Women's Wellness":          { bg: 'rgba(244,63,94,0.12)',   color: '#f43f5e' },
+                        "Men's Weight Management":   { bg: 'rgba(139,92,246,0.12)', color: '#8b5cf6' },
+                        "Women's Weight Management": { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+                      };
+                      const s = styleMap[cat];
+                      return s ? (
+                        <span style={{
+                          display: 'inline-block', padding: '2px 9px',
+                          borderRadius: 99, fontSize: 11.5, fontWeight: 600,
+                          background: s.bg, color: s.color, whiteSpace: 'nowrap'
+                        }}>{cat}</span>
+                      ) : <span className="muted" style={{ fontSize: 12 }}>{cat}</span>;
+                    })()}
+                  </td>
                   <td><Badge>{c.source}</Badge></td>
-                  <td className="muted num">{c.timestampShort}</td>
+                  <td className="muted num" style={{ whiteSpace: 'nowrap' }}>{c.timestampShort}</td>
+                  <td className="muted num" style={{ whiteSpace: 'nowrap' }}>{c.timeShort}</td>
                 </tr>
               ))
             )}
@@ -2769,7 +2891,7 @@ function CustomersList({ openCustomer, openSubmission }) {
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table className="tbl">
+          <table className="tbl" style={{ minWidth: 940 }}>
             <thead>
               <tr>
                 <th style={{ width: 36 }}><input type="checkbox" /></th>
@@ -2778,7 +2900,8 @@ function CustomersList({ openCustomer, openSubmission }) {
                 <th>Location</th>
                 <th>Orders</th>
                 <th>LTV</th>
-                <th>Last activity</th>
+                <th>Date</th>
+                <th>Time</th>
                 <th></th>
               </tr>
             </thead>
@@ -2799,7 +2922,7 @@ function CustomersList({ openCustomer, openSubmission }) {
             <tbody>
               {loading && jumpProgress ? (
                 <tr className="fade-in">
-                  <td colSpan="8" style={{ padding: "120px 20px", textAlign: "center" }}>
+                  <td colSpan="9" style={{ padding: "120px 20px", textAlign: "center" }}>
                     <Icon name="refresh" size={28} className="spin" color="var(--accent)" />
                     <div className="fw5" style={{ marginTop: 24, fontSize: 16 }}>Fast-forwarding to Page {jumpProgress.target}...</div>
                     <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
@@ -3501,8 +3624,12 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
       <button key={value} onClick={() => choosePreset(value)}
         style={{
           textAlign: 'left', padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-          background: isActive ? 'var(--accent)' : 'transparent', color: isActive ? '#fff' : 'var(--text-main)'
-        }}>
+          background: isActive ? 'var(--accent)' : 'transparent', color: isActive ? '#fff' : 'var(--fg)',
+          transition: 'background 0.12s',
+        }}
+        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--hover)'; }}
+        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+      >
         {label}
       </button>
     );
@@ -3513,7 +3640,7 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
       <span ref={triggerRef} className="chip" onClick={() => (open ? setOpen(false) : openPopup())}
         style={{
           cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-          ...(active ? { background: 'var(--accent-soft)', color: 'var(--accent-ink)', borderColor: 'var(--accent)', fontWeight: 600 } : {})
+          ...(active ? { background: 'var(--surface-3)', color: 'var(--fg)', borderColor: 'var(--border-strong)', fontWeight: 600 } : {})
         }}>
         <Icon name="calendar" size={14} /> {triggerLabel}
         {active
@@ -3559,7 +3686,7 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
   );
 }
 
-// Multi-select checkbox dropdown chip (e.g. risk levels). Auto-flips to fit screen.
+
 function MultiCheckDropdown({ label, icon, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState({ openUp: false, alignRight: false });
@@ -3580,7 +3707,7 @@ function MultiCheckDropdown({ label, icon, options, selected, onChange }) {
       <span ref={triggerRef} className="chip" onClick={() => (open ? setOpen(false) : openPopup())}
         style={{
           cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-          ...(active ? { background: 'var(--accent-soft)', color: 'var(--accent-ink)', borderColor: 'var(--accent)', fontWeight: 600 } : {})
+          ...(active ? { background: 'var(--surface-3)', color: 'var(--fg)', borderColor: 'var(--border-strong)', fontWeight: 600 } : {})
         }}>
         {icon && <Icon name={icon} size={14} />} {triggerLabel} <Icon name="chevron_down" size={14} />
       </span>
@@ -3813,7 +3940,18 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
         city: val.city || "-",
         state: val.state || "-",
         timestampObj: ts,
-        timestampShort: ts ? ts.toLocaleDateString('en-GB') : "-",
+        timestampShort: ts ? (() => {
+          const day = ts.getDate();
+          const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          const month = months[ts.getMonth()];
+          const year = ts.getFullYear();
+          let hours = ts.getHours();
+          const minutes = String(ts.getMinutes()).padStart(2, '0');
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          hours = hours % 12;
+          hours = hours ? hours : 12;
+          return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+        })() : "-",
         avatarHue: Math.floor(Math.random() * 360),
         answers: val.answers || {}
       };

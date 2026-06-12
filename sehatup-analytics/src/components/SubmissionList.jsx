@@ -11,6 +11,59 @@ const SORTABLE_FIELDS = [
     { key: 'timestamp', label: 'Timestamp' }, // Shows full time
 ];
 
+// Map raw reportCategory values to descriptive, gender-aware display labels
+const CATEGORY_LABEL_MAP = {
+    "Men's Sexual Wellness":       "Men's Wellness",
+    "Women's Wellness":            "Women's Wellness",
+    "Men's Weight Management":     "Men's Weight Management",
+    "Women's Weight Management":   "Women's Weight Management",
+    "Womens Sexual Wellness":      "Women's Wellness",   // legacy alias
+    "Womens Wellness":             "Women's Wellness",   // legacy alias
+    "Mens Wellness":               "Men's Wellness",     // legacy alias
+};
+
+/**
+ * Returns a descriptive, gender-aware category label.
+ * Strategy:
+ *   1. Direct lookup in CATEGORY_LABEL_MAP (handles exact DB values)
+ *   2. Derive gender from the raw string if it contains gendered keywords
+ *   3. Fall back to the raw value itself
+ */
+const getDescriptiveCategory = (row) => {
+    const raw = (row.reportCategory || '').trim();
+    if (!raw) return '-';
+
+    // 1. Direct map lookup
+    if (CATEGORY_LABEL_MAP[raw]) return CATEGORY_LABEL_MAP[raw];
+
+    // 2. Derive gender prefix from the category string
+    const lower = raw.toLowerCase();
+    let genderPrefix = '';
+    if (lower.includes("women")) genderPrefix = "Women's ";
+    else if (lower.includes("men")) genderPrefix = "Men's ";
+
+    // Strip any existing gender-like prefix to avoid duplication
+    const stripped = raw
+        .replace(/^(women'?s?\s*|mens?\s*)/i, '')
+        .trim();
+
+    // Fix known aliases in the base category
+    const base = stripped.replace('Sexual Wellness', 'Wellness');
+
+    return genderPrefix ? `${genderPrefix}${base}` : raw;
+};
+
+// Category badge styling
+const CATEGORY_STYLE_MAP = {
+    "Men's Wellness":            { bg: 'rgba(6,182,212,0.13)',   color: '#06b6d4' },
+    "Women's Wellness":          { bg: 'rgba(244,63,94,0.13)',   color: '#f43f5e' },
+    "Men's Weight Management":   { bg: 'rgba(139,92,246,0.13)', color: '#8b5cf6' },
+    "Women's Weight Management": { bg: 'rgba(16,185,129,0.13)', color: '#10b981' },
+};
+
+const getCategoryStyle = (label) => 
+    CATEGORY_STYLE_MAP[label] || { bg: 'rgba(255,255,255,0.07)', color: 'var(--muted)' };
+
 // Helper function to format the timestamp for the main table view (Fix Date Display)
 const formatTableTimestamp = (date) => {
     if (!date || !(date instanceof Date)) return "-";
@@ -288,7 +341,26 @@ export default function SubmissionList({
                                         <td>{row.phone || "-"}</td>
                                         <td>{row.healthScore ?? row.score ?? "-"}</td>
                                         <td>{row.riskType || "-"}</td>
-                                        <td>{(row.reportCategory || "").replace("Womens Sexual Wellness", "Womens Wellness") || "-"}</td>
+                                        <td>
+                                            {(() => {
+                                                const label = getDescriptiveCategory(row);
+                                                const style = getCategoryStyle(label);
+                                                return label !== '-' ? (
+                                                    <span style={{
+                                                        display: 'inline-block',
+                                                        padding: '3px 10px',
+                                                        borderRadius: 20,
+                                                        fontSize: 12,
+                                                        fontWeight: 600,
+                                                        background: style.bg,
+                                                        color: style.color,
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        {label}
+                                                    </span>
+                                                ) : '-';
+                                            })()}
+                                        </td>
                                         <td>{formatTableTimestamp(row.timestamp)}</td>
                                         <td>
                                             <button

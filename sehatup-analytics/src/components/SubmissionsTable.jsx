@@ -2,6 +2,40 @@
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// Map raw reportCategory values to descriptive, gender-aware display labels
+const CATEGORY_LABEL_MAP = {
+    "Men's Sexual Wellness":       "Men's Wellness",
+    "Women's Wellness":            "Women's Wellness",
+    "Men's Weight Management":     "Men's Weight Management",
+    "Women's Weight Management":   "Women's Weight Management",
+    "Womens Sexual Wellness":      "Women's Wellness",
+    "Womens Wellness":             "Women's Wellness",
+    "Mens Wellness":               "Men's Wellness",
+};
+
+const getDescriptiveCategory = (row) => {
+    const raw = (row.reportCategory || '').trim();
+    if (!raw) return '-';
+    if (CATEGORY_LABEL_MAP[raw]) return CATEGORY_LABEL_MAP[raw];
+    const lower = raw.toLowerCase();
+    let genderPrefix = '';
+    if (lower.includes("women")) genderPrefix = "Women's ";
+    else if (lower.includes("men")) genderPrefix = "Men's ";
+    const stripped = raw.replace(/^(women'?s?\s*|mens?\s*)/i, '').trim();
+    const base = stripped.replace('Sexual Wellness', 'Wellness');
+    return genderPrefix ? `${genderPrefix}${base}` : raw;
+};
+
+const CATEGORY_STYLE_MAP = {
+    "Men's Wellness":            { bg: 'rgba(6,182,212,0.13)',   color: '#06b6d4' },
+    "Women's Wellness":          { bg: 'rgba(244,63,94,0.13)',   color: '#f43f5e' },
+    "Men's Weight Management":   { bg: 'rgba(139,92,246,0.13)', color: '#8b5cf6' },
+    "Women's Weight Management": { bg: 'rgba(16,185,129,0.13)', color: '#10b981' },
+};
+
+const getCategoryStyle = (label) =>
+    CATEGORY_STYLE_MAP[label] || { bg: 'rgba(255,255,255,0.07)', color: 'var(--muted)' };
+
 export default function SubmissionsTable({
   partial = [],
   completed = [],
@@ -109,7 +143,26 @@ export default function SubmissionsTable({
                   </span>
                 </td>
                 <td>{row.riskType || "-"}</td>
-                <td>{(row.reportCategory || "").replace("Womens Sexual Wellness", "Womens Wellness") || "-"}</td>
+                <td>
+                  {(() => {
+                    const label = getDescriptiveCategory(row);
+                    const style = getCategoryStyle(label);
+                    return label !== '-' ? (
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '3px 10px',
+                        borderRadius: 20,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: style.bg,
+                        color: style.color,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {label}
+                      </span>
+                    ) : '-';
+                  })()}
+                </td>
                 <td style={{ fontSize: 12, color: 'var(--muted)' }}>
                   {row.timestamp?.toDate ? row.timestamp.toDate().toLocaleString() : row.timestamp || "-"}
                 </td>

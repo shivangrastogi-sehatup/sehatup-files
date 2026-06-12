@@ -106,6 +106,7 @@ export default function AdminPanel() {
     const [view, setView] = useState("submissions"); // submissions, analytics, requests, doctors, roles, profile
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('All');
     const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
     // Status Modal State
@@ -133,6 +134,14 @@ export default function AdminPanel() {
     // Enhanced Fuzzy Search Logic Ported from DoctorDashboard
     const processedSubmissions = useMemo(() => {
         let result = [...submissions];
+
+        // Apply Category Filter
+        if (categoryFilter !== 'All') {
+            result = result.filter(s => {
+                const cat = s.reportCategory || '';
+                return cat === categoryFilter;
+            });
+        }
 
         // Apply Clinical Fuzzy Search
         const queryStr = debouncedSearchQuery.toLowerCase();
@@ -168,7 +177,7 @@ export default function AdminPanel() {
         });
 
         return result;
-    }, [submissions, debouncedSearchQuery, sortField, sortDirection]);
+    }, [submissions, debouncedSearchQuery, sortField, sortDirection, categoryFilter]);
 
     // Fetch pending requests count for badge
     useEffect(() => {
@@ -532,11 +541,26 @@ export default function AdminPanel() {
                     {view === 'submissions' && (
                         <>
                             <div className="glass-panel" style={{ padding: 20, marginBottom: 24 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'min-content 200px 1fr 180px 180px', gap: 12, alignItems: 'flex-end' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'min-content 200px 200px 1fr 180px 180px', gap: 12, alignItems: 'flex-end' }}>
                                     <div className="dateBox" style={{ width: 200 }}>
                                         <label><Layers size={12} /> Collection</label>
                                         <select className="select" value={selectedCollection} onChange={(e) => setSelectedCollection(e.target.value)}>
                                             {MANAGED_COLLECTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div className="dateBox" style={{ width: 200 }}>
+                                        <label><PieChart size={12} /> Category</label>
+                                        <select
+                                            className="select"
+                                            value={categoryFilter}
+                                            onChange={(e) => setCategoryFilter(e.target.value)}
+                                        >
+                                            <option value="All">All Categories</option>
+                                            <option value="Men's Sexual Wellness">Men's Wellness</option>
+                                            <option value="Women's Wellness">Women's Wellness</option>
+                                            <option value="Men's Weight Management">Men's Weight Mgmt</option>
+                                            <option value="Women's Weight Management">Women's Weight Mgmt</option>
                                         </select>
                                     </div>
 
