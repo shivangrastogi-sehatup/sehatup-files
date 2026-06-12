@@ -3554,15 +3554,38 @@ function CreateNewPatientModal({ isOpen, onClose, onUserCreated }) {
 
 // Decide whether a popup should open downward/upward and align left/right based on
 // the trigger's position and the available viewport space around it.
-function popupPlacement(el, popupW = 580, popupH = 400) {
-  if (!el) return { openUp: false, alignRight: false };
+function popupPlacement(el, popupW = 580, popupH = 400, alignOverride = null) {
+  if (!el) return { openUp: false, alignRight: false, offset: 0 };
   const r = el.getBoundingClientRect();
   const spaceBelow = window.innerHeight - r.bottom;
   const spaceAbove = r.top;
   const spaceRight = window.innerWidth - r.left;
+
+  const alignRight = alignOverride !== null ? alignOverride : (spaceRight < popupW);
+  let offset = 0;
+
+  const card = el.closest('.card');
+  if (card) {
+    const cardRect = card.getBoundingClientRect();
+    if (alignRight) {
+      if (r.right - popupW < cardRect.left) {
+        offset = cardRect.left - (r.right - popupW);
+        const maxShift = cardRect.right - r.right;
+        if (offset > maxShift) offset = maxShift;
+      }
+    } else {
+      if (r.left + popupW > cardRect.right) {
+        offset = (r.left + popupW) - cardRect.right;
+        const maxShift = r.left - cardRect.left;
+        if (offset > maxShift) offset = maxShift;
+      }
+    }
+  }
+
   return {
     openUp: spaceBelow < popupH && spaceAbove > spaceBelow,
-    alignRight: spaceRight < popupW,
+    alignRight,
+    offset
   };
 }
 
@@ -3572,37 +3595,98 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
   const [open, setOpen] = useState(false);
   const [tmpPreset, setTmpPreset] = useState(datePreset);
   const [tmp, setTmp] = useState([null, null]);
-  const [place, setPlace] = useState({ openUp: false, alignRight: false });
+  const [place, setPlace] = useState({ openUp: false, alignRight: true, offset: 0 });
+  const [ready, setReady] = useState(false);
   const ref = useRef(null);
   const triggerRef = useRef(null);
+  const popupRef = useRef(null);
   const fmt = (d) => d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
+
+  const estimateOffset = (popupW) => {
+    const el = triggerRef.current;
+    if (!el) return 0;
+    const r = el.getBoundingClientRect();
+    let offset = 0;
+    const card = el.closest('.card');
+    if (card) {
+      const cardRect = card.getBoundingClientRect();
+      if (r.right - popupW < cardRect.left) {
+        offset = cardRect.left - (r.right - popupW) + 12;
+        const maxShift = cardRect.right - r.right - 12;
+        if (offset > maxShift) offset = maxShift;
+      }
+    }
+    return Math.max(0, offset);
+  };
 
   const openPopup = () => {
     setTmp(resolveDateRange(datePreset, customRange));
     setTmpPreset(datePreset);
-    // Open at list-size first; the calendar only appears once "Custom" is picked.
-    // Anchored to the right edge of the chip (it sits on the right of the header).
-    setPlace({ ...popupPlacement(triggerRef.current, 200, 320), alignRight: true });
+    setReady(false);
+    const isCustom = datePreset === 'custom';
+    setPlace({ openUp: false, alignRight: true, offset: estimateOffset(isCustom ? 660 : 200) });
     setOpen(true);
   };
 
-  // Non-custom presets apply immediately and close; "Custom" reveals the calendar.
   const choosePreset = (value) => {
     if (value === 'custom') {
+      setReady(false);
       setTmpPreset('custom');
       setTmp(resolveDateRange(datePreset, customRange));
-      setPlace({ ...popupPlacement(triggerRef.current, 600, 410), alignRight: true });
+      setPlace(prev => ({ ...prev, offset: estimateOffset(660) }));
     } else {
       onApply(value, [null, null]);
       setOpen(false);
     }
   };
+
   useEffect(() => {
     if (!open) return;
     const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) setOpen(false); };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    
+    const adjustPosition = () => {
+      const el = triggerRef.current;
+      const popup = popupRef.current;
+      if (!el || !popup) return;
+      
+      const isCustom = tmpPreset === 'custom';
+      const estimatedW = isCustom ? 660 : 200;
+      const estimatedH = isCustom ? 410 : 320;
+      const initialPlacement = popupPlacement(el, estimatedW, estimatedH, true);
+      
+      const r = el.getBoundingClientRect();
+      const popupRect = popup.getBoundingClientRect();
+      const popupW = popupRect.width || estimatedW;
+      
+      let offset = 0;
+      const card = el.closest('.card');
+      if (card) {
+        const cardRect = card.getBoundingClientRect();
+        if (r.right - popupW < cardRect.left) {
+          offset = cardRect.left - (r.right - popupW) + 12; // 12px margin
+          const maxShift = cardRect.right - r.right - 12;
+          if (offset > maxShift) offset = maxShift;
+        }
+      }
+      
+      setPlace({
+        openUp: initialPlacement.openUp,
+        alignRight: true,
+        offset: Math.max(0, offset)
+      });
+      setReady(true);
+    };
+    
+    adjustPosition();
+    const id = setTimeout(adjustPosition, 40);
+    return () => clearTimeout(id);
+  }, [open, tmpPreset]);
 
   const apply = () => {
     if (tmpPreset === 'custom') { if (!tmp[0] || !tmp[1]) return; onApply('custom', tmp); }
@@ -3649,12 +3733,14 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
           : <Icon name="chevron_down" size={14} />}
       </span>
       {open && (
-        <div style={{
+        <div ref={popupRef} style={{
           position: 'absolute', zIndex: 200,
           [place.openUp ? 'bottom' : 'top']: 'calc(100% + 6px)',
-          [place.alignRight ? 'right' : 'left']: 0,
+          [place.alignRight ? 'right' : 'left']: `${-place.offset}px`,
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
           boxShadow: '0 12px 32px rgba(0,0,0,0.35)', display: 'flex', overflow: 'hidden',
+          opacity: ready ? 1 : 0,
+          transition: ready ? 'opacity 0.1s ease' : 'none',
         }}>
           <div style={{
             display: 'flex', flexDirection: 'column', padding: 8, minWidth: 160,
@@ -3689,7 +3775,7 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
 
 function MultiCheckDropdown({ label, icon, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
-  const [place, setPlace] = useState({ openUp: false, alignRight: false });
+  const [place, setPlace] = useState({ openUp: false, alignRight: false, offset: 0 });
   const ref = useRef(null);
   const triggerRef = useRef(null);
   useEffect(() => {
@@ -3715,7 +3801,7 @@ function MultiCheckDropdown({ label, icon, options, selected, onChange }) {
         <div style={{
           position: 'absolute', zIndex: 200, minWidth: 180,
           [place.openUp ? 'bottom' : 'top']: 'calc(100% + 6px)',
-          [place.alignRight ? 'right' : 'left']: 0,
+          [place.alignRight ? 'right' : 'left']: `${-place.offset}px`,
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
           boxShadow: '0 12px 32px rgba(0,0,0,0.25)', padding: 6,
         }}>
