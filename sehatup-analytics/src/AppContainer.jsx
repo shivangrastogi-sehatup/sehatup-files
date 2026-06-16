@@ -53,9 +53,8 @@ function ModernLogin() {
   const ROLES = [
     { id: "doctor", label: "Doctor" },
     { id: "telesales", label: "TeleSales" },
-    { id: "order_creator", label: "Order Creator" },
+    { id: "operations", label: "Operations" },
     { id: "marketing", label: "Marketing" },
-    { id: "logistics", label: "Logistics" },
     { id: "website_developer", label: "Developer" },
     { id: "admin", label: "Admin" }
   ];
@@ -262,12 +261,13 @@ function ModernLogin() {
   );
 }
 
-// Role name normalization (Tele_sales / Order_creator → telesales / order_creator)
+// Role name normalization. `order_creator` + `logistics` were merged into `operations`;
+// legacy `shipment_tracker` maps to `operations` too. Bare `order_creator`/`logistics`
+// are intentionally NOT aliased — those users must be reassigned to `operations`.
 const ROLE_ALIASES = {
   'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
-  'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
+  'operations': 'operations', 'shipment_tracker': 'operations',
   'performance_marketing': 'marketing', 'marketing': 'marketing',
-  'shipment_tracker': 'logistics', 'logistics': 'logistics',
   'website_developer': 'website_developer', 'developer': 'website_developer', 'webdev': 'website_developer',
   'admin': 'admin', 'doctor': 'doctor',
 };

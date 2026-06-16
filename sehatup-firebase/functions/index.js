@@ -1,8 +1,9 @@
 // index.js
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getStorage } = require("firebase-admin/storage");
+const { getAuth } = require("firebase-admin/auth");
 const os = require("os");
 const path = require("path");
 const fs = require("fs");
@@ -2250,16 +2251,242 @@ exports.triggerEventForPartialSubmissions = onSchedule(
   }
 );
 
-const {
-  nimbusLogin,
-  getShipmentTracking,
-  listShipments,
-  getShipmentAnalytics,
-  getNdrShipments,
-} = require('./src/shipments');
-exports.nimbusLogin = nimbusLogin;
-exports.getShipmentTracking = getShipmentTracking;
-exports.listShipments = listShipments;
-exports.getShipmentAnalytics = getShipmentAnalytics;
-exports.getNdrShipments = getNdrShipments;
+// NOTE: The Nimbus shipment callables (nimbusLogin / getShipmentTracking / listShipments /
+// getShipmentAnalytics / getNdrShipments) were removed — they powered the old "pull from
+// Nimbus" dashboard, which is dead. Live tracking now arrives via Nimbus's webhook →
+// the Vercel route /api/nimbus-webhook → Firestore `nimbus_tracking`, read by the CRM.
+
+// ─── Delete a user from Firebase Authentication (admin-only) ─────────────────
+// Callable from the client via httpsCallable(functions, "deleteAuthUser").
+// The client SDK can't delete arbitrary Auth accounts, so the admin calls this.
+// It verifies the caller is an admin, deletes the Auth account, and (best-effort)
+// cleans up the matching Firestore users/{uid} doc + permissions so nothing is orphaned.
+exports.deleteAuthUser = onCall({ region: "us-central1" }, async (request) => {
+  // 1) Must be signed in.
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+  const callerUid = request.auth.uid;
+
+  // 2) Caller must have the 'admin' role (checked against their Firestore profile).
+  const db = getFirestore();
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  const callerRoles = callerSnap.exists
+    ? [...(Array.isArray(callerSnap.data().roles) ? callerSnap.data().roles : []),
+       ...(callerSnap.data().role ? [callerSnap.data().role] : [])]
+    : [];
+  if (!callerRoles.map((r) => String(r).toLowerCase()).includes("admin")) {
+    throw new HttpsError("permission-denied", "Only admins can delete users.");
+  }
+
+  // 3) Validate target.
+  const uid = (request.data && request.data.uid ? String(request.data.uid) : "").trim();
+  if (!uid) {
+    throw new HttpsError("invalid-argument", "A target user uid is required.");
+  }
+  if (uid === callerUid) {
+    throw new HttpsError("failed-precondition", "You cannot delete your own account.");
+  }
+
+  // 4) Delete the Auth account.
+  try {
+    await getAuth().deleteUser(uid);
+    console.log(`[deleteAuthUser] Auth account ${uid} deleted by ${callerUid}`);
+  } catch (err) {
+    if (err.code === "auth/user-not-found") {
+      // No Auth account — fall through to clean up any leftover Firestore record.
+      console.warn(`[deleteAuthUser] No Auth account for ${uid}; cleaning Firestore only.`);
+    } else {
+      console.error(`[deleteAuthUser] Auth delete failed for ${uid}:`, err);
+      throw new HttpsError("internal", `Failed to delete Auth account: ${err.message}`);
+    }
+  }
+
+  // 5) Best-effort Firestore cleanup (never fails the call).
+  try {
+    await db.collection("users").doc(uid).collection("permissions").doc("settings").delete();
+    await db.collection("users").doc(uid).delete();
+  } catch (cleanupErr) {
+    console.warn(`[deleteAuthUser] Firestore cleanup warning for ${uid}:`, cleanupErr.message);
+  }
+
+  return { success: true, uid };
+});
+
+// ─── WhatsApp inbox (QuickReply.ai) ──────────────────────────────────────────
+// Conversations + messages are mirrored into Firestore so the CRM can render a live
+// WhatsApp inbox. QuickReply is just the gateway: it POSTs inbound messages and
+// delivery statuses to the two webhooks below, and we POST outbound agent messages to
+// its send-session-message API. Credentials come from QUICKREPLY_CLIENT_ID/SECRET_KEY
+// (already used elsewhere). Set QUICKREPLY_WEBHOOK_TOKEN to harden the webhook URLs.
+const QR_SEND_URL = "https://app.quickreply.ai/api/whatsapp/send-session-message";
+// Conversation doc id = digits of the E.164 phone (Firestore-id safe; '+' dropped).
+const qrConvId = (phone) => String(phone || "").replace(/[^0-9]/g, "");
+const qrPreviewText = (payload = {}) => {
+  switch (payload._type) {
+    case "USER_TEXT": return payload.text || "";
+    case "USER_FILE": return payload.caption || `[${payload.contentType || "file"}]`;
+    case "USER_LIST_REPLY":
+    case "USER_BUTTON_REPLY": return payload.text || "[reply]";
+    default: return payload.text || "";
+  }
+};
+
+// Webhook → configure as QuickReply "Receive Message" URL. Inbound user messages.
+exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res) => {
+  try {
+    if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+    const expected = process.env.QUICKREPLY_WEBHOOK_TOKEN;
+    if (expected && req.query.token !== expected) {
+      console.warn("[qrReceiveMessage] Rejected — bad/missing token");
+      return res.status(401).send("Unauthorized");
+    }
+    const b = req.body || {};
+    if (!b.phone || !b.id) return res.status(200).send("ignored"); // ack so QR doesn't retry
+    const db = getFirestore();
+    const convId = qrConvId(b.phone);
+    const msgTime = Number(b.msg_time) || Date.now();
+    const p = b.payload || {};
+    const convRef = db.collection("conversations").doc(convId);
+    const convSnap = await convRef.get();
+
+    const conv = {
+      phone: b.phone,
+      lastMessage: qrPreviewText(p),
+      lastMessageAt: msgTime,
+      lastMessageBy: "USER",
+      // WhatsApp's 24h customer-care window resets on every inbound message.
+      windowExpiresAt: msgTime + 24 * 60 * 60 * 1000,
+      status: "open",
+      unreadCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (b.name) conv.name = b.name;
+    if (b.email) conv.email = b.email;
+    if (!convSnap.exists) { conv.createdAt = FieldValue.serverTimestamp(); conv.assignedTo = null; }
+    await convRef.set(conv, { merge: true });
+
+    await convRef.collection("messages").doc(String(b.id)).set({
+      id: String(b.id),
+      direction: "in",
+      _type: p._type || "USER_TEXT",
+      text: p.text || p.caption || "",
+      mediaUrl: p.path || null,
+      mediaType: p.contentType || null,
+      fileName: p.name || null,
+      caption: p.caption || null,
+      replyTo: b.reply_to || null,
+      preview: p.preview || null,
+      messageBy: "USER",
+      status: "DELIVERED",
+      msgTime,
+      createdAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return res.status(200).send("ok");
+  } catch (err) {
+    console.error("[qrReceiveMessage] error:", err);
+    return res.status(200).send("error-logged"); // ack anyway; logged for debugging
+  }
+});
+
+// Webhook → configure as QuickReply "Message Status Update" URL.
+exports.qrStatusUpdate = onRequest({ region: "us-central1" }, async (req, res) => {
+  try {
+    if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+    const expected = process.env.QUICKREPLY_WEBHOOK_TOKEN;
+    if (expected && req.query.token !== expected) return res.status(401).send("Unauthorized");
+    const b = req.body || {};
+    if (!b.id || !b.phone) return res.status(200).send("ignored");
+    const db = getFirestore();
+    await db.collection("conversations").doc(qrConvId(b.phone))
+      .collection("messages").doc(String(b.id))
+      .set({
+        status: b.event || "SENT",
+        messageBy: b.messageBy || null,
+        agentId: b.agentId || null,
+        automationBy: b.automationBy || null,
+        statusUpdatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+    return res.status(200).send("ok");
+  } catch (err) {
+    console.error("[qrStatusUpdate] error:", err);
+    return res.status(200).send("error-logged");
+  }
+});
+
+// Callable → CRM composer. Sends a text as an agent within the 24h session window.
+exports.qrSendMessage = onCall({ region: "us-central1" }, async (request) => {
+  if (!request.auth || !request.auth.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const callerUid = request.auth.uid;
+  const db = getFirestore();
+
+  // Role gate: messaging is for telesales / operations / admin (+ legacy aliases).
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  const roles = callerSnap.exists
+    ? [...(Array.isArray(callerSnap.data().roles) ? callerSnap.data().roles : []),
+       ...(callerSnap.data().role ? [callerSnap.data().role] : [])].map((r) => String(r).toLowerCase())
+    : [];
+  const allowedRoles = ["telesales", "operations", "admin", "shipment_tracker", "order_creator", "logistics"];
+  if (!roles.some((r) => allowedRoles.includes(r))) {
+    throw new HttpsError("permission-denied", "You don't have access to messaging.");
+  }
+
+  const to = (request.data && request.data.to ? String(request.data.to) : "").trim();
+  const text = (request.data && request.data.text ? String(request.data.text) : "").trim();
+  if (!to) throw new HttpsError("invalid-argument", "Recipient phone is required.");
+  if (!text) throw new HttpsError("invalid-argument", "Message text is required.");
+
+  const convRef = db.collection("conversations").doc(qrConvId(to));
+  const convSnap = await convRef.get();
+  // 24h window: WhatsApp only allows free-form replies within 24h of the user's last
+  // message; outside that a pre-approved template is required (not supported in v1).
+  const windowExpiresAt = convSnap.exists ? convSnap.data().windowExpiresAt : 0;
+  if (!windowExpiresAt || windowExpiresAt < Date.now()) {
+    throw new HttpsError("failed-precondition", "The 24-hour reply window has expired — a template message is required (not supported yet).");
+  }
+
+  const clientId = process.env.QUICKREPLY_CLIENT_ID;
+  const secretKey = process.env.QUICKREPLY_SECRET_KEY;
+  if (!clientId || !secretKey) throw new HttpsError("failed-precondition", "QuickReply credentials are not configured.");
+
+  let resp;
+  try {
+    resp = await axios.post(QR_SEND_URL, {
+      to,
+      payload: { _type: "AGENT_TEXT", text },
+    }, { headers: { "client-id": clientId, "secret-key": secretKey, "Content-Type": "application/json" } });
+  } catch (err) {
+    const detail = err.response && err.response.data ? JSON.stringify(err.response.data) : err.message;
+    console.error("[qrSendMessage] QuickReply error:", detail);
+    throw new HttpsError("internal", `QuickReply send failed: ${detail}`);
+  }
+
+  const data = resp.data || {};
+  if (data.state && data.state !== "SENT") {
+    throw new HttpsError("internal", `Message not sent: ${data.reason || data.state}`);
+  }
+
+  const now = Date.now();
+  const msgId = data.id || `local_${now}_${Math.floor(Math.random() * 1e6)}`;
+  await convRef.collection("messages").doc(String(msgId)).set({
+    id: String(msgId),
+    direction: "out",
+    _type: "AGENT_TEXT",
+    text,
+    messageBy: "AGENT",
+    agentId: callerUid,
+    status: data.state || "SENT",
+    msgTime: now,
+    createdAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  await convRef.set({
+    lastMessage: text,
+    lastMessageAt: now,
+    lastMessageBy: "AGENT",
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return { success: true, id: msgId, state: data.state || "SENT" };
+});
 

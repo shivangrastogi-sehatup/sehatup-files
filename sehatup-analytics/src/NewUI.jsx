@@ -1,10 +1,13 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
-import { FIREBASE_MODE, setFirebaseMode } from './config/firebaseEnvironment';
+import { FIREBASE_MODE, setFirebaseMode, FIREBASE_CONFIGS } from './config/firebaseEnvironment';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut as fbSignOut } from 'firebase/auth';
 import { searchCustomers, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
-import { db, auth, storage } from './firebase';
+import { db, auth, storage, functions } from './firebase';
+import { httpsCallable } from 'firebase/functions';
 import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { computeAnalytics } from "./utils/analytics";
@@ -400,12 +403,15 @@ function normalizePaymentLabel(v) {
 // --- Logistics config (shared via Firestore: app_settings/logistics) ---
 const DEFAULT_TRACKING_URL_TEMPLATE = 'https://ship.nimbuspost.com/shipping/tracking/{awb}';
 function useLogisticsConfig() {
-  const [cfg, setCfg] = useState({ trackingUrlTemplate: DEFAULT_TRACKING_URL_TEMPLATE });
+  const [cfg, setCfg] = useState({ trackingUrlTemplate: DEFAULT_TRACKING_URL_TEMPLATE, healthscoreDiscountCode: '' });
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'app_settings', 'logistics'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setCfg({ trackingUrlTemplate: data.trackingUrlTemplate || DEFAULT_TRACKING_URL_TEMPLATE });
+        setCfg({
+          trackingUrlTemplate: data.trackingUrlTemplate || DEFAULT_TRACKING_URL_TEMPLATE,
+          healthscoreDiscountCode: data.healthscoreDiscountCode || '',
+        });
       }
     }, () => { /* keep defaults on error */ });
     return unsub;
@@ -614,9 +620,8 @@ const ROLES = [
   { key: "admin", label: "Admin", subtitle: "All access", icon: "shield", color: "var(--accent)" },
   { key: "doctor", label: "Doctor", subtitle: "Clinical review", icon: "stethoscope", color: "var(--risk-low)" },
   { key: "telesales", label: "Tele-Sales", subtitle: "Customer outreach", icon: "phone", color: "var(--accent-2)" },
-  { key: "order_creator", label: "Order Creator", subtitle: "Manual orders", icon: "package", color: "var(--risk-moderate)" },
+  { key: "operations", label: "Operations", subtitle: "Orders & shipments", icon: "package", color: "var(--risk-moderate)" },
   { key: "marketing", label: "Marketing", subtitle: "Analytics & funnel", icon: "bar", color: "var(--accent)" },
-  { key: "logistics", label: "Logistics", subtitle: "Shipments", icon: "truck", color: "var(--risk-high)" },
 ];
 
 const USERS = [
@@ -625,9 +630,9 @@ const USERS = [
   { name: "Dr. Nisha Patel", email: "nisha.p@sehatup.in", role: "doctor", lastActive: "1 hr ago", initials: "NP" },
   { name: "Karthik R.", email: "karthik@sehatup.in", role: "telesales", lastActive: "3 min ago", initials: "KR" },
   { name: "Priya S.", email: "priya.s@sehatup.in", role: "telesales", lastActive: "Just now", initials: "PS" },
-  { name: "Rohan M.", email: "rohan.m@sehatup.in", role: "order_creator", lastActive: "5 min ago", initials: "RM" },
+  { name: "Rohan M.", email: "rohan.m@sehatup.in", role: "operations", lastActive: "5 min ago", initials: "RM" },
   { name: "Aarav C.", email: "aarav@sehatup.in", role: "marketing", lastActive: "2 hr ago", initials: "AC" },
-  { name: "Sneha V.", email: "sneha@sehatup.in", role: "logistics", lastActive: "8 min ago", initials: "SV" },
+  { name: "Sneha V.", email: "sneha@sehatup.in", role: "operations", lastActive: "8 min ago", initials: "SV" },
 ];
 
 // Completion timeline — 90 days of data
@@ -5758,10 +5763,55 @@ function HistoryInline({ customer, onUsePrescription }) {
 // --- screens-orders.jsx ---
 // screens-orders.jsx — Create Order flow + Order History
 
-
+// Shopify's REST Orders API ignores `payment_terms` on order creation, so COD orders
+// get their "Due on fulfillment" terms attached afterward via GraphQL. The store's
+// FULFILLMENT template id is looked up once and cached. Best-effort — failures are
+// logged, never thrown, so they can't break a successfully-created order.
+let _fulfillmentTermsTemplateId = null;
+async function attachFulfillmentPaymentTerms(orderId) {
+  try {
+    if (!_fulfillmentTermsTemplateId) {
+      const tplRes = await fetch('/shopify-v2/graphql.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: `{ paymentTermsTemplates { id name paymentTermsType dueInDays } }` }),
+      });
+      const tplData = await tplRes.json();
+      const tpl = (tplData?.data?.paymentTermsTemplates || []).find(t => t.paymentTermsType === 'FULFILLMENT');
+      _fulfillmentTermsTemplateId = tpl?.id || null;
+    }
+    if (!_fulfillmentTermsTemplateId) {
+      console.warn('[Payment Terms] No "Due on fulfillment" template found — skipping.');
+      return;
+    }
+    const res = await fetch('/shopify-v2/graphql.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `mutation paymentTermsCreate($referenceId: ID!, $paymentTermsAttributes: PaymentTermsCreateInput!) {
+          paymentTermsCreate(referenceId: $referenceId, paymentTermsAttributes: $paymentTermsAttributes) {
+            paymentTerms { id paymentTermsName }
+            userErrors { field message }
+          }
+        }`,
+        variables: {
+          referenceId: `gid://shopify/Order/${orderId}`,
+          paymentTermsAttributes: { paymentTermsTemplateId: _fulfillmentTermsTemplateId },
+        },
+      }),
+    });
+    const data = await res.json();
+    const errs = data?.data?.paymentTermsCreate?.userErrors || data?.errors;
+    if (errs && errs.length) console.warn('[Payment Terms] Failed to attach to order', orderId, errs);
+    else console.log('[Payment Terms] Attached "Due on fulfillment" to order', orderId);
+  } catch (err) {
+    console.warn('[Payment Terms] Attach error:', err.message);
+  }
+}
 
 function OrderCreate({ context = {}, setRoute }) {
   const preset = context.customer;
+  const logisticsCfg = useLogisticsConfig();
   const [cust, setCust] = useStateO(preset || null);
   const [items, setItems] = useStateO([]);
   const [includeSample, setIncludeSample] = useStateO(false);
@@ -5815,10 +5865,6 @@ function OrderCreate({ context = {}, setRoute }) {
   const [useCustomShipping, setUseCustomShipping] = useStateO(false);
   const [customShippingTitle, setCustomShippingTitle] = useStateO('');
   const [customShippingPrice, setCustomShippingPrice] = useStateO('');
-  // Partial-payment-received mode for COD: zero shipping + advance amount deducted from COD total
-  const [partialPaymentMode, setPartialPaymentMode] = useStateO(false);
-  const [partialPaymentAmount, setPartialPaymentAmount] = useStateO('');
-  const [partialPaymentRef, setPartialPaymentRef] = useStateO('');
   const [orderDiscountPopupOpen, setOrderDiscountPopupOpen] = useStateO(false);
   const [orderDiscountCode, setOrderDiscountCode] = useStateO("");
   const [orderDiscountIsCustom, setOrderDiscountIsCustom] = useStateO(false);
@@ -5967,12 +6013,9 @@ function OrderCreate({ context = {}, setRoute }) {
         tags: ['Created via CRM', pay].filter(Boolean).join(', ')
       };
 
-      // Shipping — COD uses selected rate; Prepaid uses "Prepaid Shipping" rate from Shopify
-      // Partial-payment mode takes precedence: zero-rupee shipping + advance discount.
-      if (pay === "COD" && partialPaymentMode) {
-        draftData.shipping_line = { title: 'Shipping (partial)', price: '0.00', code: 'PARTIAL_PAID' };
-        console.log('[Shipping] Partial payment mode — shipping set to Rs. 0');
-      } else if (pay === "COD" && useCustomShipping) {
+      // Shipping — COD uses the selected rate (incl. the Rs. 0 "COD Shipping (Partial)"
+      // option) or a custom rate; Prepaid uses the "Prepaid Shipping" rate from Shopify.
+      if (pay === "COD" && useCustomShipping) {
         const title = customShippingTitle.trim() || 'Custom Shipping';
         const price = parseFloat(customShippingPrice) || 0;
         draftData.shipping_line = { title, price: price.toFixed(2), code: title };
@@ -5988,22 +6031,8 @@ function OrderCreate({ context = {}, setRoute }) {
         console.log('[Shipping] No shipping rate found — no shipping_line added');
       }
 
-      // Order Discount — partial payment overrides any manual discount for COD orders.
-      // (Shopify draft orders accept only one applied_discount per order.)
-      if (pay === "COD" && partialPaymentMode) {
-        const partialAmt = parseFloat(partialPaymentAmount) || 0;
-        if (partialAmt > 0) {
-          const ref = (partialPaymentRef || '').trim();
-          draftData.applied_discount = {
-            value_type: 'fixed_amount',
-            value: String(partialAmt),
-            title: 'Advance Payment Received' + (ref ? ` (${ref})` : ''),
-            description: `Customer paid Rs. ${partialAmt} in advance${ref ? `. Reference: ${ref}` : ''}. Remaining Rs. ${codDueOnDelivery} to be collected on delivery.`,
-          };
-          console.log('[Partial Payment] Advance Rs.', partialAmt, '→ COD due Rs.', codDueOnDelivery);
-        }
-        draftData.tags = ((draftData.tags || '') + ', partial-payment-received').replace(/^,\s*/, '');
-      } else if (orderDiscountIsCustom && (parseFloat(orderDiscountValue) || 0) > 0) {
+      // Order Discount — Shopify draft orders accept only one applied_discount per order.
+      if (orderDiscountIsCustom && (parseFloat(orderDiscountValue) || 0) > 0) {
         // Custom amount/percentage discount
         draftData.applied_discount = {
           value_type: orderDiscountType === 'percentage' ? 'percentage' : 'fixed_amount',
@@ -6012,13 +6041,21 @@ function OrderCreate({ context = {}, setRoute }) {
           description: orderDiscountReason || 'Custom Discount',
         };
       } else if (appliedCodeDiscount && (parseFloat(appliedCodeDiscount.value) || 0) > 0) {
-        // Selected discount code — applied as its resolved value, labelled with the code.
+        // Selected discount code — applied as its resolved value. Healthscore Lead orders
+        // get a clearer label so the code's purpose is visible on the order.
+        const isHs = appliedCodeDiscount.healthscore;
         draftData.applied_discount = {
           value_type: appliedCodeDiscount.valueType === 'percentage' ? 'percentage' : 'fixed_amount',
           value: String(parseFloat(appliedCodeDiscount.value) || 0),
-          title: appliedCodeDiscount.code,
-          description: `Discount code ${appliedCodeDiscount.code}`,
+          title: isHs ? `Healthscore Lead (${appliedCodeDiscount.code})` : appliedCodeDiscount.code,
+          description: isHs ? `Healthscore Lead discount · code ${appliedCodeDiscount.code}` : `Discount code ${appliedCodeDiscount.code}`,
         };
+      }
+
+      // COD → "Due on fulfillment" payment terms; Prepaid needs none. REST drafts honor
+      // this; for completed (active) orders the term is re-attached via GraphQL below.
+      if (pay === "COD") {
+        draftData.payment_terms = { payment_terms_type: 'FULFILLMENT', due_in_days: 0 };
       }
 
       console.log('--- SHOPIFY DRAFT ORDER PAYLOAD ---');
@@ -6130,6 +6167,9 @@ function OrderCreate({ context = {}, setRoute }) {
 
           // The draft was only needed to compute prices/shipping/discounts — discard it.
           fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => { });
+
+          // COD orders → attach "Due on fulfillment" payment terms (the Orders API ignores them).
+          if (!isPrepaid) await attachFulfillmentPaymentTerms(finalOrderId);
         } catch (compErr) {
           console.error('--- ACTIVE ORDER ERROR ---', compErr);
           throw new Error('Failed to create active order: ' + compErr.message);
@@ -6560,41 +6600,29 @@ function OrderCreate({ context = {}, setRoute }) {
 
   const subtotal = items.reduce((s, p) => s + getDiscountedUnitPrice(p) * p.qty, 0);
   const shipping = pay === "COD"
-    ? (partialPaymentMode ? 0
-      : useCustomShipping ? (parseFloat(customShippingPrice) || 0)
+    ? (useCustomShipping ? (parseFloat(customShippingPrice) || 0)
         : (selectedShipping ? selectedShipping.price : 0))
     : 0;
   const shippingLabel = pay === "COD"
-    ? (partialPaymentMode ? 'partial'
-      : useCustomShipping ? (customShippingTitle.trim() || 'Custom Shipping')
+    ? (useCustomShipping ? (customShippingTitle.trim() || 'Custom Shipping')
         : (selectedShipping ? selectedShipping.title : 'Free'))
     : "Free";
   // A manual order discount is either a custom amount/percentage OR a selected code.
-  // Partial-payment COD applies an "advance received" discount instead, and Shopify draft
-  // orders accept only one discount — so the manual discount is dropped while partial is on.
-  const partialCodActive = pay === "COD" && partialPaymentMode;
   const hasManualDiscount = orderDiscountIsCustom
     ? (Number(orderDiscountValue) || 0) > 0
     : !!appliedCodeDiscount;
-  const discountRemovedByPartial = partialCodActive && hasManualDiscount;
 
   let discount = 0;
-  if (!partialCodActive) {
-    if (orderDiscountIsCustom) {
-      const val = Number(orderDiscountValue) || 0;
-      discount = orderDiscountType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
-    } else if (appliedCodeDiscount) {
-      const val = Number(appliedCodeDiscount.value) || 0;
-      discount = appliedCodeDiscount.valueType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
-    }
+  if (orderDiscountIsCustom) {
+    const val = Number(orderDiscountValue) || 0;
+    discount = orderDiscountType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
+  } else if (appliedCodeDiscount) {
+    const val = Number(appliedCodeDiscount.value) || 0;
+    discount = appliedCodeDiscount.valueType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
   }
   discount = Math.round(Math.min(discount, subtotal));
   // Order total (full value of the order — items + shipping - manual discount)
   const total = Math.max(0, subtotal + shipping - discount);
-  // Amount already paid by the customer in advance (only when partial-payment mode is on)
-  const partialPaidAmount = partialPaymentMode ? (parseFloat(partialPaymentAmount) || 0) : 0;
-  // Final amount to collect on delivery for COD orders
-  const codDueOnDelivery = Math.max(0, total - partialPaidAmount);
 
   // ── Discount popup helpers ─────────────────────────────────────────────────
   const closeDiscountPopup = () => {
@@ -6674,6 +6702,53 @@ function OrderCreate({ context = {}, setRoute }) {
     const q = (orderDiscountCode || '').toLowerCase();
     return !q || o.code.toLowerCase().includes(q) || (o.title || '').toLowerCase().includes(q);
   });
+
+  // ── Healthscore Lead — applies the discount code chosen in Settings ─────────
+  // The checkbox state is derived from the applied code's `healthscore` flag, so picking
+  // a different code or enabling a custom discount automatically clears it.
+  const healthscoreCode = (logisticsCfg.healthscoreDiscountCode || '').trim();
+  const healthscoreLeadOn = !!appliedCodeDiscount?.healthscore;
+  const resolveDiscountCode = async (code) => {
+    try {
+      const res = await fetch('/shopify-v2/graphql.json', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `query { codeDiscountNodeByCode(code: ${JSON.stringify(code)}) { codeDiscount {
+            __typename
+            ... on DiscountCodeBasic { title customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
+          } } }`,
+        }),
+      });
+      const data = await res.json();
+      const cd = data?.data?.codeDiscountNodeByCode?.codeDiscount;
+      if (!cd) return null;
+      const v = cd.customerGets?.value;
+      let valueType = null, value = 0;
+      if (v?.percentage != null) { valueType = 'percentage'; value = Math.round(v.percentage * 100); }
+      else if (v?.amount?.amount != null) { valueType = 'amount'; value = parseFloat(v.amount.amount); }
+      return { code, valueType, value };
+    } catch (e) { return null; }
+  };
+  const toggleHealthscoreLead = async (checked) => {
+    if (!checked) {
+      if (appliedCodeDiscount?.healthscore) { setAppliedCodeDiscount(null); setOrderDiscountCode(''); }
+      return;
+    }
+    if (!healthscoreCode) {
+      alert('No Healthscore Lead discount code is configured yet. Set it in Settings → Logistics.');
+      return;
+    }
+    setOrderDiscountIsCustom(false);
+    setOrderDiscountValue(''); setOrderDiscountReason('');
+    let opt = discountCodeOptions.find(o => o.code.toLowerCase() === healthscoreCode.toLowerCase());
+    if (!opt || opt.valueType == null) opt = await resolveDiscountCode(healthscoreCode);
+    if (!opt || opt.valueType == null) {
+      alert(`Couldn't resolve the configured Healthscore code "${healthscoreCode}". Check it's active in Shopify.`);
+      return;
+    }
+    setOrderDiscountCode(opt.code);
+    setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value, healthscore: true });
+  };
 
   const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -7250,11 +7325,6 @@ function OrderCreate({ context = {}, setRoute }) {
                 <span className="spacer" />
                 <span className="num fw5" style={{ color: discount ? "var(--fg)" : "var(--muted)" }}>{discount ? `− Rs. ${discount}` : "—"}</span>
               </div>
-              {discountRemovedByPartial && (
-                <div className="hstack-8" style={{ fontSize: 11.5, color: "var(--risk-moderate)", marginTop: 4, alignItems: "flex-start" }}>
-                  <span>⚠ Discount removed — the partial (advance) COD payment is applied instead. Shopify allows only one order discount.</span>
-                </div>
-              )}
               {orderDiscountPopupOpen && createPortal(
                 <div className={`theme-light accent-rose ${orderDiscountPopupClosing ? 'fade-out' : 'fade-in'}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg)' }}>
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={(e) => { e.stopPropagation(); cancelDiscountPopup(); }} />
@@ -7265,6 +7335,18 @@ function OrderCreate({ context = {}, setRoute }) {
                       <button className="btn sm ghost icon" onClick={cancelDiscountPopup}><Icon name="x" /></button>
                     </div>
                     <div className="stack-12" style={{ padding: "20px" }}>
+                      {/* Healthscore Lead — applies the discount code configured in Settings */}
+                      <label className="hstack-8" style={{ alignItems: "center", cursor: healthscoreCode ? "pointer" : "not-allowed", opacity: healthscoreCode ? 1 : 0.55 }}>
+                        <input type="checkbox" checked={healthscoreLeadOn} disabled={!healthscoreCode} onChange={e => toggleHealthscoreLead(e.target.checked)} />
+                        <div className="stack-2">
+                          <span style={{ fontSize: 13 }}>Healthscore Lead</span>
+                          <span className="muted" style={{ fontSize: 11.5 }}>
+                            {healthscoreCode ? `Applies code ${healthscoreCode}` : 'No code configured — set it in Settings → Logistics'}
+                          </span>
+                        </div>
+                      </label>
+                      <div className="divider" style={{ margin: "2px 0" }} />
+
                       {/* Discount code with active-code autocomplete (mutually exclusive with custom) */}
                       <div className="stack-4">
                         <span className="fw5" style={{ fontSize: 13 }}>Discount code</span>
@@ -7356,20 +7438,6 @@ function OrderCreate({ context = {}, setRoute }) {
                 <span className="spacer" />
                 <span className="fw5 num" style={{ fontSize: 20, letterSpacing: "-0.015em" }}>Rs. {total.toLocaleString()}</span>
               </div>
-              {pay === "COD" && partialPaymentMode && partialPaidAmount > 0 && (
-                <>
-                  <div className="hstack-8" style={{ marginTop: 6, fontSize: 12.5 }}>
-                    <span className="muted">– Advance received</span>
-                    <span className="spacer" />
-                    <span className="num" style={{ color: "var(--risk-low)" }}>Rs. {partialPaidAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="hstack-8" style={{ marginTop: 2, padding: "8px 10px", background: "var(--accent-soft)", borderRadius: 6, alignItems: "baseline" }}>
-                    <span className="fw6" style={{ fontSize: 13 }}>COD to collect</span>
-                    <span className="spacer" />
-                    <span className="fw6 num" style={{ fontSize: 16, color: "var(--accent-ink)" }}>Rs. {codDueOnDelivery.toLocaleString()}</span>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -7397,7 +7465,7 @@ function OrderCreate({ context = {}, setRoute }) {
                         <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
                       ) : (
                         <div className="stack-6">
-                          {!useCustomShipping && !partialPaymentMode && shippingRates
+                          {!useCustomShipping && shippingRates
                             .filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title))
                             .map((rate, i) => {
                               const isSel = selectedShipping?.id === rate.id;
@@ -7411,50 +7479,24 @@ function OrderCreate({ context = {}, setRoute }) {
                               );
                             })}
 
-                          {/* Partial Payment Received — Rs. 0 shipping, amount deducted from COD total */}
-                          {!useCustomShipping && (
-                            <label className="hstack-8" style={{ cursor: "pointer", padding: partialPaymentMode ? 10 : 0, borderRadius: 8, background: partialPaymentMode ? "var(--accent-soft)" : "transparent", border: partialPaymentMode ? "1px solid var(--accent)" : "none" }}>
-                              <input
-                                type="radio"
-                                name="shippingRate"
-                                checked={partialPaymentMode}
-                                onChange={() => { setPartialPaymentMode(true); setSelectedShipping(null); setUseCustomShipping(false); }}
-                              />
-                              <span style={{ fontSize: 13 }}>Partial Payment Received</span>
-                              <span className="muted" style={{ fontSize: 11.5 }}>(customer paid advance)</span>
-                              <span className="spacer" />
-                              <span className="num fw5" style={{ fontSize: 13 }}>Rs. 0</span>
-                            </label>
-                          )}
-
-                          {partialPaymentMode && (
-                            <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
-                              <div className="muted" style={{ fontSize: 11.5 }}>
-                                Enter the amount the customer already paid. It will be applied as an "Advance Payment Received" discount, and the remaining amount becomes the COD to collect on delivery.
-                              </div>
-                              <div className="hstack-8">
-                                <div className="field span-6" style={{ margin: 0 }}>
-                                  <span className="lbl">Amount Received (Rs.) *</span>
-                                  <input className="input num" type="number" value={partialPaymentAmount} onChange={e => setPartialPaymentAmount(e.target.value)} placeholder="500" min="0" />
-                                </div>
-                                <div className="field span-6" style={{ margin: 0 }}>
-                                  <span className="lbl">Reference (optional)</span>
-                                  <input className="input" value={partialPaymentRef} onChange={e => setPartialPaymentRef(e.target.value)} placeholder="UPI ID / Txn ID / Receipt #" />
-                                </div>
-                              </div>
-                              {parseFloat(partialPaymentAmount) > 0 && (
-                                <div style={{ padding: 10, background: "var(--surface-2)", borderRadius: 6, fontSize: 12.5 }}>
-                                  <div className="hstack-8"><span className="muted">Order total</span><span className="spacer" /><span className="num">Rs. {total.toLocaleString()}</span></div>
-                                  <div className="hstack-8"><span className="muted">– Advance received</span><span className="spacer" /><span className="num" style={{ color: "var(--risk-low)" }}>Rs. {partialPaidAmount.toLocaleString()}</span></div>
-                                  <div className="divider" style={{ margin: "6px 0" }} />
-                                  <div className="hstack-8"><span className="fw6">To collect on delivery</span><span className="spacer" /><span className="num fw6">Rs. {codDueOnDelivery.toLocaleString()}</span></div>
-                                </div>
-                              )}
-                              <button className="btn sm ghost" style={{ alignSelf: "flex-start" }} onClick={() => { setPartialPaymentMode(false); setPartialPaymentAmount(''); setPartialPaymentRef(''); }}>
-                                Cancel partial payment
-                              </button>
-                            </div>
-                          )}
+                          {/* COD with Rs. 0 shipping (e.g. customer settles part separately) */}
+                          {!useCustomShipping && (() => {
+                            const isSel = selectedShipping?.id === 'cod-free';
+                            return (
+                              <label className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                                <input
+                                  type="radio"
+                                  name="shippingRate"
+                                  checked={isSel}
+                                  onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'COD Shipping (Partial)', price: 0, code: 'COD_PARTIAL' }); setUseCustomShipping(false); }}
+                                  style={{ accentColor: "var(--accent)" }}
+                                />
+                                <span style={{ fontSize: 13 }}>COD Shipping (Partial)</span>
+                                <span className="spacer" />
+                                <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
+                              </label>
+                            );
+                          })()}
 
                           {useCustomShipping ? (
                             <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
@@ -7464,8 +7506,8 @@ function OrderCreate({ context = {}, setRoute }) {
                               </div>
                               <button className="btn sm ghost" onClick={() => setUseCustomShipping(false)}>Cancel custom rate</button>
                             </div>
-                          ) : !partialPaymentMode && (
-                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setPartialPaymentMode(false); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
+                          ) : (
+                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
                           )}
                         </div>
                       )}
@@ -9363,15 +9405,17 @@ function CourierPerformance() {
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ROLES & USERS (ADMIN) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-const ADMIN_ROLES = ["admin", "doctor", "telesales", "order_creator", "marketing", "logistics", "website_developer"];
+const ADMIN_ROLES = ["admin", "doctor", "telesales", "operations", "marketing", "website_developer"];
 
 // Map common variants of role names to the canonical form used in NAV/permissions.
 // Anything not in this map is kept as-is (so unknown roles remain visible/removable).
+// `order_creator` + `logistics` were merged into a single `operations` role. The legacy
+// `shipment_tracker` alias now points to `operations` too; bare `order_creator`/`logistics`
+// are intentionally NOT aliased so the admin can spot and manually reassign those users.
 const ROLE_ALIASES = {
   'tele_sales': 'telesales', 'telesales': 'telesales', 'tele-sales': 'telesales',
-  'order_creator': 'order_creator', 'ordercreator': 'order_creator', 'order-creator': 'order_creator',
+  'operations': 'operations', 'shipment_tracker': 'operations',
   'performance_marketing': 'marketing', 'marketing': 'marketing',
-  'shipment_tracker': 'logistics', 'logistics': 'logistics',
   'website_developer': 'website_developer', 'developer': 'website_developer', 'webdev': 'website_developer',
   'admin': 'admin', 'doctor': 'doctor',
 };
@@ -10156,6 +10200,23 @@ function DoctorSignaturesAdmin() {
   );
 }
 
+// Create a Firebase Auth user WITHOUT signing the admin out. The client SDK's
+// createUserWithEmailAndPassword would replace the current session, so we run it on a
+// throwaway secondary app (same config, different name) and sign that instance out
+// afterward. Returns the new user's uid.
+async function createAuthUserViaSecondary(email, password) {
+  const config = FIREBASE_CONFIGS[FIREBASE_MODE] || FIREBASE_CONFIGS.dev;
+  const appName = `useradmin-${FIREBASE_MODE}`;
+  const secondaryApp = getApps().find(a => a.name === appName) || initializeApp(config, appName);
+  const secondaryAuth = getAuth(secondaryApp);
+  try {
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    return cred.user.uid;
+  } finally {
+    try { await fbSignOut(secondaryAuth); } catch (_) { /* ignore */ }
+  }
+}
+
 function AdminScreen() {
   const [adminTab, setAdminTab] = useState('users');
   const [users, setUsers] = useState([]);
@@ -10166,7 +10227,7 @@ function AdminScreen() {
   const [loadingPerms, setLoadingPerms] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [newUser, setNewUser] = useState({ uid: '', email: '', name: '', role: 'doctor' });
+  const [newUser, setNewUser] = useState({ email: '', name: '', role: 'doctor', password: '' });
   const [toast, setToast] = useState(null);
 
   const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 3000); };
@@ -10243,19 +10304,52 @@ function AdminScreen() {
   };
 
   const handleCreate = async () => {
-    if (!newUser.uid || !newUser.email) return showToast('error', 'UID and Email are required.');
+    const email = newUser.email.trim();
+    const password = newUser.password || '';
+    if (!email) return showToast('error', 'Email is required.');
+    if (password.length < 6) return showToast('error', 'Password must be at least 6 characters.');
     setSaving(true);
     try {
-      await setDoc(doc(db, 'users', newUser.uid.trim()), {
-        id: newUser.uid.trim(), uid: newUser.uid.trim(),
-        email: newUser.email.trim(), name: newUser.name.trim(),
+      // 1) Create the Firebase Auth account (via secondary app so we stay logged in)…
+      const uid = await createAuthUserViaSecondary(email, password);
+      // 2) …then create the matching Firestore users/{uid} record with name + role.
+      await setDoc(doc(db, 'users', uid), {
+        id: uid, uid,
+        email, name: newUser.name.trim(),
         roles: [newUser.role], createdAt: serverTimestamp(),
       });
       setShowCreate(false);
-      setNewUser({ uid: '', email: '', name: '', role: 'doctor' });
-      showToast('success', 'User record created.');
-    } catch (e) { showToast('error', 'Create failed.'); }
-    finally { setSaving(false); }
+      setNewUser({ email: '', name: '', role: 'doctor', password: '' });
+      showToast('success', 'User created in Authentication + Firestore.');
+    } catch (e) {
+      const msg = e?.code === 'auth/email-already-in-use' ? 'That email already has an account.'
+        : e?.code === 'auth/invalid-email' ? 'Invalid email address.'
+        : e?.code === 'auth/weak-password' ? 'Password is too weak (min 6 characters).'
+        : (e?.message || 'Create failed.');
+      showToast('error', msg);
+    } finally { setSaving(false); }
+  };
+
+  // Send a Firebase password-reset email. Uses the primary auth (doesn't touch the session).
+  const handleSendReset = async (email) => {
+    if (!email) return showToast('error', 'This user has no email on file.');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      showToast('success', `Password-reset email sent to ${email}.`);
+    } catch (e) { showToast('error', e?.message || 'Failed to send reset email.'); }
+  };
+
+  const handleSendResetAll = async () => {
+    const emails = [...new Set(users.map(u => u.email).filter(Boolean))];
+    if (!emails.length) return showToast('error', 'No user emails found.');
+    if (!window.confirm(`Send a password-reset email to all ${emails.length} user(s)?`)) return;
+    setSaving(true);
+    let ok = 0, fail = 0;
+    for (const email of emails) {
+      try { await sendPasswordResetEmail(auth, email); ok++; } catch (_) { fail++; }
+    }
+    setSaving(false);
+    showToast(fail ? 'error' : 'success', `Reset emails: ${ok} sent${fail ? `, ${fail} failed` : ''}.`);
   };
 
   const Toggle = ({ on, onToggle }) => (
@@ -10281,7 +10375,8 @@ function AdminScreen() {
           <p className="page-sub">Manage users, roles, and doctor signatures across the SehatUp platform</p>
         </div>
         <div className="page-head-actions">
-          {adminTab === 'users' && <button className="btn primary" onClick={() => setShowCreate(true)}><Icon name="plus" /> Add User Record</button>}
+          {adminTab === 'users' && <button className="btn" onClick={handleSendResetAll} disabled={saving}><Icon name="mail" /> Send reset to all</button>}
+          {adminTab === 'users' && <button className="btn primary" onClick={() => setShowCreate(true)}><Icon name="plus" /> Add User</button>}
         </div>
       </div>
 
@@ -10356,6 +10451,7 @@ function AdminScreen() {
                     <td className="right">
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button className="btn sm ghost" onClick={() => openEdit(u)}><Icon name="edit" size={13} /> Edit</button>
+                        {u.email && <button className="btn sm ghost" title="Send password-reset email" onClick={() => handleSendReset(u.email)}><Icon name="mail" size={13} /></button>}
                         {u.id !== currentUid && <button className="btn sm ghost" style={{ color: '#ef4444' }} onClick={() => handleDelete(u)}><Icon name="trash" size={13} /></button>}
                       </div>
                     </td>
@@ -10512,16 +10608,16 @@ function AdminScreen() {
           <div className="np-blur-layer" />
           <div className="np-backdrop" onClick={() => setShowCreate(false)}>
             <div className="np-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460, width: '100%' }}>
-              <div className="fw6" style={{ fontSize: 16, marginBottom: 20 }}>Add User Record</div>
-              <p className="muted" style={{ fontSize: 12.5, marginBottom: 20 }}>Manually create a Firestore profile for an existing Firebase Auth user.</p>
+              <div className="fw6" style={{ fontSize: 16, marginBottom: 20 }}>Add User</div>
+              <p className="muted" style={{ fontSize: 12.5, marginBottom: 20 }}>Creates a Firebase Authentication account and its Firestore profile in one step. Share the initial password, or send the user a reset link from the list afterward.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div className="field">
-                  <label className="lbl">Firebase Auth UID</label>
-                  <input className="input" placeholder="Paste UID from Firebase Console" value={newUser.uid} onChange={e => setNewUser({ ...newUser, uid: e.target.value })} />
-                </div>
                 <div className="field">
                   <label className="lbl">Email Address</label>
                   <input className="input" type="email" placeholder="user@sehatup.com" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} />
+                </div>
+                <div className="field">
+                  <label className="lbl">Initial Password</label>
+                  <input className="input" type="text" placeholder="At least 6 characters" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
                 </div>
                 <div className="field">
                   <label className="lbl">Full Name</label>
@@ -10537,7 +10633,7 @@ function AdminScreen() {
               <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
                 <button className="btn" style={{ flex: 1 }} onClick={() => setShowCreate(false)}>Cancel</button>
                 <button className="btn primary" style={{ flex: 1 }} onClick={handleCreate} disabled={saving}>
-                  {saving ? 'Creating…' : 'Create Record'}
+                  {saving ? 'Creating…' : 'Create User'}
                 </button>
               </div>
             </div>
@@ -10560,7 +10656,7 @@ function RolePill({ role }) {
 function SettingsScreen({ tweaks, me }) {
   const [tab, setTab] = useStateM("profile");
   const isAdmin = me?.role === 'admin';
-  const isLogistics = me?.role === 'logistics' || isAdmin;
+  const isLogistics = me?.role === 'operations' || isAdmin;
   const { hasPermission } = usePermissions();
   const canClinical = hasPermission('can_access_clinical_review');
   const tabs = [
@@ -10659,6 +10755,57 @@ function LogisticsSettingsPane() {
 
   useEffect(() => { setUrl(cfg.trackingUrlTemplate); }, [cfg.trackingUrlTemplate]);
 
+  // ── Healthscore Lead discount — which active Shopify code to apply ──────────
+  const [hsCodes, setHsCodes] = useStateM([]);
+  const [hsLoading, setHsLoading] = useStateM(false);
+  const [hsError, setHsError] = useStateM(null);
+  const [hsCode, setHsCode] = useStateM(cfg.healthscoreDiscountCode || '');
+  const [hsSaving, setHsSaving] = useStateM(false);
+  const [hsSavedAt, setHsSavedAt] = useStateM(null);
+  useEffect(() => { setHsCode(cfg.healthscoreDiscountCode || ''); }, [cfg.healthscoreDiscountCode]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setHsLoading(true); setHsError(null);
+      try {
+        const q = `query { codeDiscountNodes(first: 100, query: "status:active") { edges { node { codeDiscount {
+          __typename
+          ... on DiscountCodeBasic { title codes(first: 1) { edges { node { code } } } customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
+          ... on DiscountCodeBxgy { title codes(first: 1) { edges { node { code } } } }
+          ... on DiscountCodeFreeShipping { title codes(first: 1) { edges { node { code } } } }
+        } } } } }`;
+        const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+        const data = await res.json();
+        if (data?.errors?.length) { if (!cancelled) setHsError("Couldn't load discount codes (the Shopify app may need the 'read_discounts' scope)."); return; }
+        const edges = data?.data?.codeDiscountNodes?.edges || [];
+        const opts = edges.map(({ node }) => {
+          const cd = node?.codeDiscount || {};
+          const code = cd?.codes?.edges?.[0]?.node?.code || cd?.title || '';
+          const v = cd?.customerGets?.value;
+          let label = code;
+          if (v?.percentage != null) label = `${code} — ${Math.round(v.percentage * 100)}% off`;
+          else if (v?.amount?.amount != null) label = `${code} — Rs. ${parseFloat(v.amount.amount)} off`;
+          return { code, label };
+        }).filter(o => o.code);
+        if (!cancelled) setHsCodes(opts);
+      } catch (e) {
+        if (!cancelled) setHsError("Couldn't load discount codes.");
+      } finally {
+        if (!cancelled) setHsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const hsDirty = hsCode !== (cfg.healthscoreDiscountCode || '');
+  const handleSaveHs = async () => {
+    setHsSaving(true);
+    try {
+      await setDoc(doc(db, 'app_settings', 'logistics'), { healthscoreDiscountCode: hsCode, updatedAt: serverTimestamp() }, { merge: true });
+      setHsSavedAt(new Date());
+    } catch (e) { alert('Save failed: ' + e.message); }
+    finally { setHsSaving(false); }
+  };
+
   const dirty = url !== cfg.trackingUrlTemplate;
   const valid = url && url.includes('{awb}');
 
@@ -10676,6 +10823,7 @@ function LogisticsSettingsPane() {
   const handleReset = () => setUrl(DEFAULT_TRACKING_URL_TEMPLATE);
 
   return (
+    <>
     <div className="card">
       <div className="section-title">Shipment tracking URL</div>
       <p className="muted" style={{ fontSize: 12.5, marginTop: 4, marginBottom: 14 }}>
@@ -10718,6 +10866,42 @@ function LogisticsSettingsPane() {
         {savedAt && !dirty && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
       </div>
     </div>
+
+    <div className="card">
+      <div className="section-title">Healthscore Lead discount</div>
+      <p className="muted" style={{ fontSize: 12.5, marginTop: 4, marginBottom: 14 }}>
+        Choose which active Shopify discount code is applied when an order creator ticks
+        <b> “Healthscore Lead”</b> in the Add-discount popup. The discount value comes from the
+        code itself (e.g. SEHATUP10 = 10% off), so update it in Shopify — not here.
+      </p>
+
+      <div className="field" style={{ marginBottom: 12 }}>
+        <span className="lbl">Discount code</span>
+        {hsLoading ? (
+          <div className="muted" style={{ fontSize: 12.5 }}>Loading active codes…</div>
+        ) : hsError ? (
+          <div style={{ fontSize: 12, color: 'var(--risk-moderate)' }}>{hsError}</div>
+        ) : (
+          <select className="select" value={hsCode} onChange={e => setHsCode(e.target.value)}>
+            <option value="">— None (feature disabled) —</option>
+            {/* Keep a stale saved code selectable even if it's no longer active */}
+            {hsCode && !hsCodes.some(o => o.code === hsCode) && (
+              <option value={hsCode}>{hsCode} (not currently active)</option>
+            )}
+            {hsCodes.map(o => <option key={o.code} value={o.code}>{o.label}</option>)}
+          </select>
+        )}
+      </div>
+
+      <div className="hstack-8">
+        <button className="btn primary" onClick={handleSaveHs} disabled={!hsDirty || hsSaving}>
+          {hsSaving ? 'Saving…' : 'Save changes'}
+        </button>
+        <span className="spacer" />
+        {hsSavedAt && !hsDirty && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {hsSavedAt.toLocaleTimeString('en-IN')}</span>}
+      </div>
+    </div>
+    </>
   );
 }
 
@@ -11233,12 +11417,11 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 const NAV = {
-  admin: ["home", "submissions", "customers", "prescriptions", "doctors", "orders", "crm_orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
+  admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "crm_orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
   doctor: ["doctor", "submissions", "customers", "prescriptions", "settings"],
-  telesales: ["submissions", "prescriptions", "settings"],
-  order_creator: ["order_create", "orders", "crm_orders", "customers", "settings"],
+  telesales: ["conversations", "submissions", "prescriptions", "settings"],
+  operations: ["conversations", "order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "settings"],
   marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "settings"],
-  logistics: ["shipments", "orders", "shipment_tracking", "crm_orders", "order_create", "customers", "settings"],
   website_developer: ["focused_editor", "data_studio", "settings"],
 };
 
@@ -11246,6 +11429,7 @@ const ITEMS = {
   home: { label: "Analytics Dashboard", icon: "pulse", route: "home" },
   submissions: { label: "Submissions", icon: "clipboard", route: "submissions", ct: "3.4k" },
   customers: { label: "Customers", icon: "users", route: "customers", ct: "30" },
+  conversations: { label: "Conversations", icon: "message", route: "conversations" },
   prescriptions: { label: "Prescriptions", icon: "pill", route: "prescriptions" },
   doctor: { label: "Clinical review", icon: "stethoscope", route: "doctor", ct: "12" },
   doctors: { label: "Doctors queue", icon: "stethoscope", route: "doctor", ct: "12" },
@@ -11831,6 +12015,7 @@ function Breadcrumb({ route, role }) {
     home: "Analytics Dashboard",
     submissions: "Submissions",
     customers: "Customers",
+    conversations: "Conversations",
     doctor: "Clinical review",
     orders: "Shopify orders",
     crm_orders: "CRM orders",
@@ -12088,6 +12273,204 @@ function PrescriptionsScreen({ me }) {
   );
 }
 
+// ─── Conversations (WhatsApp inbox via QuickReply) ───────────────────────────
+function ConversationsScreen({ me }) {
+  const [convos, setConvos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [filter, setFilter] = useState('all'); // all | mine | unassigned
+  const [search, setSearch] = useState('');
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+  const threadEndRef = useRef(null);
+
+  // Live conversation list (most-recent first).
+  useEffect(() => {
+    const qy = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'), limit(100));
+    const unsub = onSnapshot(qy, snap => {
+      setConvos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
+  }, []);
+
+  // Live messages for the open conversation; mark it read on open.
+  useEffect(() => {
+    if (!selectedId) { setMessages([]); return; }
+    const qy = query(collection(db, 'conversations', selectedId, 'messages'), orderBy('msgTime', 'asc'), limit(300));
+    const unsub = onSnapshot(qy, snap => setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    updateDoc(doc(db, 'conversations', selectedId), { unreadCount: 0 }).catch(() => {});
+    return unsub;
+  }, [selectedId]);
+
+  useEffect(() => { threadEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, selectedId]);
+
+  const selected = convos.find(c => c.id === selectedId) || null;
+  const windowOpen = !!(selected && selected.windowExpiresAt && selected.windowExpiresAt > Date.now());
+
+  const filtered = useMemo(() => {
+    let list = convos;
+    if (filter === 'mine') list = list.filter(c => c.assignedTo === me?.uid);
+    else if (filter === 'unassigned') list = list.filter(c => !c.assignedTo);
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q));
+    return list;
+  }, [convos, filter, search, me?.uid]);
+
+  const sendMessage = async () => {
+    const text = draft.trim();
+    if (!text || !selected || sending) return;
+    setSending(true); setError(null);
+    try {
+      await httpsCallable(functions, 'qrSendMessage')({ to: selected.phone, text });
+      setDraft('');
+    } catch (e) {
+      setError(e?.message || 'Failed to send message.');
+    } finally { setSending(false); }
+  };
+
+  const takeOver = async () => {
+    if (!selected) return;
+    await updateDoc(doc(db, 'conversations', selected.id), { assignedTo: me?.uid, assignedToName: me?.name || '' }).catch(() => {});
+  };
+
+  const fmt = (ms) => ms ? new Date(ms).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '';
+  const tick = (s) => s === 'READ' ? '✓✓' : s === 'DELIVERED' ? '✓✓' : s === 'SENT' ? '✓' : '';
+
+  return (
+    <div className="col fade-in">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Conversations</h1>
+          <p className="page-sub">WhatsApp inbox · live via QuickReply</p>
+        </div>
+        <div className="page-head-actions">
+          <button className="btn" disabled title="Importing past chats requires a QuickReply history/export API — coming soon.">
+            <Icon name="download" /> Backfill history
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 280px', gap: 14, height: 'calc(100vh - 150px)', minHeight: 420 }}>
+        {/* ── List ─────────────────────────────────────────── */}
+        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: 12, borderBottom: '1px solid var(--border)' }}>
+            <div className="hstack-8" style={{ marginBottom: 10 }}>
+              {[['all', 'All'], ['mine', 'My chats'], ['unassigned', 'Unassigned']].map(([v, l]) => (
+                <button key={v} className={`btn sm ${filter === v ? 'primary' : 'ghost'}`} onClick={() => setFilter(v)}>{l}</button>
+              ))}
+            </div>
+            <div style={{ position: 'relative' }}>
+              <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex' }}><Icon name="search" size={14} /></div>
+              <input className="input" style={{ paddingLeft: 32 }} placeholder="Search name or phone…" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {loading && <div className="muted" style={{ padding: 20, textAlign: 'center', fontSize: 13 }}>Loading…</div>}
+            {!loading && filtered.length === 0 && <div className="muted" style={{ padding: 20, textAlign: 'center', fontSize: 13 }}>No conversations yet.</div>}
+            {filtered.map(c => (
+              <div key={c.id} onClick={() => setSelectedId(c.id)}
+                style={{ display: 'flex', gap: 10, padding: '11px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: c.id === selectedId ? 'var(--accent-soft)' : 'transparent' }}>
+                <div className="avatar sm" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)', fontWeight: 700, flexShrink: 0 }}>
+                  {(c.name || c.phone || 'U')[0].toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="hstack-8" style={{ alignItems: 'baseline' }}>
+                    <span className="fw5" style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || c.phone}</span>
+                    <span className="spacer" />
+                    <span className="muted" style={{ fontSize: 10.5, flexShrink: 0 }}>{fmt(c.lastMessageAt)}</span>
+                  </div>
+                  <div className="hstack-8" style={{ alignItems: 'center', marginTop: 2 }}>
+                    <span className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.lastMessageBy === 'AGENT' ? 'You: ' : ''}{c.lastMessage || ''}
+                    </span>
+                    <span className="spacer" />
+                    {c.unreadCount > 0 && <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '0 6px', minWidth: 18, textAlign: 'center', flexShrink: 0 }}>{c.unreadCount}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Thread ───────────────────────────────────────── */}
+        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {!selected ? (
+            <div className="muted" style={{ margin: 'auto', fontSize: 13 }}>Select a conversation</div>
+          ) : (
+            <>
+              <div className="hstack-8" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+                <div className="fw6" style={{ fontSize: 14 }}>{selected.name || selected.phone}</div>
+                <span className="muted" style={{ fontSize: 12 }}>{selected.phone}</span>
+                <span className="spacer" />
+                {selected.assignedTo === me?.uid
+                  ? <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>Assigned to you</span>
+                  : <button className="btn sm ghost" onClick={takeOver}>Take over</button>}
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {messages.map(m => {
+                  const out = m.direction === 'out';
+                  return (
+                    <div key={m.id} style={{ alignSelf: out ? 'flex-end' : 'flex-start', maxWidth: '72%', background: out ? 'var(--accent)' : 'var(--surface-2)', color: out ? '#fff' : 'var(--fg)', borderRadius: 12, padding: '8px 12px', fontSize: 13 }}>
+                      {m.mediaUrl && <div style={{ marginBottom: 4 }}><a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: out ? '#fff' : 'var(--accent-ink)', textDecoration: 'underline' }}>📎 {m.fileName || 'Attachment'}</a></div>}
+                      {m.text && <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.text}</div>}
+                      <div style={{ fontSize: 10, opacity: 0.7, textAlign: 'right', marginTop: 3 }}>{fmt(m.msgTime)} {out && tick(m.status)}</div>
+                    </div>
+                  );
+                })}
+                <div ref={threadEndRef} />
+              </div>
+
+              {!windowOpen && (
+                <div style={{ padding: '8px 16px', background: 'var(--surface-2)', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--risk-moderate)' }}>
+                  ⏳ The 24-hour reply window has closed. A template message is required to re-open the chat (not supported yet).
+                </div>
+              )}
+              {error && <div style={{ padding: '6px 16px', fontSize: 12, color: 'var(--risk-critical)' }}>{error}</div>}
+              <div className="hstack-8" style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
+                <input className="input" style={{ flex: 1 }} placeholder={windowOpen ? 'Type a message…' : 'Window closed'} value={draft}
+                  disabled={!windowOpen || sending}
+                  onChange={e => setDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
+                <button className="btn primary" onClick={sendMessage} disabled={!windowOpen || sending || !draft.trim()}>
+                  {sending ? 'Sending…' : 'Send'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Profile ──────────────────────────────────────── */}
+        <div className="card" style={{ overflowY: 'auto' }}>
+          {!selected ? (
+            <div className="muted" style={{ fontSize: 13 }}>No contact selected</div>
+          ) : (
+            <div className="stack-12">
+              <div className="section-title">Profile</div>
+              <div><div className="muted" style={{ fontSize: 11 }}>Name</div><div className="fw5" style={{ fontSize: 13 }}>{selected.name || '—'}</div></div>
+              <div><div className="muted" style={{ fontSize: 11 }}>Phone</div><div className="fw5" style={{ fontSize: 13 }}>{selected.phone}</div></div>
+              <div><div className="muted" style={{ fontSize: 11 }}>Email</div><div className="fw5" style={{ fontSize: 13 }}>{selected.email || '—'}</div></div>
+              <div><div className="muted" style={{ fontSize: 11 }}>Lead stage</div><div className="fw5" style={{ fontSize: 13 }}>{selected.leadStage || '—'}</div></div>
+              <div>
+                <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Tags</div>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {(selected.tags && selected.tags.length) ? selected.tags.map(t => (
+                    <span key={t} className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>{t}</span>
+                  )) : <span className="muted" style={{ fontSize: 12 }}>No tags</span>}
+                </div>
+              </div>
+              <div><div className="muted" style={{ fontSize: 11 }}>Assigned to</div><div className="fw5" style={{ fontSize: 13 }}>{selected.assignedToName || (selected.assignedTo ? 'Someone' : 'Unassigned')}</div></div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubmissionsCount, me }) {
   switch (route.key) {
     case "home": return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
@@ -12097,6 +12480,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubm
     case "doctor": return <DoctorScreen openCustomer={openCustomer} openSubmission={openSubmission} context={route.ctx} />;
     case "orders": return <OrdersHistory setRoute={setRoute} openCustomer={openCustomer} />;
     case "shipment_tracking": return <ShipmentTrackingScreen setRoute={setRoute} openCustomer={openCustomer} />;
+    case "conversations": return <ConversationsScreen me={me} />;
     case "crm_orders": return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
     case "shipments": return <ShipmentsScreen ctx={route.ctx} />;

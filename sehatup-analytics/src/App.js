@@ -14,7 +14,6 @@ import UserDashboard from "./components/UserDashboard";
 import MarketingDashboard from "./components/MarketingDashboard";
 import OrderCreationCRM from "./components/OrderCreationCRM";
 import TeleSalesView from './components/TeleSalesView';
-import ShipmentDashboard from "./components/ShipmentDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { PermissionsProvider } from './context/PermissionsContext';
 
@@ -154,15 +153,6 @@ export default function App() {
           element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={["order_creator"]}>
               <OrderCreationCRM onLogout={handleLogout} roles={roles} user={user} />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/shipments"
-          element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={["admin", "shipment_tracker"]}>
-              <ShipmentDashboard onLogout={handleLogout} roles={roles} user={user} />
             </ProtectedRoute>
           }
         />

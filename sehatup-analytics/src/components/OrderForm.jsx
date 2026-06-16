@@ -30,15 +30,6 @@ if (typeof document !== 'undefined') {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const PAYMENT_TERMS_OPTIONS = [
-    { value: 'RECEIPT', label: 'Due on receipt' },
-    { value: 'FULFILLMENT', label: 'Due on fulfillment' },
-    { value: 'NET7', label: 'Within 7 days' },
-    { value: 'NET15', label: 'Within 15 days' },
-    { value: 'NET30', label: 'Within 30 days' },
-    { value: 'FIXED', label: 'Fixed date' },
-];
-
 // Payment-method labels for CRM orders. Shopify's draft-complete API only ever records
 // the generic "manual" gateway (and payment_gateway_id is ignored), so instead we create
 // the order directly with an explicit payment transaction carrying these gateway names —
@@ -109,10 +100,11 @@ const OrderForm = ({
     const [customShippingPrice, setCustomShippingPrice] = useState('');
     const [useCustomShipping, setUseCustomShipping] = useState(false);
 
-    // Payment terms
-    const [payDueLater, setPayDueLater] = useState(false);
-    const [paymentTermsType, setPaymentTermsType] = useState('RECEIPT');
-    const [fixedPaymentDate, setFixedPaymentDate] = useState('');
+    // Payment mode is auto-detected from the selected shipping method (see `isCOD`
+    // below) — COD → payment pending + "Due on fulfillment" terms; everything else →
+    // marked as paid. No manual toggle. We cache the "Due on fulfillment" payment-terms
+    // template id (fetched lazily) so we can attach terms to COD orders via GraphQL.
+    const fulfillmentTermsTemplateIdRef = useRef(null);
 
     // Toasts
     const { toasts, addToast, updateToast, removeToast } = useToasts();
@@ -244,9 +236,6 @@ const OrderForm = ({
 
         setCart([]);
         setDiscountActiveId(null);
-        setPayDueLater(false);
-        setPaymentTermsType('RECEIPT');
-        setFixedPaymentDate('');
         setSearchTerm('');
         setSearchResults([]);
         setSelectedSearchVariants({});
@@ -582,20 +571,37 @@ const OrderForm = ({
 
     // ─── Product search ──────────────────────────────────────────────────────
 
+    const productSearchAbortRef = useRef(null);
+
     useEffect(() => {
         const t = setTimeout(() => {
             if (searchTerm.trim().length > 1) fetchProducts(searchTerm);
-            else setSearchResults([]);
-        }, 500);
+            else {
+                if (productSearchAbortRef.current) {
+                    productSearchAbortRef.current.abort();
+                    productSearchAbortRef.current = null;
+                }
+                setSearchResults([]);
+                setIsSearching(false);
+            }
+        }, 300);
         return () => clearTimeout(t);
-    }, [searchTerm]);
+    }, [searchTerm]); // eslint-disable-line
 
     const fetchProducts = async (term) => {
+        // Cancel any in-flight request before starting a new one
+        if (productSearchAbortRef.current) {
+            productSearchAbortRef.current.abort();
+        }
+        const controller = new AbortController();
+        productSearchAbortRef.current = controller;
+
         setIsSearching(true);
         try {
             const cleanTerm = term.replace(/"/g, '\\"');
+            const searchQuery = `title:${cleanTerm} OR title:${cleanTerm}*`;
             const query = `{
-                products(first: 15, query: "${cleanTerm}*") {
+                products(first: 15, query: "${searchQuery}") {
                     edges {
                         node {
                             id
@@ -620,9 +626,10 @@ const OrderForm = ({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query }),
+                signal: controller.signal,
             });
             const data = await res.json();
-            
+
             if (data.errors) {
                 console.error('[Product search] GraphQL errors:', data.errors);
                 setSearchResults([]);
@@ -650,9 +657,13 @@ const OrderForm = ({
 
             setSearchResults(products.filter(p => p.variants && p.variants.length > 0));
         } catch (err) {
+            if (err.name === 'AbortError') return; // stale request cancelled, ignore
             console.error('[Product search] failed:', err);
         } finally {
-            setIsSearching(false);
+            if (productSearchAbortRef.current === controller) {
+                setIsSearching(false);
+                productSearchAbortRef.current = null;
+            }
         }
     };
 
@@ -736,6 +747,12 @@ const OrderForm = ({
         ? (customShippingTitle.trim() || 'Custom Shipping')
         : (selectedShipping ? selectedShipping.title : null);
 
+    // COD vs Prepaid is decided automatically by the selected shipping method.
+    // A method named "Cash on Delivery (COD)" → COD (payment pending, "Due on
+    // fulfillment" terms). Anything else (incl. prepaid/free shipping, or no shipping
+    // selected) → Prepaid (marked as paid, no payment terms).
+    const isCOD = /cash on delivery|\bcod\b/i.test(shippingLabel || '');
+
     let orderDiscountAmount = 0;
     if (orderDiscountType !== 'none') {
         const val = parseFloat(orderCustomDiscountValue) || 0;
@@ -750,7 +767,7 @@ const OrderForm = ({
 
     // ─── Free Sample Logic ───────────────────────────────────────────────────
 
-    const isPrepaid = !payDueLater && shippingCost === 0;
+    const isPrepaid = !isCOD && shippingCost === 0;
 
     useEffect(() => {
         if (!freeSampleVariant) return;
@@ -837,15 +854,12 @@ const OrderForm = ({
         };
     };
 
+    // COD orders get "Due on fulfillment" payment terms; prepaid gets none.
+    // (Used by the draft-order payload, where REST does honor payment_terms.
+    // The completed-order path attaches terms via GraphQL — see below.)
     const buildPaymentTerms = () => {
-        if (!payDueLater) return null;
-        if (paymentTermsType === 'RECEIPT') return { payment_terms_type: 'RECEIPT', due_in_days: 0 };
-        if (paymentTermsType === 'FULFILLMENT') return { payment_terms_type: 'FULFILLMENT', due_in_days: 0 };
-        if (paymentTermsType === 'NET7') return { payment_terms_type: 'NET', due_in_days: 7 };
-        if (paymentTermsType === 'NET15') return { payment_terms_type: 'NET', due_in_days: 15 };
-        if (paymentTermsType === 'NET30') return { payment_terms_type: 'NET', due_in_days: 30 };
-        if (paymentTermsType === 'FIXED') return { payment_terms_type: 'FIXED', payment_schedule: { due_at: fixedPaymentDate } };
-        return null;
+        if (!isCOD) return null;
+        return { payment_terms_type: 'FULFILLMENT', due_in_days: 0 };
     };
 
     const buildAppliedDiscount = () => {
@@ -1235,6 +1249,59 @@ const OrderForm = ({
         }
     };
 
+    // Shopify's REST Orders API silently ignores `payment_terms` on order creation —
+    // terms can only be attached afterward via GraphQL. We look up the store's
+    // "Due on fulfillment" payment-terms template (cached) and create the terms against
+    // the order. Best-effort: any failure is logged but never blocks the placed order.
+    const getFulfillmentTermsTemplateId = async () => {
+        if (fulfillmentTermsTemplateIdRef.current) return fulfillmentTermsTemplateIdRef.current;
+        const res = await fetch('/shopify-v2/graphql.json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: `{ paymentTermsTemplates { id name paymentTermsType dueInDays } }` }),
+        });
+        const data = await safeJson(res);
+        const templates = data?.data?.paymentTermsTemplates || [];
+        const tpl = templates.find(t => t.paymentTermsType === 'FULFILLMENT');
+        fulfillmentTermsTemplateIdRef.current = tpl?.id || null;
+        return fulfillmentTermsTemplateIdRef.current;
+    };
+
+    const attachFulfillmentPaymentTerms = async (orderId) => {
+        try {
+            const templateId = await getFulfillmentTermsTemplateId();
+            if (!templateId) {
+                console.warn('[Payment Terms] No "Due on fulfillment" template found — skipping.');
+                return;
+            }
+            const res = await fetch('/shopify-v2/graphql.json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: `mutation paymentTermsCreate($referenceId: ID!, $paymentTermsAttributes: PaymentTermsCreateInput!) {
+                        paymentTermsCreate(referenceId: $referenceId, paymentTermsAttributes: $paymentTermsAttributes) {
+                            paymentTerms { id paymentTermsName }
+                            userErrors { field message }
+                        }
+                    }`,
+                    variables: {
+                        referenceId: `gid://shopify/Order/${orderId}`,
+                        paymentTermsAttributes: { paymentTermsTemplateId: templateId },
+                    },
+                }),
+            });
+            const data = await safeJson(res);
+            const errs = data?.data?.paymentTermsCreate?.userErrors || data?.errors;
+            if (errs && errs.length) {
+                console.warn('[Payment Terms] Failed to attach to order', orderId, errs);
+            } else {
+                console.log('[Payment Terms] Attached "Due on fulfillment" to order', orderId);
+            }
+        } catch (err) {
+            console.warn('[Payment Terms] Attach error:', err.message);
+        }
+    };
+
     const handlePlaceOrder = async () => {
         const err = validateForOrder();
         if (err) return alert(err);
@@ -1276,12 +1343,12 @@ const OrderForm = ({
                         ? [{ title: d.shipping_line.title, price: d.shipping_line.price, code: d.shipping_line.code || 'custom' }]
                         : [],
                     tags: d.tags || 'Created via CRM',
-                    financial_status: payDueLater ? 'pending' : 'paid',
+                    financial_status: isCOD ? 'pending' : 'paid',
                     transactions: [{
                         kind: 'sale',
-                        status: payDueLater ? 'pending' : 'success',
+                        status: isCOD ? 'pending' : 'success',
                         amount: d.total_price,
-                        gateway: payDueLater ? PAYMENT_GATEWAY_COD : PAYMENT_GATEWAY_PREPAID,
+                        gateway: isCOD ? PAYMENT_GATEWAY_COD : PAYMENT_GATEWAY_PREPAID,
                     }],
                     send_receipt: false,
                     inventory_behaviour: 'decrement_obeying_policy',
@@ -1291,8 +1358,8 @@ const OrderForm = ({
             if (d.email) orderPayload.order.email = d.email;
             if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
             if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
-            const pt = buildPaymentTerms();
-            if (pt) orderPayload.order.payment_terms = pt;
+            // NOTE: the Orders API ignores `payment_terms` on create — COD terms are
+            // attached separately via GraphQL after the order exists (see below).
             // Order-level discount → discount_codes (the Orders API has no order-level applied_discount).
             if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
                 orderPayload.order.discount_codes = [{
@@ -1315,11 +1382,14 @@ const OrderForm = ({
             // The draft was only needed to compute prices/shipping/discounts — discard it.
             fetch(`/shopify-v2/draft_orders/${d.id}.json`, { method: 'DELETE' }).catch(() => {});
 
+            // COD orders → attach "Due on fulfillment" payment terms (REST ignored them).
+            if (isCOD) await attachFulfillmentPaymentTerms(orderData.order.id);
+
             const orderNum = orderData.order.order_number || orderData.order.id;
             const sheetRes = await updateSheetRow({ type: 'Order', id: orderData.order.id });
             const sheetOk = sheetRes.ok === true;
             const sheetSkipped = sheetRes.skipped === true;
-            const payMsg = payDueLater ? 'Payment pending (COD / due later)' : 'Payment collected';
+            const payMsg = isCOD ? 'Payment pending (COD · due on fulfillment)' : 'Payment collected';
             const sheetMsg = sheetSkipped ? '' : (sheetOk ? ' · Sheet synced' : ' · Sheet sync failed');
             updateToast(tid, {
                 type: 'success',
@@ -1810,25 +1880,22 @@ const OrderForm = ({
                 </div>
 
                 <div style={{ background: '#020817', padding: 14, borderRadius: 8, border: '1px solid #1e293b' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: payDueLater ? 10 : 0 }}>
-                        <input type="checkbox" checked={payDueLater} onChange={e => setPayDueLater(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#3b82f6' }} />
-                        <span style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 14 }}>Payment due later</span>
-                    </label>
-                    
-                    {payDueLater && (
-                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #0f172a' }}>
-                            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Payment terms</label>
-                            <select value={paymentTermsType} onChange={e => setPaymentTermsType(e.target.value)} style={{ ...inputStyle, marginBottom: paymentTermsType === 'FIXED' ? 10 : 0 }}>
-                                {PAYMENT_TERMS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                            {paymentTermsType === 'FIXED' && (
-                                <>
-                                    <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Due date</label>
-                                    <input type="date" value={fixedPaymentDate} onChange={e => setFixedPaymentDate(e.target.value)} style={inputStyle} />
-                                </>
-                            )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: isCOD ? '#f59e0b' : '#22c55e', flexShrink: 0 }} />
+                        <div>
+                            <div style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 14 }}>
+                                {isCOD ? 'Cash on Delivery (COD)' : 'Prepaid'}
+                            </div>
+                            <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
+                                {isCOD
+                                    ? 'Payment pending · "Due on fulfillment" terms applied'
+                                    : 'Order will be marked as paid'}
+                            </div>
                         </div>
-                    )}
+                    </div>
+                    <div style={{ color: '#475569', fontSize: 11, marginTop: 8 }}>
+                        Auto-detected from the selected shipping method.
+                    </div>
                 </div>
             </div>
 

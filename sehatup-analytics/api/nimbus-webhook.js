@@ -1,6 +1,22 @@
 import crypto from 'crypto';
 import { enrichAwbAndCache } from './_lib/enrich.js';
 
+// Vercel Fluid compute can finish background work after the response is sent, via
+// `waitUntil` from "@vercel/functions". We load it defensively: if the package isn't
+// installed, we fall back to fire-and-forget (best-effort) so the webhook never crashes
+// — the daily cron re-enriches anything that gets dropped either way.
+async function runInBackground(promise) {
+  const safe = Promise.resolve(promise).catch(
+    (e) => console.error('[nimbus-webhook] enrichment failed -', e?.message || e)
+  );
+  try {
+    const { waitUntil } = await import('@vercel/functions');
+    waitUntil(safe);
+  } catch (_) {
+    /* package not available — let it run fire-and-forget */
+  }
+}
+
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'sehatup-f96b5';
 const API_KEY    = process.env.FIREBASE_WEB_API_KEY  || '';
 const SECRET     = process.env.NIMBUS_WEBHOOK_SECRET || '';
@@ -87,17 +103,24 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, warn: 'missing_awb' });
   }
 
-  // Do ALL writes BEFORE responding. On serverless, work performed after the response
-  // is flushed is NOT guaranteed to run (the instance is frozen) — that is what caused
-  // tracking updates to be dropped or arrive very late.
+  // Nimbus's webhook delivery times out after only a few seconds, but the full
+  // enrichment (Nimbus track + Shopify + Firestore + Google Apps Script) takes ~4s — so
+  // doing it before replying made Nimbus see every delivery as a "failure" and disable
+  // the webhook. Instead:
+  //   1) persist the raw event (one quick write) so the live tracking timeline is safe,
+  //   2) ACK 200 immediately (well under Nimbus's timeout), and
+  //   3) run the slow enrichment in the background via waitUntil — Fluid compute keeps
+  //      the instance alive to finish it. The daily cron (cron-sync-shipments) is the
+  //      backstop if a background run is ever dropped.
+  // We NEVER return 5xx to Nimbus — that's what triggered the auto-disable.
   try {
     await writeToFirestore(body);
-    await enrichAwbAndCache(body.awb_number, body, 'nimbus-webhook');
   } catch (e) {
-    console.error('[nimbus-webhook] processing failed for AWB', body.awb_number, '-', e?.message || e);
-    // Return 5xx so Nimbus retries delivery (at-least-once) instead of losing the event.
-    return res.status(500).json({ ok: false, error: 'processing_failed', awb: body.awb_number });
+    console.error('[nimbus-webhook] raw write failed for AWB', body.awb_number, '-', e?.message || e);
+    // Still ACK 200 so Nimbus stays enabled; the cron re-enriches active AWBs.
   }
+
+  await runInBackground(enrichAwbAndCache(body.awb_number, body, 'nimbus-webhook'));
 
   return res.status(200).json({ ok: true, awb: body.awb_number });
 }
