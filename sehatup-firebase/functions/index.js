@@ -2332,18 +2332,41 @@ const qrPreviewText = (payload = {}) => {
   }
 };
 
-// Webhook → configure as QuickReply "Receive Message" URL. Inbound user messages.
+// Single webhook → give THIS one URL to QuickReply. It handles BOTH:
+//   • inbound user messages (payload._type = USER_*), and
+//   • message delivery-status updates (event = SENT/DELIVERED/READ).
+// They're told apart by the `event` field (only status updates have it).
 exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res) => {
   try {
     if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
     const expected = process.env.QUICKREPLY_WEBHOOK_TOKEN;
     if (expected && req.query.token !== expected) {
-      console.warn("[qrReceiveMessage] Rejected — bad/missing token");
+      console.warn("[qr-webhook] Rejected — bad/missing token");
       return res.status(401).send("Unauthorized");
     }
     const b = req.body || {};
-    if (!b.phone || !b.id) return res.status(200).send("ignored"); // ack so QR doesn't retry
     const db = getFirestore();
+
+    // ── Message status update (has `event`, no `payload`) ──
+    if (b.event) {
+      if (!b.id || !b.phone) return res.status(200).send("ignored");
+      const msgRef = db.collection("conversations").doc(qrConvId(b.phone))
+        .collection("messages").doc(String(b.id));
+      // Only update messages we actually stored (our agent sends). Unknown ids — e.g.
+      // bot/automation messages we never persisted — are ignored via the .catch so we
+      // don't create orphan message docs.
+      await msgRef.update({
+        status: b.event,
+        statusUpdatedAt: FieldValue.serverTimestamp(),
+        ...(b.messageBy ? { messageBy: b.messageBy } : {}),
+        ...(b.agentId ? { agentId: b.agentId } : {}),
+        ...(b.automationBy ? { automationBy: b.automationBy } : {}),
+      }).catch(() => { /* message not in our store — ignore */ });
+      return res.status(200).send("ok");
+    }
+
+    // ── Inbound user message ──
+    if (!b.phone || !b.id) return res.status(200).send("ignored"); // ack so QR doesn't retry
     const convId = qrConvId(b.phone);
     const msgTime = Number(b.msg_time) || Date.now();
     const p = b.payload || {};
@@ -2385,33 +2408,8 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
 
     return res.status(200).send("ok");
   } catch (err) {
-    console.error("[qrReceiveMessage] error:", err);
+    console.error("[qr-webhook] error:", err);
     return res.status(200).send("error-logged"); // ack anyway; logged for debugging
-  }
-});
-
-// Webhook → configure as QuickReply "Message Status Update" URL.
-exports.qrStatusUpdate = onRequest({ region: "us-central1" }, async (req, res) => {
-  try {
-    if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
-    const expected = process.env.QUICKREPLY_WEBHOOK_TOKEN;
-    if (expected && req.query.token !== expected) return res.status(401).send("Unauthorized");
-    const b = req.body || {};
-    if (!b.id || !b.phone) return res.status(200).send("ignored");
-    const db = getFirestore();
-    await db.collection("conversations").doc(qrConvId(b.phone))
-      .collection("messages").doc(String(b.id))
-      .set({
-        status: b.event || "SENT",
-        messageBy: b.messageBy || null,
-        agentId: b.agentId || null,
-        automationBy: b.automationBy || null,
-        statusUpdatedAt: FieldValue.serverTimestamp(),
-      }, { merge: true });
-    return res.status(200).send("ok");
-  } catch (err) {
-    console.error("[qrStatusUpdate] error:", err);
-    return res.status(200).send("error-logged");
   }
 });
 
