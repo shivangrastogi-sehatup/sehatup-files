@@ -455,14 +455,19 @@ function useProductShipping() {
   }, []);
   return cfg;
 }
-// Resolve the shipping rate for a cart. Rates are keyed by variant id. A single distinct
-// variant with its own configured rate uses that; any mix (or unconfigured variant) falls
-// back to the global default rate, then a Rs. 150 placeholder. Returns a { title, price }.
+// Resolve the shipping rate for a cart. Rates are keyed by variant id; an unconfigured
+// variant uses the global default. With multiple products we charge the HIGHEST rate among
+// them (e.g. one at Rs. 150 + one at Rs. 200 → Rs. 200). Returns a { title, price }.
 function resolveDefaultShipping(cfg, items) {
+  const def = cfg?.defaultRate || { title: 'Shipping', price: DEFAULT_PRODUCT_SHIPPING };
   const ids = Array.from(new Set((items || []).map(it => String(it.variantId || '')).filter(Boolean)));
-  if (ids.length === 1 && cfg?.rates && cfg.rates[ids[0]]) return cfg.rates[ids[0]];
-  if (cfg?.defaultRate) return cfg.defaultRate;
-  return { title: 'Shipping', price: DEFAULT_PRODUCT_SHIPPING };
+  if (ids.length === 0) return def;
+  let best = null;
+  ids.forEach(id => {
+    const r = (cfg?.rates && cfg.rates[id]) ? cfg.rates[id] : def;
+    if (!best || (Number(r.price) || 0) > (Number(best.price) || 0)) best = r;
+  });
+  return best || def;
 }
 
 // --- data.js ---
@@ -7572,75 +7577,72 @@ function OrderCreate({ context = {}, setRoute }) {
             <div className="section-title" style={{ marginBottom: 10 }}>Payment *</div>
             <div className="stack-8">
               {["Prepaid", "COD"].map(p => (
-                <div key={p} className="stack-8">
-                  <label className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
-                    <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
-                    <div className="stack-2">
-                      <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
-                    </div>
-                    <span className="spacer" />
-                    <Icon name={pay === p ? "chevron_up" : "chevron_down"} size={16} className="muted" />
-                  </label>
-                  {pay === p && (
-                    <div className="fade-in" style={{ padding: "12px", background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                      <div className="hstack-8" style={{ marginBottom: 8 }}>
-                        <div className="fw6" style={{ fontSize: 13 }}>Shipping</div>
-                        {productShippingCfg.enabled && <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>}
-                      </div>
-                      {isLoadingShipping ? (
-                        <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
-                      ) : (
-                        <div className="stack-6">
-                          {!useCustomShipping && shippingRates
-                            .map((rate, i) => {
-                              const isSel = selectedShipping?.id === rate.id;
-                              return (
-                                <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                                  <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(rate); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
-                                  <span style={{ fontSize: 13 }}>{rate.title}</span>
-                                  <span className="spacer" />
-                                  <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
-                                </label>
-                              );
-                            })}
-
-                          {/* Rs. 0 shipping (e.g. customer settles part separately) */}
-                          {!useCustomShipping && (() => {
-                            const isSel = selectedShipping?.id === 'cod-free';
-                            return (
-                              <label className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                                <input
-                                  type="radio"
-                                  name="shippingRate"
-                                  checked={isSel}
-                                  onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'No shipping', price: 0, code: 'NO_SHIPPING' }); setUseCustomShipping(false); setShippingTouched(true); }}
-                                  style={{ accentColor: "var(--accent)" }}
-                                />
-                                <span style={{ fontSize: 13 }}>No shipping (Rs. 0)</span>
-                                <span className="spacer" />
-                                <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
-                              </label>
-                            );
-                          })()}
-
-                          {useCustomShipping ? (
-                            <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
-                              <div className="hstack-8">
-                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => { setCustomShippingTitle(e.target.value); setShippingTouched(true); }} placeholder="Shipping" /></div>
-                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => { setCustomShippingPrice(e.target.value); setShippingTouched(true); }} placeholder="150" /></div>
-                              </div>
-                              <button className="btn sm ghost" onClick={() => { setUseCustomShipping(false); setShippingTouched(true); }}>Use a Shopify rate instead</button>
-                            </div>
-                          ) : (
-                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setShippingTouched(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <label key={p} className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
+                  <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
+                  <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
+                </label>
               ))}
             </div>
+          </div>
+
+          {/* Shipping — always visible (independent of the payment choice) so the
+              auto-applied / chosen rate is shown even before a payment method is ticked. */}
+          <div className="card">
+            <div className="hstack-8" style={{ marginBottom: 10 }}>
+              <div className="section-title" style={{ margin: 0 }}>Shipping</div>
+              {productShippingCfg.enabled && <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>}
+              <span className="spacer" />
+              <span className="num fw6" style={{ fontSize: 13 }}>{shipping ? `Rs. ${shipping}` : 'Free'}</span>
+            </div>
+            {isLoadingShipping ? (
+              <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
+            ) : (
+              <div className="stack-6">
+                {!useCustomShipping && shippingRates
+                  .map((rate, i) => {
+                    const isSel = selectedShipping?.id === rate.id;
+                    return (
+                      <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                        <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(rate); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
+                        <span style={{ fontSize: 13 }}>{rate.title}</span>
+                        <span className="spacer" />
+                        <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
+                      </label>
+                    );
+                  })}
+
+                {/* Rs. 0 shipping (e.g. customer settles part separately) */}
+                {!useCustomShipping && (() => {
+                  const isSel = selectedShipping?.id === 'cod-free';
+                  return (
+                    <label className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                      <input
+                        type="radio"
+                        name="shippingRate"
+                        checked={isSel}
+                        onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'No shipping', price: 0, code: 'NO_SHIPPING' }); setUseCustomShipping(false); setShippingTouched(true); }}
+                        style={{ accentColor: "var(--accent)" }}
+                      />
+                      <span style={{ fontSize: 13 }}>No shipping (Rs. 0)</span>
+                      <span className="spacer" />
+                      <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
+                    </label>
+                  );
+                })()}
+
+                {useCustomShipping ? (
+                  <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
+                    <div className="hstack-8">
+                      <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => { setCustomShippingTitle(e.target.value); setShippingTouched(true); }} placeholder="Shipping" /></div>
+                      <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => { setCustomShippingPrice(e.target.value); setShippingTouched(true); }} placeholder="150" /></div>
+                    </div>
+                    <button className="btn sm ghost" onClick={() => { setUseCustomShipping(false); setShippingTouched(true); }}>Use a Shopify rate instead</button>
+                  </div>
+                ) : (
+                  <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setShippingTouched(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="card">
