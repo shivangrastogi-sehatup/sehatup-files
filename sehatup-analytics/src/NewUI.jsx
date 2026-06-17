@@ -454,11 +454,11 @@ function useProductShipping() {
   }, []);
   return cfg;
 }
-// Resolve the shipping rate for a cart. A single distinct product with its own configured
-// rate uses that; any mix (or unconfigured product) falls back to the global default rate,
-// then to a Rs. 150 placeholder. Always returns a { title, price } object.
+// Resolve the shipping rate for a cart. Rates are keyed by variant id. A single distinct
+// variant with its own configured rate uses that; any mix (or unconfigured variant) falls
+// back to the global default rate, then a Rs. 150 placeholder. Returns a { title, price }.
 function resolveDefaultShipping(cfg, items) {
-  const ids = Array.from(new Set((items || []).map(it => String(it.productId || '')).filter(Boolean)));
+  const ids = Array.from(new Set((items || []).map(it => String(it.variantId || '')).filter(Boolean)));
   if (ids.length === 1 && cfg?.rates && cfg.rates[ids[0]]) return cfg.rates[ids[0]];
   if (cfg?.defaultRate) return cfg.defaultRate;
   return { title: 'Shipping', price: DEFAULT_PRODUCT_SHIPPING };
@@ -10850,16 +10850,14 @@ function SettingsScreen({ tweaks, me }) {
   const isLogistics = me?.role === 'operations' || isAdmin;
   const { hasPermission } = usePermissions();
   const canClinical = hasPermission('can_access_clinical_review');
+  // Only the tabs backed by real functionality are shown. (Workspace / Notifications /
+  // Security / Billing were static placeholders and have been removed.)
   const tabs = [
     ["profile", "Profile", "user"],
-    ["workspace", "Workspace", "settings"],
     ...(isLogistics ? [["logistics", "Logistics", "truck"]] : []),
     ...(isLogistics ? [["product_shipping", "Product shipping", "package"]] : []),
     ...(canClinical ? [["clinical", "Clinical", "pill"]] : []),
-    ["notifications", "Notifications", "bell"],
     ["integrations", "Integrations", "link"],
-    ["security", "Security", "lock"],
-    ["billing", "Billing", "package"],
   ];
   return (
     <div className="col fade-in">
@@ -10901,7 +10899,8 @@ function SettingsScreen({ tweaks, me }) {
 const rateKey = (r) => (r ? `${r.title}__${Number(r.price) || 0}` : "");
 function ProductShippingPane() {
   const cfg = useProductShipping();
-  const [products, setProducts] = useStateM([]);
+  const [products, setProducts] = useStateM([]); // flat variant rows
+  const [productTotal, setProductTotal] = useStateM(0);
   const [loading, setLoading] = useStateM(true);
   const [loadError, setLoadError] = useStateM(null);
   const [search, setSearch] = useStateM("");
@@ -11001,31 +11000,45 @@ function ProductShippingPane() {
   const setProdKey = (pid, k) => setProdKeys(prev => ({ ...prev, [String(pid)]: k }));
   const resetProd = (pid) => setProdKeys(prev => { const n = { ...prev }; delete n[String(pid)]; return n; });
 
-  // Fetch all active products (paginated).
+  // Fetch all active products WITH their variants (paginated). Each variant becomes its own
+  // catalogue row so a product like Shilajit can have a different rate for "Pack of 1" vs
+  // "Pack of 2". Shipping is keyed by variant id (what an order line carries).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true); setLoadError(null);
       try {
-        const all = [];
+        const rows = [];
+        let productCount = 0;
         let cursor = null;
         for (let page = 0; page < 20; page++) { // cap ~5000 products
           const afterArg = cursor ? `, after: "${cursor}"` : "";
           const query = `{ products(first: 250${afterArg}, query: "status:active", sortKey: TITLE) {
             pageInfo { hasNextPage endCursor }
-            edges { node { id title featuredImage { url } } }
+            edges { node { id title featuredImage { url } variants(first: 100) { edges { node { id title } } } } }
           } }`;
           const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
           const data = await res.json();
           if (data?.errors?.length) throw new Error(data.errors[0]?.message || 'GraphQL error');
           const conn = data?.data?.products;
           (conn?.edges || []).forEach(({ node }) => {
-            all.push({ id: parseInt(node.id.split('/').pop(), 10) || node.id, title: node.title, image: node.featuredImage?.url || null });
+            productCount += 1;
+            const productId = parseInt(node.id.split('/').pop(), 10) || node.id;
+            const variants = node.variants?.edges || [];
+            variants.forEach(({ node: v }) => {
+              const variantId = parseInt(v.id.split('/').pop(), 10) || v.id;
+              const isDefault = v.title === 'Default Title';
+              rows.push({
+                productId, productTitle: node.title, image: node.featuredImage?.url || null,
+                variantId, variantTitle: isDefault ? '' : v.title,
+                label: isDefault ? node.title : `${node.title} · ${v.title}`,
+              });
+            });
           });
           if (!conn?.pageInfo?.hasNextPage) break;
           cursor = conn.pageInfo.endCursor;
         }
-        if (!cancelled) setProducts(all);
+        if (!cancelled) { setProducts(rows); setProductTotal(productCount); }
       } catch (e) {
         if (!cancelled) setLoadError(e.message || 'Failed to load products');
       } finally {
@@ -11035,7 +11048,7 @@ function ProductShippingPane() {
     return () => { cancelled = true; };
   }, []);
 
-  const filtered = products.filter(p => !search.trim() || p.title.toLowerCase().includes(search.toLowerCase()));
+  const filtered = products.filter(r => !search.trim() || r.label.toLowerCase().includes(search.toLowerCase()));
   const rateLabel = (r) => r ? `${r.title} — Rs. ${r.price}${r.stale ? ' (not in Shopify)' : ''}` : '';
 
   const handleSave = async () => {
@@ -11092,10 +11105,10 @@ function ProductShippingPane() {
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
           <div className="section-title" style={{ margin: 0 }}>Product catalogue</div>
-          <span className="muted" style={{ fontSize: 12.5 }}>{loading ? 'Loading…' : `${products.length} products`}</span>
+          <span className="muted" style={{ fontSize: 12.5 }}>{loading ? 'Loading…' : `${productTotal} products · ${products.length} variants`}</span>
           <span className="spacer" />
           <div style={{ position: "relative", width: 260 }}>
-            <input className="input" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 32 }} />
+            <input className="input" placeholder="Search products / variants…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 32 }} />
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
           </div>
         </div>
@@ -11103,7 +11116,7 @@ function ProductShippingPane() {
           <table className="tbl">
             <thead>
               <tr>
-                <th>Product</th>
+                <th>Product / variant</th>
                 <th style={{ width: 300, whiteSpace: "nowrap" }}>Shipping rate</th>
                 <th style={{ width: 90 }}></th>
               </tr>
@@ -11115,23 +11128,27 @@ function ProductShippingPane() {
                 <tr><td colSpan="3"><div className="empty"><Icon name="flag" size={20} /><div>{loadError}</div></div></td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan="3"><div className="empty"><Icon name="package" size={20} /><div>No products{search ? ' match' : ''}.</div></div></td></tr>
-              ) : filtered.map(p => {
-                const overridden = prodKeys[String(p.id)] !== undefined && prodKeys[String(p.id)] !== "";
+              ) : filtered.map(row => {
+                const vid = String(row.variantId);
+                const overridden = prodKeys[vid] !== undefined && prodKeys[vid] !== "";
                 return (
-                  <tr key={p.id}>
+                  <tr key={vid}>
                     <td>
                       <div className="hstack-8">
-                        {p.image
-                          ? <img src={p.image} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid var(--border)" }} />
+                        {row.image
+                          ? <img src={row.image} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid var(--border)" }} />
                           : <div style={{ width: 32, height: 32, borderRadius: 6, background: "var(--surface-2)", display: "grid", placeItems: "center" }}><Icon name="package" size={14} className="muted" /></div>}
-                        <span className="fw5" style={{ fontSize: 13 }}>{p.title}</span>
+                        <div className="stack-2">
+                          <span className="fw5" style={{ fontSize: 13 }}>{row.productTitle}</span>
+                          {row.variantTitle && <span className="muted" style={{ fontSize: 11.5 }}>{row.variantTitle}</span>}
+                        </div>
                       </div>
                     </td>
                     <td>
-                      <RateSelect value={prodKeys[String(p.id)] || ""} onChange={k => k ? setProdKey(p.id, k) : resetProd(p.id)} includeDefaultOption={true} />
+                      <RateSelect value={prodKeys[vid] || ""} onChange={k => k ? setProdKey(row.variantId, k) : resetProd(row.variantId)} includeDefaultOption={true} />
                     </td>
                     <td>
-                      {overridden && <button className="btn sm ghost" onClick={() => resetProd(p.id)} title="Use default rate">Default</button>}
+                      {overridden && <button className="btn sm ghost" onClick={() => resetProd(row.variantId)} title="Use default rate">Default</button>}
                     </td>
                   </tr>
                 );
