@@ -10920,10 +10920,32 @@ function ProductShippingPane() {
     (async () => {
       setRatesLoading(true); setRatesError(null);
       try {
-        const query = `{ deliveryProfiles(first: 10) { edges { node { profileLocationGroups {
-          locationGroupZones(first: 30) { edges { node { methodDefinitions(first: 30) { edges { node {
-            id name active rateProvider { ... on DeliveryRateDefinition { id price { amount } } }
-          } } } } } } } } } }`;
+        const query = `{
+          deliveryProfiles(first: 10) {
+            edges {
+              node {
+                profileLocationGroups {
+                  locationGroupZones(first: 30) {
+                    edges {
+                      node {
+                        methodDefinitions(first: 30) {
+                          edges {
+                            node {
+                              id name active
+                              rateProvider {
+                                ... on DeliveryRateDefinition { id price { amount } }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }`;
         const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
         const data = await res.json();
         if (data?.errors?.length) throw new Error(data.errors[0]?.message || 'GraphQL error');
@@ -10976,7 +10998,6 @@ function ProductShippingPane() {
   }, [rates, defaultKey]);
 
   const getRate = (k) => allRates.find(r => rateKey(r) === k) || null;
-  const effKey = (pid) => (prodKeys[String(pid)] || defaultKey);
   const setProdKey = (pid, k) => setProdKeys(prev => ({ ...prev, [String(pid)]: k }));
   const resetProd = (pid) => setProdKeys(prev => { const n = { ...prev }; delete n[String(pid)]; return n; });
 
