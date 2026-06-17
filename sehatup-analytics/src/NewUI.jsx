@@ -11198,19 +11198,83 @@ function ProductShippingPane() {
   );
 }
 
+// Downscale an image File to a square-ish base64 JPEG data URL (a small "blob") so it fits
+// comfortably under Firestore's 1 MB document limit and renders directly via <img>.
+function fileToCompressedDataURL(file, maxSize = 256, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Invalid image'));
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function ProfilePane({ me }) {
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useStateM(false);
+  const [status, setStatus] = useStateM(null); // { ok, msg }
+  const photo = me?.photoURL || null;
+
+  const onPick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setStatus({ ok: false, msg: 'Please choose an image file.' }); return; }
+    if (!me?.uid) { setStatus({ ok: false, msg: 'No signed-in user.' }); return; }
+    setBusy(true); setStatus(null);
+    try {
+      const dataUrl = await fileToCompressedDataURL(file);
+      // Firestore documents max out at ~1 MB; guard against very large images.
+      if (dataUrl.length > 900000) throw new Error('Image is too large after compression — try a smaller one.');
+      await setDoc(doc(db, 'users', me.uid), { photoURL: dataUrl, photoUpdatedAt: serverTimestamp() }, { merge: true });
+      setStatus({ ok: true, msg: 'Photo updated.' });
+    } catch (err) {
+      setStatus({ ok: false, msg: err.message || 'Upload failed.' });
+    } finally { setBusy(false); }
+  };
+
+  const onRemove = async () => {
+    if (!me?.uid || !photo) return;
+    setBusy(true); setStatus(null);
+    try {
+      await setDoc(doc(db, 'users', me.uid), { photoURL: null, photoUpdatedAt: serverTimestamp() }, { merge: true });
+      setStatus({ ok: true, msg: 'Photo removed.' });
+    } catch (err) {
+      setStatus({ ok: false, msg: err.message || 'Remove failed.' });
+    } finally { setBusy(false); }
+  };
+
   return (
     <>
       <div className="card">
         <div className="hstack-12">
-          <div className="avatar lg" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{me?.initials || "U"}</div>
+          <div className="avatar lg" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", overflow: "hidden", padding: 0 }}>
+            {photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (me?.initials || "U")}
+          </div>
           <div className="stack-2">
             <div className="fw6" style={{ fontSize: 16 }}>{me?.name || "User"}</div>
             <div className="muted" style={{ fontSize: 13 }}>{me?.email || "user@sehatup.in"}</div>
           </div>
           <span className="spacer" />
-          <button className="btn">Upload photo</button>
-          <button className="btn ghost">Remove</button>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPick} />
+          <button className="btn" onClick={() => fileRef.current?.click()} disabled={busy}>
+            {busy ? 'Uploading…' : (photo ? 'Change photo' : 'Upload photo')}
+          </button>
+          <button className="btn ghost" onClick={onRemove} disabled={busy || !photo}>Remove</button>
+          {status && <span style={{ fontSize: 12, color: status.ok ? 'var(--risk-low)' : 'var(--risk-critical)' }}>{status.ok ? '✓ ' : ''}{status.msg}</span>}
         </div>
         <div className="divider" style={{ margin: "20px 0" }} />
         <div className="grid-12">
@@ -12290,6 +12354,17 @@ function App({ user, roles, onLogout }) {
     return unsub;
   }, [user?.uid]);
 
+  // Live profile photo (stored as a base64 blob on users/{uid}.photoURL) so it shows in the
+  // top-bar avatar and the Profile pane and updates instantly after an upload.
+  const [myPhoto, setMyPhoto] = useState(null);
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = onSnapshot(doc(db, 'users', user.uid), snap => {
+      setMyPhoto(snap.exists() ? (snap.data().photoURL || null) : null);
+    }, () => setMyPhoto(null));
+    return unsub;
+  }, [user?.uid]);
+
   const isAdmin = roles?.includes('admin');
   const permCtxValue = {
     permissions,
@@ -12312,6 +12387,7 @@ function App({ user, roles, onLogout }) {
     initials: (user?.displayName || user?.email?.split("@")[0] || "U").substring(0, 2).toUpperCase(),
     email: user?.email,
     uid: user?.uid,
+    photoURL: myPhoto,
     role: role
   };
   window.SehatData.me = me;
@@ -12437,10 +12513,12 @@ function App({ user, roles, onLogout }) {
               <div style={{ position: "relative" }}>
                 <div
                   className="avatar clickable"
-                  style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer", border: "1px solid var(--accent)" }}
+                  style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer", border: "1px solid var(--accent)", overflow: "hidden", padding: 0 }}
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                 >
-                  {me.initials}
+                  {me.photoURL
+                    ? <img src={me.photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : me.initials}
                 </div>
                 {showProfileMenu && (
                   <>
