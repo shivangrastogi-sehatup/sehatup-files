@@ -2377,10 +2377,16 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
               ...(b.automationBy ? { automationBy: b.automationBy } : {}),
             }).catch(() => { /* race on a just-deleted doc — ignore */ });
           }
-        } else if (b.messageBy === "AGENT" || b.messageBy === "AUTOMATION") {
+        } else if (ev === "SENT" && (b.messageBy === "AGENT" || b.messageBy === "AUTOMATION")) {
           // Outbound reply sent from QuickReply (human agent in their dashboard, or the
           // AI bot). We can't get the words — store a labelled placeholder so the thread
           // shows that a reply happened. Keyed by id, so DELIVERED/READ just merge in.
+          // IMPORTANT: only create on the SENT event. QuickReply's status callbacks carry
+          // no timestamp, so we stamp the placeholder with arrival time — and SENT arrives
+          // at ~real send time. DELIVERED/READ arrive later (READ fires when the user
+          // re-opens the chat), so creating from those would stamp the reply too late and
+          // sort it BELOW newer customer messages (the bug we saw). Skipping them for
+          // creation keeps the bot/agent bubble in its correct position in the thread.
           const isAgent = b.messageBy === "AGENT";
           const label = isAgent ? "Agent replied" : "Bot replied";
           const msgTime = Number(b.msg_time) || Date.now();
