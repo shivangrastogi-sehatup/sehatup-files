@@ -436,7 +436,8 @@ function normalizeShippingRate(r) {
   return null;
 }
 function useProductShipping() {
-  const [cfg, setCfg] = useState({ defaultRate: null, rates: {} });
+  // enabled defaults to false — product-based auto-shipping is opt-in.
+  const [cfg, setCfg] = useState({ enabled: false, defaultRate: null, rates: {} });
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'app_settings', 'product_shipping'), (snap) => {
       if (snap.exists()) {
@@ -447,7 +448,7 @@ function useProductShipping() {
         const src = (data.rates && typeof data.rates === 'object') ? data.rates
           : (data.prices && typeof data.prices === 'object') ? data.prices : {};
         Object.entries(src).forEach(([k, v]) => { const n = normalizeShippingRate(v); if (n) rates[k] = n; });
-        setCfg({ defaultRate, rates });
+        setCfg({ enabled: data.enabled === true, defaultRate, rates });
       }
     }, () => { /* keep defaults on error */ });
     return unsub;
@@ -6332,13 +6333,13 @@ function OrderCreate({ context = {}, setRoute }) {
   const productDefaultShippingTitle = productDefaultShipping?.title || 'Shipping';
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (shippingTouched) return;
+    if (!productShippingCfg.enabled || shippingTouched) return; // opt-in feature
     const tprice = Math.round(productDefaultShippingPrice);
     const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
       || shippingRates.find(r => Math.round(r.price) === tprice);
     setUseCustomShipping(false);
     setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
-  }, [productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
+  }, [productShippingCfg.enabled, productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -7584,7 +7585,7 @@ function OrderCreate({ context = {}, setRoute }) {
                     <div className="fade-in" style={{ padding: "12px", background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
                       <div className="hstack-8" style={{ marginBottom: 8 }}>
                         <div className="fw6" style={{ fontSize: 13 }}>Shipping</div>
-                        <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>
+                        {productShippingCfg.enabled && <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>}
                       </div>
                       {isLoadingShipping ? (
                         <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
@@ -10910,6 +10911,7 @@ function ProductShippingPane() {
   const [ratesError, setRatesError] = useStateM(null);
   const [defaultKey, setDefaultKey] = useStateM(""); // rateKey of the global default
   const [prodKeys, setProdKeys] = useStateM({});     // { [productId]: rateKey } overrides only
+  const [enabled, setEnabled] = useStateM(false);    // feature on/off (off by default)
   const [saving, setSaving] = useStateM(false);
   const [savedAt, setSavedAt] = useStateM(null);
 
@@ -10973,11 +10975,12 @@ function ProductShippingPane() {
 
   // Seed selections from the saved config.
   useEffect(() => {
+    setEnabled(cfg.enabled === true);
     setDefaultKey(cfg.defaultRate ? rateKey(cfg.defaultRate) : "");
     const seeded = {};
     Object.entries(cfg.rates || {}).forEach(([k, v]) => { seeded[k] = rateKey(v); });
     setProdKeys(seeded);
-  }, [cfg.defaultRate, cfg.rates]);
+  }, [cfg.enabled, cfg.defaultRate, cfg.rates]);
 
   // All selectable rates = live Shopify rates ∪ any saved rate no longer present (kept so a
   // previously-chosen rate stays visible/selectable).
@@ -11071,6 +11074,7 @@ function ProductShippingPane() {
         if (r && k && k !== defaultKey) ratesOut[pid] = { title: r.title, price: Number(r.price) || 0 };
       });
       await setDoc(doc(db, 'app_settings', 'product_shipping'), {
+        enabled: !!enabled,
         defaultRate: defaultRate ? { title: defaultRate.title, price: Number(defaultRate.price) || 0 } : null,
         rates: ratesOut,
         updatedAt: serverTimestamp(),
@@ -11091,7 +11095,23 @@ function ProductShippingPane() {
   return (
     <>
       <div className="card">
+        <div className="hstack-12" style={{ alignItems: "center" }}>
+          <div className="stack-2" style={{ flex: 1 }}>
+            <div className="section-title" style={{ margin: 0 }}>Product-based shipping</div>
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              When on, new orders auto-fill shipping from the rates set below. When off (default), shipping is chosen manually on each order.
+            </span>
+          </div>
+          <Badge tone={enabled ? "low" : undefined} dot={enabled ? "var(--risk-low)" : undefined}>{enabled ? "Enabled" : "Disabled"}</Badge>
+          <Toggle on={enabled} onToggle={() => setEnabled(v => !v)} />
+          <button className="btn primary" onClick={handleSave} disabled={saving || ratesLoading}>{saving ? 'Saving…' : 'Save'}</button>
+          {savedAt && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
+        </div>
+      </div>
+
+      <div className="card">
         <div className="section-title">Default shipping rate</div>
+        {!enabled && <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>Feature is off — these rates won't apply until you enable it above.</div>}
         <p className="muted" style={{ fontSize: 12.5, marginTop: 4, marginBottom: 14 }}>
           Pick from your live Shopify delivery rates. Used for every order unless a product below has its own rate. New orders auto-select this rate (you can still change it on the order).
         </p>
