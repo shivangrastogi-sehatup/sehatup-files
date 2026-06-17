@@ -12415,8 +12415,17 @@ function ConversationsScreen({ me }) {
                   const out = m.direction === 'out';
                   return (
                     <div key={m.id} style={{ alignSelf: out ? 'flex-end' : 'flex-start', maxWidth: '72%', background: out ? 'var(--accent)' : 'var(--surface-2)', color: out ? '#fff' : 'var(--fg)', borderRadius: 12, padding: '8px 12px', fontSize: 13 }}>
-                      {m.mediaUrl && <div style={{ marginBottom: 4 }}><a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: out ? '#fff' : 'var(--accent-ink)', textDecoration: 'underline' }}>📎 {m.fileName || 'Attachment'}</a></div>}
-                      {m.text && <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.text}</div>}
+                      {m.placeholder
+                        ? <div style={{ fontStyle: 'italic', opacity: 0.9 }}>
+                            {m.messageBy === 'AGENT' ? '👤' : '🤖'} {m.placeholder}
+                            <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>(sent in QuickReply — text not available)</div>
+                          </div>
+                        : <>
+                            {m.mediaUrl && <div style={{ marginBottom: 4 }}><a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: out ? '#fff' : 'var(--accent-ink)', textDecoration: 'underline' }}>📎 {m.fileName || 'Attachment'}</a></div>}
+                            {m.text
+                              ? <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.text}</div>
+                              : (!m.mediaUrl && <div style={{ fontStyle: 'italic', opacity: 0.6 }}>{(m._type || 'message').replace(/^USER_/, '').toLowerCase()}</div>)}
+                          </>}
                       <div style={{ fontSize: 10, opacity: 0.7, textAlign: 'right', marginTop: 3 }}>{fmt(m.msgTime)} {out && tick(m.status)}</div>
                     </div>
                   );

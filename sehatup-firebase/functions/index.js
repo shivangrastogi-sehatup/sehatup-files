@@ -2327,15 +2327,17 @@ const qrPreviewText = (payload = {}) => {
     case "USER_TEXT": return payload.text || "";
     case "USER_FILE": return payload.caption || `[${payload.contentType || "file"}]`;
     case "USER_LIST_REPLY":
-    case "USER_BUTTON_REPLY": return payload.text || "[reply]";
-    default: return payload.text || "";
+    case "USER_BUTTON_REPLY": return payload.text || payload.title || "[reply]";
+    default: return payload.text || payload.caption || "";
   }
 };
 
 // Single webhook → give THIS one URL to QuickReply. It handles BOTH:
-//   • inbound user messages (payload._type = USER_*), and
-//   • message delivery-status updates (event = SENT/DELIVERED/READ).
-// They're told apart by the `event` field (only status updates have it).
+//   • inbound user messages (these carry a `payload` with a `_type`), and
+//   • message delivery-status updates (SENT/DELIVERED/READ, no payload).
+// We classify by the PRESENCE OF A PAYLOAD — a real chat message always has one.
+// (Status callbacks carry the state in `event`/`status`/`state` depending on the
+// account; classifying on payload-presence avoids storing them as blank messages.)
 exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res) => {
   try {
     if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
@@ -2346,30 +2348,73 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
     }
     const b = req.body || {};
     const db = getFirestore();
+    const p = b.payload;
 
-    // ── Message status update (has `event`, no `payload`) ──
-    if (b.event) {
-      if (!b.id || !b.phone) return res.status(200).send("ignored");
-      const msgRef = db.collection("conversations").doc(qrConvId(b.phone))
-        .collection("messages").doc(String(b.id));
-      // Only update messages we actually stored (our agent sends). Unknown ids — e.g.
-      // bot/automation messages we never persisted — are ignored via the .catch so we
-      // don't create orphan message docs.
-      await msgRef.update({
-        status: b.event,
-        statusUpdatedAt: FieldValue.serverTimestamp(),
-        ...(b.messageBy ? { messageBy: b.messageBy } : {}),
-        ...(b.agentId ? { agentId: b.agentId } : {}),
-        ...(b.automationBy ? { automationBy: b.automationBy } : {}),
-      }).catch(() => { /* message not in our store — ignore */ });
-      return res.status(200).send("ok");
+    // ── Not an inbound chat message (no payload) → it's a status callback (SENT/
+    //    DELIVERED/READ). QuickReply never sends us the TEXT of bot/agent replies, only
+    //    these status events. So we use them two ways:
+    //      1) if the message is one we already have → just update its delivery status;
+    //      2) if it's a brand-new outbound message sent from QuickReply's side
+    //         (messageBy AGENT or AUTOMATION) → store a placeholder "Agent/Bot replied"
+    //         bubble so the CRM at least reflects that a reply went out (no content). ──
+    if (!p || !p._type) {
+      const ev = String(b.event || b.status || b.state || "").toUpperCase();
+      if (b.id && b.phone) {
+        const convId = qrConvId(b.phone);
+        const convRef = db.collection("conversations").doc(convId);
+        const msgRef = convRef.collection("messages").doc(String(b.id));
+        const msgSnap = await msgRef.get();
+
+        if (msgSnap.exists) {
+          // We already stored this message (e.g. one sent from the CRM, or a prior
+          // status for this same id) → just refresh its delivery status + sender meta.
+          if (ev) {
+            await msgRef.update({
+              status: ev,
+              statusUpdatedAt: FieldValue.serverTimestamp(),
+              ...(b.messageBy ? { messageBy: b.messageBy } : {}),
+              ...(b.agentId ? { agentId: b.agentId } : {}),
+              ...(b.automationBy ? { automationBy: b.automationBy } : {}),
+            }).catch(() => { /* race on a just-deleted doc — ignore */ });
+          }
+        } else if (b.messageBy === "AGENT" || b.messageBy === "AUTOMATION") {
+          // Outbound reply sent from QuickReply (human agent in their dashboard, or the
+          // AI bot). We can't get the words — store a labelled placeholder so the thread
+          // shows that a reply happened. Keyed by id, so DELIVERED/READ just merge in.
+          const isAgent = b.messageBy === "AGENT";
+          const label = isAgent ? "Agent replied" : "Bot replied";
+          const msgTime = Number(b.msg_time) || Date.now();
+          await msgRef.set({
+            id: String(b.id),
+            direction: "out",
+            _type: isAgent ? "AGENT_PLACEHOLDER" : "BOT_PLACEHOLDER",
+            text: "",                 // QuickReply does not give us the content
+            placeholder: label,       // frontend renders this italic label
+            messageBy: b.messageBy,
+            agentId: b.agentId || null,
+            automationBy: b.automationBy || null,
+            status: ev || "SENT",
+            statusUpdatedAt: FieldValue.serverTimestamp(),
+            msgTime,
+            createdAt: FieldValue.serverTimestamp(),
+          }, { merge: true });
+          // Surface on the conversation list; outbound, so do NOT bump unread.
+          await convRef.set({
+            lastMessage: isAgent ? "👤 Agent replied" : "🤖 Bot replied",
+            lastMessageAt: msgTime,
+            lastMessageBy: b.messageBy,
+            updatedAt: FieldValue.serverTimestamp(),
+          }, { merge: true }).catch(() => {});
+        }
+        // else: status for an id we don't have and not clearly bot/agent → ignore.
+      }
+      return res.status(200).send("status-or-ignored");
     }
 
-    // ── Inbound user message ──
+    // ── Inbound user message (payload present) ──
     if (!b.phone || !b.id) return res.status(200).send("ignored"); // ack so QR doesn't retry
     const convId = qrConvId(b.phone);
     const msgTime = Number(b.msg_time) || Date.now();
-    const p = b.payload || {};
     const convRef = db.collection("conversations").doc(convId);
     const convSnap = await convRef.get();
 
@@ -2393,7 +2438,8 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
       id: String(b.id),
       direction: "in",
       _type: p._type || "USER_TEXT",
-      text: p.text || p.caption || "",
+      // text covers plain text + the selected option text for list/button replies
+      text: p.text || p.caption || p.title || "",
       mediaUrl: p.path || null,
       mediaType: p.contentType || null,
       fileName: p.name || null,
