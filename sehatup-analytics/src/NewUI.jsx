@@ -6329,22 +6329,29 @@ function OrderCreate({ context = {}, setRoute }) {
     setShippingFirstName(custFirstName);
   }, [custFirstName]);
 
-  // Default shipping = the Shopify rate configured per product in Settings (global default
-  // otherwise). Applies to BOTH COD and Prepaid. We match the configured rate against the
-  // live Shopify rates by title+price (falling back to price) and select it automatically.
-  // We stop once the user touches shipping so we never overwrite a manual choice.
+  // Shipping is auto-selected only AFTER the user picks a payment method — never on product
+  // add. When product-based shipping is on, we apply the configured rate (highest among the
+  // products); otherwise we pick the rate matching the payment type (COD → COD rate, Prepaid
+  // → Prepaid rate). We stop once the user manually touches shipping.
   const productDefaultShipping = resolveDefaultShipping(productShippingCfg, items);
   const productDefaultShippingPrice = Number(productDefaultShipping?.price) || 0;
   const productDefaultShippingTitle = productDefaultShipping?.title || 'Shipping';
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!productShippingCfg.enabled || shippingTouched) return; // opt-in feature
-    const tprice = Math.round(productDefaultShippingPrice);
-    const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
-      || shippingRates.find(r => Math.round(r.price) === tprice);
-    setUseCustomShipping(false);
-    setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
-  }, [productShippingCfg.enabled, productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
+    if (!pay || shippingTouched || shippingRates.length === 0) return; // wait for a payment choice
+    if (productShippingCfg.enabled) {
+      const tprice = Math.round(productDefaultShippingPrice);
+      const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
+        || shippingRates.find(r => Math.round(r.price) === tprice);
+      setUseCustomShipping(false);
+      setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
+    } else {
+      const codRates = shippingRates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
+      const prepaidRate = shippingRates.find(r => /prepaid/i.test(r.title));
+      setUseCustomShipping(false);
+      setSelectedShipping(pay === 'COD' ? (codRates[0] || null) : (prepaidRate || null));
+    }
+  }, [pay, productShippingCfg.enabled, productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
