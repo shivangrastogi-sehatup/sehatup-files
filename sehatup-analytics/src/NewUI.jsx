@@ -1799,6 +1799,45 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     };
   }, [partialData, completedData, manualData, dateFrom, dateTo, genderFilter, categoryFilter]);
 
+  // ── Conversation (WhatsApp) analytics — scoped to the dashboard's date range ──
+  // Leads   = distinct conversations that received an incoming message in the range.
+  // Responded = of those, the ones an agent replied to (outbound AGENT message in range).
+  // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
+  // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
+  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, opened: 0, loading: true, error: null });
+  useEffect(() => {
+    let cancelled = false;
+    const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+    const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+    const fromMs = from.getTime(), toMs = to.getTime();
+    setConvoStats(s => ({ ...s, loading: true, error: null }));
+    (async () => {
+      try {
+        const snap = await getDocs(query(collectionGroup(db, 'messages'), where('msgTime', '>=', fromMs), where('msgTime', '<=', toMs)));
+        const inbound = new Set();       // conversations that received a customer message
+        const agentReplied = new Set();  // conversations an agent replied to
+        snap.forEach(d => {
+          const convId = d.ref.parent.parent?.id;
+          if (!convId) return;
+          const m = d.data();
+          if (m.direction === 'out') { if (m.messageBy === 'AGENT') agentReplied.add(convId); }
+          else inbound.add(convId);
+        });
+        let responded = 0;
+        inbound.forEach(id => { if (agentReplied.has(id)) responded += 1; });
+        let opened = 0;
+        try {
+          const oSnap = await getDocs(query(collection(db, 'conversations'), where('lastReadAt', '>=', fromMs), where('lastReadAt', '<=', toMs)));
+          opened = oSnap.size;
+        } catch { /* lastReadAt not yet populated */ }
+        if (!cancelled) setConvoStats({ leads: inbound.size, responded, opened, loading: false, error: null });
+      } catch (e) {
+        if (!cancelled) setConvoStats({ leads: 0, responded: 0, opened: 0, loading: false, error: e?.message || 'Failed to load conversation stats' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [dateFrom, dateTo]);
+
   const analytics = useMemoCx(() => computeAnalytics(filtered.partial, filtered.completed, filtered.manual), [filtered]);
 
   // Marketing analytics — merged from the old Marketing dashboard so the same
@@ -2050,6 +2089,22 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       </div>
 
       {kpis}
+
+      {/* Conversation analytics — reflects the date range selected above */}
+      <div className="card" style={{ padding: "14px 16px" }}>
+        <div className="hstack-8" style={{ marginBottom: 12 }}>
+          <div className="section-title" style={{ margin: 0 }}>Conversations</div>
+          <span className="muted" style={{ fontSize: 12 }}>
+            {convoStats.loading ? "Loading…" : convoStats.error ? convoStats.error : "WhatsApp chats in the selected period"}
+          </span>
+        </div>
+        <div className="grid-12">
+          <div className="span-3"><KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" /></div>
+          <div className="span-3"><KPI label="Responded" value={convoStats.loading ? "…" : convoStats.responded.toLocaleString()} icon="check" /></div>
+          <div className="span-3"><KPI label="Response rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.responded / convoStats.leads) * 100) : 0)} suffix="%" icon="target" /></div>
+          <div className="span-3"><KPI label="Opened" value={convoStats.loading ? "…" : convoStats.opened.toLocaleString()} icon="eye" /></div>
+        </div>
+      </div>
 
       {layout === "analytics" ? (
         <>
@@ -12899,7 +12954,8 @@ function ConversationsScreen({ me }) {
     if (!selectedId) { setMessages([]); return; }
     const qy = query(collection(db, 'conversations', selectedId, 'messages'), orderBy('msgTime', 'asc'), limit(300));
     const unsub = onSnapshot(qy, snap => setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    updateDoc(doc(db, 'conversations', selectedId), { unreadCount: 0 }).catch(() => {});
+    // Clear unread + record when this chat was read (powers the dashboard "Opened" metric).
+    updateDoc(doc(db, 'conversations', selectedId), { unreadCount: 0, lastReadAt: Date.now() }).catch(() => {});
     return unsub;
   }, [selectedId]);
 
