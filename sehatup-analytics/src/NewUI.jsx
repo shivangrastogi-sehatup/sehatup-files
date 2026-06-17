@@ -2926,13 +2926,12 @@ function CustomersList({ openCustomer, openSubmission }) {
     <div className="col fade-in">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Customers</h1>
+          <h1 className="page-title">Shopify customers</h1>
           <p className="page-sub">{loading ? "Syncing..." : `${totalCount !== null ? totalCount.toLocaleString() : customers.length.toLocaleString()} profiles`} · synced from Shopify</p>
         </div>
         <div className="page-head-actions">
           <button className="btn"><Icon name="upload" /> Import</button>
           <button className="btn"><Icon name="download" /> Export</button>
-          <button className="btn primary"><Icon name="plus" /> New customer</button>
         </div>
       </div>
 
@@ -8167,7 +8166,7 @@ function OrdersHistory({ setRoute, openCustomer }) {
       </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 360px)" }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 220px)", minHeight: 460 }}>
           <table className="tbl" style={{ minWidth: 1080 }}>
             <thead>
               <tr>
@@ -12013,7 +12012,7 @@ const NAV = {
 const ITEMS = {
   home: { label: "Analytics Dashboard", icon: "pulse", route: "home" },
   submissions: { label: "Submissions", icon: "clipboard", route: "submissions", ct: "3.4k" },
-  customers: { label: "Customers", icon: "users", route: "customers", ct: "30" },
+  customers: { label: "Shopify customers", icon: "users", route: "customers", ct: "30" },
   conversations: { label: "Conversations", icon: "message", route: "conversations" },
   prescriptions: { label: "Prescriptions", icon: "pill", route: "prescriptions" },
   doctor: { label: "Clinical review", icon: "stethoscope", route: "doctor", ct: "12" },
@@ -12613,7 +12612,7 @@ function Breadcrumb({ route, role }) {
   const labels = {
     home: "Analytics Dashboard",
     submissions: "Submissions",
-    customers: "Customers",
+    customers: "Shopify customers",
     conversations: "Conversations",
     doctor: "Clinical review",
     orders: "Shopify orders",
