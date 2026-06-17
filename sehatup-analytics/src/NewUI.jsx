@@ -423,34 +423,45 @@ function buildTrackingUrl(template, awb) {
 }
 
 // --- Product shipping config (shared via Firestore: app_settings/product_shipping) ---
-// { defaultPrice: number, prices: { [productId]: number } }. The catalogue in Settings
-// edits this; order creation reads it to pre-fill a default shipping charge.
+// Per-product shipping is chosen from the Shopify delivery rates (not free-text), stored as
+// rate objects: { defaultRate: {title, price}, rates: { [productId]: {title, price} } }.
+// (Legacy { defaultPrice, prices } docs are read for back-compat.)
 const DEFAULT_PRODUCT_SHIPPING = 150;
+function normalizeShippingRate(r) {
+  if (!r) return null;
+  if (typeof r === 'number') return { title: 'Shipping', price: r };
+  if (typeof r.price === 'number' || typeof r.price === 'string') {
+    return { title: r.title || 'Shipping', price: Number(r.price) || 0 };
+  }
+  return null;
+}
 function useProductShipping() {
-  const [cfg, setCfg] = useState({ defaultPrice: DEFAULT_PRODUCT_SHIPPING, prices: {} });
+  const [cfg, setCfg] = useState({ defaultRate: null, rates: {} });
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'app_settings', 'product_shipping'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setCfg({
-          defaultPrice: typeof data.defaultPrice === 'number' ? data.defaultPrice : DEFAULT_PRODUCT_SHIPPING,
-          prices: data.prices && typeof data.prices === 'object' ? data.prices : {},
-        });
+        const defaultRate = normalizeShippingRate(data.defaultRate)
+          || (typeof data.defaultPrice === 'number' ? { title: 'Shipping', price: data.defaultPrice } : null);
+        const rates = {};
+        const src = (data.rates && typeof data.rates === 'object') ? data.rates
+          : (data.prices && typeof data.prices === 'object') ? data.prices : {};
+        Object.entries(src).forEach(([k, v]) => { const n = normalizeShippingRate(v); if (n) rates[k] = n; });
+        setCfg({ defaultRate, rates });
       }
     }, () => { /* keep defaults on error */ });
     return unsub;
   }, []);
   return cfg;
 }
-// Resolve the default shipping charge for a cart. A single distinct product with a
-// configured price uses that price; any mix (or unconfigured product) falls back to the
-// global default (Rs. 150).
+// Resolve the shipping rate for a cart. A single distinct product with its own configured
+// rate uses that; any mix (or unconfigured product) falls back to the global default rate,
+// then to a Rs. 150 placeholder. Always returns a { title, price } object.
 function resolveDefaultShipping(cfg, items) {
   const ids = Array.from(new Set((items || []).map(it => String(it.productId || '')).filter(Boolean)));
-  if (ids.length === 1 && cfg?.prices && cfg.prices[ids[0]] != null) {
-    return Number(cfg.prices[ids[0]]) || 0;
-  }
-  return Number(cfg?.defaultPrice ?? DEFAULT_PRODUCT_SHIPPING) || 0;
+  if (ids.length === 1 && cfg?.rates && cfg.rates[ids[0]]) return cfg.rates[ids[0]];
+  if (cfg?.defaultRate) return cfg.defaultRate;
+  return { title: 'Shipping', price: DEFAULT_PRODUCT_SHIPPING };
 }
 
 // --- data.js ---
@@ -6312,25 +6323,22 @@ function OrderCreate({ context = {}, setRoute }) {
     setShippingFirstName(custFirstName);
   }, [custFirstName]);
 
-  // Default shipping = product-shipping config (Rs. 150 unless a single configured product).
-  // Applies to BOTH COD and Prepaid. Prefer an existing Shopify rate that matches the price
-  // ("fetched from Shopify"); otherwise pre-fill it as a custom rate. We stop once the user
-  // touches shipping so we never overwrite a manual choice.
+  // Default shipping = the Shopify rate configured per product in Settings (global default
+  // otherwise). Applies to BOTH COD and Prepaid. We match the configured rate against the
+  // live Shopify rates by title+price (falling back to price) and select it automatically.
+  // We stop once the user touches shipping so we never overwrite a manual choice.
   const productDefaultShipping = resolveDefaultShipping(productShippingCfg, items);
+  const productDefaultShippingPrice = Number(productDefaultShipping?.price) || 0;
+  const productDefaultShippingTitle = productDefaultShipping?.title || 'Shipping';
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (shippingTouched) return;
-    const target = Math.round(productDefaultShipping);
-    const match = shippingRates.find(r => Math.round(r.price) === target);
-    if (match) {
-      setUseCustomShipping(false);
-      setSelectedShipping(match);
-    } else {
-      setUseCustomShipping(true);
-      setCustomShippingTitle('Shipping');
-      setCustomShippingPrice(String(productDefaultShipping));
-    }
-  }, [productDefaultShipping, shippingRates, shippingTouched]);
+    const tprice = Math.round(productDefaultShippingPrice);
+    const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
+      || shippingRates.find(r => Math.round(r.price) === tprice);
+    setUseCustomShipping(false);
+    setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
+  }, [productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -7576,7 +7584,7 @@ function OrderCreate({ context = {}, setRoute }) {
                     <div className="fade-in" style={{ padding: "12px", background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
                       <div className="hstack-8" style={{ marginBottom: 8 }}>
                         <div className="fw6" style={{ fontSize: 13 }}>Shipping</div>
-                        <span className="muted" style={{ fontSize: 11.5 }}>Default Rs. {Math.round(productDefaultShipping)} · editable</span>
+                        <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>
                       </div>
                       {isLoadingShipping ? (
                         <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
@@ -10887,27 +10895,90 @@ function SettingsScreen({ tweaks, me }) {
   );
 }
 
-// Catalogue of live Shopify products with an editable per-product shipping price. Saved to
-// app_settings/product_shipping and read by order creation to pre-fill a default shipping
-// charge (global default Rs. 150 unless a product is given its own price).
+// Catalogue of live Shopify products where each product is assigned one of the SHOPIFY
+// delivery rates (fetched live — same source as order creation). Saved to
+// app_settings/product_shipping; order creation auto-selects the matching rate.
+const rateKey = (r) => (r ? `${r.title}__${Number(r.price) || 0}` : "");
 function ProductShippingPane() {
   const cfg = useProductShipping();
   const [products, setProducts] = useStateM([]);
   const [loading, setLoading] = useStateM(true);
   const [loadError, setLoadError] = useStateM(null);
   const [search, setSearch] = useStateM("");
-  const [defaultPrice, setDefaultPrice] = useStateM(String(cfg.defaultPrice ?? DEFAULT_PRODUCT_SHIPPING));
-  const [prices, setPrices] = useStateM({}); // { [productId]: string }
+  // Shopify delivery rates (the only allowed choices).
+  const [rates, setRates] = useStateM([]);
+  const [ratesLoading, setRatesLoading] = useStateM(true);
+  const [ratesError, setRatesError] = useStateM(null);
+  const [defaultKey, setDefaultKey] = useStateM(""); // rateKey of the global default
+  const [prodKeys, setProdKeys] = useStateM({});     // { [productId]: rateKey } overrides only
   const [saving, setSaving] = useStateM(false);
   const [savedAt, setSavedAt] = useStateM(null);
 
-  // Seed the editable fields once the saved config arrives.
+  // Fetch the live Shopify delivery rates (mirrors order creation's fetchShippingRates).
   useEffect(() => {
-    setDefaultPrice(String(cfg.defaultPrice ?? DEFAULT_PRODUCT_SHIPPING));
+    let cancelled = false;
+    (async () => {
+      setRatesLoading(true); setRatesError(null);
+      try {
+        const query = `{ deliveryProfiles(first: 10) { edges { node { profileLocationGroups {
+          locationGroupZones(first: 30) { edges { node { methodDefinitions(first: 30) { edges { node {
+            id name active rateProvider { ... on DeliveryRateDefinition { id price { amount } } }
+          } } } } } } } } } }`;
+        const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
+        const data = await res.json();
+        if (data?.errors?.length) throw new Error(data.errors[0]?.message || 'GraphQL error');
+        const out = []; const seen = new Set();
+        (data?.data?.deliveryProfiles?.edges || []).forEach(({ node: profile }) => {
+          (profile.profileLocationGroups || []).forEach(group => {
+            (group.locationGroupZones?.edges || []).forEach(({ node: lgZone }) => {
+              (lgZone.methodDefinitions?.edges || []).forEach(({ node: method }) => {
+                if (!method.active || !method.rateProvider?.price) return;
+                const r = { title: method.name, price: parseFloat(method.rateProvider.price.amount || 0) };
+                const k = rateKey(r);
+                if (seen.has(k)) return; seen.add(k); out.push(r);
+              });
+            });
+          });
+        });
+        if (!cancelled) setRates(out);
+      } catch (e) {
+        if (!cancelled) setRatesError(e.message || 'Failed to load Shopify shipping rates');
+      } finally {
+        if (!cancelled) setRatesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Seed selections from the saved config.
+  useEffect(() => {
+    setDefaultKey(cfg.defaultRate ? rateKey(cfg.defaultRate) : "");
     const seeded = {};
-    Object.entries(cfg.prices || {}).forEach(([k, v]) => { seeded[k] = String(v); });
-    setPrices(seeded);
-  }, [cfg.defaultPrice, cfg.prices]);
+    Object.entries(cfg.rates || {}).forEach(([k, v]) => { seeded[k] = rateKey(v); });
+    setProdKeys(seeded);
+  }, [cfg.defaultRate, cfg.rates]);
+
+  // All selectable rates = live Shopify rates ∪ any saved rate no longer present (kept so a
+  // previously-chosen rate stays visible/selectable).
+  const allRates = useMemo(() => {
+    const map = new Map();
+    rates.forEach(r => map.set(rateKey(r), r));
+    const consider = [cfg.defaultRate, ...Object.values(cfg.rates || {})].filter(Boolean);
+    consider.forEach(r => { const k = rateKey(r); if (!map.has(k)) map.set(k, { ...r, stale: true }); });
+    return Array.from(map.values());
+  }, [rates, cfg.defaultRate, cfg.rates]);
+
+  // Default the global rate to the Rs. 150 rate (or first) once rates load and none is set.
+  useEffect(() => {
+    if (defaultKey || rates.length === 0) return;
+    const r150 = rates.find(r => Math.round(r.price) === DEFAULT_PRODUCT_SHIPPING);
+    setDefaultKey(rateKey(r150 || rates[0]));
+  }, [rates, defaultKey]);
+
+  const getRate = (k) => allRates.find(r => rateKey(r) === k) || null;
+  const effKey = (pid) => (prodKeys[String(pid)] || defaultKey);
+  const setProdKey = (pid, k) => setProdKeys(prev => ({ ...prev, [String(pid)]: k }));
+  const resetProd = (pid) => setProdKeys(prev => { const n = { ...prev }; delete n[String(pid)]; return n; });
 
   // Fetch all active products (paginated).
   useEffect(() => {
@@ -10943,25 +11014,21 @@ function ProductShippingPane() {
     return () => { cancelled = true; };
   }, []);
 
-  const effPrice = (pid) => {
-    const v = prices[String(pid)];
-    return v !== undefined && v !== "" ? v : (defaultPrice || String(DEFAULT_PRODUCT_SHIPPING));
-  };
-  const setPrice = (pid, v) => setPrices(prev => ({ ...prev, [String(pid)]: v }));
-  const resetPrice = (pid) => setPrices(prev => { const n = { ...prev }; delete n[String(pid)]; return n; });
-
   const filtered = products.filter(p => !search.trim() || p.title.toLowerCase().includes(search.toLowerCase()));
+  const rateLabel = (r) => r ? `${r.title} — Rs. ${r.price}${r.stale ? ' (not in Shopify)' : ''}` : '';
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const cleanPrices = {};
-      Object.entries(prices).forEach(([k, v]) => {
-        if (v !== undefined && v !== "" && !Number.isNaN(parseFloat(v))) cleanPrices[k] = parseFloat(v);
+      const defaultRate = getRate(defaultKey);
+      const ratesOut = {};
+      Object.entries(prodKeys).forEach(([pid, k]) => {
+        const r = getRate(k);
+        if (r && k && k !== defaultKey) ratesOut[pid] = { title: r.title, price: Number(r.price) || 0 };
       });
       await setDoc(doc(db, 'app_settings', 'product_shipping'), {
-        defaultPrice: parseFloat(defaultPrice) || DEFAULT_PRODUCT_SHIPPING,
-        prices: cleanPrices,
+        defaultRate: defaultRate ? { title: defaultRate.title, price: Number(defaultRate.price) || 0 } : null,
+        rates: ratesOut,
         updatedAt: serverTimestamp(),
       }, { merge: true });
       setSavedAt(new Date());
@@ -10969,28 +11036,36 @@ function ProductShippingPane() {
     finally { setSaving(false); }
   };
 
-  const applyDefaultToAll = () => {
-    // Reset every product to the global default (clears per-product overrides).
-    setPrices({});
-  };
+  const RateSelect = ({ value, onChange, includeDefaultOption }) => (
+    <select className="select" value={value} onChange={e => onChange(e.target.value)} disabled={ratesLoading || !!ratesError} style={{ maxWidth: 280 }}>
+      {includeDefaultOption && <option value="">Use default ({getRate(defaultKey) ? rateLabel(getRate(defaultKey)) : '—'})</option>}
+      {!includeDefaultOption && !defaultKey && <option value="">Select a rate…</option>}
+      {allRates.map(r => <option key={rateKey(r)} value={rateKey(r)}>{rateLabel(r)}</option>)}
+    </select>
+  );
 
   return (
     <>
       <div className="card">
-        <div className="section-title">Default shipping charge</div>
+        <div className="section-title">Default shipping rate</div>
         <p className="muted" style={{ fontSize: 12.5, marginTop: 4, marginBottom: 14 }}>
-          Used for every order unless a product below has its own price. New orders pre-fill this amount as shipping (you can still change it on the order).
+          Pick from your live Shopify delivery rates. Used for every order unless a product below has its own rate. New orders auto-select this rate (you can still change it on the order).
         </p>
-        <div className="hstack-8" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div className="field" style={{ margin: 0, maxWidth: 200 }}>
-            <span className="lbl">Default shipping (Rs.)</span>
-            <input className="input num" type="number" min="0" value={defaultPrice} onChange={e => setDefaultPrice(e.target.value)} placeholder={String(DEFAULT_PRODUCT_SHIPPING)} />
+        {ratesError ? (
+          <div style={{ fontSize: 12.5, color: 'var(--risk-moderate)' }}>{ratesError}</div>
+        ) : (
+          <div className="hstack-8" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div className="field" style={{ margin: 0 }}>
+              <span className="lbl">Default rate</span>
+              <RateSelect value={defaultKey} onChange={setDefaultKey} includeDefaultOption={false} />
+            </div>
+            <button className="btn ghost" onClick={() => setProdKeys({})} title="Remove all per-product overrides so every product uses the default">Reset all to default</button>
+            <span className="spacer" />
+            <button className="btn primary" onClick={handleSave} disabled={saving || ratesLoading}>{saving ? 'Saving…' : 'Save changes'}</button>
+            {savedAt && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
           </div>
-          <button className="btn ghost" onClick={applyDefaultToAll} title="Remove all per-product overrides so every product uses the default">Reset all to default</button>
-          <span className="spacer" />
-          <button className="btn primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
-          {savedAt && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
-        </div>
+        )}
+        {ratesLoading && <div className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>Loading Shopify shipping rates…</div>}
       </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -11008,7 +11083,7 @@ function ProductShippingPane() {
             <thead>
               <tr>
                 <th>Product</th>
-                <th style={{ width: 200, whiteSpace: "nowrap" }}>Shipping price (Rs.)</th>
+                <th style={{ width: 300, whiteSpace: "nowrap" }}>Shipping rate</th>
                 <th style={{ width: 90 }}></th>
               </tr>
             </thead>
@@ -11020,7 +11095,7 @@ function ProductShippingPane() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan="3"><div className="empty"><Icon name="package" size={20} /><div>No products{search ? ' match' : ''}.</div></div></td></tr>
               ) : filtered.map(p => {
-                const overridden = prices[String(p.id)] !== undefined && prices[String(p.id)] !== "";
+                const overridden = prodKeys[String(p.id)] !== undefined && prodKeys[String(p.id)] !== "";
                 return (
                   <tr key={p.id}>
                     <td>
@@ -11032,13 +11107,10 @@ function ProductShippingPane() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: "flex", alignItems: "center", height: 34, border: "1px solid " + (overridden ? "var(--accent)" : "var(--border)"), borderRadius: 8, overflow: "hidden", maxWidth: 160 }}>
-                        <span className="muted" style={{ paddingLeft: 10, fontSize: 12.5 }}>Rs.</span>
-                        <input className="input num" type="number" min="0" value={effPrice(p.id)} onChange={e => setPrice(p.id, e.target.value)} style={{ height: "100%", border: 0, paddingLeft: 6, width: "100%" }} />
-                      </div>
+                      <RateSelect value={prodKeys[String(p.id)] || ""} onChange={k => k ? setProdKey(p.id, k) : resetProd(p.id)} includeDefaultOption={true} />
                     </td>
                     <td>
-                      {overridden && <button className="btn sm ghost" onClick={() => resetPrice(p.id)} title="Use default price">Default</button>}
+                      {overridden && <button className="btn sm ghost" onClick={() => resetProd(p.id)} title="Use default rate">Default</button>}
                     </td>
                   </tr>
                 );
@@ -11047,9 +11119,9 @@ function ProductShippingPane() {
           </table>
         </div>
         <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Products without a custom price use the default ({defaultPrice || DEFAULT_PRODUCT_SHIPPING}).</span>
+          <span className="muted" style={{ fontSize: 12 }}>Products without their own rate use the default{getRate(defaultKey) ? ` (${rateLabel(getRate(defaultKey))})` : ''}.</span>
           <span className="spacer" />
-          <button className="btn primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+          <button className="btn primary" onClick={handleSave} disabled={saving || ratesLoading}>{saving ? 'Saving…' : 'Save changes'}</button>
           {savedAt && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
         </div>
       </div>
