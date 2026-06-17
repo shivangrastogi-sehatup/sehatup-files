@@ -422,6 +422,37 @@ function buildTrackingUrl(template, awb) {
   return String(template || DEFAULT_TRACKING_URL_TEMPLATE).replace('{awb}', encodeURIComponent(awb));
 }
 
+// --- Product shipping config (shared via Firestore: app_settings/product_shipping) ---
+// { defaultPrice: number, prices: { [productId]: number } }. The catalogue in Settings
+// edits this; order creation reads it to pre-fill a default shipping charge.
+const DEFAULT_PRODUCT_SHIPPING = 150;
+function useProductShipping() {
+  const [cfg, setCfg] = useState({ defaultPrice: DEFAULT_PRODUCT_SHIPPING, prices: {} });
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'app_settings', 'product_shipping'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setCfg({
+          defaultPrice: typeof data.defaultPrice === 'number' ? data.defaultPrice : DEFAULT_PRODUCT_SHIPPING,
+          prices: data.prices && typeof data.prices === 'object' ? data.prices : {},
+        });
+      }
+    }, () => { /* keep defaults on error */ });
+    return unsub;
+  }, []);
+  return cfg;
+}
+// Resolve the default shipping charge for a cart. A single distinct product with a
+// configured price uses that price; any mix (or unconfigured product) falls back to the
+// global default (Rs. 150).
+function resolveDefaultShipping(cfg, items) {
+  const ids = Array.from(new Set((items || []).map(it => String(it.productId || '')).filter(Boolean)));
+  if (ids.length === 1 && cfg?.prices && cfg.prices[ids[0]] != null) {
+    return Number(cfg.prices[ids[0]]) || 0;
+  }
+  return Number(cfg?.defaultPrice ?? DEFAULT_PRODUCT_SHIPPING) || 0;
+}
+
 // --- data.js ---
 // data.js — mock data for the SehatUp CRM
 // Uses names from the user's screenshots, expanded with realistic Indian names + phone numbers.
@@ -5812,6 +5843,10 @@ async function attachFulfillmentPaymentTerms(orderId) {
 function OrderCreate({ context = {}, setRoute }) {
   const preset = context.customer;
   const logisticsCfg = useLogisticsConfig();
+  const productShippingCfg = useProductShipping();
+  // True once the user manually changes shipping — stops us auto-overwriting their choice
+  // with the product-based default.
+  const [shippingTouched, setShippingTouched] = useStateO(false);
   const [cust, setCust] = useStateO(preset || null);
   const [items, setItems] = useStateO([]);
   const [includeSample, setIncludeSample] = useStateO(false);
@@ -5879,6 +5914,14 @@ function OrderCreate({ context = {}, setRoute }) {
   const [discountCodeLoading, setDiscountCodeLoading] = useStateO(false);
   const [discountCodeError, setDiscountCodeError] = useStateO(null);
   const [appliedCodeDiscount, setAppliedCodeDiscount] = useStateO(null); // { code, valueType, value }
+  // Healthscore Lead is now independent of the order-level code/custom discount so it can
+  // be combined with a partial-payment ("custom") discount. healthscoreDisc holds the
+  // resolved value of the configured code; healthscoreLead is the checkbox state.
+  const [healthscoreLead, setHealthscoreLead] = useStateO(false);
+  const [healthscoreDisc, setHealthscoreDisc] = useStateO(null); // { code, valueType, value }
+  // The reason/description shown in the popup is auto-prefilled from the active discount
+  // combination, but the user can override it. Once edited we stop overwriting it.
+  const [orderDiscountReasonEdited, setOrderDiscountReasonEdited] = useStateO(false);
   const [discountSnapshot, setDiscountSnapshot] = useStateO(null);
   const [savingMode, setSavingMode] = useStateO(null);
   const [cityManual, setCityManual] = useStateO(false); // true = free-text city input instead of locality dropdown
@@ -6013,13 +6056,13 @@ function OrderCreate({ context = {}, setRoute }) {
         tags: ['Created via CRM', pay].filter(Boolean).join(', ')
       };
 
-      // Shipping — COD uses the selected rate (incl. the Rs. 0 "COD Shipping (Partial)"
-      // option) or a custom rate; Prepaid uses the "Prepaid Shipping" rate from Shopify.
-      if (pay === "COD" && useCustomShipping) {
+      // Shipping — applies to both COD and Prepaid. A custom rate (incl. the product-shipping
+      // default of Rs. 150) or the chosen Shopify rate is sent as the shipping line.
+      if (useCustomShipping) {
         const title = customShippingTitle.trim() || 'Custom Shipping';
         const price = parseFloat(customShippingPrice) || 0;
         draftData.shipping_line = { title, price: price.toFixed(2), code: title };
-        console.log('[Shipping] Custom COD rate applied:', title, price);
+        console.log('[Shipping] Custom rate applied:', title, price);
       } else if (selectedShipping) {
         draftData.shipping_line = {
           title: selectedShipping.title,
@@ -6031,24 +6074,32 @@ function OrderCreate({ context = {}, setRoute }) {
         console.log('[Shipping] No shipping rate found — no shipping_line added');
       }
 
-      // Order Discount — Shopify draft orders accept only one applied_discount per order.
-      if (orderDiscountIsCustom && (parseFloat(orderDiscountValue) || 0) > 0) {
-        // Custom amount/percentage discount
+      // Order Discount — Shopify draft orders accept only one order-level applied_discount,
+      // and an order-level discount reduces the product subtotal only (never shipping). So
+      // Healthscore Lead (% of products) and the custom partial-pay discount are summed into
+      // a SINGLE fixed_amount discount. The (editable) reason string is sent as-is.
+      const discountBase = items.reduce((s, p) => s + getDiscountedPrice(p) * p.qty, 0);
+      const hsAmt = healthscoreLead && healthscoreDisc
+        ? (healthscoreDisc.valueType === 'percentage'
+            ? discountBase * Math.min(parseFloat(healthscoreDisc.value) || 0, 100) / 100
+            : (parseFloat(healthscoreDisc.value) || 0))
+        : 0;
+      let orderAmt = 0;
+      if (orderDiscountIsCustom) {
+        const v = parseFloat(orderDiscountValue) || 0;
+        orderAmt = orderDiscountType === 'percentage' ? discountBase * Math.min(v, 100) / 100 : v;
+      } else if (appliedCodeDiscount) {
+        const v = parseFloat(appliedCodeDiscount.value) || 0;
+        orderAmt = appliedCodeDiscount.valueType === 'percentage' ? discountBase * Math.min(v, 100) / 100 : v;
+      }
+      const combinedDiscount = Math.min(Math.round((hsAmt + orderAmt) * 100) / 100, discountBase);
+      if (combinedDiscount > 0) {
+        const reason = (orderDiscountReason || '').trim() || buildDiscountReason() || 'Discount';
         draftData.applied_discount = {
-          value_type: orderDiscountType === 'percentage' ? 'percentage' : 'fixed_amount',
-          value: String(parseFloat(orderDiscountValue) || 0),
-          title: orderDiscountReason || 'Custom Discount',
-          description: orderDiscountReason || 'Custom Discount',
-        };
-      } else if (appliedCodeDiscount && (parseFloat(appliedCodeDiscount.value) || 0) > 0) {
-        // Selected discount code — applied as its resolved value. Healthscore Lead orders
-        // get a clearer label so the code's purpose is visible on the order.
-        const isHs = appliedCodeDiscount.healthscore;
-        draftData.applied_discount = {
-          value_type: appliedCodeDiscount.valueType === 'percentage' ? 'percentage' : 'fixed_amount',
-          value: String(parseFloat(appliedCodeDiscount.value) || 0),
-          title: isHs ? `Healthscore Lead (${appliedCodeDiscount.code})` : appliedCodeDiscount.code,
-          description: isHs ? `Healthscore Lead discount · code ${appliedCodeDiscount.code}` : `Discount code ${appliedCodeDiscount.code}`,
+          value_type: 'fixed_amount',
+          value: combinedDiscount.toFixed(2),
+          title: reason.slice(0, 255),
+          description: reason,
         };
       }
 
@@ -6261,18 +6312,25 @@ function OrderCreate({ context = {}, setRoute }) {
     setShippingFirstName(custFirstName);
   }, [custFirstName]);
 
-  // When switching payment method, auto-select appropriate shipping rate
+  // Default shipping = product-shipping config (Rs. 150 unless a single configured product).
+  // Applies to BOTH COD and Prepaid. Prefer an existing Shopify rate that matches the price
+  // ("fetched from Shopify"); otherwise pre-fill it as a custom rate. We stop once the user
+  // touches shipping so we never overwrite a manual choice.
+  const productDefaultShipping = resolveDefaultShipping(productShippingCfg, items);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (shippingRates.length === 0) return;
-    const codRates = shippingRates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
-    const prepaidRate = shippingRates.find(r => /prepaid/i.test(r.title));
-    if (pay === "COD" && codRates.length > 0) {
-      setSelectedShipping(codRates[0]);
-    } else if (pay === "Prepaid") {
-      setSelectedShipping(prepaidRate || null);
+    if (shippingTouched) return;
+    const target = Math.round(productDefaultShipping);
+    const match = shippingRates.find(r => Math.round(r.price) === target);
+    if (match) {
+      setUseCustomShipping(false);
+      setSelectedShipping(match);
+    } else {
+      setUseCustomShipping(true);
+      setCustomShippingTitle('Shipping');
+      setCustomShippingPrice(String(productDefaultShipping));
     }
-  }, [pay, shippingRates]);
+  }, [productDefaultShipping, shippingRates, shippingTouched]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -6523,12 +6581,7 @@ function OrderCreate({ context = {}, setRoute }) {
           });
         });
         setShippingRates(rates);
-        // Auto-select based on initial payment method (default is Prepaid)
-        if (!selectedShipping && !useCustomShipping) {
-          const prepaidRate = rates.find(r => /prepaid/i.test(r.title));
-          const codRates = rates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
-          setSelectedShipping(prepaidRate || codRates[0] || null);
-        }
+        // Default selection is handled by the product-shipping effect (Rs. 150 default).
       } catch (err) {
         console.error('[Shipping] Failed to fetch rates:', err);
       } finally {
@@ -6599,30 +6652,64 @@ function OrderCreate({ context = {}, setRoute }) {
   };
 
   const subtotal = items.reduce((s, p) => s + getDiscountedUnitPrice(p) * p.qty, 0);
-  const shipping = pay === "COD"
-    ? (useCustomShipping ? (parseFloat(customShippingPrice) || 0)
-        : (selectedShipping ? selectedShipping.price : 0))
-    : 0;
-  const shippingLabel = pay === "COD"
-    ? (useCustomShipping ? (customShippingTitle.trim() || 'Custom Shipping')
-        : (selectedShipping ? selectedShipping.title : 'Free'))
-    : "Free";
-  // A manual order discount is either a custom amount/percentage OR a selected code.
-  const hasManualDiscount = orderDiscountIsCustom
+  // Shipping applies to both COD and Prepaid (default Rs. 150 from product-shipping config).
+  const shipping = useCustomShipping
+    ? (parseFloat(customShippingPrice) || 0)
+    : (selectedShipping ? selectedShipping.price : 0);
+  const shippingLabel = useCustomShipping
+    ? (customShippingTitle.trim() || 'Custom Shipping')
+    : (selectedShipping ? selectedShipping.title : 'Free');
+  // A manual order discount is Healthscore Lead, a custom amount/percentage, or a code.
+  const hasOrderLevelDiscount = orderDiscountIsCustom
     ? (Number(orderDiscountValue) || 0) > 0
     : !!appliedCodeDiscount;
+  const hasManualDiscount = healthscoreLead || hasOrderLevelDiscount;
 
-  let discount = 0;
+  // Healthscore Lead (% of products) + the order-level custom/code discount are summed
+  // into one combined discount, exactly as it will be sent to Shopify.
+  const healthscoreDiscountAmt = healthscoreLead && healthscoreDisc
+    ? (healthscoreDisc.valueType === "percentage"
+        ? subtotal * (Math.min(Number(healthscoreDisc.value) || 0, 100) / 100)
+        : (Number(healthscoreDisc.value) || 0))
+    : 0;
+  let orderLevelDiscountAmt = 0;
   if (orderDiscountIsCustom) {
     const val = Number(orderDiscountValue) || 0;
-    discount = orderDiscountType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
+    orderLevelDiscountAmt = orderDiscountType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
   } else if (appliedCodeDiscount) {
     const val = Number(appliedCodeDiscount.value) || 0;
-    discount = appliedCodeDiscount.valueType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
+    orderLevelDiscountAmt = appliedCodeDiscount.valueType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
   }
-  discount = Math.round(Math.min(discount, subtotal));
-  // Order total (full value of the order — items + shipping - manual discount)
+  const discount = Math.round(Math.min(healthscoreDiscountAmt + orderLevelDiscountAmt, subtotal));
+  // Order total (full value of the order — items + shipping - combined discount)
   const total = Math.max(0, subtotal + shipping - discount);
+
+  // Auto-prefilled, editable reason describing the active discount combination. Used as
+  // the Shopify discount description and shown in the popup.
+  const buildDiscountReason = () => {
+    const parts = [];
+    if (healthscoreLead && healthscoreDisc) {
+      parts.push(`Healthscore Lead${healthscoreDisc.valueType === "percentage" ? ` ${healthscoreDisc.value}%` : ` Rs.${healthscoreDisc.value}`}`);
+    }
+    if (orderDiscountIsCustom) {
+      const v = Number(orderDiscountValue) || 0;
+      if (v > 0) {
+        const rupees = Math.round(orderDiscountType === "percentage" ? subtotal * (Math.min(v, 100) / 100) : v);
+        parts.push(`partial pay ${rupees}`);
+      }
+    } else if (appliedCodeDiscount) {
+      parts.push(appliedCodeDiscount.code);
+    }
+    return parts.join(" + ");
+  };
+
+  // Keep the reason in sync with the active discount combination until the user edits it.
+  useEffect(() => {
+    if (orderDiscountReasonEdited) return;
+    const next = buildDiscountReason();
+    setOrderDiscountReason(prev => (prev === next ? prev : next));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [healthscoreLead, healthscoreDisc, orderDiscountIsCustom, orderDiscountType, orderDiscountValue, appliedCodeDiscount, subtotal, orderDiscountReasonEdited]);
 
   // ── Discount popup helpers ─────────────────────────────────────────────────
   const closeDiscountPopup = () => {
@@ -6671,6 +6758,7 @@ function OrderCreate({ context = {}, setRoute }) {
     setDiscountSnapshot({
       isCustom: orderDiscountIsCustom, type: orderDiscountType, value: orderDiscountValue,
       reason: orderDiscountReason, code: orderDiscountCode, appliedCode: appliedCodeDiscount,
+      hsLead: healthscoreLead, hsDisc: healthscoreDisc, reasonEdited: orderDiscountReasonEdited,
     });
     setOrderDiscountPopupOpen(true);
     fetchDiscountCodes();
@@ -6680,23 +6768,27 @@ function OrderCreate({ context = {}, setRoute }) {
     if (s) {
       setOrderDiscountIsCustom(s.isCustom); setOrderDiscountType(s.type); setOrderDiscountValue(s.value);
       setOrderDiscountReason(s.reason); setOrderDiscountCode(s.code); setAppliedCodeDiscount(s.appliedCode);
+      setHealthscoreLead(s.hsLead); setHealthscoreDisc(s.hsDisc); setOrderDiscountReasonEdited(s.reasonEdited);
     }
     closeDiscountPopup();
   };
   const selectDiscountCode = (opt) => {
-    setOrderDiscountIsCustom(false);          // code & custom are mutually exclusive
-    setOrderDiscountValue(''); setOrderDiscountReason('');
+    setOrderDiscountIsCustom(false);          // a code and a custom amount are mutually exclusive
+    setOrderDiscountValue('');                // (both occupy the single order-level discount)
     setOrderDiscountCode(opt.code);
     setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value });
   };
   const enableCustomDiscount = (checked) => {
     setOrderDiscountIsCustom(checked);
-    if (checked) { setOrderDiscountCode(''); setAppliedCodeDiscount(null); } // drop any code
-    else { setOrderDiscountValue(''); setOrderDiscountReason(''); }          // drop custom values
+    // Custom amount and a selected code are mutually exclusive, but Healthscore Lead is
+    // independent and stays on. Clearing custom just drops its own value.
+    if (checked) { setOrderDiscountCode(''); setAppliedCodeDiscount(null); }
+    else { setOrderDiscountValue(''); }
   };
   const clearDiscount = () => {
     setOrderDiscountIsCustom(false); setOrderDiscountType('amount'); setOrderDiscountValue('');
     setOrderDiscountReason(''); setOrderDiscountCode(''); setAppliedCodeDiscount(null);
+    setHealthscoreLead(false); setHealthscoreDisc(null); setOrderDiscountReasonEdited(false);
   };
   const filteredDiscountCodes = discountCodeOptions.filter(o => {
     const q = (orderDiscountCode || '').toLowerCase();
@@ -6704,10 +6796,10 @@ function OrderCreate({ context = {}, setRoute }) {
   });
 
   // ── Healthscore Lead — applies the discount code chosen in Settings ─────────
-  // The checkbox state is derived from the applied code's `healthscore` flag, so picking
-  // a different code or enabling a custom discount automatically clears it.
+  // Independent of the order-level code/custom discount: it contributes its value to the
+  // combined discount, so it can be stacked with a partial-payment custom discount.
   const healthscoreCode = (logisticsCfg.healthscoreDiscountCode || '').trim();
-  const healthscoreLeadOn = !!appliedCodeDiscount?.healthscore;
+  const healthscoreLeadOn = healthscoreLead;
   const resolveDiscountCode = async (code) => {
     try {
       const res = await fetch('/shopify-v2/graphql.json', {
@@ -6731,23 +6823,22 @@ function OrderCreate({ context = {}, setRoute }) {
   };
   const toggleHealthscoreLead = async (checked) => {
     if (!checked) {
-      if (appliedCodeDiscount?.healthscore) { setAppliedCodeDiscount(null); setOrderDiscountCode(''); }
+      // Turn off only Healthscore — leave any custom/code discount untouched.
+      setHealthscoreLead(false); setHealthscoreDisc(null);
       return;
     }
     if (!healthscoreCode) {
       alert('No Healthscore Lead discount code is configured yet. Set it in Settings → Logistics.');
       return;
     }
-    setOrderDiscountIsCustom(false);
-    setOrderDiscountValue(''); setOrderDiscountReason('');
     let opt = discountCodeOptions.find(o => o.code.toLowerCase() === healthscoreCode.toLowerCase());
     if (!opt || opt.valueType == null) opt = await resolveDiscountCode(healthscoreCode);
     if (!opt || opt.valueType == null) {
       alert(`Couldn't resolve the configured Healthscore code "${healthscoreCode}". Check it's active in Shopify.`);
       return;
     }
-    setOrderDiscountCode(opt.code);
-    setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value, healthscore: true });
+    setHealthscoreDisc({ code: opt.code, valueType: opt.valueType, value: opt.value });
+    setHealthscoreLead(true);
   };
 
   const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -6855,6 +6946,7 @@ function OrderCreate({ context = {}, setRoute }) {
         next.push({
           id: `variant-${variant.id}`,
           variantId: variant.id,
+          productId: product.id,
           name: product.title,
           subtitle: isDefaultVariant ? "Shopify product" : variant.title,
           price: variant.price / 100,
@@ -7319,9 +7411,9 @@ function OrderCreate({ context = {}, setRoute }) {
                 className="hstack-8"
                 style={{ fontSize: 13, cursor: "pointer" }}
                 onClick={(e) => { e.stopPropagation(); openDiscountPopup(); }}
-                title={discount > 0 ? `${orderDiscountIsCustom ? 'Custom discount' : (appliedCodeDiscount ? `Code ${appliedCodeDiscount.code}` : 'Discount')}${orderDiscountReason ? ` - ${orderDiscountReason}` : ''}` : ''}
+                title={discount > 0 ? (orderDiscountReason || buildDiscountReason() || 'Discount') : ''}
               >
-                <span style={{ color: "#3b82f6" }}>{discount > 0 ? (appliedCodeDiscount && !orderDiscountIsCustom ? `Discount · ${appliedCodeDiscount.code}` : 'Discount') : 'Add discount'}</span>
+                <span style={{ color: "#3b82f6" }}>{discount > 0 ? (orderDiscountReason || buildDiscountReason() || 'Discount') : 'Add discount'}</span>
                 <span className="spacer" />
                 <span className="num fw5" style={{ color: discount ? "var(--fg)" : "var(--muted)" }}>{discount ? `− Rs. ${discount}` : "—"}</span>
               </div>
@@ -7413,12 +7505,38 @@ function OrderCreate({ context = {}, setRoute }) {
                               </div>
                             </div>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Shared reason — auto-prefilled from the Healthscore + custom/code
+                          combination, editable, sent as the single combined discount's reason. */}
+                      {hasManualDiscount && (
+                        <>
+                          <div className="divider" style={{ margin: "2px 0" }} />
                           <div className="field" style={{ margin: 0 }}>
                             <span className="lbl">Reason for discount</span>
-                            <input className="input" value={orderDiscountReason} onChange={e => setOrderDiscountReason(e.target.value)} />
-                            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Visible to customer</div>
+                            <input
+                              className="input"
+                              value={orderDiscountReason}
+                              placeholder={buildDiscountReason() || "Reason shown to customer"}
+                              onChange={e => { setOrderDiscountReason(e.target.value); setOrderDiscountReasonEdited(true); }}
+                            />
+                            <div className="hstack-8" style={{ marginTop: 4 }}>
+                              <span className="muted" style={{ fontSize: 12 }}>Visible to customer · auto-filled</span>
+                              {orderDiscountReasonEdited && (
+                                <button className="btn sm ghost" style={{ fontSize: 11, padding: "0 6px" }}
+                                  onClick={() => { setOrderDiscountReasonEdited(false); setOrderDiscountReason(buildDiscountReason()); }}>
+                                  Reset
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                          <div className="hstack-8" style={{ marginTop: 2, padding: "8px 10px", background: "var(--surface-2)", borderRadius: 8, fontSize: 12.5 }}>
+                            <span className="fw5">Combined discount</span>
+                            <span className="spacer" />
+                            <span className="num fw6">− Rs. {discount.toLocaleString()}</span>
+                          </div>
+                        </>
                       )}
                     </div>
                     <div className="hstack-8" style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", alignItems: "center", background: "var(--surface-2)", borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}>
@@ -7451,27 +7569,25 @@ function OrderCreate({ context = {}, setRoute }) {
                     <div className="stack-2">
                       <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
                     </div>
-                    {p === "COD" && (
-                      <>
-                        <span className="spacer" />
-                        <Icon name={pay === p ? "chevron_up" : "chevron_down"} size={16} className="muted" />
-                      </>
-                    )}
+                    <span className="spacer" />
+                    <Icon name={pay === p ? "chevron_up" : "chevron_down"} size={16} className="muted" />
                   </label>
-                  {p === "COD" && pay === "COD" && (
+                  {pay === p && (
                     <div className="fade-in" style={{ padding: "12px", background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                      <div className="fw6" style={{ marginBottom: 8, fontSize: 13 }}>Shipping method</div>
+                      <div className="hstack-8" style={{ marginBottom: 8 }}>
+                        <div className="fw6" style={{ fontSize: 13 }}>Shipping</div>
+                        <span className="muted" style={{ fontSize: 11.5 }}>Default Rs. {Math.round(productDefaultShipping)} · editable</span>
+                      </div>
                       {isLoadingShipping ? (
                         <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
                       ) : (
                         <div className="stack-6">
                           {!useCustomShipping && shippingRates
-                            .filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title))
                             .map((rate, i) => {
                               const isSel = selectedShipping?.id === rate.id;
                               return (
                                 <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                                  <input type="radio" name="shippingRate" checked={isSel} onChange={() => setSelectedShipping(rate)} style={{ accentColor: "var(--accent)" }} />
+                                  <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(rate); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
                                   <span style={{ fontSize: 13 }}>{rate.title}</span>
                                   <span className="spacer" />
                                   <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
@@ -7479,7 +7595,7 @@ function OrderCreate({ context = {}, setRoute }) {
                               );
                             })}
 
-                          {/* COD with Rs. 0 shipping (e.g. customer settles part separately) */}
+                          {/* Rs. 0 shipping (e.g. customer settles part separately) */}
                           {!useCustomShipping && (() => {
                             const isSel = selectedShipping?.id === 'cod-free';
                             return (
@@ -7488,10 +7604,10 @@ function OrderCreate({ context = {}, setRoute }) {
                                   type="radio"
                                   name="shippingRate"
                                   checked={isSel}
-                                  onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'COD Shipping (Partial)', price: 0, code: 'COD_PARTIAL' }); setUseCustomShipping(false); }}
+                                  onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'No shipping', price: 0, code: 'NO_SHIPPING' }); setUseCustomShipping(false); setShippingTouched(true); }}
                                   style={{ accentColor: "var(--accent)" }}
                                 />
-                                <span style={{ fontSize: 13 }}>COD Shipping (Partial)</span>
+                                <span style={{ fontSize: 13 }}>No shipping (Rs. 0)</span>
                                 <span className="spacer" />
                                 <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
                               </label>
@@ -7501,13 +7617,13 @@ function OrderCreate({ context = {}, setRoute }) {
                           {useCustomShipping ? (
                             <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
                               <div className="hstack-8">
-                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => setCustomShippingTitle(e.target.value)} placeholder="Express Delivery" /></div>
-                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => setCustomShippingPrice(e.target.value)} placeholder="150" /></div>
+                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => { setCustomShippingTitle(e.target.value); setShippingTouched(true); }} placeholder="Shipping" /></div>
+                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => { setCustomShippingPrice(e.target.value); setShippingTouched(true); }} placeholder="150" /></div>
                               </div>
-                              <button className="btn sm ghost" onClick={() => setUseCustomShipping(false)}>Cancel custom rate</button>
+                              <button className="btn sm ghost" onClick={() => { setUseCustomShipping(false); setShippingTouched(true); }}>Use a Shopify rate instead</button>
                             </div>
                           ) : (
-                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
+                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setShippingTouched(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
                           )}
                         </div>
                       )}
@@ -8287,6 +8403,46 @@ function stageIndex(s) { return STAGE_ORDER.indexOf(s); }
 // have no digit and stay excluded. Mirrors isValidAwb in api/_lib/enrich.js.
 const isValidAwb = (a) => /^(?=.*\d)[A-Za-z0-9]{6,25}$/.test(String(a || '').trim());
 
+// Sort accessors for the shipments table, keyed by column. `type: 'num'` compares
+// numerically; otherwise values compare as text. Keep keys in sync with the <th>s.
+const SHIP_SORTS = {
+  awb:      { get: s => s.awb || '', type: 'str' },
+  order:    { get: s => s.orderName || (s.orderId ? `#${s.orderId}` : ''), type: 'str' },
+  customer: { get: s => s.customer?.name || '', type: 'str' },
+  phone:    { get: s => s.customer?.phone || '', type: 'str' },
+  address:  { get: s => [s.customer?.city, s.customer?.state, s.customer?.pincode].filter(Boolean).join(' '), type: 'str' },
+  items:    { get: s => (typeof s.itemCount === 'number' ? s.itemCount : null), type: 'num' },
+  amount:   { get: s => (typeof s.orderTotal === 'number' ? s.orderTotal : null), type: 'num' },
+  payment:  { get: s => s.paymentMode || '', type: 'str' },
+  status:   { get: s => { const i = stageIndex(s.status); return i < 0 ? null : i; }, type: 'num' },
+  reached:  { get: s => s.reachedAt || '', type: 'str' },
+  updated:  { get: s => s.lastUpdate || '', type: 'str' },
+  location: { get: s => s.lastLocation || '', type: 'str' },
+  events:   { get: s => (typeof s.eventCount === 'number' ? s.eventCount : null), type: 'num' },
+};
+
+// Sortable table header. Hovering reveals a faint up-arrow hint; once active it shows
+// a solid up (asc) / down (desc) chevron in the accent colour.
+function SortableTh({ label, sortKey, sort, onSort, style, align }) {
+  const active = sort.key === sortKey;
+  const dir = active ? sort.dir : 'asc';
+  return (
+    <th
+      className={`th-sort${active ? ' active' : ''}`}
+      style={{ whiteSpace: 'nowrap', ...style }}
+      onClick={() => onSort(sortKey)}
+      title={`Sort by ${label}${active ? (dir === 'asc' ? ' (ascending — click for descending)' : ' (descending — click for ascending)') : ''}`}
+    >
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: align === 'center' ? 'center' : 'flex-start', width: align === 'center' ? '100%' : undefined }}>
+        {label}
+        <span className="sort-ind" style={{ display: 'inline-flex' }}>
+          <Icon name={active && dir === 'desc' ? 'chevron_down' : 'chevron_up'} size={12} />
+        </span>
+      </span>
+    </th>
+  );
+}
+
 function ShipmentsScreen({ ctx }) {
   const [loading, setLoading] = useStateS(true);
   const [trackingMap, setTrackingMap] = useStateS({});
@@ -8441,6 +8597,13 @@ function ShipmentsScreen({ ctx }) {
   // Order source filter: 'all' | 'shopify' | 'non_shopify'. Applied upstream of
   // everything (KPIs, pipeline, status tabs, table) so the whole page reflects it.
   const [sourceFilter, setSourceFilter] = useStateS('all');
+  // Column sort: { key, dir } where dir is 'asc' | 'desc'. key === null keeps the
+  // default order (newest lastUpdate first). Clicking a header cycles asc → desc → asc;
+  // switching to a new column starts at asc; the Clear button resets to null.
+  const [sort, setSort] = useStateS({ key: null, dir: 'asc' });
+  const handleSort = (key) => setSort(prev => (
+    prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+  ));
 
   // When the global top-bar search navigates here with a term (e.g. an AWB or
   // order #), seed this screen's search box so the row is pre-filtered.
@@ -8494,6 +8657,26 @@ function ShipmentsScreen({ ctx }) {
     }
     return list;
   }, [tab, sourcedShipments, search]);
+
+  // Apply the active column sort on top of the filtered list. Empty / missing values
+  // always sink to the bottom regardless of direction (so a desc sort doesn't fill the
+  // top with blanks). Numbers compare numerically; everything else compares as text
+  // with natural numeric ordering (so #1099 < #1100, not lexical).
+  const sortedList = useMemoS(() => {
+    const cfg = sort.key && SHIP_SORTS[sort.key];
+    if (!cfg) return filteredList;
+    const dir = sort.dir === 'desc' ? -1 : 1;
+    const isEmpty = v => v === null || v === undefined || v === '';
+    return [...filteredList].sort((a, b) => {
+      const va = cfg.get(a), vb = cfg.get(b);
+      const ea = isEmpty(va), eb = isEmpty(vb);
+      if (ea && eb) return 0;
+      if (ea) return 1;
+      if (eb) return -1;
+      if (cfg.type === 'num') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' }) * dir;
+    });
+  }, [filteredList, sort]);
 
   const inTransit = sourcedShipments.filter(s => s.status === 'Shipped').length;
   const delivered = sourcedShipments.filter(s => s.status === 'Delivered').length;
@@ -8863,8 +9046,8 @@ function ShipmentsScreen({ ctx }) {
               <input className="input" placeholder="AWB, order #, name, phone..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
               <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
             </div>
-            {(tab !== 'all' || sourceFilter !== 'all' || search.trim()) && (
-              <button className="btn sm" onClick={() => { setTab('all'); setSourceFilter('all'); setSearch(''); }} title="Reset status, source and search filters" style={{ fontSize: 11.5, gap: 4 }}>
+            {(tab !== 'all' || sourceFilter !== 'all' || search.trim() || sort.key) && (
+              <button className="btn sm" onClick={() => { setTab('all'); setSourceFilter('all'); setSearch(''); setSort({ key: null, dir: 'asc' }); }} title="Reset status, source, search and column sorting" style={{ fontSize: 11.5, gap: 4 }}>
                 <Icon name="x" size={12} /> Clear
               </button>
             )}
@@ -8873,26 +9056,26 @@ function ShipmentsScreen({ ctx }) {
             <table className="tbl" style={{ minWidth: 1500 }}>
               <thead>
                 <tr>
-                  <th style={{ whiteSpace: "nowrap" }}>AWB</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Order ID</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Customer</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Phone</th>
-                  <th style={{ minWidth: 240 }}>Address</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Items</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Amount</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Payment</th>
-                  <th style={{ minWidth: 200, whiteSpace: "nowrap" }}>Status</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Reached destination</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Last update</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Location</th>
-                  <th style={{ whiteSpace: "nowrap" }}>Events</th>
+                  <SortableTh label="AWB" sortKey="awb" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Order ID" sortKey="order" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Customer" sortKey="customer" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Phone" sortKey="phone" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Address" sortKey="address" sort={sort} onSort={handleSort} style={{ minWidth: 240 }} />
+                  <SortableTh label="Items" sortKey="items" sort={sort} onSort={handleSort} align="center" />
+                  <SortableTh label="Amount" sortKey="amount" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Payment" sortKey="payment" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Status" sortKey="status" sort={sort} onSort={handleSort} style={{ minWidth: 200 }} />
+                  <SortableTh label="Reached destination" sortKey="reached" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Last update" sortKey="updated" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Location" sortKey="location" sort={sort} onSort={handleSort} />
+                  <SortableTh label="Events" sortKey="events" sort={sort} onSort={handleSort} />
                   <th style={{ whiteSpace: "nowrap", textAlign: "center" }}>Tracking</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr><td colSpan="14"><div className="empty"><Icon name="refresh" size={20} /><div>Connecting to tracking stream…</div></div></td></tr>
-                ) : filteredList.map(s => (
+                ) : sortedList.map(s => (
                   <ShipmentRow key={s.id} s={s} selected={sel?.id === s.id} onClick={() => setSel(s)} trackingUrlTemplate={logisticsCfg.trackingUrlTemplate} onSync={syncOne} syncState={rowSync[s.awb]} />
                 ))}
                 {!loading && filteredList.length === 0 && (
@@ -10663,6 +10846,7 @@ function SettingsScreen({ tweaks, me }) {
     ["profile", "Profile", "user"],
     ["workspace", "Workspace", "settings"],
     ...(isLogistics ? [["logistics", "Logistics", "truck"]] : []),
+    ...(isLogistics ? [["product_shipping", "Product shipping", "package"]] : []),
     ...(canClinical ? [["clinical", "Clinical", "pill"]] : []),
     ["notifications", "Notifications", "bell"],
     ["integrations", "Integrations", "link"],
@@ -10678,31 +10862,198 @@ function SettingsScreen({ tweaks, me }) {
         </div>
       </div>
 
-      <div className="grid-12">
-        <div className="span-3">
-          <div className="card" style={{ padding: 8 }}>
-            <div className="stack-2">
-              {tabs.map(([v, l, i]) => (
-                <button key={v} className={"rail-item" + (tab === v ? " active" : "")} onClick={() => setTab(v)} style={{ width: "100%", textAlign: "left", border: 0, cursor: "pointer" }}>
-                  <Icon name={i} className="ic" />
-                  <span>{l}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="span-9 col">
-          {tab === "profile" && <ProfilePane me={me} />}
-          {tab === "workspace" && <WorkspacePane />}
-          {tab === "logistics" && <LogisticsSettingsPane />}
-          {tab === "clinical" && <ClinicalSettingsPane me={me} />}
-          {tab === "notifications" && <NotificationsPane />}
-          {tab === "integrations" && <IntegrationsPane />}
-          {tab === "security" && <SecurityPane />}
-          {tab === "billing" && <BillingPane />}
-        </div>
+      {/* Full-width settings: section tabs run across the top, content fills the page. */}
+      <div className="hstack-6" style={{ flexWrap: "wrap", gap: 6, borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 4 }}>
+        {tabs.map(([v, l, i]) => (
+          <button key={v} className={"btn sm" + (tab === v ? " primary" : " ghost")} onClick={() => setTab(v)} style={{ gap: 6 }}>
+            <Icon name={i} size={14} />
+            <span>{l}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="col">
+        {tab === "profile" && <ProfilePane me={me} />}
+        {tab === "workspace" && <WorkspacePane />}
+        {tab === "logistics" && <LogisticsSettingsPane />}
+        {tab === "product_shipping" && <ProductShippingPane />}
+        {tab === "clinical" && <ClinicalSettingsPane me={me} />}
+        {tab === "notifications" && <NotificationsPane />}
+        {tab === "integrations" && <IntegrationsPane />}
+        {tab === "security" && <SecurityPane />}
+        {tab === "billing" && <BillingPane />}
       </div>
     </div>
+  );
+}
+
+// Catalogue of live Shopify products with an editable per-product shipping price. Saved to
+// app_settings/product_shipping and read by order creation to pre-fill a default shipping
+// charge (global default Rs. 150 unless a product is given its own price).
+function ProductShippingPane() {
+  const cfg = useProductShipping();
+  const [products, setProducts] = useStateM([]);
+  const [loading, setLoading] = useStateM(true);
+  const [loadError, setLoadError] = useStateM(null);
+  const [search, setSearch] = useStateM("");
+  const [defaultPrice, setDefaultPrice] = useStateM(String(cfg.defaultPrice ?? DEFAULT_PRODUCT_SHIPPING));
+  const [prices, setPrices] = useStateM({}); // { [productId]: string }
+  const [saving, setSaving] = useStateM(false);
+  const [savedAt, setSavedAt] = useStateM(null);
+
+  // Seed the editable fields once the saved config arrives.
+  useEffect(() => {
+    setDefaultPrice(String(cfg.defaultPrice ?? DEFAULT_PRODUCT_SHIPPING));
+    const seeded = {};
+    Object.entries(cfg.prices || {}).forEach(([k, v]) => { seeded[k] = String(v); });
+    setPrices(seeded);
+  }, [cfg.defaultPrice, cfg.prices]);
+
+  // Fetch all active products (paginated).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setLoadError(null);
+      try {
+        const all = [];
+        let cursor = null;
+        for (let page = 0; page < 20; page++) { // cap ~5000 products
+          const afterArg = cursor ? `, after: "${cursor}"` : "";
+          const query = `{ products(first: 250${afterArg}, query: "status:active", sortKey: TITLE) {
+            pageInfo { hasNextPage endCursor }
+            edges { node { id title featuredImage { url } } }
+          } }`;
+          const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
+          const data = await res.json();
+          if (data?.errors?.length) throw new Error(data.errors[0]?.message || 'GraphQL error');
+          const conn = data?.data?.products;
+          (conn?.edges || []).forEach(({ node }) => {
+            all.push({ id: parseInt(node.id.split('/').pop(), 10) || node.id, title: node.title, image: node.featuredImage?.url || null });
+          });
+          if (!conn?.pageInfo?.hasNextPage) break;
+          cursor = conn.pageInfo.endCursor;
+        }
+        if (!cancelled) setProducts(all);
+      } catch (e) {
+        if (!cancelled) setLoadError(e.message || 'Failed to load products');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const effPrice = (pid) => {
+    const v = prices[String(pid)];
+    return v !== undefined && v !== "" ? v : (defaultPrice || String(DEFAULT_PRODUCT_SHIPPING));
+  };
+  const setPrice = (pid, v) => setPrices(prev => ({ ...prev, [String(pid)]: v }));
+  const resetPrice = (pid) => setPrices(prev => { const n = { ...prev }; delete n[String(pid)]; return n; });
+
+  const filtered = products.filter(p => !search.trim() || p.title.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const cleanPrices = {};
+      Object.entries(prices).forEach(([k, v]) => {
+        if (v !== undefined && v !== "" && !Number.isNaN(parseFloat(v))) cleanPrices[k] = parseFloat(v);
+      });
+      await setDoc(doc(db, 'app_settings', 'product_shipping'), {
+        defaultPrice: parseFloat(defaultPrice) || DEFAULT_PRODUCT_SHIPPING,
+        prices: cleanPrices,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      setSavedAt(new Date());
+    } catch (e) { alert('Save failed: ' + e.message); }
+    finally { setSaving(false); }
+  };
+
+  const applyDefaultToAll = () => {
+    // Reset every product to the global default (clears per-product overrides).
+    setPrices({});
+  };
+
+  return (
+    <>
+      <div className="card">
+        <div className="section-title">Default shipping charge</div>
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 4, marginBottom: 14 }}>
+          Used for every order unless a product below has its own price. New orders pre-fill this amount as shipping (you can still change it on the order).
+        </p>
+        <div className="hstack-8" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div className="field" style={{ margin: 0, maxWidth: 200 }}>
+            <span className="lbl">Default shipping (Rs.)</span>
+            <input className="input num" type="number" min="0" value={defaultPrice} onChange={e => setDefaultPrice(e.target.value)} placeholder={String(DEFAULT_PRODUCT_SHIPPING)} />
+          </div>
+          <button className="btn ghost" onClick={applyDefaultToAll} title="Remove all per-product overrides so every product uses the default">Reset all to default</button>
+          <span className="spacer" />
+          <button className="btn primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+          {savedAt && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="section-title" style={{ margin: 0 }}>Product catalogue</div>
+          <span className="muted" style={{ fontSize: 12.5 }}>{loading ? 'Loading…' : `${products.length} products`}</span>
+          <span className="spacer" />
+          <div style={{ position: "relative", width: 260 }}>
+            <input className="input" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 32 }} />
+            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
+          </div>
+        </div>
+        <div style={{ overflowY: "auto", maxHeight: 520 }}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th style={{ width: 200, whiteSpace: "nowrap" }}>Shipping price (Rs.)</th>
+                <th style={{ width: 90 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="3"><div className="empty"><Icon name="refresh" size={20} /><div>Loading products…</div></div></td></tr>
+              ) : loadError ? (
+                <tr><td colSpan="3"><div className="empty"><Icon name="flag" size={20} /><div>{loadError}</div></div></td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan="3"><div className="empty"><Icon name="package" size={20} /><div>No products{search ? ' match' : ''}.</div></div></td></tr>
+              ) : filtered.map(p => {
+                const overridden = prices[String(p.id)] !== undefined && prices[String(p.id)] !== "";
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <div className="hstack-8">
+                        {p.image
+                          ? <img src={p.image} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid var(--border)" }} />
+                          : <div style={{ width: 32, height: 32, borderRadius: 6, background: "var(--surface-2)", display: "grid", placeItems: "center" }}><Icon name="package" size={14} className="muted" /></div>}
+                        <span className="fw5" style={{ fontSize: 13 }}>{p.title}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", height: 34, border: "1px solid " + (overridden ? "var(--accent)" : "var(--border)"), borderRadius: 8, overflow: "hidden", maxWidth: 160 }}>
+                        <span className="muted" style={{ paddingLeft: 10, fontSize: 12.5 }}>Rs.</span>
+                        <input className="input num" type="number" min="0" value={effPrice(p.id)} onChange={e => setPrice(p.id, e.target.value)} style={{ height: "100%", border: 0, paddingLeft: 6, width: "100%" }} />
+                      </div>
+                    </td>
+                    <td>
+                      {overridden && <button className="btn sm ghost" onClick={() => resetPrice(p.id)} title="Use default price">Default</button>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
+          <span className="muted" style={{ fontSize: 12 }}>Products without a custom price use the default ({defaultPrice || DEFAULT_PRODUCT_SHIPPING}).</span>
+          <span className="spacer" />
+          <button className="btn primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+          {savedAt && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
+        </div>
+      </div>
+    </>
   );
 }
 
