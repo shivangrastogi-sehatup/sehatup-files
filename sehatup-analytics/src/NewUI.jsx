@@ -11049,6 +11049,16 @@ function ProductShippingPane() {
   }, []);
 
   const filtered = products.filter(r => !search.trim() || r.label.toLowerCase().includes(search.toLowerCase()));
+  // Group the matching variant rows under their product so each product appears once with its
+  // variants listed beneath it.
+  const groups = (() => {
+    const byId = new Map(); const out = [];
+    filtered.forEach(r => {
+      if (!byId.has(r.productId)) { const g = { productId: r.productId, productTitle: r.productTitle, image: r.image, variants: [] }; byId.set(r.productId, g); out.push(g); }
+      byId.get(r.productId).variants.push(r);
+    });
+    return out;
+  })();
   const rateLabel = (r) => r ? `${r.title} — Rs. ${r.price}${r.stale ? ' (not in Shopify)' : ''}` : '';
 
   const handleSave = async () => {
@@ -11126,31 +11136,52 @@ function ProductShippingPane() {
                 <tr><td colSpan="3"><div className="empty"><Icon name="refresh" size={20} /><div>Loading products…</div></div></td></tr>
               ) : loadError ? (
                 <tr><td colSpan="3"><div className="empty"><Icon name="flag" size={20} /><div>{loadError}</div></div></td></tr>
-              ) : filtered.length === 0 ? (
+              ) : groups.length === 0 ? (
                 <tr><td colSpan="3"><div className="empty"><Icon name="package" size={20} /><div>No products{search ? ' match' : ''}.</div></div></td></tr>
-              ) : filtered.map(row => {
-                const vid = String(row.variantId);
-                const overridden = prodKeys[vid] !== undefined && prodKeys[vid] !== "";
+              ) : groups.map(g => {
+                // A product with one unnamed (Default Title) variant shows the rate inline on
+                // its own row. Products with real variants show a header row + a variant list.
+                const single = g.variants.length === 1 && !g.variants[0].variantTitle;
+                const rowFor = (v, indent) => {
+                  const vid = String(v.variantId);
+                  const overridden = prodKeys[vid] !== undefined && prodKeys[vid] !== "";
+                  return (
+                    <>
+                      <td style={indent ? { paddingLeft: 56 } : undefined}>
+                        {indent
+                          ? <span className="fw5" style={{ fontSize: 13 }}>{v.variantTitle}</span>
+                          : (
+                            <div className="hstack-8">
+                              {g.image
+                                ? <img src={g.image} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid var(--border)" }} />
+                                : <div style={{ width: 32, height: 32, borderRadius: 6, background: "var(--surface-2)", display: "grid", placeItems: "center" }}><Icon name="package" size={14} className="muted" /></div>}
+                              <span className="fw5" style={{ fontSize: 13 }}>{g.productTitle}</span>
+                            </div>
+                          )}
+                      </td>
+                      <td><RateSelect value={prodKeys[vid] || ""} onChange={k => k ? setProdKey(v.variantId, k) : resetProd(v.variantId)} includeDefaultOption={true} /></td>
+                      <td>{overridden && <button className="btn sm ghost" onClick={() => resetProd(v.variantId)} title="Use default rate">Default</button>}</td>
+                    </>
+                  );
+                };
+                if (single) return <tr key={g.productId}>{rowFor(g.variants[0], false)}</tr>;
                 return (
-                  <tr key={vid}>
-                    <td>
-                      <div className="hstack-8">
-                        {row.image
-                          ? <img src={row.image} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid var(--border)" }} />
-                          : <div style={{ width: 32, height: 32, borderRadius: 6, background: "var(--surface-2)", display: "grid", placeItems: "center" }}><Icon name="package" size={14} className="muted" /></div>}
-                        <div className="stack-2">
-                          <span className="fw5" style={{ fontSize: 13 }}>{row.productTitle}</span>
-                          {row.variantTitle && <span className="muted" style={{ fontSize: 11.5 }}>{row.variantTitle}</span>}
+                  <React.Fragment key={g.productId}>
+                    <tr style={{ background: "var(--surface-2)" }}>
+                      <td>
+                        <div className="hstack-8">
+                          {g.image
+                            ? <img src={g.image} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid var(--border)" }} />
+                            : <div style={{ width: 32, height: 32, borderRadius: 6, background: "var(--surface-2)", display: "grid", placeItems: "center" }}><Icon name="package" size={14} className="muted" /></div>}
+                          <span className="fw6" style={{ fontSize: 13 }}>{g.productTitle}</span>
+                          <span className="muted" style={{ fontSize: 11.5 }}>{g.variants.length} variants</span>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <RateSelect value={prodKeys[vid] || ""} onChange={k => k ? setProdKey(row.variantId, k) : resetProd(row.variantId)} includeDefaultOption={true} />
-                    </td>
-                    <td>
-                      {overridden && <button className="btn sm ghost" onClick={() => resetProd(row.variantId)} title="Use default rate">Default</button>}
-                    </td>
-                  </tr>
+                      </td>
+                      <td></td>
+                      <td></td>
+                    </tr>
+                    {g.variants.map(v => <tr key={v.variantId}>{rowFor(v, true)}</tr>)}
+                  </React.Fragment>
                 );
               })}
             </tbody>
