@@ -1752,8 +1752,10 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const [genderFilter, setGenderFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
   // Resolve to ISO yyyy-mm-dd strings the filters / labels below consume ('all' → wide range).
+  // Use LOCAL date parts (not toISOString, which is UTC) so e.g. "Today" in IST doesn't shift
+  // back a day and pull in yesterday's data.
   const [_rangeStart, _rangeEnd] = resolveDateRange(datePreset, customRange);
-  const toISO = (d) => d.toISOString().slice(0, 10);
+  const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const dateFrom = toISO(_rangeStart || new Date('2000-01-01'));
   const dateTo = toISO(_rangeEnd || new Date());
 
