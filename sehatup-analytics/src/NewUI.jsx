@@ -1800,7 +1800,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Responded = of those, the ones an agent replied to (outbound AGENT message in range).
   // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
   // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
-  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, opened: 0, leadIds: [], loading: true, error: null });
+  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadIds: [], loading: true, error: null });
   const [convoRefresh, setConvoRefresh] = useState(0); // bump to re-run the conversation query
   // Leads-list modal: resolves the lead conversation ids to names/phones on demand.
   const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null });
@@ -1827,27 +1827,37 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     (async () => {
       try {
         const snap = await getDocs(query(collectionGroup(db, 'messages'), where('msgTime', '>=', fromMs), where('msgTime', '<=', toMs)));
-        const inbound = new Set();       // conversations that received a customer message
-        const agentReplied = new Set();  // conversations an agent replied to
+        const inbound = new Set();    // conversations that received a customer message
+        const agentSet = new Set();   // conversations with a human-agent outbound message
+        const botSet = new Set();     // conversations with a bot/automation outbound message
         snap.forEach(d => {
           const convId = d.ref.parent.parent?.id;
           if (!convId) return;
           const m = d.data();
-          if (m.direction === 'out') { if (m.messageBy === 'AGENT') agentReplied.add(convId); }
+          if (m.direction === 'out') { if (m.messageBy === 'AGENT') agentSet.add(convId); else botSet.add(convId); }
           else inbound.add(convId);
         });
-        let responded = 0;
-        inbound.forEach(id => { if (agentReplied.has(id)) responded += 1; });
-        let opened = 0;
+        // For each lead: if ANY message that day was sent by an agent → counts as agent;
+        // otherwise if only bot/automation replied → counts as bot.
+        let byAgent = 0, byBot = 0;
+        inbound.forEach(id => {
+          if (agentSet.has(id)) byAgent += 1;
+          else if (botSet.has(id)) byBot += 1;
+        });
+        const responded = byAgent + byBot;
+        // Opened (read by an agent) in range, and of those the ones with NO agent reply —
+        // i.e. an agent looked at the chat but never responded.
+        let opened = 0, openedNoReply = 0;
         try {
           const oSnap = await getDocs(query(collection(db, 'conversations'), where('lastReadAt', '>=', fromMs), where('lastReadAt', '<=', toMs)));
           opened = oSnap.size;
+          oSnap.forEach(d => { if (!agentSet.has(d.id)) openedNoReply += 1; });
         } catch { /* lastReadAt not yet populated */ }
         // leadIds = the DISTINCT conversations (not messages) that received a customer
         // message in range — used to list the actual lead names on click.
-        if (!cancelled) setConvoStats({ leads: inbound.size, responded, opened, leadIds: Array.from(inbound), loading: false, error: null });
+        if (!cancelled) setConvoStats({ leads: inbound.size, responded, byAgent, byBot, opened, openedNoReply, leadIds: Array.from(inbound), loading: false, error: null });
       } catch (e) {
-        if (!cancelled) setConvoStats({ leads: 0, responded: 0, opened: 0, leadIds: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
+        if (!cancelled) setConvoStats({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadIds: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
       }
     })();
     return () => { cancelled = true; };
@@ -2100,9 +2110,14 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           <div className="span-3" onClick={() => !convoStats.loading && convoStats.leads > 0 && openLeadsModal()} style={{ cursor: (!convoStats.loading && convoStats.leads > 0) ? "pointer" : "default" }} title="Click to see the lead names">
             <KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" />
           </div>
-          <div className="span-3"><KPI label="Responded" value={convoStats.loading ? "…" : convoStats.responded.toLocaleString()} icon="check" /></div>
+          <div className="span-3"><KPI label="Responded by agent" value={convoStats.loading ? "…" : convoStats.byAgent.toLocaleString()} icon="check" /></div>
+          <div className="span-3"><KPI label="Responded by bot" value={convoStats.loading ? "…" : convoStats.byBot.toLocaleString()} icon="bolt" /></div>
           <div className="span-3"><KPI label="Response rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.responded / convoStats.leads) * 100) : 0)} suffix="%" icon="target" /></div>
+        </div>
+        <div className="grid-12" style={{ marginTop: 8 }}>
+          <div className="span-3"><KPI label="Responded (total)" value={convoStats.loading ? "…" : convoStats.responded.toLocaleString()} icon="message" /></div>
           <div className="span-3"><KPI label="Opened" value={convoStats.loading ? "…" : convoStats.opened.toLocaleString()} icon="eye" /></div>
+          <div className="span-3"><KPI label="Opened, no reply" value={convoStats.loading ? "…" : convoStats.openedNoReply.toLocaleString()} icon="flag" /></div>
         </div>
       </div>
 
@@ -12980,6 +12995,8 @@ function ConversationsScreen({ me }) {
   const [messages, setMessages] = useState([]);
   const [filter, setFilter] = useState('all'); // all | mine | unassigned
   const [search, setSearch] = useState('');
+  const [datePreset, setDatePreset] = useState('all');     // date filter for the chat list
+  const [customRange, setCustomRange] = useState([null, null]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
@@ -13014,10 +13031,15 @@ function ConversationsScreen({ me }) {
     let list = convos;
     if (filter === 'mine') list = list.filter(c => c.assignedTo === me?.uid);
     else if (filter === 'unassigned') list = list.filter(c => !c.assignedTo);
+    const [rStart, rEnd] = resolveDateRange(datePreset, customRange);
+    if (rStart && rEnd) {
+      const s = rStart.getTime(), e = rEnd.getTime();
+      list = list.filter(c => c.lastMessageAt >= s && c.lastMessageAt <= e);
+    }
     const q = search.trim().toLowerCase();
     if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q));
     return list;
-  }, [convos, filter, search, me?.uid]);
+  }, [convos, filter, search, datePreset, customRange, me?.uid]);
 
   const sendMessage = async () => {
     const text = draft.trim();
@@ -13057,10 +13079,17 @@ function ConversationsScreen({ me }) {
         {/* ── List ─────────────────────────────────────────── */}
         <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: 12, borderBottom: '1px solid var(--border)' }}>
-            <div className="hstack-8" style={{ marginBottom: 10 }}>
+            <div className="hstack-8" style={{ marginBottom: 10, flexWrap: 'wrap', rowGap: 8 }}>
               {[['all', 'All'], ['mine', 'My chats'], ['unassigned', 'Unassigned']].map(([v, l]) => (
                 <button key={v} className={`btn sm ${filter === v ? 'primary' : 'ghost'}`} onClick={() => setFilter(v)}>{l}</button>
               ))}
+              <span className="spacer" />
+              <DateRangeDropdown
+                datePreset={datePreset}
+                customRange={customRange}
+                align="left"
+                onApply={(p, r) => { setDatePreset(p); setCustomRange(r); }}
+              />
             </div>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', display: 'flex' }}><Icon name="search" size={14} /></div>
