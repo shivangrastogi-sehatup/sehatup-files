@@ -1745,23 +1745,17 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const [manualData, setManualData] = useState([]);
 
   // Filter states — now use explicit from/to dates so custom ranges work
-  const todayISO = () => new Date().toISOString().slice(0, 10);
-  const daysAgoISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
-  // Compact label for the date chip, e.g. "1 May" (keeps custom ranges short)
-  const fmtShort = (iso) => { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
-  const [dateFrom, setDateFrom] = useState(daysAgoISO(30));
-  const [dateTo, setDateTo] = useState(todayISO());
-  const [datePreset, setDatePreset] = useState(30); // null when custom
+  // Date range — same control as the doctor queue (DateRangeDropdown). datePreset is a
+  // DATE_PRESETS value ('today' | '7d' | '30d' | 'custom' | …); customRange is [start, end].
+  const [datePreset, setDatePreset] = useState('30d');
+  const [customRange, setCustomRange] = useState([null, null]);
   const [genderFilter, setGenderFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const applyPreset = (days) => {
-    setDatePreset(days);
-    setDateFrom(daysAgoISO(days));
-    setDateTo(todayISO());
-    setShowDatePicker(false);
-  };
+  // Resolve to ISO yyyy-mm-dd strings the filters / labels below consume ('all' → wide range).
+  const [_rangeStart, _rangeEnd] = resolveDateRange(datePreset, customRange);
+  const toISO = (d) => d.toISOString().slice(0, 10);
+  const dateFrom = toISO(_rangeStart || new Date('2000-01-01'));
+  const dateTo = toISO(_rangeEnd || new Date());
 
   useEffect(() => {
     const unsub1 = onSnapshot(query(collection(db, "partial_submissions"), orderBy("timestamp", "desc")), snap => {
@@ -2026,34 +2020,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
       {/* Dedicated filter row — kept on its own line so chips never wrap awkwardly next to the title */}
       <div className="filterbar" style={{ marginBottom: 8, position: 'relative' }}>
-        <span className="chip" style={{ cursor: 'pointer' }} onClick={() => setShowDatePicker(v => !v)}>
-          <Icon name="calendar" /> {datePreset ? `Last ${datePreset} days` : `${fmtShort(dateFrom)} – ${fmtShort(dateTo)}`} <Icon name="chevron_down" />
-        </span>
-        {showDatePicker && (
-          <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowDatePicker(false)} />
-            <div className="card shadow-lg" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, padding: 12, width: 290, zIndex: 100 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Presets</div>
-              <div className="hstack-6" style={{ flexWrap: 'wrap', marginBottom: 14 }}>
-                {[7, 30, 90, 180, 365].map(d => (
-                  <button key={d} className={`btn sm ${datePreset === d ? 'primary' : 'ghost'}`} onClick={() => applyPreset(d)}>Last {d}d</button>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Custom range</div>
-              <div className="stack-8">
-                <div className="field">
-                  <label className="lbl" style={{ fontSize: 11 }}>From</label>
-                  <input type="date" className="input sm" value={dateFrom} max={dateTo} onChange={e => { setDateFrom(e.target.value); setDatePreset(null); }} />
-                </div>
-                <div className="field">
-                  <label className="lbl" style={{ fontSize: 11 }}>To</label>
-                  <input type="date" className="input sm" value={dateTo} min={dateFrom} max={todayISO()} onChange={e => { setDateTo(e.target.value); setDatePreset(null); }} />
-                </div>
-                <button className="btn sm primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowDatePicker(false)}>Apply</button>
-              </div>
-            </div>
-          </>
-        )}
+        <DateRangeDropdown
+          datePreset={datePreset}
+          customRange={customRange}
+          onApply={(p, r) => { setDatePreset(p); setCustomRange(r); }}
+        />
         <span className="chip" style={{ position: 'relative' }}>
           <Icon name="users" /> {genderFilter === 'All' ? 'All genders' : genderFilter} <Icon name="chevron_down" />
           <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
@@ -2076,11 +2047,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <option>Mens Weight Loss</option>
           </select>
         </span>
-        {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== 30) && (
+        {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== '30d') && (
           <span
             className="chip ghost"
             style={{ cursor: 'pointer', color: 'var(--muted)' }}
-            onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); applyPreset(30); }}
+            onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); setDatePreset('30d'); setCustomRange([null, null]); }}
             title="Reset all filters"
           >
             <Icon name="x" /> Clear
