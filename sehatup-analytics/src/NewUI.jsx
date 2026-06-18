@@ -436,7 +436,8 @@ function normalizeShippingRate(r) {
   return null;
 }
 function useProductShipping() {
-  const [cfg, setCfg] = useState({ defaultRate: null, rates: {} });
+  // enabled defaults to false — product-based auto-shipping is opt-in.
+  const [cfg, setCfg] = useState({ enabled: false, defaultRate: null, rates: {} });
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'app_settings', 'product_shipping'), (snap) => {
       if (snap.exists()) {
@@ -447,21 +448,26 @@ function useProductShipping() {
         const src = (data.rates && typeof data.rates === 'object') ? data.rates
           : (data.prices && typeof data.prices === 'object') ? data.prices : {};
         Object.entries(src).forEach(([k, v]) => { const n = normalizeShippingRate(v); if (n) rates[k] = n; });
-        setCfg({ defaultRate, rates });
+        setCfg({ enabled: data.enabled === true, defaultRate, rates });
       }
     }, () => { /* keep defaults on error */ });
     return unsub;
   }, []);
   return cfg;
 }
-// Resolve the shipping rate for a cart. Rates are keyed by variant id. A single distinct
-// variant with its own configured rate uses that; any mix (or unconfigured variant) falls
-// back to the global default rate, then a Rs. 150 placeholder. Returns a { title, price }.
+// Resolve the shipping rate for a cart. Rates are keyed by variant id; an unconfigured
+// variant uses the global default. With multiple products we charge the HIGHEST rate among
+// them (e.g. one at Rs. 150 + one at Rs. 200 → Rs. 200). Returns a { title, price }.
 function resolveDefaultShipping(cfg, items) {
+  const def = cfg?.defaultRate || { title: 'Shipping', price: DEFAULT_PRODUCT_SHIPPING };
   const ids = Array.from(new Set((items || []).map(it => String(it.variantId || '')).filter(Boolean)));
-  if (ids.length === 1 && cfg?.rates && cfg.rates[ids[0]]) return cfg.rates[ids[0]];
-  if (cfg?.defaultRate) return cfg.defaultRate;
-  return { title: 'Shipping', price: DEFAULT_PRODUCT_SHIPPING };
+  if (ids.length === 0) return def;
+  let best = null;
+  ids.forEach(id => {
+    const r = (cfg?.rates && cfg.rates[id]) ? cfg.rates[id] : def;
+    if (!best || (Number(r.price) || 0) > (Number(best.price) || 0)) best = r;
+  });
+  return best || def;
 }
 
 // --- data.js ---
@@ -1739,23 +1745,17 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const [manualData, setManualData] = useState([]);
 
   // Filter states — now use explicit from/to dates so custom ranges work
-  const todayISO = () => new Date().toISOString().slice(0, 10);
-  const daysAgoISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
-  // Compact label for the date chip, e.g. "1 May" (keeps custom ranges short)
-  const fmtShort = (iso) => { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
-  const [dateFrom, setDateFrom] = useState(daysAgoISO(30));
-  const [dateTo, setDateTo] = useState(todayISO());
-  const [datePreset, setDatePreset] = useState(30); // null when custom
+  // Date range — same control as the doctor queue (DateRangeDropdown). datePreset is a
+  // DATE_PRESETS value ('today' | '7d' | '30d' | 'custom' | …); customRange is [start, end].
+  const [datePreset, setDatePreset] = useState('30d');
+  const [customRange, setCustomRange] = useState([null, null]);
   const [genderFilter, setGenderFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const applyPreset = (days) => {
-    setDatePreset(days);
-    setDateFrom(daysAgoISO(days));
-    setDateTo(todayISO());
-    setShowDatePicker(false);
-  };
+  // Resolve to ISO yyyy-mm-dd strings the filters / labels below consume ('all' → wide range).
+  const [_rangeStart, _rangeEnd] = resolveDateRange(datePreset, customRange);
+  const toISO = (d) => d.toISOString().slice(0, 10);
+  const dateFrom = toISO(_rangeStart || new Date('2000-01-01'));
+  const dateTo = toISO(_rangeEnd || new Date());
 
   useEffect(() => {
     const unsub1 = onSnapshot(query(collection(db, "partial_submissions"), orderBy("timestamp", "desc")), snap => {
@@ -1792,6 +1792,45 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       manual: manualData.filter(filterItem)
     };
   }, [partialData, completedData, manualData, dateFrom, dateTo, genderFilter, categoryFilter]);
+
+  // ── Conversation (WhatsApp) analytics — scoped to the dashboard's date range ──
+  // Leads   = distinct conversations that received an incoming message in the range.
+  // Responded = of those, the ones an agent replied to (outbound AGENT message in range).
+  // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
+  // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
+  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, opened: 0, loading: true, error: null });
+  useEffect(() => {
+    let cancelled = false;
+    const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+    const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+    const fromMs = from.getTime(), toMs = to.getTime();
+    setConvoStats(s => ({ ...s, loading: true, error: null }));
+    (async () => {
+      try {
+        const snap = await getDocs(query(collectionGroup(db, 'messages'), where('msgTime', '>=', fromMs), where('msgTime', '<=', toMs)));
+        const inbound = new Set();       // conversations that received a customer message
+        const agentReplied = new Set();  // conversations an agent replied to
+        snap.forEach(d => {
+          const convId = d.ref.parent.parent?.id;
+          if (!convId) return;
+          const m = d.data();
+          if (m.direction === 'out') { if (m.messageBy === 'AGENT') agentReplied.add(convId); }
+          else inbound.add(convId);
+        });
+        let responded = 0;
+        inbound.forEach(id => { if (agentReplied.has(id)) responded += 1; });
+        let opened = 0;
+        try {
+          const oSnap = await getDocs(query(collection(db, 'conversations'), where('lastReadAt', '>=', fromMs), where('lastReadAt', '<=', toMs)));
+          opened = oSnap.size;
+        } catch { /* lastReadAt not yet populated */ }
+        if (!cancelled) setConvoStats({ leads: inbound.size, responded, opened, loading: false, error: null });
+      } catch (e) {
+        if (!cancelled) setConvoStats({ leads: 0, responded: 0, opened: 0, loading: false, error: e?.message || 'Failed to load conversation stats' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [dateFrom, dateTo]);
 
   const analytics = useMemoCx(() => computeAnalytics(filtered.partial, filtered.completed, filtered.manual), [filtered]);
 
@@ -1981,34 +2020,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
 
       {/* Dedicated filter row — kept on its own line so chips never wrap awkwardly next to the title */}
       <div className="filterbar" style={{ marginBottom: 8, position: 'relative' }}>
-        <span className="chip" style={{ cursor: 'pointer' }} onClick={() => setShowDatePicker(v => !v)}>
-          <Icon name="calendar" /> {datePreset ? `Last ${datePreset} days` : `${fmtShort(dateFrom)} – ${fmtShort(dateTo)}`} <Icon name="chevron_down" />
-        </span>
-        {showDatePicker && (
-          <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowDatePicker(false)} />
-            <div className="card shadow-lg" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, padding: 12, width: 290, zIndex: 100 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Presets</div>
-              <div className="hstack-6" style={{ flexWrap: 'wrap', marginBottom: 14 }}>
-                {[7, 30, 90, 180, 365].map(d => (
-                  <button key={d} className={`btn sm ${datePreset === d ? 'primary' : 'ghost'}`} onClick={() => applyPreset(d)}>Last {d}d</button>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Custom range</div>
-              <div className="stack-8">
-                <div className="field">
-                  <label className="lbl" style={{ fontSize: 11 }}>From</label>
-                  <input type="date" className="input sm" value={dateFrom} max={dateTo} onChange={e => { setDateFrom(e.target.value); setDatePreset(null); }} />
-                </div>
-                <div className="field">
-                  <label className="lbl" style={{ fontSize: 11 }}>To</label>
-                  <input type="date" className="input sm" value={dateTo} min={dateFrom} max={todayISO()} onChange={e => { setDateTo(e.target.value); setDatePreset(null); }} />
-                </div>
-                <button className="btn sm primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowDatePicker(false)}>Apply</button>
-              </div>
-            </div>
-          </>
-        )}
+        <DateRangeDropdown
+          datePreset={datePreset}
+          customRange={customRange}
+          onApply={(p, r) => { setDatePreset(p); setCustomRange(r); }}
+        />
         <span className="chip" style={{ position: 'relative' }}>
           <Icon name="users" /> {genderFilter === 'All' ? 'All genders' : genderFilter} <Icon name="chevron_down" />
           <select style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
@@ -2031,11 +2047,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <option>Mens Weight Loss</option>
           </select>
         </span>
-        {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== 30) && (
+        {(genderFilter !== 'All' || categoryFilter !== 'All' || datePreset !== '30d') && (
           <span
             className="chip ghost"
             style={{ cursor: 'pointer', color: 'var(--muted)' }}
-            onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); applyPreset(30); }}
+            onClick={() => { setGenderFilter('All'); setCategoryFilter('All'); setDatePreset('30d'); setCustomRange([null, null]); }}
             title="Reset all filters"
           >
             <Icon name="x" /> Clear
@@ -2044,6 +2060,22 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       </div>
 
       {kpis}
+
+      {/* Conversation analytics — reflects the date range selected above */}
+      <div className="card" style={{ padding: "14px 16px" }}>
+        <div className="hstack-8" style={{ marginBottom: 12 }}>
+          <div className="section-title" style={{ margin: 0 }}>Conversations</div>
+          <span className="muted" style={{ fontSize: 12 }}>
+            {convoStats.loading ? "Loading…" : convoStats.error ? convoStats.error : "WhatsApp chats in the selected period"}
+          </span>
+        </div>
+        <div className="grid-12">
+          <div className="span-3"><KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" /></div>
+          <div className="span-3"><KPI label="Responded" value={convoStats.loading ? "…" : convoStats.responded.toLocaleString()} icon="check" /></div>
+          <div className="span-3"><KPI label="Response rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.responded / convoStats.leads) * 100) : 0)} suffix="%" icon="target" /></div>
+          <div className="span-3"><KPI label="Opened" value={convoStats.loading ? "…" : convoStats.opened.toLocaleString()} icon="eye" /></div>
+        </div>
+      </div>
 
       {layout === "analytics" ? (
         <>
@@ -2920,13 +2952,12 @@ function CustomersList({ openCustomer, openSubmission }) {
     <div className="col fade-in">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Customers</h1>
+          <h1 className="page-title">Shopify customers</h1>
           <p className="page-sub">{loading ? "Syncing..." : `${totalCount !== null ? totalCount.toLocaleString() : customers.length.toLocaleString()} profiles`} · synced from Shopify</p>
         </div>
         <div className="page-head-actions">
           <button className="btn"><Icon name="upload" /> Import</button>
           <button className="btn"><Icon name="download" /> Export</button>
-          <button className="btn primary"><Icon name="plus" /> New customer</button>
         </div>
       </div>
 
@@ -6323,22 +6354,29 @@ function OrderCreate({ context = {}, setRoute }) {
     setShippingFirstName(custFirstName);
   }, [custFirstName]);
 
-  // Default shipping = the Shopify rate configured per product in Settings (global default
-  // otherwise). Applies to BOTH COD and Prepaid. We match the configured rate against the
-  // live Shopify rates by title+price (falling back to price) and select it automatically.
-  // We stop once the user touches shipping so we never overwrite a manual choice.
+  // Shipping is auto-selected only AFTER the user picks a payment method — never on product
+  // add. When product-based shipping is on, we apply the configured rate (highest among the
+  // products); otherwise we pick the rate matching the payment type (COD → COD rate, Prepaid
+  // → Prepaid rate). We stop once the user manually touches shipping.
   const productDefaultShipping = resolveDefaultShipping(productShippingCfg, items);
   const productDefaultShippingPrice = Number(productDefaultShipping?.price) || 0;
   const productDefaultShippingTitle = productDefaultShipping?.title || 'Shipping';
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (shippingTouched) return;
-    const tprice = Math.round(productDefaultShippingPrice);
-    const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
-      || shippingRates.find(r => Math.round(r.price) === tprice);
-    setUseCustomShipping(false);
-    setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
-  }, [productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
+    if (!pay || shippingTouched || shippingRates.length === 0) return; // wait for a payment choice
+    if (productShippingCfg.enabled) {
+      const tprice = Math.round(productDefaultShippingPrice);
+      const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
+        || shippingRates.find(r => Math.round(r.price) === tprice);
+      setUseCustomShipping(false);
+      setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
+    } else {
+      const codRates = shippingRates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
+      const prepaidRate = shippingRates.find(r => /prepaid/i.test(r.title));
+      setUseCustomShipping(false);
+      setSelectedShipping(pay === 'COD' ? (codRates[0] || null) : (prepaidRate || null));
+    }
+  }, [pay, productShippingCfg.enabled, productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -7571,75 +7609,72 @@ function OrderCreate({ context = {}, setRoute }) {
             <div className="section-title" style={{ marginBottom: 10 }}>Payment *</div>
             <div className="stack-8">
               {["Prepaid", "COD"].map(p => (
-                <div key={p} className="stack-8">
-                  <label className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
-                    <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
-                    <div className="stack-2">
-                      <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
-                    </div>
-                    <span className="spacer" />
-                    <Icon name={pay === p ? "chevron_up" : "chevron_down"} size={16} className="muted" />
-                  </label>
-                  {pay === p && (
-                    <div className="fade-in" style={{ padding: "12px", background: "var(--surface-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                      <div className="hstack-8" style={{ marginBottom: 8 }}>
-                        <div className="fw6" style={{ fontSize: 13 }}>Shipping</div>
-                        <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>
-                      </div>
-                      {isLoadingShipping ? (
-                        <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
-                      ) : (
-                        <div className="stack-6">
-                          {!useCustomShipping && shippingRates
-                            .map((rate, i) => {
-                              const isSel = selectedShipping?.id === rate.id;
-                              return (
-                                <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                                  <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(rate); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
-                                  <span style={{ fontSize: 13 }}>{rate.title}</span>
-                                  <span className="spacer" />
-                                  <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
-                                </label>
-                              );
-                            })}
-
-                          {/* Rs. 0 shipping (e.g. customer settles part separately) */}
-                          {!useCustomShipping && (() => {
-                            const isSel = selectedShipping?.id === 'cod-free';
-                            return (
-                              <label className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                                <input
-                                  type="radio"
-                                  name="shippingRate"
-                                  checked={isSel}
-                                  onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'No shipping', price: 0, code: 'NO_SHIPPING' }); setUseCustomShipping(false); setShippingTouched(true); }}
-                                  style={{ accentColor: "var(--accent)" }}
-                                />
-                                <span style={{ fontSize: 13 }}>No shipping (Rs. 0)</span>
-                                <span className="spacer" />
-                                <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
-                              </label>
-                            );
-                          })()}
-
-                          {useCustomShipping ? (
-                            <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
-                              <div className="hstack-8">
-                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => { setCustomShippingTitle(e.target.value); setShippingTouched(true); }} placeholder="Shipping" /></div>
-                                <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => { setCustomShippingPrice(e.target.value); setShippingTouched(true); }} placeholder="150" /></div>
-                              </div>
-                              <button className="btn sm ghost" onClick={() => { setUseCustomShipping(false); setShippingTouched(true); }}>Use a Shopify rate instead</button>
-                            </div>
-                          ) : (
-                            <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setShippingTouched(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <label key={p} className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
+                  <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
+                  <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
+                </label>
               ))}
             </div>
+          </div>
+
+          {/* Shipping — always visible (independent of the payment choice) so the
+              auto-applied / chosen rate is shown even before a payment method is ticked. */}
+          <div className="card">
+            <div className="hstack-8" style={{ marginBottom: 10 }}>
+              <div className="section-title" style={{ margin: 0 }}>Shipping</div>
+              {productShippingCfg.enabled && <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>}
+              <span className="spacer" />
+              <span className="num fw6" style={{ fontSize: 13 }}>{shipping ? `Rs. ${shipping}` : 'Free'}</span>
+            </div>
+            {isLoadingShipping ? (
+              <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
+            ) : (
+              <div className="stack-6">
+                {!useCustomShipping && shippingRates
+                  .map((rate, i) => {
+                    const isSel = selectedShipping?.id === rate.id;
+                    return (
+                      <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                        <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(rate); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
+                        <span style={{ fontSize: 13 }}>{rate.title}</span>
+                        <span className="spacer" />
+                        <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
+                      </label>
+                    );
+                  })}
+
+                {/* Rs. 0 shipping (e.g. customer settles part separately) */}
+                {!useCustomShipping && (() => {
+                  const isSel = selectedShipping?.id === 'cod-free';
+                  return (
+                    <label className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                      <input
+                        type="radio"
+                        name="shippingRate"
+                        checked={isSel}
+                        onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'No shipping', price: 0, code: 'NO_SHIPPING' }); setUseCustomShipping(false); setShippingTouched(true); }}
+                        style={{ accentColor: "var(--accent)" }}
+                      />
+                      <span style={{ fontSize: 13 }}>No shipping (Rs. 0)</span>
+                      <span className="spacer" />
+                      <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
+                    </label>
+                  );
+                })()}
+
+                {useCustomShipping ? (
+                  <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
+                    <div className="hstack-8">
+                      <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => { setCustomShippingTitle(e.target.value); setShippingTouched(true); }} placeholder="Shipping" /></div>
+                      <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => { setCustomShippingPrice(e.target.value); setShippingTouched(true); }} placeholder="150" /></div>
+                    </div>
+                    <button className="btn sm ghost" onClick={() => { setUseCustomShipping(false); setShippingTouched(true); }}>Use a Shopify rate instead</button>
+                  </div>
+                ) : (
+                  <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setShippingTouched(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="card">
@@ -8157,7 +8192,7 @@ function OrdersHistory({ setRoute, openCustomer }) {
       </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 360px)" }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 220px)", minHeight: 460 }}>
           <table className="tbl" style={{ minWidth: 1080 }}>
             <thead>
               <tr>
@@ -10910,6 +10945,7 @@ function ProductShippingPane() {
   const [ratesError, setRatesError] = useStateM(null);
   const [defaultKey, setDefaultKey] = useStateM(""); // rateKey of the global default
   const [prodKeys, setProdKeys] = useStateM({});     // { [productId]: rateKey } overrides only
+  const [enabled, setEnabled] = useStateM(false);    // feature on/off (off by default)
   const [saving, setSaving] = useStateM(false);
   const [savedAt, setSavedAt] = useStateM(null);
 
@@ -10973,11 +11009,12 @@ function ProductShippingPane() {
 
   // Seed selections from the saved config.
   useEffect(() => {
+    setEnabled(cfg.enabled === true);
     setDefaultKey(cfg.defaultRate ? rateKey(cfg.defaultRate) : "");
     const seeded = {};
     Object.entries(cfg.rates || {}).forEach(([k, v]) => { seeded[k] = rateKey(v); });
     setProdKeys(seeded);
-  }, [cfg.defaultRate, cfg.rates]);
+  }, [cfg.enabled, cfg.defaultRate, cfg.rates]);
 
   // All selectable rates = live Shopify rates ∪ any saved rate no longer present (kept so a
   // previously-chosen rate stays visible/selectable).
@@ -11071,6 +11108,7 @@ function ProductShippingPane() {
         if (r && k && k !== defaultKey) ratesOut[pid] = { title: r.title, price: Number(r.price) || 0 };
       });
       await setDoc(doc(db, 'app_settings', 'product_shipping'), {
+        enabled: !!enabled,
         defaultRate: defaultRate ? { title: defaultRate.title, price: Number(defaultRate.price) || 0 } : null,
         rates: ratesOut,
         updatedAt: serverTimestamp(),
@@ -11091,7 +11129,23 @@ function ProductShippingPane() {
   return (
     <>
       <div className="card">
+        <div className="hstack-12" style={{ alignItems: "center" }}>
+          <div className="stack-2" style={{ flex: 1 }}>
+            <div className="section-title" style={{ margin: 0 }}>Product-based shipping</div>
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              When on, new orders auto-fill shipping from the rates set below. When off (default), shipping is chosen manually on each order.
+            </span>
+          </div>
+          <Badge tone={enabled ? "low" : undefined} dot={enabled ? "var(--risk-low)" : undefined}>{enabled ? "Enabled" : "Disabled"}</Badge>
+          <Toggle on={enabled} onToggle={() => setEnabled(v => !v)} />
+          <button className="btn primary" onClick={handleSave} disabled={saving || ratesLoading}>{saving ? 'Saving…' : 'Save'}</button>
+          {savedAt && <span style={{ fontSize: 12, color: 'var(--risk-low)' }}>✓ Saved {savedAt.toLocaleTimeString('en-IN')}</span>}
+        </div>
+      </div>
+
+      <div className="card">
         <div className="section-title">Default shipping rate</div>
+        {!enabled && <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>Feature is off — these rates won't apply until you enable it above.</div>}
         <p className="muted" style={{ fontSize: 12.5, marginTop: 4, marginBottom: 14 }}>
           Pick from your live Shopify delivery rates. Used for every order unless a product below has its own rate. New orders auto-select this rate (you can still change it on the order).
         </p>
@@ -11198,19 +11252,83 @@ function ProductShippingPane() {
   );
 }
 
+// Downscale an image File to a square-ish base64 JPEG data URL (a small "blob") so it fits
+// comfortably under Firestore's 1 MB document limit and renders directly via <img>.
+function fileToCompressedDataURL(file, maxSize = 256, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Invalid image'));
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function ProfilePane({ me }) {
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useStateM(false);
+  const [status, setStatus] = useStateM(null); // { ok, msg }
+  const photo = me?.photoURL || null;
+
+  const onPick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setStatus({ ok: false, msg: 'Please choose an image file.' }); return; }
+    if (!me?.uid) { setStatus({ ok: false, msg: 'No signed-in user.' }); return; }
+    setBusy(true); setStatus(null);
+    try {
+      const dataUrl = await fileToCompressedDataURL(file);
+      // Firestore documents max out at ~1 MB; guard against very large images.
+      if (dataUrl.length > 900000) throw new Error('Image is too large after compression — try a smaller one.');
+      await setDoc(doc(db, 'users', me.uid), { photoURL: dataUrl, photoUpdatedAt: serverTimestamp() }, { merge: true });
+      setStatus({ ok: true, msg: 'Photo updated.' });
+    } catch (err) {
+      setStatus({ ok: false, msg: err.message || 'Upload failed.' });
+    } finally { setBusy(false); }
+  };
+
+  const onRemove = async () => {
+    if (!me?.uid || !photo) return;
+    setBusy(true); setStatus(null);
+    try {
+      await setDoc(doc(db, 'users', me.uid), { photoURL: null, photoUpdatedAt: serverTimestamp() }, { merge: true });
+      setStatus({ ok: true, msg: 'Photo removed.' });
+    } catch (err) {
+      setStatus({ ok: false, msg: err.message || 'Remove failed.' });
+    } finally { setBusy(false); }
+  };
+
   return (
     <>
       <div className="card">
         <div className="hstack-12">
-          <div className="avatar lg" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{me?.initials || "U"}</div>
+          <div className="avatar lg" style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", overflow: "hidden", padding: 0 }}>
+            {photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (me?.initials || "U")}
+          </div>
           <div className="stack-2">
             <div className="fw6" style={{ fontSize: 16 }}>{me?.name || "User"}</div>
             <div className="muted" style={{ fontSize: 13 }}>{me?.email || "user@sehatup.in"}</div>
           </div>
           <span className="spacer" />
-          <button className="btn">Upload photo</button>
-          <button className="btn ghost">Remove</button>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPick} />
+          <button className="btn" onClick={() => fileRef.current?.click()} disabled={busy}>
+            {busy ? 'Uploading…' : (photo ? 'Change photo' : 'Upload photo')}
+          </button>
+          <button className="btn ghost" onClick={onRemove} disabled={busy || !photo}>Remove</button>
+          {status && <span style={{ fontSize: 12, color: status.ok ? 'var(--risk-low)' : 'var(--risk-critical)' }}>{status.ok ? '✓ ' : ''}{status.msg}</span>}
         </div>
         <div className="divider" style={{ margin: "20px 0" }} />
         <div className="grid-12">
@@ -11920,7 +12038,7 @@ const NAV = {
 const ITEMS = {
   home: { label: "Analytics Dashboard", icon: "pulse", route: "home" },
   submissions: { label: "Submissions", icon: "clipboard", route: "submissions", ct: "3.4k" },
-  customers: { label: "Customers", icon: "users", route: "customers", ct: "30" },
+  customers: { label: "Shopify customers", icon: "users", route: "customers", ct: "30" },
   conversations: { label: "Conversations", icon: "message", route: "conversations" },
   prescriptions: { label: "Prescriptions", icon: "pill", route: "prescriptions" },
   doctor: { label: "Clinical review", icon: "stethoscope", route: "doctor", ct: "12" },
@@ -12290,6 +12408,17 @@ function App({ user, roles, onLogout }) {
     return unsub;
   }, [user?.uid]);
 
+  // Live profile photo (stored as a base64 blob on users/{uid}.photoURL) so it shows in the
+  // top-bar avatar and the Profile pane and updates instantly after an upload.
+  const [myPhoto, setMyPhoto] = useState(null);
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = onSnapshot(doc(db, 'users', user.uid), snap => {
+      setMyPhoto(snap.exists() ? (snap.data().photoURL || null) : null);
+    }, () => setMyPhoto(null));
+    return unsub;
+  }, [user?.uid]);
+
   const isAdmin = roles?.includes('admin');
   const permCtxValue = {
     permissions,
@@ -12312,6 +12441,7 @@ function App({ user, roles, onLogout }) {
     initials: (user?.displayName || user?.email?.split("@")[0] || "U").substring(0, 2).toUpperCase(),
     email: user?.email,
     uid: user?.uid,
+    photoURL: myPhoto,
     role: role
   };
   window.SehatData.me = me;
@@ -12437,10 +12567,12 @@ function App({ user, roles, onLogout }) {
               <div style={{ position: "relative" }}>
                 <div
                   className="avatar clickable"
-                  style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer", border: "1px solid var(--accent)" }}
+                  style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", cursor: "pointer", border: "1px solid var(--accent)", overflow: "hidden", padding: 0 }}
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                 >
-                  {me.initials}
+                  {me.photoURL
+                    ? <img src={me.photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : me.initials}
                 </div>
                 {showProfileMenu && (
                   <>
@@ -12506,7 +12638,7 @@ function Breadcrumb({ route, role }) {
   const labels = {
     home: "Analytics Dashboard",
     submissions: "Submissions",
-    customers: "Customers",
+    customers: "Shopify customers",
     conversations: "Conversations",
     doctor: "Clinical review",
     orders: "Shopify orders",
@@ -12793,7 +12925,8 @@ function ConversationsScreen({ me }) {
     if (!selectedId) { setMessages([]); return; }
     const qy = query(collection(db, 'conversations', selectedId, 'messages'), orderBy('msgTime', 'asc'), limit(300));
     const unsub = onSnapshot(qy, snap => setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    updateDoc(doc(db, 'conversations', selectedId), { unreadCount: 0 }).catch(() => {});
+    // Clear unread + record when this chat was read (powers the dashboard "Opened" metric).
+    updateDoc(doc(db, 'conversations', selectedId), { unreadCount: 0, lastReadAt: Date.now() }).catch(() => {});
     return unsub;
   }, [selectedId]);
 
