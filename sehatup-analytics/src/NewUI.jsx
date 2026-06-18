@@ -1798,7 +1798,23 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Responded = of those, the ones an agent replied to (outbound AGENT message in range).
   // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
   // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
-  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, opened: 0, loading: true, error: null });
+  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, opened: 0, leadIds: [], loading: true, error: null });
+  // Leads-list modal: resolves the lead conversation ids to names/phones on demand.
+  const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null });
+  const openLeadsModal = async () => {
+    setLeadsModal({ open: true, loading: true, items: [], error: null });
+    try {
+      const ids = (convoStats.leadIds || []).slice(0, 500);
+      const snaps = await Promise.all(ids.map(id => getDoc(doc(db, 'conversations', id)).catch(() => null)));
+      const items = snaps
+        .filter(s => s && s.exists())
+        .map(s => { const d = s.data(); return { id: s.id, name: d.name || d.phone || s.id, phone: d.phone || '', at: d.lastMessageAt || 0 }; })
+        .sort((a, b) => (b.at || 0) - (a.at || 0));
+      setLeadsModal({ open: true, loading: false, items, error: null });
+    } catch (e) {
+      setLeadsModal({ open: true, loading: false, items: [], error: e?.message || 'Failed to load leads' });
+    }
+  };
   useEffect(() => {
     let cancelled = false;
     const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
@@ -1824,9 +1840,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           const oSnap = await getDocs(query(collection(db, 'conversations'), where('lastReadAt', '>=', fromMs), where('lastReadAt', '<=', toMs)));
           opened = oSnap.size;
         } catch { /* lastReadAt not yet populated */ }
-        if (!cancelled) setConvoStats({ leads: inbound.size, responded, opened, loading: false, error: null });
+        // leadIds = the DISTINCT conversations (not messages) that received a customer
+        // message in range — used to list the actual lead names on click.
+        if (!cancelled) setConvoStats({ leads: inbound.size, responded, opened, leadIds: Array.from(inbound), loading: false, error: null });
       } catch (e) {
-        if (!cancelled) setConvoStats({ leads: 0, responded: 0, opened: 0, loading: false, error: e?.message || 'Failed to load conversation stats' });
+        if (!cancelled) setConvoStats({ leads: 0, responded: 0, opened: 0, leadIds: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
       }
     })();
     return () => { cancelled = true; };
@@ -2023,6 +2041,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
         <DateRangeDropdown
           datePreset={datePreset}
           customRange={customRange}
+          align="left"
           onApply={(p, r) => { setDatePreset(p); setCustomRange(r); }}
         />
         <span className="chip" style={{ position: 'relative' }}>
@@ -2065,17 +2084,56 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       <div className="card" style={{ padding: "14px 16px" }}>
         <div className="hstack-8" style={{ marginBottom: 12 }}>
           <div className="section-title" style={{ margin: 0 }}>Conversations</div>
+          <Badge tone="moderate" dot="var(--risk-moderate)" style={{ fontSize: 10.5 }}>Developing · numbers may be approximate</Badge>
+          <span className="spacer" />
           <span className="muted" style={{ fontSize: 12 }}>
-            {convoStats.loading ? "Loading…" : convoStats.error ? convoStats.error : "WhatsApp chats in the selected period"}
+            {convoStats.loading ? "Loading…" : convoStats.error ? convoStats.error : `Chats from ${dateFrom} to ${dateTo}`}
           </span>
         </div>
         <div className="grid-12">
-          <div className="span-3"><KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" /></div>
+          <div className="span-3" onClick={() => !convoStats.loading && convoStats.leads > 0 && openLeadsModal()} style={{ cursor: (!convoStats.loading && convoStats.leads > 0) ? "pointer" : "default" }} title="Click to see the lead names">
+            <KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" />
+          </div>
           <div className="span-3"><KPI label="Responded" value={convoStats.loading ? "…" : convoStats.responded.toLocaleString()} icon="check" /></div>
           <div className="span-3"><KPI label="Response rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.responded / convoStats.leads) * 100) : 0)} suffix="%" icon="target" /></div>
           <div className="span-3"><KPI label="Opened" value={convoStats.loading ? "…" : convoStats.opened.toLocaleString()} icon="eye" /></div>
         </div>
       </div>
+
+      {/* Leads list modal — names of the distinct lead conversations in the selected range */}
+      {leadsModal.open && createPortal(
+        <div className="theme-light fade-in" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg)' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={() => setLeadsModal(m => ({ ...m, open: false }))} />
+          <div style={{ position: 'relative', width: 'min(520px, 94vw)', maxHeight: '82vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.2)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="hstack-10" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div className="stack-2">
+                <div className="fw6">Leads · {leadsModal.items.length}</div>
+                <span className="muted" style={{ fontSize: 11.5 }}>Chats received {dateFrom} to {dateTo}</span>
+              </div>
+              <span className="spacer" />
+              <button className="btn sm ghost icon" onClick={() => setLeadsModal(m => ({ ...m, open: false }))}><Icon name="x" /></button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: 8 }}>
+              {leadsModal.loading ? (
+                <div className="muted" style={{ padding: 16, fontSize: 13 }}>Loading lead names…</div>
+              ) : leadsModal.error ? (
+                <div style={{ padding: 16, fontSize: 13, color: 'var(--risk-critical)' }}>{leadsModal.error}</div>
+              ) : leadsModal.items.length === 0 ? (
+                <div className="muted" style={{ padding: 16, fontSize: 13 }}>No leads in this period.</div>
+              ) : leadsModal.items.map((it, i) => (
+                <div key={it.id} className="hstack-8" style={{ padding: '8px 12px', borderBottom: i < leadsModal.items.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
+                  <span className="muted num" style={{ width: 24, fontSize: 11 }}>{i + 1}</span>
+                  <div className="stack-2" style={{ flex: 1 }}>
+                    <span className="fw5">{it.name}</span>
+                    {it.phone && <span className="muted num" style={{ fontSize: 11.5 }}>{it.phone}</span>}
+                  </div>
+                  {it.at ? <span className="muted num" style={{ fontSize: 11 }}>{new Date(it.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>, document.querySelector('.app') || document.body
+      )}
 
       {layout === "analytics" ? (
         <>
@@ -3678,7 +3736,7 @@ function popupPlacement(el, popupW = 580, popupH = 400, alignOverride = null) {
 
 // Date-range filter chip: opens a popup with preset shortcuts + a two-month range
 // calendar (Apply/Cancel). Auto-flips above/below and left/right to fit the screen.
-function DateRangeDropdown({ datePreset, customRange, onApply }) {
+function DateRangeDropdown({ datePreset, customRange, onApply, align = 'right' }) {
   const [open, setOpen] = useState(false);
   const [tmpPreset, setTmpPreset] = useState(datePreset);
   const [tmp, setTmp] = useState([null, null]);
@@ -3711,7 +3769,7 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
     setTmpPreset(datePreset);
     setReady(false);
     const isCustom = datePreset === 'custom';
-    setPlace({ openUp: false, alignRight: true, offset: estimateOffset(isCustom ? 660 : 200) });
+    setPlace({ openUp: false, alignRight: align !== 'left', offset: align === 'left' ? 0 : estimateOffset(isCustom ? 660 : 200) });
     setOpen(true);
   };
 
@@ -3764,8 +3822,8 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
       
       setPlace({
         openUp: initialPlacement.openUp,
-        alignRight: true,
-        offset: Math.max(0, offset)
+        alignRight: align !== 'left',
+        offset: align === 'left' ? 0 : Math.max(0, offset)
       });
       setReady(true);
     };
@@ -3773,7 +3831,7 @@ function DateRangeDropdown({ datePreset, customRange, onApply }) {
     adjustPosition();
     const id = setTimeout(adjustPosition, 40);
     return () => clearTimeout(id);
-  }, [open, tmpPreset]);
+  }, [open, tmpPreset, align]);
 
   const apply = () => {
     if (tmpPreset === 'custom') { if (!tmp[0] || !tmp[1]) return; onApply('custom', tmp); }
