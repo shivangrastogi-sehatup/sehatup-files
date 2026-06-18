@@ -2404,8 +2404,11 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
             msgTime,
             createdAt: FieldValue.serverTimestamp(),
           }, { merge: true });
-          // Surface on the conversation list; outbound, so do NOT bump unread.
+          // Surface on the conversation list; outbound, so do NOT bump unread. Persist the
+          // phone (and name if QuickReply included it) so bot-first chats aren't identity-less.
           await convRef.set({
+            phone: b.phone,
+            ...(b.name ? { name: b.name } : {}),
             lastMessage: isAgent ? "👤 Agent replied" : "🤖 Bot replied",
             lastMessageAt: msgTime,
             lastMessageBy: b.messageBy,
@@ -2538,5 +2541,69 @@ exports.qrSendMessage = onCall({ region: "us-central1" }, async (request) => {
   }, { merge: true });
 
   return { success: true, id: msgId, state: data.state || "SENT" };
+});
+
+// ── QuickReply External CRM Integration ──────────────────────────────────────
+// QuickReply pushes contact create/fetch/update events here in near-real-time, so a
+// contact's curated name (e.g. an agent renames "sharmarinkey697" → "Rinkey Sharma", or
+// names a previously-unnamed number) stays in sync with our `conversations`. The message
+// webhook only ever sends the name as it was AT message time, so this sync is the only way
+// to receive later edits. lead_id we return is the conversation id (phone digits).
+// Configure with QuickReply support (help@quickreply.ai):
+//   Create:  POST <fnUrl>/create
+//   Fetch:   POST <fnUrl>/fetch        (GET with query also works)
+//   Update:  POST <fnUrl>/update/<lead_id>
+//   Header:  Auth-Key: <QUICKREPLY_CRM_AUTH_KEY>
+exports.qrCrm = onRequest({ region: "us-central1" }, async (req, res) => {
+  try {
+    const expected = process.env.QUICKREPLY_CRM_AUTH_KEY;
+    const provided = req.get("Auth-Key") || (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    if (expected && provided !== expected) return res.status(401).json({ error: "Unauthorized" });
+
+    const db = getFirestore();
+    const body = req.body || {};
+    const q = req.query || {};
+    const segs = String(req.path || "").split("/").filter(Boolean); // e.g. ["create"] or ["update","<id>"]
+    const action = (segs[0] || "").toLowerCase();
+    const phone = body.phone || q.phone || "";
+    const email = body.email || q.email || "";
+    const leadId = body.lead_id || q.lead_id || segs[1] || "";
+    const convIdFromPhone = phone ? qrConvId(phone) : "";
+
+    const upsert = (convId, data) => db.collection("conversations").doc(convId).set({
+      phone: data.phone || phone || "",
+      ...(data.name ? { name: String(data.name) } : {}),
+      ...(data.email ? { email: String(data.email) } : {}),
+      ...(data.custom_fields ? { leadFields: data.custom_fields } : {}),
+      crmSyncedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    if (action === "create") {
+      const convId = convIdFromPhone || leadId;
+      if (!convId) return res.status(400).json({ error: "phone required" });
+      await upsert(convId, body);
+      return res.status(200).json({ lead_id: convId, status: "Successfully Created" });
+    }
+    if (action === "update") {
+      const convId = leadId || convIdFromPhone;
+      if (!convId) return res.status(400).json({ error: "lead_id or phone required" });
+      await upsert(convId, body);
+      return res.status(200).json({ lead_id: convId, status: "Successfully Updated" });
+    }
+    if (action === "fetch") {
+      let snap = null;
+      if (leadId) snap = await db.collection("conversations").doc(leadId).get();
+      else if (convIdFromPhone) snap = await db.collection("conversations").doc(convIdFromPhone).get();
+      else if (email) { const qs = await db.collection("conversations").where("email", "==", email).limit(1).get(); snap = qs.empty ? null : qs.docs[0]; }
+      if (!snap || !snap.exists) return res.status(404).json({ error: "Not found" });
+      const d = snap.data();
+      return res.status(200).json({ lead_id: snap.id, lead_fields: { phone: d.phone || "", name: d.name || "", email: d.email || "", custom_fields: d.leadFields || {} } });
+    }
+    return res.status(404).json({ error: "Unknown action — use /create, /fetch or /update/<lead_id>" });
+  } catch (e) {
+    console.error("[qrCrm] error", e);
+    return res.status(500).json({ error: e.message || "error" });
+  }
 });
 
