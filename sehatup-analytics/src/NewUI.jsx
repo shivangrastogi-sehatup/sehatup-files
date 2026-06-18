@@ -1833,20 +1833,20 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     (async () => {
       try {
         const snap = await getDocs(query(collectionGroup(db, 'messages'), where('msgTime', '>=', fromMs), where('msgTime', '<=', toMs)));
-        const inbound = new Set();    // conversations that received a customer message
+        const all = new Set();        // every conversation active in the range (lead)
         const agentSet = new Set();   // conversations with a human-agent outbound message
         const botSet = new Set();     // conversations with a bot/automation outbound message
         snap.forEach(d => {
           const convId = d.ref.parent.parent?.id;
           if (!convId) return;
-          const m = d.data();
+          all.add(convId);            // any message (in OR out) makes this an active lead —
+          const m = d.data();         // AI-handled chats only give us the bot reply, no inbound
           if (m.direction === 'out') { if (m.messageBy === 'AGENT') agentSet.add(convId); else botSet.add(convId); }
-          else inbound.add(convId);
         });
         // For each lead: if ANY message that day was sent by an agent → counts as agent;
-        // otherwise if only bot/automation replied → counts as bot.
+        // else if a bot/automation replied → bot; else nobody replied → none.
         let byAgent = 0, byBot = 0;
-        inbound.forEach(id => {
+        all.forEach(id => {
           if (agentSet.has(id)) byAgent += 1;
           else if (botSet.has(id)) byBot += 1;
         });
@@ -1859,12 +1859,12 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           opened = oSnap.size;
           oSnap.forEach(d => { if (!agentSet.has(d.id)) openedNoReply += 1; });
         } catch { /* lastReadAt not yet populated */ }
-        // Per-lead status for the names modal: 'agent' = a human agent replied (the real
+        // Per-lead status for the names modal: 'agent' = a human agent replied (real
         // "responded"), 'bot' = only an auto/bot reply, 'none' = no reply at all.
-        const leadDetail = Array.from(inbound).map(id => ({
+        const leadDetail = Array.from(all).map(id => ({
           id, status: agentSet.has(id) ? 'agent' : (botSet.has(id) ? 'bot' : 'none'),
         }));
-        if (!cancelled) setConvoStats({ leads: inbound.size, responded, byAgent, byBot, opened, openedNoReply, leadDetail, loading: false, error: null });
+        if (!cancelled) setConvoStats({ leads: all.size, responded, byAgent, byBot, opened, openedNoReply, leadDetail, loading: false, error: null });
       } catch (e) {
         if (!cancelled) setConvoStats({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadDetail: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
       }
@@ -2115,7 +2115,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <Icon name="refresh" size={13} /> {convoStats.loading ? "Syncing…" : "Refresh"}
           </button>
         </div>
-        <div className="grid-12">
+        <div className="grid-12 convo-kpis">
           <div className="span-3" onClick={() => !convoStats.loading && convoStats.leads > 0 && openLeadsModal()} style={{ cursor: (!convoStats.loading && convoStats.leads > 0) ? "pointer" : "default" }} title="Click to see the lead names & who responded">
             <KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" />
           </div>
@@ -2124,9 +2124,9 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           <div className="span-3">
             <div className="kpi">
               <div className="kpi-hd"><div className="ic"><Icon name="check" size={14} /></div><div className="lbl">Responded</div></div>
-              <div className="hstack-8" style={{ marginTop: 6, gap: 20, alignItems: "baseline" }}>
-                <div><span className="num fw6" style={{ fontSize: 24 }}>{convoStats.loading ? "…" : convoStats.byAgent.toLocaleString()}</span> <span className="muted" style={{ fontSize: 11.5 }}>by agent</span></div>
-                <div><span className="num fw6" style={{ fontSize: 24, color: "var(--muted)" }}>{convoStats.loading ? "…" : convoStats.byBot.toLocaleString()}</span> <span className="muted" style={{ fontSize: 11.5 }}>by bot (auto)</span></div>
+              <div className="kpi-val" style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+                <span>{convoStats.loading ? "…" : convoStats.byAgent.toLocaleString()}<span style={{ color: "var(--muted)", fontSize: 12, fontWeight: 500, marginLeft: 4 }}>agent</span></span>
+                <span style={{ color: "var(--muted)" }}>{convoStats.loading ? "…" : convoStats.byBot.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 500, marginLeft: 4 }}>bot</span></span>
               </div>
               <div className="kpi-ft"><span>vs. last 30d</span></div>
             </div>
