@@ -594,6 +594,10 @@ input, select, textarea { font: inherit; color: inherit; }
 .tbl th.th-sort.active { color: var(--fg); }
 .tbl th.th-sort.active .sort-ind { opacity: 1; color: var(--accent); }
 
+/* Conversation KPI cards: force every card to the same (tallest) height. */
+.convo-kpis > [class*="span-"] { display: flex; }
+.convo-kpis > [class*="span-"] > .kpi { height: 100%; width: 100%; }
+
 /* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Health score gauge Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .gauge {
   --pct: 50;
