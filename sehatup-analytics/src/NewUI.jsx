@@ -1800,7 +1800,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Responded = of those, the ones an agent replied to (outbound AGENT message in range).
   // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
   // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
-  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, leadIds: [], loading: true, error: null });
+  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadIds: [], loading: true, error: null });
   const [convoRefresh, setConvoRefresh] = useState(0); // bump to re-run the conversation query
   // Leads-list modal: resolves the lead conversation ids to names/phones on demand.
   const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null });
@@ -1845,16 +1845,19 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           else if (botSet.has(id)) byBot += 1;
         });
         const responded = byAgent + byBot;
-        let opened = 0;
+        // Opened (read by an agent) in range, and of those the ones with NO agent reply —
+        // i.e. an agent looked at the chat but never responded.
+        let opened = 0, openedNoReply = 0;
         try {
           const oSnap = await getDocs(query(collection(db, 'conversations'), where('lastReadAt', '>=', fromMs), where('lastReadAt', '<=', toMs)));
           opened = oSnap.size;
+          oSnap.forEach(d => { if (!agentSet.has(d.id)) openedNoReply += 1; });
         } catch { /* lastReadAt not yet populated */ }
         // leadIds = the DISTINCT conversations (not messages) that received a customer
         // message in range — used to list the actual lead names on click.
-        if (!cancelled) setConvoStats({ leads: inbound.size, responded, byAgent, byBot, opened, leadIds: Array.from(inbound), loading: false, error: null });
+        if (!cancelled) setConvoStats({ leads: inbound.size, responded, byAgent, byBot, opened, openedNoReply, leadIds: Array.from(inbound), loading: false, error: null });
       } catch (e) {
-        if (!cancelled) setConvoStats({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, leadIds: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
+        if (!cancelled) setConvoStats({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadIds: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
       }
     })();
     return () => { cancelled = true; };
@@ -2114,6 +2117,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
         <div className="grid-12" style={{ marginTop: 8 }}>
           <div className="span-3"><KPI label="Responded (total)" value={convoStats.loading ? "…" : convoStats.responded.toLocaleString()} icon="message" /></div>
           <div className="span-3"><KPI label="Opened" value={convoStats.loading ? "…" : convoStats.opened.toLocaleString()} icon="eye" /></div>
+          <div className="span-3"><KPI label="Opened, no reply" value={convoStats.loading ? "…" : convoStats.openedNoReply.toLocaleString()} icon="flag" /></div>
         </div>
       </div>
 
