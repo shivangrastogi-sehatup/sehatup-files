@@ -1800,24 +1800,30 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Responded = of those, the ones an agent replied to (outbound AGENT message in range).
   // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
   // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
-  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadIds: [], loading: true, error: null });
+  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadDetail: [], loading: true, error: null });
   const [convoRefresh, setConvoRefresh] = useState(0); // bump to re-run the conversation query
-  // Leads-list modal: resolves the lead conversation ids to names/phones on demand.
+  // Leads-list modal: resolves the lead conversation ids to names/phones (with status) on demand.
   const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null });
+  const [leadFilter, setLeadFilter] = useState('all'); // all | responded | unresponded
   const openLeadsModal = async () => {
+    setLeadFilter('all');
     setLeadsModal({ open: true, loading: true, items: [], error: null });
     try {
-      const ids = (convoStats.leadIds || []).slice(0, 500);
-      const snaps = await Promise.all(ids.map(id => getDoc(doc(db, 'conversations', id)).catch(() => null)));
+      const detail = (convoStats.leadDetail || []).slice(0, 500);
+      const snaps = await Promise.all(detail.map(d => getDoc(doc(db, 'conversations', d.id)).catch(() => null)));
       const items = snaps
-        .filter(s => s && s.exists())
-        .map(s => { const d = s.data(); return { id: s.id, name: d.name || d.phone || s.id, phone: d.phone || '', at: d.lastMessageAt || 0 }; })
+        .map((s, i) => { if (!s || !s.exists()) return null; const d = s.data(); return { id: s.id, name: d.name || d.phone || s.id, phone: d.phone || '', at: d.lastMessageAt || 0, status: detail[i].status }; })
+        .filter(Boolean)
         .sort((a, b) => (b.at || 0) - (a.at || 0));
       setLeadsModal({ open: true, loading: false, items, error: null });
     } catch (e) {
       setLeadsModal({ open: true, loading: false, items: [], error: e?.message || 'Failed to load leads' });
     }
   };
+  const leadRespondedCount = leadsModal.items.filter(it => it.status === 'agent').length;
+  const visibleLeads = leadsModal.items.filter(it =>
+    leadFilter === 'all' ? true : leadFilter === 'responded' ? it.status === 'agent' : it.status !== 'agent'
+  );
   useEffect(() => {
     let cancelled = false;
     const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
@@ -1853,11 +1859,14 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           opened = oSnap.size;
           oSnap.forEach(d => { if (!agentSet.has(d.id)) openedNoReply += 1; });
         } catch { /* lastReadAt not yet populated */ }
-        // leadIds = the DISTINCT conversations (not messages) that received a customer
-        // message in range — used to list the actual lead names on click.
-        if (!cancelled) setConvoStats({ leads: inbound.size, responded, byAgent, byBot, opened, openedNoReply, leadIds: Array.from(inbound), loading: false, error: null });
+        // Per-lead status for the names modal: 'agent' = a human agent replied (the real
+        // "responded"), 'bot' = only an auto/bot reply, 'none' = no reply at all.
+        const leadDetail = Array.from(inbound).map(id => ({
+          id, status: agentSet.has(id) ? 'agent' : (botSet.has(id) ? 'bot' : 'none'),
+        }));
+        if (!cancelled) setConvoStats({ leads: inbound.size, responded, byAgent, byBot, opened, openedNoReply, leadDetail, loading: false, error: null });
       } catch (e) {
-        if (!cancelled) setConvoStats({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadIds: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
+        if (!cancelled) setConvoStats({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadDetail: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
       }
     })();
     return () => { cancelled = true; };
@@ -2107,16 +2116,22 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           </button>
         </div>
         <div className="grid-12">
-          <div className="span-3" onClick={() => !convoStats.loading && convoStats.leads > 0 && openLeadsModal()} style={{ cursor: (!convoStats.loading && convoStats.leads > 0) ? "pointer" : "default" }} title="Click to see the lead names">
+          <div className="span-3" onClick={() => !convoStats.loading && convoStats.leads > 0 && openLeadsModal()} style={{ cursor: (!convoStats.loading && convoStats.leads > 0) ? "pointer" : "default" }} title="Click to see the lead names & who responded">
             <KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" />
           </div>
-          <div className="span-3"><KPI label="Responded by agent" value={convoStats.loading ? "…" : convoStats.byAgent.toLocaleString()} icon="check" /></div>
-          <div className="span-3"><KPI label="Responded by bot" value={convoStats.loading ? "…" : convoStats.byBot.toLocaleString()} icon="bolt" /></div>
-          <div className="span-3"><KPI label="Response rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.responded / convoStats.leads) * 100) : 0)} suffix="%" icon="target" /></div>
-        </div>
-        <div className="grid-12" style={{ marginTop: 8 }}>
-          <div className="span-3"><KPI label="Responded (total)" value={convoStats.loading ? "…" : convoStats.responded.toLocaleString()} icon="message" /></div>
-          <div className="span-3"><KPI label="Opened" value={convoStats.loading ? "…" : convoStats.opened.toLocaleString()} icon="eye" /></div>
+          {/* Agent + bot in one block — bot = automated/QuickReply auto-replies (hits almost
+              every chat), so the meaningful number is the agent one. */}
+          <div className="span-3">
+            <div className="kpi">
+              <div className="kpi-hd"><div className="ic"><Icon name="check" size={14} /></div><div className="lbl">Responded</div></div>
+              <div className="hstack-8" style={{ marginTop: 6, gap: 20, alignItems: "baseline" }}>
+                <div><span className="num fw6" style={{ fontSize: 24 }}>{convoStats.loading ? "…" : convoStats.byAgent.toLocaleString()}</span> <span className="muted" style={{ fontSize: 11.5 }}>by agent</span></div>
+                <div><span className="num fw6" style={{ fontSize: 24, color: "var(--muted)" }}>{convoStats.loading ? "…" : convoStats.byBot.toLocaleString()}</span> <span className="muted" style={{ fontSize: 11.5 }}>by bot (auto)</span></div>
+              </div>
+              <div className="kpi-ft"><span>vs. last 30d</span></div>
+            </div>
+          </div>
+          <div className="span-3"><KPI label="Agent response rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.byAgent / convoStats.leads) * 100) : 0)} suffix="%" icon="target" /></div>
           <div className="span-3"><KPI label="Opened, no reply" value={convoStats.loading ? "…" : convoStats.openedNoReply.toLocaleString()} icon="flag" /></div>
         </div>
       </div>
@@ -2129,28 +2144,39 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <div className="hstack-10" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div className="stack-2">
                 <div className="fw6">Leads · {leadsModal.items.length}</div>
-                <span className="muted" style={{ fontSize: 11.5 }}>Chats received {dateFrom} to {dateTo}</span>
+                <span className="muted" style={{ fontSize: 11.5 }}>{leadRespondedCount} responded by agent · {leadsModal.items.length - leadRespondedCount} not · {dateFrom} to {dateTo}</span>
               </div>
               <span className="spacer" />
               <button className="btn sm ghost icon" onClick={() => setLeadsModal(m => ({ ...m, open: false }))}><Icon name="x" /></button>
+            </div>
+            <div className="hstack-6" style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+              {[['all', `All (${leadsModal.items.length})`], ['responded', `Responded (${leadRespondedCount})`], ['unresponded', `Unresponded (${leadsModal.items.length - leadRespondedCount})`]].map(([v, l]) => (
+                <button key={v} className={`btn sm ${leadFilter === v ? 'primary' : 'ghost'}`} onClick={() => setLeadFilter(v)} style={{ fontSize: 12 }}>{l}</button>
+              ))}
             </div>
             <div style={{ overflowY: 'auto', padding: 8 }}>
               {leadsModal.loading ? (
                 <div className="muted" style={{ padding: 16, fontSize: 13 }}>Loading lead names…</div>
               ) : leadsModal.error ? (
                 <div style={{ padding: 16, fontSize: 13, color: 'var(--risk-critical)' }}>{leadsModal.error}</div>
-              ) : leadsModal.items.length === 0 ? (
-                <div className="muted" style={{ padding: 16, fontSize: 13 }}>No leads in this period.</div>
-              ) : leadsModal.items.map((it, i) => (
-                <div key={it.id} className="hstack-8" style={{ padding: '8px 12px', borderBottom: i < leadsModal.items.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
-                  <span className="muted num" style={{ width: 24, fontSize: 11 }}>{i + 1}</span>
-                  <div className="stack-2" style={{ flex: 1 }}>
-                    <span className="fw5">{it.name}</span>
-                    {it.phone && <span className="muted num" style={{ fontSize: 11.5 }}>{it.phone}</span>}
+              ) : visibleLeads.length === 0 ? (
+                <div className="muted" style={{ padding: 16, fontSize: 13 }}>No {leadFilter === 'all' ? '' : leadFilter + ' '}leads in this period.</div>
+              ) : visibleLeads.map((it, i) => {
+                const responded = it.status === 'agent';
+                return (
+                  <div key={it.id} className="hstack-8" style={{ padding: '8px 12px', borderBottom: i < visibleLeads.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
+                    <span className="muted num" style={{ width: 24, fontSize: 11 }}>{i + 1}</span>
+                    <div className="stack-2" style={{ flex: 1, minWidth: 0 }}>
+                      <span className="fw5" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</span>
+                      {it.phone && <span className="muted num" style={{ fontSize: 11.5 }}>{it.phone}</span>}
+                    </div>
+                    <Badge tone={responded ? 'low' : 'critical'} dot={responded ? 'var(--risk-low)' : 'var(--risk-critical)'} style={{ fontSize: 10 }}>
+                      {responded ? 'Responded' : (it.status === 'bot' ? 'Auto-reply only' : 'Unresponded')}
+                    </Badge>
+                    {it.at ? <span className="muted num" style={{ fontSize: 11, width: 48, textAlign: 'right' }}>{new Date(it.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span> : null}
                   </div>
-                  {it.at ? <span className="muted num" style={{ fontSize: 11 }}>{new Date(it.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span> : null}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>, document.querySelector('.app') || document.body
@@ -12988,6 +13014,13 @@ function PrescriptionsScreen({ me }) {
 }
 
 // ─── Conversations (WhatsApp inbox via QuickReply) ───────────────────────────
+// Display helpers: a chat may have an emoji/special-char name, only a phone, or (for
+// bot-first conversations) neither stored yet — fall back to phone, then the doc id.
+const convoTitle = (c) => ((c?.name && c.name.trim()) || c?.phone || c?.id || 'Unknown');
+const convoInitial = (c) => {
+  const ch = Array.from(convoTitle(c).trim())[0] || 'U';   // Array.from → full emoji code point
+  return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;        // uppercase letters; keep emoji/digit as-is
+};
 function ConversationsScreen({ me }) {
   const [convos, setConvos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13103,11 +13136,11 @@ function ConversationsScreen({ me }) {
               <div key={c.id} onClick={() => setSelectedId(c.id)}
                 style={{ display: 'flex', gap: 10, padding: '11px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: c.id === selectedId ? 'var(--accent-soft)' : 'transparent' }}>
                 <div className="avatar sm" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)', fontWeight: 700, flexShrink: 0 }}>
-                  {(c.name || c.phone || 'U')[0].toUpperCase()}
+                  {convoInitial(c)}
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="hstack-8" style={{ alignItems: 'baseline' }}>
-                    <span className="fw5" style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || c.phone}</span>
+                    <span className="fw5" style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convoTitle(c)}</span>
                     <span className="spacer" />
                     <span className="muted" style={{ fontSize: 10.5, flexShrink: 0 }}>{fmt(c.lastMessageAt)}</span>
                   </div>
@@ -13131,7 +13164,7 @@ function ConversationsScreen({ me }) {
           ) : (
             <>
               <div className="hstack-8" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-                <div className="fw6" style={{ fontSize: 14 }}>{selected.name || selected.phone}</div>
+                <div className="fw6" style={{ fontSize: 14 }}>{convoTitle(selected)}</div>
                 <span className="muted" style={{ fontSize: 12 }}>{selected.phone}</span>
                 <span className="spacer" />
                 {selected.assignedTo === me?.uid
@@ -13188,7 +13221,7 @@ function ConversationsScreen({ me }) {
           ) : (
             <div className="stack-12">
               <div className="section-title">Profile</div>
-              <div><div className="muted" style={{ fontSize: 11 }}>Name</div><div className="fw5" style={{ fontSize: 13 }}>{selected.name || '—'}</div></div>
+              <div><div className="muted" style={{ fontSize: 11 }}>Name</div><div className="fw5" style={{ fontSize: 13 }}>{(selected.name && selected.name.trim()) || '—'}</div></div>
               <div><div className="muted" style={{ fontSize: 11 }}>Phone</div><div className="fw5" style={{ fontSize: 13 }}>{selected.phone}</div></div>
               <div><div className="muted" style={{ fontSize: 11 }}>Email</div><div className="fw5" style={{ fontSize: 13 }}>{selected.email || '—'}</div></div>
               <div><div className="muted" style={{ fontSize: 11 }}>Lead stage</div><div className="fw5" style={{ fontSize: 13 }}>{selected.leadStage || '—'}</div></div>
