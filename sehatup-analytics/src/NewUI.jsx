@@ -11058,11 +11058,12 @@ function ProductShippingPane() {
           const data = await res.json();
           if (data?.errors?.length) throw new Error(data.errors[0]?.message || 'GraphQL error');
           const conn = data?.data?.products;
-          (conn?.edges || []).forEach(({ node }) => {
-            productCount += 1;
+          const edges = conn?.edges || [];
+          productCount += edges.length;
+          for (const { node } of edges) {
             const productId = parseInt(node.id.split('/').pop(), 10) || node.id;
             const variants = node.variants?.edges || [];
-            variants.forEach(({ node: v }) => {
+            for (const { node: v } of variants) {
               const variantId = parseInt(v.id.split('/').pop(), 10) || v.id;
               const isDefault = v.title === 'Default Title';
               rows.push({
@@ -11070,8 +11071,8 @@ function ProductShippingPane() {
                 variantId, variantTitle: isDefault ? '' : v.title,
                 label: isDefault ? node.title : `${node.title} · ${v.title}`,
               });
-            });
-          });
+            }
+          }
           if (!conn?.pageInfo?.hasNextPage) break;
           cursor = conn.pageInfo.endCursor;
         }
