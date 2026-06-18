@@ -1752,8 +1752,10 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const [genderFilter, setGenderFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
   // Resolve to ISO yyyy-mm-dd strings the filters / labels below consume ('all' → wide range).
+  // Use LOCAL date parts (not toISOString, which is UTC) so e.g. "Today" in IST doesn't shift
+  // back a day and pull in yesterday's data.
   const [_rangeStart, _rangeEnd] = resolveDateRange(datePreset, customRange);
-  const toISO = (d) => d.toISOString().slice(0, 10);
+  const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const dateFrom = toISO(_rangeStart || new Date('2000-01-01'));
   const dateTo = toISO(_rangeEnd || new Date());
 
@@ -1799,6 +1801,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
   // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
   const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, opened: 0, leadIds: [], loading: true, error: null });
+  const [convoRefresh, setConvoRefresh] = useState(0); // bump to re-run the conversation query
   // Leads-list modal: resolves the lead conversation ids to names/phones on demand.
   const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null });
   const openLeadsModal = async () => {
@@ -1848,7 +1851,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, convoRefresh]);
 
   const analytics = useMemoCx(() => computeAnalytics(filtered.partial, filtered.completed, filtered.manual), [filtered]);
 
@@ -2089,6 +2092,9 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           <span className="muted" style={{ fontSize: 12 }}>
             {convoStats.loading ? "Loading…" : convoStats.error ? convoStats.error : `Chats from ${dateFrom} to ${dateTo}`}
           </span>
+          <button className="btn sm ghost" disabled={convoStats.loading} onClick={() => setConvoRefresh(n => n + 1)} title="Re-sync conversation stats" style={{ gap: 4 }}>
+            <Icon name="refresh" size={13} /> {convoStats.loading ? "Syncing…" : "Refresh"}
+          </button>
         </div>
         <div className="grid-12">
           <div className="span-3" onClick={() => !convoStats.loading && convoStats.leads > 0 && openLeadsModal()} style={{ cursor: (!convoStats.loading && convoStats.leads > 0) ? "pointer" : "default" }} title="Click to see the lead names">
