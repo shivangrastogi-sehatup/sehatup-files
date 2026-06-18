@@ -12145,8 +12145,8 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 const NAV = {
   admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "crm_orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
   doctor: ["doctor", "submissions", "customers", "prescriptions", "settings"],
-  telesales: ["conversations", "submissions", "prescriptions", "settings"],
-  operations: ["conversations", "order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "settings"],
+  telesales: ["submissions", "prescriptions", "settings"],
+  operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "settings"],
   marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "settings"],
   website_developer: ["focused_editor", "data_studio", "settings"],
 };
