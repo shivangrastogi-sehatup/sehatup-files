@@ -7538,7 +7538,7 @@ function OrderCreate({ context = {}, setRoute }) {
               {orderDiscountPopupOpen && createPortal(
                 <div className={`theme-light accent-rose ${orderDiscountPopupClosing ? 'fade-out' : 'fade-in'}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg)' }}>
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={(e) => { e.stopPropagation(); cancelDiscountPopup(); }} />
-                  <div style={{ position: "relative", width: "min(780px, 94vw)", maxHeight: "88vh", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "0 24px 60px rgba(0,0,0,.2)", textAlign: "left", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ position: "relative", width: "min(38.75rem, 94vw)", maxHeight: "88vh", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "0 24px 60px rgba(0,0,0,.2)", textAlign: "left", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
                     <div className="hstack-10" style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
                       <div className="fw6">Add discount</div>
                       <span className="spacer" />
@@ -7558,10 +7558,11 @@ function OrderCreate({ context = {}, setRoute }) {
                           placeholder="Enter a discount code"
                           value={orderDiscountCode}
                           onFocus={() => setCodeDropdownOpen(true)}
+                          onBlur={() => setTimeout(() => setCodeDropdownOpen(false), 150)}
                           onChange={e => { setOrderDiscountCode(e.target.value); setCodeDropdownOpen(true); }}
                         />
                         {codeDropdownOpen && (
-                          <div className="fade-in" style={{ border: "1px solid var(--border)", borderRadius: 8, marginTop: 4, maxHeight: 220, overflowY: "auto", background: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.12)" }}>
+                          <div className="fade-in" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20, border: "1px solid var(--border)", borderRadius: 8, maxHeight: 220, overflowY: "auto", background: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.18)" }}>
                             {discountCodeLoading ? (
                               <div className="muted" style={{ fontSize: 12.5, padding: "10px 12px" }}>Loading active codes…</div>
                             ) : discountCodeError ? (
@@ -7667,11 +7668,10 @@ function OrderCreate({ context = {}, setRoute }) {
                 </label>
               ))}
             </div>
-          </div>
 
-          {/* Shipping — always visible (independent of the payment choice) so the
-              auto-applied / chosen rate is shown even before a payment method is ticked. */}
-          <div className="card">
+            {/* Shipping lives in the same block as Payment (one card). */}
+            <div className="divider" style={{ margin: "18px 0 12px" }} />
+
             <div className="hstack-8" style={{ marginBottom: 10 }}>
               <div className="section-title" style={{ margin: 0 }}>Shipping</div>
               {productShippingCfg.enabled && <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>}
