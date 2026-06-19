@@ -7742,15 +7742,7 @@ function OrderCreate({ context = {}, setRoute }) {
               <span className="spacer" />
               <span className="num fw6" style={{ fontSize: 13 }}>{shipping ? `Rs. ${shipping}` : 'Free'}</span>
             </div>
-            {!productShippingCfg.enabled ? (
-              // Product-based shipping is off → single Free shipping option.
-              <label className="hstack-8" style={{ cursor: "default", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)" }}>
-                <input type="radio" name="shippingRate" checked readOnly style={{ accentColor: "var(--accent)" }} />
-                <span style={{ fontSize: 13 }}>Free shipping</span>
-                <span className="spacer" />
-                <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
-              </label>
-            ) : isLoadingShipping ? (
+            {isLoadingShipping ? (
               <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
             ) : (
               <div className="stack-6">
@@ -7767,19 +7759,19 @@ function OrderCreate({ context = {}, setRoute }) {
                     );
                   })}
 
-                {/* Rs. 0 shipping (e.g. customer settles part separately) */}
+                {/* Free shipping (Rs. 0) — always available as a choice in the list */}
                 {!useCustomShipping && (() => {
-                  const isSel = selectedShipping?.id === 'cod-free';
+                  const isSel = selectedShipping?.id === 'free';
                   return (
                     <label className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
                       <input
                         type="radio"
                         name="shippingRate"
                         checked={isSel}
-                        onChange={() => { setSelectedShipping({ id: 'cod-free', title: 'No shipping', price: 0, code: 'NO_SHIPPING' }); setUseCustomShipping(false); setShippingTouched(true); }}
+                        onChange={() => { setSelectedShipping({ id: 'free', title: 'Free shipping', price: 0, code: 'FREE' }); setUseCustomShipping(false); setShippingTouched(true); }}
                         style={{ accentColor: "var(--accent)" }}
                       />
-                      <span style={{ fontSize: 13 }}>No shipping (Rs. 0)</span>
+                      <span style={{ fontSize: 13 }}>Free shipping</span>
                       <span className="spacer" />
                       <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
                     </label>
