@@ -455,21 +455,6 @@ function useProductShipping() {
   }, []);
   return cfg;
 }
-// Resolve the shipping rate for a cart. Rates are keyed by variant id; an unconfigured
-// variant uses the global default. With multiple products we charge the HIGHEST rate among
-// them (e.g. one at Rs. 150 + one at Rs. 200 → Rs. 200). Returns a { title, price }.
-function resolveDefaultShipping(cfg, items) {
-  const def = cfg?.defaultRate || { title: 'Shipping', price: DEFAULT_PRODUCT_SHIPPING };
-  const ids = Array.from(new Set((items || []).map(it => String(it.variantId || '')).filter(Boolean)));
-  if (ids.length === 0) return def;
-  let best = null;
-  ids.forEach(id => {
-    const r = (cfg?.rates && cfg.rates[id]) ? cfg.rates[id] : def;
-    if (!best || (Number(r.price) || 0) > (Number(best.price) || 0)) best = r;
-  });
-  return best || def;
-}
-
 // --- data.js ---
 // data.js — mock data for the SehatUp CRM
 // Uses names from the user's screenshots, expanded with realistic Indian names + phone numbers.
@@ -5990,7 +5975,6 @@ async function attachFulfillmentPaymentTerms(orderId) {
 function OrderCreate({ context = {}, setRoute }) {
   const preset = context.customer;
   const logisticsCfg = useLogisticsConfig();
-  const productShippingCfg = useProductShipping();
   // True once the user manually changes shipping — stops us auto-overwriting their choice
   // with the product-based default.
   const [shippingTouched, setShippingTouched] = useStateO(false);
@@ -6041,8 +6025,6 @@ function OrderCreate({ context = {}, setRoute }) {
   // lookup skips it so it doesn't overwrite the customer's real city/state.
   const autoFilledPincodeRef = React.useRef(null);
   const [billingPincodeLoading, setBillingPincodeLoading] = useStateO(false);
-  const [shippingRates, setShippingRates] = useStateO([]);
-  const [isLoadingShipping, setIsLoadingShipping] = useStateO(false);
   const [selectedShipping, setSelectedShipping] = useStateO(null);
   const [useCustomShipping, setUseCustomShipping] = useStateO(false);
   const [customShippingTitle, setCustomShippingTitle] = useStateO('');
@@ -6449,30 +6431,22 @@ function OrderCreate({ context = {}, setRoute }) {
     setShippingFirstName(custFirstName);
   }, [custFirstName]);
 
-  // Shipping is auto-selected only AFTER the user picks a payment method — never on product
-  // add. When product-based shipping is on, we apply the configured rate (highest among the
-  // products); otherwise we pick the rate matching the payment type (COD → COD rate, Prepaid
-  // → Prepaid rate). We stop once the user manually touches shipping.
-  const productDefaultShipping = resolveDefaultShipping(productShippingCfg, items);
-  const productDefaultShippingPrice = Number(productDefaultShipping?.price) || 0;
-  const productDefaultShippingTitle = productDefaultShipping?.title || 'Shipping';
+  // Shipping is driven by the payment method (the live Shopify rates are just two methods:
+  // Prepaid Shipping = Rs.0, and COD = Rs.150 / Rs.200-for-the-combo). Prepaid auto-selects
+  // free; COD defaults to Rs.150 COD Shipping with a list to switch to the combo/partial/custom.
+  const COD_SHIPPING_OPTIONS = [
+    { id: 'cod', title: 'COD Shipping', sub: 'All products', price: 150, code: 'COD' },
+    { id: 'cod-combo', title: 'COD Shipping — Shilajit Combo', sub: 'Shilajit combo only', price: 200, code: 'COD_COMBO' },
+    { id: 'partial', title: 'Shipping (Partial)', sub: 'No shipping charge', price: 0, code: 'PARTIAL' },
+  ];
+  const PREPAID_SHIPPING = { id: 'prepaid', title: 'Prepaid Shipping', price: 0, code: 'PREPAID' };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (shippingTouched) return;
-    // Default: product-based shipping is off → orders ship Free (single option).
-    if (!productShippingCfg.enabled) {
-      setUseCustomShipping(false);
-      setSelectedShipping({ id: 'free', title: 'Free shipping', price: 0, code: 'FREE' });
-      return;
-    }
-    // Feature on → apply the configured product rate once a payment method is chosen.
-    if (!pay || shippingRates.length === 0) return;
-    const tprice = Math.round(productDefaultShippingPrice);
-    const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
-      || shippingRates.find(r => Math.round(r.price) === tprice);
-    setUseCustomShipping(false);
-    setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
-  }, [pay, productShippingCfg.enabled, productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
+    if (pay === 'Prepaid') { setUseCustomShipping(false); setSelectedShipping(PREPAID_SHIPPING); }
+    else if (pay === 'COD') { setUseCustomShipping(false); setSelectedShipping(COD_SHIPPING_OPTIONS[0]); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pay, shippingTouched]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -6668,70 +6642,6 @@ function OrderCreate({ context = {}, setRoute }) {
     autoFilledPincodeRef.current = pin; // prevent overwrite by pincode effect
   };
 
-  useEffect(() => {
-    const fetchShippingRates = async () => {
-      setIsLoadingShipping(true);
-      try {
-        const query = `{
-          deliveryProfiles(first: 10) {
-            edges {
-              node {
-                profileLocationGroups {
-                  locationGroupZones(first: 30) {
-                    edges {
-                      node {
-                        methodDefinitions(first: 30) {
-                          edges {
-                            node {
-                              id name active
-                              rateProvider {
-                                ... on DeliveryRateDefinition { id price { amount } }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }`;
-        const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
-        const data = await res.json();
-        const rates = [];
-        const seen = new Set();
-        (data?.data?.deliveryProfiles?.edges || []).forEach(({ node: profile }) => {
-          (profile.profileLocationGroups || []).forEach(group => {
-            (group.locationGroupZones?.edges || []).forEach(({ node: lgZone }) => {
-              (lgZone.methodDefinitions?.edges || []).forEach(({ node: method }) => {
-                if (!method.active) return;
-                const rp = method.rateProvider;
-                if (!rp?.price) return;
-                const key = `${method.name}|${rp.price.amount}`;
-                if (seen.has(key)) return;
-                seen.add(key);
-                rates.push({
-                  id: method.id,
-                  title: method.name,
-                  price: parseFloat(rp.price.amount || 0),
-                  code: method.name,
-                });
-              });
-            });
-          });
-        });
-        setShippingRates(rates);
-        // Default selection is handled by the product-shipping effect (Rs. 150 default).
-      } catch (err) {
-        console.error('[Shipping] Failed to fetch rates:', err);
-      } finally {
-        setIsLoadingShipping(false);
-      }
-    };
-    fetchShippingRates();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const fetchFreeSample = async () => {
@@ -7659,74 +7569,58 @@ function OrderCreate({ context = {}, setRoute }) {
           </div>
 
           <div className="card">
-            <div className="section-title" style={{ marginBottom: 10 }}>Payment *</div>
+            <div className="section-title" style={{ marginBottom: 10 }}>Payment &amp; shipping *</div>
             <div className="stack-8">
               {["Prepaid", "COD"].map(p => (
-                <label key={p} className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
-                  <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
-                  <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
-                </label>
+                <div key={p} className="stack-8">
+                  <label className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
+                    <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
+                    <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
+                    {pay === p && <><span className="spacer" /><span className="num fw6" style={{ fontSize: 13 }}>{shipping ? `Rs. ${shipping}` : 'Free'}</span></>}
+                  </label>
+
+                  {/* Prepaid → Prepaid Shipping is free; shown read-only. */}
+                  {p === "Prepaid" && pay === "Prepaid" && (
+                    <div className="fade-in hstack-8" style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)", fontSize: 13 }}>
+                      <span>Prepaid Shipping</span>
+                      <span className="spacer" />
+                      <span className="num fw6">Free</span>
+                    </div>
+                  )}
+
+                  {/* COD → the COD shipping options (smooth fade-in), editable + custom. */}
+                  {p === "COD" && pay === "COD" && (
+                    <div className="fade-in stack-6">
+                      {!useCustomShipping && COD_SHIPPING_OPTIONS.map(opt => {
+                        const isSel = selectedShipping?.id === opt.id;
+                        return (
+                          <label key={opt.id} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                            <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(opt); setUseCustomShipping(false); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
+                            <div className="stack-2">
+                              <span style={{ fontSize: 13 }}>{opt.title}</span>
+                              <span className="muted" style={{ fontSize: 11 }}>{opt.sub}</span>
+                            </div>
+                            <span className="spacer" />
+                            <span className="num fw6" style={{ fontSize: 13 }}>Rs. {opt.price}</span>
+                          </label>
+                        );
+                      })}
+                      {useCustomShipping ? (
+                        <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
+                          <div className="hstack-8">
+                            <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => { setCustomShippingTitle(e.target.value); setShippingTouched(true); }} placeholder="Shipping" /></div>
+                            <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => { setCustomShippingPrice(e.target.value); setShippingTouched(true); }} placeholder="150" /></div>
+                          </div>
+                          <button className="btn sm ghost" onClick={() => { setUseCustomShipping(false); setShippingTouched(true); }}>Use a preset rate instead</button>
+                        </div>
+                      ) : (
+                        <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 2 }} onClick={() => { setUseCustomShipping(true); setShippingTouched(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-
-            {/* Shipping lives in the same block as Payment (one card). */}
-            <div className="divider" style={{ margin: "18px 0 12px" }} />
-
-            <div className="hstack-8" style={{ marginBottom: 10 }}>
-              <div className="section-title" style={{ margin: 0 }}>Shipping</div>
-              {productShippingCfg.enabled && <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>}
-              <span className="spacer" />
-              <span className="num fw6" style={{ fontSize: 13 }}>{shipping ? `Rs. ${shipping}` : 'Free'}</span>
-            </div>
-            {isLoadingShipping ? (
-              <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
-            ) : (
-              <div className="stack-6">
-                {!useCustomShipping && shippingRates
-                  .map((rate, i) => {
-                    const isSel = selectedShipping?.id === rate.id;
-                    return (
-                      <label key={rate.id || i} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                        <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(rate); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
-                        <span style={{ fontSize: 13 }}>{rate.title}</span>
-                        <span className="spacer" />
-                        <span className="num fw6" style={{ fontSize: 13 }}>Rs. {rate.price}</span>
-                      </label>
-                    );
-                  })}
-
-                {/* Free shipping (Rs. 0) — always available as a choice in the list */}
-                {!useCustomShipping && (() => {
-                  const isSel = selectedShipping?.id === 'free';
-                  return (
-                    <label className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
-                      <input
-                        type="radio"
-                        name="shippingRate"
-                        checked={isSel}
-                        onChange={() => { setSelectedShipping({ id: 'free', title: 'Free shipping', price: 0, code: 'FREE' }); setUseCustomShipping(false); setShippingTouched(true); }}
-                        style={{ accentColor: "var(--accent)" }}
-                      />
-                      <span style={{ fontSize: 13 }}>Free shipping</span>
-                      <span className="spacer" />
-                      <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
-                    </label>
-                  );
-                })()}
-
-                {useCustomShipping ? (
-                  <div className="stack-8" style={{ background: "var(--surface)", padding: 12, borderRadius: 8, border: "1px solid var(--accent)" }}>
-                    <div className="hstack-8">
-                      <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Label</span><input className="input" value={customShippingTitle} onChange={e => { setCustomShippingTitle(e.target.value); setShippingTouched(true); }} placeholder="Shipping" /></div>
-                      <div className="field span-6" style={{ margin: 0 }}><span className="lbl">Rate (Rs.)</span><input className="input num" type="number" value={customShippingPrice} onChange={e => { setCustomShippingPrice(e.target.value); setShippingTouched(true); }} placeholder="150" /></div>
-                    </div>
-                    <button className="btn sm ghost" onClick={() => { setUseCustomShipping(false); setShippingTouched(true); }}>Use a Shopify rate instead</button>
-                  </div>
-                ) : (
-                  <button className="btn sm ghost" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={() => { setUseCustomShipping(true); setShippingTouched(true); }}><Icon name="plus" size={14} /> Add custom shipping rate</button>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="card">
