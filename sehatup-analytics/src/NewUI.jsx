@@ -5959,13 +5959,18 @@ async function attachFulfillmentPaymentTerms(orderId) {
         }`,
         variables: {
           referenceId: `gid://shopify/Order/${orderId}`,
-          paymentTermsAttributes: { paymentTermsTemplateId: _fulfillmentTermsTemplateId },
+          // Shopify requires a payment schedule even for a template. For "due on fulfillment"
+          // the schedule is open-ended (issued now, due decided at fulfillment).
+          paymentTermsAttributes: {
+            paymentTermsTemplateId: _fulfillmentTermsTemplateId,
+            paymentSchedules: [{ issuedAt: new Date().toISOString() }],
+          },
         },
       }),
     });
     const data = await res.json();
     const errs = data?.data?.paymentTermsCreate?.userErrors || data?.errors;
-    if (errs && errs.length) console.warn('[Payment Terms] Failed to attach to order', orderId, errs);
+    if (errs && errs.length) console.warn('[Payment Terms] Failed to attach to order', orderId, JSON.stringify(errs));
     else console.log('[Payment Terms] Attached "Due on fulfillment" to order', orderId);
   } catch (err) {
     console.warn('[Payment Terms] Attach error:', err.message);
@@ -6310,15 +6315,16 @@ function OrderCreate({ context = {}, setRoute }) {
           if (d.email) orderPayload.order.email = d.email;
           if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
           if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
-          // Multi-level discounts → each becomes its own discount_codes line (the Orders API
-          // accepts an array). Line items stay at full price, so the lines sum to the draft's
-          // combined discount and the totals match.
-          if (activeDiscounts.length > 0) {
-            orderPayload.order.discount_codes = activeDiscounts.map(dd => ({
-              code: String(dd.label).slice(0, 255),
-              amount: String(dd.amount),
+          // Discount → ONE combined order discount. Shopify's Orders API only honours the first
+          // discount_codes entry, and the transaction amount below uses the draft's already-
+          // combined total — so we must send the SAME single combined amount (named with all
+          // parts) or the totals mismatch (the "Rs.200 unauthorized" bug).
+          if (discount > 0) {
+            orderPayload.order.discount_codes = [{
+              code: (buildDiscountReason() || 'Discount').slice(0, 255),
+              amount: String(discount),
               type: 'fixed_amount',
-            }));
+            }];
           } else if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
             orderPayload.order.discount_codes = [{ code: d.applied_discount.title || 'Discount', amount: d.applied_discount.amount, type: 'fixed_amount' }];
           }
