@@ -6048,6 +6048,7 @@ function OrderCreate({ context = {}, setRoute }) {
   const [customShippingTitle, setCustomShippingTitle] = useStateO('');
   const [customShippingPrice, setCustomShippingPrice] = useStateO('');
   const [orderDiscountPopupOpen, setOrderDiscountPopupOpen] = useStateO(false);
+  const [codeDropdownOpen, setCodeDropdownOpen] = useStateO(false); // discount-code suggestions visible
   const [orderDiscountCode, setOrderDiscountCode] = useStateO("");
   const [orderDiscountIsCustom, setOrderDiscountIsCustom] = useStateO(false);
   const [orderDiscountType, setOrderDiscountType] = useStateO("amount");
@@ -6221,30 +6222,15 @@ function OrderCreate({ context = {}, setRoute }) {
         console.log('[Shipping] No shipping rate found — no shipping_line added');
       }
 
-      // Order Discount — Shopify draft orders accept only one order-level applied_discount,
-      // and an order-level discount reduces the product subtotal only (never shipping). So
-      // Healthscore Lead (% of products) and the custom partial-pay discount are summed into
-      // a SINGLE fixed_amount discount. The (editable) reason string is sent as-is.
-      const discountBase = items.reduce((s, p) => s + getDiscountedPrice(p) * p.qty, 0);
-      const hsAmt = healthscoreLead && healthscoreDisc
-        ? (healthscoreDisc.valueType === 'percentage'
-            ? discountBase * Math.min(parseFloat(healthscoreDisc.value) || 0, 100) / 100
-            : (parseFloat(healthscoreDisc.value) || 0))
-        : 0;
-      let orderAmt = 0;
-      if (orderDiscountIsCustom) {
-        const v = parseFloat(orderDiscountValue) || 0;
-        orderAmt = orderDiscountType === 'percentage' ? discountBase * Math.min(v, 100) / 100 : v;
-      } else if (appliedCodeDiscount) {
-        const v = parseFloat(appliedCodeDiscount.value) || 0;
-        orderAmt = appliedCodeDiscount.valueType === 'percentage' ? discountBase * Math.min(v, 100) / 100 : v;
-      }
-      const combinedDiscount = Math.min(Math.round((hsAmt + orderAmt) * 100) / 100, discountBase);
-      if (combinedDiscount > 0) {
-        const reason = (orderDiscountReason || '').trim() || buildDiscountReason() || 'Discount';
+      // Order Discount — discounts stack (Healthscore + code + custom). A Shopify DRAFT order
+      // accepts only one order-level applied_discount, so we send the combined total here; the
+      // ACTIVE-order path below splits them into separate discount_codes lines. `discount` and
+      // `activeDiscounts` are the same values shown in the order summary.
+      if (discount > 0) {
+        const reason = buildDiscountReason() || 'Discount';
         draftData.applied_discount = {
           value_type: 'fixed_amount',
-          value: combinedDiscount.toFixed(2),
+          value: discount.toFixed(2),
           title: reason.slice(0, 255),
           description: reason,
         };
@@ -6342,13 +6328,17 @@ function OrderCreate({ context = {}, setRoute }) {
           if (d.email) orderPayload.order.email = d.email;
           if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
           if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
-          // Order-level discount → discount_codes (the Orders API has no order-level applied_discount).
-          if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
-            orderPayload.order.discount_codes = [{
-              code: d.applied_discount.title || 'Discount',
-              amount: d.applied_discount.amount,
+          // Multi-level discounts → each becomes its own discount_codes line (the Orders API
+          // accepts an array). Line items stay at full price, so the lines sum to the draft's
+          // combined discount and the totals match.
+          if (activeDiscounts.length > 0) {
+            orderPayload.order.discount_codes = activeDiscounts.map(dd => ({
+              code: String(dd.label).slice(0, 255),
+              amount: String(dd.amount),
               type: 'fixed_amount',
-            }];
+            }));
+          } else if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
+            orderPayload.order.discount_codes = [{ code: d.applied_discount.title || 'Discount', amount: d.applied_discount.amount, type: 'fixed_amount' }];
           }
 
           const orderReq = await fetch('/shopify-v2/orders.json', {
@@ -6811,57 +6801,32 @@ function OrderCreate({ context = {}, setRoute }) {
   const shippingLabel = useCustomShipping
     ? (customShippingTitle.trim() || 'Custom Shipping')
     : (selectedShipping ? selectedShipping.title : 'Free');
-  // A manual order discount is Healthscore Lead, a custom amount/percentage, or a code.
-  const hasOrderLevelDiscount = orderDiscountIsCustom
-    ? (Number(orderDiscountValue) || 0) > 0
-    : !!appliedCodeDiscount;
-  const hasManualDiscount = healthscoreLead || hasOrderLevelDiscount;
-
-  // Healthscore Lead (% of products) + the order-level custom/code discount are summed
-  // into one combined discount, exactly as it will be sent to Shopify.
-  const healthscoreDiscountAmt = healthscoreLead && healthscoreDisc
-    ? (healthscoreDisc.valueType === "percentage"
-        ? subtotal * (Math.min(Number(healthscoreDisc.value) || 0, 100) / 100)
-        : (Number(healthscoreDisc.value) || 0))
-    : 0;
-  let orderLevelDiscountAmt = 0;
-  if (orderDiscountIsCustom) {
-    const val = Number(orderDiscountValue) || 0;
-    orderLevelDiscountAmt = orderDiscountType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
-  } else if (appliedCodeDiscount) {
-    const val = Number(appliedCodeDiscount.value) || 0;
-    orderLevelDiscountAmt = appliedCodeDiscount.valueType === "percentage" ? subtotal * (Math.min(val, 100) / 100) : val;
-  }
-  const discount = Math.round(Math.min(healthscoreDiscountAmt + orderLevelDiscountAmt, subtotal));
+  // Discounts now STACK — Healthscore Lead, a selected code, and a custom amount can all be
+  // active at once (like Shopify's native draft editor). Each becomes its own line on paid
+  // orders; drafts combine them into one (Shopify draft API allows a single applied_discount).
+  const pctOrAmt = (vt, v) => vt === "percentage" ? subtotal * (Math.min(Number(v) || 0, 100) / 100) : (Number(v) || 0);
+  const customAmtRaw = orderDiscountIsCustom ? pctOrAmt(orderDiscountType, orderDiscountValue) : 0;
+  const activeDiscounts = [
+    (healthscoreLead && healthscoreDisc) && { key: 'hs', label: healthscoreDisc.code || 'Healthscore Lead', amount: Math.round(pctOrAmt(healthscoreDisc.valueType, healthscoreDisc.value)) },
+    appliedCodeDiscount && { key: 'code', label: appliedCodeDiscount.code, amount: Math.round(pctOrAmt(appliedCodeDiscount.valueType, appliedCodeDiscount.value)) },
+    (customAmtRaw > 0) && { key: 'custom', label: (orderDiscountReason || '').trim() || 'partial pay', amount: Math.round(customAmtRaw) },
+  ].filter(d => d && d.amount > 0);
+  const hasManualDiscount = healthscoreLead || !!appliedCodeDiscount || orderDiscountIsCustom;
+  const discount = Math.round(Math.min(activeDiscounts.reduce((s, d) => s + d.amount, 0), subtotal));
   // Order total (full value of the order — items + shipping - combined discount)
   const total = Math.max(0, subtotal + shipping - discount);
 
-  // Auto-prefilled, editable reason describing the active discount combination. Used as
-  // the Shopify discount description and shown in the popup.
-  const buildDiscountReason = () => {
-    const parts = [];
-    if (healthscoreLead && healthscoreDisc) {
-      parts.push(`Healthscore Lead${healthscoreDisc.valueType === "percentage" ? ` ${healthscoreDisc.value}%` : ` Rs.${healthscoreDisc.value}`}`);
-    }
-    if (orderDiscountIsCustom) {
-      const v = Number(orderDiscountValue) || 0;
-      if (v > 0) {
-        const rupees = Math.round(orderDiscountType === "percentage" ? subtotal * (Math.min(v, 100) / 100) : v);
-        parts.push(`partial pay ${rupees}`);
-      }
-    } else if (appliedCodeDiscount) {
-      parts.push(appliedCodeDiscount.code);
-    }
-    return parts.join(" + ");
-  };
+  // Combined reason for the (single) draft-order discount: each line's label, joined.
+  const buildDiscountReason = () => activeDiscounts.map(d => d.label).join(" + ");
 
-  // Keep the reason in sync with the active discount combination until the user edits it.
+  // Prefill the custom discount's reason as "partial pay {amount}" until the user edits it.
   useEffect(() => {
-    if (orderDiscountReasonEdited) return;
-    const next = buildDiscountReason();
+    if (orderDiscountReasonEdited || !orderDiscountIsCustom) return;
+    const rupees = Math.round(pctOrAmt(orderDiscountType, orderDiscountValue));
+    const next = rupees > 0 ? `partial pay ${rupees}` : 'partial pay';
     setOrderDiscountReason(prev => (prev === next ? prev : next));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [healthscoreLead, healthscoreDisc, orderDiscountIsCustom, orderDiscountType, orderDiscountValue, appliedCodeDiscount, subtotal, orderDiscountReasonEdited]);
+  }, [orderDiscountIsCustom, orderDiscountType, orderDiscountValue, subtotal, orderDiscountReasonEdited]);
 
   // ── Discount popup helpers ─────────────────────────────────────────────────
   const closeDiscountPopup = () => {
@@ -6912,6 +6877,7 @@ function OrderCreate({ context = {}, setRoute }) {
       reason: orderDiscountReason, code: orderDiscountCode, appliedCode: appliedCodeDiscount,
       hsLead: healthscoreLead, hsDisc: healthscoreDisc, reasonEdited: orderDiscountReasonEdited,
     });
+    setCodeDropdownOpen(false);
     setOrderDiscountPopupOpen(true);
     fetchDiscountCodes();
   };
@@ -6924,18 +6890,14 @@ function OrderCreate({ context = {}, setRoute }) {
     }
     closeDiscountPopup();
   };
+  // Code, custom and Healthscore all stack now — selecting a code no longer clears the custom.
   const selectDiscountCode = (opt) => {
-    setOrderDiscountIsCustom(false);          // a code and a custom amount are mutually exclusive
-    setOrderDiscountValue('');                // (both occupy the single order-level discount)
     setOrderDiscountCode(opt.code);
     setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value });
   };
   const enableCustomDiscount = (checked) => {
     setOrderDiscountIsCustom(checked);
-    // Custom amount and a selected code are mutually exclusive, but Healthscore Lead is
-    // independent and stays on. Clearing custom just drops its own value.
-    if (checked) { setOrderDiscountCode(''); setAppliedCodeDiscount(null); }
-    else { setOrderDiscountValue(''); }
+    if (!checked) { setOrderDiscountValue(''); }
   };
   const clearDiscount = () => {
     setOrderDiscountIsCustom(false); setOrderDiscountType('amount'); setOrderDiscountValue('');
@@ -7563,9 +7525,13 @@ function OrderCreate({ context = {}, setRoute }) {
                 className="hstack-8"
                 style={{ fontSize: 13, cursor: "pointer" }}
                 onClick={(e) => { e.stopPropagation(); openDiscountPopup(); }}
-                title={discount > 0 ? (orderDiscountReason || buildDiscountReason() || 'Discount') : ''}
+                title={discount > 0 ? buildDiscountReason() : ''}
               >
-                <span style={{ color: "#3b82f6" }}>{discount > 0 ? (orderDiscountReason || buildDiscountReason() || 'Discount') : 'Add discount'}</span>
+                <span style={{ color: "#3b82f6", display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                  {discount > 0
+                    ? <><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{buildDiscountReason() || 'Discount'}</span><Icon name="edit" size={12} /></>
+                    : 'Add discount'}
+                </span>
                 <span className="spacer" />
                 <span className="num fw5" style={{ color: discount ? "var(--fg)" : "var(--muted)" }}>{discount ? `− Rs. ${discount}` : "—"}</span>
               </div>
@@ -7573,130 +7539,100 @@ function OrderCreate({ context = {}, setRoute }) {
                 <div className={`theme-light accent-rose ${orderDiscountPopupClosing ? 'fade-out' : 'fade-in'}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg)' }}>
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={(e) => { e.stopPropagation(); cancelDiscountPopup(); }} />
                   <div style={{ position: "relative", width: "min(780px, 94vw)", maxHeight: "88vh", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "0 24px 60px rgba(0,0,0,.2)", textAlign: "left", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
-                    <div className="hstack-10" style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-                      <div className="stack-2">
-                        <div className="fw6">Add discount</div>
-                        <span className="muted" style={{ fontSize: 11.5 }}>Stack Healthscore Lead or a code with a custom / partial-pay amount</span>
-                      </div>
+                    <div className="hstack-10" style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
+                      <div className="fw6">Add discount</div>
                       <span className="spacer" />
+                      {/* Healthscore Lead toggle — top-right of the header */}
+                      <label className="hstack-6" style={{ alignItems: "center", gap: 6, cursor: healthscoreCode ? "pointer" : "not-allowed", opacity: healthscoreCode ? 1 : 0.5, padding: "5px 10px", border: "1px solid " + (healthscoreLeadOn ? "var(--accent)" : "var(--border)"), borderRadius: 8, background: healthscoreLeadOn ? "var(--accent-soft)" : "transparent" }} title={healthscoreCode ? `Applies code ${healthscoreCode}` : "No code configured — Settings → Logistics"}>
+                        <input type="checkbox" checked={healthscoreLeadOn} disabled={!healthscoreCode} onChange={e => toggleHealthscoreLead(e.target.checked)} />
+                        <span style={{ fontSize: 12.5, fontWeight: 500 }}>Healthscore Lead</span>
+                      </label>
                       <button className="btn sm ghost icon" onClick={cancelDiscountPopup}><Icon name="x" /></button>
                     </div>
-                    <div style={{ padding: 20, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "start" }}>
-                      {/* ── Left column: Healthscore Lead + discount code ── */}
-                      <div className="stack-12">
-                        <label className="stack-2" style={{ padding: "10px 12px", border: "1px solid " + (healthscoreLeadOn ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: healthscoreCode ? "pointer" : "not-allowed", opacity: healthscoreCode ? 1 : 0.55, background: healthscoreLeadOn ? "var(--accent-soft)" : "transparent" }}>
-                          <div className="hstack-8" style={{ alignItems: "center" }}>
-                            <input type="checkbox" checked={healthscoreLeadOn} disabled={!healthscoreCode} onChange={e => toggleHealthscoreLead(e.target.checked)} />
-                            <span className="fw5" style={{ fontSize: 13 }}>Healthscore Lead</span>
+                    <div className="stack-12" style={{ padding: 20, overflowY: "auto" }}>
+                      {/* Discount codes — input with fade-in suggestions + applied-code card(s) */}
+                      <div className="stack-4" style={{ position: "relative" }}>
+                        <span className="fw5" style={{ fontSize: 13 }}>Discount codes</span>
+                        <input
+                          className="input"
+                          placeholder="Enter a discount code"
+                          value={orderDiscountCode}
+                          onFocus={() => setCodeDropdownOpen(true)}
+                          onChange={e => { setOrderDiscountCode(e.target.value); setCodeDropdownOpen(true); }}
+                        />
+                        {codeDropdownOpen && (
+                          <div className="fade-in" style={{ border: "1px solid var(--border)", borderRadius: 8, marginTop: 4, maxHeight: 220, overflowY: "auto", background: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.12)" }}>
+                            {discountCodeLoading ? (
+                              <div className="muted" style={{ fontSize: 12.5, padding: "10px 12px" }}>Loading active codes…</div>
+                            ) : discountCodeError ? (
+                              <div style={{ fontSize: 12, padding: "10px 12px", color: "var(--risk-moderate)" }}>{discountCodeError}</div>
+                            ) : filteredDiscountCodes.length === 0 ? (
+                              <div className="muted" style={{ fontSize: 12.5, padding: "10px 12px" }}>No active codes{orderDiscountCode ? " match" : ""}.</div>
+                            ) : filteredDiscountCodes.map((o, i) => (
+                              <div key={o.code + i} onClick={() => { selectDiscountCode(o); setCodeDropdownOpen(false); }} className="stack-2"
+                                style={{ padding: "9px 12px", cursor: "pointer", borderBottom: i < filteredDiscountCodes.length - 1 ? "1px solid var(--border)" : "none" }}
+                                onMouseEnter={e => e.currentTarget.style.background = "var(--hover)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                <span className="fw5" style={{ fontSize: 13 }}>{o.code}</span>
+                                <span className="muted" style={{ fontSize: 11.5 }}>{o.valueType === "percentage" ? `${o.value}% off` : o.valueType === "amount" ? `Rs. ${o.value} off` : ""}{o.title ? `${(o.valueType ? " · " : "")}${o.title}` : ""}</span>
+                              </div>
+                            ))}
                           </div>
-                          <span className="muted" style={{ fontSize: 11.5, paddingLeft: 24 }}>
-                            {healthscoreCode ? `Applies code ${healthscoreCode}` : 'No code configured — Settings → Logistics'}
-                          </span>
-                        </label>
-
-                        {/* Discount code with active-code autocomplete (mutually exclusive with custom) */}
-                        <div className="stack-4">
-                          <span className="fw5" style={{ fontSize: 13 }}>Discount code</span>
-                          <input
-                            className="input"
-                            placeholder={orderDiscountIsCustom ? "Disabled — custom discount is on" : "Type to search active codes…"}
-                            value={orderDiscountCode}
-                            disabled={orderDiscountIsCustom}
-                            onChange={e => { setOrderDiscountCode(e.target.value); setAppliedCodeDiscount(null); }}
-                          />
-                          {!orderDiscountIsCustom && (
-                            <div style={{ border: "1px solid var(--border)", borderRadius: 8, marginTop: 4, maxHeight: 168, overflowY: "auto", background: "var(--surface)" }}>
-                              {discountCodeLoading ? (
-                                <div className="muted" style={{ fontSize: 12.5, padding: "8px 12px" }}>Loading active codes…</div>
-                              ) : discountCodeError ? (
-                                <div style={{ fontSize: 12, padding: "8px 12px", color: "var(--risk-moderate)" }}>{discountCodeError}</div>
-                              ) : filteredDiscountCodes.length === 0 ? (
-                                <div className="muted" style={{ fontSize: 12.5, padding: "8px 12px" }}>No active codes{orderDiscountCode ? " match" : ""}.</div>
-                              ) : filteredDiscountCodes.map((o, i) => {
-                                const sel = appliedCodeDiscount?.code === o.code;
-                                return (
-                                  <div key={o.code + i} onClick={() => selectDiscountCode(o)} className="hstack-8"
-                                    style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, background: sel ? "var(--accent-soft)" : "transparent", borderBottom: i < filteredDiscountCodes.length - 1 ? "1px solid var(--border)" : "none" }}>
-                                    <span className="fw5">{o.code}</span>
-                                    <span className="spacer" />
-                                    <span className="muted num" style={{ fontSize: 12 }}>
-                                      {o.valueType === "percentage" ? `${o.value}% off` : o.valueType === "amount" ? `Rs. ${o.value} off` : (o.title || "")}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                          {appliedCodeDiscount && (
-                            <div className="hstack-8" style={{ marginTop: 6, padding: "6px 10px", background: "var(--accent-soft)", borderRadius: 8, fontSize: 12.5 }}>
-                              <span className="fw6">{appliedCodeDiscount.code}</span>
-                              <span className="muted">{appliedCodeDiscount.valueType === "percentage" ? `${appliedCodeDiscount.value}% off` : `Rs. ${appliedCodeDiscount.value} off`}</span>
+                        )}
+                        {appliedCodeDiscount && (
+                          <div className="stack-2 fade-in" style={{ marginTop: 8, padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)" }}>
+                            <div className="hstack-8" style={{ alignItems: "center" }}>
+                              <span className="fw6" style={{ fontSize: 13 }}>{appliedCodeDiscount.code}</span>
+                              <span className="badge" style={{ fontSize: 10, padding: "1px 6px" }}>Order discount</span>
                               <span className="spacer" />
-                              <button className="btn sm ghost" onClick={() => { setAppliedCodeDiscount(null); setOrderDiscountCode(''); }}>Remove</button>
+                              <button className="btn sm ghost icon" title="Remove" onClick={() => { setAppliedCodeDiscount(null); setOrderDiscountCode(''); }}><Icon name="x" size={13} /></button>
                             </div>
-                          )}
-                        </div>
+                            <span className="muted" style={{ fontSize: 12 }}>{appliedCodeDiscount.valueType === "percentage" ? `${appliedCodeDiscount.value}% off entire order` : `Rs. ${appliedCodeDiscount.value} off`}</span>
+                          </div>
+                        )}
                       </div>
 
-                      {/* ── Right column: custom / partial-pay discount ── */}
-                      <div className="stack-12">
-                        <label className="hstack-8" style={{ alignItems: "flex-start", cursor: "pointer", padding: "10px 12px", border: "1px solid " + (orderDiscountIsCustom ? "var(--accent)" : "var(--border)"), borderRadius: 10, background: orderDiscountIsCustom ? "var(--accent-soft)" : "transparent" }}>
-                          <input type="checkbox" checked={orderDiscountIsCustom} onChange={e => enableCustomDiscount(e.target.checked)} style={{ marginTop: 2 }} />
-                          <div className="stack-2">
-                            <span className="fw5" style={{ fontSize: 13 }}>Custom / partial-pay discount</span>
-                            <span className="muted" style={{ fontSize: 11.5 }}>A fixed amount or % off, on top of any code</span>
-                          </div>
-                        </label>
-
-                        {orderDiscountIsCustom ? (
+                      {/* Add custom order discount — expands with a fade-in */}
+                      <label className="hstack-8" style={{ alignItems: "center", cursor: "pointer" }}>
+                        <input type="checkbox" checked={orderDiscountIsCustom} onChange={e => enableCustomDiscount(e.target.checked)} />
+                        <span style={{ fontSize: 13 }}>Add custom order discount</span>
+                      </label>
+                      {orderDiscountIsCustom && (
+                        <div className="fade-in stack-8" style={{ paddingLeft: 24 }}>
                           <div className="hstack-8">
                             <div className="field" style={{ margin: 0, flex: 1 }}>
-                              <span className="lbl">Type</span>
+                              <span className="lbl">Discount type</span>
                               <select className="select" value={orderDiscountType} onChange={e => setOrderDiscountType(e.target.value)}>
                                 <option value="amount">Amount</option>
                                 <option value="percentage">Percentage</option>
                               </select>
                             </div>
                             <div className="field" style={{ margin: 0, flex: 1 }}>
-                              <span className="lbl">Value</span>
+                              <span className="lbl">Discount value</span>
                               <div style={{ display: "flex", alignItems: "center", height: 40, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
                                 <span className="muted" style={{ paddingLeft: 12 }}>{orderDiscountType === "percentage" ? "%" : "Rs."}</span>
                                 <input className="input num" type="number" min="0" value={orderDiscountValue} onChange={e => setOrderDiscountValue(e.target.value)} placeholder="0.00" style={{ height: "100%", border: 0, paddingLeft: 8, minWidth: 0, width: "100%" }} />
                               </div>
                             </div>
                           </div>
-                        ) : (
-                          <div className="muted" style={{ fontSize: 12, padding: "0 2px" }}>Turn this on to add an extra amount (e.g. a partial payment) along with Healthscore Lead or a code.</div>
-                        )}
-                      </div>
-
-                      {/* ── Full-width: reason + combined total ── */}
-                      {hasManualDiscount && (
-                        <div style={{ gridColumn: "1 / -1" }} className="stack-8">
-                          <div className="divider" style={{ margin: "2px 0" }} />
-                          <div className="hstack-8" style={{ alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
-                            <div className="field" style={{ margin: 0, flex: 1, minWidth: 240 }}>
-                              <span className="lbl">Reason for discount</span>
-                              <input
-                                className="input"
-                                value={orderDiscountReason}
-                                placeholder={buildDiscountReason() || "Reason shown to customer"}
-                                onChange={e => { setOrderDiscountReason(e.target.value); setOrderDiscountReasonEdited(true); }}
-                              />
-                            </div>
-                            <div className="hstack-8" style={{ height: 40, padding: "0 14px", background: "var(--surface-2)", borderRadius: 8, alignItems: "center", gap: 8 }}>
-                              <span className="fw5" style={{ fontSize: 12.5 }}>Total off</span>
-                              <span className="num fw6" style={{ fontSize: 15 }}>− Rs. {discount.toLocaleString()}</span>
-                            </div>
+                          <div className="field" style={{ margin: 0 }}>
+                            <span className="lbl">Reason for discount</span>
+                            <input className="input" value={orderDiscountReason} placeholder="partial pay" onChange={e => { setOrderDiscountReason(e.target.value); setOrderDiscountReasonEdited(true); }} />
+                            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Visible to customer</div>
                           </div>
-                          <div className="hstack-8">
-                            <span className="muted" style={{ fontSize: 12 }}>Visible to customer · auto-filled</span>
-                            {orderDiscountReasonEdited && (
-                              <button className="btn sm ghost" style={{ fontSize: 11, padding: "0 6px" }}
-                                onClick={() => { setOrderDiscountReasonEdited(false); setOrderDiscountReason(buildDiscountReason()); }}>
-                                Reset to auto
-                              </button>
-                            )}
+                        </div>
+                      )}
+
+                      {/* Applied discounts breakdown — each stacks as its own line */}
+                      {activeDiscounts.length > 0 && (
+                        <div className="stack-6 fade-in" style={{ padding: "10px 12px", background: "var(--surface-2)", borderRadius: 8 }}>
+                          {activeDiscounts.map(d => (
+                            <div key={d.key} className="hstack-8" style={{ fontSize: 12.5 }}>
+                              <span>{d.label}</span><span className="spacer" /><span className="num fw5">− Rs. {d.amount.toLocaleString()}</span>
+                            </div>
+                          ))}
+                          <div className="divider" style={{ margin: "2px 0" }} />
+                          <div className="hstack-8" style={{ fontSize: 13 }}>
+                            <span className="fw6">Total off</span><span className="spacer" /><span className="num fw6">− Rs. {discount.toLocaleString()}</span>
                           </div>
                         </div>
                       )}
