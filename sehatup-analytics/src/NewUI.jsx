@@ -7668,11 +7668,10 @@ function OrderCreate({ context = {}, setRoute }) {
                 </label>
               ))}
             </div>
-          </div>
 
-          {/* Shipping — always visible (independent of the payment choice) so the
-              auto-applied / chosen rate is shown even before a payment method is ticked. */}
-          <div className="card">
+            {/* Shipping lives in the same block as Payment (one card). */}
+            <div className="divider" style={{ margin: "18px 0 12px" }} />
+
             <div className="hstack-8" style={{ marginBottom: 10 }}>
               <div className="section-title" style={{ margin: 0 }}>Shipping</div>
               {productShippingCfg.enabled && <span className="muted" style={{ fontSize: 11.5 }}>Default {productDefaultShippingTitle} · Rs. {Math.round(productDefaultShippingPrice)}</span>}
