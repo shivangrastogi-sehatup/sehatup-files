@@ -7594,14 +7594,15 @@ function OrderCreate({ context = {}, setRoute }) {
                       {!useCustomShipping && COD_SHIPPING_OPTIONS.map(opt => {
                         const isSel = selectedShipping?.id === opt.id;
                         return (
-                          <label key={opt.id} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)" }}>
+                          <label key={opt.id} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)", boxShadow: isSel ? "0 0 0 2px color-mix(in oklab, var(--accent) 25%, transparent)" : "none", transition: "box-shadow .12s ease, border-color .12s ease" }}>
                             <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(opt); setUseCustomShipping(false); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
                             <div className="stack-2">
-                              <span style={{ fontSize: 13 }}>{opt.title}</span>
+                              <span style={{ fontSize: 13, fontWeight: isSel ? 600 : 400 }}>{opt.title}</span>
                               <span className="muted" style={{ fontSize: 11 }}>{opt.sub}</span>
                             </div>
                             <span className="spacer" />
-                            <span className="num fw6" style={{ fontSize: 13 }}>Rs. {opt.price}</span>
+                            {isSel && <Icon name="check" size={14} color="var(--accent)" />}
+                            <span className="num fw6" style={{ fontSize: 13, color: isSel ? "var(--accent-ink)" : "var(--fg)" }}>Rs. {opt.price}</span>
                           </label>
                         );
                       })}
@@ -7691,6 +7692,14 @@ export function parseCSV(text) {
   return result;
 }
 
+// Show every phone consistently as "+91 XXXXXXXXXX" (last 10 digits), regardless of how it
+// was stored (some sheet rows have the country code, some don't).
+function fmtPhoneDisplay(raw) {
+  const d = String(raw || '').replace(/\D/g, '');
+  if (d.length >= 10) return `+91 ${d.slice(-10)}`;
+  return raw || '-';
+}
+
 function CRMOrders({ setRoute, openCustomer }) {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -7719,10 +7728,11 @@ function CRMOrders({ setRoute, openCustomer }) {
     if (showOnlyMyOrders) { list = list.filter(o => o['Updated By'] === myName); }
     if (!search.trim()) return list;
     const q = search.toLowerCase();
+    const qDigits = q.replace(/\D/g, '');
     return list.filter(o =>
       (o['First Name'] || '').toLowerCase().includes(q) ||
       (o['Last Name'] || '').toLowerCase().includes(q) ||
-      (o['Phone Number'] || '').toLowerCase().includes(q) ||
+      (qDigits && (o['Phone Number'] || '').replace(/\D/g, '').includes(qDigits)) ||
       (o['District/City'] || '').toLowerCase().includes(q) ||
       (o['State'] || '').toLowerCase().includes(q)
     );
@@ -7799,7 +7809,7 @@ function CRMOrders({ setRoute, openCustomer }) {
                       <td className='fw6' style={{ whiteSpace: "nowrap" }}>
                         {o['First Name'] || ''} {o['Last Name'] || ''}
                       </td>
-                      <td className='num' style={{ whiteSpace: "nowrap" }}>{o['Phone Number'] || '-'}</td>
+                      <td className='num' style={{ whiteSpace: "nowrap" }}>{fmtPhoneDisplay(o['Phone Number'])}</td>
                       <td>
                         <div className='stack-2' style={{ whiteSpace: "normal", wordBreak: "break-word" }}>
                           <div>{o['Address'] || '-'}</div>
