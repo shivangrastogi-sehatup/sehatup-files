@@ -2579,18 +2579,7 @@ exports.qrCrm = onRequest({ region: "us-central1" }, async (req, res) => {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    if (action === "create") {
-      const convId = convIdFromPhone || leadId;
-      if (!convId) return res.status(400).json({ error: "phone required" });
-      await upsert(convId, body);
-      return res.status(200).json({ lead_id: convId, status: "Successfully Created" });
-    }
-    if (action === "update") {
-      const convId = leadId || convIdFromPhone;
-      if (!convId) return res.status(400).json({ error: "lead_id or phone required" });
-      await upsert(convId, body);
-      return res.status(200).json({ lead_id: convId, status: "Successfully Updated" });
-    }
+    // Fetch (dedupe lookup) — QuickReply may call this before create/update.
     if (action === "fetch") {
       let snap = null;
       if (leadId) snap = await db.collection("conversations").doc(leadId).get();
@@ -2600,7 +2589,13 @@ exports.qrCrm = onRequest({ region: "us-central1" }, async (req, res) => {
       const d = snap.data();
       return res.status(200).json({ lead_id: snap.id, lead_fields: { phone: d.phone || "", name: d.name || "", email: d.email || "", custom_fields: d.leadFields || {} } });
     }
-    return res.status(404).json({ error: "Unknown action — use /create, /fetch or /update/<lead_id>" });
+    // Everything else — the bare URL, /create or /update — upserts the contact by phone (or
+    // lead_id). QuickReply only integrates ONE endpoint, so this single handler covers both
+    // create and update events: whatever they POST with phone + name updates the conversation.
+    const convId = leadId || convIdFromPhone;
+    if (!convId) return res.status(400).json({ error: "phone or lead_id required" });
+    await upsert(convId, body);
+    return res.status(200).json({ lead_id: convId, status: "OK" });
   } catch (e) {
     console.error("[qrCrm] error", e);
     return res.status(500).json({ error: e.message || "error" });
