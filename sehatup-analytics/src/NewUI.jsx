@@ -6468,19 +6468,20 @@ function OrderCreate({ context = {}, setRoute }) {
   const productDefaultShippingTitle = productDefaultShipping?.title || 'Shipping';
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!pay || shippingTouched || shippingRates.length === 0) return; // wait for a payment choice
-    if (productShippingCfg.enabled) {
-      const tprice = Math.round(productDefaultShippingPrice);
-      const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
-        || shippingRates.find(r => Math.round(r.price) === tprice);
+    if (shippingTouched) return;
+    // Default: product-based shipping is off → orders ship Free (single option).
+    if (!productShippingCfg.enabled) {
       setUseCustomShipping(false);
-      setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
-    } else {
-      const codRates = shippingRates.filter(r => /cod|cash|delivery/i.test(r.title) && !/prepaid/i.test(r.title));
-      const prepaidRate = shippingRates.find(r => /prepaid/i.test(r.title));
-      setUseCustomShipping(false);
-      setSelectedShipping(pay === 'COD' ? (codRates[0] || null) : (prepaidRate || null));
+      setSelectedShipping({ id: 'free', title: 'Free shipping', price: 0, code: 'FREE' });
+      return;
     }
+    // Feature on → apply the configured product rate once a payment method is chosen.
+    if (!pay || shippingRates.length === 0) return;
+    const tprice = Math.round(productDefaultShippingPrice);
+    const match = shippingRates.find(r => r.title === productDefaultShippingTitle && Math.round(r.price) === tprice)
+      || shippingRates.find(r => Math.round(r.price) === tprice);
+    setUseCustomShipping(false);
+    setSelectedShipping(match || { id: 'config-rate', title: productDefaultShippingTitle, price: productDefaultShippingPrice, code: productDefaultShippingTitle });
   }, [pay, productShippingCfg.enabled, productDefaultShippingTitle, productDefaultShippingPrice, shippingRates, shippingTouched]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -7741,7 +7742,15 @@ function OrderCreate({ context = {}, setRoute }) {
               <span className="spacer" />
               <span className="num fw6" style={{ fontSize: 13 }}>{shipping ? `Rs. ${shipping}` : 'Free'}</span>
             </div>
-            {isLoadingShipping ? (
+            {!productShippingCfg.enabled ? (
+              // Product-based shipping is off → single Free shipping option.
+              <label className="hstack-8" style={{ cursor: "default", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)" }}>
+                <input type="radio" name="shippingRate" checked readOnly style={{ accentColor: "var(--accent)" }} />
+                <span style={{ fontSize: 13 }}>Free shipping</span>
+                <span className="spacer" />
+                <span className="num fw6" style={{ fontSize: 13 }}>Rs. 0</span>
+              </label>
+            ) : isLoadingShipping ? (
               <div className="muted" style={{ fontSize: 13 }}>Loading rates...</div>
             ) : (
               <div className="stack-6">
