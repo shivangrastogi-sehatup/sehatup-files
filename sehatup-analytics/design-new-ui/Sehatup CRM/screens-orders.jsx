@@ -29,7 +29,7 @@ function OrderCreate({ context = {}, setRoute }) {
       </div>
 
       <div className="grid-12">
-        <div className="span-8 col">
+        <div className="span-7 col">
           {/* Customer */}
           <div className="card">
             <div className="hstack-8">
@@ -127,7 +127,7 @@ function OrderCreate({ context = {}, setRoute }) {
         </div>
 
         {/* Summary */}
-        <div className="span-4 col">
+        <div className="span-5 col">
           <div className="card">
             <div className="section-title">Order summary</div>
             <div className="stack-8" style={{ marginTop: 14 }}>

@@ -1785,25 +1785,35 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Responded = of those, the ones an agent replied to (outbound AGENT message in range).
   // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
   // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
-  const [convoStats, setConvoStats] = useState({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadDetail: [], loading: true, error: null });
+  const [convoStats, setConvoStats] = useState({ totalInbox: 0, inboxAgent: 0, inboxBot: 0, leads: 0, leadAgent: 0, leadUnresponded: 0, leadDetail: [], inboxDetail: [], loading: true, error: null });
   const [convoRefresh, setConvoRefresh] = useState(0); // bump to re-run the conversation query
-  // Leads-list modal: resolves the lead conversation ids to names/phones (with status) on demand.
-  const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null });
+  // Conversation-list modal: resolves a set of conversation ids to names/phones (with status)
+  // on demand. Shared by every clickable stat card (inbox, leads, responded, …).
+  const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null, title: 'Conversations' });
   const [leadFilter, setLeadFilter] = useState('all'); // all | responded | unresponded
-  const openLeadsModal = async () => {
+  const openConvoModal = async (title, detail) => {
     setLeadFilter('all');
-    setLeadsModal({ open: true, loading: true, items: [], error: null });
+    setLeadsModal({ open: true, loading: true, items: [], error: null, title });
     try {
-      const detail = (convoStats.leadDetail || []).slice(0, 500);
-      const snaps = await Promise.all(detail.map(d => getDoc(doc(db, 'conversations', d.id)).catch(() => null)));
+      const list = (detail || []).slice(0, 500);
+      const snaps = await Promise.all(list.map(d => getDoc(doc(db, 'conversations', d.id)).catch(() => null)));
       const items = snaps
-        .map((s, i) => { if (!s || !s.exists()) return null; const d = s.data(); return { id: s.id, name: d.name || d.phone || s.id, phone: d.phone || '', at: d.lastMessageAt || 0, status: detail[i].status }; })
+        .map((s, i) => { if (!s || !s.exists()) return null; const d = s.data(); return { id: s.id, name: d.name || d.phone || s.id, phone: d.phone || '', at: d.lastMessageAt || 0, status: list[i].status }; })
         .filter(Boolean)
         .sort((a, b) => (b.at || 0) - (a.at || 0));
-      setLeadsModal({ open: true, loading: false, items, error: null });
+      setLeadsModal({ open: true, loading: false, items, error: null, title });
     } catch (e) {
-      setLeadsModal({ open: true, loading: false, items: [], error: e?.message || 'Failed to load leads' });
+      setLeadsModal({ open: true, loading: false, items: [], error: e?.message || 'Failed to load conversations', title });
     }
+  };
+  // Click props for a stat card: only interactive when the metric has resolvable conversations.
+  const convoCardProps = (title, detail) => {
+    const enabled = !convoStats.loading && (detail?.length || 0) > 0;
+    return {
+      onClick: enabled ? () => openConvoModal(title, detail) : undefined,
+      style: { cursor: enabled ? 'pointer' : 'default' },
+      title: enabled ? 'Click to see these conversations & open any chat' : undefined,
+    };
   };
   const leadRespondedCount = leadsModal.items.filter(it => it.status === 'agent').length;
   const visibleLeads = leadsModal.items.filter(it =>
@@ -1818,40 +1828,34 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     (async () => {
       try {
         const snap = await getDocs(query(collectionGroup(db, 'messages'), where('msgTime', '>=', fromMs), where('msgTime', '<=', toMs)));
-        const all = new Set();        // every conversation active in the range (lead)
-        const agentSet = new Set();   // conversations with a human-agent outbound message
-        const botSet = new Set();     // conversations with a bot/automation outbound message
+        const all = new Set();        // TOTAL INBOX — every conversation with any message
+        const inbound = new Set();    // LEAD — the customer actually sent a query (direction 'in')
+        const agentSet = new Set();   // a human agent replied
+        const botSet = new Set();     // a bot / automation / template replied
         snap.forEach(d => {
           const convId = d.ref.parent.parent?.id;
           if (!convId) return;
-          all.add(convId);            // any message (in OR out) makes this an active lead —
-          const m = d.data();         // AI-handled chats only give us the bot reply, no inbound
+          all.add(convId);
+          const m = d.data();
           if (m.direction === 'out') { if (m.messageBy === 'AGENT') agentSet.add(convId); else botSet.add(convId); }
+          else inbound.add(convId);   // an inbound customer message = a real query
         });
-        // For each lead: if ANY message that day was sent by an agent → counts as agent;
-        // else if a bot/automation replied → bot; else nobody replied → none.
-        let byAgent = 0, byBot = 0;
-        all.forEach(id => {
-          if (agentSet.has(id)) byAgent += 1;
-          else if (botSet.has(id)) byBot += 1;
-        });
-        const responded = byAgent + byBot;
-        // Opened (read by an agent) in range, and of those the ones with NO agent reply —
-        // i.e. an agent looked at the chat but never responded.
-        let opened = 0, openedNoReply = 0;
-        try {
-          const oSnap = await getDocs(query(collection(db, 'conversations'), where('lastReadAt', '>=', fromMs), where('lastReadAt', '<=', toMs)));
-          opened = oSnap.size;
-          oSnap.forEach(d => { if (!agentSet.has(d.id)) openedNoReply += 1; });
-        } catch { /* lastReadAt not yet populated */ }
-        // Per-lead status for the names modal: 'agent' = a human agent replied (real
-        // "responded"), 'bot' = only an auto/bot reply, 'none' = no reply at all.
-        const leadDetail = Array.from(all).map(id => ({
-          id, status: agentSet.has(id) ? 'agent' : (botSet.has(id) ? 'bot' : 'none'),
-        }));
-        if (!cancelled) setConvoStats({ leads: all.size, responded, byAgent, byBot, opened, openedNoReply, leadDetail, loading: false, error: null });
+        // Inbox-level response split (a chat counts once; agent takes priority over bot).
+        let inboxAgent = 0, inboxBot = 0;
+        all.forEach(id => { if (agentSet.has(id)) inboxAgent += 1; else if (botSet.has(id)) inboxBot += 1; });
+        // Leads = chats where the customer asked something. Of those, how many a human handled.
+        let leadAgent = 0;
+        inbound.forEach(id => { if (agentSet.has(id)) leadAgent += 1; });
+        const leads = inbound.size;
+        const leadUnresponded = leads - leadAgent;  // customer asked, no agent reply → follow up
+        // Per-conversation status (agent reply wins over bot). Used to build any modal subset.
+        const statusOf = (id) => agentSet.has(id) ? 'agent' : (botSet.has(id) ? 'bot' : 'none');
+        // Full inbox list (every chat) + lead list (customer asked a query), both with who responded.
+        const inboxDetail = Array.from(all).map(id => ({ id, status: statusOf(id) }));
+        const leadDetail = Array.from(inbound).map(id => ({ id, status: statusOf(id) }));
+        if (!cancelled) setConvoStats({ totalInbox: all.size, inboxAgent, inboxBot, leads, leadAgent, leadUnresponded, leadDetail, inboxDetail, loading: false, error: null });
       } catch (e) {
-        if (!cancelled) setConvoStats({ leads: 0, responded: 0, byAgent: 0, byBot: 0, opened: 0, openedNoReply: 0, leadDetail: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
+        if (!cancelled) setConvoStats({ totalInbox: 0, inboxAgent: 0, inboxBot: 0, leads: 0, leadAgent: 0, leadUnresponded: 0, leadDetail: [], inboxDetail: [], loading: false, error: e?.message || 'Failed to load conversation stats' });
       }
     })();
     return () => { cancelled = true; };
@@ -2100,24 +2104,25 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <Icon name="refresh" size={13} /> {convoStats.loading ? "Syncing…" : "Refresh"}
           </button>
         </div>
+        {/* Inbox — ALL chats (incl. bot templates / broadcasts). Every card opens the same modal
+            with its own subset of conversations; rows in the modal open the chat in Conversations. */}
         <div className="grid-12 convo-kpis">
-          <div className="span-3" onClick={() => !convoStats.loading && convoStats.leads > 0 && openLeadsModal()} style={{ cursor: (!convoStats.loading && convoStats.leads > 0) ? "pointer" : "default" }} title="Click to see the lead names & who responded">
-            <KPI label="Chats received (leads)" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="message" />
+          <div className="span-3" {...convoCardProps('Total inbox', convoStats.inboxDetail)}><KPI label="Total inbox" value={convoStats.loading ? "…" : convoStats.totalInbox.toLocaleString()} icon="message" /></div>
+          <div className="span-3" {...convoCardProps('Responded by agent', convoStats.inboxDetail.filter(d => d.status === 'agent'))}><KPI label="Responded by agent" value={convoStats.loading ? "…" : convoStats.inboxAgent.toLocaleString()} icon="check" /></div>
+          <div className="span-3" {...convoCardProps('Responded by bot', convoStats.inboxDetail.filter(d => d.status === 'bot'))}><KPI label="Responded by bot" value={convoStats.loading ? "…" : convoStats.inboxBot.toLocaleString()} icon="bolt" /></div>
+          <div className="span-3" {...convoCardProps('Responded inbox', convoStats.inboxDetail.filter(d => d.status !== 'none'))}><KPI label="Inbox response rate" value={convoStats.loading ? "…" : (convoStats.totalInbox ? Math.round(((convoStats.inboxAgent + convoStats.inboxBot) / convoStats.totalInbox) * 100) : 0)} suffix="%" icon="target" /></div>
+        </div>
+
+        {/* Leads — only chats where the customer actually asked a query */}
+        <div className="hstack-8" style={{ margin: "12px 0 6px" }}>
+          <span className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Leads · customer asked a query</span>
+        </div>
+        <div className="grid-12 convo-kpis">
+          <div className="span-3" {...convoCardProps('Leads', convoStats.leadDetail)}>
+            <KPI label="Leads" value={convoStats.loading ? "…" : convoStats.leads.toLocaleString()} icon="users" />
           </div>
-          {/* Agent + bot in one block — bot = automated/QuickReply auto-replies (hits almost
-              every chat), so the meaningful number is the agent one. */}
-          <div className="span-3">
-            <div className="kpi">
-              <div className="kpi-hd"><div className="ic"><Icon name="check" size={14} /></div><div className="lbl">Responded</div></div>
-              <div className="kpi-val" style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-                <span>{convoStats.loading ? "…" : convoStats.byAgent.toLocaleString()}<span style={{ color: "var(--muted)", fontSize: 12, fontWeight: 500, marginLeft: 4 }}>agent</span></span>
-                <span style={{ color: "var(--muted)" }}>{convoStats.loading ? "…" : convoStats.byBot.toLocaleString()}<span style={{ fontSize: 12, fontWeight: 500, marginLeft: 4 }}>bot</span></span>
-              </div>
-              <div className="kpi-ft"><span>vs. last 30d</span></div>
-            </div>
-          </div>
-          <div className="span-3"><KPI label="Agent response rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.byAgent / convoStats.leads) * 100) : 0)} suffix="%" icon="target" /></div>
-          <div className="span-3"><KPI label="Opened, no reply" value={convoStats.loading ? "…" : convoStats.openedNoReply.toLocaleString()} icon="flag" /></div>
+          <div className="span-3" {...convoCardProps('Unresponded leads', convoStats.leadDetail.filter(d => d.status !== 'agent'))}><KPI label="Unresponded leads" value={convoStats.loading ? "…" : convoStats.leadUnresponded.toLocaleString()} icon="flag" /></div>
+          <div className="span-3" {...convoCardProps('Converted leads', convoStats.leadDetail.filter(d => d.status === 'agent'))}><KPI label="Conversion rate" value={convoStats.loading ? "…" : (convoStats.leads ? Math.round((convoStats.leadAgent / convoStats.leads) * 100) : 0)} suffix="%" icon="trend_up" /></div>
         </div>
       </div>
 
@@ -2128,7 +2133,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           <div style={{ position: 'relative', width: 'min(520px, 94vw)', maxHeight: '82vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 24px 60px rgba(0,0,0,.2)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="hstack-10" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div className="stack-2">
-                <div className="fw6">Leads · {leadsModal.items.length}</div>
+                <div className="fw6">{leadsModal.title} · {leadsModal.items.length}</div>
                 <span className="muted" style={{ fontSize: 11.5 }}>{leadRespondedCount} responded by agent · {leadsModal.items.length - leadRespondedCount} not · {dateFrom} to {dateTo}</span>
               </div>
               <span className="spacer" />
@@ -2148,8 +2153,14 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                 <div className="muted" style={{ padding: 16, fontSize: 13 }}>No {leadFilter === 'all' ? '' : leadFilter + ' '}leads in this period.</div>
               ) : visibleLeads.map((it, i) => {
                 const responded = it.status === 'agent';
+                // Click a row → jump to the Conversations panel with this chat opened.
+                const openChat = () => { setLeadsModal(m => ({ ...m, open: false })); setRoute && setRoute('conversations', { selectId: it.id }); };
                 return (
-                  <div key={it.id} className="hstack-8" style={{ padding: '8px 12px', borderBottom: i < visibleLeads.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
+                  <div key={it.id} className="hstack-8" onClick={openChat}
+                    style={{ padding: '8px 12px', borderBottom: i < visibleLeads.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13, cursor: 'pointer', borderRadius: 8, transition: 'background .12s ease' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    title="Open this conversation">
                     <span className="muted num" style={{ width: 24, fontSize: 11 }}>{i + 1}</span>
                     <div className="stack-2" style={{ flex: 1, minWidth: 0 }}>
                       <span className="fw5" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</span>
@@ -2159,6 +2170,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                       {responded ? 'Responded' : (it.status === 'bot' ? 'Auto-reply only' : 'Unresponded')}
                     </Badge>
                     {it.at ? <span className="muted num" style={{ fontSize: 11, width: 48, textAlign: 'right' }}>{new Date(it.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span> : null}
+                    <Icon name="chevron_right" size={14} className="muted" />
                   </div>
                 );
               })}
@@ -6274,6 +6286,10 @@ function OrderCreate({ context = {}, setRoute }) {
 
       // Complete to Active Order if requested
       let finalOrderId = draftRes.id;
+      // Human order number (e.g. "#1234") — only a real, active Shopify order has one.
+      // Stored on the CRM row so the orders list can resolve the EXACT order instead of
+      // guessing by phone number. Stays null for drafts (a draft has no order number).
+      let finalOrderName = null;
       if (mode === 'active') {
         try {
           console.log('--- CREATING ACTIVE ORDER (explicit payment method) ---');
@@ -6329,6 +6345,29 @@ function OrderCreate({ context = {}, setRoute }) {
             orderPayload.order.discount_codes = [{ code: d.applied_discount.title || 'Discount', amount: d.applied_discount.amount, type: 'fixed_amount' }];
           }
 
+          // Reconciliation guard — the transaction below is pinned to the draft's total_price,
+          // but the order is rebuilt from explicit line prices + per-line discounts + one combined
+          // order discount. Recompute the rebuilt order's total and bail BEFORE posting if it drifts
+          // from the draft total beyond the whole-rupee rounding tolerance, so a future mismatch
+          // fails loudly here instead of silently creating an over/under-paid order (the class of the
+          // old "Rs.200 unauthorized" bug). ±Rs.1 is expected from integer-rounding the combined discount.
+          {
+            const lineItemsTotal = orderPayload.order.line_items.reduce((s, it) => {
+              const gross = (parseFloat(it.price) || 0) * (Number(it.quantity) || 0);
+              const lineDisc = parseFloat(it.applied_discount?.amount) || 0;
+              return s + gross - lineDisc;
+            }, 0);
+            const shipTotal = (orderPayload.order.shipping_lines || []).reduce((s, sl) => s + (parseFloat(sl.price) || 0), 0);
+            const orderDisc = (orderPayload.order.discount_codes || []).reduce((s, dc) => s + (parseFloat(dc.amount) || 0), 0);
+            const recomputedTotal = lineItemsTotal + shipTotal - orderDisc;
+            const draftTotal = parseFloat(d.total_price) || 0;
+            const drift = Math.abs(recomputedTotal - draftTotal);
+            console.log('--- ORDER TOTAL RECONCILIATION ---', { recomputedTotal, draftTotal, drift });
+            if (drift > 1) {
+              throw new Error(`Order total mismatch — rebuilt Rs.${recomputedTotal.toFixed(2)} vs draft Rs.${draftTotal.toFixed(2)} (drift Rs.${drift.toFixed(2)}). Aborting before payment to avoid a mismatched/unauthorized amount.`);
+            }
+          }
+
           const orderReq = await fetch('/shopify-v2/orders.json', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -6339,7 +6378,9 @@ function OrderCreate({ context = {}, setRoute }) {
             throw new Error(orderResData.errors ? JSON.stringify(orderResData.errors) : orderReq.statusText);
           }
           finalOrderId = orderResData.order.id;
-          console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, orderResData.order.payment_gateway_names);
+          finalOrderName = orderResData.order.name
+            || (orderResData.order.order_number != null ? `#${orderResData.order.order_number}` : null);
+          console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, finalOrderName, orderResData.order.payment_gateway_names);
 
           // The draft was only needed to compute prices/shipping/discounts — discard it.
           fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => { });
@@ -6365,7 +6406,15 @@ function OrderCreate({ context = {}, setRoute }) {
           'District/City': city || billingCity || '',
           'State': stateName || billingStateName || '',
           'Pin Code': pincode || billingPincode || '',
-          'Last Order': `Order #${finalOrderId} on ${new Date().toLocaleDateString('en-IN')}`
+          'Last Order': `Order #${finalOrderId} on ${new Date().toLocaleDateString('en-IN')}`,
+          // Structured Shopify order identifiers so the CRM Orders list can resolve the EXACT
+          // order (not a phone-match guess). Only written for real active orders. If the Google
+          // Sheet / Apps Script doesn't have these columns yet, the extra keys are simply ignored;
+          // the orders table falls back to parsing 'Last Order' for the id.
+          ...(mode === 'active' && finalOrderId ? {
+            'Order ID': String(finalOrderId),
+            'Order Number': finalOrderName || `#${finalOrderId}`,
+          } : {})
         },
         updatedBy: window.SehatData?.me?.name || 'CRM Order Creator'
       };
@@ -7579,7 +7628,9 @@ function OrderCreate({ context = {}, setRoute }) {
             <div className="stack-8">
               {["Prepaid", "COD"].map(p => (
                 <div key={p} className="stack-8">
-                  <label className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "var(--accent)" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "var(--accent-soft)" : "transparent" }}>
+                  <label className="hstack-10" style={{ padding: 12, border: "1px solid " + (pay === p ? "color-mix(in oklab, var(--accent) 55%, var(--border))" : "var(--border)"), borderRadius: 10, cursor: "pointer", background: pay === p ? "color-mix(in oklab, var(--accent) 6%, var(--surface))" : "transparent", boxShadow: pay === p ? "0 0 0 1px color-mix(in oklab, var(--accent) 12%, transparent)" : "none", transition: "background .14s ease, border-color .14s ease, box-shadow .14s ease" }}
+                    onMouseEnter={e => { if (pay !== p) e.currentTarget.style.background = "var(--hover)"; }}
+                    onMouseLeave={e => { if (pay !== p) e.currentTarget.style.background = "transparent"; }}>
                     <input type="radio" checked={pay === p} onChange={() => setPay(p)} style={{ accentColor: "var(--accent)" }} />
                     <div className="fw5">{p === "Prepaid" ? "Prepaid · UPI / Card" : "Cash on Delivery"}</div>
                     {pay === p && <><span className="spacer" /><span className="num fw6" style={{ fontSize: 13 }}>{shipping ? `Rs. ${shipping}` : 'Free'}</span></>}
@@ -7600,7 +7651,9 @@ function OrderCreate({ context = {}, setRoute }) {
                       {!useCustomShipping && COD_SHIPPING_OPTIONS.map(opt => {
                         const isSel = selectedShipping?.id === opt.id;
                         return (
-                          <label key={opt.id} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "var(--accent)" : "var(--border)"), background: isSel ? "var(--accent-soft)" : "var(--surface)", boxShadow: isSel ? "0 0 0 2px color-mix(in oklab, var(--accent) 25%, transparent)" : "none", transition: "box-shadow .12s ease, border-color .12s ease" }}>
+                          <label key={opt.id} className="hstack-8" style={{ cursor: "pointer", padding: "10px 12px", borderRadius: 8, border: "1px solid " + (isSel ? "color-mix(in oklab, var(--accent) 55%, var(--border))" : "var(--border)"), background: isSel ? "color-mix(in oklab, var(--accent) 6%, var(--surface))" : "var(--surface)", boxShadow: isSel ? "0 0 0 1px color-mix(in oklab, var(--accent) 12%, transparent)" : "none", transition: "box-shadow .14s ease, border-color .14s ease, background .14s ease" }}
+                            onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = "var(--hover)"; }}
+                            onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = "var(--surface)"; }}>
                             <input type="radio" name="shippingRate" checked={isSel} onChange={() => { setSelectedShipping(opt); setUseCustomShipping(false); setShippingTouched(true); }} style={{ accentColor: "var(--accent)" }} />
                             <div className="stack-2">
                               <span style={{ fontSize: 13, fontWeight: isSel ? 600 : 400 }}>{opt.title}</span>
@@ -7805,10 +7858,31 @@ function CRMOrders({ setRoute, openCustomer }) {
               <tbody>
                 {filteredOrders.map((o, i) => {
                   const oPhone = (o['Phone Number'] || '').replace(/\D/g, '');
-                  const shopifyOrder = window.SehatData?.ORDERS?.find(s => {
-                    const cPhone = (s.customer?.phone || '').replace(/\D/g, '');
-                    return cPhone && oPhone && cPhone === oPhone;
-                  });
+                  // The exact Shopify order id saved with this row at creation time. Prefer the
+                  // structured 'Order ID' column; fall back to parsing the legacy 'Last Order'
+                  // free-text ("Order #12345 on …") for rows created before that column existed.
+                  const storedOrderId = (o['Order ID'] || '').trim()
+                    || ((o['Last Order'] || '').match(/#\s*(\d+)/)?.[1] || '');
+                  const storedDigits = String(storedOrderId).replace(/\D/g, '');
+                  const numberDigits = String(o['Order Number'] || '').replace(/\D/g, '');
+                  const allOrders = window.SehatData?.ORDERS || [];
+                  // Resolve by the exact stored id/number first; only fall back to the old
+                  // phone-match heuristic (first match wins) for legacy rows with no stored id.
+                  const matchesStored = (s) => {
+                    const cand = [s.id, s.order_number, s.orderNumber, s.name]
+                      .filter(v => v != null)
+                      .map(v => String(v).replace(/\D/g, ''));
+                    return cand.some(c => c && ((storedDigits && c === storedDigits) || (numberDigits && c === numberDigits)));
+                  };
+                  const shopifyOrder = ((storedDigits || numberDigits) && allOrders.find(matchesStored))
+                    || allOrders.find(s => {
+                      const cPhone = (s.customer?.phone || '').replace(/\D/g, '');
+                      return cPhone && oPhone && cPhone === oPhone;
+                    });
+                  // Label for the "Shopify Order" column: the saved human number if we have it,
+                  // else the resolved order's id, else the bare stored id.
+                  const orderLabel = (o['Order Number'] || '').trim()
+                    || (shopifyOrder ? `#${shopifyOrder.id}` : (storedOrderId ? `#${storedOrderId}` : '-'));
 
                   return (
                     <tr key={i} style={{ opacity: shopifyOrder?.status === 'Cancelled' ? 0.6 : 1, textDecoration: shopifyOrder?.status === 'Cancelled' ? 'line-through' : 'none' }}>
@@ -7826,7 +7900,7 @@ function CRMOrders({ setRoute, openCustomer }) {
                         </div>
                       </td>
                       <td className="mono num fw5" style={{ whiteSpace: "nowrap" }}>
-                        {shopifyOrder ? `#${shopifyOrder.id}` : '-'}
+                        {orderLabel}
                       </td>
                       <td className="muted" style={{ textAlign: "center", position: "relative" }}>
                         {shopifyOrder && shopifyOrder.items ? (
@@ -12868,10 +12942,13 @@ const convoInitial = (c) => {
   const ch = Array.from(convoTitle(c).trim())[0] || 'U';   // Array.from → full emoji code point
   return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;        // uppercase letters; keep emoji/digit as-is
 };
-function ConversationsScreen({ me }) {
+function ConversationsScreen({ me, ctx }) {
   const [convos, setConvos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  // A conversation opened from elsewhere (e.g. a dashboard stat modal) may sit outside the loaded
+  // list window — fetch it directly so it always opens instead of silently showing nothing.
+  const [extraSelected, setExtraSelected] = useState(null);
   const [messages, setMessages] = useState([]);
   const [filter, setFilter] = useState('all'); // all | mine | unassigned
   const [search, setSearch] = useState('');
@@ -12882,15 +12959,37 @@ function ConversationsScreen({ me }) {
   const [error, setError] = useState(null);
   const threadEndRef = useRef(null);
 
-  // Live conversation list (most-recent first).
+  // Open a specific conversation when navigated here with one (dashboard stat modal → chat).
+  useEffect(() => { if (ctx?.selectId) setSelectedId(ctx.selectId); }, [ctx?.selectId]);
+
+  // Live conversation list (most-recent first). The date range is pushed into the QUERY (not just
+  // filtered client-side) so it spans the full collection, not only the latest page; the cap is
+  // generous so the list stays consistent with the dashboard conversation stats.
   useEffect(() => {
-    const qy = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'), limit(100));
-    const unsub = onSnapshot(qy, snap => {
+    const [rStart, rEnd] = resolveDateRange(datePreset, customRange);
+    const clauses = [collection(db, 'conversations')];
+    if (rStart && rEnd) {
+      clauses.push(where('lastMessageAt', '>=', rStart.getTime()));
+      clauses.push(where('lastMessageAt', '<=', rEnd.getTime()));
+    }
+    clauses.push(orderBy('lastMessageAt', 'desc'), limit(500));
+    setLoading(true);
+    const unsub = onSnapshot(query(...clauses), snap => {
       setConvos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     }, () => setLoading(false));
     return unsub;
-  }, []);
+  }, [datePreset, customRange]);
+
+  // Resolve the directly-fetched doc for a selected chat that isn't in the loaded list.
+  useEffect(() => {
+    if (!selectedId || convos.some(c => c.id === selectedId)) { setExtraSelected(null); return; }
+    let cancelled = false;
+    getDoc(doc(db, 'conversations', selectedId))
+      .then(s => { if (!cancelled) setExtraSelected(s.exists() ? { id: s.id, ...s.data() } : null); })
+      .catch(() => { if (!cancelled) setExtraSelected(null); });
+    return () => { cancelled = true; };
+  }, [selectedId, convos]);
 
   // Live messages for the open conversation; mark it read on open.
   useEffect(() => {
@@ -12904,7 +13003,7 @@ function ConversationsScreen({ me }) {
 
   useEffect(() => { threadEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, selectedId]);
 
-  const selected = convos.find(c => c.id === selectedId) || null;
+  const selected = convos.find(c => c.id === selectedId) || (extraSelected?.id === selectedId ? extraSelected : null);
   const windowOpen = !!(selected && selected.windowExpiresAt && selected.windowExpiresAt > Date.now());
 
   const filtered = useMemo(() => {
@@ -13098,7 +13197,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubm
     case "doctor": return <DoctorScreen openCustomer={openCustomer} openSubmission={openSubmission} context={route.ctx} />;
     case "orders": return <OrdersHistory setRoute={setRoute} openCustomer={openCustomer} />;
     case "shipment_tracking": return <ShipmentTrackingScreen setRoute={setRoute} openCustomer={openCustomer} />;
-    case "conversations": return <ConversationsScreen me={me} />;
+    case "conversations": return <ConversationsScreen me={me} ctx={route.ctx} />;
     case "crm_orders": return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
     case "shipments": return <ShipmentsScreen ctx={route.ctx} />;

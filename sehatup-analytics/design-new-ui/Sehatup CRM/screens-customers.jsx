@@ -247,7 +247,7 @@ function SubmissionDrawer({ customer, onClose }) {
       <span className="mono">{c.docId.slice(0, 18)}…</span> · Submitted {c.timestampLong}
     </>}>
       <div className="grid-12">
-        <div className="span-4 col">
+        <div className="span-5 col">
           <div className="card flat" style={{ background: "var(--surface-2)", display: "grid", placeItems: "center", padding: 22 }}>
             <Gauge value={c.score} size={148} stroke={12} label="Health score" big />
             <div style={{ marginTop: 12 }}><RiskBadge risk={c.risk} /></div>
@@ -284,7 +284,7 @@ function SubmissionDrawer({ customer, onClose }) {
           </div>
         </div>
 
-        <div className="span-8 col">
+        <div className="span-7 col">
           {Q.sections.map(s => (
             <div key={s.name} className="card flat">
               <div className="hstack-8" style={{ marginBottom: 6 }}>

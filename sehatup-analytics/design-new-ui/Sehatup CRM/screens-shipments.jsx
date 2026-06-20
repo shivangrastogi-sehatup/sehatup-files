@@ -198,7 +198,7 @@ function ShipmentsScreen() {
         </div>
 
         {/* Detail panel */}
-        <div className="span-4 col">
+        <div className="span-5 col">
           <ShipmentDetail s={sel} />
         </div>
       </div>

@@ -72,7 +72,7 @@ function DoctorScreen({ openCustomer, openSubmission }) {
         </div>
 
         {/* Detail / composer */}
-        <div className="span-8 col">
+        <div className="span-7 col">
           <div className="card">
             <div className="hstack-12">
               <Avatar name={selected.name} hue={selected.avatarHue} size="lg" />

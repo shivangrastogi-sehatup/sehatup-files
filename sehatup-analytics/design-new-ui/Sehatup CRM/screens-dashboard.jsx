@@ -120,7 +120,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <div className="span-8">
               <SubmissionsHistory recent={D.CUSTOMERS} openCustomer={openCustomer} openSubmission={openSubmission} tab={tab} setTab={setTab} compact />
             </div>
-            <div className="span-4 col">
+            <div className="span-5 col">
               <div className="card">
                 <div className="section-title" style={{ marginBottom: 10 }}>Risk distribution</div>
                 <div style={{ display: "grid", placeItems: "center", padding: "8px 0" }}>
