@@ -2258,7 +2258,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     <>
       {/* Funnel stages — Started → Completed → Consulted → Purchased */}
       <div className="grid-12">
-        <div className="span-3"><KPI feature loading={loading} label="Started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" sparkline={analytics.timeSeries.slice(-14).map(d => d.started)} compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI feature loading={loading} label="Assessments started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" sparkline={analytics.timeSeries.slice(-14).map(d => d.started)} compareLabel={kpiCompare} /></div>
         <div className="span-3"><KPI loading={loading} label="Completed" value={analytics.totalCompleted.toLocaleString()} icon="check" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed)} compareLabel={kpiCompare} /></div>
         <div className="span-3"><KPI loading={loading} label="Consulted" value={(analytics.totalConsulted || 0).toLocaleString()} icon="stethoscope" sparkline={analytics.timeSeries.slice(-14).map(d => d.consulted)} compareLabel={analytics.manualConsulted ? `incl. ${analytics.manualConsulted} manual` : kpiCompare} /></div>
         <div className="span-3"><KPI loading={loading} label="Purchased" value={(analytics.totalPurchased || 0).toLocaleString()} icon="package" sparkline={analytics.timeSeries.slice(-14).map(d => d.purchases)} compareLabel={analytics.manualPurchased ? `incl. ${analytics.manualPurchased} manual` : kpiCompare} /></div>
@@ -2268,7 +2268,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
         <div className="span-3"><KPI loading={loading} label="Completion rate" value={Math.round(analytics.completionRate || 0)} suffix="%" icon="target" compareLabel={kpiCompare} /></div>
         <div className="span-3"><KPI loading={loading} label="Manual entries" value={(analytics.totalManual || 0).toLocaleString()} icon="edit" compareLabel={kpiCompare} /></div>
         <div className="span-3"><KPI loading={loading} label="Avg. score" value={Math.round(analytics.avgHealthScore || 0)} suffix="/100" icon="pulse" compareLabel={kpiCompare} /></div>
-        <div className="span-3"><KPI loading={loading} label="WhatsApp leads" value={marketingStats.whatsappLeads.toLocaleString()} icon="whatsapp" compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI loading={loading} label="WhatsApp reports sent" value={marketingStats.whatsappLeads.toLocaleString()} icon="whatsapp" compareLabel={kpiCompare} /></div>
       </div>
     </>
   );

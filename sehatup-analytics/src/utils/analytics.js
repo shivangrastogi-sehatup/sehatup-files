@@ -91,9 +91,15 @@ export function computeAnalytics(partialList = [], completedList = [], manualLis
   let totalPurchased = 0;
   let totalConsulted = 0;
 
+  // Bucket by LOCAL calendar date (IST for the team), not UTC. Using toISOString()
+  // here pushed early-morning IST submissions (before 05:30 IST) onto the previous
+  // UTC day, so "today" undercounted (e.g. showed 5 when 7 were submitted today).
   const dayKey = (d) => {
     const ts = d.timestamp?.toDate ? d.timestamp.toDate() : (d.timestamp ? new Date(d.timestamp) : new Date());
-    return ts.toISOString().slice(0, 10);
+    const y = ts.getFullYear();
+    const m = String(ts.getMonth() + 1).padStart(2, '0');
+    const day = String(ts.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   };
   const bump = (day, field) => {
     if (!byDay[day]) byDay[day] = { started: 0, completed: 0, partial: 0, purchases: 0, consulted: 0 };
