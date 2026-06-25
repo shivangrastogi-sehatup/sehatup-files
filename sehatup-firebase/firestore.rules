@@ -8,6 +8,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // QuickReply tester: the local tester UI is unauthenticated, so allow public
+    // READ of conversation events only (writes still go through n8n's service
+    // account). Scoped to this collection so nothing else is exposed.
+    match /qr_conversations/{phone} {
+      allow read: if true;
+      match /events/{event} {
+        allow read: if true;
+      }
+    }
+
     // Public questionnaire: visitors are NOT logged in, so they must be able to
     // submit without auth. Same inbound-write pattern as nimbus_tracking/shipments
     // below. Reads of completed submissions stay auth-only (admin dashboard) via

@@ -24,7 +24,11 @@ export function riskBucket(d) {
 }
 
 export function computeAnalytics(partialList = [], completedList = [], manualList = []) {
-  const allCompleted = [...(completedList || []), ...(manualList || [])];
+  // Manual entries are NOT quiz funnel events, so they're excluded from every
+  // completed-based metric below (funnel counts, completion/drop-off rates,
+  // consulted/purchased, avg score, risk distribution, gender split, time-series).
+  // Manual still surfaces on its own in the dashboard's Source breakdown.
+  const allCompleted = [...(completedList || [])];
   const totalStarted = (partialList?.length || 0) + (allCompleted?.length || 0);
   const totalCompleted = allCompleted?.length || 0;
   const totalPartial = partialList?.length || 0;
@@ -33,34 +37,45 @@ export function computeAnalytics(partialList = [], completedList = [], manualLis
   const dropoffRate = totalStarted === 0 ? 0 : (totalPartial / totalStarted) * 100;
 
   const genders = {};
+  // Gender is derived PRIMARILY from the questionnaire taken — the live questionnaire
+  // IDs are mens-wellness / mens-weight / womens-wellness / womens-weight, which map
+  // cleanly to Male / Female. IMPORTANT: "womens" contains the substring "mens", so
+  // women must always be tested before men to avoid misclassifying them as male.
+  const genderFromQid = (qid) => {
+    const q = (qid || "").toString().toLowerCase();
+    if (q.startsWith("womens") || q.startsWith("women")) return "Female";
+    if (q.startsWith("mens") || q.startsWith("men")) return "Male";
+    return null;
+  };
   (allCompleted || []).forEach((d) => {
-    let g = d.gender || d.sex;
-    
+    let g = genderFromQid(d.questionnaireId || d.qid);
+
+    // Fallbacks (only when the questionnaire id doesn't resolve): an explicit gender
+    // field, then the report category / report HTML heading.
     if (!g) {
-      let h = d.reportCategory;
-      if (d.rawState && d.rawState.html) {
+      g = d.gender || d.sex;
+      if (!g) {
+        let h = d.reportCategory;
+        if (d.rawState && d.rawState.html) {
           const match = d.rawState.html.match(/<h1>(.*?)<\/h1>/i);
           if (match) h = match[1];
-      } else if (d.html) {
+        } else if (d.html) {
           const match = d.html.match(/<h1>(.*?)<\/h1>/i);
           if (match) h = match[1];
-      }
-      
-      if (h) {
-        const lowerH = h.toLowerCase();
-        if (lowerH.includes("mens") || lowerH.includes("men's") || lowerH.includes("male") || lowerH === "men") {
-           g = "Men";
-        } else if (lowerH.includes("womens") || lowerH.includes("women's") || lowerH.includes("female") || lowerH === "women") {
-           g = "Women";
+        }
+        if (h) {
+          const lowerH = h.toLowerCase();
+          // Women first — "womens" contains the substring "mens".
+          if (lowerH.includes("women") || lowerH.includes("female")) g = "Women";
+          else if (lowerH.includes("men") || lowerH.includes("male")) g = "Men";
         }
       }
-    }
-    
-    // Normalize string
-    if (g) {
-       const lowerG = g.toLowerCase();
-       if (lowerG.startsWith("m")) g = "Male";
-       else if (lowerG.startsWith("w") || lowerG.startsWith("f")) g = "Female";
+      // Normalize whatever the fallback produced to Male / Female.
+      if (g) {
+        const lowerG = g.toLowerCase();
+        if (lowerG.startsWith("w") || lowerG.startsWith("f")) g = "Female";
+        else if (lowerG.startsWith("m")) g = "Male";
+      }
     }
 
     g = g || "Unknown";

@@ -8,7 +8,7 @@ import { searchCustomers, getAllOrders, getOrdersChannelMap, getCustomersCount, 
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth, storage, functions } from './firebase';
 import { httpsCallable } from 'firebase/functions';
-import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getCountFromServer, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
+import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { computeAnalytics } from "./utils/analytics";
 import * as XLSX from 'xlsx';
@@ -255,6 +255,62 @@ function exportOrdersToExcel(rows) {
   XLSX.utils.book_append_sheet(wb, ws, 'Orders');
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   saveAs(new Blob([buf], { type: 'application/octet-stream' }), `orders_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// Export the given (already-filtered + sorted) shipments to XLSX, one row per AWB.
+// `rows` is whatever the Shipments table is currently showing — status tab, source
+// filter, search and column sort already applied — so the file mirrors the view.
+const SHIPMENT_EXPORT_HEADERS = [
+  'AWB', 'Order', 'Source', 'Status', 'Raw status', 'Courier',
+  'Customer', 'Phone', 'Email', 'Address', 'City', 'State', 'Pincode',
+  'Items', 'Item details', 'Amount', 'Payment',
+  'Reached destination', 'Reached location', 'Last update', 'Last location',
+  'Last message', 'Events', 'RTO AWB',
+];
+function exportShipmentsToExcel(rows) {
+  if (!rows || rows.length === 0) { alert('No shipments to export for the current filter.'); return; }
+  const itemDetails = (items) => (Array.isArray(items) ? items : [])
+    .map(it => {
+      const name = it?.name || it?.title || '';
+      const qty = it?.qty ?? it?.quantity;
+      return qty ? `${name} x${qty}` : name;
+    })
+    .filter(Boolean)
+    .join('\n');
+  const data = rows.map(s => {
+    const c = s.customer || {};
+    return {
+      'AWB': s.awb || '',
+      'Order': s.orderName || (s.orderId ? `#${s.orderId}` : ''),
+      'Source': s.source === 'shopify' ? 'Shopify' : 'Non-Shopify',
+      'Status': s.status || '',
+      'Raw status': s.rawStatus || '',
+      'Courier': s.courier || '',
+      'Customer': c.name || '',
+      'Phone': c.phone || '',
+      'Email': c.email || '',
+      'Address': c.address || '',
+      'City': c.city || '',
+      'State': c.state || '',
+      'Pincode': c.pincode || '',
+      'Items': typeof s.itemCount === 'number' ? s.itemCount : '',
+      'Item details': itemDetails(s.items),
+      'Amount': typeof s.orderTotal === 'number' ? s.orderTotal : '',
+      'Payment': s.paymentMode || '',
+      'Reached destination': s.reachedAt || '',
+      'Reached location': s.reachedLocation || '',
+      'Last update': s.lastUpdate || '',
+      'Last location': s.lastLocation || '',
+      'Last message': s.lastMessage || '',
+      'Events': typeof s.eventCount === 'number' ? s.eventCount : '',
+      'RTO AWB': s.rtoAwb || '',
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(data, { header: SHIPMENT_EXPORT_HEADERS });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Shipments');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `shipments_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 // Derive age (from `dob`), gender and category (from the questionnaire / category
@@ -885,23 +941,37 @@ function Tabs({ value, onChange, items }) {
   );
 }
 
-function KPI({ label, value, icon, delta, deltaDir = "up", suffix, feature, sparkline }) {
+// Reusable shimmer block (uses the global .skel-box animation).
+function Skeleton({ w = "100%", h = 14, r = 6, style }) {
+  return <div className="skel-box" style={{ width: w, height: h, borderRadius: r, ...style }} />;
+}
+
+function KPI({ label, value, icon, delta, deltaDir = "up", suffix, feature, sparkline, compareLabel = "vs. last 30d", loading }) {
+  const showFooter = delta != null || sparkline || compareLabel;
   return (
     <div className={"kpi" + (feature ? " feature" : "")}>
       <div className="kpi-hd">
         {icon && <div className="ic"><Icon name={icon} size={14} /></div>}
         <div className="lbl">{label}</div>
       </div>
-      <div className="kpi-val">{value}{suffix && <span style={{ color: "var(--muted)", fontSize: 16, fontWeight: 500, marginLeft: 4 }}>{suffix}</span>}</div>
-      <div className="kpi-ft">
-        {delta != null && (
-          <span className={"delta " + (deltaDir === "up" ? "up" : "down")}>
-            <Icon name={deltaDir === "up" ? "trend_up" : "trend_dn"} size={12} /> {delta}
-          </span>
-        )}
-        {sparkline && <Sparkbars data={sparkline} />}
-        <span>vs. last 30d</span>
-      </div>
+      {loading
+        ? <div className="kpi-val"><Skeleton w={76} h={26} r={6} /></div>
+        : <div className="kpi-val">{value}{suffix && <span style={{ color: "var(--muted)", fontSize: 16, fontWeight: 500, marginLeft: 4 }}>{suffix}</span>}</div>}
+      {showFooter && (
+        <div className="kpi-ft">
+          {loading ? <Skeleton w={90} h={10} r={4} /> : (
+            <>
+              {delta != null && (
+                <span className={"delta " + (deltaDir === "up" ? "up" : "down")}>
+                  <Icon name={deltaDir === "up" ? "trend_up" : "trend_dn"} size={12} /> {delta}
+                </span>
+              )}
+              {sparkline && <Sparkbars data={sparkline} />}
+              {compareLabel && <span>{compareLabel}</span>}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -969,15 +1039,30 @@ function LineChart({ data = [], series = null, height = 220, color = "var(--acce
 
   const ys = data.map(d => d.value);
   const maxY = Math.ceil(Math.max(...ys, 1) / 20) * 20;
-  const scaleX = i => pad.l + (i / Math.max(1, data.length - 1)) * (w - pad.l - pad.r);
+  const plotW = w - pad.l - pad.r;
+  const scaleX = i => pad.l + (i / Math.max(1, data.length - 1)) * plotW;
   const scaleY = v => pad.t + (1 - v / maxY) * (h - pad.t - pad.b);
   const pts = data.map((d, i) => `${scaleX(i)},${scaleY(d.value)}`).join(" ");
   const area = `${pad.l},${h - pad.b} ${pts} ${scaleX(data.length - 1)},${h - pad.b}`;
   const yticks = [0, maxY / 2, maxY];
   const xticks = [0, Math.floor(data.length / 4), Math.floor(data.length / 2), Math.floor(data.length * 3 / 4), data.length - 1];
 
+  // Nearest-point hover: map the cursor's X (through the non-uniformly stretched
+  // viewBox) to the closest data index. This removes the dead zones between points
+  // and stops adjacent points from fighting over the cursor.
+  const handleMove = (e) => {
+    const svg = e.currentTarget.ownerSVGElement;
+    if (!svg || data.length === 0) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+    const vbX = ((e.clientX - rect.left) / rect.width) * w;
+    let i = Math.round(((vbX - pad.l) / plotW) * (data.length - 1));
+    i = Math.max(0, Math.min(data.length - 1, i));
+    setHoveredNode(i);
+  };
+
   return (
-    <div className="chart-wrap" style={{ height }}>
+    <div className="chart-wrap" style={{ height, position: "relative" }}>
       <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ overflow: "visible" }}>
         <defs>
           <linearGradient id="lg-fill" x1="0" y1="0" x2="0" y2="1">
@@ -994,19 +1079,16 @@ function LineChart({ data = [], series = null, height = 220, color = "var(--acce
         {fill && <polygon points={area} fill="url(#lg-fill)" />}
         <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
 
+        {hoveredNode !== null && (
+          <line x1={scaleX(hoveredNode)} x2={scaleX(hoveredNode)} y1={pad.t} y2={h - pad.b} stroke="var(--border-strong)" strokeWidth="1" strokeDasharray="3 3" />
+        )}
         {data.map((d, i) => (
-          <g key={i}>
-            <circle cx={scaleX(i)} cy={scaleY(d.value)} r={hoveredNode === i ? "4" : "2.5"} fill={hoveredNode === i ? color : "var(--surface)"} stroke={color} strokeWidth="1.5" style={{ transition: "all 0.2s" }} />
-            <circle cx={scaleX(i)} cy={scaleY(d.value)} r="14" fill="transparent" style={{ cursor: "pointer" }} onMouseEnter={() => setHoveredNode(i)} onMouseLeave={() => setHoveredNode(null)} />
-          </g>
+          <circle key={i} cx={scaleX(i)} cy={scaleY(d.value)} r={hoveredNode === i ? "4" : "2.5"} fill={hoveredNode === i ? color : "var(--surface)"} stroke={color} strokeWidth="1.5" style={{ transition: "r 0.12s, fill 0.12s" }} />
         ))}
 
-        {hoveredNode !== null && (
-          <g>
-            <rect x={scaleX(hoveredNode) - 20} y={scaleY(data[hoveredNode].value) - 30} width="40" height="20" rx="4" fill="var(--fg)" />
-            <text x={scaleX(hoveredNode)} y={scaleY(data[hoveredNode].value) - 16} textAnchor="middle" fill="var(--bg)" fontSize="11" fontWeight="600">{data[hoveredNode].value}</text>
-          </g>
-        )}
+        {/* Full plot-area overlay drives the nearest-point hover detection */}
+        <rect x={pad.l} y={pad.t} width={plotW} height={h - pad.t - pad.b} fill="transparent"
+          style={{ cursor: "crosshair" }} onMouseMove={handleMove} onMouseLeave={() => setHoveredNode(null)} />
 
         {xticks.map((i, k) => (
           <text key={k} x={scaleX(i)} y={h - 8} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="Geist Mono, monospace">
@@ -1014,10 +1096,28 @@ function LineChart({ data = [], series = null, height = 220, color = "var(--acce
           </text>
         ))}
       </svg>
+
+      {/* HTML tooltip — immune to the SVG's non-uniform stretch, so the date + value
+          stay legible and aligned to the hovered point. */}
+      {hoveredNode !== null && data[hoveredNode] && (
+        <div style={{
+          position: "absolute",
+          left: `${(scaleX(hoveredNode) / w) * 100}%`,
+          top: `${(scaleY(data[hoveredNode].value) / h) * 100}%`,
+          transform: "translate(-50%, calc(-100% - 12px))",
+          background: "var(--fg)", color: "var(--bg)", padding: "5px 9px", borderRadius: 7,
+          fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", pointerEvents: "none", zIndex: 3,
+          boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+        }}>
+          <div style={{ opacity: 0.7, fontWeight: 500, fontSize: 10, marginBottom: 1 }}>{data[hoveredNode].full || data[hoveredNode].label}</div>
+          <div style={{ fontVariantNumeric: "tabular-nums" }}>{data[hoveredNode].value}</div>
+        </div>
+      )}
     </div>
   );
 }
 
+// eslint-disable-next-line no-unused-vars
 function BarChart({ data = [], height = 220, color = "var(--accent)" }) {
   const w = 700, h = height;
   const pad = { l: 36, r: 16, t: 16, b: 36 };
@@ -1051,11 +1151,123 @@ function BarChart({ data = [], height = 220, color = "var(--accent)" }) {
   );
 }
 
+// Grouped (clustered) bar chart: several bars per category. `data` is a list of
+// { label, [seriesKey]: value }, and `series` is [{ key, name, color }]. Each bar
+// carries a vertical series label and a detailed hover tooltip.
+function GroupedBarChart({ data = [], series = [], height = 330 }) {
+  const [hover, setHover] = useState(null); // { gi, si }
+  const w = 700, h = height;
+  // Generous bottom padding holds the vertical per-bar labels AND the category label
+  // with clear separation between them.
+  const pad = { l: 36, r: 16, t: 16, b: 116 };
+  const baseY = h - pad.b;
+  const groups = Math.max(1, data.length);
+  const allVals = data.flatMap(d => series.map(s => d[s.key] || 0));
+  const maxY = Math.ceil(Math.max(...allVals, 1) * 1.1 / 10) * 10;
+  const scaleY = v => pad.t + (1 - v / maxY) * (baseY - pad.t);
+  const groupW = (w - pad.l - pad.r) / groups;
+  const clusterW = Math.min(groupW * 0.72, 150);
+  const barW = Math.min(clusterW / Math.max(1, series.length), 30);
+  const barX = (gi, si) => (pad.l + groupW * gi + groupW / 2) - (barW * series.length) / 2 + si * barW;
+  const yticks = [0, maxY / 4, maxY / 2, (3 * maxY) / 4, maxY];
+  const hd = hover ? data[hover.gi] : null;
+  const hs = hover ? series[hover.si] : null;
+  return (
+    <div className="chart-wrap" style={{ height, position: "relative" }}>
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+        {yticks.map((t, i) => (
+          <g key={i}>
+            <line className="gridline" x1={pad.l} x2={w - pad.r} y1={scaleY(t)} y2={scaleY(t)} />
+            <text x={pad.l - 8} y={scaleY(t) + 3} textAnchor="end" fontSize="10" fill="var(--muted)" fontFamily="Geist Mono, monospace">{t.toLocaleString()}</text>
+          </g>
+        ))}
+        {data.map((d, gi) => {
+          const cx = pad.l + groupW * gi + groupW / 2;
+          return (
+            <g key={gi}>
+              {series.map((s, si) => {
+                const v = d[s.key] || 0;
+                const x = barX(gi, si);
+                const y = scaleY(v);
+                const dim = hover && !(hover.gi === gi && hover.si === si);
+                return (
+                  <rect key={s.key} x={x + 1} y={y} width={Math.max(0, barW - 2)} height={baseY - y} rx="3"
+                    fill={s.color} opacity={dim ? 0.32 : 0.95} style={{ transition: "opacity 0.12s" }} />
+                );
+              })}
+              {/* invisible full-height hit areas → reliable hover even for short bars */}
+              {series.map((s, si) => (
+                <rect key={`hit-${s.key}`} x={barX(gi, si)} y={pad.t} width={barW} height={baseY - pad.t} fill="transparent"
+                  style={{ cursor: "pointer" }} onMouseEnter={() => setHover({ gi, si })} onMouseLeave={() => setHover(null)} />
+              ))}
+              <text x={cx} y={h - 8} textAnchor="middle" fontSize="11" fill="var(--fg-soft)" fontFamily="inherit">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Per-bar vertical labels (HTML — immune to the SVG's non-uniform stretch) */}
+      {data.map((d, gi) => series.map((s, si) => (
+        <span key={`vl-${gi}-${si}`} style={{
+          position: "absolute",
+          left: `${(barX(gi, si) + barW / 2) / w * 100}%`,
+          top: `${(baseY + 3) / h * 100}%`,
+          transform: "translateX(-50%)",
+          writingMode: "vertical-rl", fontSize: 8.5, lineHeight: 1,
+          color: hover && hover.gi === gi && hover.si === si ? "var(--fg)" : "var(--muted)",
+          fontWeight: hover && hover.gi === gi && hover.si === si ? 700 : 500,
+          whiteSpace: "nowrap", pointerEvents: "none",
+        }}>{s.name}</span>
+      )))}
+
+      {/* Detailed hover tooltip — category header + every series value */}
+      {hover && hd && hs && (
+        <div style={{
+          position: "absolute",
+          left: `${(barX(hover.gi, hover.si) + barW / 2) / w * 100}%`,
+          top: `${scaleY(hd[hs.key] || 0) / h * 100}%`,
+          transform: "translate(-50%, calc(-100% - 10px))",
+          background: "var(--fg)", color: "var(--bg)", padding: "7px 10px", borderRadius: 8,
+          fontSize: 11, whiteSpace: "nowrap", pointerEvents: "none", zIndex: 4,
+          boxShadow: "0 8px 22px rgba(0,0,0,0.22)", minWidth: 132,
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 5, fontSize: 11.5 }}>{hd.label}</div>
+          {series.map(s => {
+            const on = s.key === hs.key;
+            return (
+              <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6, padding: "1.5px 0", opacity: on ? 1 : 0.7 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                <span style={{ fontWeight: on ? 700 : 500 }}>{s.name}</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: on ? 700 : 500, marginLeft: 14 }}>{(hd[s.key] || 0).toLocaleString()}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="hstack-12" style={{ justifyContent: 'center', marginTop: 8, fontSize: 11.5 }}>
+        {series.map(s => (
+          <span key={s.key} className="hstack-6"><span style={{ width: 10, height: 10, borderRadius: 2, background: s.color, display: 'inline-block' }} /><span className="muted">{s.name}</span></span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DonutChart({ data = [], size = 200, thickness = 26, centerLabel, centerValue }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const r = size / 2;
   const inner = r - thickness;
-  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const ringR = r - thickness / 2;          // midline radius for the full-ring fallback
+  const rawTotal = data.reduce((s, d) => s + d.value, 0);
+  const total = rawTotal || 1;
+  // A single 100% slice (or an all-zero dataset) can't be drawn as an SVG arc — a
+  // 360° wedge has identical start/end points and renders nothing. Fall back to a
+  // full stroked ring in those cases so the donut never looks broken/empty.
+  const nonZeroIdx = data.reduce((acc, d, i) => (d.value > 0 ? [...acc, i] : acc), []);
+  const fullRingIdx = nonZeroIdx.length === 1 ? nonZeroIdx[0] : null;
+  const showRing = rawTotal === 0 || nonZeroIdx.length === 1;
   let a0 = -Math.PI / 2;
   const arcs = data.map((d, i) => {
     const a1 = a0 + (d.value / total) * Math.PI * 2;
@@ -1080,31 +1292,44 @@ function DonutChart({ data = [], size = 200, thickness = 26, centerLabel, center
   return (
     <div style={{ display: "inline-grid", placeItems: "center", position: "relative", width: size, height: size }}>
       <svg width={size} height={size} style={{ overflow: "visible" }}>
-        {arcs.map((a, i) => {
-          const isHovered = hoveredIndex === i;
-          return (
-            <path key={i} d={a.d} fill={a.color}
-              style={{
-                transition: "transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1), filter 0.2s ease",
-                transform: isHovered ? `translate(${a.popX}px, ${a.popY}px) scale(1.05)` : "translate(0px, 0px) scale(1)",
-                transformOrigin: "center",
-                filter: isHovered ? "drop-shadow(0px 8px 12px rgba(0,0,0,0.4))" : "none",
-                // The visible arc moves on hover; if it also handled mouse events the
-                // pop-out would slide it out from under the cursor and cause an
-                // enter/leave flicker loop. Hit-testing lives on the static overlay below.
-                pointerEvents: "none"
-              }}
-            />
-          );
-        })}
-        {/* Static invisible hit areas — identical geometry, never animated */}
-        {arcs.map((a, i) => (
-          <path key={`hit-${i}`} d={a.d} fill="transparent"
-            style={{ cursor: "pointer" }}
-            onMouseEnter={() => setHoveredIndex(i)}
+        {showRing ? (
+          // Full ring: single 100% slice (in its colour) or an empty placeholder.
+          <circle cx={r} cy={r} r={ringR} fill="none"
+            stroke={fullRingIdx != null ? data[fullRingIdx].color : "var(--surface-3)"}
+            strokeWidth={thickness}
+            style={{ cursor: fullRingIdx != null ? "pointer" : "default" }}
+            onMouseEnter={() => fullRingIdx != null && setHoveredIndex(fullRingIdx)}
             onMouseLeave={() => setHoveredIndex(null)}
           />
-        ))}
+        ) : (
+          <>
+            {arcs.map((a, i) => {
+              const isHovered = hoveredIndex === i;
+              return (
+                <path key={i} d={a.d} fill={a.color}
+                  style={{
+                    transition: "transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1), filter 0.2s ease",
+                    transform: isHovered ? `translate(${a.popX}px, ${a.popY}px) scale(1.05)` : "translate(0px, 0px) scale(1)",
+                    transformOrigin: "center",
+                    filter: isHovered ? "drop-shadow(0px 8px 12px rgba(0,0,0,0.4))" : "none",
+                    // The visible arc moves on hover; if it also handled mouse events the
+                    // pop-out would slide it out from under the cursor and cause an
+                    // enter/leave flicker loop. Hit-testing lives on the static overlay below.
+                    pointerEvents: "none"
+                  }}
+                />
+              );
+            })}
+            {/* Static invisible hit areas — identical geometry, never animated */}
+            {arcs.map((a, i) => (
+              <path key={`hit-${i}`} d={a.d} fill="transparent"
+                style={{ cursor: "pointer" }}
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              />
+            ))}
+          </>
+        )}
       </svg>
       {(centerLabel || centerValue) && (
         <div style={{ position: "absolute", textAlign: "center", pointerEvents: "none" }}>
@@ -1728,6 +1953,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const [partialData, setPartialData] = useState([]);
   const [completedData, setCompletedData] = useState([]);
   const [manualData, setManualData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filter states — now use explicit from/to dates so custom ranges work
   // Date range — same control as the doctor queue (DateRangeDropdown). datePreset is a
@@ -1750,6 +1976,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     });
     const unsub2 = onSnapshot(query(collection(db, "questionnaire_submissions"), orderBy("timestamp", "desc")), snap => {
       setCompletedData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
     });
     const unsub3 = onSnapshot(query(collection(db, "manual_submissions"), orderBy("timestamp", "desc")), snap => {
       setManualData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -1786,11 +2013,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // Opened  = conversations opened/read in the range (tracked forward via lastReadAt).
   // msgTime / lastReadAt are epoch-ms numbers (same units the chat screen uses).
   const [convoStats, setConvoStats] = useState({ totalInbox: 0, inboxAgent: 0, inboxBot: 0, leads: 0, leadAgent: 0, leadUnresponded: 0, leadDetail: [], inboxDetail: [], loading: true, error: null });
-  const [convoRefresh, setConvoRefresh] = useState(0); // bump to re-run the conversation query
   // Conversation-list modal: resolves a set of conversation ids to names/phones (with status)
   // on demand. Shared by every clickable stat card (inbox, leads, responded, …).
   const [leadsModal, setLeadsModal] = useState({ open: false, loading: false, items: [], error: null, title: 'Conversations' });
   const [leadFilter, setLeadFilter] = useState('all'); // all | responded | unresponded
+  // eslint-disable-next-line no-unused-vars
   const openConvoModal = async (title, detail) => {
     setLeadFilter('all');
     setLeadsModal({ open: true, loading: true, items: [], error: null, title });
@@ -1806,15 +2033,13 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       setLeadsModal({ open: true, loading: false, items: [], error: e?.message || 'Failed to load conversations', title });
     }
   };
-  // Click props for a stat card: only interactive when the metric has resolvable conversations.
-  const convoCardProps = (title, detail) => {
-    const enabled = !convoStats.loading && (detail?.length || 0) > 0;
-    return {
-      onClick: enabled ? () => openConvoModal(title, detail) : undefined,
-      style: { cursor: enabled ? 'pointer' : 'default' },
-      title: enabled ? 'Click to see these conversations & open any chat' : undefined,
-    };
-  };
+  // Conversation analytics aren't live yet, so every stat card is rendered DISABLED:
+  // greyed out, non-clickable, with a not-allowed cursor and a "coming soon" tooltip.
+  // (The drill-down modal + openConvoModal are kept for when this goes live.)
+  const convoCardProps = () => ({
+    style: { opacity: 0.5, cursor: 'not-allowed' },
+    title: 'Conversation analytics are not live yet — coming soon',
+  });
   const leadRespondedCount = leadsModal.items.filter(it => it.status === 'agent').length;
   const visibleLeads = leadsModal.items.filter(it =>
     leadFilter === 'all' ? true : leadFilter === 'responded' ? it.status === 'agent' : it.status !== 'agent'
@@ -1859,7 +2084,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [dateFrom, dateTo, convoRefresh]);
+  }, [dateFrom, dateTo]);
 
   const analytics = useMemoCx(() => computeAnalytics(filtered.partial, filtered.completed, filtered.manual), [filtered]);
 
@@ -1867,6 +2092,9 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   // date/gender/category filters drive every panel on this screen.
   const marketingStats = useMemoCx(() => {
     const tag = (list, src) => list.map(d => ({ ...d, _src: src }));
+    // All three sources are grouped here, but manual is tagged separately so it never
+    // leaks into the funnel-aligned counts (started/completed). That lets one chart
+    // stay manual-free while another can show a manual-inclusive Total per questionnaire.
     const all = [...tag(filtered.completed, 'completed'), ...tag(filtered.partial, 'partial'), ...tag(filtered.manual, 'manual')];
     const CATS = [
       { key: "womens-wellness", label: "Women's Wellness", color: "var(--accent)" },
@@ -1888,23 +2116,36 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     const groups = {};
     all.forEach(r => {
       const k = catKey(r);
-      if (!groups[k]) groups[k] = { all: 0, completed: 0, partial: 0, consulted: 0, purchased: 0 };
+      if (!groups[k]) groups[k] = { completed: 0, partial: 0, manual: 0, consulted: 0, purchased: 0 };
       const g = groups[k];
-      g.all += 1;
-      if (r._src === 'completed') g.completed += 1;
       if (r._src === 'partial') g.partial += 1;
-      if (r.isConsulted) g.consulted += 1;
-      if (r.isPurchased) g.purchased += 1;
+      else if (r._src === 'manual') g.manual += 1;
+      // Consulted/Purchased are funnel sub-stages of Completed, so they're counted
+      // on completed submissions only (mirrors computeAnalytics' totals).
+      else if (r._src === 'completed') {
+        g.completed += 1;
+        if (r.isConsulted) g.consulted += 1;
+        if (r.isPurchased) g.purchased += 1;
+      }
     });
     const catRows = CATS
       .map(c => {
-        const g = groups[c.key] || { all: 0, completed: 0, partial: 0, consulted: 0, purchased: 0 };
-        // Completion % uses quiz traffic only (manual entries are neither started nor abandoned)
-        const denom = g.completed + g.partial;
-        return { ...c, count: g.all, completed: g.completed, consulted: g.consulted, purchased: g.purchased, cr: denom > 0 ? Math.round((g.completed / denom) * 100) : null };
+        const g = groups[c.key] || { completed: 0, partial: 0, manual: 0, consulted: 0, purchased: 0 };
+        const started = g.completed + g.partial;   // manual excluded — funnel "started"
+        const total = started + g.manual;           // includes manual entries
+        return {
+          ...c,
+          count: started,                           // back-compat: "Starts" / dual-histogram value
+          started, total,
+          completed: g.completed, partial: g.partial, manual: g.manual,
+          consulted: g.consulted, purchased: g.purchased,
+          // Completion % uses quiz traffic only (manual entries aren't started/abandoned).
+          cr: started > 0 ? Math.round((g.completed / started) * 100) : null,
+        };
       })
-      .filter(c => c.key !== 'other' || c.count > 0);
-    const whatsappLeads = all.filter(r => r.isWhatsAppSent).length;
+      .filter(c => c.key !== 'other' || c.total > 0);
+    // WhatsApp leads stay manual-free, consistent with the funnel analytics.
+    const whatsappLeads = all.filter(r => r._src !== 'manual' && r.isWhatsAppSent).length;
     return {
       catRows, whatsappLeads,
       sources: {
@@ -1966,19 +2207,24 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       : allSubmissions.filter(d => dashActiveTabs.includes(d.source)),
   [allSubmissions, dashActiveTabs]);
 
+  // The "vs. last 30d" footer only makes sense on the default 30-day view. Once any
+  // other date range is applied it's misleading, so hide it (pass null).
+  const kpiCompare = datePreset === '30d' ? 'vs. last 30d' : null;
   const kpis = (
     <>
+      {/* Funnel stages — Started → Completed → Consulted → Purchased */}
       <div className="grid-12">
-        <div className="span-3"><KPI feature label="Started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" sparkline={analytics.timeSeries.slice(-14).map(d => d.started)} /></div>
-        <div className="span-3"><KPI label="Completed" value={analytics.totalCompleted.toLocaleString()} icon="check" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed)} /></div>
-        <div className="span-3"><KPI label="Drop-off" value={Math.round(analytics.dropoffRate || 0)} suffix="%" icon="trend_dn" sparkline={analytics.timeSeries.slice(-14).map(d => d.partial)} /></div>
-        <div className="span-3"><KPI label="Avg. score" value={Math.round(analytics.avgHealthScore || 0)} suffix="/100" icon="pulse" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed * 0.6 + 20)} /></div>
+        <div className="span-3"><KPI feature loading={loading} label="Started" value={analytics.totalStarted.toLocaleString()} icon="clipboard" sparkline={analytics.timeSeries.slice(-14).map(d => d.started)} compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI loading={loading} label="Completed" value={analytics.totalCompleted.toLocaleString()} icon="check" sparkline={analytics.timeSeries.slice(-14).map(d => d.completed)} compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI loading={loading} label="Consulted" value={(analytics.totalConsulted || 0).toLocaleString()} icon="stethoscope" sparkline={analytics.timeSeries.slice(-14).map(d => d.consulted)} compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI loading={loading} label="Purchased" value={(analytics.totalPurchased || 0).toLocaleString()} icon="package" sparkline={analytics.timeSeries.slice(-14).map(d => d.purchases)} compareLabel={kpiCompare} /></div>
       </div>
+      {/* Derived metrics */}
       <div className="grid-12">
-        <div className="span-3"><KPI label="Completion rate" value={Math.round(analytics.completionRate || 0)} suffix="%" icon="target" /></div>
-        <div className="span-3"><KPI label="Consulted" value={(analytics.totalConsulted || 0).toLocaleString()} icon="stethoscope" /></div>
-        <div className="span-3"><KPI label="Purchased" value={(analytics.totalPurchased || 0).toLocaleString()} icon="package" /></div>
-        <div className="span-3"><KPI label="WhatsApp leads" value={marketingStats.whatsappLeads.toLocaleString()} icon="whatsapp" /></div>
+        <div className="span-3"><KPI loading={loading} label="Completion rate" value={Math.round(analytics.completionRate || 0)} suffix="%" icon="target" compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI loading={loading} label="Manual entries" value={(analytics.totalManual || 0).toLocaleString()} icon="edit" compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI loading={loading} label="Avg. score" value={Math.round(analytics.avgHealthScore || 0)} suffix="/100" icon="pulse" compareLabel={kpiCompare} /></div>
+        <div className="span-3"><KPI loading={loading} label="WhatsApp leads" value={marketingStats.whatsappLeads.toLocaleString()} icon="whatsapp" compareLabel={kpiCompare} /></div>
       </div>
     </>
   );
@@ -1994,20 +2240,44 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     ];
   })();
 
-  // Build chart series based on selected timeline mode
-  const labels = (analytics.timeSeries || []).map(d => d.day.slice(5).replace('-', '/'));
+  // Build chart series based on selected timeline mode. The raw time-series only
+  // contains days that had activity, so the line jumps between non-consecutive dates
+  // and reads as discontinuous. Fill every calendar day between the first and last
+  // active day with zeros so the timeline is continuous.
+  const denseTS = (() => {
+    const ts = analytics.timeSeries || [];
+    if (ts.length === 0) return [];
+    const byDay = Object.fromEntries(ts.map(d => [d.day, d]));
+    const blank = { started: 0, completed: 0, partial: 0, purchases: 0, consulted: 0, count: 0 };
+    const out = [];
+    const cur = new Date(ts[0].day + 'T00:00:00Z');
+    const end = new Date(ts[ts.length - 1].day + 'T00:00:00Z');
+    while (cur <= end) {
+      const key = cur.toISOString().slice(0, 10);
+      out.push(byDay[key] || { day: key, ...blank });
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    return out;
+  })();
+  const labels = denseTS.map(d => d.day.slice(5).replace('-', '/'));
   const timelineSeries = timelineMode === 'completed'
-    ? [{ name: 'Completed', color: 'var(--accent)', values: analytics.timeSeries.map(d => d.completed) }]
+    ? [{ name: 'Completed', color: 'var(--accent)', values: denseTS.map(d => d.completed) }]
     : timelineMode === 'started'
-      ? [{ name: 'Started', color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) }]
+      ? [{ name: 'Started', color: 'var(--accent-2)', values: denseTS.map(d => d.started) }]
       : [
-        { name: 'Started', color: 'var(--accent-2)', values: analytics.timeSeries.map(d => d.started) },
-        { name: 'Completed', color: 'var(--accent)', values: analytics.timeSeries.map(d => d.completed) },
+        { name: 'Started', color: 'var(--accent-2)', values: denseTS.map(d => d.started) },
+        { name: 'Completed', color: 'var(--accent)', values: denseTS.map(d => d.completed) },
       ];
-  const timelineFallback = (analytics.timeSeries || []).map(d => ({
-    label: d.day.slice(5).replace('-', '/'),
-    value: timelineMode === 'started' ? d.started : d.completed,
-  }));
+  const timelineFallback = denseTS.map(d => {
+    const dt = new Date(d.day + 'T00:00:00');
+    const ok = !isNaN(dt);
+    return {
+      // Short label for the x-axis ticks, descriptive `full` date for the hover tooltip.
+      label: ok ? dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : d.day.slice(5).replace('-', '/'),
+      full: ok ? dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : d.day,
+      value: timelineMode === 'started' ? d.started : d.completed,
+    };
+  });
 
   // Conversion funnel — real values from analytics
   const funnelData = [
@@ -2017,10 +2287,13 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
     { stage: 'Purchased', count: analytics.totalPurchased || 0 },
   ];
 
-  // Category breakdown — canonical questionnaires (shared with the performance table)
-  const categoryData = marketingStats.catRows
-    .filter(c => c.count > 0)
-    .map(c => ({ label: c.label.replace("'s", ""), value: c.count, color: c.color }));
+  // Submissions per questionnaire — Started vs Completed, one cluster per canonical
+  // category (the same four the Submissions tab's "Filter by category" exposes:
+  // Women's Wellness, Men's Wellness, Women's Weight, Men's Weight).
+  // Four bars per questionnaire: Total (incl. manual) · Started · Completed · Manual.
+  const questionnaireBars = marketingStats.catRows
+    .filter(c => c.key !== 'other')
+    .map(c => ({ label: c.label.replace("'s", ""), total: c.total, started: c.started, completed: c.completed, manual: c.manual }));
 
   // Gender split — real data
   const femaleCount = (analytics.genders?.Female || 0);
@@ -2036,23 +2309,12 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
           <h1 className="page-title">Analytics Dashboard</h1>
           <p className="page-sub">Health score, marketing & funnel analytics · {dateFrom} to {dateTo}</p>
         </div>
-        <div className="page-head-actions">
-          <button
-            className="btn primary"
-            onClick={() => exportToExcel(`sehatup-health-score-${dateFrom}_to_${dateTo}`, allSubmissions, null)}
-            title="Download the current filtered view as an Excel sheet"
-          >
-            <Icon name="download" /> Export
-          </button>
-        </div>
-      </div>
-
-      {/* Dedicated filter row — kept on its own line so chips never wrap awkwardly next to the title */}
-      <div className="filterbar" style={{ marginBottom: 8, position: 'relative' }}>
+        {/* Filters live in the page head, right-aligned next to the title */}
+        <div className="page-head-actions filterbar" style={{ position: 'relative' }}>
         <DateRangeDropdown
           datePreset={datePreset}
           customRange={customRange}
-          align="left"
+          align="right"
           onApply={(p, r) => { setDatePreset(p); setCustomRange(r); }}
         />
         <span className="chip" style={{ position: 'relative' }}>
@@ -2087,6 +2349,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
             <Icon name="x" /> Clear
           </span>
         )}
+        </div>
       </div>
 
       {kpis}
@@ -2095,14 +2358,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       <div className="card" style={{ padding: "14px 16px" }}>
         <div className="hstack-8" style={{ marginBottom: 12 }}>
           <div className="section-title" style={{ margin: 0 }}>Conversations</div>
-          <Badge tone="moderate" dot="var(--risk-moderate)" style={{ fontSize: 10.5 }}>Developing · numbers may be approximate</Badge>
+          <Badge tone="moderate" dot="var(--risk-moderate)" style={{ fontSize: 10.5 }}>Coming soon · not live yet</Badge>
           <span className="spacer" />
           <span className="muted" style={{ fontSize: 12 }}>
             {convoStats.loading ? "Loading…" : convoStats.error ? convoStats.error : `Chats from ${dateFrom} to ${dateTo}`}
           </span>
-          <button className="btn sm ghost" disabled={convoStats.loading} onClick={() => setConvoRefresh(n => n + 1)} title="Re-sync conversation stats" style={{ gap: 4 }}>
-            <Icon name="refresh" size={13} /> {convoStats.loading ? "Syncing…" : "Refresh"}
-          </button>
         </div>
         {/* Inbox — ALL chats (incl. bot templates / broadcasts). Every card opens the same modal
             with its own subset of conversations; rows in the modal open the chat in Conversations. */}
@@ -2193,9 +2453,11 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                   { label: "Both", value: "both" },
                 ]} />
               </div>
-              {labels.length > 0
-                ? <LineChart data={timelineFallback} series={timelineSeries.length > 1 ? timelineSeries.map((s, i) => ({ ...s, values: s.values })) : null} height={240} />
-                : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No data for the selected range.</div></div>
+              {loading
+                ? <Skeleton h={240} r={10} />
+                : labels.length > 0
+                  ? <LineChart data={timelineFallback} series={timelineSeries.length > 1 ? timelineSeries.map((s, i) => ({ ...s, values: s.values })) : null} height={240} />
+                  : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No data for the selected range.</div></div>
               }
             </div>
             <div className="span-4 card">
@@ -2204,48 +2466,71 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                 <span className="spacer" />
                 <button className="btn sm ghost"><Icon name="more" /></button>
               </div>
-              <div className="hstack-12" style={{ justifyContent: "center", padding: "8px 0" }}>
-                <DonutChart data={riskDonut} size={184} thickness={28} centerValue={(riskDonut.reduce((a, b) => a + b.value, 0)).toLocaleString()} centerLabel="profiles" />
-              </div>
-              <div className="legend" style={{ justifyContent: "center", marginTop: 8 }}>
-                {riskDonut.map(r => (
-                  <span key={r.label}><i style={{ background: r.color }} /> {r.label} <span className="muted num">· {r.value.toLocaleString()}</span></span>
-                ))}
-              </div>
+              {loading ? (
+                <div style={{ display: "grid", placeItems: "center", padding: "8px 0", gap: 16 }}>
+                  <Skeleton w={184} h={184} r="50%" />
+                  <Skeleton w={220} h={12} />
+                </div>
+              ) : (
+                <>
+                  <div className="hstack-12" style={{ justifyContent: "center", padding: "8px 0" }}>
+                    <DonutChart data={riskDonut} size={184} thickness={28} centerValue={(riskDonut.reduce((a, b) => a + b.value, 0)).toLocaleString()} centerLabel="profiles" />
+                  </div>
+                  <div className="legend" style={{ justifyContent: "center", marginTop: 8 }}>
+                    {riskDonut.map(r => (
+                      <span key={r.label}><i style={{ background: r.color }} /> {r.label} <span className="muted num">· {r.value.toLocaleString()}</span></span>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
           <div className="grid-12">
-            <div className="span-5 card">
-              <div className="section-title" style={{ marginBottom: 10 }}>Conversion funnel</div>
-              <FunnelChart data={funnelData} />
-            </div>
-            <div className="span-4 card">
+            <div className="span-7 card">
               <div className="section-title" style={{ marginBottom: 10 }}>Submissions by questionnaire</div>
-              {categoryData.length > 0
-                ? <BarChart height={232} data={categoryData} />
-                : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No category data</div></div>
+              {loading
+                ? <Skeleton h={330} r={10} />
+                : questionnaireBars.some(d => d.total > 0)
+                  ? <GroupedBarChart height={330} data={questionnaireBars} series={[
+                      { key: 'total', name: 'Total', color: 'var(--accent-2)' },
+                      { key: 'started', name: 'Started', color: 'var(--risk-low)' },
+                      { key: 'completed', name: 'Completed', color: 'var(--accent)' },
+                      { key: 'manual', name: 'Manual', color: 'var(--risk-moderate)' },
+                    ]} />
+                  : <div className="empty"><div className="muted" style={{ fontSize: 13 }}>No category data</div></div>
               }
             </div>
-            <div className="span-3 card">
+            <div className="span-5 card">
               <div className="section-title" style={{ marginBottom: 10 }}>Gender split</div>
-              <div style={{ display: "grid", placeItems: "center", padding: "14px 0" }}>
-                <DonutChart size={150} thickness={22} centerValue={`${femalePct}%`} centerLabel="female" data={[
-                  { label: "Female", value: femaleCount, color: "var(--accent)" },
-                  { label: "Male", value: maleCount, color: "var(--accent-2)" },
-                  { label: "Unknown", value: unknownGenderCount, color: "var(--surface-3)" },
-                ]} />
-              </div>
-              <div className="stack-6" style={{ marginTop: 8 }}>
-                <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent)" }} /><span>Female</span><span className="spacer" /><span className="num muted">{femaleCount.toLocaleString()}</span></div>
-                <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent-2)" }} /><span>Male</span><span className="spacer" /><span className="num muted">{maleCount.toLocaleString()}</span></div>
-                {unknownGenderCount > 0 && <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--surface-3)" }} /><span>Unknown</span><span className="spacer" /><span className="num muted">{unknownGenderCount.toLocaleString()}</span></div>}
-              </div>
+              {loading ? (
+                <div style={{ display: "grid", placeItems: "center", padding: "14px 0", gap: 16 }}>
+                  <Skeleton w={150} h={150} r="50%" />
+                  <div className="stack-6" style={{ width: "100%" }}>
+                    <Skeleton h={12} /><Skeleton h={12} w="80%" />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "grid", placeItems: "center", padding: "14px 0" }}>
+                    <DonutChart size={150} thickness={22} centerValue={`${femalePct}%`} centerLabel="female" data={[
+                      { label: "Female", value: femaleCount, color: "var(--accent)" },
+                      { label: "Male", value: maleCount, color: "var(--accent-2)" },
+                      { label: "Unknown", value: unknownGenderCount, color: "var(--surface-3)" },
+                    ]} />
+                  </div>
+                  <div className="stack-6" style={{ marginTop: 8 }}>
+                    <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent)" }} /><span>Female</span><span className="spacer" /><span className="num muted">{femaleCount.toLocaleString()}</span></div>
+                    <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--accent-2)" }} /><span>Male</span><span className="spacer" /><span className="num muted">{maleCount.toLocaleString()}</span></div>
+                    {unknownGenderCount > 0 && <div className="hstack-8" style={{ fontSize: 12.5 }}><span className="dot" style={{ background: "var(--surface-3)" }} /><span>Unknown</span><span className="spacer" /><span className="num muted">{unknownGenderCount.toLocaleString()}</span></div>}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
           <div className="grid-12">
-            <div className="span-8 card" style={{ padding: 0, overflow: "hidden" }}>
+            <div className="span-12 card" style={{ padding: 0, overflow: "hidden" }}>
               <div className="hstack-8" style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
                 <div className="section-title">Questionnaire performance</div>
               </div>
@@ -2263,7 +2548,14 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {marketingStats.catRows.map(row => (
+                    {loading && Array.from({ length: 4 }).map((_, i) => (
+                      <tr key={`sk-${i}`}>
+                        {Array.from({ length: 7 }).map((__, j) => (
+                          <td key={j}><Skeleton h={14} w={j === 0 ? 130 : 60} /></td>
+                        ))}
+                      </tr>
+                    ))}
+                    {!loading && marketingStats.catRows.map(row => (
                       <tr key={row.key}>
                         <td className="fw5">{row.label}</td>
                         <td className="num">{row.count.toLocaleString()}</td>
@@ -2278,29 +2570,6 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-            <div className="span-4 card">
-              <div className="section-title" style={{ marginBottom: 10 }}>Source breakdown</div>
-              <div className="stack-12" style={{ marginTop: 6 }}>
-                {[
-                  ["Completed quiz", marketingStats.sources.completed, "var(--risk-low)"],
-                  ["Partial quiz", marketingStats.sources.partial, "var(--risk-moderate)"],
-                  ["Manual entry", marketingStats.sources.manual, "var(--accent-2)"],
-                  ["WhatsApp leads", marketingStats.whatsappLeads, "var(--risk-high)"],
-                ].map(([n, v, col]) => {
-                  const pct = marketingStats.sources.total > 0 ? (v / marketingStats.sources.total) * 100 : 0;
-                  return (
-                    <div key={n}>
-                      <div className="hstack-8" style={{ fontSize: 12.5, marginBottom: 4 }}>
-                        <span className="fw5">{n}</span>
-                        <span className="spacer" />
-                        <span className="muted num">{v.toLocaleString()}</span>
-                      </div>
-                      <div className="fbar"><i style={{ width: pct + "%", background: col }} /></div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
@@ -2361,7 +2630,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   );
 }
 
-function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }) {
+function SubmissionsScreen({ openCustomer, openSubmission }) {
   const [activeTabs, setActiveTabs] = useState([]);
   const [partialData, setPartialData] = useState([]);
   const [completedData, setCompletedData] = useState([]);
@@ -2434,12 +2703,6 @@ function SubmissionsScreen({ openCustomer, openSubmission, setSubmissionsCount }
       ? allNormalized
       : allNormalized.filter(d => activeTabs.includes(d.source)),
   [allNormalized, activeTabs]);
-
-  useEffect(() => {
-    if (setSubmissionsCount && activeTabs.length === 0) {
-      setSubmissionsCount(recent.length.toLocaleString());
-    }
-  }, [recent.length, activeTabs.length, setSubmissionsCount]);
 
 
   return (
@@ -2548,10 +2811,56 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
 
   return (
     <div className="card" style={{ padding: 0, overflow: "visible" }}>
-      {/* ── Row 1: title · search · export · clear ── */}
-      <div className="hstack-8" style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", gap: 10 }}>
+      {/* ── Row 1: title · filters · search · export · clear (all inline) ── */}
+      <div className="hstack-8" style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", gap: 10, flexWrap: "wrap", rowGap: 8 }}>
         <div className="section-title">Submissions history</div>
         <span className="muted num" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>· {totalCount.toLocaleString()} entries</span>
+
+        {/* Filters — inline, between the title and the search bar */}
+        {!compact && (() => {
+          const typeValues = ['all', 'completed', 'partial', 'manual'];
+          const statusValues = ['consulted', 'purchased', 'whatsapp'];
+          const typeItems = tabs.filter(t => typeValues.includes(t.value) && !(activeTabs !== undefined && t.value === 'all'));
+          const statusItems = tabs.filter(t => statusValues.includes(t.value));
+          const statusColor = { consulted: '#3b82f6', purchased: '#22c55e', whatsapp: '#25d366' };
+          return (
+            <>
+              {activeTabs !== undefined ? (
+                <MultiCheckDropdown
+                  label="Type" icon="layers"
+                  selected={activeTabs} onChange={setActiveTabs}
+                  options={typeItems.map(it => ({ value: it.value, label: it.label }))}
+                />
+              ) : (
+                <Tabs value={activeTabs !== undefined ? activeTabs : activeTab} onChange={setActiveTab} items={typeItems} />
+              )}
+              <MultiCheckDropdown
+                label="Status" icon="filter"
+                selected={statusFilters} onChange={setStatusFilters}
+                options={statusItems.map(it => ({ value: it.value, label: it.label, color: statusColor[it.value] }))}
+              />
+              <MultiCheckDropdown
+                label="Category" icon="layers"
+                selected={categoryFilter} onChange={v => { setCategoryFilter(v); setCurrentPage(1); }}
+                options={[
+                  { value: "Men's Wellness",             label: "Men's Wellness" },
+                  { value: "Women's Wellness",           label: "Women's Wellness" },
+                  { value: "Men's Weight Management",   label: "Men's Weight Management" },
+                  { value: "Women's Weight Management", label: "Women's Weight Management" },
+                ]}
+              />
+              <DateRangeDropdown
+                datePreset={datePreset}
+                customRange={customRange}
+                onApply={(preset, range) => {
+                  setDatePreset(preset);
+                  setCustomRange(range);
+                  setCurrentPage(1);
+                }}
+              />
+            </>
+          );
+        })()}
 
         {/* Expanded search — takes all remaining space */}
         {!compact && (
@@ -2630,56 +2939,6 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
           );
         })()}
       </div>
-
-      {/* ── Row 2: filter chips ── */}
-      {!compact && (
-        <div className="hstack-8" style={{ padding: "8px 18px", borderBottom: "1px solid var(--border)", flexWrap: "wrap", rowGap: 6 }}>
-          {(() => {
-            const typeValues = ['all', 'completed', 'partial', 'manual'];
-            const statusValues = ['consulted', 'purchased', 'whatsapp'];
-            const typeItems = tabs.filter(t => typeValues.includes(t.value) && !(activeTabs !== undefined && t.value === 'all'));
-            const statusItems = tabs.filter(t => statusValues.includes(t.value));
-            const statusColor = { consulted: '#3b82f6', purchased: '#22c55e', whatsapp: '#25d366' };
-            return (
-              <>
-                {activeTabs !== undefined ? (
-                  <MultiCheckDropdown
-                    label="Type" icon="layers"
-                    selected={activeTabs} onChange={setActiveTabs}
-                    options={typeItems.map(it => ({ value: it.value, label: it.label }))}
-                  />
-                ) : (
-                  <Tabs value={activeTabs !== undefined ? activeTabs : activeTab} onChange={setActiveTab} items={typeItems} />
-                )}
-                <MultiCheckDropdown
-                  label="Status" icon="filter"
-                  selected={statusFilters} onChange={setStatusFilters}
-                  options={statusItems.map(it => ({ value: it.value, label: it.label, color: statusColor[it.value] }))}
-                />
-                <MultiCheckDropdown
-                  label="Category" icon="layers"
-                  selected={categoryFilter} onChange={v => { setCategoryFilter(v); setCurrentPage(1); }}
-                  options={[
-                    { value: "Men's Wellness",             label: "Men's Wellness" },
-                    { value: "Women's Wellness",           label: "Women's Wellness" },
-                    { value: "Men's Weight Management",   label: "Men's Weight Management" },
-                    { value: "Women's Weight Management", label: "Women's Weight Management" },
-                  ]}
-                />
-                <DateRangeDropdown
-                  datePreset={datePreset}
-                  customRange={customRange}
-                  onApply={(preset, range) => {
-                    setDatePreset(preset);
-                    setCustomRange(range);
-                    setCurrentPage(1);
-                  }}
-                />
-              </>
-            );
-          })()}
-        </div>
-      )}
 
       <style>{`@keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
@@ -3057,17 +3316,6 @@ function CustomersList({ openCustomer, openSubmission }) {
           <h1 className="page-title">Shopify customers</h1>
           <p className="page-sub">{loading ? "Syncing..." : `${totalCount !== null ? totalCount.toLocaleString() : customers.length.toLocaleString()} profiles`} · synced from Shopify</p>
         </div>
-        <div className="page-head-actions">
-          <button className="btn"><Icon name="upload" /> Import</button>
-          <button className="btn"><Icon name="download" /> Export</button>
-        </div>
-      </div>
-
-      <div className="grid-12">
-        <div className="span-3"><KPI label="Total customers" value={totalCount !== null ? totalCount.toLocaleString() : (loading ? "..." : customers.length.toLocaleString())} icon="users" /></div>
-        <div className="span-3"><KPI label="High / Critical" value="-" icon="flag" /></div>
-        <div className="span-3"><KPI label="Avg. LTV" value="Rs. -" icon="trend_up" /></div>
-        <div className="span-3"><KPI label="WhatsApp opt-in" value="-" icon="whatsapp" /></div>
       </div>
 
       <div className="toolbar">
@@ -3513,8 +3761,6 @@ function Drawer({ children, onClose, title, subtitle, wide }) {
             <div className="fw6" style={{ fontSize: 15, letterSpacing: "-0.01em" }}>{title}</div>
             {subtitle && <div className="muted" style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div>}
           </div>
-          <button className="iconbtn"><Icon name="external" /></button>
-          <button className="iconbtn"><Icon name="more" /></button>
         </div>
         <div className="drawer-body">
           {children}
@@ -3790,6 +4036,9 @@ function DateRangeDropdown({ datePreset, customRange, onApply, align = 'right' }
   const triggerRef = useRef(null);
   const popupRef = useRef(null);
   const fmt = (d) => d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
+  // Pin the calendar's initial window to [previous month, current month] and keep it
+  // stable, so selecting an end date never auto-shifts the visible months.
+  const calOpenTo = useMemo(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() - 1, 1); }, []);
 
   const estimateOffset = (popupW) => {
     const el = triggerRef.current;
@@ -3821,7 +4070,9 @@ function DateRangeDropdown({ datePreset, customRange, onApply, align = 'right' }
     if (value === 'custom') {
       setReady(false);
       setTmpPreset('custom');
-      setTmp(resolveDateRange(datePreset, customRange));
+      // Start blank — only restore the range if a custom one was already applied.
+      const hasCustom = datePreset === 'custom' && customRange && customRange[0] && customRange[1];
+      setTmp(hasCustom ? customRange : [null, null]);
       setPlace(prev => ({ ...prev, offset: estimateOffset(660) }));
     } else {
       onApply(value, [null, null]);
@@ -3941,7 +4192,7 @@ function DateRangeDropdown({ datePreset, customRange, onApply, align = 'right' }
           {tmpPreset === 'custom' && (
             <div className="orders-daterange-cal dr-cal-in" style={{ display: 'flex', flexDirection: 'column' }}>
               <DatePicker
-                selected={tmp[0]} startDate={tmp[0]} endDate={tmp[1]}
+                startDate={tmp[0]} endDate={tmp[1]} openToDate={calOpenTo}
                 onChange={(range) => { setTmp(range); setTmpPreset('custom'); }}
                 selectsRange monthsShown={2} maxDate={new Date()} inline
               />
@@ -4608,11 +4859,6 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
                 {tab === "prescription" && <PrescriptionComposer customer={selected} prefillOverride={prefillPrescription} onPrefillConsumed={() => setPrefillPrescription(null)} />}
                 {tab === "assessment" && <AssessmentInline customer={selected} />}
                 {tab === "history" && <HistoryInline customer={selected} onUsePrescription={data => { setPrefillPrescription(data); setTab('prescription'); }} />}
-              </div>
-
-              <div className="hstack-8">
-                <button className="btn"><Icon name="message" /> Send to patient</button>
-                <button className="btn"><Icon name="whatsapp" /> WhatsApp summary</button>
               </div>
             </>
           )}
@@ -5850,7 +6096,7 @@ function HistoryInline({ customer, onUsePrescription }) {
           {/* Prescription entries */}
           {prescriptions.map((p, i) => {
             const pdfUrl = pdfUrls[p.docId];
-            const doctorName = p.doctors?.[0]?.name || p.consultedByName || '—';
+            const doctorName = p.consultedByName || p.doctors?.[0]?.name || '—';
             const medCount = p.recommendedProducts?.length || 0;
             return (
               <div key={p._subId} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -8080,7 +8326,6 @@ function OrderDateRangeFilter({ datePreset, customRange, onApply }) {
 }
 
 function OrdersHistory({ setRoute, openCustomer }) {
-  const [tab, setTab] = useStateO("all");
   const [orders, setOrders] = useStateO([]);
   const [loading, setLoading] = useStateO(true);
   const [expandedOrderId, setExpandedOrderId] = useStateO(null);
@@ -8177,15 +8422,15 @@ function OrdersHistory({ setRoute, openCustomer }) {
     return c && c >= rangeStart && c <= rangeEnd;
   };
   const dateScoped = rangeStart && rangeEnd ? orders.filter(inRange) : orders;
-  const counts = dateScoped.reduce((m, o) => { m[o.status] = (m[o.status] || 0) + 1; return m; }, {});
 
-  // Filtering + client-side pagination (supports arbitrary "jump to page").
-  const filteredOrders = tab === "all" ? dateScoped : dateScoped.filter(o => o.status === tab);
+  // Date-scoped orders + client-side pagination (supports arbitrary "jump to page").
+  const filteredOrders = dateScoped;
   const totalRev = filteredOrders.reduce((s, o) => s + o.amount, 0);
+  const totalItems = filteredOrders.reduce((s, o) => s + o.items.length, 0);
+  const avgItems = filteredOrders.length ? totalItems / filteredOrders.length : 0;
   const pageCount = Math.max(1, Math.ceil(filteredOrders.length / PER_PAGE));
   const pageClamped = Math.min(Math.max(1, page), pageCount);
   const pagedOrders = filteredOrders.slice((pageClamped - 1) * PER_PAGE, pageClamped * PER_PAGE);
-  const goTab = (v) => { setTab(v); setPage(1); };
   const thSticky = { position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 2 };
 
   return (
@@ -8196,6 +8441,11 @@ function OrdersHistory({ setRoute, openCustomer }) {
           <p className="page-sub">{loading ? "Syncing..." : "Synced from Shopify in real-time"}</p>
         </div>
         <div className="page-head-actions">
+          <OrderDateRangeFilter
+            datePreset={datePreset}
+            customRange={customRange}
+            onApply={(p, r) => { setDatePreset(p); setCustomRange(r); setPage(1); }}
+          />
           <button className="btn" onClick={() => exportOrdersToExcel(filteredOrders)} disabled={loading || filteredOrders.length === 0} title="Download the filtered orders as an Excel file">
             <Icon name="download" /> Export
           </button>
@@ -8204,27 +8454,10 @@ function OrdersHistory({ setRoute, openCustomer }) {
       </div>
 
       <div className="grid-12">
-        <div className="span-3"><KPI label="Orders" value={loading ? "..." : filteredOrders.length.toLocaleString()} icon="package" /></div>
-        <div className="span-3"><KPI label="Revenue" value={loading ? "..." : "Rs. " + totalRev.toLocaleString()} icon="trend_up" /></div>
-        <div className="span-3"><KPI label="Avg. order value" value={loading ? "..." : (filteredOrders.length ? "Rs. " + Math.round(totalRev / filteredOrders.length).toLocaleString() : "Rs. 0")} icon="bar" /></div>
-        <div className="span-3"><KPI label="COD share" value="-" icon="truck" /></div>
-      </div>
-
-      <div className="toolbar">
-        <Tabs value={tab} onChange={goTab} items={[
-          { label: "All", value: "all", count: dateScoped.length },
-          { label: "Placed", value: "Placed", count: counts.Placed || 0 },
-          { label: "Packed", value: "Packed", count: counts.Packed || 0 },
-          { label: "Shipped", value: "Shipped", count: counts.Shipped || 0 },
-          { label: "Delivered", value: "Delivered", count: counts.Delivered || 0 },
-          { label: "Failed", value: "Failed delivery", count: counts["Failed delivery"] || 0 },
-        ]} />
-        <span className="spacer" />
-        <OrderDateRangeFilter
-          datePreset={datePreset}
-          customRange={customRange}
-          onApply={(p, r) => { setDatePreset(p); setCustomRange(r); setPage(1); }}
-        />
+        <div className="span-3"><KPI loading={loading} label="Orders" value={filteredOrders.length.toLocaleString()} icon="package" /></div>
+        <div className="span-3"><KPI loading={loading} label="Revenue" value={"Rs. " + totalRev.toLocaleString()} icon="trend_up" /></div>
+        <div className="span-3"><KPI loading={loading} label="Avg. order value" value={filteredOrders.length ? "Rs. " + Math.round(totalRev / filteredOrders.length).toLocaleString() : "Rs. 0"} icon="bar" /></div>
+        <div className="span-3"><KPI loading={loading} label="Avg. items / order" value={filteredOrders.length ? avgItems.toFixed(1) : "0"} icon="package" /></div>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -8238,7 +8471,6 @@ function OrdersHistory({ setRoute, openCustomer }) {
                 <th style={{ ...thSticky, textAlign: "center" }}>Items</th>
                 <th style={thSticky}>Amount</th>
                 <th style={thSticky}>Payment status</th>
-                <th style={thSticky}>Status</th>
                 <th style={thSticky}>Courier</th>
                 <th style={thSticky}></th>
               </tr>
@@ -8287,7 +8519,6 @@ function OrdersHistory({ setRoute, openCustomer }) {
                   </td>
                   <td className="num fw5">Rs. {o.amount.toLocaleString()}</td>
                   <td><PaymentStatusBadge status={o.paymentStatus} /></td>
-                  <td><OrderStatusBadge status={o.status} /></td>
                   <td>
                     <div className="stack-2">
                       <div style={{ fontSize: 12.5 }}>{o.courier}</div>
@@ -8298,7 +8529,7 @@ function OrdersHistory({ setRoute, openCustomer }) {
                 </tr>
               ))}
               {!loading && pagedOrders.length === 0 && (
-                <tr><td colSpan="9"><div className="empty" style={{ padding: 40, textAlign: "center" }}><Icon name="package" size={20} /><div>No orders found</div></div></td></tr>
+                <tr><td colSpan="8"><div className="empty" style={{ padding: 40, textAlign: "center" }}><Icon name="package" size={20} /><div>No orders found</div></div></td></tr>
               )}
             </tbody>
           </table>
@@ -8466,8 +8697,18 @@ function OrderStatusBadge({ status }) {
 
 
 
+// Shipments filters persist across page refreshes (localStorage), but are flushed
+// on logout — see clearShipmentFilters(), called from the NewUI logout handler.
+const SHIP_FILTERS_KEY = 'sehatup_shipments_filters';
+function loadShipmentFilters() {
+  try { return JSON.parse(localStorage.getItem(SHIP_FILTERS_KEY)) || {}; }
+  catch (_) { return {}; }
+}
+function clearShipmentFilters() {
+  try { localStorage.removeItem(SHIP_FILTERS_KEY); } catch (_) { /* ignore */ }
+}
+
 const STAGES = [
-  { key: "Awaiting tracking", label: "Awaiting", short: "AW", color: "var(--muted)" },
   { key: "Shipped", label: "In transit", short: "SH", color: "#5b8def" },
   { key: "Out for delivery", label: "Out for delivery", short: "OFD", color: "var(--risk-moderate)" },
   { key: "Exception", label: "Exception", short: "EX", color: "#e8a44c" },
@@ -8669,20 +8910,27 @@ function ShipmentsScreen({ ctx }) {
     }).sort((a, b) => (b.lastUpdate || '').localeCompare(a.lastUpdate || ''));
   }, [trackingMap, enrichedMap]);
 
-  const [tab, setTab] = useStateS("all");
+  // Filters are seeded from localStorage so they survive a page refresh (lazy init).
+  // A global top-bar search term (ctx.search) still wins on entry, below.
+  const [tab, setTab] = useStateS(() => loadShipmentFilters().tab || "all");
   const [sel, setSel] = useStateS(null);
-  const [bannerOn, setBannerOn] = useStateS(true);
-  const [search, setSearch] = useStateS(ctx?.search || '');
+  const [search, setSearch] = useStateS(() => ctx?.search || loadShipmentFilters().search || '');
   // Order source filter: 'all' | 'shopify' | 'non_shopify'. Applied upstream of
   // everything (KPIs, pipeline, status tabs, table) so the whole page reflects it.
-  const [sourceFilter, setSourceFilter] = useStateS('all');
+  const [sourceFilter, setSourceFilter] = useStateS(() => loadShipmentFilters().sourceFilter || 'all');
   // Column sort: { key, dir } where dir is 'asc' | 'desc'. key === null keeps the
   // default order (newest lastUpdate first). Clicking a header cycles asc → desc → asc;
   // switching to a new column starts at asc; the Clear button resets to null.
-  const [sort, setSort] = useStateS({ key: null, dir: 'asc' });
+  const [sort, setSort] = useStateS(() => loadShipmentFilters().sort || { key: null, dir: 'asc' });
   const handleSort = (key) => setSort(prev => (
     prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
   ));
+
+  // Persist filters on every change so a refresh restores them. Flushed on logout.
+  useEffect(() => {
+    try { localStorage.setItem(SHIP_FILTERS_KEY, JSON.stringify({ tab, sourceFilter, sort, search })); }
+    catch (_) { /* ignore quota / private-mode errors */ }
+  }, [tab, sourceFilter, sort, search]);
 
   // When the global top-bar search navigates here with a term (e.g. an AWB or
   // order #), seed this screen's search box so the row is pre-filtered.
@@ -8759,8 +9007,6 @@ function ShipmentsScreen({ ctx }) {
 
   const inTransit = sourcedShipments.filter(s => s.status === 'Shipped').length;
   const delivered = sourcedShipments.filter(s => s.status === 'Delivered').length;
-  const failed = sourcedShipments.filter(s => s.status === 'Failed delivery').length;
-  const exceptionCount = sourcedShipments.filter(s => s.status === 'Exception').length;
 
   const handleRefresh = () => { /* live via onSnapshot — no-op */ };
 
@@ -9047,10 +9293,10 @@ function ShipmentsScreen({ ctx }) {
 
       {/* KPIs */}
       <div className="grid-12">
-        <div className="span-3"><KPI feature label="In transit" value={inTransit.toString()} icon="truck" /></div>
-        <div className="span-3"><KPI label="Out for delivery" value={counts["Out for delivery"]?.toString() || "0"} icon="package" /></div>
-        <div className="span-3"><KPI label="Delivered" value={delivered.toString()} icon="check" /></div>
-        <div className="span-3 needs-attention"><KPIAttention label="Needs attention" value={(failed + exceptionCount).toString()} sla={exceptionCount} failed={failed} /></div>
+        <div className="span-3"><KPI feature loading={loading} label="In transit" value={inTransit.toString()} icon="truck" /></div>
+        <div className="span-3"><KPI loading={loading} label="Out for delivery" value={counts["Out for delivery"]?.toString() || "0"} icon="package" /></div>
+        <div className="span-3"><KPI loading={loading} label="Delivered" value={delivered.toString()} icon="check" /></div>
+        <div className="span-3"><KPI loading={loading} label="Total shipments" value={counts.all?.toString() || "0"} icon="package" /></div>
       </div>
 
       {/* Pipeline strip */}
@@ -9085,51 +9331,38 @@ function ShipmentsScreen({ ctx }) {
         </div>
       </div>
 
-      {/* Failed-delivery banner */}
-      {bannerOn && failed > 0 && (
-        <div style={{ padding: "12px 18px", background: "color-mix(in oklab, var(--risk-critical) 8%, var(--surface))", border: "1px solid color-mix(in oklab, var(--risk-critical) 28%, var(--border))", borderRadius: "var(--r-lg)", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, background: "var(--risk-critical)", color: "white", display: "grid", placeItems: "center" }}>
-            <Icon name="flag" size={16} />
-          </div>
-          <div className="stack-2" style={{ flex: 1 }}>
-            <div className="fw6" style={{ fontSize: 14 }}>{failed} shipment{failed > 1 ? 's' : ''} need your attention</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>Failed or returned deliveries — review and take action.</div>
-          </div>
-          <button className="btn" onClick={() => setTab("attention")}><Icon name="eye" /> Review</button>
-          <button className="iconbtn" onClick={() => setBannerOn(false)} title="Dismiss"><Icon name="x" /></button>
-        </div>
-      )}
-
       {/* Main table + detail */}
       <div className="grid-12">
         <div className="span-12 card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, rowGap: 8 }}>
-            <Tabs value={tab} onChange={setTab} items={[
-              { label: "All", value: "all", count: counts.all },
-              { label: "In transit", value: "Shipped", count: counts.Shipped },
-              { label: "Out for delivery", value: "Out for delivery", count: counts["Out for delivery"] },
-              { label: "Exception", value: "Exception", count: counts.Exception },
-              { label: "Delivered", value: "Delivered", count: counts.Delivered },
-              { label: "Failed", value: "Failed delivery", count: counts["Failed delivery"] },
+            {/* Status filter — collapsed into a single dropdown */}
+            <select className="select" style={{ width: "auto", height: 30, fontSize: 12.5 }} value={tab} onChange={e => setTab(e.target.value)} title="Filter by delivery status">
+              <option value="all">All statuses ({counts.all})</option>
+              <option value="Shipped">In transit ({counts.Shipped})</option>
+              <option value="Out for delivery">Out for delivery ({counts["Out for delivery"]})</option>
+              <option value="Exception">Exception ({counts.Exception})</option>
+              <option value="Delivered">Delivered ({counts.Delivered})</option>
+              <option value="Failed delivery">Failed ({counts["Failed delivery"]})</option>
+            </select>
+            {/* Order source tabs */}
+            <Tabs value={sourceFilter} onChange={setSourceFilter} items={[
+              { label: "All", value: "all", count: sourceCounts.all },
+              { label: "Shopify orders", value: "shopify", count: sourceCounts.shopify },
+              { label: "Custom orders", value: "non_shopify", count: sourceCounts.non_shopify },
             ]} />
-            <span className="spacer" />
-            <div className="hstack-6">
-              <span className="muted" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Source</span>
-              <Tabs value={sourceFilter} onChange={setSourceFilter} items={[
-                { label: "Both", value: "all", count: sourceCounts.all },
-                { label: "Shopify", value: "shopify", count: sourceCounts.shopify },
-                { label: "Non-Shopify", value: "non_shopify", count: sourceCounts.non_shopify },
-              ]} />
-            </div>
-            <div style={{ position: "relative", width: 240 }}>
-              <input className="input" placeholder="AWB, order #, name, phone..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
-              <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
-            </div>
             {(tab !== 'all' || sourceFilter !== 'all' || search.trim() || sort.key) && (
               <button className="btn sm" onClick={() => { setTab('all'); setSourceFilter('all'); setSearch(''); setSort({ key: null, dir: 'asc' }); }} title="Reset status, source, search and column sorting" style={{ fontSize: 11.5, gap: 4 }}>
                 <Icon name="x" size={12} /> Clear
               </button>
             )}
+            <span className="spacer" />
+            <div style={{ position: "relative", width: 240 }}>
+              <input className="input" placeholder="AWB, order #, name, phone..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
+              <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={13} /></span>
+            </div>
+            <button className="btn sm primary" onClick={() => exportShipmentsToExcel(sortedList)} disabled={loading || sortedList.length === 0} title="Download the currently filtered shipments as an Excel file" style={{ fontSize: 11.5, gap: 4 }}>
+              <Icon name="download" size={12} /> Export
+            </button>
           </div>
           <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 480, maxWidth: "100%" }}>
             <table className="tbl" style={{ minWidth: 1500 }}>
@@ -9336,29 +9569,6 @@ function SLAChip({ days, failed, delivered }) {
 }
 
 /* â”€â”€ KPI variant for the "needs attention" tile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-
-function KPIAttention({ label, value, sla, failed }) {
-  return (
-    <div className="kpi" style={{
-      background: "linear-gradient(135deg, color-mix(in oklab, var(--risk-critical) 12%, var(--surface)) 0%, var(--surface) 70%)",
-      borderColor: "color-mix(in oklab, var(--risk-critical) 30%, var(--border))",
-    }}>
-      <div className="kpi-hd">
-        <div className="ic" style={{ background: "color-mix(in oklab, var(--risk-critical) 18%, transparent)", color: "var(--risk-critical)" }}>
-          <Icon name="flag" size={14} />
-        </div>
-        <div className="lbl" style={{ color: "var(--risk-critical)" }}>{label}</div>
-      </div>
-      <div className="kpi-val">{value}</div>
-      <div className="kpi-ft">
-        <span className="hstack-6"><span className="dotx" style={{ background: "var(--risk-critical)", width: 6, height: 6, borderRadius: 99 }} /> <span className="num">{failed}</span> failed</span>
-        <span className="hstack-6"><span className="dotx" style={{ background: "var(--risk-moderate)", width: 6, height: 6, borderRadius: 99 }} /> <span className="num">{sla}</span> SLA breach</span>
-        <span className="spacer" />
-        <button className="btn ghost sm" style={{ color: "var(--risk-critical)", fontWeight: 500, fontSize: 12, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}>Resolve →</button>
-      </div>
-    </div>
-  );
-}
 
 /* â”€â”€ Detail panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
@@ -12074,17 +12284,17 @@ const NAV = {
 
 const ITEMS = {
   home: { label: "Analytics Dashboard", icon: "pulse", route: "home" },
-  submissions: { label: "Submissions", icon: "clipboard", route: "submissions", ct: "3.4k" },
-  customers: { label: "Shopify customers", icon: "users", route: "customers", ct: "30" },
+  submissions: { label: "Submissions history", icon: "clipboard", route: "submissions" },
+  customers: { label: "Shopify customers", icon: "users", route: "customers" },
   conversations: { label: "Conversations", icon: "message", route: "conversations" },
   prescriptions: { label: "Prescriptions", icon: "pill", route: "prescriptions" },
-  doctor: { label: "Clinical review", icon: "stethoscope", route: "doctor", ct: "12" },
-  doctors: { label: "Doctors queue", icon: "stethoscope", route: "doctor", ct: "12" },
+  doctor: { label: "Clinical review", icon: "stethoscope", route: "doctor" },
+  doctors: { label: "Doctors queue", icon: "stethoscope", route: "doctor" },
   orders: { label: "Shopify orders", icon: "package", route: "orders" },
   shipment_tracking: { label: "Shipment tracking", icon: "map", route: "shipment_tracking" },
   crm_orders: { label: "CRM orders", icon: "clipboard", route: "crm_orders" },
   order_create: { label: "Create order", icon: "plus", route: "order_create" },
-  shipments: { label: "Shipments", icon: "truck", route: "shipments", ct: "117" },
+  shipments: { label: "Shipments", icon: "truck", route: "shipments" },
   users: { label: "Roles & users", icon: "shield", route: "admin" },
   focused_editor: { label: "Quick Editor", icon: "filter", route: "focused_editor" },
   data_studio: { label: "Detailed View", icon: "database", route: "data_studio" },
@@ -12420,18 +12630,6 @@ function App({ user, roles, onLogout }) {
   const [customerDrawer, setCustomerDrawer] = useState(null);
   const [submissionDrawer, setSubmissionDrawer] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [submissionsCount, setSubmissionsCount] = useState("...");
-
-  useEffect(() => {
-    Promise.all([
-      getCountFromServer(collection(db, "partial_submissions")),
-      getCountFromServer(collection(db, "questionnaire_submissions")),
-      getCountFromServer(collection(db, "manual_submissions"))
-    ]).then(counts => {
-      const total = counts[0].data().count + counts[1].data().count + counts[2].data().count;
-      setSubmissionsCount(total.toLocaleString());
-    }).catch(e => console.error(e));
-  }, []);
 
   const setRoute = (key, ctx = {}) => setRouteState({ key, ctx });
 
@@ -12490,11 +12688,7 @@ function App({ user, roles, onLogout }) {
       if (k === 'submissions' && (role === 'marketing' || role === 'telesales') && !isAdmin && !permissions.can_view_submissions_tab) return false;
       return true;
     })
-    .map(k => {
-      let ct = ITEMS[k].ct;
-      if (k === "submissions" && submissionsCount !== "...") ct = submissionsCount;
-      return { ...ITEMS[k], key: k, ct };
-    });
+    .map(k => ({ ...ITEMS[k], key: k }));
 
   // If current route isn't visible in nav (e.g. permission removed), redirect to first visible item
   useEffect(() => {
@@ -12623,7 +12817,7 @@ function App({ user, roles, onLogout }) {
                         <button className="btn w-full" style={{ justifyContent: "flex-start" }} onClick={() => { setShowProfileMenu(false); setRoute("settings"); }}>
                           <Icon name="settings" size={16} /> Settings
                         </button>
-                        <button className="btn w-full" style={{ justifyContent: "flex-start", color: "var(--risk-critical)" }} onClick={() => { setShowProfileMenu(false); onLogout(); }}>
+                        <button className="btn w-full" style={{ justifyContent: "flex-start", color: "var(--risk-critical)" }} onClick={() => { setShowProfileMenu(false); clearShipmentFilters(); onLogout(); }}>
                           <Icon name="log_out" size={16} /> Log out
                         </button>
                       </div>
@@ -12638,7 +12832,6 @@ function App({ user, roles, onLogout }) {
             <Screen route={route} setRoute={setRoute} tweaks={t}
               openCustomer={setCustomerDrawer}
               openSubmission={setSubmissionDrawer}
-              setSubmissionsCount={setSubmissionsCount}
               me={me} />
           </div>
         </main>
@@ -12701,7 +12894,19 @@ function PrescriptionsScreen({ me }) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [userMap, setUserMap] = useState({}); // uid → name, from the users collection
   const { isAdmin } = usePermissions();
+
+  // The prescriber is whoever was logged in when the Rx was saved (their uid is stored
+  // on the prescription). Resolve that uid → the name on their users/{uid} doc.
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'users'), snap => {
+      const m = {};
+      snap.docs.forEach(d => { const x = d.data(); m[d.id] = x.name || x.displayName || x.email || ''; });
+      setUserMap(m);
+    }, (err) => console.error('[Prescriptions] users snapshot error:', err));
+    return unsub;
+  }, []);
 
   // Doctor → only their own. Admin / Telesales / others → see all prescriptions.
   const isDoctor = me?.role === 'doctor';
@@ -12735,7 +12940,8 @@ function PrescriptionsScreen({ me }) {
     if (!search.trim()) return prescriptions;
     const q = search.toLowerCase();
     return prescriptions.filter(p => {
-      const doctorName = p.doctors?.[0]?.name || p.consultedByName || '';
+      const uid = p.consultedByUid || p.doctorUid || p.doctorId;
+      const doctorName = (uid && userMap[uid]) || p.consultedByName || p.doctors?.[0]?.name || '';
       return (
         (p.patientName || '').toLowerCase().includes(q) ||
         (p.prescriptionID || '').toLowerCase().includes(q) ||
@@ -12743,14 +12949,27 @@ function PrescriptionsScreen({ me }) {
         doctorName.toLowerCase().includes(q)
       );
     });
-  }, [prescriptions, search]);
+  }, [prescriptions, search, userMap]);
 
-  const getDoctorName = (p) => p.doctors?.[0]?.name || p.consultedByName || '—';
+  // Resolve the prescriber: the uid stored on the Rx → that user's name in the users
+  // collection. Falls back to the name snapshotted at save time, then doctors[0].
+  const getDoctorName = (p) => {
+    const uid = p.consultedByUid || p.doctorUid || p.doctorId;
+    return (uid && userMap[uid]) || p.consultedByName || p.doctors?.[0]?.name || '—';
+  };
 
   const fmt = (ts) => {
     if (!ts) return '—';
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+  // Date-only, numeric (e.g. 23/05/2026) — for consultation / follow-up which are
+  // calendar dates with no meaningful time component.
+  const fmtDate = (ts) => {
+    if (!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    if (isNaN(d)) return '—';
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   };
 
   const handleCopy = (url, id) => {
@@ -12856,8 +13075,8 @@ function PrescriptionsScreen({ me }) {
                       ['Gender', selected.patientGender],
                       ['Age', selected.patientAge ? `${selected.patientAge} yrs` : '—'],
                       ['Phone', selected.phone || '—'],
-                      ['Consultation', fmt(selected.consultationDate || selected.timestamp)],
-                      ['Follow-up', selected.followUpDate ? fmt(selected.followUpDate) : '—'],
+                      ['Consultation', fmtDate(selected.consultationDate || selected.timestamp)],
+                      ['Follow-up', selected.followUpDate ? fmtDate(selected.followUpDate) : '—'],
                       ['Prescribed by', getDoctorName(selected)],
                       ['Template', selected.prescriptionTemplate || 'None'],
                     ].map(([label, val]) => (
@@ -12942,6 +13161,9 @@ const convoInitial = (c) => {
   const ch = Array.from(convoTitle(c).trim())[0] || 'U';   // Array.from → full emoji code point
   return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;        // uppercase letters; keep emoji/digit as-is
 };
+// Conversations (WhatsApp inbox) isn't live yet — the screen shows a "Coming soon"
+// placeholder. Flip this to true to re-enable the real inbox.
+const CONVERSATIONS_LIVE = false;
 function ConversationsScreen({ me, ctx }) {
   const [convos, setConvos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12966,6 +13188,7 @@ function ConversationsScreen({ me, ctx }) {
   // filtered client-side) so it spans the full collection, not only the latest page; the cap is
   // generous so the list stays consistent with the dashboard conversation stats.
   useEffect(() => {
+    if (!CONVERSATIONS_LIVE) { setLoading(false); return; }
     const [rStart, rEnd] = resolveDateRange(datePreset, customRange);
     const clauses = [collection(db, 'conversations')];
     if (rStart && rEnd) {
@@ -13039,6 +13262,29 @@ function ConversationsScreen({ me, ctx }) {
 
   const fmt = (ms) => ms ? new Date(ms).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '';
   const tick = (s) => s === 'READ' ? '✓✓' : s === 'DELIVERED' ? '✓✓' : s === 'SENT' ? '✓' : '';
+
+  if (!CONVERSATIONS_LIVE) {
+    return (
+      <div className="col fade-in">
+        <div className="page-head">
+          <div>
+            <h1 className="page-title">Conversations</h1>
+            <p className="page-sub">WhatsApp inbox</p>
+          </div>
+          <Badge tone="moderate" dot="var(--risk-moderate)" style={{ fontSize: 11 }}>Coming soon · not live yet</Badge>
+        </div>
+        <div className="card" style={{ display: 'grid', placeItems: 'center', textAlign: 'center', padding: '72px 24px', minHeight: 380 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--surface-2)', display: 'grid', placeItems: 'center', marginBottom: 16 }}>
+            <Icon name="message" size={26} className="muted" />
+          </div>
+          <div className="fw6" style={{ fontSize: 22, marginBottom: 6 }}>Coming soon</div>
+          <div className="muted" style={{ fontSize: 13.5, maxWidth: 380, lineHeight: 1.5 }}>
+            The Conversations inbox isn’t live yet. WhatsApp chats will show up here once it’s enabled.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="col fade-in">
@@ -13188,10 +13434,10 @@ function ConversationsScreen({ me, ctx }) {
   );
 }
 
-function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, setSubmissionsCount, me }) {
+function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
   switch (route.key) {
     case "home": return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
-    case "submissions": return <SubmissionsScreen openCustomer={openCustomer} openSubmission={openSubmission} setSubmissionsCount={setSubmissionsCount} />;
+    case "submissions": return <SubmissionsScreen openCustomer={openCustomer} openSubmission={openSubmission} />;
     case "customers": return <CustomersList openCustomer={openCustomer} openSubmission={openSubmission} />;
     case "prescriptions": return <PrescriptionsScreen me={me} />;
     case "doctor": return <DoctorScreen openCustomer={openCustomer} openSubmission={openSubmission} context={route.ctx} />;

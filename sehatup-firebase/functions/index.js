@@ -2350,6 +2350,26 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
     const db = getFirestore();
     const p = b.payload;
 
+    // ── TEMP discovery logging: capture the full HTTP envelope QuickReply sends so we can
+    //    document the exact payload format (for rebuilding the flow in n8n). Logs the
+    //    method, content-type, query, headers and the complete raw body for EVERY request
+    //    — inbound chat messages and status callbacks alike. Remove (or trim) once the
+    //    format is documented; the raw body contains WhatsApp message text / PII. ──
+    console.log("[qr-webhook] ───── incoming request ─────");
+    console.log("[qr-webhook] method:", req.method, "content-type:", req.get("content-type"));
+    console.log("[qr-webhook] query:", JSON.stringify(req.query || {}));
+    console.log("[qr-webhook] headers:", JSON.stringify(req.headers || {}));
+    console.log("[qr-webhook] body:", JSON.stringify(b));
+    // Classify so you can grep one log line per request type in Cloud Logging:
+    //   payload present  → inbound user message (and its _type tells the message kind)
+    //   no payload       → status callback (SENT / DELIVERED / READ), keyed by event
+    console.log(
+      "[qr-webhook] kind:",
+      p ? `INBOUND _type=${p._type || "?"}` : `STATUS event=${String(b.event || b.status || b.state || "?").toUpperCase()} messageBy=${b.messageBy || "?"}`,
+      "phone:", b.phone || "?",
+      "id:", b.id || "?",
+    );
+
     // ── Not an inbound chat message (no payload) → it's a status callback (SENT/
     //    DELIVERED/READ). QuickReply never sends us the TEXT of bot/agent replies, only
     //    these status events. So we use them two ways:
@@ -2541,6 +2561,48 @@ exports.qrSendMessage = onCall({ region: "us-central1" }, async (request) => {
   }, { merge: true });
 
   return { success: true, id: msgId, state: data.state || "SENT" };
+});
+
+// ── QuickReply Tester clear ──────────────────────────────────────────────────
+// Wipes a phone's qr_conversations/{phone}/events so the bot starts a fresh
+// conversation (the n8n "Build AI Prompt" node feeds recent events back to the
+// model, so stale history must be cleared between tests). Same optional
+// QR_TESTER_KEY gate as qrTestSend.
+exports.qrTestClear = onCall({ region: "us-central1" }, async (request) => {
+  const expectedKey = process.env.QR_TESTER_KEY;
+  if (expectedKey) {
+    const provided = request.data && request.data.testerKey ? String(request.data.testerKey) : "";
+    if (provided !== expectedKey) throw new HttpsError("permission-denied", "Invalid tester key.");
+  }
+
+  const to = (request.data && request.data.to ? String(request.data.to) : "").trim();
+  if (!to) throw new HttpsError("invalid-argument", "Recipient phone is required.");
+
+  const db = getFirestore();
+  const docId = qrConvId(to);
+  const eventsRef = db.collection("qr_conversations").doc(docId).collection("events");
+
+  let deleted = 0;
+  // delete in batches of 300 until the subcollection is empty
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const snap = await eventsRef.limit(300).get();
+    if (snap.empty) break;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    deleted += snap.size;
+    if (snap.size < 300) break;
+  }
+
+  // reset the parent doc's summary fields too
+  await db.collection("qr_conversations").doc(docId).set({
+    lastUserMessage: "",
+    lastAiReply: "",
+    lastUpdated: new Date().toISOString(),
+  }, { merge: true });
+
+  return { success: true, deleted };
 });
 
 // ── QuickReply External CRM Integration ──────────────────────────────────────

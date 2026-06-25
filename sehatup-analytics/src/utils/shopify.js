@@ -258,19 +258,30 @@ export const findShopifyOrder = async (ref) => {
  * @returns {Promise<number>}
  */
 export const getCustomersCount = async () => {
-    try {
+    const runCount = async (query) => {
         const response = await fetch('/shopify-v2/graphql.json', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: "{ customersCount { count } }" })
+            body: JSON.stringify({ query })
         });
         if (!response.ok) throw new Error(`Count failed: ${response.statusText}`);
         const data = await response.json();
         if (data.errors) throw new Error(data.errors[0].message);
         return data.data.customersCount.count || 0;
-    } catch (error) {
-        console.error('Error getting customer count:', error);
-        throw error;
+    };
+    try {
+        // Shopify truncates `customersCount` at 10,000 unless `limit` is raised, so a
+        // store with 11,055 customers would otherwise report 10,000. Pass a high limit
+        // to get the real total; if the API version rejects it, fall back to the default.
+        return await runCount("{ customersCount(limit: 1000000) { count } }");
+    } catch (e) {
+        console.warn('High-limit customersCount failed, falling back to default:', e.message);
+        try {
+            return await runCount("{ customersCount { count } }");
+        } catch (error) {
+            console.error('Error getting customer count:', error);
+            throw error;
+        }
     }
 };
 

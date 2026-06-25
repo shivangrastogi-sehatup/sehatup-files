@@ -282,6 +282,7 @@ async function forceSignOutWithMessage(message) {
   localStorage.setItem("sehatup_login_error", message);
   localStorage.removeItem("sehatup_role");
   localStorage.removeItem("sehatup_pending_role");
+  localStorage.removeItem("sehatup_shipments_filters");
   try { await signOut(auth); } catch (_) {}
 }
 
@@ -363,7 +364,7 @@ export default function AppContainer() {
     return () => unsub();
   }, []);
 
-  const handleLogout = () => signOut(auth);
+  const handleLogout = () => { localStorage.removeItem("sehatup_shipments_filters"); return signOut(auth); };
 
   if (loading) {
     return (
