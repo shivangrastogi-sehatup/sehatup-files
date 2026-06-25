@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } fr
 import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode, FIREBASE_CONFIGS } from './config/firebaseEnvironment';
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut as fbSignOut } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
 import { searchCustomers, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth, storage, functions } from './firebase';
@@ -946,7 +946,7 @@ function Skeleton({ w = "100%", h = 14, r = 6, style }) {
   return <div className="skel-box" style={{ width: w, height: h, borderRadius: r, ...style }} />;
 }
 
-function KPI({ label, value, icon, delta, deltaDir = "up", suffix, feature, sparkline, compareLabel = "vs. last 30d", loading }) {
+function KPI({ label, value, icon, delta, deltaDir = "up", suffix, feature, sparkline, compareLabel = null, loading }) {
   const showFooter = delta != null || sparkline || compareLabel;
   return (
     <div className={"kpi" + (feature ? " feature" : "")}>
@@ -997,12 +997,28 @@ function LineChart({ data = [], series = null, height = 220, color = "var(--acce
     const labels = data.map(d => d.label);
     const allValues = series.flatMap(s => s.values || []);
     const maxY = Math.ceil(Math.max(...allValues, 1) / 20) * 20;
-    const scaleX = i => pad.l + (i / Math.max(1, labels.length - 1)) * (w - pad.l - pad.r);
+    const plotW = w - pad.l - pad.r;
+    const scaleX = i => pad.l + (i / Math.max(1, labels.length - 1)) * plotW;
     const scaleY = v => pad.t + (1 - v / maxY) * (h - pad.t - pad.b);
     const yticks = [0, maxY / 2, maxY];
     const xticks = [0, Math.floor(labels.length / 4), Math.floor(labels.length / 2), Math.floor(labels.length * 3 / 4), labels.length - 1];
+    // Nearest-point hover (same approach as the single-series chart).
+    const handleMove = (e) => {
+      const svg = e.currentTarget.ownerSVGElement;
+      if (!svg || labels.length === 0) return;
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return;
+      const vbX = ((e.clientX - rect.left) / rect.width) * w;
+      let i = Math.round(((vbX - pad.l) / plotW) * (labels.length - 1));
+      i = Math.max(0, Math.min(labels.length - 1, i));
+      setHoveredNode(i);
+    };
+    // Anchor the tooltip to the highest (top-most) series value at the hovered index.
+    const hoverTopY = hoveredNode !== null
+      ? Math.min(...series.map(s => scaleY(s.values?.[hoveredNode] ?? 0)))
+      : 0;
     return (
-      <div className="chart-wrap" style={{ height }}>
+      <div className="chart-wrap" style={{ height, position: 'relative' }}>
         <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ overflow: "visible" }}>
           {yticks.map((t, i) => (
             <g key={i}>
@@ -1010,6 +1026,9 @@ function LineChart({ data = [], series = null, height = 220, color = "var(--acce
               <text x={pad.l - 8} y={scaleY(t) + 3} textAnchor="end" fontSize="10" fill="var(--muted)" fontFamily="Geist Mono, monospace">{t}</text>
             </g>
           ))}
+          {hoveredNode !== null && (
+            <line x1={scaleX(hoveredNode)} x2={scaleX(hoveredNode)} y1={pad.t} y2={h - pad.b} stroke="var(--border-strong)" strokeWidth="1" strokeDasharray="3 3" />
+          )}
           {series.map((s, sIdx) => {
             const c = s.color || color;
             const pts = (s.values || []).map((v, i) => `${scaleX(i)},${scaleY(v)}`).join(" ");
@@ -1017,17 +1036,43 @@ function LineChart({ data = [], series = null, height = 220, color = "var(--acce
               <g key={sIdx}>
                 <polyline points={pts} fill="none" stroke={c} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
                 {(s.values || []).map((v, i) => (
-                  <circle key={i} cx={scaleX(i)} cy={scaleY(v)} r="2.5" fill="var(--surface)" stroke={c} strokeWidth="1.5" />
+                  <circle key={i} cx={scaleX(i)} cy={scaleY(v)} r={hoveredNode === i ? "4" : "2.5"} fill={hoveredNode === i ? c : "var(--surface)"} stroke={c} strokeWidth="1.5" style={{ transition: "r 0.12s, fill 0.12s" }} />
                 ))}
               </g>
             );
           })}
+          {/* Overlay drives nearest-point hover detection */}
+          <rect x={pad.l} y={pad.t} width={plotW} height={h - pad.t - pad.b} fill="transparent"
+            style={{ cursor: "crosshair" }} onMouseMove={handleMove} onMouseLeave={() => setHoveredNode(null)} />
           {xticks.map((i, k) => (
             <text key={k} x={scaleX(i)} y={h - 8} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="Geist Mono, monospace">
               {labels[i]}
             </text>
           ))}
         </svg>
+        {/* HTML tooltip — date + each series value */}
+        {hoveredNode !== null && (
+          <div style={{
+            position: "absolute",
+            left: `${(scaleX(hoveredNode) / w) * 100}%`,
+            top: `${(hoverTopY / h) * 100}%`,
+            transform: "translate(-50%, calc(-100% - 12px))",
+            background: "var(--fg)", color: "var(--bg)", padding: "6px 10px", borderRadius: 7,
+            fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", pointerEvents: "none", zIndex: 3,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+          }}>
+            <div style={{ opacity: 0.7, fontWeight: 500, fontSize: 10, marginBottom: 3 }}>{data[hoveredNode]?.full || data[hoveredNode]?.label || labels[hoveredNode]}</div>
+            {series.map((s, i) => (
+              <div key={i} className="hstack-6" style={{ gap: 6, justifyContent: 'space-between' }}>
+                <span className="hstack-6" style={{ gap: 5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color || color, display: 'inline-block' }} />
+                  <span style={{ opacity: 0.8 }}>{s.name}</span>
+                </span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>{s.values?.[hoveredNode] ?? 0}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="hstack-12" style={{ justifyContent: 'center', marginTop: 8, fontSize: 11.5 }}>
           {series.map((s, i) => (
             <span key={i} className="hstack-6"><span style={{ width: 10, height: 2, background: s.color || color, display: 'inline-block' }} /><span className="muted">{s.name}</span></span>
@@ -2160,7 +2205,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const D = window.SehatData;
   const layout = tweaks.homeLayout || "analytics";
   const [dashActiveTabs, setDashActiveTabs] = useState([]);
-  const [timelineMode, setTimelineMode] = useState("completed"); // completed | started | both
+  const [timelineMode, setTimelineMode] = useState("completed"); // completed | partial | both
 
   // Build a merged, normalized list of all submissions (used for export + submissions history)
   const allSubmissions = useMemoCx(() => {
@@ -2207,9 +2252,8 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       : allSubmissions.filter(d => dashActiveTabs.includes(d.source)),
   [allSubmissions, dashActiveTabs]);
 
-  // The "vs. last 30d" footer only makes sense on the default 30-day view. Once any
-  // other date range is applied it's misleading, so hide it (pass null).
-  const kpiCompare = datePreset === '30d' ? 'vs. last 30d' : null;
+  // Comparison footer disabled — hidden on all cards for now.
+  const kpiCompare = null;
   const kpis = (
     <>
       {/* Funnel stages — Started → Completed → Consulted → Purchased */}
@@ -2262,10 +2306,10 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
   const labels = denseTS.map(d => d.day.slice(5).replace('-', '/'));
   const timelineSeries = timelineMode === 'completed'
     ? [{ name: 'Completed', color: 'var(--accent)', values: denseTS.map(d => d.completed) }]
-    : timelineMode === 'started'
-      ? [{ name: 'Started', color: 'var(--accent-2)', values: denseTS.map(d => d.started) }]
+    : timelineMode === 'partial'
+      ? [{ name: 'Partial', color: 'var(--accent-2)', values: denseTS.map(d => d.partial) }]
       : [
-        { name: 'Started', color: 'var(--accent-2)', values: denseTS.map(d => d.started) },
+        { name: 'Partial', color: 'var(--accent-2)', values: denseTS.map(d => d.partial) },
         { name: 'Completed', color: 'var(--accent)', values: denseTS.map(d => d.completed) },
       ];
   const timelineFallback = denseTS.map(d => {
@@ -2275,7 +2319,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       // Short label for the x-axis ticks, descriptive `full` date for the hover tooltip.
       label: ok ? dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : d.day.slice(5).replace('-', '/'),
       full: ok ? dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : d.day,
-      value: timelineMode === 'started' ? d.started : d.completed,
+      value: timelineMode === 'partial' ? d.partial : d.completed,
     };
   });
 
@@ -2449,7 +2493,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                 <span className="spacer" />
                 <Tabs value={timelineMode} onChange={setTimelineMode} items={[
                   { label: "Completed", value: "completed" },
-                  { label: "Started", value: "started" },
+                  { label: "Partial", value: "partial" },
                   { label: "Both", value: "both" },
                 ]} />
               </div>
@@ -2541,6 +2585,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                       <th>Questionnaire</th>
                       <th>Starts</th>
                       <th>Completed</th>
+                      <th>Manual</th>
                       <th>Consulted</th>
                       <th>Purchased</th>
                       <th style={{ whiteSpace: 'nowrap', minWidth: 100 }}>Completion %</th>
@@ -2550,7 +2595,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                   <tbody>
                     {loading && Array.from({ length: 4 }).map((_, i) => (
                       <tr key={`sk-${i}`}>
-                        {Array.from({ length: 7 }).map((__, j) => (
+                        {Array.from({ length: 8 }).map((__, j) => (
                           <td key={j}><Skeleton h={14} w={j === 0 ? 130 : 60} /></td>
                         ))}
                       </tr>
@@ -2560,6 +2605,7 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
                         <td className="fw5">{row.label}</td>
                         <td className="num">{row.count.toLocaleString()}</td>
                         <td className="num">{row.completed.toLocaleString()}</td>
+                        <td className="num">{row.manual.toLocaleString()}</td>
                         <td className="num">{row.consulted.toLocaleString()}</td>
                         <td className="num">{row.purchased.toLocaleString()}</td>
                         <td className="num">{row.cr != null ? row.cr + "%" : "-"}</td>
@@ -2954,14 +3000,13 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
           <thead>
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" /></th>
-              <th>Name</th>
+              <th style={{ minWidth: 190 }}>Name</th>
               <th>Phone</th>
               <th>Score</th>
               <th>Risk</th>
               <th>Category</th>
               <th>Source</th>
-              <th>Date</th>
-              <th>Time</th>
+              <th>Date &amp; Time</th>
             </tr>
           </thead>
           <style>{`
@@ -2999,17 +3044,16 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
                 </tr>
               ))
             ) : pagedList.length === 0 ? (
-              <tr><td colSpan="9" style={{ textAlign: "center", padding: 60 }} className="muted">No submissions found.</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: "center", padding: 60 }} className="muted">No submissions found.</td></tr>
             ) : (
               pagedList.map(c => (
-                <tr key={c.id} onClick={() => openCustomer(c)} className="fade-in">
+                <tr key={c.id} onClick={() => openCustomer(c)} className="fade-in clickable">
                   <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
                   <td>
                     <div className="hstack-10">
                       <Avatar name={c.name} hue={c.avatarHue} size="sm" />
                       <div className="stack-2">
                         <div className="fw5">{c.name}</div>
-                        <div className="muted mono" style={{ fontSize: 11 }}>{(c.docId || c.id || "").slice(0, 12)}...</div>
                       </div>
                     </div>
                   </td>
@@ -3040,8 +3084,9 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
                     })()}
                   </td>
                   <td><Badge>{c.source}</Badge></td>
-                  <td className="muted num" style={{ whiteSpace: 'nowrap' }}>{c.timestampShort}</td>
-                  <td className="muted num" style={{ whiteSpace: 'nowrap' }}>{c.timeShort}</td>
+                  <td className="muted num" style={{ whiteSpace: 'nowrap' }}>
+                    {c.timestampShort}{(c.timeShort && c.timeShort !== '-') ? ` · ${c.timeShort}` : ''}
+                  </td>
                 </tr>
               ))
             )}
@@ -3395,7 +3440,7 @@ function CustomersList({ openCustomer, openSubmission }) {
                 <tr><td colSpan="8" style={{ textAlign: "center", padding: 60 }} className="muted">No customers found.</td></tr>
               ) : (
                 list.slice(0, 14).map(c => (
-                  <tr key={c.id} onClick={() => openCustomer(c)} className="fade-in">
+                  <tr key={c.id} onClick={() => openCustomer(c)} className="fade-in clickable">
                     <td><input type="checkbox" onClick={e => e.stopPropagation()} /></td>
                     <td>
                       <div className="hstack-10">
@@ -3518,6 +3563,7 @@ function SelectChip({ icon, label, value, options, onChange }) {
 function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
   const [isPurchased, setIsPurchased] = useStateCx(false);
   const [isConsulted, setIsConsulted] = useStateCx(false);
+  const [copiedId, setCopiedId] = useStateCx(false);
   // Live Shopify order stats looked up by the patient's questionnaire phone number.
   // orders = orders_count, lifetime value = total_spent. Falls back to 0 if no match.
   const [shopStats, setShopStats] = useStateCx({ orders: null, ltv: null });
@@ -3544,8 +3590,19 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
   const ten = (c.phone || '').replace(/\D/g, '').slice(-10);
   const intlNumber = ten.length === 10 ? '91' + ten : (c.phone || '').replace(/\D/g, '');
   const hasPhone = intlNumber.length >= 11;
+  // Manual leads have no questionnaire; only show assessment UI for a real, scored submission.
+  const isManual = c.source === 'manual' || c._source === 'manual' || c._collection === 'manual';
+  const scoreNum = Number(c.healthScore ?? c.score);
+  const hasScore = !isManual && Number.isFinite(scoreNum);
+  const docId = c.docId || c.id || '';
+  const copyId = () => {
+    if (!docId || !navigator.clipboard) return;
+    navigator.clipboard.writeText(docId)
+      .then(() => { setCopiedId(true); setTimeout(() => setCopiedId(false), 1500); })
+      .catch(() => { });
+  };
   return (
-    <Drawer onClose={onClose} title={c.name} subtitle={`${c.phone} · ${c.email}`}>
+    <Drawer onClose={onClose} title={c.name} subtitle={c.phone || ''}>
       <div className="hstack-12">
         <Avatar name={c.name} hue={c.avatarHue} size="lg" />
         <div className="stack-2">
@@ -3554,9 +3611,19 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
             {c.risk && <RiskBadge risk={c.risk} />}
           </div>
           <div className="muted" style={{ fontSize: 12.5 }}>{c.age !== "-" ? `${c.age} · ${c.gender} · ` : ""}{c.city}, {c.state}</div>
+          {docId && (
+            <div className="hstack-8" style={{ fontSize: 11.5, marginTop: 2 }}>
+              <span className="mono" title="Double-click to copy" onDoubleClick={copyId}
+                style={{ color: 'var(--muted)', userSelect: 'all', cursor: 'copy' }}>{docId}</span>
+              <button className="iconbtn" onClick={copyId} title="Copy ID" style={{ width: 22, height: 22 }}>
+                <Icon name={copiedId ? "check" : "copy"} size={12} />
+              </button>
+              {copiedId && <span style={{ color: 'var(--risk-low)', fontSize: 11 }}>Copied</span>}
+            </div>
+          )}
         </div>
         <span className="spacer" />
-        {c.score !== undefined && <Gauge value={c.score} size={84} stroke={9} label="Score" />}
+        {hasScore && <Gauge value={scoreNum} size={84} stroke={9} label="Score" />}
       </div>
 
       <div className="grid-12">
@@ -3572,7 +3639,7 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
         </div>
       </div>
 
-      {c.score !== undefined && (
+      {hasScore && (
         <div className="stack-12">
           <div className="hstack-8">
             <div className="section-title">Latest assessment</div>
@@ -3581,17 +3648,13 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
           </div>
           <div className="card flat">
             <div className="hstack-12">
-              <Gauge value={c.score} size={64} stroke={7} showLabel={false} />
+              <Gauge value={scoreNum} size={64} stroke={7} showLabel={false} />
               <div className="stack-2">
                 <div className="fw5">{c.category || "Submitted"}</div>
                 <div className="muted" style={{ fontSize: 12 }}>Submitted {c.timestampLong || c.timestampShort}</div>
               </div>
               <span className="spacer" />
               {c.risk && <RiskBadge risk={c.risk} />}
-            </div>
-            <div className="divider" style={{ margin: "12px 0" }} />
-            <div className="stack-6">
-              <div className="hstack-8" style={{ fontSize: 12.5 }}><Icon name="bolt" size={12} color="var(--risk-high)" /><span className="muted">Top concerns:</span><span>Irregular cycle · Low sleep · Fatigue · Cravings</span></div>
             </div>
           </div>
         </div>
@@ -3639,18 +3702,10 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
         ) : (
           <>
             {hasPhone ? (
-              <a href={`tel:+${intlNumber}`} className="btn" style={{ textDecoration: 'none' }}><Icon name="phone" /> Call</a>
-            ) : (
-              <button className="btn" disabled><Icon name="phone" /> Call</button>
-            )}
-            {hasPhone ? (
               <a href={`https://wa.me/${intlNumber}`} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none' }}><Icon name="whatsapp" /> WhatsApp</a>
             ) : (
               <button className="btn" disabled><Icon name="whatsapp" /> WhatsApp</button>
             )}
-            <button className="btn"><Icon name="mail" /> Email</button>
-            <span className="spacer" />
-            <button className="btn primary" onClick={() => { onClose(); setRoute && setRoute("order_create", { customer: c }); }}><Icon name="package" /> Create order</button>
           </>
         )}
       </DrawerFooter>
@@ -3660,33 +3715,93 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
 
 /* â”€â”€ Submission detail drawer (wide) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-function SubmissionDrawer({ customer, onClose }) {
+function SubmissionDrawer({ customer, onClose, onBack }) {
+  const c = customer || {};
+  // Resolve which submission collection this doc lives in (for the prescriptions subcollection).
+  const src = c._collection || c._source || c.source;
+  const collForSrc = (src === 'full' || src === 'completed') ? 'questionnaire_submissions'
+    : src === 'partial' ? 'partial_submissions'
+      : 'manual_submissions';
+  // Latest prescription's recommendedProducts (if a doctor has prescribed). These
+  // supersede the root recommendedProducts saved at assessment time, because the
+  // doctor may have changed the products when writing the prescription.
+  const [rxProducts, setRxProducts] = useState(null);
+  const [copied, setCopied] = useState(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!c.id) { setRxProducts(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(query(
+          collection(db, `${collForSrc}/${c.id}/prescriptions`),
+          orderBy('savedAt', 'desc'), limit(1)
+        ));
+        if (cancelled) return;
+        const latest = snap.docs[0]?.data();
+        const list = (latest && Array.isArray(latest.recommendedProducts)) ? latest.recommendedProducts : null;
+        setRxProducts(list && list.length > 0 ? list : null);
+      } catch (_) { if (!cancelled) setRxProducts(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [c.id, collForSrc]);
+
   if (!customer) return null;
-  const D = window.SehatData;
-  const c = customer;
-  const Q = D.QUESTIONNAIRE;
-  let qn = 0;
+  // Manual leads have no questionnaire — never show assessment data for them.
+  const isManual = c.source === 'manual' || c._source === 'manual' || c._collection === 'manual';
+  // Health score may be missing (manual / partial / legacy docs) — guard against NaN.
+  const scoreNum = Number(c.healthScore ?? c.score);
+  const hasScore = !isManual && Number.isFinite(scoreNum);
+  // Real answers stored on the submission doc as [{ question, answer, score }].
+  const answers = (!isManual && Array.isArray(c.answers)) ? c.answers : [];
+  const docId = c.docId || c.id || '';
+  // Fall back to deriving category/age/gender when the passed object hasn't been
+  // normalized (e.g. opened from global search with a raw doc), so the category
+  // (mens-wellness etc.) is always identified correctly.
+  const demo = deriveDemographics(c);
+  const category = c.category || demo.category;
+  const age = (c.age != null && c.age !== '-') ? c.age : demo.age;
+  const gender = (c.gender && c.gender !== '-') ? c.gender : demo.gender;
+  // Prefer prescription products (updated by the doctor); fall back to the
+  // recommendedProducts saved on the submission at assessment time.
+  const rootProducts = Array.isArray(c.recommendedProducts) ? c.recommendedProducts : [];
+  const products = rxProducts || rootProducts;
+  const productsFromRx = !!rxProducts;
+  const copyLink = () => {
+    if (!c.reportDownloadUrl || !navigator.clipboard) return;
+    navigator.clipboard.writeText(c.reportDownloadUrl)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
+      .catch(() => { });
+  };
   return (
-    <Drawer wide onClose={onClose} title={`Submission — ${c.name}`} subtitle={<>
-      <span className="mono">{c.docId.slice(0, 18)}...</span> · Submitted {c.timestampLong}
+    <Drawer wide onClose={onClose} onBack={onBack} title={`Submission — ${c.name}`} subtitle={<>
+      {docId && <><span className="mono">{String(docId).slice(0, 18)}...</span> · </>}{isManual ? 'Manually added' : 'Submitted'}{c.timestampLong ? ` ${c.timestampLong}` : ''}
     </>}>
       <div className="grid-12">
         <div className="span-4 col">
           <div className="card flat" style={{ background: "var(--surface-2)", display: "grid", placeItems: "center", padding: 22 }}>
-            <Gauge value={c.score} size={148} stroke={12} label="Health score" big />
-            <div style={{ marginTop: 12 }}><RiskBadge risk={c.risk} /></div>
+            {hasScore ? (
+              <>
+                <Gauge value={scoreNum} size={148} stroke={12} label="Health score" big />
+                <div style={{ marginTop: 12 }}><RiskBadge risk={c.risk} /></div>
+              </>
+            ) : (
+              <div className="muted" style={{ fontSize: 13, textAlign: 'center', padding: '44px 0' }}>
+                No health score
+              </div>
+            )}
           </div>
           <div className="card flat">
             <div className="section-title" style={{ marginBottom: 10 }}>Profile</div>
             <div className="stack-8">
               {[
                 ["Name", c.name],
-                ["Age", c.age + " yrs"],
-                ["Gender", c.gender],
-                ["Phone", c.phone],
-                ["Category", c.category],
-                ["Location", `${c.city}, ${c.state}`],
-                ["Source", c.source],
+                ["Age", (age != null && age !== '-') ? `${age} yrs` : "-"],
+                ["Gender", gender || "-"],
+                ["Phone", c.phone || "-"],
+                ["Category", category || "-"],
+                ...((c.city || c.state) ? [["Location", `${c.city || ''}${(c.city && c.state) ? ', ' : ''}${c.state || ''}`]] : []),
+                ["Source", c.source || (isManual ? 'manual' : '-')],
               ].map(([k, v]) => (
                 <div key={k} className="hstack-8" style={{ fontSize: 12.5 }}>
                   <span className="muted" style={{ width: 80 }}>{k}</span>
@@ -3695,54 +3810,83 @@ function SubmissionDrawer({ customer, onClose }) {
               ))}
             </div>
           </div>
-          <div className="card flat">
-            <div className="section-title" style={{ marginBottom: 10 }}>Risk flags <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>· auto-detected</span></div>
-            <div className="stack-8">
-              {["Irregular periods", "Low sleep (<6 hrs)", "Suspected PCOS", "Persistent fatigue"].map(f => (
-                <div key={f} className="hstack-8" style={{ fontSize: 12.5 }}>
-                  <Icon name="flag" size={12} color="var(--risk-high)" />
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="span-8 col">
-          {Q.sections.map(s => (
-            <div key={s.name} className="card flat">
+          {isManual ? (
+            <div className="card flat">
+              <div className="empty" style={{ padding: '36px 0', textAlign: 'center' }}>
+                <div className="fw5" style={{ marginBottom: 4 }}>No questionnaire responses</div>
+                <div className="muted" style={{ fontSize: 12.5 }}>This lead was added manually and has no assessment answers.</div>
+              </div>
+            </div>
+          ) : answers.length > 0 ? (
+            <div className="card flat">
               <div className="hstack-8" style={{ marginBottom: 6 }}>
-                <div className="section-title">{s.name}</div>
-                <span className="muted" style={{ fontSize: 11.5 }}>· {s.qs.length} questions</span>
+                <div className="section-title">Responses</div>
+                <span className="muted" style={{ fontSize: 11.5 }}>· {answers.length} questions</span>
               </div>
               <div>
-                {s.qs.map((qa, i) => {
-                  qn += 1;
+                {answers.map((qa, i) => (
+                  <div key={i} className="ans-row">
+                    <div className="qn mono">{String(i + 1).padStart(2, "0")}</div>
+                    <div className="qa">
+                      <div className="q">{qa.question}</div>
+                      <div className="a">{Array.isArray(qa.answer) ? qa.answer.join(', ') : qa.answer}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="card flat">
+              <div className="empty" style={{ padding: '36px 0', textAlign: 'center' }}>
+                <div className="muted" style={{ fontSize: 13 }}>No responses recorded for this submission.</div>
+              </div>
+            </div>
+          )}
+
+          {products.length > 0 && (
+            <div className="card flat">
+              <div className="hstack-8" style={{ marginBottom: 10 }}>
+                <div className="section-title">Recommended products</div>
+                <span className="muted" style={{ fontSize: 11.5 }}>· {productsFromRx ? 'from latest prescription' : 'from assessment'}</span>
+              </div>
+              <div className="stack-8">
+                {products.map((p, i) => {
+                  const why = Array.isArray(p.whyPoints)
+                    ? p.whyPoints.map(w => (typeof w === 'string' ? w : w?.text)).filter(Boolean).join(' · ')
+                    : '';
                   return (
-                    <div key={i} className="ans-row">
-                      <div className="qn mono">{String(qn).padStart(2, "0")}</div>
-                      <div className="qa">
-                        <div className="q">{qa.q}</div>
-                        <div className="a">{qa.a}</div>
+                    <div key={i} className="hstack-12" style={{ alignItems: 'center', gap: 12 }}>
+                      {p.image
+                        ? <img src={p.image} alt="" style={{ width: 42, height: 42, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }} />
+                        : <div style={{ width: 42, height: 42, borderRadius: 8, flexShrink: 0, background: 'var(--surface-2)', display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><Icon name="package" size={16} /></div>}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="fw5" style={{ fontSize: 13 }}>{p.name}</div>
+                        {why && <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{why}</div>}
                       </div>
-                      <div>
-                        {qa.flag && <Badge tone="high" dot={"var(--risk-high)"}>flagged</Badge>}
-                      </div>
+                      {p.salePrice != null && <div className="fw6" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>Rs. {Number(p.salePrice).toLocaleString()}</div>}
                     </div>
                   );
                 })}
               </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
       <DrawerFooter>
-        <button className="btn"><Icon name="download" /> Export PDF</button>
-        <button className="btn"><Icon name="copy" /> Copy link</button>
-        <span className="spacer" />
-        <button className="btn"><Icon name="stethoscope" /> Send to doctor</button>
-        <button className="btn primary"><Icon name="package" /> Create order from this</button>
+        {c.reportDownloadUrl ? (
+          <a href={c.reportDownloadUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none' }}>
+            <Icon name="file_text" /> View PDF
+          </a>
+        ) : (
+          <button className="btn" disabled title="No report URL available"><Icon name="file_text" /> View PDF</button>
+        )}
+        <button className="btn" disabled={!c.reportDownloadUrl} onClick={copyLink}>
+          <Icon name={copied ? "check" : "copy"} /> {copied ? "Copied" : "Copy link"}
+        </button>
       </DrawerFooter>
     </Drawer>
   );
@@ -3750,17 +3894,18 @@ function SubmissionDrawer({ customer, onClose }) {
 
 /* â”€â”€ Drawer shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-function Drawer({ children, onClose, title, subtitle, wide }) {
+function Drawer({ children, onClose, onBack, title, subtitle, wide }) {
   return (
     <>
       <div className="drawer-scrim on" onClick={onClose} />
       <aside className={"drawer on" + (wide ? " wide" : "")}>
         <div className="drawer-hd">
-          <button className="iconbtn" onClick={onClose} title="Close"><Icon name="x" /></button>
+          {onBack && <button className="iconbtn" onClick={onBack} title="Back"><Icon name="arrow_left" /></button>}
           <div className="stack-2" style={{ flex: 1, minWidth: 0 }}>
             <div className="fw6" style={{ fontSize: 15, letterSpacing: "-0.01em" }}>{title}</div>
             {subtitle && <div className="muted" style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div>}
           </div>
+          <button className="iconbtn" onClick={onClose} title="Close"><Icon name="x" /></button>
         </div>
         <div className="drawer-body">
           {children}
@@ -8274,10 +8419,11 @@ function OrderDateRangeFilter({ datePreset, customRange, onApply }) {
   const presetBtn = (value, label) => {
     const active = tmpPreset === value;
     return (
-      <button key={value} onClick={() => { setTmpPreset(value); if (value !== 'custom') setTmp(resolveDateRange(value, null)); }}
+      <button key={value} className={"dr-preset" + (active ? " active" : "")}
+        onClick={() => { setTmpPreset(value); if (value !== 'custom') setTmp(resolveDateRange(value, null)); }}
         style={{
           textAlign: 'left', padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
-          background: active ? 'var(--accent)' : 'transparent', color: active ? '#fff' : 'var(--text-main)'
+          background: active ? 'var(--accent)' : 'transparent', color: active ? '#fff' : 'var(--fg)'
         }}>
         {label}
       </button>
@@ -8293,7 +8439,7 @@ function OrderDateRangeFilter({ datePreset, customRange, onApply }) {
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 100, background: 'var(--surface)',
-          border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.35)', display: 'flex', overflow: 'hidden'
+          border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 16px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)', display: 'flex', overflow: 'hidden'
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', padding: 8, borderRight: '1px solid var(--border)' }}>
             {DATE_PRESETS.map(p => presetBtn(p.value, p.label))}
@@ -8386,7 +8532,7 @@ function OrdersHistory({ setRoute, openCustomer }) {
           id: o.order_number || o.id,
           shopifyId: o.id,
           status: o.cancelled_at ? 'Cancelled' : (o.fulfillment_status === 'fulfilled' ? 'Shipped' : (o.financial_status === 'paid' ? 'Packed' : 'Placed')),
-          amount: parseFloat(o.total_price || 0),
+          amount: parseFloat(o.current_total_price ?? o.total_price ?? 0),
           paymentMode: o.gateway || 'COD',
           paymentStatus: o.financial_status === 'paid' ? 'Paid' : (o.financial_status === 'pending' ? 'Payment pending' : (o.financial_status ? (o.financial_status.charAt(0).toUpperCase() + o.financial_status.slice(1).replace('_', ' ')) : 'Payment pending')),
           placedAt: formatOrderDate(o.created_at),
@@ -8425,7 +8571,9 @@ function OrdersHistory({ setRoute, openCustomer }) {
 
   // Date-scoped orders + client-side pagination (supports arbitrary "jump to page").
   const filteredOrders = dateScoped;
-  const totalRev = filteredOrders.reduce((s, o) => s + o.amount, 0);
+  // Revenue excludes cancelled orders (they were inflating totals & avg order value).
+  const revenueOrders = filteredOrders.filter(o => o.status !== 'Cancelled');
+  const totalRev = revenueOrders.reduce((s, o) => s + o.amount, 0);
   const totalItems = filteredOrders.reduce((s, o) => s + o.items.length, 0);
   const avgItems = filteredOrders.length ? totalItems / filteredOrders.length : 0;
   const pageCount = Math.max(1, Math.ceil(filteredOrders.length / PER_PAGE));
@@ -8456,7 +8604,7 @@ function OrdersHistory({ setRoute, openCustomer }) {
       <div className="grid-12">
         <div className="span-3"><KPI loading={loading} label="Orders" value={filteredOrders.length.toLocaleString()} icon="package" /></div>
         <div className="span-3"><KPI loading={loading} label="Revenue" value={"Rs. " + totalRev.toLocaleString()} icon="trend_up" /></div>
-        <div className="span-3"><KPI loading={loading} label="Avg. order value" value={filteredOrders.length ? "Rs. " + Math.round(totalRev / filteredOrders.length).toLocaleString() : "Rs. 0"} icon="bar" /></div>
+        <div className="span-3"><KPI loading={loading} label="Avg. order value" value={revenueOrders.length ? "Rs. " + Math.round(totalRev / revenueOrders.length).toLocaleString() : "Rs. 0"} icon="bar" /></div>
         <div className="span-3"><KPI loading={loading} label="Avg. items / order" value={filteredOrders.length ? avgItems.toFixed(1) : "0"} icon="package" /></div>
       </div>
 
@@ -8471,14 +8619,14 @@ function OrdersHistory({ setRoute, openCustomer }) {
                 <th style={{ ...thSticky, textAlign: "center" }}>Items</th>
                 <th style={thSticky}>Amount</th>
                 <th style={thSticky}>Payment status</th>
-                <th style={thSticky}>Courier</th>
-                <th style={thSticky}></th>
               </tr>
             </thead>
             <tbody>
               {pagedOrders.map(o => (
                 <tr key={o.shopifyId} style={{ textDecoration: o.status === 'Cancelled' ? 'line-through' : 'none', opacity: o.status === 'Cancelled' ? 0.6 : 1, transition: 'all 0.2s' }}>
-                  <td className="mono num fw5" onClick={() => setSelectedOrder(o)} style={{ cursor: "pointer", color: "var(--accent)" }} title="View order details">#{o.id}</td>
+                  <td className="mono num fw5">
+                    <span className="order-id-link" onClick={() => setSelectedOrder(o)} title="View order details">#{o.id}</span>
+                  </td>
                   <td className="muted num">{o.placedAt}</td>
                   <td>
                     <div className="hstack-10">
@@ -8519,17 +8667,10 @@ function OrdersHistory({ setRoute, openCustomer }) {
                   </td>
                   <td className="num fw5">Rs. {o.amount.toLocaleString()}</td>
                   <td><PaymentStatusBadge status={o.paymentStatus} /></td>
-                  <td>
-                    <div className="stack-2">
-                      <div style={{ fontSize: 12.5 }}>{o.courier}</div>
-                      <div className="muted mono" style={{ fontSize: 11 }}>{o.awb}</div>
-                    </div>
-                  </td>
-                  <td className="right"><button className="btn sm ghost" onClick={() => setSelectedOrder(o)} title="View order details"><Icon name="eye" /></button></td>
                 </tr>
               ))}
               {!loading && pagedOrders.length === 0 && (
-                <tr><td colSpan="8"><div className="empty" style={{ padding: 40, textAlign: "center" }}><Icon name="package" size={20} /><div>No orders found</div></div></td></tr>
+                <tr><td colSpan="6"><div className="empty" style={{ padding: 40, textAlign: "center" }}><Icon name="package" size={20} /><div>No orders found</div></div></td></tr>
               )}
             </tbody>
           </table>
@@ -8580,7 +8721,6 @@ function OrderDetailDrawer({ order, onClose }) {
     >
       <div className="hstack-8" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
         <PaymentStatusBadge status={order.paymentStatus} />
-        <OrderStatusBadge status={order.status} />
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
@@ -8651,8 +8791,8 @@ function OrderDetailDrawer({ order, onClose }) {
 function PaymentStatusBadge({ status }) {
   if (status.toLowerCase() === 'paid') {
     return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2)', color: 'var(--text)', fontSize: 12.5, fontWeight: 500 }}>
-        <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--muted)', flexShrink: 0 }} />
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 10px', borderRadius: 999, background: 'rgba(16,185,129,0.12)', color: 'var(--risk-low)', fontSize: 12.5, fontWeight: 600 }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--risk-low)', flexShrink: 0 }} />
         {status}
       </div>
     );
@@ -10802,28 +10942,6 @@ function AdminScreen() {
     } finally { setSaving(false); }
   };
 
-  // Send a Firebase password-reset email. Uses the primary auth (doesn't touch the session).
-  const handleSendReset = async (email) => {
-    if (!email) return showToast('error', 'This user has no email on file.');
-    try {
-      await sendPasswordResetEmail(auth, email);
-      showToast('success', `Password-reset email sent to ${email}.`);
-    } catch (e) { showToast('error', e?.message || 'Failed to send reset email.'); }
-  };
-
-  const handleSendResetAll = async () => {
-    const emails = [...new Set(users.map(u => u.email).filter(Boolean))];
-    if (!emails.length) return showToast('error', 'No user emails found.');
-    if (!window.confirm(`Send a password-reset email to all ${emails.length} user(s)?`)) return;
-    setSaving(true);
-    let ok = 0, fail = 0;
-    for (const email of emails) {
-      try { await sendPasswordResetEmail(auth, email); ok++; } catch (_) { fail++; }
-    }
-    setSaving(false);
-    showToast(fail ? 'error' : 'success', `Reset emails: ${ok} sent${fail ? `, ${fail} failed` : ''}.`);
-  };
-
   const Toggle = ({ on, onToggle }) => (
     <div onClick={onToggle} style={{ width: 36, height: 20, borderRadius: 10, background: on ? 'var(--accent)' : 'var(--border)', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
       <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: on ? 19 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
@@ -10847,7 +10965,6 @@ function AdminScreen() {
           <p className="page-sub">Manage users, roles, and doctor signatures across the SehatUp platform</p>
         </div>
         <div className="page-head-actions">
-          {adminTab === 'users' && <button className="btn" onClick={handleSendResetAll} disabled={saving}><Icon name="mail" /> Send reset to all</button>}
           {adminTab === 'users' && <button className="btn primary" onClick={() => setShowCreate(true)}><Icon name="plus" /> Add User</button>}
         </div>
       </div>
@@ -10878,15 +10995,14 @@ function AdminScreen() {
             <thead>
               <tr>
                 <th>User</th>
-                <th>Email</th>
                 <th>Roles</th>
                 <th>Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>Loading…</td></tr>}
-              {!loading && filtered.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>No users found.</td></tr>}
+              {loading && <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>Loading…</td></tr>}
+              {!loading && filtered.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: 'var(--muted)' }}>No users found.</td></tr>}
               {filtered.map(u => {
                 const raw = [...(Array.isArray(u.roles) ? u.roles : []), ...(u.role ? [u.role] : [])];
                 const normalized = raw.map(normalizeRole).filter(Boolean);
@@ -10907,7 +11023,6 @@ function AdminScreen() {
                         </div>
                       </div>
                     </td>
-                    <td className="muted" style={{ fontSize: 12.5 }}>{u.email}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         {allRoles.length ? allRoles.map(r => (
@@ -10923,8 +11038,11 @@ function AdminScreen() {
                     <td className="right">
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button className="btn sm ghost" onClick={() => openEdit(u)}><Icon name="edit" size={13} /> Edit</button>
-                        {u.email && <button className="btn sm ghost" title="Send password-reset email" onClick={() => handleSendReset(u.email)}><Icon name="mail" size={13} /></button>}
-                        {u.id !== currentUid && <button className="btn sm ghost" style={{ color: '#ef4444' }} onClick={() => handleDelete(u)}><Icon name="trash" size={13} /></button>}
+                        <button className="btn sm ghost"
+                          disabled={u.id === currentUid}
+                          style={{ color: u.id === currentUid ? 'var(--muted)' : '#ef4444', opacity: u.id === currentUid ? 0.5 : 1 }}
+                          title={u.id === currentUid ? "You can't delete your own account" : 'Delete user'}
+                          onClick={() => handleDelete(u)}><Icon name="trash" size={13} /></button>
                       </div>
                     </td>
                   </tr>
@@ -12274,7 +12392,7 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 const NAV = {
-  admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "crm_orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
+  admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
   doctor: ["doctor", "submissions", "customers", "prescriptions", "settings"],
   telesales: ["submissions", "prescriptions", "settings"],
   operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "settings"],
@@ -12773,6 +12891,9 @@ function App({ user, roles, onLogout }) {
                 onClick={() => setRoute(it.route)}>
                 <Icon name={it.icon} className="ic" />
                 <span>{it.label}</span>
+                {it.key === 'conversations' && !sidebarCollapsed && (
+                  <span className="rail-soon" title="Coming soon">Soon</span>
+                )}
                 {it.ct && <span className="ct">{it.ct}</span>}
               </div>
             ))}
@@ -12838,7 +12959,7 @@ function App({ user, roles, onLogout }) {
 
         {/* Drawers */}
         {customerDrawer && <CustomerDrawer customer={customerDrawer} onClose={() => setCustomerDrawer(null)} openSubmission={setSubmissionDrawer} setRoute={setRoute} role={role} />}
-        {submissionDrawer && <SubmissionDrawer customer={submissionDrawer} onClose={() => setSubmissionDrawer(null)} />}
+        {submissionDrawer && <SubmissionDrawer customer={submissionDrawer} onClose={() => setSubmissionDrawer(null)} onBack={customerDrawer ? () => setSubmissionDrawer(null) : null} />}
 
         {/* Tweaks */}
         <TweaksPanel title="Tweaks">
@@ -12895,6 +13016,10 @@ function PrescriptionsScreen({ me }) {
   const [selected, setSelected] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [userMap, setUserMap] = useState({}); // uid → name, from the users collection
+  const [doctorFilter, setDoctorFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [datePreset, setDatePreset] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
   const { isAdmin } = usePermissions();
 
   // The prescriber is whoever was logged in when the Rx was saved (their uid is stored
@@ -12936,20 +13061,54 @@ function PrescriptionsScreen({ me }) {
     return unsub;
   }, [me?.uid, scope]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return prescriptions;
-    const q = search.toLowerCase();
-    return prescriptions.filter(p => {
-      const uid = p.consultedByUid || p.doctorUid || p.doctorId;
-      const doctorName = (uid && userMap[uid]) || p.consultedByName || p.doctors?.[0]?.name || '';
-      return (
-        (p.patientName || '').toLowerCase().includes(q) ||
-        (p.prescriptionID || '').toLowerCase().includes(q) ||
-        (p.phone || '').includes(q) ||
-        doctorName.toLowerCase().includes(q)
-      );
+  // Best-effort timestamp for a prescription (used for date filtering + sort).
+  const getMs = (p) =>
+    p.timestamp?.toMillis?.() ||
+    p.savedAt?.toMillis?.() ||
+    (p.consultationDate ? new Date(p.consultationDate).getTime() : 0);
+  const docUidOf = (p) => p.consultedByUid || p.doctorUid || p.doctorId || '';
+
+  // Distinct doctors present in the current prescription set (for the Doctor filter).
+  const doctorOptions = useMemo(() => {
+    const m = new Map();
+    prescriptions.forEach(p => {
+      const uid = docUidOf(p);
+      const name = (uid && userMap[uid]) || p.consultedByName || p.doctors?.[0]?.name || '';
+      if (uid && name) m.set(uid, name);
     });
-  }, [prescriptions, search, userMap]);
+    return Array.from(m, ([uid, name]) => ({ uid, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [prescriptions, userMap]);
+
+  // Distinct categories present (for the Category filter).
+  const categoryOptions = useMemo(() => {
+    const s = new Set();
+    prescriptions.forEach(p => { if (p.reportCategory) s.add(p.reportCategory); });
+    return Array.from(s).sort();
+  }, [prescriptions]);
+
+  const filtered = useMemo(() => {
+    const [rangeStart, rangeEnd] = resolveDateRange(datePreset, null);
+    const q = search.trim().toLowerCase();
+    return prescriptions.filter(p => {
+      if (q) {
+        const uid = docUidOf(p);
+        const doctorName = (uid && userMap[uid]) || p.consultedByName || p.doctors?.[0]?.name || '';
+        const matches =
+          (p.patientName || '').toLowerCase().includes(q) ||
+          (p.prescriptionID || '').toLowerCase().includes(q) ||
+          (p.phone || '').includes(q) ||
+          doctorName.toLowerCase().includes(q);
+        if (!matches) return false;
+      }
+      if (doctorFilter !== 'all' && docUidOf(p) !== doctorFilter) return false;
+      if (categoryFilter !== 'all' && (p.reportCategory || '') !== categoryFilter) return false;
+      if (rangeStart && rangeEnd) {
+        const ms = getMs(p);
+        if (!ms || ms < rangeStart.getTime() || ms > rangeEnd.getTime()) return false;
+      }
+      return true;
+    });
+  }, [prescriptions, search, userMap, doctorFilter, categoryFilter, datePreset]);
 
   // Resolve the prescriber: the uid stored on the Rx → that user's name in the users
   // collection. Falls back to the name snapshotted at save time, then doctors[0].
@@ -12985,7 +13144,11 @@ function PrescriptionsScreen({ me }) {
         <div>
           <h1 className="page-title">{scope === 'mine' ? 'My Prescriptions' : 'All Prescriptions'}</h1>
           <p className="page-sub">
-            {loading ? 'Loading…' : `${prescriptions.length} prescription${prescriptions.length !== 1 ? 's' : ''}`}
+            {loading ? 'Loading…' : (
+              filtered.length === prescriptions.length
+                ? `${prescriptions.length} prescription${prescriptions.length !== 1 ? 's' : ''}`
+                : `${filtered.length} of ${prescriptions.length} prescription${prescriptions.length !== 1 ? 's' : ''}`
+            )}
             {scope === 'all' && !loading && <span className="muted"> · across all doctors</span>}
           </p>
         </div>
@@ -12995,10 +13158,43 @@ function PrescriptionsScreen({ me }) {
         {/* List */}
         <div className="span-4 card" style={{ padding: 0, display: 'flex', flexDirection: 'column', maxHeight: 720 }}>
           <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 9, top: 9, color: 'var(--muted)', display: 'flex' }}><Icon name="search" size={14} /></div>
-              <input className="input" style={{ paddingLeft: 30 }} placeholder="Search name, ID, doctor…" value={search} onChange={e => setSearch(e.target.value)} />
+            <div className="hstack-6">
+              <div style={{ position: 'relative', flex: 1 }}>
+                <div style={{ position: 'absolute', left: 9, top: 9, color: 'var(--muted)', display: 'flex' }}><Icon name="search" size={14} /></div>
+                <input className="input" style={{ paddingLeft: 30, width: '100%' }} placeholder="Search name, ID, doctor…" value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+              <button className={`btn sm ${showFilters ? 'primary' : 'ghost'}`} onClick={() => setShowFilters(v => !v)}
+                style={{ position: 'relative', flexShrink: 0 }} title="Filters">
+                <Icon name="filter" size={14} />
+                {(datePreset !== 'all' || doctorFilter !== 'all' || categoryFilter !== 'all') && (
+                  <span style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: 'var(--risk-critical)', border: '1px solid var(--surface)' }} />
+                )}
+              </button>
             </div>
+            {showFilters && (
+              <div className="hstack-6" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                <select className="select" value={datePreset} onChange={e => setDatePreset(e.target.value)}
+                  style={{ width: 'auto', height: 30, fontSize: 12.5 }} title="Filter by date">
+                  {DATE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.value === 'all' ? 'All dates' : p.label}</option>)}
+                </select>
+                {scope === 'all' && (
+                  <select className="select" value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)}
+                    style={{ width: 'auto', height: 30, fontSize: 12.5, maxWidth: 150 }} title="Filter by doctor">
+                    <option value="all">All doctors</option>
+                    {doctorOptions.map(d => <option key={d.uid} value={d.uid}>{d.name}</option>)}
+                  </select>
+                )}
+                <select className="select" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+                  style={{ width: 'auto', height: 30, fontSize: 12.5, maxWidth: 150 }} title="Filter by category">
+                  <option value="all">All categories</option>
+                  {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {(datePreset !== 'all' || doctorFilter !== 'all' || categoryFilter !== 'all') && (
+                  <button className="btn sm ghost" onClick={() => { setDatePreset('all'); setDoctorFilter('all'); setCategoryFilter('all'); }}
+                    title="Clear filters"><Icon name="x" size={12} /> Clear</button>
+                )}
+              </div>
+            )}
           </div>
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {loading && <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>}

@@ -265,6 +265,18 @@ input, select, textarea { font: inherit; color: inherit; }
   border-radius: 99px;
   color: var(--muted);
 }
+/* "Coming soon" badge for not-yet-live nav items. */
+.rail-item .rail-soon {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  padding: 1px 7px;
+  border-radius: 99px;
+}
 
 .rail-ft {
   border-top: 1px solid var(--border);
@@ -525,10 +537,10 @@ input, select, textarea { font: inherit; color: inherit; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: 18px 20px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   position: relative;
   overflow: hidden;
 }
@@ -561,6 +573,28 @@ input, select, textarea { font: inherit; color: inherit; }
   border-spacing: 0;
   font-size: 13px;
 }
+/* Clickable order id — looks/behaves like a link with an animated underline on hover. */
+.order-id-link {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  color: var(--accent);
+  transition: filter 0.15s ease;
+}
+.order-id-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 1.5px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.18s ease;
+}
+.order-id-link:hover { filter: brightness(1.12); }
+.order-id-link:hover::after { transform: scaleX(1); }
 .tbl th, .tbl td {
   text-align: left;
   padding: 0 var(--cell-px);
@@ -578,7 +612,9 @@ input, select, textarea { font: inherit; color: inherit; }
   position: sticky; top: 0;
   height: 36px;
 }
-.tbl tbody tr { transition: background .08s ease; cursor: pointer; }
+.tbl tbody tr { transition: background .08s ease; }
+/* Only rows that are actually clickable get the pointer cursor. */
+.tbl tbody tr.clickable { cursor: pointer; }
 .tbl tbody tr:hover { background: var(--hover); }
 .tbl tbody tr:last-child td { border-bottom: 0; }
 .tbl .num-cell { font-variant-numeric: tabular-nums; }
@@ -619,7 +655,7 @@ input, select, textarea { font: inherit; color: inherit; }
 /* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Drawer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .drawer-scrim {
   position: fixed; inset: 0;
-  background: rgba(8, 12, 20, 0.45);
+  background: transparent;
   z-index: 80;
   opacity: 0; pointer-events: none;
   transition: opacity .18s ease;
@@ -824,10 +860,81 @@ input, select, textarea { font: inherit; color: inherit; }
   display: flex;
   flex-direction: row;
   width: max-content;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  color: var(--fg);
 }
 .orders-daterange-cal .react-datepicker__month-container {
   float: none;
+  padding: 6px 10px 10px;
 }
+.orders-daterange-cal .react-datepicker__month-container + .react-datepicker__month-container {
+  border-left: 1px solid var(--border);
+}
+/* Header: transparent, themed month label, no default underline */
+.orders-daterange-cal .react-datepicker__header {
+  background: transparent;
+  border-bottom: none;
+  padding: 6px 0 0;
+}
+.orders-daterange-cal .react-datepicker__current-month {
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.orders-daterange-cal .react-datepicker__day-name {
+  color: var(--muted);
+  font-size: 11px;
+  width: 2rem;
+  line-height: 2rem;
+  margin: 1px;
+}
+/* Day cells */
+.orders-daterange-cal .react-datepicker__day {
+  color: var(--fg);
+  width: 2rem;
+  line-height: 2rem;
+  margin: 1px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  transition: background .12s ease, color .12s ease;
+}
+.orders-daterange-cal .react-datepicker__day:hover {
+  background: var(--hover);
+  border-radius: 7px;
+}
+.orders-daterange-cal .react-datepicker__day--today { font-weight: 700; }
+.orders-daterange-cal .react-datepicker__day--outside-month { color: var(--muted); opacity: .45; }
+.orders-daterange-cal .react-datepicker__day--disabled { color: var(--muted); opacity: .35; }
+/* In-range fill (soft accent) */
+.orders-daterange-cal .react-datepicker__day--in-range,
+.orders-daterange-cal .react-datepicker__day--in-selecting-range {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-radius: 0;
+}
+/* Range endpoints + single selected (solid accent) */
+.orders-daterange-cal .react-datepicker__day--selected,
+.orders-daterange-cal .react-datepicker__day--range-start,
+.orders-daterange-cal .react-datepicker__day--range-end,
+.orders-daterange-cal .react-datepicker__day--selecting-range-start,
+.orders-daterange-cal .react-datepicker__day--selecting-range-end,
+.orders-daterange-cal .react-datepicker__day--keyboard-selected {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-radius: 7px;
+  font-weight: 600;
+}
+/* Nav arrows */
+/* Preset shortcut buttons in the date-range popup */
+.dr-preset { transition: background .12s ease, color .12s ease; }
+.dr-preset:hover:not(.active) { background: var(--hover); }
+
+.orders-daterange-cal .react-datepicker__navigation { top: 10px; }
+.orders-daterange-cal .react-datepicker__navigation-icon::before { border-color: var(--muted); }
+.orders-daterange-cal .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before { border-color: var(--fg); }
 
 /* Skeleton loading box (global so drawers/cards can use it too) */
 @keyframes shimmerPulse { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }

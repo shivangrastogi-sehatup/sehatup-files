@@ -59,8 +59,10 @@ module.exports = function (app) {
                         console.log(`    [GRAPHQL] body: ${responseBody.substring(0, 3000)}`);
                     }
                     res.status(proxyRes.statusCode);
-                    // Forward safe response headers
-                    ['content-type', 'x-shopify-shop-api-call-limit'].forEach(h => {
+                    // Forward safe response headers. 'link' is REQUIRED for cursor
+                    // pagination — getAllOrders reads it to follow rel="next"; without
+                    // it, only the first page (250 orders) ever loads.
+                    ['content-type', 'x-shopify-shop-api-call-limit', 'link'].forEach(h => {
                         if (proxyRes.headers[h]) res.setHeader(h, proxyRes.headers[h]);
                     });
                     res.send(responseBody);
