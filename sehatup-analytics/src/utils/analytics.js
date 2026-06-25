@@ -24,10 +24,11 @@ export function riskBucket(d) {
 }
 
 export function computeAnalytics(partialList = [], completedList = [], manualList = []) {
-  // Manual entries are NOT quiz funnel events, so they're excluded from every
-  // completed-based metric below (funnel counts, completion/drop-off rates,
-  // consulted/purchased, avg score, risk distribution, gender split, time-series).
-  // Manual still surfaces on its own in the dashboard's Source breakdown.
+  // Manual entries are NOT quiz funnel events, so they're excluded from the
+  // funnel/quiz metrics below (started, completed, completion/drop-off rates, avg
+  // score, risk distribution, gender split). EXCEPTION: a manual lead can still be
+  // consulted or purchased, so those flags ARE counted into Consulted / Purchased.
+  // Manual still surfaces on its own via totalManual / the Source breakdown.
   const allCompleted = [...(completedList || [])];
   const totalStarted = (partialList?.length || 0) + (allCompleted?.length || 0);
   const totalCompleted = allCompleted?.length || 0;
@@ -103,6 +104,10 @@ export function computeAnalytics(partialList = [], completedList = [], manualLis
     const day = dayKey(d);
     bump(day, "started");
     bump(day, "partial");
+    // A partial (abandoned-quiz) lead can still be consulted/purchased after follow-up,
+    // so include those flags in the Consulted / Purchased totals too.
+    if (d.isPurchased) { totalPurchased++; bump(day, "purchases"); }
+    if (d.isConsulted) { totalConsulted++; bump(day, "consulted"); }
   });
 
   (allCompleted || []).forEach((d) => {
@@ -111,6 +116,17 @@ export function computeAnalytics(partialList = [], completedList = [], manualLis
     bump(day, "completed");
     if (d.isPurchased) { totalPurchased++; bump(day, "purchases"); }
     if (d.isConsulted) { totalConsulted++; bump(day, "consulted"); }
+  });
+
+  // Manual entries are not quiz funnel events (no started/completed), but a manually
+  // created lead CAN still be consulted or marked purchased — so include those in the
+  // Consulted / Purchased totals (and their day series) per product requirement.
+  let manualConsulted = 0;
+  let manualPurchased = 0;
+  (manualList || []).forEach((d) => {
+    const day = dayKey(d);
+    if (d.isPurchased) { totalPurchased++; manualPurchased++; bump(day, "purchases"); }
+    if (d.isConsulted) { totalConsulted++; manualConsulted++; bump(day, "consulted"); }
   });
 
   const timeSeries = Object.keys(byDay).sort().map(day => ({
@@ -130,6 +146,8 @@ export function computeAnalytics(partialList = [], completedList = [], manualLis
 
   return {
     totalStarted, totalCompleted, totalPartial, totalManual, totalPurchased, totalConsulted,
+    // How much of consulted/purchased came from manual leads (for "X incl. Y manual" labels).
+    manualConsulted, manualPurchased,
     completionRate, dropoffRate, purchaseRate, consultedRate,
     genders, avgHealthScore, riskCounts, timeSeries, concerns, peerAvg
   };
