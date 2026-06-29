@@ -27,7 +27,9 @@ export default async function handler(req, res) {
         const data = await shopifyRes.text();
 
         res.status(shopifyRes.status);
-        ['content-type', 'x-shopify-shop-api-call-limit'].forEach(h => {
+        // 'link' is REQUIRED for cursor pagination — getAllOrders reads it to follow
+        // rel="next". Without it the orders list stops at the first page (250 orders).
+        ['content-type', 'x-shopify-shop-api-call-limit', 'link'].forEach(h => {
             if (shopifyRes.headers.get(h)) res.setHeader(h, shopifyRes.headers.get(h));
         });
         

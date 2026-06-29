@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+.DS_Store
+.vite
+
+# Google service-account key files — NEVER commit these
+sehatup-*.json
+*-adminsdk-*.json
+service-account*.json
+credentials.json
+*.serviceaccount.json

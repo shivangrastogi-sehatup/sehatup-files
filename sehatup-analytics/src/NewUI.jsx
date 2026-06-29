@@ -6699,19 +6699,27 @@ function OrderCreate({ context = {}, setRoute }) {
           const d = draftRes;
           const orderPayload = {
             order: {
-              line_items: (d.line_items || []).map(li => {
-                // The Orders REST API ignores `applied_discount` on line items (it's a
-                // Draft-Order-only field), so a per-line discount — e.g. the 100%-off free
-                // Ashwagandha sample — would otherwise be charged at full price. Bake the
-                // line discount into the unit price instead so the order matches the cart.
-                const qty = Number(li.quantity) || 1;
-                const unit = parseFloat(li.price) || 0;
-                const lineDisc = parseFloat(li.applied_discount?.amount) || 0;
-                const netUnit = Math.max(0, unit - lineDisc / qty);
-                const item = { quantity: li.quantity, price: netUnit.toFixed(2) };
-                if (li.variant_id) item.variant_id = li.variant_id;
-                if (li.title) item.title = li.title;
-                return item;
+              // Build line items from the source cart so each carries its REAL unit price
+              // plus a proper line-level `applied_discount` (e.g. the free Ashwagandha
+              // sample = 100% off). Built from `items` (not echoed from the draft response)
+              // so the discount is always present and the amount is correct.
+              line_items: items.map(item => {
+                const li = { quantity: item.qty, price: Number(item.price).toFixed(2) };
+                if (item.variantId) li.variant_id = item.variantId;
+                else if (item.name) li.title = item.name;
+                const dv = parseFloat(item.discountValue) || 0;
+                if (dv > 0) {
+                  const discountedUnit = getDiscountedPrice(item);
+                  const amount = (((Number(item.price) || 0) - discountedUnit) * item.qty).toFixed(2);
+                  li.applied_discount = {
+                    value_type: item.discountType === 'percentage' ? 'percentage' : 'fixed_amount',
+                    value: String(dv),
+                    amount,
+                    title: item.discountReason || 'Discount',
+                    description: item.discountReason || 'Discount',
+                  };
+                }
+                return li;
               }),
               shipping_lines: d.shipping_line
                 ? [{ title: d.shipping_line.title, price: d.shipping_line.price, code: d.shipping_line.code || 'custom' }]

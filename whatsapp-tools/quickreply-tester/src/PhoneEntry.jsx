@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { isFirebaseConfigured } from "./firebase";
-import { COUNTRY_CODE, BUSINESS_WHATSAPP } from "./config";
+import { COUNTRY_CODE } from "./config";
 
-export default function SetupScreen({ onOpen }) {
+// Ask once for the number to watch. The choice is remembered on this device
+// (localStorage, handled in App), so this screen only appears the first time or
+// after Logout — never in a loop.
+export default function PhoneEntry({ onSubmit }) {
   const [digits, setDigits] = useState("");
   const [error, setError] = useState("");
 
@@ -12,9 +15,9 @@ export default function SetupScreen({ onOpen }) {
   };
 
   const submit = () => {
-    if (digits.length !== 10) return setError("Enter your 10-digit WhatsApp number");
+    if (digits.length !== 10) return setError("Enter a 10-digit WhatsApp number");
     setError("");
-    onOpen({ digits });
+    onSubmit(COUNTRY_CODE + digits); // e.g. 919354049041
   };
 
   return (
@@ -24,7 +27,7 @@ export default function SetupScreen({ onOpen }) {
           <div className="logo">💬</div>
           <div>
             <h1>QuickReply Tester</h1>
-            <p>Chat with the bot on real WhatsApp</p>
+            <p>Watch a WhatsApp conversation live</p>
           </div>
         </div>
 
@@ -32,51 +35,46 @@ export default function SetupScreen({ onOpen }) {
           <div className="note config-warn">
             <span>⚠️</span>
             <span>
-              <b>Firebase not configured.</b> Add your keys to <b>.env</b> to detect
-              the bridge and see live replies.
+              <b>Firebase not configured.</b> Add your keys to <b>.env</b> to see live replies.
             </span>
           </div>
         )}
 
         <div className="card">
-          <h2>Connect on WhatsApp</h2>
+          <h2>Which number to watch</h2>
 
           <div className="field">
-            <label>Your WhatsApp number</label>
+            <label>WhatsApp number</label>
             <div className="phone-input">
               <span className="cc">+{COUNTRY_CODE}</span>
               <input
                 value={digits}
                 onChange={onDigits}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
                 placeholder="9354049041"
                 inputMode="numeric"
                 autoComplete="off"
+                autoFocus
               />
             </div>
             <div className="hint">
-              We only use this to watch <b>your</b> conversation
-              (<code>qr_conversations/{COUNTRY_CODE}{digits || "…"}</code>) and detect
-              when the bridge connects.
+              Saved on this device, so you won't be asked again. Use <b>Logout</b> in
+              the chat to switch to a different number.
             </div>
           </div>
 
           {error && <div className="err-line">{error}</div>}
 
           <button className="btn-primary" onClick={submit}>
-            <span>💬</span><span>Open WhatsApp &amp; Say Hi</span>
+            <span>👁️</span><span>Watch conversation</span>
           </button>
-
-          <div className="hint" style={{ marginTop: 10 }}>
-            This opens WhatsApp to <b>+{BUSINESS_WHATSAPP}</b> with “Hi” ready to send.
-            Sending it opens the 24-hour window and starts the bot flow.
-          </div>
         </div>
 
         <div className="note">
-          <span>⏱️</span>
+          <span>💡</span>
           <span>
-            After you say hi, the bot <b>batches messages and waits ~3 minutes</b>
-            before replying (per your n8n flow) — that delay is expected.
+            Ask the user to message the bot on real WhatsApp. Their messages and the
+            bot's replies show up here live.
           </span>
         </div>
       </div>

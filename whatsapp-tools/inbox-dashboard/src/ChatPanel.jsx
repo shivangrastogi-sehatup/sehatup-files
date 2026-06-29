@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { useConversation } from "./useConversation";
 import { getFns } from "./firebase";
-import { buildTimeline, reconciledIds, classify, fmtTime, fmtFull, dayLabel, toMillis, genId } from "./utils";
-import { N8N_WEBHOOK_URL, TESTER_KEY, BOT_NAME, WINDOW_MS } from "./config";
+import {
+  buildTimeline, reconciledIds, classify, fmtTime, fmtFull, dayLabel, toMillis, genId,
+} from "./utils";
+import { N8N_WEBHOOK_URL, TESTER_KEY, WINDOW_MS } from "./config";
 
 function statusText(s) {
-  if (s === "online") return "online";
+  if (s === "online") return "live";
   if (s === "connecting") return "connecting…";
   if (s === "no-config") return "no live view — add .env";
   if (s && s.startsWith("offline")) {
@@ -24,8 +26,12 @@ function fmtCountdown(msLeft) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default function ChatScreen({ session, onBack, onReopenWhatsApp }) {
-  const { events, status, reconnect } = useConversation(session.docId);
+export default function ChatPanel({ conversation }) {
+  const docId = conversation.id;
+  const phoneE164 = "+" + docId;
+  const title = (conversation.name || "").trim() || phoneE164;
+
+  const { events, status, reconnect } = useConversation(docId);
   const [pending, setPending] = useState([]);     // optimistic customer messages
   const [lastSentAt, setLastSentAt] = useState(null);
   const [text, setText] = useState("");
@@ -44,15 +50,20 @@ export default function ChatScreen({ session, onBack, onReopenWhatsApp }) {
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   };
 
-  // The bridge is "connected" once any real event for this phone exists in
-  // Firestore — i.e. the user's "Hi" (or any later message) has flowed through
-  // QuickReply → n8n and been mirrored into qr_conversations/{phone}/events.
-  const bridgeConnected = events.length > 0;
+  // reset transient composer state whenever we switch conversations
+  useEffect(() => {
+    setPending([]);
+    setLastSentAt(null);
+    setText("");
+    if (taRef.current) taRef.current.style.height = "auto";
+  }, [docId]);
 
-  // Send a follow-up as the CUSTOMER → n8n (USER_TEXT). Shows on the right.
+  // Send a follow-up as the CUSTOMER → n8n (USER_TEXT). Shows on the right and
+  // drives the bot, exactly like the quickreply-tester composer.
   const sendCustomer = async (raw) => {
     const body = (raw || "").trim();
     if (!body) return;
+    if (!N8N_WEBHOOK_URL) return showToast("No webhook configured — set VITE_WEBHOOK_URL", true);
     if (sendingRef.current) return;      // guard against a duplicate fire of the same action
     sendingRef.current = true;
 
@@ -63,7 +74,7 @@ export default function ChatScreen({ session, onBack, onReopenWhatsApp }) {
 
     const payload = {
       id,
-      phone: session.phoneE164,
+      phone: phoneE164,
       msg_time: Date.now(),
       payload: { _type: "USER_TEXT", text: body },
     };
@@ -88,13 +99,13 @@ export default function ChatScreen({ session, onBack, onReopenWhatsApp }) {
   // Wipe this phone's conversation history so the bot starts fresh (qrTestClear fn).
   const clearChat = async () => {
     if (clearing) return;
-    if (!window.confirm(`Clear all messages for ${session.phoneE164}?\n\nThis deletes the saved history so the bot starts a fresh conversation.`)) return;
+    if (!window.confirm(`Clear all messages for ${phoneE164}?\n\nThis deletes the saved history so the bot starts a fresh conversation.`)) return;
     const fns = getFns();
     if (!fns) return showToast("Firebase not configured — can't clear", true);
     setClearing(true);
     try {
       const res = await httpsCallable(fns, "qrTestClear")({
-        to: session.phoneE164,
+        to: phoneE164,
         ...(TESTER_KEY ? { testerKey: TESTER_KEY } : {}),
       });
       setPending([]);
@@ -124,7 +135,7 @@ export default function ChatScreen({ session, onBack, onReopenWhatsApp }) {
   const timeline = useMemo(() => buildTimeline(events, pending), [events, pending]);
 
   // 24h window opens on the LAST inbound customer message (USER_* → "out") and
-  // expires 24h later. Sync the indicator to that real message time.
+  // expires 24h later.
   const lastCustomerAt = useMemo(() => {
     let max = 0;
     for (const e of events) {
@@ -152,8 +163,7 @@ export default function ChatScreen({ session, onBack, onReopenWhatsApp }) {
   };
 
   const onKeyDown = (e) => {
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    if (e.key === "Enter" && !e.shiftKey && !isMobile) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSendClick();
     }
@@ -163,109 +173,86 @@ export default function ChatScreen({ session, onBack, onReopenWhatsApp }) {
     setText(e.target.value);
     const ta = e.target;
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 110) + "px";
+    ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
   };
 
   const online = status === "online";
   let lastDay = "";
 
-  // Header subtitle: live status + window countdown (once connected).
-  let subtitle = statusText(status);
-  if (bridgeConnected) {
-    if (windowLeft) subtitle = `window ${windowLeft} left`;
-    else if (windowExpiresAt) subtitle = "window closed";
-  }
+  let subtitle = `${statusText(status)} · ${phoneE164}`;
+  if (windowLeft) subtitle = `window ${windowLeft} left · ${phoneE164}`;
+  else if (windowExpiresAt) subtitle = `window closed · ${phoneE164}`;
 
   return (
-    <section className="screen chat">
+    <section className="chat">
       <header className="chat-header">
-        <button className="icon-btn" onClick={onBack} title="Back">‹</button>
-        <div className="avatar">{(BOT_NAME[0] || "S").toUpperCase()}</div>
+        <div className="avatar">{(title[0] || "?").toUpperCase()}</div>
         <div className="meta">
-          <div className="name">{BOT_NAME}</div>
+          <div className="name">{title}</div>
           <div className="status">
             <span className={"dot" + (online ? "" : " off")} />
-            {subtitle} · {session.phoneE164}
+            {subtitle}
           </div>
         </div>
         <button className="icon-btn" onClick={clearChat} disabled={clearing} title="Clear conversation history">🗑️</button>
         <button className="icon-btn" onClick={reconnect} title="Reconnect">⟳</button>
       </header>
 
-      {!bridgeConnected ? (
-        <div className="bridge-wait">
-          <div className="bridge-card">
-            <div className="bridge-spinner" />
-            <h3>Waiting for the bridge…</h3>
-            <p>
-              Open WhatsApp and send <b>“Hi”</b> to start the chat. As soon as your
-              message reaches the bot, this connects automatically.
-            </p>
-            <button className="btn-primary" onClick={onReopenWhatsApp}>
-              <span>💬</span><span>Open WhatsApp again</span>
-            </button>
-            <div className="bridge-status">
-              <span className={"dot" + (online ? "" : " off")} />
-              {statusText(status)} · watching {session.phoneE164}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="messages" ref={scrollRef}>
-            {timeline.map((it) => {
-              const day = dayLabel(it.ts);
-              const sep = day && day !== lastDay ? ((lastDay = day), day) : null;
+      <div className="messages" ref={scrollRef}>
+        {timeline.length === 0 && status === "online" && (
+          <div className="empty-thread">No messages in this conversation yet.</div>
+        )}
+        {timeline.map((it) => {
+          const day = dayLabel(it.ts);
+          const sep = day && day !== lastDay ? ((lastDay = day), day) : null;
 
-              if (it.kind === "status") {
-                return (
-                  <FragmentWithSep key={it.key} sep={sep}>
-                    <div className="status-pill">
-                      {it.type ? `${it.type}${it.text ? ` · ${it.text}` : ""}` : it.text}
-                    </div>
-                  </FragmentWithSep>
-                );
-              }
-              return (
-                <FragmentWithSep key={it.key} sep={sep}>
-                  <div className={`bubble ${it.kind}${it.pending ? " pending" : ""}`} title={fmtFull(it.ts)}>
-                    <span className="body">{it.text}</span>
-                    <span className="ts">
-                      {fmtTime(it.ts)}
-                      {it.kind === "out" && (
-                        <span className={"tick" + (it.pending ? "" : " read")}>
-                          {it.pending ? "🕓" : "✓✓"}
-                        </span>
-                      )}
+          if (it.kind === "status") {
+            return (
+              <FragmentWithSep key={it.key} sep={sep}>
+                <div className="status-pill">
+                  {it.type ? `${it.type}${it.text ? ` · ${it.text}` : ""}` : it.text}
+                </div>
+              </FragmentWithSep>
+            );
+          }
+          return (
+            <FragmentWithSep key={it.key} sep={sep}>
+              <div className={`bubble ${it.kind}${it.pending ? " pending" : ""}`} title={fmtFull(it.ts)}>
+                <span className="body">{it.text}</span>
+                <span className="ts">
+                  {fmtTime(it.ts)}
+                  {it.kind === "out" && (
+                    <span className={"tick" + (it.pending ? "" : " read")}>
+                      {it.pending ? "🕓" : "✓✓"}
                     </span>
-                  </div>
-                </FragmentWithSep>
-              );
-            })}
-
-            {waitingReply && (
-              <div className="typing-wrap">
-                <div className="typing"><span /><span /><span /></div>
-                <div className="typing-note">bot replies in ~3 min (batched)</div>
+                  )}
+                </span>
               </div>
-            )}
-          </div>
+            </FragmentWithSep>
+          );
+        })}
 
-          <div className="composer">
-            <div className="input-wrap">
-              <textarea
-                ref={taRef}
-                rows={1}
-                value={text}
-                onChange={onInput}
-                onKeyDown={onKeyDown}
-                placeholder="Type a follow-up…"
-              />
-            </div>
-            <button className="send" onClick={onSendClick} title="Send">➤</button>
+        {waitingReply && (
+          <div className="typing-wrap">
+            <div className="typing"><span /><span /><span /></div>
+            <div className="typing-note">bot replies in ~3 min (batched)</div>
           </div>
-        </>
-      )}
+        )}
+      </div>
+
+      <div className="composer">
+        <div className="input-wrap">
+          <textarea
+            ref={taRef}
+            rows={1}
+            value={text}
+            onChange={onInput}
+            onKeyDown={onKeyDown}
+            placeholder="Send a follow-up as the customer…"
+          />
+        </div>
+        <button className="send" onClick={onSendClick} title="Send">➤</button>
+      </div>
 
       {toast && <div className={"toast show" + (toast.err ? " err" : "")}>{toast.msg}</div>}
     </section>
