@@ -35,25 +35,28 @@ function rowsToObjects(values) {
  * { rows, tab } — rows are header-keyed objects; tab is the resolved tab name.
  * Never throws — returns empty rows on any failure.
  */
-export async function fetchSheet(which) {
+export async function fetchSheet(which, month) {
   try {
-    const { data } = await axios.get('/api/sheet', { params: { which } });
-    return { rows: rowsToObjects(data?.values), tab: data?.tab || null };
+    const params = month ? { which, month } : { which };
+    const { data } = await axios.get('/api/sheet', { params });
+    return { rows: rowsToObjects(data?.values), tab: data?.tab || null, ok: true };
   } catch (err) {
-    console.error('[sheets] Fetch failed for', which, ':', err?.response?.data?.error || err?.message);
-    return { rows: [], tab: null };
+    // ok:false lets the UI tell a transient failure (quota/network) apart from a
+    // genuinely empty sheet, so it can keep showing the last-good numbers.
+    console.error('[sheets] Fetch failed for', which, month || '', ':', err?.response?.data?.error || err?.message);
+    return { rows: [], tab: null, ok: false };
   }
 }
 
-export const fetchHealth = () => fetchSheet('health');
-export const fetchQuick = () => fetchSheet('quick');
-
 /**
- * Fetch both lead sheets in parallel. Never rejects.
- * Both are caller+status lead boards (Healthscore 360 and Quick Reply Leads);
- * the dashboard combines their rows.
+ * Fetch all source sheets — the CURRENT month and the PREVIOUS month (for
+ * month-over-month deltas) — in parallel. Never rejects.
+ * health + quick are caller+status LEAD boards; mens is the ORDERS board.
  */
 export async function fetchAll() {
-  const [health, quick] = await Promise.all([fetchHealth(), fetchQuick()]);
-  return { health, quick };
+  const [health, quick, mens, healthPrev, quickPrev, mensPrev] = await Promise.all([
+    fetchSheet('health'), fetchSheet('quick'), fetchSheet('mens'),
+    fetchSheet('health', 'prev'), fetchSheet('quick', 'prev'), fetchSheet('mens', 'prev'),
+  ]);
+  return { health, quick, mens, healthPrev, quickPrev, mensPrev };
 }

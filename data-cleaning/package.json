@@ -1,0 +1,13 @@
+{
+  "name": "ananya-trainview",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SehatUP Ananya training-data review viewer (Vercel static + serverless, Firestore-backed reviews)",
+  "scripts": {
+    "build-data": "node build-data.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

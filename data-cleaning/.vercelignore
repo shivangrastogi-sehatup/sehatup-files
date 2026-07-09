@@ -1,0 +1,21 @@
+# Local Python cleaning pipeline — not part of the hosted app
+serve.py
+auto_clean.py
+generate_synthetic.py
+__pycache__/
+*.pyc
+
+# Local-only state files (reviews now live in Firestore)
+decisions.json
+training-reviews.json
+training-exclusions.json
+
+# Old local-server pages (replaced by public/index.html)
+trainview.html
+review.html
+
+# CSV source data
+*.csv
+
+node_modules/
+.vercel/

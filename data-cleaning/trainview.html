@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SehatUP Training Data Viewer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0b141a; --panel: #111b21; --panel2: #202c33; --border: #2a3942;
+    --text: #e9edef; --muted: #8696a0; --accent: #7c6cf0;
+    --model-bubble: #3b3470; --user-bubble: #202c33;
+    --removed: #5c1a1a; --removed-border: #a83232;
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  header { background: var(--panel2); padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 16px; font-weight: 600; }
+  header a { color: var(--muted); font-size: 12.5px; text-decoration: none; border: 1px solid var(--border); padding: 4px 10px; border-radius: 10px; }
+  header a:hover { color: var(--text); }
+  .chunknav { display: flex; align-items: center; gap: 6px; }
+  .chunknav button, .chunknav select { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 13px; }
+  .chunknav button:disabled { opacity: .35; cursor: default; }
+  .stats { display: flex; gap: 10px; font-size: 12.5px; margin-left: auto; align-items: center; flex-wrap: wrap; }
+  .stat { background: var(--panel); padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border); }
+  .stat b { color: var(--accent); }
+  .stat.removed b { color: #f56b6b; }
+  #syncstate { font-size: 12.5px; color: var(--accent); }
+
+  .revbar { background: var(--panel); padding: 7px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .revbar .lbl { color: var(--muted); }
+  .colorchip { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; opacity: .55; }
+  .colorchip:hover { opacity: .85; }
+  .colorchip.me { opacity: 1; border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.25); }
+  #whoami { color: var(--text); font-weight: 600; }
+  .revdots { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: middle; }
+  .revdot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .synbadge { background: #6d28d9; color: #e9d5ff; font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 8px; letter-spacing: .4px; vertical-align: middle; }
+  .synbanner { background: #2e1065; border: 1px solid #6d28d9; color: #d8b4fe; padding: 8px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; text-align: center; }
+  .markbtn { border: 1px solid var(--border); background: var(--panel2); color: var(--text); font-size: 12.5px; padding: 6px 14px; border-radius: 10px; cursor: pointer; }
+  .markbtn.on { background: #0d3b2e; border-color: var(--accent2, #00a884); color: #7be3c3; }
+  .threadhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .threadhead .who { color: var(--muted); font-size: 12.5px; }
+  .sysbar { background: var(--panel); padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+  .sysbar summary { cursor: pointer; color: var(--text); font-weight: 600; font-size: 12.5px; }
+  .sysbar p { margin-top: 6px; line-height: 1.5; max-width: 900px; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #exlist { width: 340px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; }
+  .exitem { padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .exitem:hover { background: var(--panel2); }
+  .exitem.active { background: var(--panel2); border-left: 3px solid var(--accent); }
+  .exitem.excluded { background: #2a1215; }
+  .exitem.excluded .preview { text-decoration: line-through; color: #c98a8a; }
+  .exitem .toprow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .exitem .preview { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .exitem .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .exclbtn { border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 11px; padding: 2px 9px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
+  .exclbtn:hover { background: #3b1214; border-color: var(--removed-border); color: #f5a3a3; }
+  .exclbtn.undo:hover { background: rgba(124,108,240,.15); border-color: var(--accent); color: var(--accent); }
+
+  #thread { flex: 1; overflow-y: auto; padding: 18px 6%; background: var(--bg); }
+  .banner { background: var(--removed); border: 1px solid var(--removed-border); color: #f5c6c6; padding: 8px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; text-align: center; }
+  .msg { max-width: 72%; margin: 8px 0; padding: 9px 13px; border-radius: 10px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .msg.user  { background: var(--user-bubble); margin-right: auto; border-top-left-radius: 2px; }
+  .msg.model { background: var(--model-bubble); margin-left: auto; border-top-right-radius: 2px; }
+  .msg .rolelbl { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; color: rgba(233,237,239,.5); margin-bottom: 4px; }
+  .msg.model .rolelbl { color: #b6aef8; }
+  #placeholder { color: var(--muted); text-align: center; margin-top: 40px; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎓 Training Data Viewer</h1>
+  <a href="/review.html">← raw cleaning page</a>
+  <div class="chunknav">
+    <button id="newer">‹ Newer</button>
+    <select id="chunksel"></select>
+    <button id="older">Older ›</button>
+  </div>
+  <div class="stats">
+    <span class="stat">Examples <b id="st-total">0</b></span>
+    <span class="stat removed">Excluded <b id="st-excl">0</b></span>
+    <span class="stat">Final <b id="st-final">0</b></span>
+    <span class="stat">Reviewed <b id="st-rev">0</b></span>
+    <span id="syncstate"></span>
+  </div>
+</header>
+<div class="revbar">
+  <span class="lbl">Reviewer — apna color choose karo:</span>
+  <span id="colorchips"></span>
+  <span id="whoami"></span>
+</div>
+<div class="sysbar"><details><summary>System instruction (har example ke saath jayegi)</summary><p id="sysinstr"></p></details></div>
+<main>
+  <div id="exlist"></div>
+  <div id="thread"><div id="placeholder">← Select a training example</div></div>
+</main>
+
+<script>
+let LIST = [];      // chunk metas
+let D = null;       // current chunk {file, chunk, examples, excluded, system, reviews}
+let excluded = new Set();
+let reviewsMap = {};   // idx -> [{name,color}]
+let activeIdx = null;
+let chunkNo = parseInt(new URLSearchParams(location.search).get('chunk') || '1', 10);
+
+// ---- reviewer identity (per browser) ----
+const COLORS = ['#e05252','#4a9eda','#4dbd74','#e8a13c','#b06ee0'];
+let ME = null;
+try { ME = JSON.parse(localStorage.getItem('reviewer-identity')); } catch(e) {}
+function pickColor(color) {
+  let name = ME && ME.name;
+  if (!name) name = prompt('Aapka naam? (review marks mein dikhega)');
+  if (!name) return;
+  ME = { name: name.trim(), color };
+  localStorage.setItem('reviewer-identity', JSON.stringify(ME));
+  renderRevBar(); renderAll();
+}
+function renderRevBar() {
+  const el = document.getElementById('colorchips');
+  el.innerHTML = '';
+  COLORS.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'colorchip' + (ME && ME.color === c ? ' me' : '');
+    b.style.background = c;
+    b.title = 'Is color se review karo';
+    b.onclick = () => pickColor(c);
+    el.appendChild(b);
+  });
+  document.getElementById('whoami').textContent = ME ? `→ ${ME.name}` : '(color pe click karke naam set karo)';
+}
+
+function setSync(txt) { document.getElementById('syncstate').textContent = txt; }
+
+async function loadList() {
+  LIST = await fetch('/training/list').then(r => r.json());
+  const sel = document.getElementById('chunksel');
+  sel.innerHTML = LIST.map(m =>
+    `<option value="${m.chunk}">Chunk ${m.chunk}/${LIST.length} · ${m.from} → ${m.to} (${m.count})</option>`).join('');
+  sel.onchange = () => loadChunk(parseInt(sel.value, 10));
+}
+
+async function loadChunk(n) {
+  setSync('loading…');
+  D = await fetch('/training/' + n).then(r => r.json());
+  chunkNo = D.chunk;
+  excluded = new Set(D.excluded);
+  reviewsMap = D.reviews || {};
+  activeIdx = null;
+  document.getElementById('chunksel').value = chunkNo;
+  document.getElementById('sysinstr').textContent = D.system;
+  history.replaceState(null, '', '?chunk=' + chunkNo);
+  setSync('');
+  renderAll();
+}
+
+function myReview(idx) {
+  return ME && (reviewsMap[idx] || []).some(r => r.name === ME.name);
+}
+async function toggleReview(idx) {
+  if (!ME) { alert('Pehle upar apna color choose karke naam set karo!'); return; }
+  const reviewed = !myReview(idx);
+  setSync('saving…');
+  try {
+    const r = await fetch('/training/review', { method: 'POST',
+      body: JSON.stringify({ file: D.file, idx, name: ME.name, color: ME.color, reviewed }) });
+    const j = await r.json();
+    reviewsMap[idx] = j.reviewers;
+    setSync('✓ saved');
+  } catch (e) { setSync('⚠ save failed'); }
+  renderAll();
+}
+
+async function toggleExclude(idx) {
+  const nowExcluded = !excluded.has(idx);
+  if (nowExcluded) excluded.add(idx); else excluded.delete(idx);
+  renderAll();
+  setSync('saving…');
+  try {
+    await fetch('/training/exclude', { method: 'POST',
+      body: JSON.stringify({ file: D.file, idx, excluded: nowExcluded }) });
+    setSync('✓ saved');
+  } catch (e) { setSync('⚠ save failed'); }
+}
+
+function renderList() {
+  const el = document.getElementById('exlist');
+  el.innerHTML = '';
+  D.examples.forEach(ex => {
+    const isExcl = excluded.has(ex.idx);
+    const div = document.createElement('div');
+    div.className = 'exitem' + (activeIdx === ex.idx ? ' active' : '') + (isExcl ? ' excluded' : '');
+    const first = ex.turns[0] ? ex.turns[0].text.slice(0, 60) : '(empty)';
+    const dots = (reviewsMap[ex.idx] || []).map(r =>
+      `<span class="revdot" style="background:${r.color}" title="Reviewed by ${r.name}"></span>`).join('');
+    const label = ex.synthetic ? `<span class="synbadge">🤖 CLAUDE-MADE</span>` : (ex.phone || '#' + (ex.idx + 1));
+    div.innerHTML = `<div class="toprow"><span class="preview">${label}<span class="revdots">${dots}</span></span>
+      <button class="exclbtn ${isExcl?'undo':''}">${isExcl ? '↩ include' : '✕ exclude'}</button></div>
+      <div class="meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${first}</div>
+      <div class="meta">${ex.date || ''} · ${ex.turns.length} turns · ${ex.turns.filter(t=>t.role==='user').length} user / ${ex.turns.filter(t=>t.role==='model').length} model</div>`;
+    div.onclick = () => { activeIdx = ex.idx; renderAll(); };
+    div.querySelector('.exclbtn').onclick = (e) => { e.stopPropagation(); toggleExclude(ex.idx); };
+    if (ex.phone) {
+      const pv = div.querySelector('.preview');
+      pv.title = 'Double-click to copy number';
+      pv.style.cursor = 'copy';
+      pv.ondblclick = async (e) => {
+        e.stopPropagation();
+        try { await navigator.clipboard.writeText(ex.phone); } catch (err) {
+          const ta = document.createElement('textarea');
+          ta.value = ex.phone; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); ta.remove();
+        }
+        const old = pv.textContent;
+        pv.textContent = '📋 copied!';
+        setTimeout(() => { pv.textContent = old; }, 900);
+      };
+    }
+    el.appendChild(div);
+  });
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function renderThread() {
+  const el = document.getElementById('thread');
+  const ex = D.examples.find(e => e.idx === activeIdx);
+  if (!ex) { el.innerHTML = '<div id="placeholder">← Select a training example</div>'; return; }
+  const revs = reviewsMap[ex.idx] || [];
+  const mine = myReview(ex.idx);
+  el.innerHTML =
+    `<div class="threadhead">
+       <button class="markbtn ${mine ? 'on' : ''}" onclick="toggleReview(${ex.idx})">${mine ? '✓ Reviewed (click to undo)' : '☐ Mark as reviewed'}</button>
+       <span class="who">${revs.length ? 'Reviewed by: ' + revs.map(r => `<b style="color:${r.color}">${r.name}</b>`).join(', ') : 'Abhi kisi ne review nahi kiya'}</span>
+     </div>` +
+    (ex.synthetic ? '<div class="synbanner">🤖 Ye conversation Claude ne banayi hai — synthetic severe-case training example (real customer chat nahi hai)</div>' : '') +
+    (excluded.has(ex.idx) ? '<div class="banner">🚫 Ye example final training data mein NahI jayega (excluded)</div>' : '');
+  ex.turns.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + t.role;
+    div.innerHTML = `<div class="rolelbl">${t.role === 'user' ? 'USER (customer)' : 'MODEL (Ananya)'}</div>${esc(t.text)}`;
+    el.appendChild(div);
+  });
+}
+
+function renderStats() {
+  document.getElementById('st-total').textContent = D.examples.length;
+  document.getElementById('st-excl').textContent = excluded.size;
+  document.getElementById('st-final').textContent = D.examples.length - excluded.size;
+  document.getElementById('st-rev').textContent =
+    Object.values(reviewsMap).filter(l => l && l.length).length;
+  const nums = LIST.map(m => m.chunk);
+  document.getElementById('newer').disabled = chunkNo <= Math.min(...nums);
+  document.getElementById('older').disabled = chunkNo >= Math.max(...nums);
+}
+function renderAll() { renderList(); renderThread(); renderStats(); }
+
+document.getElementById('newer').onclick = () => loadChunk(chunkNo - 1);
+document.getElementById('older').onclick = () => loadChunk(chunkNo + 1);
+renderRevBar();
+loadList().then(() => loadChunk(chunkNo));
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ function devApiPlugin() {
       server.middlewares.use('/api/sheet', async (req, res) => {
         try {
           const url = new URL(req.url, 'http://localhost');
-          const which = url.searchParams.get('which');
+          const query = Object.fromEntries(url.searchParams); // forward all params (which, month, …)
           const { default: handler } = await import('./api/sheet.js');
           const resAdapter = {
             setHeader: (k, v) => res.setHeader(k, v),
@@ -24,7 +24,7 @@ function devApiPlugin() {
               return this;
             },
           };
-          await handler({ query: { which } }, resAdapter);
+          await handler({ query }, resAdapter);
         } catch (err) {
           res.statusCode = 500;
           res.end(JSON.stringify({ error: err?.message || 'dev api error' }));

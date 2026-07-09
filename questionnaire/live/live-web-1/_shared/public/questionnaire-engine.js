@@ -82,7 +82,7 @@ class QuestionnaireEngine {
         this.otpExpiresAt = 0;
 
         // Localization Support
-        this.currentLanguage = localStorage.getItem(`selected_lang_${this.config.id}`) || 'en';
+        this.currentLanguage = 'en'; // English-only: Hindi support removed
         this.uiTranslations = {
             'en': {
                 'main-title': "Men's Sexual Wellness Score",
@@ -149,72 +149,6 @@ class QuestionnaireEngine {
                 'otp-btn-verify': "Verify & Access Report",
                 'phone-warning': "Phone number must be exactly 10 digits.",
                 'verifying': "Verifying..."
-            },
-            'hi': {
-                'main-title': "पुरुष यौन स्वास्थ्य स्कोर",
-                'welcome-title': "पुरुष यौन स्वास्थ्य प्रश्नोत्तरी में आपका स्वागत है!",
-                'welcome-point-1': "इसमें केवल कुछ मिनट लगते हैं",
-                'welcome-point-2': "100% निजी और सुरक्षित",
-                'welcome-point-3': "भाग लेने के लिए आपकी आयु 18 वर्ष या उससे अधिक होनी चाहिए",
-                'btn-start': "प्रश्नावली शुरू करें",
-                'btn-prev-report': "पिछली रिपोर्ट दिखाएं",
-                'personal-info-title': "अपने अनुभव को व्यक्तिगत बनाने के लिए हमें अपने बारे में थोड़ा बताएं।",
-                'label-name': "अपना पूरा नाम दर्ज करें:",
-                'label-dob': "अपनी जन्म तिथि दर्ज करें:",
-                'label-phone': "अपना फोन नंबर दर्ज करें:",
-                'btn-prev': "पिछला",
-                'btn-next': "अगला",
-                'about-you': "आपके बारे में",
-                'challenge': "चुनौती",
-                'questions': "प्रश्न",
-                'lifestyle': "जीवनशैली",
-                'great-job': "बहुत बढ़िया!",
-                'thank-you-msg': "प्रश्नावली को पूरा करने के लिए धन्यवाद।<br>हम अब आपकी व्यक्तिगत रिपोर्ट तैयार कर रहे हैं।",
-                'placeholder-name': "आपका नाम",
-                'placeholder-phone': "फ़ोन नंबर",
-                'step-3-title': "उस चुनौती को चुनें जिसका आप सामना कर रहे हैं - हम यहाँ मदद के लिए हैं",
-                'btn-ed': "इरेक्टाइल डिसफंक्शन (ED)",
-                'btn-pe': "शीघ्रपतन (PE)",
-                'btn-both': "दोनों",
-                'btn-back-to-quiz': "प्रश्नावली पर वापस जाएँ",
-                'report-title': "आकलन रिपोर्ट",
-                'label-report-date': "दिनांक:",
-                'label-patient-name': "रोगी का नाम",
-                'label-primary-concern': "मुख्य चिंता",
-                'label-category': "श्रेणी",
-                'mens-wellness-category': "पुरुष स्वास्थ्य",
-                'label-future-risk-title': "भविष्य का जोखिम (यदि उपचार न किया गया)",
-                'btn-whatsapp-report': "व्हाट्सएप पर मेरी रिपोर्ट प्राप्त करें",
-                'timeline-title': "स्थिति-आधारित प्रगति समयरेखा",
-                'included-plan-title': "आपके प्लान में क्या शामिल है",
-                'expert-doctor-support': "विशेषज्ञ डॉक्टर सहायता",
-                'ayurvedic-medicine': "आयुर्वेदिक दवा",
-                'custom-diet-exercise': "कस्टम डाइट और व्यायाम",
-                'recommended-treatment': "अनुशंसित उपचार",
-                'label-total-amount': "कुल राशि:",
-                'label-gst-included': "(GST शामिल)",
-                'btn-buy-now': "अभी खरीदें",
-                'critical-risk': "गंभीर जोखिम",
-                'high-risk': "उच्च जोखिम",
-                'moderate-risk': "मध्यम जोखिम",
-                'low-risk': "कम जोखिम",
-                'currency-symbol': "रु.",
-                'timeline-goal': '<span class="highlight-text">6 महीनों</span> में परिणाम देखना शुरू करें',
-                'redirecting': "अनुप्रेषण (Redirecting)...",
-                'calculating-health-report': "आपकी व्यक्तिगत स्वास्थ्य रिपोर्ट तैयार की जा रही है... 😊",
-                'wait-moment': "कृपया कुछ समय प्रतीक्षा करें जब हम आपके उत्तरों का विश्लेषण कर रहे हैं।",
-                'reviews-title': "ग्राहकों की समीक्षा",
-                'otp-title-1': "अपनी रिपोर्ट सुरक्षित करें",
-                'otp-msg-1': "व्हाट्सएप के माध्यम से अपनी व्यक्तिगत स्वास्थ्य रिपोर्ट प्राप्त करने के लिए अपना फोन नंबर दर्ज करें।",
-                'otp-placeholder-phone': "10-अंकीय फोन नंबर दर्ज करें",
-                'otp-btn-send': "सत्यापन कोड भेजें",
-                'otp-title-2': "अपना नंबर सत्यापित करें",
-                'otp-msg-2': "हमने आपके फोन पर 6-अंकीय सत्यापन कोड भेजा है।",
-                'otp-resend-text': "कोड प्राप्त नहीं हुआ?",
-                'otp-resend-link': "कोड पुन: भेजें",
-                'otp-btn-verify': "सत्यापित करें और रिपोर्ट देखें",
-                'phone-warning': "फोन नंबर बिल्कुल 10 अंकों का होना चाहिए।",
-                'verifying': "सत्यापित किया जा रहा है..."
             }
         };
 
@@ -420,24 +354,8 @@ class QuestionnaireEngine {
     }
 
     changeLanguage(lang) {
-        console.log("Switching to language:", lang);
-        if (this.currentLanguage === lang) return;
-        this.currentLanguage = lang;
-        localStorage.setItem(`selected_lang_${this.config.id}`, lang);
-        
-        // Unify the refresh logic to ensure both static and dynamic contents are in sync
-        this.updateStaticUI();
-        this.updateLanguageToggle();
-        
-        // Force refresh current step
-        if (this.state.currentStep === 99) {
-            this.renderResults();
-        } else if (this.state.currentStep >= 3 && this.state.currentStep <= 98) {
-            const group = this.config.questionGroups.find(g => g.step === this.state.currentStep);
-            if (group) this.renderQuestionGroup(group);
-        } else {
-            this.showStep(this.state.currentStep);
-        }
+        // Language switching disabled — this questionnaire is English-only.
+        return;
     }
 
     updateStaticUI(scope = document) {
@@ -749,13 +667,12 @@ class QuestionnaireEngine {
         }
 
         const q = group.questions[qIndex];
-        const isHi = this.currentLanguage === 'hi';
-        const questionText = (isHi && q.hi) ? q.hi : q.question;
+        const questionText = q.question;
         let optionsHTML = '';
 
         if (q.multiple) {
             optionsHTML = q.options.map((opt) => {
-                const optText = (isHi && opt.hi) ? opt.hi : opt.text;
+                const optText = opt.text;
                 return `
                 <label class="multi-option-card">
                     <input type="checkbox" class="multi-checkbox" value="${opt.text}" data-score="${opt.score}">
@@ -767,9 +684,9 @@ class QuestionnaireEngine {
             navContainer.innerHTML = `<button type="button" class="next-btn" data-action="submit-multi-select" data-i18n="btn-next">${this.uiTranslations[this.currentLanguage]['btn-next']}</button>`;
         } else {
             optionsHTML = q.options.map((opt) => {
-                const optText = (isHi && opt.hi) ? opt.hi : opt.text;
+                const optText = opt.text;
                 return `
-                <button class="option-button" data-action="answer-question" 
+                <button class="option-button" data-action="answer-question"
                     data-group-key="${group.key}" data-question="${q.question}" 
                     data-text="${opt.text}" data-score="${opt.score}">
                     ${optText}
@@ -1150,7 +1067,7 @@ class QuestionnaireEngine {
     renderResults() {
         console.log("--- renderResults() started ---");
         // Version 3.5 - High Reliability Sync
-        const lang = localStorage.getItem(`selected_lang_${this.config.id}`) || this.currentLanguage || 'en';
+        const lang = 'en'; // English-only: Hindi support removed
         console.log("Current Language:", lang);
         
         const langData = this.uiTranslations[lang];
@@ -1183,20 +1100,7 @@ class QuestionnaireEngine {
         const conditionDetailsEl = document.getElementById('condition-details');
 
         const rawName = this.state.userInfo.name || "Patient";
-        let displayName = rawName;
-        // Proper Distinction: Switch content completely based on lang
-        if (lang === 'hi') {
-            const nameMap = { 
-                'shivang': 'शिवांग', 'shivam': 'शिवम', 'rohit': 'रोहित', 
-                'rahul': 'राहुल', 'deepak': 'दीपक', 'amit': 'अमित',
-                'sanjay': 'संजय', 'vijay': 'विजय', 'ajay': 'अजय'
-            };
-            displayName = nameMap[rawName.toLowerCase().trim()] || rawName;
-        } else {
-            // Restore English Name if it was transliterated or matches a known Hindi string (reverse mapping if needed)
-            const reverseMap = { 'शिवांग': 'Shivang', 'शिवम': 'Shivam' };
-            displayName = reverseMap[rawName] || rawName;
-        }
+        const displayName = rawName;
 
         if (userNameEl) userNameEl.innerText = displayName;
 
@@ -1219,8 +1123,8 @@ class QuestionnaireEngine {
         }
         
         // Dynamic labels from results
-        const displayIssueTitle = (lang === 'hi' && this.state.results.issueTitleHi) ? this.state.results.issueTitleHi : this.state.results.issueTitle;
-        const displayConditionHTML = (lang === 'hi' && this.state.results.conditionTextHTMLHi) ? this.state.results.conditionTextHTMLHi : this.state.results.conditionTextHTML;
+        const displayIssueTitle = this.state.results.issueTitle;
+        const displayConditionHTML = this.state.results.conditionTextHTML;
 
         if (userConcernEl) userConcernEl.innerText = displayIssueTitle;
         if (issueHeaderEl) issueHeaderEl.innerText = displayIssueTitle;
@@ -1261,7 +1165,7 @@ class QuestionnaireEngine {
 
         if (riskContainer && this.state.results && this.state.results.futureRisks) {
             this.state.results.futureRisks.forEach((risk) => {
-                const riskText = (lang === 'hi' && risk.hi) ? risk.hi : (risk.en || risk.text || risk);
+                const riskText = risk.en || risk.text || risk;
                 const lowerRiskText = riskText.toLowerCase();
                 
                 // Find metadata or use default
@@ -1295,9 +1199,9 @@ class QuestionnaireEngine {
                 const mergedTimeline = {};
                 timelineData.general.forEach((item) => {
                     if (!mergedTimeline[item.month]) {
-                        mergedTimeline[item.month] = { month: item.month, hi: item.hi, general: '', extras: [] };
+                        mergedTimeline[item.month] = { month: item.month, general: '', extras: [] };
                     }
-                    mergedTimeline[item.month].general = (lang === 'hi' && item.hiDesc) ? item.hiDesc : item.timelineDesc;
+                    mergedTimeline[item.month].general = item.timelineDesc;
                 });
 
                 let timelineHTML = '<div class="timeline-months">';
@@ -1310,7 +1214,7 @@ class QuestionnaireEngine {
                 months.forEach((monthKey, index) => {
                     const data = mergedTimeline[monthKey];
                     const extrasHTML = (data.extras || []).map((desc) => `<p class="extra-desc">${desc}</p>`).join('');
-                    const displayMonth = (lang === 'hi' && data.hi) ? data.hi : data.month;
+                    const displayMonth = data.month;
                     timelineHTML += `
                         <div class="month-box">
                             <div class="month-icon">

@@ -179,43 +179,6 @@ const productDatabaseCommon = {
 };
 
 /**
- * PRODUCT_HINDI: Hindi display name + description per Stable Internal ID.
- * Used to localise the result page when the questionnaire language is 'hi'.
- * Keyed by the same IDs as PRODUCT_REGISTRY.
- */
-const PRODUCT_HINDI = {
-    HER_MENSES: { name: 'हर मेन्सेस' },
-    ESTROGEN_BALANCE: { name: 'एस्ट्रोजन बैलेंस' },
-    D3K2: { name: 'ज़ेनकल D3K2' },
-    INTIMATE_WASH: { name: 'इंटिमेट फोम वॉश' },
-    HORMONIHERB_TEA: { name: 'हार्मोनीहर्ब चाय' },
-    THYROIDINUM: { name: 'थायरॉइडिनम 3X' },
-    IGNITE: { name: 'इग्नाइट फैट बर्नर' },
-    ORLISTAT: { name: 'ऑर्लिस्टैट 60 मि.ग्रा.' },
-    VALORA: { name: 'वलोरा' },
-    SLIMTOX_TEA: { name: 'स्लिमटॉक्स चाय' },
-    SLIMTOX_ENERGY_TEA: { name: 'स्लिमटॉक्स एनर्जी चाय' },
-    METABOLIC_MULTI: { name: 'मेटाबॉलिक मल्टीविटामिन' },
-    GARCINIA: { name: 'गार्सिनिया कैंबोजिया ड्रॉप्स' },
-    TADALAFIL: {
-        name: 'टैडालाफिल 5 मि.ग्रा.',
-        description: 'इरेक्टाइल फंक्शन और प्रदर्शन को बेहतर बनाने में मदद करने वाली कम-खुराक वाली दवा।',
-    },
-    ASHWAGANDHA: {
-        name: 'अश्वगंधा टैबलेट',
-        description: "स्टैमिना, कामेच्छा और तनाव सहनशीलता के लिए आयुर्वेद की 'जड़ी-बूटियों का राजा'।",
-    },
-    SHILAJIT: {
-        name: 'शुद्ध हिमालयन शिलाजीत रेज़िन 20g',
-        description: '85+ खनिजों और उच्च फुलविक एसिड के साथ शुद्ध हिमालयन शिलाजीत।',
-    },
-    DAPOX: {
-        name: 'डापोक्सेटिन हाइड्रोक्लोराइड टैबलेट 30 मि.ग्रा.',
-        description: 'स्खलन में देरी करने और नियंत्रण बेहतर करने के लिए ऑन-डिमांड दवा।',
-    },
-};
-
-/**
  * Hydrates the product database with live data from Shopify.
  * Now uses Handles (from PRODUCT_REGISTRY) to match products.
  */
@@ -235,9 +198,6 @@ function hydrateProductDatabase() {
             whyPoints: ["High quality ingredients", "Scientifically formulated"]
         };
 
-        // Hindi name/description for this product (if defined)
-        const hi = PRODUCT_HINDI[idKey] || {};
-
         // 2. Get live Shopify data
         const liveProduct = liveDB[handle];
 
@@ -246,8 +206,6 @@ function hydrateProductDatabase() {
             finalDB[idKey] = {
                 ...staticData,
                 name: idKey.replace(/_/g, ' '),
-                nameHi: hi.name || idKey.replace(/_/g, ' '),
-                descriptionHi: hi.description || '',
                 active: false
             };
             return;
@@ -261,8 +219,6 @@ function hydrateProductDatabase() {
         finalDB[idKey] = {
             ...staticData,
             name: liveProduct.title,
-            nameHi: hi.name || liveProduct.title,
-            descriptionHi: hi.description || '',
             image: liveProduct.featuredImage,
             variantId: Object.keys(liveProduct.variants).find(id => liveProduct.variants[id] === liveVariant),
             regularPrice: (liveVariant.compareAtPrice || liveVariant.price) / 100,
@@ -277,5 +233,4 @@ function hydrateProductDatabase() {
 
 // Expose safely to window
 window.PRODUCT_REGISTRY = PRODUCT_REGISTRY;
-window.PRODUCT_HINDI = PRODUCT_HINDI;
 window.productDatabase = hydrateProductDatabase();

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SehatUP Message Cleaning Review</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0b141a; --panel: #111b21; --panel2: #202c33; --border: #2a3942;
+    --text: #e9edef; --muted: #8696a0; --accent: #00a884;
+    --out-bubble: #005c4b; --in-bubble: #202c33;
+    --removed: #5c1a1a; --removed-border: #a83232;
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  header { background: var(--panel2); padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 16px; font-weight: 600; }
+  .chunknav { display: flex; align-items: center; gap: 6px; }
+  .chunknav button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 13px; }
+  .chunknav button:disabled { opacity: .35; cursor: default; }
+  .chunknav .range { color: var(--muted); font-size: 13px; min-width: 230px; text-align: center; }
+  .stats { display: flex; gap: 10px; font-size: 12.5px; margin-left: auto; align-items: center; flex-wrap: wrap; }
+  .stat { background: var(--panel); padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border); }
+  .stat b { color: var(--accent); }
+  .stat.removed b { color: #f56b6b; }
+  #syncstate { font-size: 12.5px; padding: 4px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border); color: var(--accent); }
+  #syncstate.saving { color: #e8c468; }
+  #syncstate.error { color: #f56b6b; }
+
+  .rulebar { background: var(--panel); padding: 8px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .rulebar .lbl { color: var(--muted); margin-right: 4px; }
+  .rulechip { border: 1px solid var(--border); background: var(--panel2); color: var(--text); padding: 4px 10px; border-radius: 14px; cursor: pointer; font-size: 12px; }
+  .rulechip .cnt { color: var(--muted); }
+  .rulechip.on { background: #3b1214; border-color: var(--removed-border); }
+  .rulechip.on .cnt { color: #f5a3a3; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #convlist { width: 320px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; }
+  .convitem { padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; }
+  .convitem:hover { background: var(--panel2); }
+  .convitem.active { background: var(--panel2); border-left: 3px solid var(--accent); }
+  .convitem.deleted { background: #2a1215; }
+  .convitem.deleted .phone { text-decoration: line-through; color: #c98a8a; }
+  .convitem .phone { font-weight: 600; font-size: 14px; }
+  .convitem .toprow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .delconv { border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 11px; padding: 2px 9px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
+  .delconv:hover { background: #3b1214; border-color: var(--removed-border); color: #f5a3a3; }
+  .delconv.undo:hover { background: rgba(0,168,132,.15); border-color: var(--accent); color: var(--accent); }
+  .convitem .meta { color: var(--muted); font-size: 12px; margin-top: 2px; display: flex; justify-content: space-between; }
+  .convitem .flagged { color: #f5a3a3; }
+  .convitem .allgone { color: #f56b6b; font-weight: 600; }
+
+  #thread { flex: 1; overflow-y: auto; padding: 18px 6%; background: var(--bg); }
+  .daysep { text-align: center; margin: 14px 0 8px; }
+  .daysep span { background: var(--panel2); color: var(--muted); font-size: 12px; padding: 4px 12px; border-radius: 8px; }
+  .msg { max-width: 72%; margin: 6px 0; padding: 8px 12px; border-radius: 10px; position: relative; font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+  .msg.in  { background: var(--in-bubble); margin-right: auto; border-top-left-radius: 2px; }
+  .msg.out { background: var(--out-bubble); margin-left: auto; border-top-right-radius: 2px; }
+  .msg .meta { display: flex; gap: 8px; align-items: center; font-size: 11px; color: rgba(233,237,239,.55); margin-top: 6px; flex-wrap: wrap; }
+  .msg .tag { background: rgba(0,0,0,.25); padding: 1px 7px; border-radius: 8px; }
+  .msg.removed { background: var(--removed) !important; border: 1px solid var(--removed-border); opacity: .85; }
+  .msg.removed .bodytext { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.45); }
+  .reason { display: inline-block; background: var(--removed-border); color: #fff; font-size: 10.5px; font-weight: 600; padding: 1px 8px; border-radius: 8px; margin-bottom: 5px; }
+  .reason.manual { background: #b8860b; }
+  .togglebtn { border: 1px solid rgba(255,255,255,.3); background: transparent; color: var(--text); font-size: 11px; padding: 2px 10px; border-radius: 10px; cursor: pointer; margin-left: auto; }
+  .togglebtn:hover { background: rgba(255,255,255,.12); }
+  .empty-note { color: var(--muted); font-style: italic; }
+  #placeholder { color: var(--muted); text-align: center; margin-top: 40px; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧹 Message Cleaning Review</h1>
+  <div class="chunknav">
+    <button id="newer">‹ Newer</button>
+    <span class="range" id="range">loading…</span>
+    <button id="older">Older ›</button>
+  </div>
+  <div class="stats">
+    <span class="stat">Msgs <b id="st-total">0</b></span>
+    <span class="stat">Convs <b id="st-convs">0</b></span>
+    <span class="stat removed">Remove <b id="st-removed">0</b></span>
+    <span class="stat">Keep <b id="st-keep">0</b></span>
+    <span class="stat removed">Total removed (all) <b id="st-global">0</b></span>
+    <span id="syncstate">…</span>
+  </div>
+</header>
+<div class="rulebar" id="rulebar"><span class="lbl">Suggestion rules (click to apply/clear all):</span></div>
+<main>
+  <div id="convlist"></div>
+  <div id="thread"><div id="placeholder">← Select a conversation</div></div>
+</main>
+
+<script>
+let D = null;            // current chunk data
+let decisions = {};      // global msgId -> 'remove' | 'keep' (server is source of truth)
+let allMsgs = [];
+let activeConv = null;
+let chunkNo = parseInt(new URLSearchParams(location.search).get('chunk') || '1', 10);
+
+function isRemoved(m) {
+  if (decisions[m.id] === 'remove') return true;
+  if (decisions[m.id] === 'keep') return false;
+  return !!m.suggest;
+}
+
+// ---- server sync (debounced, auto) ----
+let syncTimer = null;
+function setSync(state, txt) {
+  const el = document.getElementById('syncstate');
+  el.className = state; el.textContent = txt;
+}
+function scheduleSync() {
+  setSync('saving', '● saving…');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(doSync, 500);
+}
+async function doSync() {
+  // send effective state of every message in this chunk
+  const updates = {};
+  allMsgs.forEach(m => updates[m.id] = isRemoved(m) ? 'remove' : 'keep');
+  try {
+    const r = await fetch('/decisions', { method: 'POST', body: JSON.stringify(updates) });
+    const j = await r.json();
+    document.getElementById('st-global').textContent = j.removed;
+    setSync('', '✓ saved · cleaned CSV updated');
+  } catch (e) {
+    setSync('error', '⚠ save failed — server band hai?');
+  }
+}
+
+// ---- rules ----
+const REASON_LABELS = {
+  'failed-delivery':'Failed delivery','system-internal':'System/internal','non-text':'File/location',
+  'empty':'Empty','too-short':'Too short / emoji-only','chatbot-boilerplate':'Chatbot boilerplate',
+  'tracking-auto':'Tracking auto-msg','marketing-template':'Marketing template'
+};
+let ruleCounts = {};
+function ruleState(r) { return allMsgs.filter(m => m.suggest === r).every(isRemoved); }
+function renderRules() {
+  const bar = document.getElementById('rulebar');
+  bar.querySelectorAll('.rulechip').forEach(e => e.remove());
+  Object.keys(ruleCounts).sort((a,b)=>ruleCounts[b]-ruleCounts[a]).forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'rulechip' + (ruleState(r) ? ' on' : '');
+    b.innerHTML = `${REASON_LABELS[r]||r} <span class="cnt">${ruleCounts[r]}</span>`;
+    b.onclick = () => {
+      const turnOn = !ruleState(r);
+      allMsgs.filter(m => m.suggest === r).forEach(m => decisions[m.id] = turnOn ? 'remove' : 'keep');
+      scheduleSync(); renderAll();
+    };
+    bar.appendChild(b);
+  });
+}
+
+// ---- conversation list ----
+function renderConvList() {
+  const el = document.getElementById('convlist');
+  el.innerHTML = '';
+  D.conversations.forEach(c => {
+    const rem = c.messages.filter(isRemoved).length;
+    const allGone = rem === c.messages.length;
+    const div = document.createElement('div');
+    div.className = 'convitem' + (activeConv === c ? ' active' : '') + (allGone ? ' deleted' : '');
+    const d = new Date(c.messages[0].ts);
+    div.innerHTML = `<div class="toprow"><span class="phone">${c.phone}</span>
+      <button class="delconv ${allGone?'undo':''}" title="${allGone?'Poori chat wapas rakho':'Poori chat delete karo'}">${allGone?'↩ restore':'🗑 chat'}</button></div>
+      <div class="meta"><span>${d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} · ${c.messages.length} msgs</span>
+      <span class="${allGone?'allgone':(rem?'flagged':'')}">${rem ? '🗑 '+rem : '✓ clean'}</span></div>`;
+    div.onclick = () => { activeConv = c; renderAll(); };
+    div.querySelector('.delconv').onclick = (e) => {
+      e.stopPropagation();
+      c.messages.forEach(m => decisions[m.id] = allGone ? 'keep' : 'remove');
+      scheduleSync(); renderAll();
+    };
+    el.appendChild(div);
+  });
+}
+
+// ---- thread ----
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function renderThread() {
+  const el = document.getElementById('thread');
+  if (!activeConv) { el.innerHTML = '<div id="placeholder">← Select a conversation</div>'; return; }
+  el.innerHTML = '';
+  let lastDay = '';
+  activeConv.messages.forEach(m => {
+    const d = new Date(m.ts);
+    const day = d.toLocaleDateString('en-IN', {day:'numeric', month:'long', year:'numeric'});
+    if (day !== lastDay) { lastDay = day; el.insertAdjacentHTML('beforeend', `<div class="daysep"><span>${day}</span></div>`); }
+    const removed = isRemoved(m);
+    const manual = removed && !m.suggest;
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.dir === 'Inbound' ? 'in' : 'out') + (removed ? ' removed' : '');
+    const body = m.text.trim() ? esc(m.text) : '<span class="empty-note">(empty / no text)</span>';
+    div.innerHTML =
+      (removed ? `<div><span class="reason${manual?' manual':''}">${manual ? 'MANUAL REMOVE' : 'REMOVE: ' + (REASON_LABELS[m.suggest]||m.suggest)}</span></div>` : '') +
+      `<div class="bodytext">${body}</div>
+       <div class="meta">
+         <span>${d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>
+         <span class="tag">${m.type}</span>
+         ${m.source ? `<span class="tag">${m.source}</span>` : ''}
+         <span class="tag">${m.status}</span>
+         <button class="togglebtn">${removed ? '↩ Keep' : '🗑 Remove'}</button>
+       </div>`;
+    div.querySelector('.togglebtn').onclick = () => {
+      decisions[m.id] = removed ? 'keep' : 'remove';
+      scheduleSync(); renderAll();
+    };
+    el.appendChild(div);
+  });
+}
+
+function renderStats() {
+  const rem = allMsgs.filter(isRemoved).length;
+  document.getElementById('st-total').textContent = allMsgs.length;
+  document.getElementById('st-convs').textContent = D.conversations.length;
+  document.getElementById('st-removed').textContent = rem;
+  document.getElementById('st-keep').textContent = allMsgs.length - rem;
+}
+function renderNav() {
+  document.getElementById('range').textContent =
+    `Chunk ${D.chunk}/${D.totalChunks} · ${D.from} → ${D.to}`;
+  document.getElementById('newer').disabled = D.chunk <= 1;
+  document.getElementById('older').disabled = D.chunk >= D.totalChunks;
+}
+function renderAll() { renderRules(); renderConvList(); renderThread(); renderStats(); renderNav(); }
+
+async function loadChunk(n) {
+  setSync('saving', '● loading…');
+  const [chunk, dec] = await Promise.all([
+    fetch('/chunk/' + n).then(r => r.json()),
+    fetch('/decisions').then(r => r.json()),
+  ]);
+  D = chunk; decisions = dec; chunkNo = D.chunk; activeConv = null;
+  allMsgs = [];
+  D.conversations.forEach(c => c.messages.forEach(m => allMsgs.push(m)));
+  ruleCounts = {};
+  allMsgs.forEach(m => { if (m.suggest) ruleCounts[m.suggest] = (ruleCounts[m.suggest]||0)+1; });
+  history.replaceState(null, '', '?chunk=' + chunkNo);
+  renderAll();
+  doSync(); // sync current effective state (suggestions apply as soon as chunk is opened)
+}
+document.getElementById('newer').onclick = () => loadChunk(chunkNo - 1);
+document.getElementById('older').onclick = () => loadChunk(chunkNo + 1);
+loadChunk(chunkNo);
+</script>
+</body>
+</html>

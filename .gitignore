@@ -49,3 +49,4 @@ secrets.json
 .env.development.local
 .env.test.local
 .env.production.local
+n8n/service-account-keys/

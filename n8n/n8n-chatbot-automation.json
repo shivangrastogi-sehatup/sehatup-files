@@ -1,0 +1,759 @@
+{
+  "name": "SehatUP QuickReply WhatsApp Chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quickreply-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1cd29fe-f815-4252-a97e-3ef19cc6bfce",
+      "name": "QuickReply Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        368
+      ],
+      "webhookId": "b1df6342-bedd-4393-8786-401daaa53f01"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "14d87afc-f82b-4f35-ac22-d6f8f9e1b9d3",
+      "name": "Respond 200 Immediately",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        304,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-payload",
+              "leftValue": "={{ $json.body.payload }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f8dddc76-b277-41c9-912e-e8dd6f70bd89",
+      "name": "Is Real User Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        304,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst phone = body.phone || '';\nconst name = body.name || 'Customer';\nconst msgId = body.id || '';\nconst msgTime = body.msg_time || Date.now();\nconst payload = body.payload || {};\nconst text = payload.text || '';\n\nreturn [{\n  json: {\n    phone,\n    name,\n    msgId,\n    msgTime,\n    text,\n    type: 'USER_MESSAGE',\n    savedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "c79a1d06-a5a0-41c2-9136-5f9968c3c8e8",
+      "name": "Extract Message Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "create",
+        "projectId": "sehatup-f96b5",
+        "collection": "={{ 'qr_conversations/' + $json.phone.replace('+', '') + '/events' }}",
+        "columns": "type,text,msgId,msgTime,savedAt"
+      },
+      "id": "node-save-user-msg",
+      "name": "Save User Message to Firebase",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        752,
+        368
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "rqq4SmAHvUOCXqmg",
+          "name": "Google Firebase Cloud Firestore account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const DEBOUNCE_MS = 8000;\n\nconst src = $('Extract Message Details').first().json;\nconst phone = src.phone;\nconst name = src.name || 'Customer';\nconst text = src.text;\nconst msgId = src.msgId;\nconst msgTime = src.msgTime;\n\nif (!phone) throw new Error('Store Message in Session: phone missing');\n\nconst gs = $getWorkflowStaticData('global');\nif (!gs.sessions) gs.sessions = {};\n\nconst now = Date.now();\n\nif (!gs.sessions[phone]) {\n    gs.sessions[phone] = { phone, name, messages: [], executionId: null, lockTime: 0, processed: false };\n}\n\nconst session = gs.sessions[phone];\n\nsession.messages.push({ text, msgId, msgTime, addedAt: now });\nsession.name = name;\nsession.lockTime = now;\nsession.processed = false;\nsession.executionId = $execution.id;\n\nreturn [{\n    json: {\n          phone, name, text, msgId, msgTime,\n          executionId: $execution.id,\n          messagesCount: session.messages.length,\n          debounceMs: DEBOUNCE_MS\n    }\n}];\n    }\n}]\n}"
+      },
+      "id": "7fee6909-3f16-481f-900f-136cb2ea0add",
+      "name": "Store Message in Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "4cc4c02a-74da-43cd-bc04-ebc24ac630fe",
+      "name": "Wait 3 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        368
+      ],
+      "webhookId": "wait-3-min-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst phone = item.phone;\nconst name = item.name || 'Customer';\n\nconst workflowStaticData = $getWorkflowStaticData('global');\nconst session = workflowStaticData.sessions && workflowStaticData.sessions[phone];\n\nif (!session) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'no_session', messages: [] } }];\n}\n\nif (session.processed) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'already_processed', messages: [] } }];\n}\n\nif (session.executionId !== $execution.id) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'newer_execution_wins', messages: [] } }];\n}\n\n// Extra safety: if the session lock is very recent (another message came in < 5 seconds ago), skip\nconst timeSinceLock = Date.now() - (session.lockTime || 0);\nif (timeSinceLock < 5000 && session.executionId !== $execution.id) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'lock_too_recent', messages: [] } }];\n}\n\n// Mark as processed immediately to prevent any race condition\nworkflowStaticData.sessions[phone].processed = true;\n\nconst messages = session.messages || [];\n\n// Clean up session\ndelete workflowStaticData.sessions[phone];\n\nreturn [{ json: { phone, name, shouldProcess: true, messages, reason: 'process' } }];"
+      },
+      "id": "91cd8e82-746e-4109-96a6-f281380ba86c",
+      "name": "Should We Process Now?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "should-process",
+              "leftValue": "={{ $json.shouldProcess }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "acf73236-b283-45cb-b9d2-22314ce195cb",
+      "name": "Process or Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1648,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getAll",
+        "projectId": "sehatup-f96b5",
+        "collection": "={{ \"qr_conversations/\" + $json.phone.replace(\"+\", \"\") + \"/events\" }}",
+        "limit": 50
+      },
+      "id": "37b4c156-7b3e-41ff-904e-9d0e8cdf0293",
+      "name": "Fetch Conversation History",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        368
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleApi": {
+          "id": "rqq4SmAHvUOCXqmg",
+          "name": "Google Firebase Cloud Firestore account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const procData = $('Should We Process Now?').first().json;\n\nconst phone = procData.phone;\nconst name = procData.name || 'Customer';\nconst newMessages = procData.messages || [];\n\n// Conversation history from Firestore\nlet historyItems = [];\ntry { historyItems = $('Fetch Conversation History').all(); } catch (e) { historyItems = []; }\n\nconst history = [];\nfor (const item of historyItems) {\n  const d = item.json;\n  if (!d.type) continue;\n  if (d.type === 'USER_MESSAGE') history.push({ role: 'user', content: d.text || '', time: d.msgTime || d.savedAt });\n  else if (d.type === 'AI_REPLY') history.push({ role: 'assistant', content: d.text || '', time: d.savedAt });\n}\n\n// Sort by time to ensure chronological order\nhistory.sort((a, b) => {\n  const timeA = new Date(a.time || 0).getTime();\n  const timeB = new Date(b.time || 0).getTime();\n  return timeA - timeB;\n});\n\nconst recentHistory = history.slice(-20);\n\n// FIX: Join with newline instead of space to keep messages separate\nconst newMsgText = newMessages.map(m => m.text).join('\\n');\n\nconst isFirstContact = !history.some(h => h.role === 'assistant');\n\n// Office hours check IST (9:30 AM - 6:30 PM)\nconst nowUTC = new Date();\nconst istTime = new Date(nowUTC.getTime() + (5.5 * 60 * 60 * 1000));\nconst totalMinutes = istTime.getUTCHours() * 60 + istTime.getUTCMinutes();\nconst isOfficeHours = totalMinutes >= (9 * 60 + 30) && totalMinutes < (18 * 60 + 30);\n\n// Read system prompt from Google Docs\nlet basePrompt = 'You are Ananya, a Health Expert at SehatUP.';\n\ntry {\n  const docData = $('Get a document').first().json;\n  if (docData && docData.body && docData.body.content && Array.isArray(docData.body.content)) {\n    const extracted = docData.body.content\n      .map(b => b.paragraph && b.paragraph.elements\n        ? b.paragraph.elements.map(e => (e.textRun && e.textRun.content) ? e.textRun.content : '').join('')\n        : '')\n      .join('').trim();\n    if (extracted) basePrompt = extracted;\n  }\n} catch (e) {\n  console.log('Could not read Google Doc, using default prompt:', e.message);\n}\n\n// Build conversation context string for better greeting detection\nconst conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();\nconst hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');\n\n// Inject dynamic variables with stronger anti-greeting guard\nconst systemPrompt = basePrompt\n  + '\\n\\nCONTEXT:\\nFirst contact: ' + (isFirstContact ? 'YES' : 'NO')\n  + '\\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')\n  + '\\nCustomer name: ' + name\n  + '\\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')\n  + '\\n\\nCRITICAL ANTI-SPAM RULES:\\n'\n  + '1. If \"Greeting already sent: YES\", NEVER send greeting again. Jump straight to answering the question.\\n'\n  + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\\n'\n  + '3. Only greet if: First contact: YES AND Greeting already sent: NO AND no assistant messages in history.\\n'\n  + '4. For follow-up questions, respond directly without any greeting or introduction.';\n\nconst messages = [\n  { role: 'system', content: systemPrompt },\n  ...recentHistory.map(h => ({ role: h.role, content: h.content })),\n  { role: 'user', content: newMsgText }\n];\n\nreturn [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, systemPromptLength: systemPrompt.length } }];"
+      },
+      "id": "ba0ad25b-6544-46c0-bade-be6ece938f5d",
+      "name": "Build AI Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const groqResponse = $input.first().json;\nconst aiText = groqResponse.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, kuch problem aa gayi. Please dobara try karein.';\n\nconst buildData = $('Build AI Prompt').first().json || {};\n\n// Fallback chain: trust the upstream source-of-truth nodes, not just one ref\nlet phone = buildData.phone;\nif (!phone) {\n  try { phone = $('Should We Process Now?').first().json.phone; } catch (e) {}\n}\n\n// Fail loud with context instead of a cryptic .replace crash\nif (!phone) {\n  throw new Error(\n    'Extract AI Response: phone missing. buildData=' + JSON.stringify(buildData)\n  );\n}\n\nconst name = buildData.name || 'Customer';\nconst newMsgText = buildData.newMsgText || '';\nconst docId = phone.replace('+', '');\n\nreturn [{\n  json: {\n    phone,\n    name,\n    lastAiReply: aiText,\n    lastUserMessage: newMsgText,\n    docId,\n    lastUpdated: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "359369ae-842e-421e-a61e-b68c8eaf7ee6",
+      "name": "Extract AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "upsert",
+        "projectId": "sehatup-f96b5",
+        "collection": "qr_conversations",
+        "updateKey": "docId",
+        "columns": "phone,name,lastUpdated,lastAiReply,lastUserMessage"
+      },
+      "id": "9915d558-1f36-40d9-a8fa-ae0327370ef8",
+      "name": "Update Main Firebase Doc",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        2992,
+        368
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "rqq4SmAHvUOCXqmg",
+          "name": "Google Firebase Cloud Firestore account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    phone: item.phone,\n    type: 'AI_REPLY',\n    text: item.lastAiReply,\n    savedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-prep-ai-reply",
+      "name": "Prepare AI Reply Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3216,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "create",
+        "projectId": "sehatup-f96b5",
+        "collection": "={{ 'qr_conversations/' + $json.phone.replace('+', '') + '/events' }}",
+        "columns": "type,text,savedAt"
+      },
+      "id": "node-save-ai-reply",
+      "name": "Save AI Reply Event",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        3440,
+        368
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "rqq4SmAHvUOCXqmg",
+          "name": "Google Firebase Cloud Firestore account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.quickreply.ai/api/whatsapp/send-session-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "client-id",
+              "value": "=GgbHGAprcvQx26qKL_c"
+            },
+            {
+              "name": "secret-key",
+              "value": "=PSHi6HyyfctzHFak6"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Extract AI Response').first().json.phone) }},\n  \"payload\": {\n    \"_type\": \"AGENT_TEXT\",\n    \"text\": {{ JSON.stringify($('Extract AI Response').first().json.lastAiReply) }}\n  }\n}",
+        "options": {}
+      },
+      "id": "eadc1e99-fc09-4b9e-a409-6ae17104ec6c",
+      "name": "Send WhatsApp Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3664,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $('Prepare AI Reply Data').first().json.phone || 'unknown';\nconst aiText = $('Prepare AI Reply Data').first().json.text || '';\nconsole.log('WhatsApp reply sent to:', phone, '| Reply:', aiText.substring(0, 50));\nreturn [{json: {success: true, phone, aiReplyPreview: aiText.substring(0, 100), timestamp: new Date().toISOString()}}];"
+      },
+      "id": "3a7b8bd6-1702-4faa-a884-040d1d71751a",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3888,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nreturn [{\n  json: {\n    phone: body.phone || '',\n    type: 'STATUS',\n    event: body.event || '',\n    messageBy: body.messageBy || '',\n    msgId: body.id || '',\n    savedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-prep-status",
+      "name": "Prepare Status Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "create",
+        "projectId": "sehatup-f96b5",
+        "collection": "={{ 'qr_conversations/' + $json.phone.replace('+', '') + '/events' }}",
+        "columns": "type,event,messageBy,msgId,savedAt"
+      },
+      "id": "node-save-status",
+      "name": "Save Status Event",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        752,
+        560
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "rqq4SmAHvUOCXqmg",
+          "name": "Google Firebase Cloud Firestore account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "11212013-f5bb-4eb6-ab99-bd020af12935",
+              "leftValue": "={{ $json.phone }}",
+              "rightValue": "+917300978845",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "63473cca-ea30-4093-a3c7-05b5a5187619",
+              "leftValue": "={{ $json.phone }}",
+              "rightValue": "+918756112227",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        80,
+        48
+      ],
+      "id": "82d8b59e-9d3a-4189-baa0-264b847264f6",
+      "name": "Test Numbers Only",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "1u58TQfsfSSLr1K2AzEf0b5G2GrM4Irj5sZbrVruAvwE",
+        "simple": false
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        2096,
+        368
+      ],
+      "id": "8cf2b62a-208d-44d7-aaf2-eb3cd075a8b2",
+      "name": "Get a document",
+      "executeOnce": true,
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "juz4Re37VEuOK131",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/sehatup-f96b5/locations/us-central1/endpoints/230203100240019456:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": {{ JSON.stringify($json.messages.slice(1).map(m => ({\n    \"role\": m.role === \"assistant\" ? \"model\" : m.role,\n    \"parts\": [{\"text\": m.content}]\n  }))) }},\n  \"systemInstruction\": {\n    \"parts\": [{\"text\": {{ JSON.stringify($json.messages[0].content) }}}]\n  },\n  \"generationConfig\": {\n    \"maxOutputTokens\": 400,\n    \"temperature\": 0.7\n  }\n}",
+        "options": {}
+      },
+      "id": "afd87da2-db7d-4bc2-988a-2b56395b5891",
+      "name": "Call Gemini AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2544,
+        368
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "sixZUiV1rnzhegM2",
+          "name": "Google Service Account account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "QuickReply Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "sehatup.app.n8n.cloud",
+            "user-agent": "PostmanRuntime/7.54.0",
+            "content-length": "182",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "103.170.81.93",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "IN",
+            "cf-ray": "a12618a4dc7fc3e8-HKG",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "postman-token": "3a80ec55-097a-497a-9e92-e28f43eb8398",
+            "x-forwarded-for": "103.170.81.93, 172.71.215.110",
+            "x-forwarded-host": "sehatup.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-58-869c5965d4-xjcs4",
+            "x-is-trusted": "yes",
+            "x-real-ip": "103.170.81.93"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "phone": "+917300978845",
+            "name": "Test User",
+            "id": "msg_test_001",
+            "msg_time": 1719484800000,
+            "payload": {
+              "text": "Hello, I need help with my health"
+            }
+          },
+          "webhookUrl": "https://sehatup.app.n8n.cloud/webhook/quickreply-webhook",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "QuickReply Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 Immediately",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Real User Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Real User Message?": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Status Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Details": {
+      "main": [
+        [
+          {
+            "node": "Save User Message to Firebase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save User Message to Firebase": {
+      "main": [
+        [
+          {
+            "node": "Store Message in Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Message in Session": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Should We Process Now?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should We Process Now?": {
+      "main": [
+        [
+          {
+            "node": "Process or Skip?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process or Skip?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Conversation History",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Fetch Conversation History": {
+      "main": [
+        [
+          {
+            "node": "Get a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call Gemini AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract AI Response": {
+      "main": [
+        [
+          {
+            "node": "Update Main Firebase Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Main Firebase Doc": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Reply Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Reply Data": {
+      "main": [
+        [
+          {
+            "node": "Save AI Reply Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save AI Reply Event": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Reply": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Status Data": {
+      "main": [
+        [
+          {
+            "node": "Save Status Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Numbers Only": {
+      "main": [
+        []
+      ]
+    },
+    "Get a document": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Gemini AI": {
+      "main": [
+        [
+          {
+            "node": "Extract AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "45ebc357-e75f-4d82-bbca-005d1901793d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "892bee1fea9c15010c0f41c58635aa266a754745ca676817a76e5fcb28c45ccc"
+  },
+  "nodeGroups": [],
+  "id": "YPRVzwGdJtxV3OXo",
+  "tags": []
+}

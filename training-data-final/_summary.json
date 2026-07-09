@@ -1,0 +1,184 @@
+[
+  {
+    "file": "chunk-00_2026-07-07_synthetic.jsonl",
+    "kept": 17,
+    "edited": 2,
+    "excluded": 1,
+    "original": 18
+  },
+  {
+    "file": "chunk-01_2026-06-16_2026-06-30.jsonl",
+    "kept": 410,
+    "edited": 5,
+    "excluded": 0,
+    "original": 410
+  },
+  {
+    "file": "chunk-02_2026-06-01_2026-06-15.jsonl",
+    "kept": 271,
+    "edited": 0,
+    "excluded": 0,
+    "original": 271
+  },
+  {
+    "file": "chunk-03_2026-05-17_2026-05-31.jsonl",
+    "kept": 296,
+    "edited": 0,
+    "excluded": 0,
+    "original": 296
+  },
+  {
+    "file": "chunk-04_2026-05-02_2026-05-16.jsonl",
+    "kept": 519,
+    "edited": 0,
+    "excluded": 0,
+    "original": 519
+  },
+  {
+    "file": "chunk-05_2026-04-17_2026-05-01.jsonl",
+    "kept": 44,
+    "edited": 0,
+    "excluded": 0,
+    "original": 44
+  },
+  {
+    "file": "chunk-06_2026-04-02_2026-04-16.jsonl",
+    "kept": 66,
+    "edited": 0,
+    "excluded": 0,
+    "original": 66
+  },
+  {
+    "file": "chunk-07_2026-03-18_2026-04-01.jsonl",
+    "kept": 16,
+    "edited": 0,
+    "excluded": 0,
+    "original": 16
+  },
+  {
+    "file": "chunk-08_2026-03-03_2026-03-17.jsonl",
+    "kept": 13,
+    "edited": 0,
+    "excluded": 0,
+    "original": 13
+  },
+  {
+    "file": "chunk-09_2026-02-16_2026-03-02.jsonl",
+    "kept": 11,
+    "edited": 0,
+    "excluded": 0,
+    "original": 11
+  },
+  {
+    "file": "chunk-10_2026-02-01_2026-02-15.jsonl",
+    "kept": 16,
+    "edited": 0,
+    "excluded": 0,
+    "original": 16
+  },
+  {
+    "file": "chunk-11_2026-01-17_2026-01-31.jsonl",
+    "kept": 26,
+    "edited": 0,
+    "excluded": 0,
+    "original": 26
+  },
+  {
+    "file": "chunk-12_2026-01-02_2026-01-16.jsonl",
+    "kept": 11,
+    "edited": 0,
+    "excluded": 0,
+    "original": 11
+  },
+  {
+    "file": "chunk-13_2025-12-18_2026-01-01.jsonl",
+    "kept": 4,
+    "edited": 0,
+    "excluded": 0,
+    "original": 4
+  },
+  {
+    "file": "chunk-14_2025-12-03_2025-12-17.jsonl",
+    "kept": 5,
+    "edited": 0,
+    "excluded": 0,
+    "original": 5
+  },
+  {
+    "file": "chunk-15_2025-11-18_2025-12-02.jsonl",
+    "kept": 9,
+    "edited": 0,
+    "excluded": 0,
+    "original": 9
+  },
+  {
+    "file": "chunk-16_2025-11-03_2025-11-17.jsonl",
+    "kept": 6,
+    "edited": 0,
+    "excluded": 0,
+    "original": 6
+  },
+  {
+    "file": "chunk-17_2025-10-19_2025-11-02.jsonl",
+    "kept": 1,
+    "edited": 0,
+    "excluded": 0,
+    "original": 1
+  },
+  {
+    "file": "chunk-18_2025-10-04_2025-10-18.jsonl",
+    "kept": 1,
+    "edited": 0,
+    "excluded": 0,
+    "original": 1
+  },
+  {
+    "file": "chunk-19_2025-09-19_2025-10-03.jsonl",
+    "kept": 1,
+    "edited": 0,
+    "excluded": 0,
+    "original": 1
+  },
+  {
+    "file": "chunk-20_2025-09-04_2025-09-18.jsonl",
+    "kept": 0,
+    "edited": 0,
+    "excluded": 0,
+    "original": 0
+  },
+  {
+    "file": "chunk-21_2025-08-20_2025-09-03.jsonl",
+    "kept": 31,
+    "edited": 0,
+    "excluded": 0,
+    "original": 31
+  },
+  {
+    "file": "chunk-22_2025-08-05_2025-08-19.jsonl",
+    "kept": 55,
+    "edited": 0,
+    "excluded": 0,
+    "original": 55
+  },
+  {
+    "file": "chunk-23_2025-07-21_2025-08-04.jsonl",
+    "kept": 20,
+    "edited": 0,
+    "excluded": 0,
+    "original": 20
+  },
+  {
+    "file": "chunk-24_2025-07-06_2025-07-20.jsonl",
+    "kept": 24,
+    "edited": 0,
+    "excluded": 0,
+    "original": 24
+  },
+  {
+    "file": "chunk-25_2025-06-21_2025-07-05.jsonl",
+    "kept": 4,
+    "edited": 0,
+    "excluded": 0,
+    "original": 4
+  }
+]

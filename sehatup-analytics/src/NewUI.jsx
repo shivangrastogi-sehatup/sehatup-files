@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import PriceCalculator from './components/PriceCalculator';
 
 // Curated list of exportable columns — `default: true` means pre-selected in the picker.
 // Each `get(r)` produces the cell value for a row. No `answers`/`rawState`/`html` etc.
@@ -841,6 +842,7 @@ const I = {
   ruler: "M1 20L20 1M7 7l2.5 2.5M4 10l3.5 3.5M10 4l3.5 3.5M14 14l2.5 2.5M17 11l2.5 2.5M11 17l2.5 2.5",
   target: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-4a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
   scale: "M9 17H5a2 2 0 0 0-2 2h18a2 2 0 0 0-2-2h-4M12 3v14M3 6l3 6c.8 2 2.6 3 5.2 3M21 6l-3 6c-.8 2-2.6 3-5.2 3",
+  receipt: "M6 2h12v18l-2 2-2-2-2 2-2-2-2 2-2-2V2Z M9 7h6 M9 11h6 M9 15h4",
 };
 
 export function Icon({ name, size = 16, color = "currentColor", strokeWidth = 1.6, fill = "none", className = "" }) {
@@ -12412,7 +12414,7 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 const NAV = {
   admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
   doctor: ["doctor", "submissions", "customers", "prescriptions", "settings"],
-  telesales: ["submissions", "prescriptions", "settings"],
+  telesales: ["submissions", "prescriptions", "calculator", "settings"],
   operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "settings"],
   marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "settings"],
   website_developer: ["focused_editor", "data_studio", "settings"],
@@ -12430,6 +12432,7 @@ const ITEMS = {
   shipment_tracking: { label: "Shipment tracking", icon: "map", route: "shipment_tracking" },
   crm_orders: { label: "CRM orders", icon: "clipboard", route: "crm_orders" },
   order_create: { label: "Create order", icon: "plus", route: "order_create" },
+  calculator: { label: "Price calculator", icon: "receipt", route: "calculator" },
   shipments: { label: "Shipments", icon: "truck", route: "shipments" },
   users: { label: "Roles & users", icon: "shield", route: "admin" },
   focused_editor: { label: "Quick Editor", icon: "filter", route: "focused_editor" },
@@ -13649,6 +13652,8 @@ function ConversationsScreen({ me, ctx }) {
 }
 
 function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
+  const { hasPermission, isAdmin } = usePermissions();
+  const canRx = isAdmin || hasPermission('can_view_prescriptions_tab');
   switch (route.key) {
     case "home": return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
     case "submissions": return <SubmissionsScreen openCustomer={openCustomer} openSubmission={openSubmission} />;
@@ -13660,6 +13665,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
     case "conversations": return <ConversationsScreen me={me} ctx={route.ctx} />;
     case "crm_orders": return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
+    case "calculator": return <PriceCalculator me={me} canRx={canRx} />;
     case "shipments": return <ShipmentsScreen ctx={route.ctx} />;
     // "marketing" was merged into the unified Analytics Dashboard ("home");
     // stale saved routes fall through to the default Dashboard render.

@@ -11,7 +11,7 @@
  *     caller, name, norm, converted(bool), work, product?, category?, paymentMode? }
  * ========================================================================== */
 import { fetchAll } from '../api/sheets';
-import { field, parseDate } from '../utils/dataProcessor';
+import { field, parseDate, toNumber } from '../utils/dataProcessor';
 
 // Unified status buckets used everywhere (the funnel + KPIs), in funnel order.
 export const STATUSES = ['Converted', 'Connected', 'Ringing', 'Not Connected', 'Follow Up', 'Other'];
@@ -43,12 +43,22 @@ function isLeadRow(r) {
   return (named || num) && !named.toLowerCase().includes('#');
 }
 
+// First of the current month (ISO). The monthly tabs are auto-resolved to the
+// current month, so an undated lead in the tab still belongs to this month.
+function monthStartISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+}
+
 /** Map one raw sheet row to a unified row, or null if it can't be placed. */
 function unifyRow(r, source, idx) {
   if (!isLeadRow(r)) return null;
 
-  const iso = toISO(parseDate(field(r, 'Date (Leads)', 'Date Leads', 'Date')));
-  if (!iso) return null; // undated rows can't sit on the timeline / date windows
+  // A real lead with a blank/garbled Date still counts toward the month's totals —
+  // fall it back to the 1st of the current month (keeps it in "This Month", out of "Today").
+  let iso = toISO(parseDate(field(r, 'Date (Leads)', 'Date Leads', 'Date')));
+  const dateApprox = !iso;
+  if (!iso) iso = monthStartISO();
 
   const callerRaw = String(field(r, 'Caller 1', 'Caller Name', 'Caller') ?? '').trim();
   const caller = (!callerRaw || callerRaw.toLowerCase() === 'none') ? 'Unassigned' : titleCase(callerRaw);
@@ -65,6 +75,7 @@ function unifyRow(r, source, idx) {
     id: `${source[0].toUpperCase()}${idx}`,
     source,
     date: iso,
+    dateApprox,
     caller,
     name: titleCase(field(r, 'Name')) || '—',
     norm: statusBucket,
@@ -78,6 +89,41 @@ function unifyRow(r, source, idx) {
     row.category = titleCase(category) || work;
   }
   return row;
+}
+
+/**
+ * Map one raw Men's Wellness ORDERS row to an order, or null if unusable.
+ * Every row is a delivered order: Product Value = ₹ amount, Pdt Name = product,
+ * Date = order date (DD-MM-YYYY), Lead Source = channel (Quick Reply / Healthscore).
+ */
+function unifyOrder(r, idx) {
+  const iso = toISO(parseDate(field(r, 'Date', 'Order Date', 'Delivered Date')));
+  const value = toNumber(field(r, 'Product Value', 'Order Value', 'Amount')) || 0;
+  const product = String(field(r, 'Pdt Name', 'Product Name', 'Product') ?? '').trim();
+  if (!iso || (!value && !product)) return null; // blank / header-ish row
+
+  // leadSource = the ACTUAL "Lead Source" value (dynamic — can be Quick Reply,
+  // Healthscore, or anything else). `source` is a coarse binary used only by the
+  // health-vs-quick source filter; the orders-by-source panel groups on leadSource.
+  const rawLs = String(field(r, 'Lead Source', 'Source') ?? '').trim();
+  const source = rawLs.toLowerCase().includes('health') ? 'healthscore' : 'quickreply';
+  // Payment mode from the Men's "Mode" column: COD | Prepaid | Partially Paid.
+  const modeRaw = String(field(r, 'Mode', 'Payment Mode', 'Mode of Payment') ?? '').trim().toLowerCase();
+  const mode = modeRaw.includes('cod') ? 'COD'
+    : modeRaw.includes('partial') ? 'Partial'
+    : (modeRaw.includes('prepaid') || modeRaw.includes('paid')) ? 'Prepaid'
+    : 'Other';
+  return {
+    id: `M${idx}`,
+    source,
+    leadSource: titleCase(rawLs) || 'Other',
+    mode,
+    date: iso,
+    value,
+    product: titleCase(product) || '—',
+    qty: toNumber(field(r, 'Qty', 'Quantity')) || 1,
+    agent: titleCase(field(r, 'Agent Name', 'Caller')) || 'Unassigned',
+  };
 }
 
 function buildMeta(rows) {
@@ -104,10 +150,52 @@ function buildMeta(rows) {
  * Fetch both live lead sheets, map every row into the unified shape, and build
  * the meta the dashboard needs. Never throws — returns empty rows on failure.
  */
+/** Monthly aggregate used for the top-row KPIs + month-over-month deltas. */
+function aggregate(rows, orders) {
+  const cnt = (n) => rows.filter((r) => r.norm === n).length;
+  return {
+    total: rows.length,
+    connected: cnt('Connected'), ringing: cnt('Ringing'),
+    notConn: cnt('Not Connected'), followUp: cnt('Follow Up'), other: cnt('Other'),
+    orders: orders.length,
+    revenue: orders.reduce((s, o) => s + (o.value || 0), 0),
+  };
+}
+
+const mapRows = (sheet, source) => {
+  const out = [];
+  (sheet.rows || []).forEach((r, i) => { const u = unifyRow(r, source, i); if (u) out.push(u); });
+  return out;
+};
+const mapOrders = (sheet) => {
+  const out = [];
+  (sheet.rows || []).forEach((r, i) => { const o = unifyOrder(r, i); if (o) out.push(o); });
+  return out;
+};
+
 export async function loadData() {
-  const { health, quick } = await fetchAll();
-  const rows = [];
-  (health.rows || []).forEach((r, i) => { const u = unifyRow(r, 'healthscore', i); if (u) rows.push(u); });
-  (quick.rows || []).forEach((r, i) => { const u = unifyRow(r, 'quickreply', i); if (u) rows.push(u); });
-  return { rows, meta: buildMeta(rows), tabs: { health: health.tab, quick: quick.tab } };
+  const { health, quick, mens, healthPrev, quickPrev, mensPrev } = await fetchAll();
+
+  // CURRENT month — leads (health+quick) + orders (mens, kept SEPARATE from leads).
+  const rows = [...mapRows(health, 'healthscore'), ...mapRows(quick, 'quickreply')];
+  const orders = mapOrders(mens);
+
+  // PREVIOUS month — aggregate only the SAME month-to-date window as the current
+  // month (e.g. on Jul 6 compare Jul 1–6 vs Jun 1–6), so an early-month total isn't
+  // unfairly compared against a full prior month.
+  const dayCutoff = new Date().getDate();
+  const inMTD = (r) => { const d = Number(String(r.date).split('-')[2]); return d >= 1 && d <= dayCutoff; };
+  const prevRows = [...mapRows(healthPrev, 'healthscore'), ...mapRows(quickPrev, 'quickreply')].filter(inMTD);
+  const prevOrders = mapOrders(mensPrev).filter(inMTD);
+  const prevAgg = aggregate(prevRows, prevOrders);
+  prevAgg.tab = { health: healthPrev.tab, quick: quickPrev.tab, mens: mensPrev.tab };
+
+  // ok:true only when all three CURRENT sheets loaded — keeps last-good data on a
+  // transient partial failure. Previous-month failures just make deltas neutral.
+  const ok = health.ok && quick.ok && mens.ok;
+  return {
+    rows, orders, prevAgg, ok,
+    meta: buildMeta(rows),
+    tabs: { health: health.tab, quick: quick.tab, mens: mens.tab },
+  };
 }

@@ -14,6 +14,9 @@ const SHEETS = {
   // Quick Reply Leads — per-lead monthly "<Month> <Year>" tab
   // (Name, Caller 1, Status [Order Placed = conversion], Date, …).
   quick: { id: process.env.SHEET_ID_QUICK, tab: process.env.SHEET_TAB_QUICK || 'auto:month' },
+  // Men's Wellness — monthly "<Month> <Year>" ORDERS board (every row = a delivered
+  // order). Columns include Date, Pdt Name, Product Value, Qty. Revenue basis.
+  mens: { id: process.env.SHEET_ID_MENS, tab: process.env.SHEET_TAB_MENS || 'auto:month' },
 };
 
 const MONTH_NAMES = [
@@ -24,6 +27,12 @@ const MONTH_NAMES = [
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly'];
 
 let cachedAuth = null;
+
+// Resolving the monthly tab needs an extra spreadsheets.get call. The tab title
+// only changes once a month, so cache it per sheet (per warm instance) to roughly
+// halve our Google API reads and stay under the per-minute quota.
+const TAB_TTL_MS = 10 * 60 * 1000;
+const tabCache = {}; // which -> { title, ts }
 
 /**
  * Build a GoogleAuth client. Two ways to provide the service-account key:
@@ -49,14 +58,18 @@ const quoteTitle = (t) => `'${String(t).replace(/'/g, "''")}'`;
  * Resolve the current "<Month> <Year><suffix>" tab (e.g. suffix " After Consultation"),
  * falling back to the latest such tab not in the future, else the latest overall.
  */
-function resolveMonthlyTab(tabs, suffix = '') {
-  const now = new Date();
-  const wanted = `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}${suffix}`.trim().toLowerCase();
+function resolveMonthlyTab(tabs, suffix = '', monthOffset = 0) {
+  // Reference month = current month shifted by monthOffset (0 = current, -1 = previous).
+  const base = new Date();
+  const ref = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
+  // Match ENTIRELY case-insensitively (tabs vary: "may 2026 leads", "June 2026 LEADS", "July 2026").
+  const wanted = `${MONTH_NAMES[ref.getMonth()]} ${ref.getFullYear()}${suffix}`.trim().toLowerCase();
   const exact = tabs.find((p) => p.title.trim().toLowerCase() === wanted);
   if (exact) return exact.title;
   const suf = suffix.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`^([A-Za-z]+)\\s+(\\d{4})${suf ? `\\s+${suf}` : ''}\\s*$`, 'i');
-  const nowTime = now.getTime();
+  // Fallback: newest matching tab not after the reference month's end.
+  const refEnd = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getTime();
   const dated = tabs
     .map((p) => {
       const m = p.title.trim().match(re);
@@ -65,7 +78,7 @@ function resolveMonthlyTab(tabs, suffix = '') {
       return idx < 0 ? null : { title: p.title, t: new Date(Number(m[2]), idx, 1).getTime() };
     })
     .filter(Boolean);
-  const past = dated.filter((x) => x.t <= nowTime).sort((a, b) => b.t - a.t);
+  const past = dated.filter((x) => x.t <= refEnd).sort((a, b) => b.t - a.t);
   if (past.length) return past[0].title;
   if (dated.length) return dated.sort((a, b) => b.t - a.t)[0].title;
   return null;
@@ -75,16 +88,16 @@ function resolveMonthlyTab(tabs, suffix = '') {
  * Resolve which tab title to read for a sheet, given its `tab` spec.
  * Returns the tab title (unquoted) or null to read the first tab.
  */
-async function resolveTabTitle(sheets, spreadsheetId, tabSpec) {
+async function resolveTabTitle(sheets, spreadsheetId, tabSpec, monthOffset = 0) {
   const meta = await sheets.spreadsheets.get({
     spreadsheetId,
     fields: 'sheets(properties(sheetId,title))',
   });
   const tabs = (meta.data.sheets || []).map((s) => s.properties);
 
-  if (tabSpec === 'auto:month') return resolveMonthlyTab(tabs, '');
-  if (tabSpec === 'auto:leads') return resolveMonthlyTab(tabs, ' LEADS');
-  if (tabSpec === 'auto:afterconsult') return resolveMonthlyTab(tabs, ' After Consultation');
+  if (tabSpec === 'auto:month') return resolveMonthlyTab(tabs, '', monthOffset);
+  if (tabSpec === 'auto:leads') return resolveMonthlyTab(tabs, ' LEADS', monthOffset);
+  if (tabSpec === 'auto:afterconsult') return resolveMonthlyTab(tabs, ' After Consultation', monthOffset);
 
   if (/^\d+$/.test(String(tabSpec || ''))) {
     const byGid = tabs.find((p) => String(p.sheetId) === String(tabSpec));
@@ -102,9 +115,12 @@ async function resolveTabTitle(sheets, spreadsheetId, tabSpec) {
 export default async function handler(req, res) {
   const which = req.query.which;
   const cfg = SHEETS[which];
+  // month=prev reads the PREVIOUS month's tab (for month-over-month deltas); default current.
+  const monthOffset = String(req.query.month || '') === 'prev' ? -1 : 0;
+  const cacheKey = `${which}:${monthOffset}`;
 
   if (!cfg) {
-    return res.status(400).json({ error: `Unknown sheet "${which}". Use which=health|quick.` });
+    return res.status(400).json({ error: `Unknown sheet "${which}". Use which=health|quick|mens.` });
   }
   if (!cfg.id) {
     return res.status(500).json({ error: `Missing sheet ID env var for "${which}".` });
@@ -113,7 +129,14 @@ export default async function handler(req, res) {
   try {
     const auth = getAuth();
     const sheets = google.sheets({ version: 'v4', auth });
-    const title = await resolveTabTitle(sheets, cfg.id, cfg.tab);
+    let title;
+    const cached = tabCache[cacheKey];
+    if (cached && Date.now() - cached.ts < TAB_TTL_MS) {
+      title = cached.title;
+    } else {
+      title = await resolveTabTitle(sheets, cfg.id, cfg.tab, monthOffset);
+      tabCache[cacheKey] = { title, ts: Date.now() };
+    }
     const range = title ? quoteTitle(title) : 'A:Z';
     const { data } = await sheets.spreadsheets.values.get({
       spreadsheetId: cfg.id,
