@@ -3,7 +3,7 @@ import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "./firebase";
 import { CONVERSATIONS_COLLECTION } from "./config";
 
-// Live-subscribe to qr_conversations/{docId}/events ordered by savedAt.
+// Live-subscribe to conversations/{convId}/messages ordered by msgTime.
 // Returns { events, status } where status is "online" | "connecting" | "offline".
 export function useConversation(docId) {
   const [events, setEvents] = useState([]);
@@ -23,8 +23,8 @@ export function useConversation(docId) {
     }
     setStatus("connecting");
     const q = query(
-      collection(db, CONVERSATIONS_COLLECTION, docId, "events"),
-      orderBy("savedAt")
+      collection(db, CONVERSATIONS_COLLECTION, docId, "messages"),
+      orderBy("msgTime")
     );
     const unsub = onSnapshot(
       q,

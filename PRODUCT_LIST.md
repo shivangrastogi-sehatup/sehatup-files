@@ -3,7 +3,6 @@
 | Product Name | Selling Price (INR) | MRP (INR) | 10% Off Price (INR) |
 | :--- | :--- | :--- | :--- |
 | Aloezy ( Intimate Foam Wash) - Best intimate wash for Womens | ₹349.00 | ₹461.00 | ₹314.10 |
-| Aloezy Sample – Intimate Foam Wash | ₹0.00 | ₹0.00 | ₹0.00 |
 | Ashwagandha 30 Tablets (Free sample) | ₹399.00 | ₹399.00 | ₹359.10 |
 | Ashwagandha Tablets | ₹499.00 | ₹738.00 | ₹449.10 |
 | Boombatti- Stay up late, dominate fate | ₹1499.00 | ₹2433.00 | ₹1349.10 |
@@ -24,7 +23,7 @@
 | Orlistat 60 mg (Smart Science for a Leaner You) | ₹599.00 | ₹737.00 | ₹539.10 |
 | Pure Himalayan Shilajit Resin - 20g - SehatUP | ₹1349.00 | ₹2309.00 | ₹1214.10 |
 | Rocket Ras- No delay, just play-rocket your way | ₹1399.00 | ₹2338.00 | ₹1259.10 |
-| Sample Handling Fee | ₹10.00 | ₹10.00 | ₹9.00 |
+| Shilajit Honey Sticks | ₹899.00 | ₹1399.00 | ₹809.10 |
 | Slimtox Energy Tea | ₹399.00 | ₹449.00 | ₹359.10 |
 | Tadala + Dapox (Mighty) | ₹400.00 | ₹554.00 | ₹360.00 |
 | Tadalafil 5 Mg (Hard 5) | ₹217.00 | ₹217.00 | ₹195.30 |

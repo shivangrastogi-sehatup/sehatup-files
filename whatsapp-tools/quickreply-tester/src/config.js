@@ -4,7 +4,7 @@
 //  customer's phone → the business number. No API can do that. So the tester
 //  redirects the user into WhatsApp (wa.me deep link) to say "Hi" themselves;
 //  that real message opens the window and starts the n8n flow. The tester then
-//  just LISTENS to qr_conversations/{phone}/events to detect the bridge and
+//  just LISTENS to conversations/{convId}/messages to detect the bridge and
 //  render the live chat.
 //
 //  N8N_WEBHOOK_URL is still used by the composer to send follow-up customer
@@ -22,8 +22,9 @@ export const BOT_NAME = import.meta.env.VITE_BOT_NAME || "SehatUp";
 // Optional shared key — only needed if you set QR_TESTER_KEY in functions/.env.
 export const TESTER_KEY = import.meta.env.VITE_QR_TESTER_KEY || "";
 
+// Unified store the n8n flow + Cloud Function now write to (was "qr_conversations").
 export const CONVERSATIONS_COLLECTION =
-  import.meta.env.VITE_CONVERSATIONS_COLLECTION || "qr_conversations";
+  import.meta.env.VITE_CONVERSATIONS_COLLECTION || "conversations";
 
 // Fixed country code — the +91 prefix is not editable in the UI.
 export const COUNTRY_CODE = "91";

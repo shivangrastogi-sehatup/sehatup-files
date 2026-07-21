@@ -8,7 +8,7 @@ import { searchCustomers, getAllOrders, getOrdersChannelMap, getCustomersCount, 
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth, storage, functions } from './firebase';
 import { httpsCallable } from 'firebase/functions';
-import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField } from 'firebase/firestore';
+import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { computeAnalytics } from "./utils/analytics";
 import * as XLSX from 'xlsx';
@@ -13378,8 +13378,10 @@ const convoInitial = (c) => {
   const ch = Array.from(convoTitle(c).trim())[0] || 'U';   // Array.from → full emoji code point
   return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;        // uppercase letters; keep emoji/digit as-is
 };
-// Conversations (WhatsApp inbox) isn't live yet — the screen shows a "Coming soon"
-// placeholder. Flip this to true to re-enable the real inbox.
+// Conversations (WhatsApp inbox). Kept OFF for now: with QuickReply → n8n only, the
+// `conversations` collection isn't being filled (needs n8n to feed it), so the inbox
+// would show stale data. Flip to true once n8n writes the `conversations` collection.
+// The list/pagination/search + per-number AI controls below are ready and gated on this.
 const CONVERSATIONS_LIVE = false;
 function ConversationsScreen({ me, ctx }) {
   const [convos, setConvos] = useState([]);
@@ -13396,10 +13398,25 @@ function ConversationsScreen({ me, ctx }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
+  const [aiConfig, setAiConfig] = useState(null);   // qr_config/chatbot: { mode, testNumbers, blockedNumbers }
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
   const threadEndRef = useRef(null);
 
   // Open a specific conversation when navigated here with one (dashboard stat modal → chat).
   useEffect(() => { if (ctx?.selectId) setSelectedId(ctx.selectId); }, [ctx?.selectId]);
+
+  // Live AI master-switch config (qr_config/chatbot) — the same doc the n8n chatbot reads.
+  useEffect(() => {
+    const fallback = { mode: 'on', testNumbers: [], blockedNumbers: [] };
+    const unsub = onSnapshot(doc(db, 'qr_config', 'chatbot'),
+      s => setAiConfig(s.exists() ? s.data() : fallback),
+      () => setAiConfig(fallback));
+    return unsub;
+  }, []);
+
+  // Reset to first page whenever the visible list changes.
+  useEffect(() => { setPage(1); }, [search, filter, datePreset, customRange]);
 
   // Live conversation list (most-recent first). The date range is pushed into the QUERY (not just
   // filtered client-side) so it spans the full collection, not only the latest page; the cap is
@@ -13459,6 +13476,36 @@ function ConversationsScreen({ me, ctx }) {
     if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q));
     return list;
   }, [convos, filter, search, datePreset, customRange, me?.uid]);
+
+  // ── Pagination (client-side over the loaded, latest-first list) ──
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+
+  // ── Per-number AI control (writes qr_config/chatbot — read live by the n8n bot) ──
+  const aiMode = (aiConfig?.mode || 'on').toLowerCase();
+  const inList = (list, p) => Array.isArray(list) && list.map(String).includes(String(p || '').trim());
+  const isBlocked = (p) => inList(aiConfig?.blockedNumbers, p);
+  const isTest = (p) => inList(aiConfig?.testNumbers, p);
+  const aiStatusFor = (p) => {
+    if (isBlocked(p)) return { label: 'AI blocked', color: 'var(--risk-critical)' };
+    if (aiMode === 'off') return { label: 'AI paused', color: 'var(--muted)' };
+    if (aiMode === 'test') return isTest(p)
+      ? { label: 'AI on (test)', color: 'var(--accent-ink)' }
+      : { label: 'AI off', color: 'var(--muted)' };
+    return { label: 'AI on', color: 'var(--accent-ink)' };
+  };
+  const updateAiList = async (field, phone, add) => {
+    const val = String(phone || '').trim();
+    if (!val) return;
+    try {
+      await setDoc(doc(db, 'qr_config', 'chatbot'),
+        { [field]: add ? arrayUnion(val) : arrayRemove(val), updatedAt: Date.now() },
+        { merge: true });
+    } catch (e) { setError(e?.message || 'Failed to update AI setting.'); }
+  };
+  const toggleTest = (phone) => updateAiList('testNumbers', phone, !isTest(phone));
+  const toggleBlock = (phone) => updateAiList('blockedNumbers', phone, !isBlocked(phone));
 
   const sendMessage = async () => {
     const text = draft.trim();
@@ -13541,7 +13588,7 @@ function ConversationsScreen({ me, ctx }) {
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {loading && <div className="muted" style={{ padding: 20, textAlign: 'center', fontSize: 13 }}>Loading…</div>}
             {!loading && filtered.length === 0 && <div className="muted" style={{ padding: 20, textAlign: 'center', fontSize: 13 }}>No conversations yet.</div>}
-            {filtered.map(c => (
+            {paged.map(c => (
               <div key={c.id} onClick={() => setSelectedId(c.id)}
                 style={{ display: 'flex', gap: 10, padding: '11px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', background: c.id === selectedId ? 'var(--accent-soft)' : 'transparent' }}>
                 <div className="avatar sm" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)', fontWeight: 700, flexShrink: 0 }}>
@@ -13558,12 +13605,20 @@ function ConversationsScreen({ me, ctx }) {
                       {c.lastMessageBy === 'AGENT' ? 'You: ' : ''}{c.lastMessage || ''}
                     </span>
                     <span className="spacer" />
+                    <span title={aiStatusFor(c.phone).label} style={{ width: 7, height: 7, borderRadius: '50%', background: aiStatusFor(c.phone).color, flexShrink: 0 }} />
                     {c.unreadCount > 0 && <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '0 6px', minWidth: 18, textAlign: 'center', flexShrink: 0 }}>{c.unreadCount}</span>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          {totalPages > 1 && (
+            <div className="hstack-8" style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button className="btn sm ghost" disabled={pageSafe <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
+              <span className="muted" style={{ fontSize: 11 }}>Page {pageSafe} / {totalPages} · {filtered.length} chats</span>
+              <button className="btn sm ghost" disabled={pageSafe >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
+            </div>
+          )}
         </div>
 
         {/* ── Thread ───────────────────────────────────────── */}
@@ -13643,6 +13698,29 @@ function ConversationsScreen({ me, ctx }) {
                 </div>
               </div>
               <div><div className="muted" style={{ fontSize: 11 }}>Assigned to</div><div className="fw5" style={{ fontSize: 13 }}>{selected.assignedToName || (selected.assignedTo ? 'Someone' : 'Unassigned')}</div></div>
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                <div className="section-title" style={{ marginBottom: 8 }}>AI Assistant</div>
+                <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>
+                  Global mode: <b style={{ textTransform: 'uppercase' }}>{aiMode}</b>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <span className="badge" style={{ background: 'var(--accent-soft)', color: aiStatusFor(selected.phone).color, fontWeight: 600 }}>
+                    {aiStatusFor(selected.phone).label}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button className="btn sm w-full" style={{ justifyContent: 'center' }} onClick={() => toggleTest(selected.phone)}>
+                    {isTest(selected.phone) ? 'Remove from test list' : 'Add to test list'}
+                  </button>
+                  <button className="btn sm w-full" style={{ justifyContent: 'center', color: isBlocked(selected.phone) ? 'var(--accent-ink)' : 'var(--risk-critical)' }} onClick={() => toggleBlock(selected.phone)}>
+                    {isBlocked(selected.phone) ? 'Unblock AI for this number' : 'Block AI (never reply)'}
+                  </button>
+                </div>
+                <div className="muted" style={{ fontSize: 10.5, marginTop: 8, lineHeight: 1.5 }}>
+                  “Test list” = AI replies to this number when global mode is <b>test</b>. “Block” = AI never replies to this number, in any mode.
+                </div>
+              </div>
             </div>
           )}
         </div>

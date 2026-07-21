@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { useConversation } from "./useConversation";
 import { getFns } from "./firebase";
-import { buildTimeline, reconciledIds, classify, fmtTime, fmtFull, dayLabel, toMillis, genId } from "./utils";
+import { buildTimeline, reconciledIds, fmtTime, fmtFull, dayLabel, toMillis, genId } from "./utils";
 import { N8N_WEBHOOK_URL, TESTER_KEY, WINDOW_MS } from "./config";
 import exitIcon from "./assets/exit.png";
 
@@ -128,22 +128,23 @@ export default function ChatScreen({ session, onLogout }) {
 
   const timeline = useMemo(() => buildTimeline(events, pending), [events, pending]);
 
-  // 24h window opens on the LAST inbound customer message (USER_* → "out") and
+  // 24h window opens on the LAST inbound customer message (direction 'in') and
   // expires 24h later. Sync the indicator to that real message time.
   const lastCustomerAt = useMemo(() => {
     let max = 0;
     for (const e of events) {
-      if (classify(e.type) === "out") max = Math.max(max, toMillis(e.savedAt));
+      if (e.direction === "in") max = Math.max(max, toMillis(e.msgTime));
     }
     return max;
   }, [events]);
   const windowExpiresAt = lastCustomerAt ? lastCustomerAt + WINDOW_MS : 0;
   const windowLeft = windowExpiresAt ? fmtCountdown(windowExpiresAt - now) : null;
 
+  // Waiting for a bot/agent reply = an outbound message newer than our last send.
   const waitingReply =
     !clearing &&
     !!lastSentAt &&
-    !events.some((e) => classify(e.type) === "in" && toMillis(e.savedAt) > toMillis(lastSentAt));
+    !events.some((e) => e.direction === "out" && toMillis(e.msgTime) > toMillis(lastSentAt));
 
   useEffect(() => {
     const el = scrollRef.current;

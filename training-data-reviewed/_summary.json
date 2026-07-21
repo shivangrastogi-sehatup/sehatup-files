@@ -1,0 +1,70 @@
+{
+  "total": 144,
+  "byReviewer": {
+    "Roy": 9,
+    "Shivang": 138,
+    "Shivam": 11
+  },
+  "chunks": [
+    {
+      "file": "chunk-00_2026-07-07_synthetic.jsonl",
+      "reviewedKept": 16,
+      "edited": 6,
+      "original": 18
+    },
+    {
+      "file": "chunk-01_2026-06-16_2026-06-30.jsonl",
+      "reviewedKept": 20,
+      "edited": 17,
+      "original": 410
+    },
+    {
+      "file": "chunk-03_2026-05-17_2026-05-31.jsonl",
+      "reviewedKept": 66,
+      "edited": 46,
+      "original": 296
+    },
+    {
+      "file": "chunk-05_2026-04-17_2026-05-01.jsonl",
+      "reviewedKept": 20,
+      "edited": 17,
+      "original": 44
+    },
+    {
+      "file": "chunk-06_2026-04-02_2026-04-16.jsonl",
+      "reviewedKept": 2,
+      "edited": 2,
+      "original": 66
+    },
+    {
+      "file": "chunk-07_2026-03-18_2026-04-01.jsonl",
+      "reviewedKept": 5,
+      "edited": 2,
+      "original": 16
+    },
+    {
+      "file": "chunk-08_2026-03-03_2026-03-17.jsonl",
+      "reviewedKept": 8,
+      "edited": 4,
+      "original": 13
+    },
+    {
+      "file": "chunk-10_2026-02-01_2026-02-15.jsonl",
+      "reviewedKept": 5,
+      "edited": 2,
+      "original": 16
+    },
+    {
+      "file": "chunk-24_2025-07-06_2025-07-20.jsonl",
+      "reviewedKept": 1,
+      "edited": 1,
+      "original": 24
+    },
+    {
+      "file": "chunk-25_2025-06-21_2025-07-05.jsonl",
+      "reviewedKept": 1,
+      "edited": 0,
+      "original": 4
+    }
+  ]
+}

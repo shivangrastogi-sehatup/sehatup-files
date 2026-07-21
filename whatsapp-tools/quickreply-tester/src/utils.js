@@ -9,6 +9,23 @@ export function classify(type) {
   return "status";
 }
 
+// Unified conversations/{convId}/messages schema. From the CUSTOMER's point of view:
+//   direction 'in'  = customer → business (their own message) → right bubble ("out")
+//   direction 'out' = business → customer (AI or human agent)  → left bubble  ("in")
+export function classifyMsg(m) {
+  if (m.direction === "in") return "out";
+  if (m.direction === "out") return "in";
+  return "status";
+}
+
+// Message text, or the placeholder label when QuickReply gave us no content
+// (human-agent / bot messages arrive text-less as AGENT_PLACEHOLDER / BOT_PLACEHOLDER).
+export function msgText(m) {
+  if (m.text) return m.text;
+  if (m.placeholder) return m.placeholder;
+  return "";
+}
+
 // savedAt / msgTime can be a Firestore Timestamp, an ISO string, or a number of
 // millis. Normalize any of them to epoch millis (0 if unparseable).
 export function toMillis(v) {
@@ -62,13 +79,13 @@ export function genId() {
 // identical text never collapses or disappears. A
 // pending bubble shows immediately and is replaced by the real event once it
 // arrives in Firestore carrying the same msgId.
-export function buildTimeline(events, pending, locals = []) {
-  const items = events.map((ev) => ({
-    key: ev.id,
-    kind: classify(ev.type),
-    text: ev.text || ev.event || "",
-    ts: ev.savedAt || "",
-    type: ev.type,
+export function buildTimeline(messages, pending, locals = []) {
+  const items = messages.map((m) => ({
+    key: m.id,
+    kind: classifyMsg(m),
+    text: msgText(m),
+    ts: m.msgTime != null ? m.msgTime : (m.createdAt || 0),
+    type: m._type,
   }));
 
   // local-only messages carry their own explicit kind ("in" | "out" | "status")
@@ -76,11 +93,12 @@ export function buildTimeline(events, pending, locals = []) {
     items.push({ key: l.id, kind: l.kind, text: l.text, ts: l.ts, type: l.type });
   }
 
-  // ids already persisted in Firestore — their optimistic twins are dropped
-  const knownIds = new Set(events.map((e) => e.msgId).filter(Boolean));
+  // A customer's sent id becomes the message doc id (CF stores doc(String(b.id))),
+  // so once the real message lands its optimistic twin is dropped.
+  const knownIds = new Set(messages.map((m) => m.id).filter(Boolean));
 
   for (const p of pending) {
-    if (knownIds.has(p.id)) continue; // real event exists, skip the optimistic one
+    if (knownIds.has(p.id)) continue; // real message exists, skip the optimistic one
     items.push({ key: p.id, kind: p.kind, text: p.text, ts: p.ts, pending: true });
   }
 
@@ -89,7 +107,7 @@ export function buildTimeline(events, pending, locals = []) {
 }
 
 // ids of pending messages that now have a real Firestore event (used to prune state)
-export function reconciledIds(events, pending) {
-  const known = new Set(events.map((e) => e.msgId).filter(Boolean));
+export function reconciledIds(messages, pending) {
+  const known = new Set(messages.map((m) => m.id).filter(Boolean));
   return pending.filter((p) => known.has(p.id)).map((p) => p.id);
 }

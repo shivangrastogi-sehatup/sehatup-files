@@ -2579,14 +2579,14 @@ exports.qrTestClear = onCall({ region: "us-central1" }, async (request) => {
   if (!to) throw new HttpsError("invalid-argument", "Recipient phone is required.");
 
   const db = getFirestore();
-  const docId = qrConvId(to);
-  const eventsRef = db.collection("qr_conversations").doc(docId).collection("events");
+  const convId = qrConvId(to);
+  const messagesRef = db.collection("conversations").doc(convId).collection("messages");
 
   let deleted = 0;
   // delete in batches of 300 until the subcollection is empty
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const snap = await eventsRef.limit(300).get();
+    const snap = await messagesRef.limit(300).get();
     if (snap.empty) break;
     const batch = db.batch();
     snap.docs.forEach((d) => batch.delete(d.ref));
@@ -2595,12 +2595,9 @@ exports.qrTestClear = onCall({ region: "us-central1" }, async (request) => {
     if (snap.size < 300) break;
   }
 
-  // reset the parent doc's summary fields too
-  await db.collection("qr_conversations").doc(docId).set({
-    lastUserMessage: "",
-    lastAiReply: "",
-    lastUpdated: new Date().toISOString(),
-  }, { merge: true });
+  // Delete the parent conversation doc too, so the bot starts a truly fresh chat
+  // (resets lastMessage / windowExpiresAt / unreadCount / assignment).
+  await db.collection("conversations").doc(convId).delete().catch(() => {});
 
   return { success: true, deleted };
 });

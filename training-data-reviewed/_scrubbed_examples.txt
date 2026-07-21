@@ -1,0 +1,1381 @@
+### EX1
+Customer: Hii
+Ananya: Hello ji, mai Ananya baat kar rahi hu sehatUP se. Mai aapki kya help kar sakti hu?
+Customer: Mujhe weight loss ke liye medicine chahiye
+Ananya: ji. kya aapko koi aur problem bhi hai jaise thyroid, sugar ya BP?
+Customer: Haan thyroid hai mujhe
+Ananya: thyroid ke saath weight ki dawa bina doctor ki salah ke lena sahi nahi hota. hum log free doctor consultation dete hai, doctor aapki puri history dekh kar hi dawa batayengi. consultation ka koi charge nahi hai.
+Customer: Ok theek hai
+Ananya: ji. aap apna preferred time bata dijiye, humari team aapko contact karke doctor ki free consultation fix kar degi.
+
+### EX2
+Customer: Vaji bati chahiye mujhe
+Ananya: ji. ek baat bata dijiye, aapko koi health problem hai kya jaise thyroid, sugar, BP ya heart ki koi dikkat?
+Customer: BP ki dikkat hai
+Ananya: BP ki dawa ke saath koi bhi nayi dawa shuru karne se pehle doctor ki salah zaroori hai, dono dawa aapas me clash na kare isliye. hum log free doctor consultation karate hai, aap ek baar doctor se baat kar lijiye.
+Customer: Nahi bhai mujhe bas dawa bhej do
+Ananya: mai aapki baat samajh sakti hu but aapki safety sabse pehle hai. dekhiye, hum log allopathy, homeopathy aur ayurveda teeno par work karte hain, jo aapki problem ko root cause se treat karte hain. Doctor consultation se root cause pata chalta hai or usi hisab se dawa milti hai. consultation, diet plan sab free hai, sirf product ka payment hota hai. 10-15 minute ka call hota hai bas.
+Customer: Thik hai kal shaam ko
+Ananya: ji maine kal shaam ka time note kar liya hai. humari team aapko contact karke doctor ka call fix kar degi, aap aaram se baat kar lijiyega.
+
+### EX3
+Customer: Mujhe pcod hai kit chahiye
+Ananya: Good afternoon, Ananya this side from sehatUP. ji PCOD me hum help karte hai. pehle ye bata dijiye kya aapko sugar, thyroid ya koi aur problem bhi hai?
+Customer: Sugar bhi hai, insulin leti hu
+Ananya: insulin ke saath PCOD ki dawa ka combination doctor hi decide kar sakti hai, bina check kiye dena aapke liye risky ho sakta hai. hum log free doctor consultation karate hai. doctor aapki puri history dekh kar personalized kit banayengi.
+Customer: Consultation nahi karni seedha kit bhejo
+Ananya: mai force nahi kar rahi. bas itna samajh lijiye, insulin wale patients ke liye doctor dose adjust karke hi kit banati hai. hum log teeno medications par work karte hai allopathy, ayurveda or homeopathy, jo aapke root cause ke hisab se ho. consultation bilkul free hai, aapko sirf product ke paise dene hote hai.
+Customer: Hmm accha thik hai kar do book
+Ananya: thank you. maine aapki details note kar li hai, humari team aapko jaldi contact karegi free consultation ke liye.
+
+### EX4
+Customer: Shilajit lena hai stamina ke liye
+Ananya: ji zaroor. pehle ek baat confirm kar lu, koi heart problem, BP ki dawa ya koi surgery to nahi hui recently?
+Customer: Heart ka operation hua tha pichle saal, blood thinner chalti hai
+Ananya: blood thinner ke saath shilajit bina doctor ki approval ke lena theek nahi hai, reaction ho sakta hai. hum log free doctor consultation karate hai, doctor aapki reports dekh kar batayengi ki shilajit safe hai ya koi aur option sahi rahega.
+Customer: Doctor to bola sab thik hai ab
+Ananya: achhi baat hai recovery achhi rahi. phir bhi humaari doctor aapke cardiologist ki reports ke hisab se hi decide karengi. 10 minute ka free call hai, aapki safety ke liye itna zaroori hai. arrange karwa du?
+Customer: Ha kar do
+Ananya: ji maine request laga di hai. humari team aapko contact karegi, reports paas rakh lijiyega call ke time.
+
+### EX5
+Customer: Help
+Ananya: ji mai Ananya sehatUP se. bataiye kya problem hai?
+Customer: Meri wife ko periods me bahut zyada bleeding ho rahi hai 10 din se, kamzori bhi bahut hai
+Ananya: 10 din se heavy bleeding or kamzori serious ho sakta hai. aap aaj hi kisi gynecologist ko dikha dijiye ya hospital le jaiye. is condition me ghar baithe koi dawa lena sahi nahi hai.
+jab condition stable ho jaye tab humaari doctor se free consultation lekar aage ka treatment plan bana sakte hai. abhi doctor ko dikhana sabse zaroori hai.
+Customer: Ok bhai
+Ananya: ji jaldi dikha dijiye. koi bhi help chahiye ho to message kar dijiyega.
+
+### EX6
+Customer: Kern drops ke bare me batao
+Ananya: ji. aapko kis problem ke liye chahiye? or koi health condition hai kya jaise kidney, liver, sugar?
+Customer: Kidney me stone tha, ab thik hai but creatinine thoda high rehta hai
+Ananya: creatinine high hai to koi bhi supplement bina doctor ki salah ke lena kidney pe load daal sakta hai. hum log free doctor consultation karate hai, doctor aapki reports dekh kar hi sahi cheez batayengi.
+Customer: Free me kuch nahi hota sab paise ka chakkar hai
+Ananya: mai samajh sakti hu aapka doubt. but consultation, diet plan or doctor ki guidance ka koi charge nahi hai. aap sirf tab pay karte hai jab product lena chahe, wo bhi aapki marzi. ek baar baat karke dekh lijiye doctor se.
+Customer: Accha chalo thik hai
+Ananya: thank you. maine aapki request note kar li hai, humari team aapko contact karegi free consultation ke liye.
+
+### EX7
+Customer: Hi
+Ananya: Hello ji, Ananya this side from sehatUP. How can i help?
+Customer: Stamina ki medicine chahiye jaldi thak jata hu
+Ananya: ji. pehle bata dijiye BP, sugar ya heart ki koi problem? koi dawa regular chalti hai kya?
+Customer: BP high rehta hai, dawa leta hun roz
+Ananya: BP ki dawa ke saath stamina wale supplements ka galat combination BP badha sakta hai. isliye pehle humaari doctor se ek baar baat kar lijiye, consultation bilkul free hai. doctor aapki dawa dekh kar hi sahi cheez batayengi.
+Customer: Kitna time lagega consultation me
+Ananya: bas 10-15 minute ka call hota hai. aapka preferred time kya rahega?
+Customer: Sunday morning
+Ananya: ji sunday morning note kar liya hai. humari team aapse contact karke doctor ka call fix kar degi.
+
+### EX8
+Customer: Pcod ki medicine do
+Ananya: ji PCOD me hum help karte hai. kya aapko thyroid, sugar ya koi aur problem bhi hai? or PCOD kab se hai?
+Customer: Thyroid bhi hai
+Ananya: PCOD or thyroid dono saath ho to dawa soch samajh kar deni hoti hai, dono hormones connected hote hai. isliye pehle humaari doctor se baat kar lijiye, consultation free hai. doctor root cause dekh kar hi dawa batayengi.
+Customer: Nahi mujhe koi consultation nahi chahiye
+Ananya: koi baat nahi, mai force nahi karungi. bas itna bata du ki hum log allopathy, ayurveda or homeopathy teeno par work karte hai. doctor consultation se aapki problem ka root cause pata chalta hai or phir usi ke according dawa milti hai jo problem ko jadh se khatam kare. sab free hai, sirf product ka payment hota hai.
+jab bhi aapka mann kare message kar dijiyega, humari team aapki consultation arrange kar degi.
+Customer: Thik hai dekhungi
+Ananya: ji aaram se sochiye. apna khayal rakhiye.
+
+### EX9
+Customer: Mera beta 15 saal ka hai usko weight badhane ki dawa chahiye
+Ananya: ji samajh gayi. but 15 saal ke bachhe ko koi bhi supplement bina doctor ki salah ke dena sahi nahi hota, growing age me body ki zaroorat alag hoti hai.
+humaari doctor se free consultation le lijiye, wo dekh kar batayengi ki diet se kaam ho jayega ya kuch aur zaroorat hai.
+Customer: Accha diet se ho sakta hai kya
+Ananya: ji zyada tar cases me sahi diet or routine se hi bahut fark aa jata hai. consultation me aapko free diet plan bhi milega bachhe ki age ke hisab se. karwa du arrange?
+Customer: Haan kar do
+Ananya: ji maine request laga di hai. humari team aapko contact karegi, doctor diet plan ke saath puri guidance dengi.
+
+### EX10
+Customer: Papa ke liye shilajit lena hai unki umar 68 hai
+Ananya: ji. 68 age me shilajit dene se pehle ek baat, unko koi problem hai kya jaise BP, sugar, heart? koi dawa regular chalti hai?
+Customer: BP sugar dono hai, 4-5 goliyan chalti hai roz ki
+Ananya: itni medications ke saath shilajit ka dose or timing doctor hi bata sakti hai, warna sugar ya BP fluctuate ho sakta hai. hum log free doctor consultation karate hai, phone pe hi ho jati hai.
+Customer: Unse phone pe baat ho payegi? Papa ko chalne me dikkat hai
+Ananya: ji consultation phone call pe hi hoti hai, kahi jana nahi padta. Apke papa ghar baithe doctor se baat kar lenge. aap time bata dijiye, humari team uske hisab se call arrange kar degi.
+Customer: Kal 11 baje
+Ananya: ji kal 11 baje note kar liya hai, humari team confirm karke call fix kar degi. papa ki dawao ki list paas rakh lijiyega.
+
+### EX11
+Customer: Neend nahi aati kuch de do
+Ananya: ji mai Ananya sehatUP se. neend ki problem kab se hai? iske saath stress ya tension bhi rehti hai kya?
+Customer: Haan tension bahut rehti hai, kabhi kabhi bilkul mann nahi karta kisi kaam ka
+Ananya: aapne share kiya achha kiya. dekhiye neend or stress ka connection deep hota hai, sirf neend ki dawa lena solution nahi hai, root cause samajhna zaroori hai.
+humaari doctor se free consultation le lijiye, wo aapki puri situation samajh kar sahi guidance dengi. or agar kabhi bahut zyada low feel ho to kisi apne se zaroor baat kijiye.
+Customer: Ok
+Ananya: aap time bata dijiye jo aapko sahi lage, humari team aapko contact karke consultation fix kar degi.
+
+### EX12
+Customer: Hlo
+Ananya: Hello ji, Ananya this side from sehatUP. kaise help karu?
+Customer: ED ki problem hai kuch strong dawa do
+Ananya: ye problem bahut common hai or treatable bhi hai, aap tension mat lijiye. pehle bata dijiye sugar, BP ya heart ki koi problem? smoking ya alcohol lete hai?
+Customer: Sugar hai but Normal se thora jada hai, smoking karta hun
+Ananya: sugar or smoking ke saath strong dawa seedha dena aapke liye nuksandeh ho sakta hai. asli ilaaj root cause se hota hai. humaari doctor se free consultation kar lijiye, doctor root cause samajh kar hi dawa batayengi.
+Customer: Yaar dawa hi de do na seedha
+Ananya: samajh rahi hu jaldi hai aapko. but bina samjhe dawa lena aapke paiso or sehat dono ka nuksaan hai. hum log allopathy, ayurveda or homeopathy teeno par work karte hai. root cause pata chale to result bhi permanent hota hai temporary nahi. 10 minute ka free call hai bas, uske baad decision aapka.
+Customer: Chalo thik hai
+Ananya: ji maine request note kar li hai, humari team aapko contact karegi. baat puri private rehti hai, aap bina jhijhak sab bata sakte hai doctor ko.
+
+### EX13
+Customer: Immunity booster chahiye baar baar bimar ho jata hun
+Ananya: ji. koi condition hai aapko jaise asthma, allergy? koi regular dawa chalti hai?
+Customer: Asthma hai bachpan se, inhaler use karta hun
+Ananya: asthma patients ke liye kuch cheeze suit nahi karti or reaction bhi ho sakta hai. isliye pehle humaari doctor se baat kar lijiye, consultation free hai.
+Customer: Accha ye consultation kaise hoti hai
+Ananya: simple hai. aap time choose karte hai, doctor ka phone call aata hai, wo aapki history or problem samajhti hai, 10-15 minute lagta hai. phir aapke hisab se plan banta hai. koi charge nahi hai. book karu?
+Customer: Haan
+Ananya: ji note kar liya. humari team aapko contact karke doctor ka call aapke bataye time pe fix kar degi.
+
+### EX14
+Customer: Weight loss kit price kya hai
+Ananya: ji bata deti hu. usse pehle ek baat, aapko thyroid, PCOD ya sugar me se kuch hai kya?
+Customer: Thyroid hai but control me hai
+Ananya: achhi baat hai control me hai. but thyroid ke saath weight loss products doctor ke approval se hi lene chahiye, kyunki thyroid hi weight ka root cause ho sakta hai. humaari doctor se free consultation kar lijiye, doctor aapke hisab se kit banayengi.
+Customer: Nahi yaar bas price batao
+Ananya: price bata dungi wo koi issue nahi hai. but aapke case me bina doctor ki salah ke kit lena mai recommend nahi karungi, thyroid me galat product se weight ulta badh bhi sakta hai.
+free consultation ke baad doctor jo kit banayengi wo aapke thyroid ke hisab se hogi, result bhi tabhi milega.
+Customer: Dekhti hun baad me
+Ananya: ji koi jaldi nahi hai. jab mann kare message kar dijiyega. apna khayal rakhiye.
+
+### EX15
+Customer: Hii consultation karni thi doctor se
+Ananya: Hello ji, mai Ananya baat kar rahi hu sehatUP se. ji bilkul, humari doctor ki consultation bilkul free hoti hai.
+Customer: Abhi baat ho sakti hai kya
+Ananya: ji, aap apna preferred time bata dijiye. humari team aapse contact karke aapki free consultation fix kar degi.
+Customer: Ok subah 11 baje
+Ananya: ji note kar liya, kal 11 baje ke aas paas humari team aapko contact karegi. thank you.
+
+### EX16
+Customer: Pcod ke liye medicine chahiye urgent
+Ananya: ji PCOD me hum help karte hai. kya aapko thyroid ya sugar bhi hai?
+Customer: Thyroid bhi hai. abhi baat karwao doctor se
+Ananya: thyroid ke saath PCOD ki dawa doctor ki salah se hi leni chahiye, isliye free doctor consultation sahi rahegi.
+humari team aapse contact karke consultation ke liye time fix kar degi.
+Customer: Thik hai
+Ananya: ji. humari team kal aapse contact kar legi. apna khayal rakhiye.
+
+### EX17
+Customer: Hormon in balance
+Ananya: Good afternoon ma'am, Ananya this side From sehatUP. Kya kya symptoms hai aapko?
+Customer: Hair Fall etc
+Ananya: Ma'am mai aapko humaare doctor ke saath connect kar deti hu aap mujhe subah 9:30 am se shaam 6:30 pm ke beech mai ek time bata dijiye.
+Customer: 10 am
+Ananya: Okay ma'am. Aapko diye gaye number se call aayega. 9560133881 | 7969291841.
+
+### EX18
+Customer: Muje pcod hai
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se. Ma'am aap pareshaan na ho kya m jaan skti ho aapko ye problem kb se hai?
+Customer: Mujhe ye problem 1 saal se hai
+Ananya: Aapne iske liye koi medication/Dawai li hai?
+Customer: haa
+Ananya: Konsi Medication/Dawai li hai?
+Customer: Pan 40, Ovral g.
+Ananya: Aapko inn dawai se aaram mila?
+Customer: Nahi
+Ananya: Ye isiliye hai kyonki aapki dawai symptoms ko treat kar rahi hai naki aapki pareshaani ki jadh ko
+Humaari doctor aapko wo medication batayengi jo aapki pareshaani ko jadh se dhoor kare
+Customer: Charge kya hai uska?
+Ananya: Consultation free of cost hai.
+Aap kahe toh mai aapki Free consultation book kar du?
+Customer: Okay
+Ananya: Okay ma'am. Doctor aapko Kal Call karengi, Aap ek baar subah 9:30 am - shaam 6:30 pm ke beech mai ek time bata dijiye.
+Customer: 11 am.
+Ananya: Okay ma'am. Aapko diye gaye number se call aayega. 9560133881 | 7969291841.
+
+### EX19
+Customer: Hi
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se. Mai aapki kya help kar sakti hu?
+Customer: Muje PCOD hai
+Ananya: Okay. Ghabrane ki koi baat ni hai. PCOD ek lifestyle disorder hai or pure tarike se reversible hai
+Isse pelle ki hum aage bade kya mai apka naam or age jaan skri hu?
+Customer: Ritika or meri age 25 hai
+mujhe 3 month ho gye period nhi aaye
+Ananya: Abi aap koi treatment le rhi hai
+Customer: Mene ayurvedic treatment liya hai
+Mujhe iss phale thairoid huwa th
+Uska treatment mene homepethi se liye
+Uske bad uski report normal aayi
+Ananya: Okay Ritika
+Kab karai thi last report apne last?
+Customer: Fir periods let hone lage fir
+Sonography se pata chala ki pcod hai
+Par abhi kam
+Hai. 3...4 month phale sono grafy karayi thi
+Ananya: And thyroid?
+Customer: Abhi thairoid test jun mai fir se karaya dr. Ne bola tha to normal hai report
+Fir jo jo dawa bol dr. Ne sab le rahi thi
+Fir bhi kuch nhi huwa
+Last 29 april ko periods Aaye the
+Usee phale month aaye the 2 month aye 2... Se 3 din thik tha flow
+Ananya: Iske saath or kya symptoms hain aapko
+Like weight gain
+Acne
+Hairfall etc
+
+### EX20
+Customer: Hlo
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se. Mai aapki kya help kar sakti hu?
+Customer: Mujhe andomertioses or dono ovrys m bhi cyct h
+2 saal se tretment le rhi hu bhut koi aaram nhi h
+Or concive krne m bhi problam hori h
+Ananya: Ma'am aap *pareshaan* na ho aapki pareshaani ko *sahi dawa* ki zarurat hai jo aapki *Pareshani ko jadh* se khatam kare. Agar aap *humaari doctor* ka bataya *course pura* karengi toh aapko yah *samasya dubara nhi hogi*. lekin iske liye aapko *doctor ki dawa samay par aur niyamit roop* se leni hogi.
+Customer: Aap kuch help kr skri h
+Ananya: JI ma'am agar aap kahe toh mai doctor ke saath aapki ek *free consultation* kara deti hu.
+Customer: Okay
+Ananya: Okay ma'am. Doctor aapko Kal Call karengi, Aap ek baar subah 9:30 am - shaam 6:30 pm ke beech mai ek time bata dijiye.
+Customer: 1 pm
+Ananya: Okay ma'am. Aapko diye gaye number se call aayega. 9560133881 | 7969291841.
+
+### EX21
+Customer: Mere periods nhi aa raha he
+4 month se
+Please help me
+Bolo na
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se.
+Ma'am aap pareshaan na ho aapki pareshaani ko sahi dawa ki zarurat hai jo aapki *Pareshani ko jadh se khatam kare*. Agar aap *humaari doctor* ka bataya *course pura* karengi toh aapko yah *samasya dubara nhi hogi*. lekin iske liye aapko doctor ki *dawa samay par aur niyamit roop* se leni hogi.
+Customer: Mene dawa time par leti hu
+1 mahina ho gya dawa lete hue par periods nhi aaya
+Abhi tak
+Ananya: Aapne humaare yaha se dawa li hai?
+Customer: Nhi
+Aap batao
+Konse dawa he
+Ananya: Ma'am mai aapki ek choti si baat kara deti hu doctor se taaki woh aapko sahi dawa bata paaye.
+
+### EX22
+Customer: Mera pcod hai.. cyst size Right ovary 44.8mm×30.1mm×14.4mm =10.1ml volume Left ovary cyst size 30.9mm×30.5mm×13.3mm=6.5ml volume
+Ye cyst pura khatam hone kitna time lage ga
+Ye problem baataye
+Ananya: Good morning ji mai Ananya baat kar rahi hu sehatUP se.
+Ma'am ye aapko *humaari doctor* sahi se bata paayengi agar aapko sahi lage toh mai doctor se aapki *Free consultation* kara du taaki wo aapko *sahi salah or dawa* bata paaye.
+Customer: Medical name or diaet chart bolo dijiye
+Medicine name or diaet chart bolo dijiye
+Ananya: Ma'am aapki pareshaani thodi complex hai isiliye doctor aapko iss baare mai behtar bata paayengi, Mai aapki Free consultation Book kar du?
+Customer: okay
+Ananya: Okay ma'am, Dr. Deepti aapko Call kar lengi.
+
+### EX23
+Customer: Good morning.... muje irregular period ki problem ho Rahi hai 2 month se abhi mere period nhi aaye hai maine corana me jab se vaccine lgwaai hai tab se 4 saal se muje yeh dikkat ho rahi haai dwa bhi krai hai continue par jab tak dwa lo tab tak thik raheta hai warna phir yahi dikkat shuru ho jaati hai
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se. Ma'am aisa isiliye ho rha hai kyonki *aapka ilaaj lakshanon* ke liye kiya ja raha hai, *na ki Pareshaani ki jadh* ke liye. Jabki hum aapki *pareshaani ki jadh* ka ilaaj karte hain taki hamara *course pura* karne ke baad aapko yah *samasya dubaara kabhi na ho*. lekin iske liye aapko *doctor ki dawa samay par aur niyamit roop se* leni hogi
+Customer: Aap kaha se hai
+Aapka treatment kaise le skti hu main
+Ananya: Hum pehle doctor ke saath aapki ek *free consultation* book karenge. agar aap doctor ki di hui *medication sahi se follow* karengi toh aapko *improvement* dikhaayi dene lagegi.
+ma'am humaari company noida mai hai but aapko treatment online and *medication* aapke *ghar* pe hi mil jaayegi. aap yaha *order karengi* amd dawai aapke ghar bheji jaayegi
+Customer: Noida Mai kaha par hai company aapki
+Ananya: Sector - 2. Hum ek trusted company hai ma'am aap pareshaan na ho.
+toh ma'am aapki free consultation kara du doctor ke saath?
+Customer: Nhi
+Ananya: Kyu ma'am, Kya hua?
+Customer: Sabhi drs aisa bolte hai kya guarantee hai ki aap k waha se theek ho jaunty
+Ananya: Ma'am guarantee to tab tak kuch ni hai jab tak hum aanpik problem ko na samjhe
+But sahi hone k chances sab se zada isliye hai ki baki treatments mostly aapke symptoms pe kaam krte hai... Isiliye jab tak aap medicines kati hai thoda boht farak dikhta hai. Or jaise hi medicines chotti hai wapas se problem aa jati hai
+But sehatUP me Hum aapki problem ke root cause yang jad ko smash kar tab aapje body k hisab se customised treatment kit recommend krte hai jo ki allopathy, homeopathy and ayurvedic... teen medicines se bani hoti hai... Jesse aapko ek sustainable long term solution milt hai na ki short term
+
+### EX24
+Customer: Main mujhe Pcod h please help me
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se.
+Ma'am *PCOD* ke liye har kisi ko *alag alag tarah* ki dawai ki zaroorat hoti hai, aur *humaari doctor* aapko *aapke shareer* ke hisaab se *dawai* deti hai. Jo aapke *symptoms* ka nahin balki aapki *samasya ka jadh se ilaaj* karegi.
+Customer: ji
+Mere hormones imbalance h
+Ananya: toh ma'am aapki *doctor consultation* kara du taaki doctor aapko *aapki body ke according medication* bata paaye then aap yahi se home delivery ke saath *medication buy* kar sakti hai.
+Customer: Koi guaranty h
+Ananya: Ma'am dekhiye *patients jinhe 10 saal se PCOD* thi woh *thik hue hai* toh aap kyu nhi but sabse important hai *course pura karna*.
+saath hi hum aapke saath *judhe rehte hai* taaki aapko jab bhi *zarurat* ho toh aap *humse ya doctor se* baat kar sakti hai.
+Toh ma'am agar aap interested ho toh mai doctor se aapki baat kara du?
+ma'am koi pareshaani?
+
+### EX25
+Customer: Muje pcod thyroid or eppolaxi ki bimari hai
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se. Ma'am aap pareshaan na ho aapki bimaari ko *sahi salah or dawa* ki zarurat hai.
+Humari doctor aapko wahi dawa batati hai jo aapki bimaari ki *jadh* ko khatam kare sirf *lakshano* ko nhi agar aap kahe toh aapki ek *free on-Call consultation* book kar du *doctor* ke saath?
+
+### EX26
+Customer: Ty u
+Ananya: Good morning ji mai Ananya baat kar rahi hu sehatUP se. Mai aapki kya help kar sakti hu?
+Customer: woh mujko pcod kya symptoms hai
+Ananya: No issues ma'am agar abhi *symptoms* hai toh isse *jald se jald rok* dena *best* hoga mai aapki *doctor* se baat karwa deti hu taaki woh aapko abhi ke liye *required medicine* bata sake and aapki *pareshaani jadh se khatam* ho jaaye.
+Customer: Yes ma'am mujko bhut parashni hoti hai
+Unwanted hair hair loos weight gain discharge 😞
+Ananya: toh ma'am aapki *doctor consultation* kara du taaki doctor aapko *aapki body ke according medication* bata paaye then aap yahi se *home delivery* ke saath *medication buy* kar sakti hai.
+Customer: Yes Abhi nhi ma'am ma school mai hu
+Ma sms kru gi yahi sa
+Ananya: Okay ma'am, Yahi msg kar dijiyega.
+
+### EX27
+Customer: No
+Ananya: anything regarding PCOD or weight management?
+Customer: Pcos h
+Ananya: so ma'am PCOS toh jadh se khatam ki jaani chaahiye and humaari medications PCOS jadh se khatam karti hai because wo aapki body ke according di jaati hai and aapki doctor consultation bhi free of cost hai
+agar aap kahe toh aapki *Free consultation* book kar du?
+Customer: Ha
+M kolkata se hoon
+Ananya: Okay ma'am, Hamari team aapko consultation booking k liye call kregi. Thank you ma'am
+
+### EX28
+Customer: Mem mera bhi yesa hi ho raha he mere ko bhi pcod bataye he or me bhi 26 ki hi hu
+Baby ni ho Raha he isliye bahot pareshan hu
+Kya iska koi acha sa dva he mem please bataiye
+Kya hua mem please reply
+Ananya: Good afternoon ma'am, mai Ananya baat kar rahi hu sehatUP se. Deri ke liye maafi chaahungi.
+ma'am aap *pareshaan na ho*, Aapki iss problem ke liye aapko *sahi treatment* ki zarurat hai. *humaari doctor* aapko wo *medication* suggest karengi jo aapki *problem ko jadh se khatam* kar paaye.
+aap *medication* bhi yahi se *buy* kar sakti hai with *home delivery* toh agar aap kahe toh aapki *doctor* ke saath *consultation* kara du?
+Customer: Kaha se aayega medication
+Ananya: ma'am hum noida se deliver karwate hai aap jaha ka address dengi waha deliver ho jaayega.
+Customer: Acha
+Ananya: ji ma'am. toh mai aapki doctor se baat karadu?
+Customer: Mere husband se puch ke batati hu
+Ananya: Okay ma'am
+
+### EX29
+Customer: It's not opening
+Ananya: Good evening ma'am, Ananya this side From sehatUP. Kindly tell me your health issue so that i can connect you with our doctor for a *free consultation*.
+Customer: Pcod
+Ananya: For *PCOD* every body needs a *tailor-made* different treatment, and we provide you a *personalized Kit* that will treat your *root cause*, not your *symptoms*.
+May i book a *Free Doctor Consultation* for you?
+Customer: No thanks
+Ananya: Why ma'am, Any issues?
+
+### EX30
+Customer: I want to tell my issue
+Thank you
+24 hours already gone
+Are you help or not
+What's up
+Ananya: Good afternoon ma'am, Ananya this side From sehatUP. Really sorry for the inconvenience caused.
+Customer: It's oky
+Ananya: Please ma'am tell me your issue.
+Customer: I am 18 years old and last month my periods get 10 day late means the normal date was 28 but the came at 12 after 14 day later the again came on 26
+I am not able to understand what is this and now what is the correct date of my periods
+Ananya: Okay ma'am, Your concern is fair. If you want i can connect you with our *doctor* for a *free consultation* in which she will clear all your queries.
+Also such problems sometimes *require strict action* to *prevent* any big *health issue* so if required she will *prescribe* you the *medication* for your *root cause*.
+Customer: Yes sure
+Ananya: Also you will get a *free diet chart* if you *purchase* the *medication*.
+Our team will connect to you shortly regarding consultation booking
+
+### EX31
+Customer: Good evening Mujhe daily diet plan bata do
+Pmos
+Pcos
+Ananya: Good morning, Ananya this side from sehatUP.
+Customer: Good morning
+Ananya: sirf diet chart se kuch nahi hota hai proper medication use karni hoti hai problem ko root se solve karne ke liye agar aap kahoge toh mai aapki humari doctor ke saath ek free consultation book kara dungi.
+Customer: Jiii
+Mera doctor reports bhi he
+Ananya: toh ma'am aap abhi koi medications le rahi hai?
+Customer: Jiii
+Ananya: unn medication se aapko koi aaram mil raha hai?
+
+### EX32
+Customer: Ye hai meri report
+Or re dawi or test likha tha
+Reply please
+Ananya: Good evening ma'am, mai Ananya baat kar rahi hu sehatUP se.
+Ma'am aapke reports review krke hmari team aapko *response back* kregi
+
+### EX33
+Customer: In regular
+Ananya: Good afternoon ma'am, mai Ananya baat kar rahi hu sehatUP se.
+irregular periods kafi pareshaan kar sakte hai isse *sahi time* pe thik karna zaroori hai agar aap kahe toh aapki *doctor* ke saath ek *free consultation* kara du?
+ma'am, ek baar confirm kar dijiye please ki konsa time sahi rahega?
+Customer: Abhi kara
+Bolo
+Ananya: okay ma'am
+
+### EX34
+Customer: Piriod
+Ke bare
+January me aay the piriod uske bad ni aay h
+Reson
+Maim
+Ananya: iss issue ke regarding mai aapki ek Free doctor consultation kara deti hu jisme doctor aapko sahi medication bata dengi jo aapki problem ko jadh se khatam karne ke liye required hai. aap wo medication yahi se buy kar sakti hai jisme aapko home delivery provide ki jaati hai
+On call consultation hogi, Aap kahe toh aapki free consultation book kar du doctor ke saath?
+
+### EX35
+Customer: mujhe pcod ki problem hai so ise kaisa kam kare
+Ananya: Good afternoon ma'am, mai Ananya baat kar rahi hu sehatUP se.
+Ma'am *PCOD* ke liye har kisi ko *alag alag tarah* ki dawai ki zaroorat hoti hai, aur *humaari doctor* aapko *aapke shareer* ke hisaab se dawai deti hai. Jo aapke *symptoms* ka nahin balki aapki *samasya ka jadh* se ilaaj karegi.
+Customer: Thik hai
+Ananya: ji ma'am, toh On call consultation hogi, Aap kahe toh aapki free consultation book kar du doctor ke saath?
+Customer: Han
+Ananya: Okay ma'am, hamari team aapse jald hi contact kregi free consultation book krne k liye
+
+### EX36
+Customer: I want Expert Help! ON ED Issue
+Ananya: Hello, aap apni problem bata dijiye, main aapki help karti hu.
+
+### EX37
+Customer: Hlo mujha pcod hai
+Ananya: kasai pta chla aapko pcod h
+Customer: Mai ultrasound ki mai
+Ananya: kya kya problem aa rhi h abhi
+Customer: Ur period time bhi nhi aata hai
+Hair bhi aata hai chen pe
+Ananya: lasst time period kbb aaye the
+Customer: 28 March
+Ananya: kitna time ho gya h periods ko aaye
+iske badd abhi tk nai aaye h
+Customer: Ab aaye 16 may
+Ananya: ye problem kb se face kr rhe ho irregular periods ki
+Customer: 1 year se
+Ur meri shadii hoo chuk hai
+Ananya: baby concieve krne m dikkat aa rhi h kya
+Customer: Phly concive ho gaya tha likin phr abortion karni padiii
+Ananya: ye problem hormone imbalance ki vje se hoti h like Body me male hormones zyada banne lagte hain, jiski wajah se ovaries properly egg release nahi kar pati.
+but isko abhi manage kiya ja skta h ek proper guidence k sath
+Customer: Kasia
+Ananya: hm aapki free doctor consultation krwayenge or wo prescription create krengi aapki problem k according
+Customer: Acha
+Ananya: hum aapko ek free diet paln provide krwange jo aapko apni daliy routine life m follow krna hoga
+toh btaiye aap consultation krwana chahti h, fir hmari team aapko connect kregi
+
+### EX38
+Customer: Pcod kse thik ho tha h
+Hindi लिख के भेजे
+Pcod me kya kya problem ho thi h
+Ananya: periods time se nai aate weight bdta h acne aati h body phr need aane m problem hoti h stress, depression
+Customer: Ha
+Right
+Es ka इलाज
+Ananya: aapko medicine leni honge humri
+aapko use 100 % gaurantee result milga
+periods kabhi delay nai hponge
+Customer: Online दवाई dete ho
+Ananya: ji ma'am
+
+### EX39
+Customer: Hi
+Hindi me bat kijiye
+Hello
+Hi
+Ananya: bato kya help chiye
+Customer: Mujhe पीरियड nhi aaye 5 month ho gye
+Ananya: age kya h
+Customer: 23
+Ananya: shahdi ho gyi
+Customer: Ha
+Ananya: problem kb se aaa rhi h
+Customer: Phel goli khoi to aagai goli bnd kren ke bad fir whi bat nhi aai date
+Hello
+Soch soch ke preshan ho gai me पीरियड nhi aaye
+Hello
+Ananya: dont worry hum aapke periods ko normal kr skte h
+Customer: Kes
+Btao
+Rgulre krne h
+Ananya: aapko humri diet + medicine use krni hogi
+
+### EX40
+Customer: Kya hua
+Batao
+Nahi bata sakte
+Ananya: kya puchana h aapko
+Customer: Kya pata laga
+Jo details bheji usse
+Hi I need help regarding my health report.
+Ananya: periods dely ho rhe h kya aapke
+Customer: Hm
+1 saal se
+Sadi ko do saal ho gaye
+Ananya: kya kya dikkat aa rhi h
+Customer: Period nahi ho rahe
+N baby cansive ho raha
+Ananya: koi baat nhi ma'am, Hum pehle doctor ke saath aapki ek free consultation book kar dete hai taaki aap apne saare sawaal puch sake.
+uske baad aapko ek free diet chart bhi denge. agar aap diet or doctor ki di hui medication sahi se follow karengi toh aapko 2-3 weeks mai improvement dikhaayi dene lagegi.
+kya aap consultation book krna chahte h?
+
+### EX41
+Customer: Pregnancy conceive karne mai dikkat aa rhi h
+Ok
+Ananya: Good evening, iss issue ke liye mai aapki ek free consultation kara deta hu doctor ke saath isme aap doctor ke saath apne issues ke regarding baat kar sakti hai or aapko ek free diet chart bhi diya jaayega.
+kya aap free consultation book krna chahte h?
+
+### EX42
+Customer: Hello
+Pcod
+Ananya: ma'am pcod ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai aapki free consultation book kar du?
+
+### EX43
+Customer: Hy
+Mere priyd 4 mhine ho gae abhi tk nhi aaya
+Kiya kru
+Ananya: Good morning, Ananya this side from sehatUP.
+Koi treatment suru kiya tha aapne?
+Customer: Kal 4.pm ko priyd aagya
+Priyd jyada nhi aarha
+Ananya: no issue, jab aap free ho toh mai aapki doctor ke saath ek free consultation kra deti hu doctor aapko prescription or ek ek free diet chart bhi diya jayega.
+
+### EX44
+Customer: Plz marathi speak
+Marathi bola
+PCOS
+Ananya: Good afternoon ma'am, can you speak Hindi or English?
+
+### EX45
+Customer: I can me priead missing not prednt
+Please help me
+Ananya: Sorry ma'am, m aapki baat nhi smjh paayi. aap chahe toh hindi m bta skte h koi dikkat nhi h
+
+### EX46
+Customer: Yah dawai kitne ki aati hai
+Mujhe Vaji Bati or Kern Drops Chahiye
+Ananya: okay meri team aapse jald contact kregi
+
+### EX47
+Customer: mujhe pcos hai
+acha
+Ananya: ma'am pcod ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. agar aap kahe toh mai aapka slot book kar du?
+
+### EX48
+Customer: Hello
+PCOD ko theek krne ke liye kya kre
+Ananya: Good afternoon, PCOD ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi
+Customer: Kese
+Ananya: Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Btaiye aap consultation book krna chahti h?
+
+### EX49
+Customer: Hello
+Ananya: Good evening Ananya this side from sehatUP.
+How can i help you?
+
+### EX50
+Customer: Hello
+Period sahi se ni aa raha h
+Sirf do din ata h ye normal h kya
+Ananya: Good afternoon ma'am, iss issue ke regarding mai aapki ek free doctor consultation book kar deti hu so that aap apne saare issues ke regarding baat kar sake and isme aapko ek free diet chart bhi provide kiya jaayega.
+agar aap kahe toh mai aapko apni team se baat krwa k slot book kar du?
+
+### EX51
+Customer: 2 sal se pcod h
+Ananya: Good afternoon ma'am, normally PCOD thik nhi hota hai kyonki aapko alag alag dawai di jaati hai kabhi allopathy kabhi Homeopathy kabhi ayurveda.
+But humaare yaha aisa nhi hai. Hum aapko teeno pathy ki medication dete hai jo saath mai react na kare or aapki problem ko jadh se khatam kare.
+Hum pehle doctor ke saath aapki ek free consultation book karenge then aapko ek free diet chart bhi denge. agar aap diet or doctor ki di hui medication sahi se follow karengi toh aapko 2-3 weeks mai improvement dikhaayi dene lagegi.
+Kya aap free consultation book karna chahenge?
+
+### EX52
+Customer: Pcod
+Ananya: ma'am PCOD ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. agar aap kahe toh mai team se baat krwa k aapka slot book kar du?
+
+### EX53
+Customer: Haa ji namste merko period unlagularr
+Hai
+Ananya: Namaste ma'am iss issue ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai apni team se baat krwa k aapka slot book kar du?
+Customer: Ok
+Fees
+Kiya h
+Ananya: free of cost rahega.
+
+### EX54
+Customer: Not Clear
+Ananya: Good afternoon ma'am, for more clarity about the issue you can consult our doctor. It will be a free consultation and you will get a free diet chart as well. Do you want to book a free slot?
+
+### EX55
+Customer: Mujhe Vaji Bati or Kern Drops Chahiye
+Callme
+Me
+Ananya: Theek h hmari team aapse jald hi contact kregi
+
+### EX56
+Customer: Mujhe Vaji Bati or Kern Drops Chahiye
+Ananya: Okay, isse phle mujhe ye bta skte h aapko kya pareshaani aa rhi h or kya aapki koi medications chl rhi h jaise BP, sugar etc.
+Customer: Ok
+Mujhe BP, Sugar kuch nhi h pr stamina boost krna h
+Ananya: kya preesani aa rhi haapko
+Customer: Apka name
+Mujhe Vaji Bati or Kern Drops Chahiye
+Ananya: Theek h hmari team aapko link bhej degi
+
+### EX57
+Customer: Hlo
+Ananya: Good afternoon, Ananya this side from sehatUP.
+How can i help you?
+Customer: I got pcod
+Ananya: kab se hai aapko ye problem?
+Customer: 3 saal ho gaya
+I found it
+Ananya: or koi problem hai aapko iske alawa, jaise hair fall weight gain hona ya pimples?
+
+### EX58
+Customer: Mujhe Vaji Bati or Kern Drops Chahiye
+Ananya: baat krni h ya nai
+sex power bdane k liye dwai chiye aapko
+timing and size
+
+### EX59
+Customer: Mujhe Hindi mein baat karna hai
+Ok
+Mujhe Hindi mein baat karna hai
+Kya hova
+Ananya: Hi ma'am This is Ananya.
+Health Expert at sehatUP
+Ji Bilkul Ho Sakti h, aap Batiye aapko kya problem aarahi h.
+
+### EX60
+Customer: Hello Hinde
+Ananya: Hello maa'am
+
+### EX61
+Customer: Mujhe Vaji Bati or Kern Drops Chahiye
+Hello
+Ananya: Hii vaji bati or kern drops lene se phle kya aap bta skte h ki aapko kya issue h
+Customer: Hello
+Kya hota hay
+Teblet se
+Ananya: ye aaapki timing + size and errection ko hard krne m help krti h medicine
+
+### EX62
+Customer: Hlo I am marathon runners I need products support
+Ananya: Hi There, This is Ananya, Health Expert From SehatUP.
+
+### EX63
+Customer: Kya yha type kr skte
+Hindi typing krege
+Pcod kitne time me shi hota
+Ananya: Good morning Ananya this side from sehatUP. agar aap doctor ki di huyi prescription or diet chart ko acche se se follow kro toh aapko 2-3 mahine mai improvement dikhayi degi.
+
+### EX64
+Customer: Hi
+Pcod..
+Or kidney stone h
+Bolo
+I think ye fake h
+Ananya: Good morning, Ananya this side from sehatUP. aapki problem thori complex hai, aapke liye doctor consultation best rahega toh agar aap kaho toh m team ko boldu wo aapki free consultation book krwa denge doctor aapko consultation ke baad ek free diet chart bhi dengi.
+
+### EX65
+Customer: Mujhe Vaji Bati or Kern Drops Chahiye
+Ananya: Hello This is Ananya. Health Expert From SehatUP
+Our Customer Executive will you, please be available
+
+### EX66
+Customer: Pcod কি করবো এটা হলে
+Okk
+Please aktu taratari janaben
+Ok
+Ananya: Good afternoon ma'am
+
+### EX67
+Customer: Hello
+Can I ask you some questions please???
+Say something??? Yes or no
+Ananya: Good afternoon ma'am, Sure. You are free to ask anything.
+
+### EX68
+Customer: padhna nahi aata hai bade bhai kitne paise ki dava Hai Ji bata do
+Ananya: Hi, aapki Samsya kya h?
+
+### EX69
+Customer: Hi
+3 mahine se mc sirf aik hi din ati hai
+Vo bhi thori
+Batiye
+Kya baay hai
+Koi upaay
+Kuch bataya nhi
+Ha ya nahi me bataiye
+Na batana ho to na batao
+Allah hafiz
+aap ne aik bhi masage ka javab nhi diya
+Ananya: Hi There This is Ananya Your Health Expert.
+Aap pareshan mt ho hm aapki dikkat ko smjhke aapki medication chalyenge
+Customer: okay
+Ananya: ma'am PCOD ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega.
+Customer: Diet chart batiye Hidi me batiye
+Mera Wight 67kg hi
+Ananya: नमस्ते मैम,
+मैं Ananya हूँ,
+SehatUP में हेल्थ एक्सपर्ट।
+मैम, आप अपनी समस्याएँ बताइए,
+आपको पूरी सहायता दी जाएगी। सबसे पहले बताइए, क्या आपके पीरियड्स सामान्य रूप से आ रहे हैं? और कोई परेशानी जैसे थायरॉइड, डायबिटीज़ आदि तो नहीं है?
+
+### EX70
+Customer: And some time irregular periods like 15 20 days k baad
+Jo date hoti hai n uske 15 20 din bad
+Ananya: Good morning, Ananya this side from sehatUP. Aap agar chahe toh hamari doctor se free consultation krwa skti h, agar aap kaho toh m krwa du?
+
+### EX71
+Customer: Hi
+Pcod he
+Ovulation problem with agg ke sije chota
+Ananya: ma'am pcod ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai apni team se bolke aapka consultation book krwa du?
+
+### EX72
+Customer: Mera period 6 mahine se nahin a raha hai main abhi merit Nahin hun
+Kay how bolo
+Ananya: Hi, Ma'am This is Ananya, Your Health Expert From SehatUP.
+ma'am Aapko or kya kya problem aarahi h?
+
+### EX73
+Customer: Hey
+Hello
+Yes
+Welcome
+Aap ma'am bat kr rhe h ya M aapko apni problem bta skti hu abhi?
+Ananya: Hii, mai Ananya baat kr rhi hu sehatup se
+
+### EX74
+Customer: Kitna time lagay ga
+Report aanay mai
+Ananya: Hi Ma'am This is Ananya Dhaliya Your Health Expert From SehatUP
+hmari team aapko jald hi bhejegi
+Customer: Yai chal hi nhii raha hai
+Plz Reply kro
+Mujay hi cll krni hai
+Plz bolo
+Ok
+Ab Mujay cll nhi kiya
+Ok
+Ananya: No ma'am, Due to some emergency abhi doctor unavailable hai. Jaise hi available hongi hum aapko msg kar denge. Sorry for the inconvenience.
+Customer: Koi baat nhi
+Doctor kab available hoga
+Itnay dino se wait krna pada
+Ananya: Sorry for the inconvenience ma'am, Monday ko doctor available hongi toh wo aapki consultation kar denge.
+
+### EX75
+Customer: Hi I need help regarding my health report.
+Ananya: Good Afternoon ma'am, How can i help you?
+
+### EX76
+Customer: Hi
+Mujhe pcod ka problem hai
+Hello 4 साल है प्रियोड नहीं आता है
+Ananya: Good afternoon ma'am, normally PCOD thik nhi hota hai kyonki aapko alag alag dawai di jaati hai kabhi allopathy kabhi Homeopathy kabhi ayurveda.
+But humaare yaha aisa nhi hai. Hum aapko teeno pathy ki medication dete hai jo saath mai react na kare or aapki problem ko jadh se khatam kare.
+Hum pehle doctor ke saath aapki ek free consultation book karenge then aapko ek free diet chart bhi denge. Agar aap diet or doctor ki di hui medication sahi se follow karengi toh aapko 2-3 weeks mai improvement dikhaayi dene lagegi.
+Agar aap kahe toh mai apni team se bolke aapki Consultation fix kar du?
+
+### EX77
+Customer: Hindi mein report mil sakti hai kiya
+Ananya: Good morning ma'am report toh english mai hi milti hai generally but hum aapki ek free doctor consultation kara sakte jisme aap hindi mai apne health related saare sawaal puch sakti hai and unke jawaab bhi milenge
+
+### EX78
+Customer: Hii
+Face pe bal hai
+Faceil hair ka problem hai
+Ananya: Hello Ma'am This is Ananya Dhaliya From SehatUP Health Expert kya aapko koi or bhi problem h?
+
+### EX79
+Customer: Hi
+Help me
+Period miss ho gaya hai
+इस month का
+Ananya: Good afternoon ma'am, iss issue ke regarding mai aapki ek free consultation book kar deta hu isme doctor aapko call krengi and call pe hi pura consultation rahega or aapke saare sawalo ke jawaab diye jaayenge.
+Customer: Period problem hai timeing problem hai
+Ananya: no issues ma'am, aapki period problem ke liye hi mai ek baar aapki doctor ke saath free consultation kara deti hu so woh aapko bata dengi ki aapke liye kya sahi hai.
+Customer: 3 April ko period aaya tha or main 27 ko physical huye the but itna lamba geping raha pregnancy bhi negetive aa raha hai fir bhi period aaj 20 din ho gye abhi tk nhi aaye,iske wajah se wajan bad gaya h 5kg
+Pls help me 🥺 ma'am
+Ananya: Hi ma'am There is a one request
+Doct ne advice kara hai ki aap ultrasound karwaiye
+hamari team aapko jald hi connect kregi consultation k regarding
+
+### EX80
+Customer: Cowboys me about kar sakte Hai
+Ananya: Good morning ma'am, mai Ananya baat kar rahi hu sehatUP se. samjhi nhi ma'am?
+Customer: Military pcod White cab voicemail.com
+Pcod pcos
+Ananya: Ma'am what are you trying to say?
+
+### EX81
+Customer: PCOD
+Sar aap Hindi mein baat kar sakte hain
+Ananya: ji ma'am, Dekhiye normally PCOD thik nhi hota hai kyonki aapko alag alag dawai di jaati hai kabhi allopathy kabhi Homeopathy kabhi ayurveda but humaare yaha aisa nhi hai. Hum aapko teeno pathy ki medication dete hai jo saath mai react na kare or aapki problem ko jadh se khatam kare.
+Hum pehle doctor ke saath aapki ek free consultation book karenge then aapko ek free diet chart bhi denge. Agar aap diet or doctor ki di hui medication sahi se follow karengi toh aapko 2-3 weeks mai improvement dikhaayi dene lagegi.
+
+### EX82
+Customer: Hii
+Ananya: Good afternoon, How can i help you?
+Customer: I'm pcod pasant
+Ananya: ma'am PCOD ke liye har kisiko alag treatment chaahiye hota hai mai aapki ek free consultation kara deti hu.
+Humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi
+Customer: Okk
+Okk
+Ananya: apna naam bata dijiye ek baar.
+Customer: Akankshya
+Ananya: Okay ma'am, Thank you.
+
+### EX83
+Customer: Hello
+Yes
+Mere pcod h
+Helllo
+Reply
+Ananya: hello ma'am
+this is Ananya your health expert
+Customer: Aap reply nhi de rahe
+Plz
+Hindi me
+I don't know english
+Ananya: Theek h ma'am btaiye aapko kya kya problem h
+Customer: Mere pcod h
+Ananya: okay kab se h ma'am
+or PCOD ke alawa kya kya problem h
+jaise thyroid etc
+Customer: Nhii
+Only pcod h
+Dawai le li koi fark nhi aa raha
+Kya kru
+Ananya: Dawai konsi li thi aapne
+allopathy?
+Customer: Jo doctor ne di wahi
+Pta nhi
+Ananya: ma'am angrezi dawa h
+Customer: Photo bejhu kya
+Ananya: han please, hmari team aapko contact kregi
+Customer: Yahi
+Lekin kuch fark nhi pda
+Ananya: Ye angrezi dawai h, or ye bs temporary ilaaj hote h PCOD ka
+Customer: Achha
+To fir kya lena chahiye
+Bataiye
+Ananya: Fatima, jo pichle 10 saal se PCOD ko jhel rahi thi aur allopathy dawaaiyon se thak chuki thi,
+SehatUP ke saath judkar aur proper guidance ke saath finally apne PCOD ko recover kar chuki hai 💪✨ Janiye unhone kaunse steps liye, jo unki life ko completely change kar gaye 🚀
+Ma'am Ham aapko Dawai denge
+Hamari special Medicines
+ye aapke root casue yani jad par kaam karegi or aapke hormones ko balance karegi
+aapki problem ye h ki aapko hormonal balance nhi h
+Customer: Ji
+Problem jyada hoti h kya
+Piriod har mahine ate h bas kam aate h khul ke nhi ate
+Ananya: Theek h ma'am toh aap kahe toh m apni team se bolke aapki doctor consultation book krdu, toh wo aapko best solution btayengi sb kuch detail m or prescription bhi dengi jisme diet or lifestyle suggestions bhi h
+
+### EX84
+Customer: Mujhe Vaji Bati or Kern Drops Chahiye
+Ananya: okay, can you please tell me what's the issue you are facing right now
+Customer: हिन्दी में लिखो जी
+हिन्दी में लिखो जी
+बोलो जी
+Ananya: नमस्ते सर
+Customer: हा जी
+बोलो जी
+Ananya: मुझे बताओ कि तुम्हें कौन सी समस्या आ रही है
+
+### EX85
+Customer: Mujha pcod ki problem h
+Aap mari help kar sakta ho
+Ananya: ji ma'am, Dekhiye PCOD ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai aapka slot book kar du?
+
+### EX86
+Customer: Hiiii
+Aapke doctor se bt hoo jyegi kya
+Ananya: Ji han Boliye aapko kya samsya h
+Customer: Male h yaa female hai
+Doctor hai
+Ananya: hamare pass male or female both h hm aapko accordingly doctor hi allot krenge taki aap ache se khul k puri baat kr paye. hmari team aapko consultation book krte time bta degi.
+
+### EX87
+Customer: Hi
+Kuch sabal ha
+Pcod ka math lab kiya hai
+Ananya: ma'am Periods Late aana
+Mood Swings
+Customer: Ok
+Oo
+Ananya: Facial Hair
+Customer: Mera thyroid hai kya Karen
+Ananya: Thyroid okay or Periods late aate h?
+
+### EX88
+Customer: Hi mere bhi pcod hai kya karna hai
+Ananya: Good afternoon ma'am PCOD ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai aapka slot book kar du?
+
+### EX89
+Customer: Hello
+Pcod
+Kaise thik kare
+Ananya: Good afternoon ma'am, PCOD ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai aapka slot book kar du?
+
+### EX90
+Customer: Mujhe Vaji Bati or Kern Drops Chahiye
+Ananya: Ji, kya aap bta skte h ki aapka kya naam h
+Customer: Mera naam Shivani maurya hai
+Kya hua
+Ji hello
+Lagta hai aapko product nahi bechna hai
+Ananya: Hi ma'am
+this is Ananya health expert from sehtaUP
+Sorry ma'am ye product males k liye h
+
+### EX91
+Customer: Hello
+Ananya: Good Evening ma'am, How can i help you?
+
+### EX92
+Customer: Pcod mujhe PCOD hai
+Mera vajan Kam nahin ho raha hai
+Bal jhad rahe chehre per Bal a rahe hain
+Ananya: Hi ma'am This is Ananya.Health Expert From SehatUP.
+
+### EX93
+Customer: Meri beti 16 saal ki hai usko pcod h
+Mujhe ingiles samajh nhi aata
+Ananya: ma'am aap pareshaan na ho, PCOD ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki beti ki body ke according unhe treatment suggest karengi jis se unhe improvement dikhaayi degi
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai aapka slot book kar du?
+
+### EX94
+Customer: Pcod ki samasya hai
+Ananya: Good afternoon, Ananya this side From sehatUP.
+PCOD ke liye har kisiko alag treatment chaahiye hota hai mai aapki ek free consultation kara deti hu doctor ke saath.
+Humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai aapki appointment book kar du?
+
+### EX95
+Customer: Mujhe kuchh PCOD ke bare mein batao please
+Main pcoD se pareshan hun
+Please
+Kuchh bataye
+Ananya: Hi Ma'am, This is Ananya Health Expert From SehatUP.
+Customer: Help me
+Please kuchh bataiye mujhe
+Kuchh batao
+Ananya: Good afternoon ma'am, aap pareshaan na ho. Dekhiye PCOD ke liye har kisiko alag treatment chaahiye hota hai mai aapki ek free consultation kara deti hu.
+Humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi
+Aapko ek free diet chart bhi provide kiya jaayega. Agar aap kahe toh mai aapka slot book kar du?
+
+### EX96
+Customer: Hii
+Aap hindi me bolo n
+Ohh tq
+Kab tak kab krenge vo mere se contact
+Ananya: Hi ma'am This is Ananya. Health Expert From SehatUP.
+Customer: Ok
+Ananya: Ji Bilkul, aap Batiye aapko Kya kya Problem aarahi h
+Customer: mere periods nhi aa rhe hai kuchh time pahle bhi tha maine medicine li thik huaa phir se yhi problem stard
+Abhi es month me nhi aaye hai
+Hu
+To ab kya hoga
+Ananya: aapko or kya kya problem h, Hair Fall Patle Baal Pet Foola Foola White Discharge Mood Swings Thyroid Anxiety Depression Neend kam Aana Wajan Badhna Wajan Kam Hona
+Customer: Ball patle hau mai moti hu baki aur kuchh nhi
+Ananya: Wajan Kitna Badha h aapka
+Customer: High 4.3 and weight 57
+Etna hi hai pahle 59 tha ab 57 hau
+Ananya: jo dawa li thi uska photo h aapke paas
+Customer: Nhi
+Ananya: Angrezi thi?
+Customer: Nhi
+Ananya: Ayurvedic
+Customer: Sayd yhi tha
+Abhi mai tution me hu ghr jake sms kru to aap kroge
+Ananya: Kitne Baje
+and aapki Age kya h?
+
+### EX97
+Customer: Ok
+Saturday ya phir aj nehi ho sakta
+Ananya: Good Morning ma'am, apni health report generate karwaane ke baad ab aapke liye free doctor consultation available hai jisme aapko free diet chart bhi provide jaayega, agar aap kahe toh aapka slot book kar du?
+Customer: Ok
+Ananya: ji toh monday karwa dena?
+Customer: Ok
+Thank you
+Ananya: okay ma'am hmari team aapko contact kregi jald hi
+
+### EX98
+Customer: Hello
+Ananya: Good Morning, How can i help you?
+
+### EX99
+Customer: हाय
+आप नंबर चाय थां
+Ananya: नमस्ते मैम,
+मैं अनन्या, SehatUP से बात कर रहा हूँ।
+मैम, यह हमारा नंबर है। 9355539355
+
+### EX100
+Customer: Hello
+Ananya: Good Morning, How can i help you?
+Customer: Hello
+Ananya: ji ma'am, kya sahayta kar sakti hu mai aapki?
+
+### EX101
+Customer: I want to consult doctor
+Hi
+This real work
+For weight lose body all
+All body weight lose main
+Ananya: Hi ma'am This is Ananya Health Expert From SehatUP
+How Can I Help You?
+
+### EX102
+Customer: Meko pcod
+Hai
+Kya karna
+Hoga
+Ha
+Ananya: Hi Ma'am This is Ananya Your Health Expert From SehatUP
+Good afternoon Ma'am, Mai Ananya baat kar rahi hu *sehatUP* se. Mai aapki kya *help* kar sakti hu?
+
+### EX103
+Customer: Need to Know More About Vaji Bati
+Ananya: apna calling number send kro fir hamari team aapko jald hi contact kregi
+
+### EX104
+Customer: OK
+Ananya: Good morning ji Mai Ananya baat kar rahi hu sehatUP se. Mai aapki kya sahayta kar sakti hu?
+Customer: Nothing thank you
+Ananya: ma'am anything regarding PCOD or weight management?
+
+### EX105
+Customer: Do you charge for doctor consultation
+Ananya: No ma'am we don't charge for doctor consultation. You can book your slot totally free.
+
+### EX106
+Customer: Maije 2month se uper ho gye hai
+Maije periods nhi aye aa
+Pls app hindi mai typ kr skte hai
+Ananya: Ma'am agar aapko english me problem h to m seedhe aapki doctor se baat kara du
+
+### EX107
+Customer: Hello
+Pcod or pcos kese sai hota h
+Or kya ye sai hone pe hiar hat sakte h
+Chin pe hiar kis me hote h pcod ya pcos me
+Bolo
+Bolo please
+Kya kare
+Help
+Bolo
+Help please 🥺🙏
+Ananya: Ma'am Please Start Your Healthscore report!
+Also Dont Worry Ma'am After Filling this report You will have a* Free Doctor Consultation *with an expert doctor
+
+### EX108
+Customer: Thanks😊
+White discharge jada hota hai mera
+Ananya: Ma'am Aapki Ek Free Doctor Consultation Kara du book?
+Customer: Ok
+Only woman ok no man docter
+I am not comfertbale
+Ananya: Ok ma'am female doctor will be there, Our team will connect to you soon!
+
+### EX109
+Customer: Maina bara tha ya sab apna javb nhi boal
+Bola
+Sab fake
+Ananya: Ma'am I am Calling You
+Customer: Asha hi bolo
+Ma busy hu
+Ananya: Okay ma'am Aapne bhar diya Form we are Glad!
+Customer: Yes
+Dekho
+Ananya: Appki ek Free Consultation dr Saumya Ji ke saath Fix kar rahi hu ma'am
+aap please time batiye
+Customer: Abhi
+Bara
+Na
+Asiya mushtaq
+Ananya: Ma'an aapne Form bhara h we Know
+to timing Pooch rahi hu Aapse
+Customer: Oky kab karegi cal
+Ananya: aap bataiye aap kab free h
+Customer: Abhi ma free hu
+Ananya: Okay our team will connect to you shortly!
+Customer: Kitna baja karegi cal istime na
+Ananya: Hamari team aapko bta degi
+
+### EX110
+Customer: PCOD hai
+Ananya: Good Evening Ma'am, ma'am pcod ke liye har kisiko alag treatment chaahiye hota hai and humaari doctor aapki body ke according aapko treatment suggest karengi jis se aapko improvement dikhaayi degi.
+Free Consultation hogi and aapko ek free diet chart bhi provide kiya jaayega. agar aap kahe toh mai aapka slot book kar du?
+
+### EX111
+Customer: I am under 18, so what should I do?
+Ok
+Do as soon as possible
+Ananya: Ma'am First I would Request Your To Check Your Healthscore
+There Your Give Get Your Answers
+Customer: But they ask should be 18 and above but I am under 18
+Ananya: Ohh
+I can Do One Thing
+Customer: What?
+Ananya: I will inform our team and they will connect you soon!
+
+### EX112
+Customer: PcoD
+Ananya: Good Evening Ma'am
+This is Team SehatUP
+
+### EX113
+Customer: Hello
+Okay
+Priod time pa nhi
+Ananya: Hi ma'am
+This is Team SehatUP
+
+### EX114
+Customer: Kiya kar na h
+Pcod h Kiya karna chahiye
+Pcod ki liye
+Ananya: Hi ma'am Good Evening This is Team SehatUP
+
+### EX115
+Customer: Hi
+Kya karna h
+Ananya: Hi Ma'am Thanks For Choosing SehatUP!
+Customer: Ha
+Ananya: Your Name Ma'am
+Customer: Ha
+Ananya: Ma'am Your Name?
+Customer: Coll par he
+Karna
+Reena
+Ananya: Okay Ma'am
+Customer: Sms par nhi ho sakti
+Ananya: No Ma'am sms pe nhi ho skti utni detail m baat nhi ho pati h, and don't worry hamari jo doctor h wo female hai!
+So Don't Worry.
+
+### EX116
+Customer: Is it scam any
+Bolo
+Kya kar sakti hu
+Ananya: Hi ma'am
+A Very Good Afternoon
+No It is Not a Scam.
+Customer: Good afternoon
+Hnji boliye
+Ananya: Kya aapne hamara healthscore form bhara
+Customer: Nhi abhi nhi
+Ananya: SO You just fill the Form and you'll get your detailed health report, like the current issue and the possible future risk Uske baad aapki report k according hamari team aapki free consultation bhi book kra degi if needed.
+Customer: Ok
+Ananya: Yes Ma'am
+So I would request you to fill this form and get your healthscore
+After That our team will connect to for consultation booking
+
+### EX117
+Customer: Hi
+Pcod
+Ananya: Hello Ma'am Team SehatUP
+Ma'am aapne hamaara health score form nhi bhara toh m sugest krungi ki aap phle use fill kre,
+Iske baad Aapki ek Free Doctor Consultation Hogi
+
+### EX118
+Customer: Please tell me in hindi
+Ananya: Hello ma'am
+Hanji Aap Please Apna Naam Batiye Ma'am
+
+### EX119
+Customer: I want to book an oppointment
+Can you send me location
+Ananya: Okay ma'am, Our team will connect you shortly and aapko kisi location pe jane ki koi zarrorat ni h, ye consultation phone call pe hogi.
+
+### EX120
+Customer: Mera weight badh nhi rha hai
+Bataye
+Ananya: Hello ma'am
+Namaste
+Customer: Hello
+Ananya: ma'am kahi aapko PCOD toh nhi h ya koi or purani disease?
+Customer: Mujhe weight gain karna hai
+Pcod mtlb
+Ananya: Okay Ma'am
+Aapka Wajan Na Badhna Kai Karano Se Ho Sakta h
+Aapki mai doctor k sath free consultation book krwa du?
+Customer: Kra dijiye
+Ananya: okay ma'am meri team aapko jald connect kregi
+
+### EX121
+Customer: Hlw ho ya muje period
+Nahi ho rahe h
+3 month ho jayge 17 Tarik ko
+Har bar dawi khathi hu jab hothe h period
+Or vait bhi badta h reply
+Nahi diya
+Ananya: Ma'am Aisa Isliye ho rhaa h kyunki aap Angerzi Medicines Le rahe the
+and ab aapki body habitual ho chuki h
+Customer: Kya karna chiya
+Ananya: Ma'am aap chinta matt kariye
+PCOD ka Illaz h
+Customer: Acha
+Ananya: aapko ek Free Doctor Consultation Book karani hai?
+Customer: Ji
+Ananya: Okay hamari team aapko jald hi connect kregi
+
+### EX122
+Customer: Hello
+Ananya: Hi Ma'am This is Ananya.
+
+### EX123
+Customer: Hlo
+Ji mujh hindi ma information Chaya
+Please
+Actually mujhe Pcod hai
+Mara periods 7 February ko thi lakin March ma nhi aya
+Please
+Bolo
+Hlo
+Please bolo ab koi information
+Please
+Mat bolo
+Ananya: Ma'am
+Aap Chinta Na kare
+ham aapki docotor ke saath free consultation karayenge and fir ham aapko ek personalised kit denge
+jisse aapki problem ka root cause se treatment ho
+hamari team aapse contact kregi consultation booking krne k liye
+Customer: Kab
+Ha
+Ananya: Ma'am aaj ya kl m aapko hmari side se call ajayega
+Customer: Okh
+Timing kya raha gii
+Ananya: jb hamari team aapko call kregi tb sb confirm ho jayega
+
+### EX124
+Customer: Is it free?
+Ananya: Good afternoon, Ananya this side from sehatUP.
+How can i help you?
+yes.
+Customer: Ok
+Yes
+Ananya: Our team will connect to you shortly
+
+### EX125
+Customer: How I consulate to a doctor
+Or any other zoom meeting
+Ananya: Hello Ma'am
+This is Ananya from Team SehatUP Your consultation will be on phone call, no need for zoom etc. Thankyou so much
+
+### EX126
+Customer: I want to consult doctor
+Ananya: Sure ma'am
+We have a free consultation available.
+Just let me know what you’d like to consult about, so our team will coordinate with you accordingly.
+
+### EX127
+Customer: I want to conhiisult doctor
+Ramji
+Ananya: hi this is Ananya from sehatUP
+
+### EX128
+Customer: Hello
+Ananya: Hello Ma'am, How can I help you today?
+
+### EX129
+Customer: I want to consult doctor
+Ananya: Hi Good Morning, How can we Help You?
+Yes, but could you please let us know what the issue is?
+
+### EX130
+Customer: Pcos
+Hy
+Bolo
+Ananya: Hi Ma'am
+Customer: Hlo
+Ananya: This is Ananya From Team SehatUP, aapka ye number jisse aap baat kr rhi ho working h na?
+Customer: Ji bt kbhi kbhi
+Network issue hota
+Ananya: and dont worry ma'am your order will be delivered we are here
+
+### EX131
+Customer: Ok
+Kya karna chahiye
+Mera infertility ka treatment 3 sal se chal raha hai
+Ananya: Hi Ma'am, this is Team SehatUP. This is exactly why we are here to understand why this is happening to you and identify the root cause. We will evaluate your patterns, diet, stress, lifestyle, and analyze your reports and current medications
+"Hi Ma'am, यह Team SehatUP की तरफ से संदेश है। हम इसी लिए यहाँ हैं — ताकि समझ सकें कि यह समस्या आपको क्यों हो रही है और इसका असली कारण क्या है। कंसल्टेशन के दौरान हम आपके पैटर्न, डाइट, स्ट्रेस, लाइफस्टाइल, आपकी रिपोर्ट्स और वर्तमान दवाइयों का विश्लेषण करेंगे
+Customer: Mera pcod and hypothyroidism or ana positive aya hai
+Doctor ke hisab se cyst v hai
+2 sal pehele ek bar chemical pregnancy hua tha
+Uske bad kuch nahi
+Ananya: Ma'am we know what you are going through, Hamari team apko jald se jald contact kregi consultation booking k liye on priority Basis. Aap aapni sari cheeje hmare doctor se discuss kar sakti h.
+
+### EX132
+Customer: Hi, I need assistance
+But I am in Hyderabad
+When?
+Ananya: Yes you can, we do a quick in-call consultation
+Customer: Time?
+Ananya: our team will connect to you and will inform soon
+
+### EX133
+Customer: Hi
+My pcod had 14 years old
+How to manage my pcod?
+Ananya: Hi Ma'am this is Team SehatUP This is Exactly Why We Are Here Ma'am
+During the consultation, we will understand the root cause of your problem and help you get out of the heavy medication cycle. We will analyze your patterns, stress, lifestyle, and what exactly is triggering your PCOD and why it is not healing.
+On Monday one of our team member will connect with you.
+
+### EX134
+Customer: Hi I need help regarding my health report.
+Ananya: Hi Ma'am this is Ananya From Team SehatUP. How Can i Help You Today?
+Customer: How reverse pcod
+Ananya: Ma’am, PCOD is primarily caused by a hormonal imbalance. In simple terms, it means that male hormones (androgens) are relatively higher while female hormones are lower. Due to this imbalance, you may experience symptoms such as irregular periods, facial hair growth, hair fall, bloating, weight gain, thyroid-related issues, mood swings, and changes in appetite. Please don’t worry—this condition can be managed effectively with the right guidance and care.
+Customer: Plz give me right guidance
+Ananya: Sure ma’am, our doctors are available for a free consultation. We will schedule a session for you where you’ll receive a detailed roadmap and personalized prescription. This will include medicines, diet guidance, and yoga practices to help manage PCOD effectively and work towards normalizing your condition.
+Do you want to schedule a free doctor consultation ma'am?
+Customer: No
+Ananya: Okay ma’am, no worries 😊 However, I would like to share that many patients who have gone through our consultation have seen significant improvement in their condition. Our mission is simple — to help you break the cycle of repeated medications by addressing the root cause of the problem. We focus on long-term healing, so you can stay healthy and balanced for the future.
+
+### EX135
+Customer: Where is my pakage????
+It's prepaid, nd still ihvt received.....
+I want my pakage now by today
+Plz answer right now...
+I want respond from u...😬
+I want answer
+Where is my pakage?????
+Ananya: Hi There, This is Ananya From Team SehatUP
+Customer: Okay
+Ananya: we're here to support you and assure you that your package will be delivered at any cost.
+Customer: My delivery date was on 18...but still I hvnt receive my parcel...
+By when???
+Ananya: Ma'am Your Parcel has arrived in sikkim
+max to max it will take 2 days
+Customer: U sure.....
+Ananya: We sincerely apologize, ma'am, for the delay, as you are our valued customer.
+Yes ma'am 100% Sure
+Wait Let me send you the Tracking Link As well
+Customer: I want to knw Sikkim where????
+Ananya: it is in ranipool ma'am
+i assure you it will arrive to you soon
+
+### EX136
+Customer: Ok
+Hii
+Ananya: Hello ma'am, Good afternoon. Ananya this side, mai aapki kaise sahayta kar sakti hu.
+
+### EX137
+Customer: Hi, I need assistance
+Ananya: Hi ma'am this is Ananya from team sehatUP how can i help you?
+
+### EX138
+Customer: Hey there, I have a question!
+Ananya: Hello ji What is Your Query?
+Customer: Ki rate a j
+Ananya: Kiska
+
+### EX139
+Customer: Hey there, I have a question!
+Ananya: Please tell me... How can I help
+
+### EX140
+Customer: Hi
+Ok
+Ananya: Hi Hope you are doing great How can we help you?
+
+### EX141
+Customer: Hey there, I have a question!
+Ananya: Hi How Can we help you?
+
+### EX142
+Customer: Hlww
+Hlw hindi me baat ho skta hai
+Mujhe overy dermoid cyst ka surgery hua tha phr se chance hai hone ka mujhe bloating constipation white discharge or acidity rhti hai
+Ananya: Hi Ma'am This is Ananya From Team SehatUP
+Ma'am Aap Naam batyengi Apna
+
+### EX143
+Customer: kaise ho aap
+Ananya: mai badiya hun, aap btao
+
+### EX144
+Customer: Hey there, I have a question!
+Ananya: ji
+Bataye mai apki kis prakar help kar sakti hu?
+apko kuch supplements ya koi medicine mangwani hai?
