@@ -322,11 +322,13 @@ const timelineData = {
 };
 const lifestyleTips = {
     "GENERAL": ["Eat foods that boost energy and hormones like almonds, pumpkin seeds, dates, and dark chocolate ", "Sleep 7–8 hours regularly and avoid stress, as it affects performance", "Stay active—30 minutes of walking or light exercise can help improve stamina", "Avoid smoking, alcohol, and junk food—they affect blood flow and energy", "Include zinc and magnesium-rich foods like seeds, leafy greens, and dry fruits", "Maintain daily physical activity",],
-    "Heart Problem": ["Eat home-cooked meals with less oil, salt, and sugar", "Add heart-healthy foods like walnuts, oats, garlic, and fruits", "Avoid fried and packaged items", "Walk daily for 30 minutes and avoid sitting for long hours",],
-    "Blood Pressure": ["Limit salt—avoid salty snacks, papads, and pickles", "Eat potassium-rich foods like bananas, tomatoes, and spinach", "Reduce tea/coffee to 1–2 cups a day", "Manage stress through deep breathing, meditation, or evening walks", "Drink enough water",],
-    "Diabetes": ["Avoid sugar, sweets, and white rice or maida", "Eat small, regular meals with plenty of vegetables, dal, and whole grains like jowar or brown rice", "Avoid fruit juices—eat whole fruits instead", "Walk after meals and monitor blood sugar regularly",],
-    "High Cholesterol": ["Cut down on fried and buttery foods.Prefer baked, grilled, or steamed items", "Use healthy oils like mustard, rice bran, or olive oil", "Eat more fiber—like fruits with skin, dalia, and vegetables", "Avoid overeating and aim for 20–30 minutes of activity daily",],
-    "Thyroid Issues": ["Eat on time every day and avoid skipping meals", "Use iodized salt, and include foods like eggs, milk, nuts, and whole grains", "Avoid excess soy products and junk food", "Sleep at a fixed time and stay active to support hormone balance",],
+    // Keys are lowercase because saveSubmission lowercases the condition before
+    // lookup, and resultRules stores lifestyleConditions lowercase to match.
+    "heart problem": ["Eat home-cooked meals with less oil, salt, and sugar", "Add heart-healthy foods like walnuts, oats, garlic, and fruits", "Avoid fried and packaged items", "Walk daily for 30 minutes and avoid sitting for long hours",],
+    "blood pressure": ["Limit salt—avoid salty snacks, papads, and pickles", "Eat potassium-rich foods like bananas, tomatoes, and spinach", "Reduce tea/coffee to 1–2 cups a day", "Manage stress through deep breathing, meditation, or evening walks", "Drink enough water",],
+    "diabetes": ["Avoid sugar, sweets, and white rice or maida", "Eat small, regular meals with plenty of vegetables, dal, and whole grains like jowar or brown rice", "Avoid fruit juices—eat whole fruits instead", "Walk after meals and monitor blood sugar regularly",],
+    "high cholesterol": ["Cut down on fried and buttery foods.Prefer baked, grilled, or steamed items", "Use healthy oils like mustard, rice bran, or olive oil", "Eat more fiber—like fruits with skin, dalia, and vegetables", "Avoid overeating and aim for 20–30 minutes of activity daily",],
+    "thyroid issues": ["Eat on time every day and avoid skipping meals", "Use iodized salt, and include foods like eggs, milk, nuts, and whole grains", "Avoid excess soy products and junk food", "Sleep at a fixed time and stay active to support hormone balance",],
 };
 const causeMapping = {
     "How often do you struggle to stay hard?": {
@@ -512,6 +514,20 @@ const questionnaireConfig = {
             baseText = "Erectile Dysfunction can often be improved with medication, lifestyle changes, and therapy";
         }
         const generalTimeline = timelineData[concernKey] || timelineData.ed;
+
+        // Reported comorbidities, pulled from the multi-select medical-history
+        // question in the 'lifestyle' group. Stored lowercase to match the keys
+        // in lifestyleTips and the convention used by the other questionnaires.
+        const medicalAnswer = (allAnswers.lifestyle || []).find(a =>
+            String(a.question || '').toLowerCase().includes('health issues')
+        );
+        const selected = medicalAnswer
+            ? (Array.isArray(medicalAnswer.text) ? medicalAnswer.text : [medicalAnswer.text])
+            : [];
+        const lifestyleConditions = selected
+            .map(t => String(t).trim().toLowerCase())
+            .filter(t => t && t !== 'none');
+
         return {
             issueTitle: issueTitle,
             conditionTextHTML: `<p>${baseText}</p>`,
@@ -521,7 +537,7 @@ const questionnaireConfig = {
                 general: generalTimeline,
                 extras: []
             },
-            lifestyleConditions: [],
+            lifestyleConditions: lifestyleConditions,
         };
     },
     saveSubmission: async (state, db, config) => {
@@ -599,6 +615,7 @@ const questionnaireConfig = {
             reportCategory: "Mens Sexual Wellness",
             sexualHealthAnswers: allAnswers.sexual_health || [],
             lifestyleComorbiditiesAnswers: allAnswers.lifestyle || [],
+            lifestyleConditions: results.lifestyleConditions || [],
             possibleCauses: possibleCauses,
             lifestyleChanges: lifestyleTipsArray,
             timeline: combinedTimeline,

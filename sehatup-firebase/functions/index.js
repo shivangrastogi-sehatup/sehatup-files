@@ -1264,6 +1264,54 @@ const getRiskMetrics = (healthScore) => {
   }
 };
 
+/* ───────────────────── customer-leads API ───────────────────── */
+
+const CUSTOMER_LEADS_URL = "https://api.sehatup.com/api/customer-leads/";
+
+// Whitelist of fields the customer-leads API accepts. Everything else on the
+// submission — rawState, baseUrl, productImage, clinical flags, WhatsApp ids —
+// is deliberately dropped. Not every quiz sets every field: the weight quizzes
+// add height/weight/targetWeight/bmi, the wellness ones don't.
+const LEAD_FIELDS = [
+  "answers", "bmi", "concern", "dob", "futureRisks", "healthScore", "height",
+  "isWhatsAppSent", "issueTitle", "lifestyleChanges", "lifestyleConditions",
+  "pdfGeneratedAt", "peerAverage", "peerComparison", "phone", "possibleCauses",
+  "questionnaireId", "recommendedProducts", "reportCategory", "reportDate",
+  "reportDownloadUrl", "reportStoragePath", "riskClass", "riskDescription",
+  "riskType", "targetWeight", "timeline", "timestamp", "userName", "weight",
+];
+
+// Firestore Timestamps aren't JSON-serialisable; the API expects ISO strings.
+const toIsoString = (v) => {
+  if (!v) return undefined;
+  if (typeof v.toDate === "function") return v.toDate().toISOString();
+  if (v instanceof Date) return v.toISOString();
+  return typeof v === "string" ? v : undefined;
+};
+
+const buildLeadPayload = (data) => {
+  const payload = {};
+  for (const key of LEAD_FIELDS) {
+    if (data[key] !== undefined) payload[key] = data[key];
+  }
+  payload.timestamp = toIsoString(data.timestamp) || new Date().toISOString();
+  payload.pdfGeneratedAt = toIsoString(data.pdfGeneratedAt) || new Date().toISOString();
+  // mens-wellness never sets lifestyleConditions, but the API expects the key.
+  if (!Array.isArray(payload.lifestyleConditions)) payload.lifestyleConditions = [];
+  return payload;
+};
+
+// Posts a completed submission to the leads API. Throws on failure — the caller
+// decides whether that is fatal (it isn't, for report generation).
+const postCustomerLead = async (data) => {
+  const payload = buildLeadPayload(data);
+  const res = await axios.post(CUSTOMER_LEADS_URL, payload, {
+    headers: { "Content-Type": "application/json" },
+    timeout: 20000,
+  });
+  return res.status;
+};
+
 exports.CreatePDFOnFormSubmission = onDocumentCreated(
   {
     document: "questionnaire_submissions/{docId}",
@@ -1394,8 +1442,9 @@ exports.CreatePDFOnFormSubmission = onDocumentCreated(
       const { storagePath, downloadUrl } = await generatePDF(data, docId);
 
       // Update the document with both the storage path and download URL
+      const riskMetrics = getRiskMetrics(healthScore);
       await snapshot.ref.update({
-        ...getRiskMetrics(healthScore),
+        ...riskMetrics,
         reportStoragePath: storagePath,
         reportDownloadUrl: downloadUrl,
         pdfGeneratedAt: FieldValue.serverTimestamp(),
@@ -1403,6 +1452,35 @@ exports.CreatePDFOnFormSubmission = onDocumentCreated(
       });
 
       console.log(`PDF can be downloaded from: ${downloadUrl}`);
+
+      // Push the completed lead to the customer-leads API. This runs here, and
+      // not in the browser, because riskClass/peerComparison/reportDownloadUrl
+      // only exist once the block above has run. Non-fatal: a leads-API outage
+      // must never block the WhatsApp report.
+      try {
+        const leadStatus = await postCustomerLead({
+          ...data,
+          ...riskMetrics,
+          reportStoragePath: storagePath,
+          reportDownloadUrl: downloadUrl,
+          pdfGeneratedAt: new Date(),
+          isWhatsAppSent: false,
+        });
+        console.log(`[Leads] Posted ${docId} to customer-leads (HTTP ${leadStatus})`);
+        await snapshot.ref.update({
+          leadPostStatus: `ok:${leadStatus}`,
+          leadPostedAt: FieldValue.serverTimestamp(),
+        });
+      } catch (leadError) {
+        const detail = leadError.response
+          ? `HTTP ${leadError.response.status} ${JSON.stringify(leadError.response.data).slice(0, 300)}`
+          : leadError.message;
+        console.error(`[Leads] Failed to post ${docId}: ${detail}`);
+        await snapshot.ref.update({
+          leadPostStatus: `error: ${detail}`.slice(0, 400),
+          leadPostedAt: FieldValue.serverTimestamp(),
+        }).catch(() => { });
+      }
 
       // Send WhatsApp message to user with the report
       try {

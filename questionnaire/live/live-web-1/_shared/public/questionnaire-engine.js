@@ -755,7 +755,6 @@ class QuestionnaireEngine {
 
             localStorage.setItem(`partialDocId_${this.config.id}`, this.state.partialDocId);
 
-            // 🔥 CREATE DOCUMENT IMMEDIATELY (Matching Prod Schema)
             console.log("Attempting to create partial doc in 'partial_submissions' with ID:", this.state.partialDocId);
             try {
                 await partialDocRef.set({
@@ -766,12 +765,12 @@ class QuestionnaireEngine {
                     status: "incomplete",
                     reminderSent: false,
                     questionnaireId: this.config.id,
-                    createdAt: new Date(), // Keep internal tracking too
+                    createdAt: new Date(), 
                     lastUpdated: new Date()
                 });
                 console.log("✅ Partial doc SUCCESSFULLY CREATED in 'partial_submissions'");
             } catch (err) {
-                console.error("❌ Error creating partial doc:", err);
+                console.error("ERROR creating partial doc:", err);
                 console.error("Firebase Details:", {
                     project: window.firebaseConfig?.projectId,
                     db: !!this.db

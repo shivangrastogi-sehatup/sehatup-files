@@ -71,7 +71,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Original QuickReply payload lives on the webhook node. Guard so testing a\n// single node in isolation doesn't hard-crash.\nlet body = {};\ntry {\n  body = $('QuickReply Webhook').first().json.body || {};\n} catch (e) {\n  const inp = $input.first();\n  body = (inp && inp.json && (inp.json.body || inp.json)) || {};\n}\n\nconst phone = body.phone || '';\nconst name = body.name || 'Customer';\nconst msgId = body.id || '';\nconst msgTime = Number(body.msg_time) || Date.now();\nconst payload = body.payload || {};\nconst text = payload.text || '';\n\nreturn [{\n  json: {\n    phone,\n    name,\n    msgId,\n    msgTime,\n    text,\n    convId: phone.replace(/[^0-9]/g, ''),   // matches CF qrConvId()\n    savedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Original QuickReply payload lives on the webhook node. Guard so testing a\n// single node in isolation doesn't hard-crash.\nlet body = {};\ntry {\n  body = $('QuickReply Webhook').first().json.body || {};\n} catch (e) {\n  const inp = $input.first();\n  body = (inp && inp.json && (inp.json.body || inp.json)) || {};\n}\n\nconst phone = body.phone || '';\nconst name = body.name || 'Customer';\nconst msgId = body.id || '';\nconst msgTime = Number(body.msg_time) || Date.now();\nconst payload = body.payload || {};\nconst text = payload.text || '';\n\n// ---- Classify the message (confirmed from prod cloud-run logs) ----\n//  text        -> _type USER_TEXT, has payload.text\n//  image       -> _type USER_FILE, contentType image/jpeg\n//  audio/voice -> _type USER_FILE, contentType audio/ogg, audioText \"\"\n//  button tap  -> _type USER_LIST_REPLY / USER_BUTTON_REPLY\nconst ptype = String(payload._type || '').toUpperCase();\nconst contentType = String(payload.contentType || '').toLowerCase();\nconst hasText = !!(text && String(text).trim());\n\n// MEDIA = any uploaded file: image, audio voice-note, report, document.\nconst isMedia = ptype === 'USER_FILE'\n  || (!hasText && ptype && ptype !== 'USER_TEXT')\n  || (!hasText && (contentType.startsWith('image/') || contentType.startsWith('audio/')));\nlet mediaKind = 'text';\nif (isMedia) {\n  if (contentType.startsWith('image/')) mediaKind = 'image';\n  else if (contentType.startsWith('audio/')) mediaKind = 'audio';\n  else mediaKind = 'file';\n}\nconst mediaPath = payload.path || '';\n\n// AUTOMATION / TEMPLATE triggers the AI must NOT answer — QuickReply's own flows\n// already handle these (e.g. the Health Score CTA sends its link automatically).\n// Add new predefined-button texts to AUTOMATION_TRIGGERS (matched case-insensitive).\nconst AUTOMATION_TRIGGERS = [\n  'check my free health score',\n  'check free healthscore',\n  'i want my detailed healthscore',\n  'mujhe vaji bati or kern drops chahiye'\n];\nconst textLc = String(text || '').toLowerCase().trim();\nconst isTriggerText = AUTOMATION_TRIGGERS.some(t => textLc.includes(t));\nconst isButtonReply = ptype === 'USER_LIST_REPLY' || ptype === 'USER_BUTTON_REPLY';\nconst isAutomation = isTriggerText || isButtonReply;\n\n// The AI answers ONLY real typed questions. Skip media + automation/button messages.\nconst skipAi = isMedia || isAutomation;\nlet skipReason = '';\nif (isMedia) skipReason = 'media_' + mediaKind;\nelse if (isButtonReply) skipReason = 'button_reply';\nelse if (isTriggerText) skipReason = 'automation_trigger';\n\nreturn [{\n  json: {\n    phone,\n    name,\n    msgId,\n    msgTime,\n    text,\n    msgType: ptype,\n    isMedia,\n    mediaKind,\n    mediaPath,\n    isAutomation,\n    skipAi,\n    skipReason,\n    convId: phone.replace(/[^0-9]/g, ''),   // matches CF qrConvId()\n    savedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "a9d33a3f-5f69-4be1-8c00-edd9c008a281",
       "name": "Extract Message Details",
@@ -79,19 +79,6 @@
       "typeVersion": 2,
       "position": [
         896,
-        320
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const src = $('Extract Message Details').first().json;\nconst phone = src.phone;\nconst name = src.name || 'Customer';\nconst text = src.text;\nconst msgId = src.msgId;\nconst msgTime = src.msgTime;\n\nif (!phone) throw new Error('Store Message in Session: phone missing');\n\nconst gs = $getWorkflowStaticData('global');\nif (!gs.sessions) gs.sessions = {};\n\nconst now = Date.now();\nif (!gs.sessions[phone]) {\n  gs.sessions[phone] = { phone, name, messages: [], executionId: null, lockTime: 0, processed: false };\n}\nconst session = gs.sessions[phone];\nsession.messages.push({ text, msgId, msgTime, addedAt: now });\nsession.name = name;\nsession.lockTime = now;\nsession.processed = false;\nsession.executionId = $execution.id;\n\nreturn [{ json: { phone, name, text, msgId, msgTime, executionId: $execution.id } }];"
-      },
-      "id": "9e578dd9-6e5b-4e99-8fc6-ed76e634e880",
-      "name": "Store Message in Session",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1120,
         320
       ]
     },
@@ -105,14 +92,14 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1344,
+        1120,
         320
       ],
       "webhookId": "wait-3-min-webhook"
     },
     {
       "parameters": {
-        "jsCode": "const RESUME_AFTER_SILENCE_MS = 30 * 60 * 1000; // human-silence before AI resumes\n\nconst src = $('Store Message in Session').first().json;\nconst phone = src.phone;\nconst name = src.name || 'Customer';\n\nconst gs = $getWorkflowStaticData('global');\nconst session = gs.sessions && gs.sessions[phone];\n\n// ---- debounce / newest-execution-wins ----\nif (!session) return [{ json: { phone, name, shouldProcess: false, reason: 'no_session' } }];\nif (session.processed) return [{ json: { phone, name, shouldProcess: false, reason: 'already_processed' } }];\nif (session.executionId !== $execution.id) return [{ json: { phone, name, shouldProcess: false, reason: 'newer_execution_wins' } }];\n\n// ---- GLOBAL MASTER SWITCH + per-number lists (qr_config/chatbot) ----\nlet mode = 'on';\nlet testNumbers = ['+917300978845', '+918756112227'];\nlet blockedNumbers = [];\nconst toList = (v) => {\n  if (!v) return [];\n  const raw = Array.isArray(v) ? v.join(',') : String(v);\n  return raw.split(',').map(s => s.trim()).filter(Boolean);\n};\ntry {\n  const cfg = $('Get AI Config').first().json;\n  if (cfg && typeof cfg.mode === 'string' && cfg.mode.trim()) mode = cfg.mode.trim().toLowerCase();\n  const tn = toList(cfg && cfg.testNumbers);\n  if (tn.length) testNumbers = tn;\n  blockedNumbers = toList(cfg && cfg.blockedNumbers);\n} catch (e) {}\n\nif (blockedNumbers.includes(phone)) {\n  session.processed = true; delete gs.sessions[phone];\n  return [{ json: { phone, name, shouldProcess: false, reason: 'ai_blocked_number' } }];\n}\nif (mode === 'off') {\n  session.processed = true; delete gs.sessions[phone];\n  return [{ json: { phone, name, shouldProcess: false, reason: 'ai_paused_global' } }];\n}\nif (mode === 'test' && !testNumbers.includes(phone)) {\n  session.processed = true; delete gs.sessions[phone];\n  return [{ json: { phone, name, shouldProcess: false, reason: 'ai_test_mode_only' } }];\n}\n\n// ---- handoff, derived from the unified conversations/messages ----\n// human msg  = CF placeholder (AGENT_PLACEHOLDER, no text)\n// AI msg     = our own doc (real text, no placeholder)\nlet items = [];\ntry { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }\nconst tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();\nlet lastAiAt = 0, lastHumanAt = 0;\nfor (const it of items) {\n  const m = it.json; if (!m || m.direction !== 'out') continue;\n  const t = tval(m);\n  const isHuman = m._type === 'AGENT_PLACEHOLDER' || (m.placeholder && !m.text);\n  const isAi = !!m.text && !m.placeholder && m._type !== 'AGENT_PLACEHOLDER' && m._type !== 'BOT_PLACEHOLDER';\n  if (isHuman) lastHumanAt = Math.max(lastHumanAt, t);\n  else if (isAi) lastAiAt = Math.max(lastAiAt, t);\n}\n\nconst now = Date.now();\nconst humanActive = lastHumanAt > 0 && lastHumanAt >= lastAiAt && (now - lastHumanAt) < RESUME_AFTER_SILENCE_MS;\nif (humanActive) {\n  session.processed = true; delete gs.sessions[phone];\n  return [{ json: { phone, name, shouldProcess: false, reason: 'human_active', minsSinceHuman: Math.round((now - lastHumanAt) / 60000) } }];\n}\n\nsession.processed = true; delete gs.sessions[phone];\nreturn [{ json: { phone, name, shouldProcess: true, reason: 'process', resumedFromHuman: (lastHumanAt > 0 && lastHumanAt >= lastAiAt) } }];"
+        "jsCode": "const RESUME_AFTER_SILENCE_MS = 30 * 60 * 1000; // human-silence before AI resumes\n\n// This message's own trigger time (from the webhook). No static data — the whole\n// decision is derived from the durable Firestore messages, so it works the same in\n// test and production executions.\nconst src = $('Extract Message Details').first().json;\nconst phone = src.phone;\nconst name = src.name || 'Customer';\nconst myMsgTime = Number(src.msgTime) || 0;\n\n// ---- per-number lists (global 'off' already short-circuited by \"AI Enabled?\") ----\nlet mode = 'on';\nlet testNumbers = ['+917300978845', '+918756112227'];\nlet blockedNumbers = [];\nconst toList = (v) => {\n  if (!v) return [];\n  const raw = Array.isArray(v) ? v.join(',') : String(v);\n  return raw.split(',').map(s => s.trim()).filter(Boolean);\n};\ntry {\n  const cfg = $('Get AI Config').first().json;\n  if (cfg && typeof cfg.mode === 'string' && cfg.mode.trim()) mode = cfg.mode.trim().toLowerCase();\n  const tn = toList(cfg && cfg.testNumbers);\n  if (tn.length) testNumbers = tn;\n  blockedNumbers = toList(cfg && cfg.blockedNumbers);\n} catch (e) {}\n\nif (blockedNumbers.includes(phone)) return [{ json: { phone, name, shouldProcess: false, reason: 'ai_blocked_number' } }];\nif (mode === 'off') return [{ json: { phone, name, shouldProcess: false, reason: 'ai_paused_global' } }];\nif (mode === 'test' && !testNumbers.includes(phone)) return [{ json: { phone, name, shouldProcess: false, reason: 'ai_test_mode_only' } }];\n\n// ---- read messages from conversations/{convId}/messages ----\n// customer msg = direction 'in' | AI msg = out+text | human msg = out+AGENT_PLACEHOLDER\nlet items = [];\ntry { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }\nconst tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();\n// The AI sends via ONE fixed QuickReply agent account; a human takeover comes from a\n// DIFFERENT agent account. Distinguish by agentId (robust — no timing race).\nconst AI_AGENT_IDS = new Set(['u9ocdFtszn6BAXa7L_ag']);  // <- AI's own QuickReply send account(s)\nlet latestInboundAt = 0, lastAiAt = 0;\nconst humanCandidates = [];\nfor (const it of items) {\n  const m = it.json; if (!m) continue;\n  const t = tval(m);\n  if (m.direction === 'in') { latestInboundAt = Math.max(latestInboundAt, t); continue; }\n  if (m.direction === 'out') {\n    const isAi = !!m.text && !m.placeholder && m._type !== 'AGENT_PLACEHOLDER' && m._type !== 'BOT_PLACEHOLDER';\n    if (isAi) { lastAiAt = Math.max(lastAiAt, t); if (m.agentId) AI_AGENT_IDS.add(m.agentId); }\n    // human candidate = AGENT placeholder, not automation-tagged\n    else if (m._type === 'AGENT_PLACEHOLDER' && !m.automationBy) humanCandidates.push({ t, agentId: m.agentId || '' });\n  }\n}\n// Genuine human takeover = AGENT placeholder from an agent that is NOT the AI's own account.\nlet lastHumanAt = 0;\nfor (const hc of humanCandidates) {\n  if (!AI_AGENT_IDS.has(hc.agentId)) lastHumanAt = Math.max(lastHumanAt, hc.t);\n}\n\n// ---- DEBOUNCE (Firestore-based): if a newer customer message arrived during the\n//      wait, let THAT execution answer the whole batch — this one bows out. ----\nif (latestInboundAt > myMsgTime) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'newer_message_wins', myMsgTime, latestInboundAt } }];\n}\n\n// ---- HANDOFF: a human agent is actively handling this chat ----\n// Once a human agent has sent ANYTHING in the last RESUME window, the AI backs off —\n// even if an in-flight AI reply happened to land after the human's message. The AI\n// resumes only after the human has been quiet for the whole window.\nconst now = Date.now();\nconst humanActive = lastHumanAt > 0 && (now - lastHumanAt) < RESUME_AFTER_SILENCE_MS;\nif (humanActive) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'human_active', minsSinceHuman: Math.round((now - lastHumanAt) / 60000) } }];\n}\n\n// ---- already answered? ANY reply (AI text or a CF Bot/Agent placeholder) newer\n//      than the latest customer message => this / a duplicate execution bows out. ----\n// already answered = an actual AI reply or a genuine human reply after the latest\n// customer message — NOT a QuickReply automation/bot template (those don't answer the query).\nconst answeredAt = Math.max(lastAiAt, lastHumanAt);\nif (latestInboundAt > 0 && latestInboundAt <= answeredAt) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'already_answered' } }];\n}\n\nreturn [{ json: { phone, name, shouldProcess: true, reason: 'process', resumedFromHuman: (lastHumanAt > 0 && lastHumanAt >= lastAiAt) } }];"
       },
       "id": "c714990a-c6b1-44d4-82a9-692897126446",
       "name": "Decide Process",
@@ -170,7 +157,7 @@
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        1568,
+        1344,
         320
       ],
       "alwaysOutputData": true,
@@ -184,7 +171,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const decide = $('Decide Process').first().json;\nconst phone = decide.phone;\nconst name = decide.name || 'Customer';\n\nlet items = [];\ntry { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }\nconst tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();\nconst evs = items.map(i => i.json).filter(m => m && (m.msgTime || m.createdAt))\n  .map(m => ({ ...m, _t: tval(m) })).sort((a, b) => a._t - b._t);\n\nconst isAiMsg = m => m.direction === 'out' && !!m.text && !m.placeholder && m._type !== 'AGENT_PLACEHOLDER' && m._type !== 'BOT_PLACEHOLDER';\nconst isHumanMsg = m => m.direction === 'out' && (m._type === 'AGENT_PLACEHOLDER' || (m.placeholder && !m.text));\n\nlet lastAiAt = 0, lastHumanAt = 0;\nfor (const m of evs) {\n  if (isAiMsg(m)) lastAiAt = Math.max(lastAiAt, m._t);\n  else if (isHumanMsg(m)) lastHumanAt = Math.max(lastHumanAt, m._t);\n}\nconst cutoff = Math.max(lastAiAt, lastHumanAt);\nconst resumedFromHuman = lastHumanAt > 0 && lastHumanAt >= lastAiAt;\n\n// current turn = inbound user messages not yet answered\nconst unanswered = evs.filter(m => m.direction === 'in' && m._t > cutoff);\nlet newMsgText = unanswered.map(m => m.text || '').filter(Boolean).join('\\n');\nif (!newMsgText) {\n  const lastUser = [...evs].reverse().find(m => m.direction === 'in');\n  newMsgText = lastUser ? (lastUser.text || '') : '';\n}\n\n// transcript for context (human-agent turns are text-less; flagged via note below)\nconst history = [];\nfor (const m of evs) {\n  if (m.direction === 'in') { if (m._t > cutoff) continue; history.push({ role: 'user', content: m.text || '' }); }\n  else if (isAiMsg(m)) history.push({ role: 'assistant', content: m.text || '' });\n}\nconst recentHistory = history.slice(-20);\n\nconst isFirstContact = !history.some(h => h.role === 'assistant');\n\nconst istTime = new Date(Date.now() + (5.5 * 60 * 60 * 1000));\nconst totalMinutes = istTime.getUTCHours() * 60 + istTime.getUTCMinutes();\nconst isOfficeHours = totalMinutes >= (9 * 60 + 30) && totalMinutes < (18 * 60 + 30);\n\nlet basePrompt = 'You are Ananya, a Health Expert at SehatUP.';\ntry {\n  const docData = $('Get a document').first().json;\n  if (docData && docData.body && docData.body.content && Array.isArray(docData.body.content)) {\n    const extracted = docData.body.content\n      .map(b => b.paragraph && b.paragraph.elements\n        ? b.paragraph.elements.map(e => (e.textRun && e.textRun.content) ? e.textRun.content : '').join('')\n        : '')\n      .join('').trim();\n    if (extracted) basePrompt = extracted;\n  }\n} catch (e) { console.log('Could not read Google Doc, using default prompt:', e.message); }\n\nconst conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();\nconst hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');\n\nlet systemPrompt = basePrompt\n  + '\\n\\nCONTEXT:\\nFirst contact: ' + (isFirstContact ? 'YES' : 'NO')\n  + '\\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')\n  + '\\nCustomer name: ' + name\n  + '\\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')\n  + '\\n\\nCRITICAL ANTI-SPAM RULES:\\n'\n  + '1. If \"Greeting already sent: YES\", NEVER send greeting again. Jump straight to answering the question.\\n'\n  + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\\n'\n  + '3. Only greet if: First contact: YES AND Greeting already sent: NO AND no assistant messages in history.\\n'\n  + '4. For follow-up questions, respond directly without any greeting or introduction.'\n  + '\\n5. Agar aapne pichle assistant message mein already free consultation/doctor-pitch wala paragraph bheja hai, to usko word-for-word ya near-identical dobara mat bhejo - short naya angle do ya seedha agla step (jaise time confirm karna) pucho.';\n\nif (resumedFromHuman) {\n  systemPrompt += '\\n\\nHANDOFF NOTE: A human support agent was chatting with this customer and has now gone quiet, so you are taking over again. You CANNOT see the human agent\\'s messages. Read the customer\\'s latest message(s), avoid repeating earlier greetings/pitches, and continue helpfully from the current point.';\n}\n\nconst messages = [\n  { role: 'system', content: systemPrompt },\n  ...recentHistory.map(h => ({ role: h.role, content: h.content })),\n  { role: 'user', content: newMsgText }\n];\n\nreturn [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, systemPromptLength: systemPrompt.length } }];"
+        "jsCode": "const decide = $('Decide Process').first().json;\nconst phone = decide.phone;\nconst name = decide.name || 'Customer';\n\nlet items = [];\ntry { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }\nconst tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();\nconst evs = items.map(i => i.json).filter(m => m && (m.msgTime || m.createdAt))\n  .map(m => ({ ...m, _t: tval(m) })).sort((a, b) => a._t - b._t);\n\nconst isAiMsg = m => m.direction === 'out' && !!m.text && !m.placeholder && m._type !== 'AGENT_PLACEHOLDER' && m._type !== 'BOT_PLACEHOLDER';\nconst isHumanMsg = m => m.direction === 'out' && (m._type === 'AGENT_PLACEHOLDER' || (m.placeholder && !m.text));\n\nlet lastAiAt = 0, lastHumanAt = 0;\nfor (const m of evs) {\n  if (isAiMsg(m)) lastAiAt = Math.max(lastAiAt, m._t);\n  else if (isHumanMsg(m)) lastHumanAt = Math.max(lastHumanAt, m._t);\n}\nconst cutoff = Math.max(lastAiAt, lastHumanAt);\nconst resumedFromHuman = lastHumanAt > 0 && lastHumanAt >= lastAiAt;\n\n// current turn = inbound user messages not yet answered\nconst unanswered = evs.filter(m => m.direction === 'in' && m._t > cutoff);\nlet newMsgText = unanswered.map(m => m.text || '').filter(Boolean).join('\\n');\n// Fallbacks so Gemini never receives an empty user message:\nif (!newMsgText) {\n  const lastUser = [...evs].reverse().find(m => m.direction === 'in' && m.text);\n  if (lastUser) newMsgText = lastUser.text || '';\n}\nif (!newMsgText) {\n  try { newMsgText = ($('Extract Message Details').first().json.text || '').trim(); } catch (e) {}\n}\n\n// transcript for context (human-agent turns are text-less; flagged via note below)\nconst history = [];\nfor (const m of evs) {\n  if (m.direction === 'in') { if (m._t > cutoff) continue; history.push({ role: 'user', content: m.text || '' }); }\n  else if (isAiMsg(m)) history.push({ role: 'assistant', content: m.text || '' });\n}\nconst recentHistory = history.slice(-20);\n\nconst isFirstContact = !history.some(h => h.role === 'assistant');\n\nconst istTime = new Date(Date.now() + (5.5 * 60 * 60 * 1000));\nconst totalMinutes = istTime.getUTCHours() * 60 + istTime.getUTCMinutes();\nconst isOfficeHours = totalMinutes >= (9 * 60 + 30) && totalMinutes < (18 * 60 + 30);\n\nlet basePrompt = 'You are Ananya, a Health Expert at SehatUP.';\ntry {\n  const docData = $('Get a document').first().json;\n  if (docData && docData.body && docData.body.content && Array.isArray(docData.body.content)) {\n    const extracted = docData.body.content\n      .map(b => b.paragraph && b.paragraph.elements\n        ? b.paragraph.elements.map(e => (e.textRun && e.textRun.content) ? e.textRun.content : '').join('')\n        : '')\n      .join('').trim();\n    if (extracted) basePrompt = extracted;\n  }\n} catch (e) { console.log('Could not read Google Doc, using default prompt:', e.message); }\n\nconst conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();\nconst hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');\n\nlet systemPrompt = basePrompt\n  + '\\n\\nCONTEXT:\\nFirst contact: ' + (isFirstContact ? 'YES' : 'NO')\n  + '\\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')\n  + '\\nCustomer name: ' + name\n  + '\\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')\n  + '\\n\\nCRITICAL ANTI-SPAM RULES:\\n'\n  + '1. If \"Greeting already sent: YES\", NEVER send greeting again. Jump straight to answering the question.\\n'\n  + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\\n'\n  + '3. Only greet if: First contact: YES AND Greeting already sent: NO AND no assistant messages in history.\\n'\n  + '4. For follow-up questions, respond directly without any greeting or introduction.'\n  + '\\n5. Agar aapne pichle assistant message mein already free consultation/doctor-pitch wala paragraph bheja hai, to usko word-for-word ya near-identical dobara mat bhejo - short naya angle do ya seedha agla step (jaise time confirm karna) pucho.';\n\nif (resumedFromHuman) {\n  systemPrompt += '\\n\\nHANDOFF NOTE: A human support agent was chatting with this customer and has now gone quiet, so you are taking over again. You CANNOT see the human agent\\'s messages. Read the customer\\'s latest message(s), avoid repeating earlier greetings/pitches, and continue helpfully from the current point.';\n}\n\nconst messages = [\n  { role: 'system', content: systemPrompt },\n  ...recentHistory.map(h => ({ role: h.role, content: h.content })),\n  { role: 'user', content: newMsgText }\n];\n\n// ---- DEBUG: exactly what history the AI fetched, in sequence, and what it got ----\nconst _debug = {\n  fetchedMessages: evs.length,\n  sequence: evs.map(m => `${new Date(m._t).toISOString().slice(11, 19)} | ${m.direction || '?'} | ${(m._type || '').replace('AGENT_', '')} | ${(m.text || m.placeholder || '').slice(0, 50)}`),\n  historyToAI: recentHistory.map(h => `${h.role}: ${(h.content || '').slice(0, 50)}`),\n  currentTurn: newMsgText,\n  isFirstContact,\n  resumedFromHuman,\n};\nconsole.log('[Build AI Prompt] fetched=' + evs.length + ' history=' + JSON.stringify(_debug.sequence));\n\nreturn [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, systemPromptLength: systemPrompt.length, _debug } }];"
       },
       "id": "3c754088-6eac-46af-8607-35d27dd9d3ce",
       "name": "Build AI Prompt",
@@ -197,7 +184,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const groqResponse = $input.first().json;\nconst aiText = groqResponse.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, kuch problem aa gayi. Please dobara try karein.';\n\nconst buildData = $('Build AI Prompt').first().json || {};\n\n// Fallback chain: trust the upstream source-of-truth nodes, not just one ref\nlet phone = buildData.phone;\nif (!phone) {\n  try { phone = $('Decide Process').first().json.phone; } catch (e) {}\n}\n\n// Fail loud with context instead of a cryptic .replace crash\nif (!phone) {\n  throw new Error(\n    'Extract AI Response: phone missing. buildData=' + JSON.stringify(buildData)\n  );\n}\n\nconst name = buildData.name || 'Customer';\nconst newMsgText = buildData.newMsgText || '';\nconst docId = phone.replace('+', '');\n\nreturn [{\n  json: {\n    phone,\n    name,\n    lastAiReply: aiText,\n    lastUserMessage: newMsgText,\n    docId,\n    lastUpdated: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const geminiResponse = $input.first().json;\nconst _parts = geminiResponse.candidates?.[0]?.content?.parts || [];\n// This tuned model emits a \"think\"/reasoning part first and the REAL reply as the\n// LAST text part — so take the last non-empty part, not parts[0].\nlet aiText = '';\nfor (let i = _parts.length - 1; i >= 0; i--) {\n  const tx = _parts[i] && _parts[i].text ? _parts[i].text.trim() : '';\n  if (tx) { aiText = tx; break; }\n}\naiText = aiText.replace(/^\\s*(think|thought|reasoning)\\b[\\s\\S]*?\\n\\n/i, '').trim();  // strip any leading reasoning block\nif (!aiText) aiText = 'Sorry, kuch problem aa gayi. Please dobara try karein.';\n\nconst buildData = $('Build AI Prompt').first().json || {};\nlet phone = buildData.phone;\nif (!phone) { try { phone = $('Decide Process').first().json.phone; } catch (e) {} }\nif (!phone) throw new Error('Extract AI Response: phone missing. buildData=' + JSON.stringify(buildData));\nconst name = buildData.name || 'Customer';\nconst newMsgText = buildData.newMsgText || '';\n\n// ---- Have we already greeted? — authoritative, from the REAL conversation history.\n//      (The fine-tuned model ignores the \"greet once\" rule, so we control it here.) ----\nlet greetedBefore = false;\ntry {\n  const items = $('Fetch Conversation History').all();\n  for (const it of items) {\n    const m = it && it.json; if (!m) continue;\n    const txt = (m.text || '').toLowerCase();\n    if (m.direction === 'out' && (m.text || m.placeholder)) greetedBefore = true;   // a prior bot/agent reply\n    if (txt.includes('ananya') && txt.includes('sehat')) greetedBefore = true;      // intro already sent\n  }\n} catch (e) {}\n\n// ---- Sanitize + strip ANY model-generated intro (kept: time greetings, titles) ----\nfunction sanitizeReply(t) {\n  if (!t) return '';\n  let s = String(t);\n  s = s.replace(/\\b(good\\s*(morning|afternoon|evening|noon)|gud\\s*(mrng|morning|evening|evng)|shubh\\s*(prabhat|sandhya)|subh\\s*prabhat)\\b[\\s,!.-]*/gi, '');\n  s = s.replace(/\\b(ma'?am|madam|mem(sahib|saheb)?|sir(ji|jee)?|bhai(ya)?|bro(ther)?)\\b/gi, 'ji');\n  s = s.replace(/hello\\s*ji[\\s,!.]*/gi, '');\n  s = s.replace(/\\bma?i?n?\\s*ananya\\s+baat\\s+kar\\s+rah[iy]\\s*hu?n?\\s*,?\\s*sehat\\s*up\\s*se[\\s,.!]*/gi, '');\n  s = s.replace(/\\bma?i?n?\\s*ananya\\s+(hu|hoon)\\b[\\s,.!]*/gi, '');\n  s = s.replace(/\\b(ji)(\\s*,?\\s*ji\\b)+/gi, 'ji');\n  s = s.replace(/[ \\t]{2,}/g, ' ').replace(/\\n{3,}/g, '\\n\\n');\n  s = s.replace(/^[\\s,.:;!-]+/, '').replace(/[ \\t]+([,.!?])/g, '$1').trim();\n  return s;\n}\naiText = sanitizeReply(aiText);\n\n// ---- Add the introduction EXACTLY ONCE, only on genuine first contact ----\nif (!greetedBefore) {\n  aiText = 'Hello ji, mai Ananya baat kar rahi hu SehatUP se. ' + (aiText || 'mai aapki kya help kar sakti hu?');\n}\nif (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';\n\nconst docId = phone.replace(/[^0-9]/g, '');\nreturn [{\n  json: {\n    phone,\n    name,\n    lastAiReply: aiText,\n    lastUserMessage: newMsgText,\n    docId,\n    lastUpdated: new Date().toISOString()\n  }\n}];"
       },
       "id": "a5e50731-0e37-41de-9e62-355d25ed650f",
       "name": "Extract AI Response",
@@ -377,7 +364,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": {{ JSON.stringify($json.messages.slice(1).map(m => ({\n    \"role\": m.role === \"assistant\" ? \"model\" : m.role,\n    \"parts\": [{\"text\": m.content}]\n  }))) }},\n  \"systemInstruction\": {\n    \"parts\": [{\"text\": {{ JSON.stringify($json.messages[0].content) }}}]\n  },\n  \"generationConfig\": {\n    \"maxOutputTokens\": 400,\n    \"temperature\": 0.7\n  }\n}",
+        "jsonBody": "={\n  \"contents\": {{ JSON.stringify($json.messages.slice(1).map(m => ({\n    \"role\": m.role === \"assistant\" ? \"model\" : m.role,\n    \"parts\": [{\"text\": m.content}]\n  }))) }},\n  \"systemInstruction\": {\n    \"parts\": [{\"text\": {{ JSON.stringify($json.messages[0].content) }}}]\n  },\n  \"generationConfig\": {\n    \"maxOutputTokens\": 500,\n    \"temperature\": 0.7,\n    \"thinkingConfig\": { \"thinkingBudget\": 0 }\n  }\n}",
         "options": {}
       },
       "id": "fc09a995-4f82-45d4-9efc-18d3ed4a0b97",
@@ -481,6 +468,66 @@
         672,
         320
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = ($('QuickReply Webhook').first().json.body) || {};\nconst isStatus = !(b.payload && b.payload._type);\ntry {\n  $execution.customData.set('kind', isStatus ? 'STATUS' : 'MESSAGE');\n  $execution.customData.set('phone', String(b.phone || ''));\n  if (isStatus) {\n    $execution.customData.set('event', String(b.event || ''));\n    $execution.customData.set('by', String(b.messageBy || ''));\n  } else {\n    $execution.customData.set('text', String((b.payload && b.payload.text) || '').slice(0, 60));\n  }\n} catch (e) { /* customData unavailable on this plan — ignore */ }\nreturn $input.all();"
+      },
+      "id": "b7c1e007-7777-4a77-9000-aaaaaaaa0007",
+      "name": "Tag Execution",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "skip-ai",
+              "leftValue": "={{ $json.skipAi }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b7c1e020-2020-4a20-9000-aaaaaaaa0020",
+      "name": "Skip AI? (media/automation)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $json || {};\nconsole.log('[Skip AI] reason=' + (s.skipReason || '') + ' | phone=' + (s.phone || '') + ' | type=' + (s.msgType || '') + ' | text=' + String(s.text || '').slice(0, 40));\nreturn [{ json: { skipped: true, reason: s.skipReason, phone: s.phone, msgType: s.msgType, mediaKind: s.mediaKind } }];"
+      },
+      "id": "b7c1e021-2121-4a21-9000-aaaaaaaa0021",
+      "name": "Log Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        640
+      ]
     }
   ],
   "pinData": {
@@ -540,6 +587,11 @@
             "index": 0
           },
           {
+            "node": "Tag Execution",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Forward to Cloud Function",
             "type": "main",
             "index": 0
@@ -591,18 +643,7 @@
       "main": [
         [
           {
-            "node": "Store Message in Session",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Store Message in Session": {
-      "main": [
-        [
-          {
-            "node": "Wait 3 Minutes",
+            "node": "Skip AI? (media/automation)",
             "type": "main",
             "index": 0
           }
@@ -724,6 +765,24 @@
         [
           {
             "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip AI? (media/automation)": {
+      "main": [
+        [
+          {
+            "node": "Log Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 3 Minutes",
             "type": "main",
             "index": 0
           }

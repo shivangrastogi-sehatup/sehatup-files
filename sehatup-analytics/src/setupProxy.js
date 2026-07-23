@@ -2,6 +2,11 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const https = require('https');
 require('dotenv').config();
 
+// All-India offline pincode dataset (same file the deployed api/pincode.js uses).
+let PINCODE_DB = {};
+try { PINCODE_DB = require('../api/_data/pincodes.json'); }
+catch (e) { console.warn('[Pincode] offline dataset not loaded:', e.message); }
+
 module.exports = function (app) {
     const SHOPIFY_HOSTNAME = '0ec320-gj.myshopify.com';
     const STOREFRONT_TARGET = 'https://sehatup.com';
@@ -170,9 +175,19 @@ module.exports = function (app) {
     });
 
     app.use('/api/pincode', async (req, res) => {
-        const pin = req.url.replace(/^\//,'').split('?')[0].trim();
+        const q = req.url.split('?')[1] || '';
+        const pin = (new URLSearchParams(q).get('pin') || req.url.replace(/^\//, '').split('?')[0]).trim();
         if (!/^\d{6}$/.test(pin)) {
             return res.status(400).json({ error: 'Invalid pincode' });
+        }
+        // Offline dataset first (accurate City); external APIs are the fallback below.
+        const e = PINCODE_DB[pin];
+        if (e) {
+            const names = (e.o && e.o.length) ? e.o : [e.c || e.d].filter(Boolean);
+            return res.status(200).json([{
+                Status: 'Success', _source: 'offline',
+                PostOffice: names.map(name => ({ Name: name, District: e.d || '', City: e.c || '', State: e.s || '', Country: 'India', Pincode: pin })),
+            }]);
         }
         try {
             // Primary: postalpincode.in — rich India data, but has SSL issues; rejectUnauthorized=false handles it

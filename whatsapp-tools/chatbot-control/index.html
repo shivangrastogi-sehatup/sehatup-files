@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SehatUP · Chatbot Control</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#1e293b; --card2:#243449; --line:#334155;
+      --text:#e2e8f0; --muted:#94a3b8; --brand:#22c55e; --brand-d:#16a34a;
+      --amber:#f59e0b; --red:#ef4444; --blue:#3b82f6;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(160deg,#0b1220,#0f172a 40%,#111c33);color:var(--text);min-height:100vh}
+    .wrap{max-width:720px;margin:0 auto;padding:24px 18px 60px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+    .logo .dot{width:12px;height:12px;border-radius:50%;background:var(--brand);box-shadow:0 0 10px var(--brand)}
+    .muted{color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px}
+    .card h2{margin:0 0 4px;font-size:15px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted)}
+    .card p.hint{margin:0 0 16px;font-size:13px;color:var(--muted)}
+    label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
+    input[type=text],input[type=email],input[type=password]{
+      width:100%;padding:12px 13px;border-radius:10px;border:1px solid var(--line);
+      background:#0b1220;color:var(--text);font-size:16px;outline:none}
+    input:focus{border-color:var(--brand)}
+    /* mode segmented */
+    .seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .seg button{cursor:pointer;border-radius:12px;padding:14px 8px;border:1.5px solid var(--line);
+      background:var(--card2);color:var(--text);text-align:center;transition:.15s;font:inherit}
+    .seg button .t{font-weight:700;font-size:15px;display:block}
+    .seg button .d{font-size:11px;color:var(--muted);margin-top:3px;display:block;line-height:1.3}
+    .seg button[data-on=true][data-v=on]{border-color:var(--brand);background:rgba(34,197,94,.12)}
+    .seg button[data-on=true][data-v=test]{border-color:var(--amber);background:rgba(245,158,11,.12)}
+    .seg button[data-on=true][data-v=off]{border-color:var(--red);background:rgba(239,68,68,.12)}
+    /* chips */
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{display:inline-flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);
+      border-radius:999px;padding:6px 6px 6px 12px;font-size:13px}
+    .chip b{font-weight:600;letter-spacing:.3px}
+    .chip .x{cursor:pointer;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+      background:#0b1220;color:var(--muted);font-size:14px;line-height:1}
+    .chip .x:hover{color:var(--red)}
+    .addrow{display:flex;gap:8px;margin-top:10px}
+    .addrow button{white-space:nowrap}
+    button.btn{cursor:pointer;border:none;border-radius:10px;padding:11px 18px;font:inherit;font-weight:600;
+      background:var(--brand);color:#04210f}
+    button.btn:hover{background:var(--brand-d)}
+    button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+    button.ghost:hover{border-color:var(--muted)}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .spacer{flex:1}
+    .save-bar{position:sticky;bottom:0;background:linear-gradient(0deg,#0f172a 65%,transparent);
+      padding:16px 0 4px;margin-top:6px;display:flex;align-items:center;gap:12px}
+    .status{font-size:13px}
+    .status.ok{color:var(--brand)}
+    .status.warn{color:var(--amber)}
+    .status.err{color:var(--red)}
+    .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:5px 11px;border-radius:999px;
+      background:var(--card2);border:1px solid var(--line);color:var(--muted)}
+    .pill .d{width:8px;height:8px;border-radius:50%}
+    .banner{background:rgba(245,158,11,.12);border:1px solid var(--amber);color:#fde68a;
+      padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:14px;display:none}
+    .banner.show{display:block}
+    /* login */
+    #login{max-width:380px;margin:8vh auto 0}
+    #app{display:none}
+    .err{color:var(--red);font-size:13px;min-height:18px;margin-top:8px}
+    .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:26px}
+    .foot code{color:var(--muted)}
+    /* --- phones --- */
+    @media (max-width:480px){
+      .wrap{padding:16px 12px 60px}
+      .card{padding:16px}
+      .seg{gap:7px}
+      .seg button{padding:12px 4px}
+      .seg button .t{font-size:14px}
+      .seg button .d{font-size:10px}
+      button.btn{padding:12px 16px}         /* comfortable tap targets */
+      .addrow input{min-width:0}            /* let input shrink beside Add */
+      header .logo{font-size:16px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= LOGIN ================= -->
+  <div id="login">
+    <div class="logo" style="justify-content:center;margin-bottom:20px">
+      <span class="dot"></span> SehatUP Chatbot Control
+    </div>
+    <div class="card">
+      <h2>Sign in</h2>
+      <p class="hint">Use your SehatUP Firebase account.</p>
+      <label>Email</label>
+      <input type="email" id="email" autocomplete="username" placeholder="you@sehatup.com" />
+      <div style="height:12px"></div>
+      <label>Password</label>
+      <input type="password" id="password" autocomplete="current-password" placeholder="••••••••" />
+      <div class="err" id="loginErr"></div>
+      <div style="height:6px"></div>
+      <button class="btn" id="loginBtn" style="width:100%">Sign in</button>
+    </div>
+    <div class="foot">Writes to <code>qr_config/chatbot</code> · project <code>sehatup-f96b5</code></div>
+  </div>
+
+  <!-- ================= APP ================= -->
+  <div id="app">
+    <header>
+      <div class="logo"><span class="dot"></span> Chatbot Control</div>
+      <div class="row">
+        <span class="pill" id="livePill"><span class="d" style="background:var(--muted)"></span> connecting…</span>
+        <button class="ghost btn" id="signOut" style="padding:8px 12px;font-weight:500">Sign out</button>
+      </div>
+    </header>
+
+    <div class="banner" id="remoteBanner">
+      ⚠ Config was changed somewhere else. <a href="#" id="reloadCfg" style="color:#fde68a;font-weight:600">Reload latest</a> (this discards your unsaved edits).
+    </div>
+
+    <!-- MODE -->
+    <div class="card">
+      <h2>AI mode</h2>
+      <p class="hint">Controls whether Ananya replies. Read by the n8n <b>AI Enabled?</b> and <b>Decide Process</b> nodes.</p>
+      <div class="seg" id="modeSeg">
+        <button data-v="on"><span class="t">ON</span><span class="d">Replies to everyone</span></button>
+        <button data-v="test"><span class="t">TEST</span><span class="d">Only test numbers</span></button>
+        <button data-v="off"><span class="t">OFF</span><span class="d">Paused for all</span></button>
+      </div>
+    </div>
+
+    <!-- TEST NUMBERS -->
+    <div class="card">
+      <h2>Test numbers</h2>
+      <p class="hint">In <b>TEST</b> mode, only these numbers get AI replies. Format <code>+91XXXXXXXXXX</code>.</p>
+      <div class="addrow">
+        <input type="text" id="testInput" placeholder="e.g. 7300978845 or +917300978845" inputmode="tel" />
+        <button class="btn" id="testAdd">Add</button>
+      </div>
+      <div class="chips" id="testChips"></div>
+    </div>
+
+    <!-- BLOCKED NUMBERS -->
+    <div class="card">
+      <h2>Blocked numbers</h2>
+      <p class="hint">The AI never replies to these numbers, in any mode.</p>
+      <div class="addrow">
+        <input type="text" id="blockInput" placeholder="e.g. 9876543210 or +919876543210" inputmode="tel" />
+        <button class="btn" id="blockAdd">Add</button>
+      </div>
+      <div class="chips" id="blockChips"></div>
+    </div>
+
+    <!-- SAVE BAR -->
+    <div class="save-bar">
+      <button class="btn" id="saveBtn">Save to Firebase</button>
+      <span class="status" id="saveStatus"></span>
+      <span class="spacer"></span>
+      <span class="muted" id="meta" style="font-size:12px"></span>
+    </div>
+
+    <div class="foot">Signed in as <span id="whoami"></span></div>
+  </div>
+
+</div>
+
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  // ---- LIVE project (sehatup-f96b5) — same config the app uses ----
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCuj9geUYV69Ievt59WO8PjJWQZ1cKDLw",
+    authDomain: "sehatup-f96b5.firebaseapp.com",
+    projectId: "sehatup-f96b5",
+    storageBucket: "sehatup-f96b5.firebasestorage.app",
+    messagingSenderId: "886569695434",
+    appId: "1:886569695434:web:4932dca7625c98972a5c33",
+    measurementId: "G-X2274KKWE4"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const cfgRef = db.collection("qr_config").doc("chatbot");
+
+  // ---- state ----
+  let state = { mode: "on", testNumbers: [], blockedNumbers: [] };
+  let dirty = false;           // user has unsaved edits
+  let unsub = null;            // firestore listener
+  let lastRemote = null;       // last snapshot data (for the "changed elsewhere" banner)
+
+  const $ = (id) => document.getElementById(id);
+
+  // ---- phone normalisation: match webhook body.phone (+91XXXXXXXXXX) ----
+  function normalizePhone(raw){
+    let d = String(raw || "").replace(/[^0-9]/g, "");
+    if (!d) return null;
+    if (d.length === 10) d = "91" + d;          // bare 10-digit → add India code
+    if (d.length === 12 && d.startsWith("91")) return "+" + d;
+    // already has some country code
+    return "+" + d;
+  }
+
+  // ---- render ----
+  function renderMode(){
+    document.querySelectorAll("#modeSeg button").forEach(b=>{
+      b.setAttribute("data-on", String(b.dataset.v === state.mode));
+    });
+  }
+  function renderChips(listId, arr, onRemove){
+    const box = $(listId); box.innerHTML = "";
+    if (!arr.length){ box.innerHTML = '<span class="muted" style="font-size:13px">None</span>'; return; }
+    arr.forEach((num, i)=>{
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = `<b></b><span class="x" title="remove">×</span>`;
+      c.querySelector("b").textContent = num;
+      c.querySelector(".x").onclick = ()=> onRemove(i);
+      box.appendChild(c);
+    });
+  }
+  function renderAll(){
+    renderMode();
+    renderChips("testChips", state.testNumbers, i=>{ state.testNumbers.splice(i,1); markDirty(); renderAll(); });
+    renderChips("blockChips", state.blockedNumbers, i=>{ state.blockedNumbers.splice(i,1); markDirty(); renderAll(); });
+  }
+  function markDirty(){ dirty = true; setStatus("Unsaved changes", "warn"); }
+  function setStatus(msg, cls){ const s=$("saveStatus"); s.textContent=msg||""; s.className="status "+(cls||""); }
+
+  // ---- mode buttons ----
+  document.querySelectorAll("#modeSeg button").forEach(b=>{
+    b.onclick = ()=>{ state.mode = b.dataset.v; markDirty(); renderMode(); };
+  });
+
+  // ---- add numbers ----
+  function addFrom(inputId, key){
+    const inp = $(inputId);
+    const num = normalizePhone(inp.value);
+    if (!num){ inp.focus(); return; }
+    if (!/^\+\d{10,15}$/.test(num)){ alert("That doesn't look like a valid number: " + num); return; }
+    if (!state[key].includes(num)) state[key].push(num);
+    inp.value=""; inp.focus(); markDirty(); renderAll();
+  }
+  $("testAdd").onclick = ()=> addFrom("testInput","testNumbers");
+  $("blockAdd").onclick = ()=> addFrom("blockInput","blockedNumbers");
+  $("testInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){e.preventDefault();addFrom("testInput","testNumbers");}});
+  $("blockInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){e.preventDefault();addFrom("blockInput","blockedNumbers");}});
+
+  // ---- save ----
+  $("saveBtn").onclick = async ()=>{
+    try{
+      setStatus("Saving…","");
+      await cfgRef.set({
+        mode: state.mode,
+        testNumbers: state.testNumbers,
+        blockedNumbers: state.blockedNumbers,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: auth.currentUser ? auth.currentUser.email : "unknown"
+      }, { merge: true });
+      dirty = false;
+      $("remoteBanner").classList.remove("show");
+      setStatus("Saved ✓", "ok");
+    }catch(e){
+      console.error(e);
+      setStatus("Save failed: " + e.message, "err");
+    }
+  };
+
+  // ---- load config from a snapshot into state ----
+  function applyRemote(data){
+    state.mode = (typeof data.mode === "string" && data.mode.trim()) ? data.mode.trim().toLowerCase() : "on";
+    if (!["on","test","off"].includes(state.mode)) state.mode = "on";
+    state.testNumbers   = toArr(data.testNumbers);
+    state.blockedNumbers= toArr(data.blockedNumbers);
+    renderAll();
+    setStatus("", "");
+    const who = data.updatedBy ? (" by " + data.updatedBy) : "";
+    let when = "";
+    if (data.updatedAt && data.updatedAt.toDate) when = " · " + data.updatedAt.toDate().toLocaleString();
+    $("meta").textContent = (data.updatedBy || data.updatedAt) ? ("Last saved" + who + when) : "";
+  }
+  function toArr(v){
+    if (Array.isArray(v)) return v.map(x=>String(x).trim()).filter(Boolean);
+    if (typeof v === "string") return v.split(",").map(x=>x.trim()).filter(Boolean);
+    return [];
+  }
+
+  // ---- live listener with unsaved-edit guard ----
+  function startListening(){
+    unsub = cfgRef.onSnapshot(snap=>{
+      $("livePill").innerHTML = '<span class="d" style="background:var(--brand)"></span> live';
+      const data = snap.exists ? snap.data() : {};
+      lastRemote = data;
+      if (dirty){
+        // don't clobber the user's edits; offer a reload instead
+        $("remoteBanner").classList.add("show");
+        return;
+      }
+      applyRemote(data);
+    }, err=>{
+      $("livePill").innerHTML = '<span class="d" style="background:var(--red)"></span> error';
+      setStatus("Read failed: " + err.message, "err");
+    });
+  }
+  $("reloadCfg").onclick = (e)=>{ e.preventDefault(); dirty=false; $("remoteBanner").classList.remove("show"); if(lastRemote) applyRemote(lastRemote); };
+
+  // ---- auth wiring ----
+  $("loginBtn").onclick = async ()=>{
+    $("loginErr").textContent="";
+    try{
+      await auth.signInWithEmailAndPassword($("email").value.trim(), $("password").value);
+    }catch(e){ $("loginErr").textContent = e.message; }
+  };
+  $("password").addEventListener("keydown", e=>{ if(e.key==="Enter") $("loginBtn").click(); });
+  $("signOut").onclick = ()=>{ if(unsub) unsub(); auth.signOut(); };
+
+  auth.onAuthStateChanged(user=>{
+    if (user){
+      $("login").style.display="none";
+      $("app").style.display="block";
+      $("whoami").textContent = user.email;
+      startListening();
+    }else{
+      $("app").style.display="none";
+      $("login").style.display="block";
+      $("password").value="";
+      dirty=false;
+    }
+  });
+</script>
+</body>
+</html>

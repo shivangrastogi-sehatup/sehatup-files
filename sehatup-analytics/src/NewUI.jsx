@@ -16,6 +16,7 @@ import { saveAs } from 'file-saver';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import PriceCalculator from './components/PriceCalculator';
+import CartLinkGenerator from './components/CartLinkGenerator';
 
 // Curated list of exportable columns — `default: true` means pre-selected in the picker.
 // Each `get(r)` produces the cell value for a row. No `answers`/`rawState`/`html` etc.
@@ -2080,12 +2081,13 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       setLeadsModal({ open: true, loading: false, items: [], error: e?.message || 'Failed to load conversations', title });
     }
   };
-  // Conversation analytics aren't live yet, so every stat card is rendered DISABLED:
-  // greyed out, non-clickable, with a not-allowed cursor and a "coming soon" tooltip.
-  // (The drill-down modal + openConvoModal are kept for when this goes live.)
-  const convoCardProps = () => ({
-    style: { opacity: 0.5, cursor: 'not-allowed' },
-    title: 'Conversation analytics are not live yet — coming soon',
+  // Conversation analytics are LIVE (data comes from the collectionGroup('messages')
+  // query above). Each stat card is clickable and opens a drill-down list of the
+  // conversations behind that number.
+  const convoCardProps = (title, detail) => ({
+    style: { cursor: 'pointer' },
+    title: `View ${title}`,
+    onClick: () => openConvoModal(title, detail),
   });
   const leadRespondedCount = leadsModal.items.filter(it => it.status === 'agent').length;
   const visibleLeads = leadsModal.items.filter(it =>
@@ -2407,7 +2409,6 @@ function Dashboard({ tweaks, openCustomer, openSubmission, setRoute }) {
       <div className="card" style={{ padding: "14px 16px" }}>
         <div className="hstack-8" style={{ marginBottom: 12 }}>
           <div className="section-title" style={{ margin: 0 }}>Conversations</div>
-          <Badge tone="moderate" dot="var(--risk-moderate)" style={{ fontSize: 10.5 }}>Coming soon · not live yet</Badge>
           <span className="spacer" />
           <span className="muted" style={{ fontSize: 12 }}>
             {convoStats.loading ? "Loading…" : convoStats.error ? convoStats.error : `Chats from ${dateFrom} to ${dateTo}`}
@@ -6935,9 +6936,10 @@ function OrderCreate({ context = {}, setRoute }) {
       if (data?.[0]?.Status === 'Success' && data[0].PostOffice?.[0]) {
         const po = data[0].PostOffice[0];
         const normState = normalizeState(po.State || '');
-        onCity(po.District || '');
+        const cityVal = po.City || po.District || '';
+        onCity(cityVal);
         onState(normState);
-        onMessage(`Auto-filled: ${po.District}, ${normState}`);
+        onMessage(`Auto-filled: ${cityVal}, ${normState}`);
       }
       // zippopotam fallback format
       else if (data?._source === 'zippopotam' && data?.places?.[0]) {
@@ -6993,10 +6995,16 @@ function OrderCreate({ context = {}, setRoute }) {
           const localities = [...new Set(offices.map(o => o.Name).filter(Boolean))];
           const resolvedState = normalizeState(offices[0].State);
           const resolvedDistrict = offices[0].District || '';
+          // Prefer the offline dataset's accurate City (e.g. 110001 → "New Delhi",
+          // 262001 → "Pilibhit"); fall back to district for the rare external-API result
+          // (which has no City field). NEVER offices[0].Name — that's an arbitrary
+          // alphabetical sub-locality, the old wrong-city bug. localityOptions still lets
+          // the operator pick a specific locality.
+          const resolvedCity = offices[0].City || resolvedDistrict;
           setLocalityOptions(localities);
           setDistrict(resolvedDistrict);
           setStateName(resolvedState);
-          setCity(prev => (localities.includes(prev) ? prev : (localities[0] || resolvedDistrict || '')));
+          setCity(prev => (localities.includes(prev) ? prev : (resolvedCity || localities[0] || '')));
           setAutofillMessage(`Auto-filled: ${resolvedDistrict}, ${resolvedState}`);
           setTimeout(() => setAutofillMessage(''), 3000);
         }
@@ -10073,6 +10081,7 @@ const PERMISSION_KEYS = [
   { key: 'can_manage_shopify_customers', label: 'Manage Shopify Customers', icon: 'users' },
   { key: 'can_view_prescriptions_tab', label: 'View Prescriptions Tab (Telesales)', icon: 'pill' },
   { key: 'can_view_submissions_tab', label: 'View Submissions Tab (Marketing/Telesales)', icon: 'clipboard' },
+  { key: 'can_access_cart_links', label: 'Cart Link Generator (non-sales roles)', icon: 'link' },
 ];
 
 /* ───────────────────── Data Studio (developer Firestore editor) ───────────────────── */
@@ -12411,14 +12420,20 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "homeLayout": "analytics"
 }/*EDITMODE-END*/;
 
+// "cart_links" is always present for admin / telesales / marketing. For every other
+// role it is listed too, but filtered out below unless an admin grants the
+// can_access_cart_links permission — that's the dynamic opt-in.
 const NAV = {
-  admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "order_create", "shipments", "users", "focused_editor", "data_studio", "settings"],
-  doctor: ["doctor", "submissions", "customers", "prescriptions", "settings"],
-  telesales: ["submissions", "prescriptions", "calculator", "settings"],
-  operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "settings"],
-  marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "settings"],
-  website_developer: ["focused_editor", "data_studio", "settings"],
+  admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "order_create", "shipments", "cart_links", "users", "focused_editor", "data_studio", "settings"],
+  doctor: ["doctor", "submissions", "customers", "prescriptions", "cart_links", "settings"],
+  telesales: ["submissions", "prescriptions", "calculator", "cart_links", "settings"],
+  operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "cart_links", "settings"],
+  marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "cart_links", "settings"],
+  website_developer: ["focused_editor", "data_studio", "cart_links", "settings"],
 };
+
+// Roles that always see the cart link generator, no permission needed.
+const CART_LINKS_CORE_ROLES = ["admin", "telesales", "marketing"];
 
 const ITEMS = {
   home: { label: "Analytics Dashboard", icon: "pulse", route: "home" },
@@ -12433,6 +12448,7 @@ const ITEMS = {
   crm_orders: { label: "CRM orders", icon: "clipboard", route: "crm_orders" },
   order_create: { label: "Create order", icon: "plus", route: "order_create" },
   calculator: { label: "Price calculator", icon: "receipt", route: "calculator" },
+  cart_links: { label: "Cart link generator", icon: "link", route: "cart_links" },
   shipments: { label: "Shipments", icon: "truck", route: "shipments" },
   users: { label: "Roles & users", icon: "shield", route: "admin" },
   focused_editor: { label: "Quick Editor", icon: "filter", route: "focused_editor" },
@@ -12825,6 +12841,7 @@ function App({ user, roles, onLogout }) {
       if (k === 'doctor' && role === 'marketing' && !isAdmin && !permissions.can_access_clinical_review) return false;
       if (k === 'prescriptions' && role === 'telesales' && !isAdmin && !permissions.can_view_prescriptions_tab) return false;
       if (k === 'submissions' && (role === 'marketing' || role === 'telesales') && !isAdmin && !permissions.can_view_submissions_tab) return false;
+      if (k === 'cart_links' && !CART_LINKS_CORE_ROLES.includes(role) && !isAdmin && !permissions.can_access_cart_links) return false;
       return true;
     })
     .map(k => ({ ...ITEMS[k], key: k }));
@@ -12912,9 +12929,6 @@ function App({ user, roles, onLogout }) {
                 onClick={() => setRoute(it.route)}>
                 <Icon name={it.icon} className="ic" />
                 <span>{it.label}</span>
-                {it.key === 'conversations' && !sidebarCollapsed && (
-                  <span className="rail-soon" title="Coming soon">Soon</span>
-                )}
                 {it.ct && <span className="ct">{it.ct}</span>}
               </div>
             ))}
@@ -13378,11 +13392,10 @@ const convoInitial = (c) => {
   const ch = Array.from(convoTitle(c).trim())[0] || 'U';   // Array.from → full emoji code point
   return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;        // uppercase letters; keep emoji/digit as-is
 };
-// Conversations (WhatsApp inbox). Kept OFF for now: with QuickReply → n8n only, the
-// `conversations` collection isn't being filled (needs n8n to feed it), so the inbox
-// would show stale data. Flip to true once n8n writes the `conversations` collection.
-// The list/pagination/search + per-number AI controls below are ready and gated on this.
-const CONVERSATIONS_LIVE = false;
+// Conversations (WhatsApp inbox) — LIVE. n8n now forwards every webhook to the
+// qrReceiveMessage Cloud Function, which fills the `conversations` collection, and
+// writes AI replies there directly. Set to false only if that pipeline is paused.
+const CONVERSATIONS_LIVE = true;
 function ConversationsScreen({ me, ctx }) {
   const [convos, setConvos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13744,6 +13757,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
     case "crm_orders": return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
     case "calculator": return <PriceCalculator me={me} canRx={canRx} />;
+    case "cart_links": return <CartLinkGenerator />;
     case "shipments": return <ShipmentsScreen ctx={route.ctx} />;
     // "marketing" was merged into the unified Analytics Dashboard ("home");
     // stale saved routes fall through to the default Dashboard render.
