@@ -1,0 +1,23 @@
+/* Global styles ported verbatim from the design's <helmet> block, plus the
+   hover rules the design expressed as style-hover="…" attributes. */
+
+html, body { margin: 0; background: #E9EDF0; }
+* { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+
+@keyframes livePulse { 0% { transform: scale(1); opacity: .5 } 70% { transform: scale(3.4); opacity: 0 } 100% { opacity: 0 } }
+@keyframes floatIn   { 0% { transform: translateY(14px); opacity: 0 } 100% { transform: translateY(0); opacity: 1 } }
+@keyframes drawArc   { from { stroke-dashoffset: var(--l) } to { stroke-dashoffset: 0 } }
+@keyframes tickIn    { 0% { transform: translateY(10px); opacity: 0 } 100% { transform: translateY(0); opacity: 1 } }
+@keyframes modalIn   { 0% { transform: translateY(18px) scale(.98); opacity: 0 } 100% { transform: translateY(0) scale(1); opacity: 1 } }
+
+/* style-hover="transform:translateY(-3px);box-shadow:var(--shadow-lift)" */
+.scc-lift.scc-on:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+/* style-hover="background:var(--accent-soft)" */
+.scc-rowhover.scc-on:hover { background: var(--accent-soft) !important; }
+.scc-closebtn:hover { background: var(--accent-soft); }
+
+/* Native select/date controls, matched to the card styling. */
+select, input, button { font-family: 'Inter', sans-serif; }
+select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }

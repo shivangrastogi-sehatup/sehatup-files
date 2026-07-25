@@ -3059,7 +3059,12 @@ function SubmissionsHistory({ loading, recent, openCustomer, tab, setTab, active
                     <div className="hstack-10">
                       <Avatar name={c.name} hue={c.avatarHue} size="sm" />
                       <div className="stack-2">
-                        <div className="fw5">{c.name}</div>
+                        <div className="hstack-8">
+                          <span className="fw5">{c.name}</span>
+                          {c.isWhatsAppSent && (
+                            <span title="Customer requested report on WhatsApp" style={{ background: 'rgba(37,211,102,0.12)', color: '#15803d', padding: '2px 6px', borderRadius: 4, fontSize: 9, display: 'inline-flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}><Icon name="whatsapp" size={9} /> WA</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -3570,6 +3575,7 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
   const [isPurchased, setIsPurchased] = useStateCx(false);
   const [isConsulted, setIsConsulted] = useStateCx(false);
   const [copiedId, setCopiedId] = useStateCx(false);
+  const [copiedReport, setCopiedReport] = useStateCx(false);
   // Live Shopify order stats looked up by the patient's questionnaire phone number.
   // orders = orders_count, lifetime value = total_spent. Falls back to 0 if no match.
   const [shopStats, setShopStats] = useStateCx({ orders: null, ltv: null });
@@ -3615,6 +3621,9 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
           <div className="hstack-8">
             <span className="page-title" style={{ fontSize: 18 }}>{c.name}</span>
             {c.risk && <RiskBadge risk={c.risk} />}
+            {c.isWhatsAppSent && (
+              <span title="Customer requested report on WhatsApp" style={{ background: 'rgba(37,211,102,0.12)', color: '#15803d', padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}><Icon name="whatsapp" size={11} /> WhatsApp requested</span>
+            )}
           </div>
           <div className="muted" style={{ fontSize: 12.5 }}>{c.age !== "-" ? `${c.age} · ${c.gender} · ` : ""}{c.city}, {c.state}</div>
           {docId && (
@@ -3665,6 +3674,31 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
           </div>
         </div>
       )}
+
+      {c.reportDownloadUrl && (
+        <div className="stack-12">
+          <div className="section-title">Reports generated</div>
+          <div className="card flat">
+            <div className="hstack-12">
+              <Icon name="file_text" size={20} color="var(--muted)" />
+              <div className="stack-2">
+                <div className="fw5">Health Score 360 Report</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {c.pdfGeneratedAt ? `Generated ${c.pdfGeneratedAt}` : "PDF report"}
+                </div>
+              </div>
+              <span className="spacer" />
+              <button className="btn sm" onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(c.reportDownloadUrl).then(() => { setCopiedReport(true); setTimeout(() => setCopiedReport(false), 1500); }).catch(() => {}); }}>
+                <Icon name={copiedReport ? "check" : "copy"} size={14} /> {copiedReport ? "Copied" : "Copy link"}
+              </button>
+              <a href={c.reportDownloadUrl} target="_blank" rel="noopener noreferrer" className="btn sm primary" style={{ textDecoration: 'none' }}>
+                <Icon name="file_text" size={14} /> View PDF
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="stack-12">
         <div className="section-title">Activity timeline</div>
         {/* Real prescription + questionnaire history (same data as Clinical review) */}
