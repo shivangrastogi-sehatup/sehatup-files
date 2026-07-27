@@ -106,7 +106,8 @@ export function resetConfig() {
 const PREF_KEY = 'scc-prefs-v1';
 
 export function loadPrefs() {
-  const base = { mode: 'tv', range: 'month', source: 'all', agent: 'all' };
+  // from/to are ISO dates and only apply when range === 'custom'.
+  const base = { mode: 'tv', range: 'month', source: 'all', agent: 'all', from: '', to: '' };
   try {
     const raw = localStorage.getItem(PREF_KEY);
     if (raw) Object.assign(base, JSON.parse(raw));

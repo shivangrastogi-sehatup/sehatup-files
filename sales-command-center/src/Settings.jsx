@@ -11,10 +11,13 @@ import { fetchTabs, fetchHeaders } from './api/sheets';
  * Everything is local to this panel until "Save & reload".
  * ========================================================================== */
 
+/** The subset of App.jsx's tokens this panel uses — keep the two in step. */
 const T = {
-  card: '#FFFFFF', line: '#E6E9EE', ink: '#1A2332', label: '#3A4658',
-  accent: '#FF4757', accentSoft: '#FFECEE', track: '#EEF1F5',
-  pos: '#12B76A', posSoft: '#E4F7EE', neg: '#FF4757', slate: '#2B3654',
+  card: '#FFFFFF', line: '#E2E8F0', ink: '#16202E', label: '#5A6A7F',
+  accent: '#FF4757', accentInk: '#D62A41', accentSoft: '#FFF1F2', track: '#EDF1F6',
+  pos: '#0E9F6E', posInk: '#07875C', posSoft: '#E6F6EF',
+  neg: '#D93A5C', negInk: '#C22947', negSoft: '#FDECEF',
+  warn: '#D68A06', warnInk: '#A96A04', warnSoft: '#FDF3E0',
 };
 const MONO_G = "'Space Grotesk', sans-serif";
 
@@ -82,13 +85,13 @@ export default class Settings extends React.Component {
       <div
         onClick={onClose}
         style={{
-          position: 'absolute', inset: 0, background: 'rgba(27,30,48,.42)', backdropFilter: 'blur(3px)',
+          position: 'absolute', inset: 0, background: 'rgba(22,32,46,.40)', backdropFilter: 'blur(3px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60,
         }}
       >
         <div onClick={(e) => e.stopPropagation()} style={{
           width: 980, maxWidth: '94%', maxHeight: '88%', background: T.card, borderRadius: 20,
-          boxShadow: '0 30px 80px rgba(20,20,60,.35)', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 30px 80px rgba(22,32,46,.32)', display: 'flex', flexDirection: 'column',
           animation: 'modalIn .35s cubic-bezier(.2,.7,.2,1) both', overflow: 'hidden',
         }}>
           {/* header */}
@@ -102,7 +105,7 @@ export default class Settings extends React.Component {
               </div>
             </div>
             <button className="scc-closebtn" onClick={onClose} style={{
-              border: 'none', background: '#EDEEF6', width: 38, height: 38, borderRadius: 10, cursor: 'pointer',
+              border: 'none', background: T.track, width: 38, height: 38, borderRadius: 10, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.label, flex: '0 0 auto',
             }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -118,14 +121,14 @@ export default class Settings extends React.Component {
                 <button key={src.id} onClick={() => this.setState({ open: src.id })} style={{
                   border: 'none', cursor: 'pointer', fontFamily: "'Inter'", fontWeight: 700, fontSize: 13,
                   padding: '10px 16px', borderRadius: '9px 9px 0 0',
-                  background: on ? T.accentSoft : 'transparent', color: on ? T.accent : T.label,
+                  background: on ? T.accentSoft : 'transparent', color: on ? T.accentInk : T.label,
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
                   {src.label}
                   {st && (
                     <span style={{
                       width: 7, height: 7, borderRadius: '50%',
-                      background: !st.ok ? T.neg : st.rows ? T.pos : '#F79009',
+                      background: !st.ok ? T.neg : st.rows ? T.pos : T.warn,
                     }} title={!st.ok ? 'failed to load' : st.rows ? `${st.rows} rows` : 'loaded, but empty'} />
                   )}
                 </button>
@@ -139,7 +142,7 @@ export default class Settings extends React.Component {
           </div>
 
           {/* footer */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 30px', borderTop: `1px solid ${T.line}`, background: '#FBFCFD' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 30px', borderTop: `1px solid ${T.line}`, background: '#F8FAFC' }}>
             <button style={btn('ghost')} onClick={() => {
               if (!window.confirm('Reset every sheet and column mapping back to the server defaults?')) return;
               this.setState({ cfg: emptyConfig(), tabs: {}, cols: {} });
@@ -169,8 +172,8 @@ export default class Settings extends React.Component {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, fontWeight: 600,
             padding: '10px 14px', borderRadius: 10,
-            background: !st.ok ? T.accentSoft : st.rows ? T.posSoft : '#FEF3E2',
-            color: !st.ok ? T.neg : st.rows ? T.pos : '#B54708',
+            background: !st.ok ? T.negSoft : st.rows ? T.posSoft : T.warnSoft,
+            color: !st.ok ? T.negInk : st.rows ? T.posInk : T.warnInk,
           }}>
             {!st.ok
               ? 'Last refresh failed for this sheet — the board is showing the previous numbers.'
@@ -255,7 +258,7 @@ export default class Settings extends React.Component {
               return (
                 <div key={f.key} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
-                  border: `1px solid ${missing ? T.neg : T.line}`, borderRadius: 10, background: '#FBFCFD',
+                  border: `1px solid ${missing ? T.neg : T.line}`, borderRadius: 10, background: '#F8FAFC',
                 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: T.ink, width: 132, flex: '0 0 auto' }}>
                     {f.label}{f.required && <span style={{ color: T.accent }}> *</span>}

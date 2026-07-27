@@ -1,7 +1,7 @@
 /* Global styles ported verbatim from the design's <helmet> block, plus the
    hover rules the design expressed as style-hover="…" attributes. */
 
-html, body { margin: 0; background: #E9EDF0; }
+html, body { margin: 0; background: #E4E9EF; }
 * { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
 
 @keyframes livePulse { 0% { transform: scale(1); opacity: .5 } 70% { transform: scale(3.4); opacity: 0 } 100% { opacity: 0 } }
@@ -9,6 +9,11 @@ html, body { margin: 0; background: #E9EDF0; }
 @keyframes drawArc   { from { stroke-dashoffset: var(--l) } to { stroke-dashoffset: 0 } }
 @keyframes tickIn    { 0% { transform: translateY(10px); opacity: 0 } 100% { transform: translateY(0); opacity: 1 } }
 @keyframes modalIn   { 0% { transform: translateY(18px) scale(.98); opacity: 0 } 100% { transform: translateY(0) scale(1); opacity: 1 } }
+/* The order card arrives from below with a slight overshoot — it should read as
+   something that just happened, not something that was always there. */
+@keyframes toastIn   { 0% { transform: translateY(34px) scale(.94); opacity: 0 } 62% { transform: translateY(-5px) scale(1.01); opacity: 1 } 100% { transform: translateY(0) scale(1); opacity: 1 } }
+/* Its own dismissal, drawn: the bar empties over exactly the time it has left. */
+@keyframes toastBar  { from { transform: scaleX(1) } to { transform: scaleX(0) } }
 
 /* style-hover="transform:translateY(-3px);box-shadow:var(--shadow-lift)" */
 .scc-lift.scc-on:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
