@@ -40,34 +40,41 @@ service cloud.firestore {
       }
     }
 
-    // Nimbus webhook writes raw tracking events without auth (inbound push only)
+    // ── Nimbus shipment tracking ────────────────────────────────────────────
+    // These collections USED TO carry `allow write: if true`, because the Vercel
+    // webhook wrote to Firestore with FIREBASE_WEB_API_KEY — an API key identifies the
+    // project, not a user, so `request.auth` was null and only an open rule let it
+    // through. That also meant anyone who knew the project ID could write here.
+    //
+    // The server now authenticates with a service account (api/_lib/google-auth.js),
+    // and service accounts bypass security rules entirely, so no public write rule is
+    // needed. Both remaining writers are covered:
+    //   • webhook / cron / backfill → service account, bypasses rules
+    //   • CRM staff (Excel upload)  → signed in, covered by the auth catch-all above
+    //
+    // ⚠️ Deploy order matters: set FIREBASE_SERVICE_ACCOUNT in Vercel and ship the API
+    // code BEFORE these rules, or inbound Nimbus events will be rejected.
+    //
+    // Structure:
+    //   shipments/{phone}              → customer summary
+    //   shipments/{phone}/awbs/{awb}   → per-shipment enriched doc
     match /nimbus_tracking/{doc} {
-      allow write: if true;
-      allow read: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
-
-    // Nimbus webhook (server-side enrichment) writes enriched shipment docs
-    // without auth. Structure:
-    //   shipments/{phone}                 → customer summary
-    //   shipments/{phone}/awbs/{awb}      → per-shipment enriched doc
     match /shipments/{phone} {
-      allow write: if true;
-      allow read: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     match /shipments/{phone}/awbs/{awb} {
-      allow write: if true;
-      allow read: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
 
-    // Test-mode mirror of shipments (CRM "Test mode" uploads/enrichment) — same
-    // inbound-write pattern, kept separate so production data is never touched.
+    // Test-mode mirror of shipments (CRM "Test mode" uploads/enrichment) — kept
+    // separate so production data is never touched.
     match /shipments_test/{phone} {
-      allow write: if true;
-      allow read: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     match /shipments_test/{phone}/awbs/{awb} {
-      allow write: if true;
-      allow read: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
   }
 }

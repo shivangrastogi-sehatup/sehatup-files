@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { enrichAwbAndCache } from './_lib/enrich.js';
+import { authHeader, hasServiceAccount } from './_lib/google-auth.js';
 
 // Vercel Fluid compute can finish background work after the response is sent, via
 // `waitUntil` from "@vercel/functions". We load it defensively: if the package isn't
@@ -41,15 +42,26 @@ function toFirestoreDoc(obj) {
   return { fields };
 }
 
+// Writes go through the service account, which bypasses security rules — so this keeps
+// working after `allow write: if true` is removed from nimbus_tracking. The web-API-key
+// path is a rollout fallback that depends on those open rules; see firestoreAuth() in
+// _lib/enrich.js for the same reasoning.
 async function writeToFirestore(payload) {
-  if (!API_KEY) {
-    throw new Error('FIREBASE_WEB_API_KEY is not set — cannot write to Firestore');
+  let headers = { 'Content-Type': 'application/json' };
+  let query = '';
+  if (hasServiceAccount()) {
+    headers = { ...headers, ...(await authHeader()) };
+  } else if (API_KEY) {
+    console.warn('[nimbus-webhook] FIREBASE_SERVICE_ACCOUNT not set — falling back to the web API key');
+    query = `?key=${API_KEY}`;
+  } else {
+    throw new Error('Neither FIREBASE_SERVICE_ACCOUNT nor FIREBASE_WEB_API_KEY is set — cannot write to Firestore');
   }
   const doc = toFirestoreDoc({ ...payload, receivedAt: new Date().toISOString() });
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/nimbus_tracking?key=${API_KEY}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/nimbus_tracking${query}`;
   const r = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(doc),
   });
   if (!r.ok) {

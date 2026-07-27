@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopify Delivery Sync</title>
+<style>
+  :root{
+    --bg:#0f1216; --surface:#171b21; --surface-2:#1e242c; --line:#2a323c;
+    --text:#e6eaef; --muted:#8c98a8; --accent:#4f8cff; --ok:#3ec98a;
+    --warn:#f0b429; --danger:#f2626b;
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --bg:#f5f7fa; --surface:#fff; --surface-2:#eef2f7; --line:#dbe2ea;
+           --text:#16202b; --muted:#5f6d7e; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);background:var(--surface);
+         display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:12px}
+  main{padding:24px;max-width:1500px;margin:0 auto}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+        padding:18px;margin-bottom:18px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;
+         padding:8px 14px;font:inherit;font-weight:550;cursor:pointer}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--line)}
+  button.danger{background:var(--danger)}
+  button.mini{padding:4px 10px;font-size:12px;border-radius:5px}
+  input[type=text],input[type=password],input[type=email]{
+    background:var(--surface-2);border:1px solid var(--line);color:var(--text);
+    border-radius:7px;padding:8px 11px;font:inherit;min-width:230px}
+  label.chk{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tab{padding:8px 18px;border-radius:8px;background:var(--surface);cursor:pointer;
+       border:1px solid var(--line);font-weight:550}
+  .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:9px;
+        padding:11px 16px;min-width:130px}
+  .stat b{display:block;font-size:21px;line-height:1.25}
+  .stat span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:1080px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{background:var(--surface-2);font-size:11px;text-transform:uppercase;
+     letter-spacing:.05em;color:var(--muted);font-weight:600;position:sticky;top:0}
+  tr:last-child td{border-bottom:0}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+  .pill.event{background:rgba(79,140,255,.16);color:var(--accent)}
+  .pill.create{background:rgba(240,180,41,.16);color:var(--warn)}
+  .pill.skip{background:rgba(140,152,168,.16);color:var(--muted)}
+  .banner{border-radius:9px;padding:12px 15px;margin-bottom:16px;font-size:13px;
+          border:1px solid var(--line);background:var(--surface-2)}
+  .banner.warn{border-color:var(--warn);background:rgba(240,180,41,.09)}
+  .banner.live{border-color:var(--danger);background:rgba(242,98,107,.1)}
+  #log{background:#0b0e12;color:#c8d3e0;border-radius:9px;padding:14px;
+       font:12px/1.65 ui-monospace,"Cascadia Code",Consolas,monospace;
+       max-height:300px;overflow:auto;white-space:pre-wrap}
+  .log-ok{color:var(--ok)} .log-err{color:var(--danger)} .log-dry{color:var(--warn)}
+  .muted{color:var(--muted)}
+  .hide{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Shopify Delivery Sync</h1>
+    <div class="sub">Nimbus delivered &rarr; Shopify fulfillment event · bucketed by Shopify order date (IST)</div>
+  </div>
+  <div style="margin-left:auto" class="sub" id="whoami">not signed in</div>
+</header>
+
+<main>
+
+  <!-- Sign in -->
+  <div class="card" id="loginCard">
+    <div class="row">
+      <strong>Sign in</strong>
+      <span class="muted">— your CRM Firebase account (Firestore reads require auth). Nothing is stored on disk.</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <input type="email" id="email" placeholder="you@sehatup.com" autocomplete="username">
+      <input type="password" id="password" placeholder="password" autocomplete="current-password">
+      <button id="loginBtn">Sign in</button>
+      <span id="loginMsg" class="muted"></span>
+    </div>
+  </div>
+
+  <div id="app" class="hide">
+
+    <div class="banner warn">
+      <strong>Heads up:</strong> Shopify fulfillments in this store stop at order <code>#1662</code> (9 May 2026).
+      June and July orders have <strong>no fulfillment</strong> to attach an event to, so those rows need
+      <em>create&nbsp;+&nbsp;event</em> — the tool creates a fulfillment with the Nimbus AWB as tracking
+      (<code>notify_customer: false</code>, so no customer email) and then marks it delivered.
+      That path is off until you tick the box below.
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div class="card">
+      <div class="row">
+        <button id="scanBtn">Scan month</button>
+        <button id="refreshBtn" class="ghost">Re-read Firestore</button>
+        <span style="flex:1"></span>
+        <label class="chk"><input type="checkbox" id="dryRun" checked> Dry run (no writes)</label>
+        <label class="chk"><input type="checkbox" id="createMissing"> Create missing fulfillments</label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="bulkBtn" class="danger" disabled>Update selected</button>
+        <button id="selAll" class="ghost mini">Select all actionable</button>
+        <button id="selNone" class="ghost mini">Clear selection</button>
+        <span id="selCount" class="muted"></span>
+      </div>
+    </div>
+
+    <div id="liveBanner" class="banner live hide">
+      <strong>LIVE MODE.</strong> Dry run is off — pressing an update button writes to production Shopify orders.
+    </div>
+
+    <div id="mismatchBox" class="banner live hide"></div>
+    <div class="stats" id="stats"></div>
+    <div class="tablewrap"><table>
+      <thead><tr>
+        <th><input type="checkbox" id="hdrChk"></th>
+        <th>Order</th><th>Order date (IST)</th><th>AWB</th><th>Customer</th>
+        <th>Amount</th><th>Payment</th><th>Delivered (Nimbus)</th>
+        <th>Action</th><th>Detail</th><th></th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td colspan="11" class="muted" style="padding:26px">Scan a month to begin.</td></tr></tbody>
+    </table></div>
+
+    <div class="card" style="margin-top:18px">
+      <div class="row" style="margin-bottom:10px"><strong>Activity log</strong>
+        <span class="muted">— applied actions are also appended to <code>logs/apply-YYYY-MM-DD.jsonl</code></span></div>
+      <div id="log">ready.</div>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let MONTHS = [], month = null, rows = [], selected = new Set();
+
+const log = (msg, cls='') => {
+  const el = $('log');
+  el.innerHTML += `\n<span class="${cls}">${new Date().toLocaleTimeString()}  ${msg}</span>`;
+  el.scrollTop = el.scrollHeight;
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
+
+// ── boot ──
+(async () => {
+  const s = await api('/api/status');
+  MONTHS = s.months;
+  month = MONTHS[0].key;
+  $('tabs').innerHTML = MONTHS.map(m =>
+    `<div class="tab" data-m="${m.key}">${m.label}</div>`).join('');
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+    month = t.dataset.m; paintTabs(); doScan();
+  });
+  paintTabs();
+  if (!s.shopifyToken) log('WARNING: SHOPIFY_ACCESS_TOKEN not found — writes will fail.', 'log-err');
+  else log(`Shopify token loaded from ${s.tokenSource}`);
+  if (s.signedIn) onSignedIn(s.email);
+})();
+
+const paintTabs = () => document.querySelectorAll('.tab')
+  .forEach(t => t.classList.toggle('on', t.dataset.m === month));
+
+// ── auth ──
+$('loginBtn').onclick = async () => {
+  $('loginBtn').disabled = true; $('loginMsg').textContent = 'signing in…';
+  try {
+    const r = await api('/api/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: $('email').value.trim(), password: $('password').value })
+    });
+    $('password').value = '';
+    onSignedIn(r.email);
+    doScan();
+  } catch (e) { $('loginMsg').textContent = e.message; $('loginBtn').disabled = false; }
+};
+function onSignedIn(email) {
+  $('loginCard').classList.add('hide');
+  $('app').classList.remove('hide');
+  $('whoami').textContent = `signed in · ${email}`;
+  log(`signed in as ${email}`, 'log-ok');
+}
+
+// ── scan ──
+$('scanBtn').onclick = () => doScan();
+$('refreshBtn').onclick = () => doScan(true);
+
+async function doScan(refresh = false) {
+  $('scanBtn').disabled = $('refreshBtn').disabled = true;
+  $('tbody').innerHTML = `<tr><td colspan="11" class="muted" style="padding:26px">Scanning ${month}… reading Firestore + Shopify, this can take a moment.</td></tr>`;
+  try {
+    const r = await api(`/api/scan?month=${month}${refresh ? '&refresh=1' : ''}`);
+    rows = r.rows; selected.clear();
+    $('stats').innerHTML = [
+      ['Delivered (all months)', r.deliveredTotal],
+      [`Shopify orders in ${r.monthLabel}`, r.ordersInMonth],
+      ['Matched this month', r.rows.length],
+      ['Event only', r.counts.event],
+      ['Create + event', r.counts.createEvent],
+      ['Already delivered', r.counts.skip],
+    ].map(([k,v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
+    // Orders Shopify calls delivered that Nimbus says failed — these must be reviewed
+    // by hand; the tool deliberately will not silently reverse a delivery.
+    const mb = $('mismatchBox');
+    mb.classList.toggle('hide', !r.mismatches.length);
+    if (r.mismatches.length) {
+      mb.innerHTML = `<strong>${r.mismatches.length} order(s) marked Delivered in Shopify that Nimbus reports as FAILED.</strong>
+        Review these manually in Shopify admin — the tool will not reverse a delivery on its own.<br>` +
+        r.mismatches.map(m => `&nbsp;&nbsp;<code>${esc(m.orderName)}</code> · ${esc(m.awb)} · Nimbus: <strong>${esc(m.nimbusStatus)}</strong>`).join('<br>');
+      log(`${r.mismatches.length} delivered/failed mismatch(es) found in ${r.monthLabel}`, 'log-err');
+    }
+    paint();
+    log(`scanned ${r.monthLabel}: ${r.scannedAwbDocs} shipment docs, ${r.deliveredTotal} delivered, ${r.rows.length} matched to ${r.monthLabel} orders (${r.unmatched} delivered AWBs matched no order in this month)`);
+  } catch (e) {
+    log('scan failed: ' + e.message, 'log-err');
+    $('tbody').innerHTML = `<tr><td colspan="11" class="log-err" style="padding:26px">${esc(e.message)}</td></tr>`;
+  }
+  $('scanBtn').disabled = $('refreshBtn').disabled = false;
+}
+
+function paint() {
+  if (!rows.length) {
+    $('tbody').innerHTML = `<tr><td colspan="11" class="muted" style="padding:26px">No delivered shipments matched orders in this month.</td></tr>`;
+    return updateSel();
+  }
+  const pill = { event:'event', 'create+event':'create', skip:'skip' };
+  const lbl  = { event:'event only', 'create+event':'create + event', skip:'already done' };
+  $('tbody').innerHTML = rows.map((r, i) => `
+    <tr>
+      <td>${r.action === 'skip' ? '' : `<input type="checkbox" class="rc" data-i="${i}" ${selected.has(i)?'checked':''}>`}</td>
+      <td><strong>${esc(r.orderName)}</strong></td>
+      <td>${esc(r.orderDay)}</td>
+      <td><code>${esc(r.awb)}</code></td>
+      <td>${esc(r.customer) || '<span class="muted">—</span>'}</td>
+      <td>${r.amount != null ? '₹' + r.amount.toFixed(0) : '<span class="muted">—</span>'}</td>
+      <td class="muted">${esc(r.financialStatus)}</td>
+      <td>${esc(r.deliveredAt) || '<span class="muted">—</span>'}</td>
+      <td><span class="pill ${pill[r.action]}">${lbl[r.action]}</span></td>
+      <td class="muted">${esc(r.note)}</td>
+      <td>${r.action === 'skip' ? '' : `<button class="mini ${$('dryRun').checked ? 'ghost' : 'danger'} one" data-i="${i}">${$('dryRun').checked ? 'Preview' : 'Update'}</button>`}</td>
+    </tr>`).join('');
+  document.querySelectorAll('.rc').forEach(c => c.onchange = () => {
+    const i = +c.dataset.i; c.checked ? selected.add(i) : selected.delete(i); updateSel();
+  });
+  document.querySelectorAll('.one').forEach(b => b.onclick = () => apply([rows[+b.dataset.i]], b));
+  updateSel();
+}
+
+$('selAll').onclick = () => { rows.forEach((r,i) => r.action !== 'skip' && selected.add(i)); paint(); };
+$('selNone').onclick = () => { selected.clear(); paint(); };
+$('hdrChk').onchange = (e) => { e.target.checked ? $('selAll').click() : $('selNone').click(); };
+// The dry-run / create-missing pair is easy to misread, so every button states the
+// mode it will actually run in — "Preview" writes nothing, "Update" writes for real.
+function syncModeLabels() {
+  const dry = $('dryRun').checked;
+  $('liveBanner').classList.toggle('hide', dry);
+  $('bulkBtn').textContent = dry ? 'Preview selected (no writes)' : 'Update selected — LIVE';
+  $('bulkBtn').classList.toggle('ghost', dry);
+  $('bulkBtn').classList.toggle('danger', !dry);
+  document.querySelectorAll('.one').forEach((b) => {
+    b.textContent = dry ? 'Preview' : 'Update';
+    b.classList.toggle('ghost', dry);
+    b.classList.toggle('danger', !dry);
+  });
+}
+$('dryRun').onchange = syncModeLabels;
+syncModeLabels();
+
+function updateSel() {
+  $('selCount').textContent = selected.size ? `${selected.size} selected` : '';
+  $('bulkBtn').disabled = selected.size === 0;
+}
+
+$('bulkBtn').onclick = () => {
+  const picked = [...selected].map(i => rows[i]);
+  const creates = picked.filter(r => r.action === 'create+event').length;
+  if (!$('dryRun').checked) {
+    let msg = `Write to ${picked.length} LIVE Shopify order(s)?`;
+    if (creates) msg += `\n\n${creates} of them have NO fulfillment — a new fulfillment will be CREATED (customer will NOT be emailed).`;
+    if (!confirm(msg)) return;
+  }
+  apply(picked, $('bulkBtn'));
+};
+
+async function apply(picked, btn) {
+  const dryRun = $('dryRun').checked, createMissing = $('createMissing').checked;
+  btn.disabled = true;
+  log(`${dryRun ? 'DRY RUN' : 'APPLYING'} → ${picked.length} order(s)…`, dryRun ? 'log-dry' : '');
+  try {
+    const r = await api('/api/apply', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ rows: picked, dryRun, createMissing })
+    });
+    r.results.forEach(x => log(
+      `  ${x.order} (${x.awb}) — ${x.status}: ${x.message}`,
+      x.status === 'ok' ? 'log-ok' : x.status === 'error' ? 'log-err' : 'log-dry'
+    ));
+    log(`done — ok:${r.summary.ok} dry:${r.summary.dryRun} skipped:${r.summary.skipped} errors:${r.summary.errors}`,
+        r.summary.errors ? 'log-err' : 'log-ok');
+    if (!dryRun && r.summary.ok) { selected.clear(); doScan(); }
+  } catch (e) { log('apply failed: ' + e.message, 'log-err'); }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>

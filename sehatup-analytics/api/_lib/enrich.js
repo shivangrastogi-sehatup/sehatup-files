@@ -7,6 +7,9 @@
 // If Shopify has no phone for the order, the AWB is bucketed under
 // `unknown_{awb}` so we never lose data.
 
+import { syncShopifyFulfillment } from './shopify-fulfillment.js';
+import { authHeader, hasServiceAccount } from './google-auth.js';
+
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'sehatup-f96b5';
 const API_KEY    = process.env.FIREBASE_WEB_API_KEY || '';
 
@@ -51,15 +54,36 @@ function toFsDoc(obj) {
   return { fields };
 }
 
+/**
+ * Auth for Firestore REST writes.
+ *
+ * The service account is a real principal and bypasses security rules, so these writes
+ * keep working once `allow write: if true` is removed from firestore.rules.
+ *
+ * The web-API-key path is a ROLLOUT FALLBACK ONLY. An API key identifies the project,
+ * not a user, so it depends entirely on those open write rules — it stops working the
+ * moment they are tightened. It exists so deploying this code before setting
+ * FIREBASE_SERVICE_ACCOUNT doesn't break the webhook.
+ */
+async function firestoreAuth() {
+  if (hasServiceAccount()) return { headers: await authHeader(), query: '' };
+  console.warn(
+    '[enrich] FIREBASE_SERVICE_ACCOUNT is not set — falling back to the web API key. ' +
+    'This only works while firestore.rules still allows unauthenticated writes.'
+  );
+  if (!API_KEY) throw new Error('Neither FIREBASE_SERVICE_ACCOUNT nor FIREBASE_WEB_API_KEY is set');
+  return { headers: {}, query: `key=${API_KEY}` };
+}
+
 // PATCH a Firestore document at the given path. Throws on failure so the caller
 // can surface the error to the diagnostic endpoint / dashboard.
 async function patchFirestoreDoc(path, fields) {
-  if (!API_KEY) throw new Error('FIREBASE_WEB_API_KEY environment variable missing on Vercel');
+  const { headers, query } = await firestoreAuth();
   const mask = Object.keys(fields).map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}?${mask}&key=${API_KEY}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}?${mask}${query ? `&${query}` : ''}`;
   const r = await fetch(url, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(toFsDoc(fields)),
   });
   if (!r.ok) {
@@ -73,10 +97,10 @@ async function patchFirestoreDoc(path, fields) {
 // Best-effort delete (used to clean up a stale `unknown_<awb>` placeholder doc once
 // the AWB has been re-enriched under the customer's real phone). Never throws.
 async function deleteFirestoreDoc(path) {
-  if (!API_KEY) return;
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}?key=${API_KEY}`;
   try {
-    await fetch(url, { method: 'DELETE' });
+    const { headers, query } = await firestoreAuth();
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}${query ? `?${query}` : ''}`;
+    await fetch(url, { method: 'DELETE', headers });
   } catch (e) {
     console.warn('Firestore DELETE failed (non-fatal):', path, e?.message || e);
   }
@@ -386,6 +410,24 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       });
     }
 
+    // ─── Push the status onto the Shopify order ───
+    // Creates the fulfillment if the order has none (the store's own fulfillment feed
+    // stopped on 9 May 2026), then posts a fulfillment event so the order's Fulfillment
+    // status and Delivery status track Nimbus without anyone triggering it by hand.
+    // Best-effort by construction — syncShopifyFulfillment never throws.
+    const shopifySync = await syncShopifyFulfillment({
+      order,
+      awb,
+      status:    awbDoc.status,
+      eventTime: awbDoc.lastEventTime,
+      courier:   awbDoc.courier,
+    });
+    if (shopifySync.error) {
+      console.warn('[enrich] shopify sync failed for', awb, '-', shopifySync.error);
+    } else if (shopifySync.event) {
+      console.log('[enrich] shopify', awb, '→', shopifySync.event, shopifySync.created ? '(fulfillment created)' : '');
+    }
+
     // ─── Mirror into the Google Sheet "shipments" tab (standalone tracker) ───
     // Milestone timestamps derived from the full timeline.
     const shippedAt        = milestoneTime(timeline, (st) => st.includes('picked') || st.includes('pickup') || st.includes('manifest') || st.includes('dispatch') || st.includes('shipped'));
@@ -440,6 +482,7 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       orderNumber,
       customerFound: !!order,
       sheetSynced: !!sheetResult.ok,
+      shopifySync,
       wrote: {
         awbPath: `${rootCollection}/${phoneKey}/awbs/${awb}`,
         parentPath: parentWrite ? `${rootCollection}/${phoneKey}` : null,
