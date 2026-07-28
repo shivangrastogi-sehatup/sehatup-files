@@ -15,7 +15,7 @@ const SHEETS = {
   // (Name, Caller 1, Status [Order Placed = conversion], Date, …).
   quick: { id: process.env.SHEET_ID_QUICK, tab: process.env.SHEET_TAB_QUICK || 'auto:month' },
   // Men's Wellness — monthly "<Month> <Year>" ORDERS board (every row = a delivered
-  // order). Columns include Date, Pdt Name, Product Value, Qty. Revenue basis.
+  // order). Revenue basis = "Partial & Prepaid Pay" + "COD Collectable".
   mens: { id: process.env.SHEET_ID_MENS, tab: process.env.SHEET_TAB_MENS || 'auto:month' },
 };
 

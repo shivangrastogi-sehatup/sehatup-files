@@ -91,7 +91,7 @@ The prototype ran on simulated counters. Every number here is real:
 
 | Panel | Source |
 | --- | --- |
-| Today's revenue / orders / conversion | Men's orders dated today ÷ leads count today |
+| Today's revenue / orders / conversion | Men's orders dated today ÷ leads received today |
 | This Month · MTD | All loaded orders; "vs last month" compares against the same month-to-date window of the previous month's tabs |
 | Weekly revenue | Six Monday-start weeks of orders (current + previous month tabs); WoW = this week vs last |
 | KPI row | Lead status buckets — Today vs Month; the trend % compares the month against the previous month's tabs |

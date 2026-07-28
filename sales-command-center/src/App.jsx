@@ -106,7 +106,7 @@ const initialsOf = (name) =>
 export default class App extends React.Component {
   state = {
     // live data
-    rows: null, orders: [], prevRows: [], prevOrders: [], prevAgg: null, meta: null,
+    rows: null, orders: [], prevRows: [], prevOrders: [], meta: null,
     loaded: false, error: false, lastSync: null, status: null,
     // ui — mode/range/source/agent are restored from the last session, so a
     // refresh doesn't silently drop you back onto an empty "Today" board.
@@ -154,7 +154,7 @@ export default class App extends React.Component {
       this._model = null; this._sig = null;
       this.setState({
         rows: d.rows, orders: d.orders || [], prevRows: d.prevRows || [],
-        prevOrders: d.prevOrders || [], prevAgg: d.prevAgg || null,
+        prevOrders: d.prevOrders || [],
         status: d.status || null,
         meta: d.rows.length ? d.meta : null,
         loaded: true, error: !d.rows.length && !(d.orders || []).length,
@@ -317,7 +317,6 @@ export default class App extends React.Component {
     const leadsWin = leadsEver.filter((r) => this.inWin(r, start, end));
     const ordersWin = ordersEver.filter((o) => this.inWin(o, start, end));
 
-    const countNorm = (arr, n) => arr.filter((r) => r.norm === n).length;
     const revenue = (arr) => arr.reduce((t, o) => t + (o.value || 0), 0);
 
     // ---- yesterday, for the KPI day-over-day deltas ----
@@ -345,8 +344,16 @@ export default class App extends React.Component {
       const from = ws < monthStart ? monthStart : ws;   // W1 starts at the 1st
       const current = wEnd >= todayD;                   // the week in progress
       const to = current ? todayD : wEnd;
+      // The bar is labelled with the dates it actually covers rather than "W1".
+      // These are Monday-start weeks clipped to the month, so the first and last
+      // are usually short — "1–5" says that on its face, where "W1" hid it.
+      // Day numbers alone are unambiguous because every week is inside the month;
+      // the fuller form is only needed if one ever straddles a boundary.
+      const span = from.getMonth() === to.getMonth()
+        ? `${from.getDate()}–${to.getDate()}`
+        : `${shortDate(from)} – ${shortDate(to)}`;
       weeks.push({
-        n, tag: current ? 'THIS' : 'W' + n, latest: current, from, to,
+        n, tag: current ? 'THIS' : 'W' + n, span, latest: current, from, to,
         rev: revenue(ordersEver.filter((o) => this.inWin(o, from, to))),
         days: Math.round((to - from) / 86400000) + 1,
       });
@@ -388,9 +395,13 @@ export default class App extends React.Component {
       if (!named(o.agent)) return;
       const b = slot(o.agent); b.ordersToday++; b.revToday += o.value || 0;
     });
+    // Ranked by ORDERS, because that is what the board now shows. Ties break on
+    // revenue — two agents on three orders each are not equal if one sold twice
+    // the value — then on leads worked. Agents with no orders still appear: a
+    // sales board that hides who hasn't sold isn't a sales board.
     const team = Object.values(board)
       .filter((b) => b.leads || b.orders || b.leadsToday || b.ordersToday)
-      .sort((a, b) => b.leads - a.leads || b.orders - a.orders)
+      .sort((a, b) => b.orders - a.orders || b.rev - a.rev || b.leads - a.leads)
       .slice(0, 6);
 
     // ---- fulfillment: only real when the orders sheet carries a status column ----
@@ -428,10 +439,7 @@ export default class App extends React.Component {
       const ls = leadsWin.filter((r) => r.source === id);
       const os = ordersWin.filter((o) => o.source === id);
       const rev = revenue(os);
-      return {
-        id, name, tag, color, leads: ls.length, orders: os.length, rev,
-        conv: ls.length ? (os.length / ls.length) * 100 : 0,
-      };
+      return { id, name, tag, color, leads: ls.length, orders: os.length, rev };
     };
     const sources = [
       mkSource('healthscore', 'Healthscore', 'first-party', T.accent),
@@ -441,12 +449,13 @@ export default class App extends React.Component {
     const totRev = sources[0].rev + sources[1].rev;
     const maxSrcRev = Math.max(sources[0].rev, sources[1].rev, 1);
 
+    // Only what the panels actually read. `start`/`end`/`today`/`yest` and the
+    // countNorm/revenue helpers were being exported and never used — the window
+    // is available from window() and the date from meta.today.
     this._sig = sig;
     this._model = {
-      start, end, today, yest,
       leadsAll, ordersAll, leadsToday, ordersToday, leadsWin, ordersWin,
       leadsYest, ordersYest, latest,
-      countNorm, revenue,
       todayRev: revenue(ordersToday), monthRev: revenue(ordersAll),
       weeks, maxWeek, wow, wowBasis,
       team,
@@ -733,7 +742,6 @@ export default class App extends React.Component {
     };
     const monthOrders = M.ordersAll.length;
     const monthLeads = M.leadsAll.length;
-    const revDelta = delta(M.monthRev, s.prevAgg ? s.prevAgg.revenue : null);
     const stat = (v, l, color) => (
       <div>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: MONO_G, color: color || T.ink }}>{v}</div>
@@ -779,14 +787,9 @@ export default class App extends React.Component {
             <span style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '.14em', color: T.label, fontWeight: 700 }}>This Month · MTD</span>
           </div>
           <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 52, lineHeight: .9, letterSpacing: '-.02em', marginTop: 'auto', color: T.ink }}>{inr(M.monthRev)}</div>
-          <div style={{ display: 'flex', gap: 26, marginTop: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 34, marginTop: 14, flexWrap: 'wrap' }}>
             {stat(num(monthOrders), 'orders MTD')}
             {stat(pctStr(monthOrders, monthLeads), 'conversion')}
-            {stat(
-              revDelta === null ? '—' : (revDelta >= 0 ? '▲ ' : '▼ ') + Math.abs(revDelta) + '%',
-              'vs last month',
-              revDelta === null ? T.label : (revDelta >= 0 ? T.posInk : T.negInk)
-            )}
           </div>
         </div>
 
@@ -834,7 +837,14 @@ export default class App extends React.Component {
                       background: w.latest ? `repeating-linear-gradient(135deg, ${color}, ${color} 6px, ${T.accentHi} 6px, ${T.accentHi} 12px)` : color,
                     }} />
                   </div>
-                  <div style={{ fontSize: 11, color: labelColor, fontWeight: 600, flex: '0 0 auto' }}>{w.tag}</div>
+                  {/* Dates, not "W1" — the bars are already in order, so their
+                      position says which week it is; what the label has to carry
+                      is which days it covers, since they aren't all the same
+                      length. The month sits in the panel title above. */}
+                  <div style={{
+                    fontSize: 12, color: labelColor, fontWeight: 700, fontFamily: MONO_G,
+                    letterSpacing: '.01em', whiteSpace: 'nowrap', flex: '0 0 auto',
+                  }}>{w.span}</div>
                 </div>
               );
             })}
@@ -871,18 +881,16 @@ export default class App extends React.Component {
     const M = this.model();
     const c = (arr, n) => arr.filter((r) => r.norm === n).length;
 
-    // Each card's arrow compares TODAY against YESTERDAY — the same day-over-day
-    // question for every metric in the row. `yest` is the count the percentage
-    // is measured from; the modal and tooltip show it, so a bare "▼30%" is
-    // always traceable back to two real numbers.
+    // `yest` no longer drives anything on the card — the day-over-day arrows are
+    // gone. It survives only as a plain count in the drill-in modal's footnote.
     const defs = [
       // Every lead in the month's tabs, called or not — it's a count of what
       // came in, not of what the floor got through, hence the neutral name and
       // the neutral dot. The five that follow are the outcomes it divides into.
-      { label: 'Leads Count', noun: 'leads', today: M.leadsToday.length, month: M.leadsAll.length, yest: M.leadsYest.length, dot: T.grey, pick: null },
+      { label: 'Leads Received', noun: 'leads', today: M.leadsToday.length, month: M.leadsAll.length, yest: M.leadsYest.length, dot: T.grey, pick: null },
       { label: 'Connected', today: c(M.leadsToday, 'Connected'), month: c(M.leadsAll, 'Connected'), yest: c(M.leadsYest, 'Connected'), dot: T.leaf, pick: 'Connected' },
       { label: 'Ringing', today: c(M.leadsToday, 'Ringing'), month: c(M.leadsAll, 'Ringing'), yest: c(M.leadsYest, 'Ringing'), dot: T.gold, pick: 'Ringing' },
-      { label: 'Not Connected', today: c(M.leadsToday, 'Not Connected'), month: c(M.leadsAll, 'Not Connected'), yest: c(M.leadsYest, 'Not Connected'), dot: T.rose, pick: 'Not Connected', invert: true },
+      { label: 'Not Connected', today: c(M.leadsToday, 'Not Connected'), month: c(M.leadsAll, 'Not Connected'), yest: c(M.leadsYest, 'Not Connected'), dot: T.rose, pick: 'Not Connected' },
       { label: 'Follow-Ups', today: c(M.leadsToday, 'Follow Up'), month: c(M.leadsAll, 'Follow Up'), yest: c(M.leadsYest, 'Follow Up'), dot: T.orchid, pick: 'Follow Up' },
       { label: 'Orders', today: M.ordersToday.length, month: M.ordersAll.length, yest: M.ordersYest.length, dot: T.accent, isOrders: true },
     ];
@@ -902,21 +910,6 @@ export default class App extends React.Component {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 18, height: 158, flex: '0 0 auto' }}>
         {defs.map((d, i) => {
-          const dl = delta(d.today, d.yest);
-          const good = dl === null ? null : (d.invert ? dl <= 0 : dl >= 0);
-          // The caret points at the OUTCOME, not at the raw count, so green is
-          // always ▲ and red always ▼. This only changes Not Connected — the one
-          // card where fewer is better, and where a green figure under a falling
-          // arrow was giving two opposite signals at once.
-          // "—" when yesterday was zero: no percentage exists from a zero base,
-          // and inventing one would be noise on a wall.
-          const trend = dl === null ? '—' : (good ? '▲ ' : '▼ ') + Math.abs(dl) + '%';
-          const trendColor = dl === null ? T.label : (good ? T.posInk : T.negInk);
-          // Since the arrow now reads better/worse, the tooltip carries which way
-          // the count itself moved.
-          const trendTip = dl === null
-            ? `${num(d.today)} today vs ${num(d.yest)} yesterday — no percentage from a zero base`
-            : `${num(d.today)} today vs ${num(d.yest)} yesterday — ${Math.abs(dl)}% ${dl < 0 ? 'fewer' : 'more'}`;
           // Orders is the only OUTCOME in a row of five process metrics — the
           // thing the other five exist to produce. It gets a filled surface and
           // a bigger figure so the row reads as a funnel ending somewhere,
@@ -942,20 +935,12 @@ export default class App extends React.Component {
               {/* A coral rule across the top, so the card still reads as the
                   end of the funnel on a wall where the tint may wash out. */}
               {hero && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: T.accent }} />}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <span style={{ width: hero ? 8 : 7, height: hero ? 8 : 7, borderRadius: '50%', background: d.dot }} />
-                  <span style={{
-                    fontSize: 12.5, textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 700,
-                    whiteSpace: 'nowrap', color: hero ? T.accentInk : T.label,
-                  }}>{d.label}</span>
-                </span>
-                {/* The row's numbers are Today and Month, so an unlabelled
-                    arrow could be read against either. Name the basis. */}
-                <span title={trendTip} style={{ display: 'flex', alignItems: 'baseline', gap: 4, flex: '0 0 auto' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: trendColor }}>{trend}</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: T.mute }}>vs yest</span>
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ width: hero ? 8 : 7, height: hero ? 8 : 7, borderRadius: '50%', flex: '0 0 auto', background: d.dot }} />
+                <span style={{
+                  fontSize: 13, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700,
+                  whiteSpace: 'nowrap', color: hero ? T.accentInk : T.label,
+                }}>{d.label}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 'auto', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1019,7 +1004,7 @@ export default class App extends React.Component {
 
     this.openModal({
       kicker: 'KPI Breakdown', title: d.label,
-      // `noun` lets a card name read as a heading ("Leads Count") while the
+      // `noun` lets a card name read as a heading ("Leads Received") while the
       // sentence under the big figure stays a sentence ("leads today").
       big: num(d.today), bigLabel: `${d.noun || d.label.toLowerCase()} today`,
       rows: [...bySource, ...top],
@@ -1031,10 +1016,10 @@ export default class App extends React.Component {
   // ── bottom row ─────────────────────────────────────────────────────────────
   bottomRow() {
     return (
-      // Team takes the extra width: it's the panel people look for themselves in,
-      // and it's the only one here whose content is a list rather than a fixed
-      // shape, so it's the one that actually uses the room.
-      <div style={{ display: 'grid', gridTemplateColumns: '1.95fr 1.08fr 1.22fr', gap: 18, flex: 1, minHeight: 0 }}>
+      // Team still leads — people look for themselves there first — but it gives
+      // width back now that it carries two figures instead of four; the donuts
+      // and the source panel are the dense ones and take the difference.
+      <div style={{ display: 'grid', gridTemplateColumns: '1.62fr 1.15fr 1.35fr', gap: 18, flex: 1, minHeight: 0 }}>
         {this.leaderboard()}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minHeight: 0 }}>
           {this.fulfilmentCard()}
@@ -1049,33 +1034,18 @@ export default class App extends React.Component {
   }
 
   /**
-   * Geometry shared by the column labels and every row, so the figures sit on a
-   * straight edge instead of drifting with each name's length.
-   * A group is [today][colGap][total]; the groups are separated by groupGap.
+   * Column geometry. One right-aligned stat block per agent, not two columns and
+   * not a fraction: "0 / 28" claimed today was 0 OUT OF 28, when 28 is a running
+   * total that already contains today. There is no whole here to be a part of,
+   * so the month is stated as its own labelled line instead.
    */
-  static TEAM_COL = { rule: 4, avatar: 44, gap: 14, today: 72, total: 96, colGap: 12, groupGap: 34, pad: 14 };
-  static teamGroupW(cols) {
-    const g = App.TEAM_COL;
-    if (cols === 'todayOnly') return g.today;
-    if (cols === 'totalOnly') return g.total;
-    return g.today + g.colGap + g.total;
-  }
-
-  /**
-   * Each metric column is identified by a rule under its name rather than a
-   * filled chip — a tinted box around figures is what made this read as a
-   * scoreboard rather than a record of the day's work.
-   */
-  static TEAM_TINT = {
-    Leads: { ink: T.ink, rule: '#AEB9C7' },
-    Orders: { ink: T.accentInk, rule: T.accent },
-  };
+  static TEAM_COL = { rule: 4, avatar: 48, gap: 16, stat: 172, pad: 16 };
 
   /**
    * Which figures a row can meaningfully show.
-   *   'todayOnly' — the window IS today, so Today and Total are the same number
-   *   'both'      — the window contains today
-   *   'totalOnly' — a past window; a Today column would be zero for everyone
+   *   'todayOnly' — the window IS today, so the fraction would repeat itself
+   *   'both'      — the window contains today, so today/total is the real story
+   *   'totalOnly' — a past window; there is no today inside it
    */
   teamCols() {
     if (this.state.range === 'today') return 'todayOnly';
@@ -1084,62 +1054,41 @@ export default class App extends React.Component {
 
   /** Panel identity, kept separate so the column labels can sit on the rows. */
   teamHeader() {
-    const cols = this.teamCols();
-    // The title names exactly the periods the table is showing, so a custom
-    // window never sits under a heading that still says "this month".
-    const period = cols === 'both'
-      ? `Today & ${this.rangeLabel()}`
-      : this.rangeLabel();
     return (
-      <div style={{ flex: '0 0 auto', padding: `0 ${App.TEAM_COL.pad}px 12px` }}>
+      <div style={{ flex: '0 0 auto', padding: `0 ${App.TEAM_COL.pad}px 14px` }}>
         <div style={{
           fontSize: 13, textTransform: 'uppercase', letterSpacing: '.13em',
           color: T.label, fontWeight: 700,
-        }}>Telesales Team · {period}</div>
+        }}>Telesales Team · Orders</div>
       </div>
     );
   }
 
   /**
-   * Column labels. Each metric names itself once, over a rule in its own colour,
-   * with Today and Total sitting directly on the figures they belong to.
+   * The header is the format: "TODAY / THIS MONTH" sits directly over "0 / 28"
+   * with its slash on the same axis, so the fraction explains itself and needs
+   * no separate key.
    */
   teamColumns() {
     const g = App.TEAM_COL;
     const cols = this.teamCols();
-    const groupW = App.teamGroupW(cols);
-    const sub = (text, w) => (
-      <span style={{
-        width: w, flex: '0 0 auto', textAlign: 'right', fontSize: 11,
-        letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700, color: T.mute,
-      }}>{text}</span>
-    );
-    const group = (title) => {
-      const t = App.TEAM_TINT[title];
-      return (
-        <div style={{ width: groupW, flex: '0 0 auto' }}>
-          <div style={{
-            fontSize: 15, textTransform: 'uppercase', letterSpacing: '.15em',
-            fontWeight: 700, color: t.ink, textAlign: 'center', paddingBottom: 7,
-          }}>{title}</div>
-          <div style={{ height: 2, background: t.rule, borderRadius: 1 }} />
-          <div style={{ display: 'flex', gap: g.colGap, marginTop: 7 }}>
-            {cols !== 'totalOnly' && sub('Today', g.today)}
-            {cols !== 'todayOnly' && sub(cols === 'totalOnly' ? 'In range' : 'Total', g.total)}
-          </div>
-        </div>
-      );
-    };
+    // The big figure is today unless the window has no today in it, in which
+    // case the period total is the only thing there is to show.
+    const cap = cols === 'totalOnly' ? this.rangeLabel() : 'Today';
     return (
-      <div style={{
-        flex: '0 0 auto', display: 'flex', alignItems: 'flex-end', gap: g.groupGap,
-        padding: `0 ${g.pad}px 10px`,
-      }}>
-        {/* Matches the rows' name column, so the groups land exactly over the
-            figures rather than near them. */}
-        <span style={{ flex: 1, minWidth: 0 }} />
-        {group('Leads')}
-        {group('Orders')}
+      <div style={{ flex: '0 0 auto', padding: `0 ${g.pad}px 8px` }}>
+        <div style={{ display: 'flex' }}>
+          <span style={{ flex: 1, minWidth: 0 }} />
+          <span style={{
+            width: g.stat, flex: '0 0 auto', textAlign: 'right',
+            fontSize: 12.5, textTransform: 'uppercase', letterSpacing: '.13em',
+            fontWeight: 700, color: T.accentInk, whiteSpace: 'nowrap',
+          }}>{cap}</span>
+        </div>
+        <div style={{ display: 'flex', marginTop: 7 }}>
+          <span style={{ flex: 1, minWidth: 0 }} />
+          <span style={{ width: g.stat, height: 3, flex: '0 0 auto', background: T.accent, borderRadius: 2 }} />
+        </div>
       </div>
     );
   }
@@ -1147,26 +1096,44 @@ export default class App extends React.Component {
   leaderboard() {
     const M = this.model();
     const g = App.TEAM_COL;
-    // Figures sit free on the row, held in line by the column geometry alone.
-    // Today carries the weight because it's what moves while people are watching;
-    // the period total sits behind it, smaller and grey.
-    const cell = (v, w, size, color) => (
-      <span style={{
-        width: w, flex: '0 0 auto', textAlign: 'right', fontFamily: MONO_G, fontWeight: 700,
-        fontSize: size, lineHeight: 1, letterSpacing: '-.02em', color: v ? color : T.greyLt,
-      }}>{num(v)}</span>
-    );
-    // A window that has already ended has no "today" to report, and a window
-    // that IS today would print the same number twice — either way the pair
-    // collapses to the one figure that means something.
     const cols = this.teamCols();
-    const group = (todayV, totalV, todayColor) => (
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: g.colGap, flex: '0 0 auto' }}>
-        {cols !== 'totalOnly' && cell(todayV, g.today, 36, todayColor)}
-        {cols !== 'todayOnly' && cell(totalV, g.total, cols === 'totalOnly' ? 36 : 26,
-          cols === 'totalOnly' ? todayColor : T.label)}
-      </div>
-    );
+    /**
+     * One figure per agent, read as a single thing: today over the period.
+     *
+     * Today is the loud half — it is the only number on this panel that can
+     * change while someone is watching it. It wears coral only when it has
+     * actually moved, so the board sits quiet through a slow morning and then
+     * shouts the moment a sale lands. The period total stays deliberately small:
+     * it is the standing, and the standing does not need to compete with news.
+     */
+    const score = (p) => {
+      const big = cols === 'totalOnly' ? p.orders : p.ordersToday;
+      return (
+        <div style={{
+          width: g.stat, flex: '0 0 auto', display: 'flex', flexDirection: 'column',
+          alignItems: 'flex-end', gap: 3,
+        }}>
+          <span style={{
+            fontFamily: MONO_G, fontWeight: 700, fontSize: 56, lineHeight: 1,
+            letterSpacing: '-.03em', color: big ? T.accent : T.greyLt,
+          }}>{num(big)}</span>
+          {/* The month is a separate statement, not a denominator — the word is
+              what makes that unmistakable, so it is never dropped. */}
+          {cols === 'both' && (
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 5, maxWidth: '100%' }}>
+              <span style={{
+                fontFamily: MONO_G, fontWeight: 700, fontSize: 17, lineHeight: 1,
+                color: p.orders ? T.label : T.greyLt,
+              }}>{num(p.orders)}</span>
+              <span style={{
+                fontSize: 10, textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 700,
+                color: T.mute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{this.rangeLabel()}</span>
+            </span>
+          )}
+        </div>
+      );
+    };
     return (
       <div style={{
         background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radius, boxShadow: T.shadow,
@@ -1177,12 +1144,12 @@ export default class App extends React.Component {
         {this.teamColumns()}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           {!M.team.length && (
-            <div style={{ margin: 'auto', color: T.label, fontWeight: 600 }}>No leads handled in this window yet.</div>
+            <div style={{ margin: 'auto', color: T.label, fontWeight: 600 }}>No orders in this window yet.</div>
           )}
           {M.team.map((p, i) => {
-            // The leader is marked by a coral rule, a filled avatar and a heavier
-            // name — not by a coloured banner. The distinction has to be obvious
-            // across a room without turning the row into a team strip.
+            // The leader is marked by the row — coral rule, filled avatar, heavier
+            // name — never by a bigger figure, because changing the type size would
+            // break the slash alignment the whole column hangs on.
             const lead = i === 0;
             return (
               <div
@@ -1190,10 +1157,10 @@ export default class App extends React.Component {
                 className={(lead ? '' : 'scc-rowhover') + (this.interactive ? ' scc-on' : '')}
                 onClick={this.clickable(() => this.openAgentModal(p, i))}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: g.groupGap, padding: `0 ${g.pad}px`,
+                  display: 'flex', alignItems: 'center', gap: g.gap, padding: `0 ${g.pad}px`,
                   // Rows share the space evenly but stay capped, so a window with
                   // one or two agents doesn't stretch a single row down the panel.
-                  flex: '1 1 0', minHeight: 56, maxHeight: 96,
+                  flex: '1 1 0', minHeight: 58, maxHeight: 104,
                   background: lead ? T.accentSoft : 'transparent',
                   borderRadius: lead ? 12 : 0,
                   marginBottom: lead ? 6 : 0,
@@ -1205,23 +1172,22 @@ export default class App extends React.Component {
               >
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: g.gap }}>
                   <span style={{
-                    width: g.rule, height: 30, borderRadius: 2, flex: '0 0 auto',
+                    width: g.rule, height: 32, borderRadius: 2, flex: '0 0 auto',
                     background: lead ? T.accent : 'transparent',
                   }} />
                   <span style={{
                     width: g.avatar, height: g.avatar, borderRadius: '50%', flex: '0 0 auto',
                     background: lead ? T.accent : T.track, color: lead ? '#fff' : T.label,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: MONO_G, fontWeight: 700, fontSize: 17,
+                    fontFamily: MONO_G, fontWeight: 700, fontSize: 18,
                   }}>{initialsOf(p.name)}</span>
                   <span style={{
                     flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    fontWeight: lead ? 700 : 600, fontSize: lead ? 24 : 20,
+                    fontWeight: lead ? 700 : 600, fontSize: lead ? 24 : 21,
                     letterSpacing: lead ? '-.01em' : 0, color: T.ink,
                   }}>{p.name}</span>
                 </div>
-                {group(p.leadsToday, p.leads, T.ink)}
-                {group(p.ordersToday, p.orders, T.accent)}
+                {score(p)}
               </div>
             );
           })}
@@ -1298,41 +1264,94 @@ export default class App extends React.Component {
     );
   }
 
+  /**
+   * Geometry for the breakdown rows. Count and share get their own fixed cells
+   * because the old markup right-aligned "37 · 80%" as ONE run of text — so the
+   * counts didn't line up, the percentages didn't line up, and every row was a
+   * different shape. Two columns fix it by construction.
+   */
+  static DONUT_COL = { swatch: 11, count: 54, pct: 54, gap: 12 };
+
   donutCard({ title, slices, total, empty, onClick, delay }) {
+    const c = App.DONUT_COL;
     return (
       <div
         className={'scc-lift' + (this.interactive && onClick ? ' scc-on' : '')}
         onClick={this.clickable(onClick)}
         style={{
           flex: 1, minHeight: 0, background: T.card, border: `1px solid ${T.line}`,
-          borderRadius: T.radius, boxShadow: T.shadow, padding: '16px 20px',
+          borderRadius: T.radius, boxShadow: T.shadow, padding: '16px 20px 18px',
           display: 'flex', flexDirection: 'column',
           animation: `floatIn .6s cubic-bezier(.2,.7,.2,1) ${delay} both`,
           transition: 'transform .25s ease,box-shadow .25s ease',
           cursor: this.interactive && onClick ? 'pointer' : 'default',
         }}
       >
-        <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.12em', color: T.label, fontWeight: 700 }}>{title}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flex: 1, minHeight: 0 }}>
-          <div style={{ position: 'relative', width: 150, height: 150, flex: '0 0 auto' }}>
+        <div style={{
+          fontSize: 12, textTransform: 'uppercase', letterSpacing: '.12em',
+          color: T.label, fontWeight: 700, flex: '0 0 auto',
+        }}>{title}</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 22, flex: 1, minHeight: 0, marginTop: 4 }}>
+          <div style={{ position: 'relative', width: 146, height: 146, flex: '0 0 auto' }}>
             {this.donut(slices, total)}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 44, lineHeight: 1, color: T.ink }}>{num(total)}</div>
-              <div style={{ fontSize: 10, color: T.label, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>orders</div>
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{
+                fontFamily: MONO_G, fontWeight: 700, fontSize: 42, lineHeight: 1,
+                letterSpacing: '-.02em', color: T.ink,
+              }}>{num(total)}</div>
+              <div style={{
+                fontSize: 9.5, color: T.mute, textTransform: 'uppercase',
+                letterSpacing: '.12em', fontWeight: 700, marginTop: 3,
+              }}>orders</div>
             </div>
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 13, fontSize: 14 }}>
-            {slices.length ? slices.map((sl) => {
+
+          <div style={{
+            flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          }}>
+            {slices.length ? slices.map((sl, i) => {
+              // RTO is the one outcome you want noticed rather than merely read.
               const bad = sl.label === 'RTO';
+              const pct = Math.round((sl.count / (total || 1)) * 100);
               return (
-              <div key={sl.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: bad ? T.negInk : T.label, fontWeight: 600 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: sl.color }} />{sl.label}
-                </span>
-                <b style={{ color: bad ? T.negInk : T.ink }}>
-                  {num(sl.count)} · {Math.round((sl.count / (total || 1)) * 100)}%
-                </b>
-              </div>
+                <div
+                  key={sl.label}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0',
+                    // A hairline between rows, not around them: it guides the eye
+                    // across to the figures without boxing anything in.
+                    borderTop: i ? `1px solid ${T.line}` : 'none',
+                  }}
+                >
+                  <span style={{
+                    width: c.swatch, height: c.swatch, borderRadius: 3, flex: '0 0 auto',
+                    background: sl.color,
+                  }} />
+                  <span style={{
+                    flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 600,
+                    color: bad ? T.negInk : T.ink,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{sl.label}</span>
+                  {/* The two figures sit on a shared baseline so the count can be
+                      larger than the share without the row looking stepped. */}
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: c.gap, flex: '0 0 auto' }}>
+                    <span style={{
+                      width: c.count, textAlign: 'right', fontFamily: MONO_G, fontWeight: 700,
+                      fontSize: 19, lineHeight: 1, letterSpacing: '-.01em',
+                      color: bad ? T.negInk : T.ink,
+                    }}>{num(sl.count)}</span>
+                    {/* The donut already shows the share; this is the precise
+                        readout of it, so it sits behind the count. */}
+                    <span style={{
+                      width: c.pct, textAlign: 'right', fontFamily: MONO_G, fontWeight: 700,
+                      fontSize: 13.5, lineHeight: 1, color: bad ? T.neg : T.mute,
+                    }}>{pct}%</span>
+                  </span>
+                </div>
               );
             }) : (
               <div style={{ fontSize: 13, color: T.label, fontWeight: 500, lineHeight: 1.5 }}>{empty}</div>
@@ -1395,6 +1414,9 @@ export default class App extends React.Component {
 
     return (
       <div style={{
+        // Takes the larger share of the column — two source blocks with bars
+        // need more room than one order does.
+        flex: '1.75 1 0', minHeight: 0,
         background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radius, boxShadow: T.shadow,
         padding: '18px 22px', display: 'flex', flexDirection: 'column',
         animation: 'floatIn .6s cubic-bezier(.2,.7,.2,1) .36s both',
@@ -1416,15 +1438,12 @@ export default class App extends React.Component {
                 <span style={{ width: 10, height: 10, borderRadius: 3, background: src.color }} />
                 <b style={{ fontSize: 16, color: T.ink }}>{src.name}</b>
                 <span style={{ fontSize: 11, color: T.label, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>{src.tag}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: T.label, background: T.track, padding: '3px 9px', borderRadius: 999 }}>
-                  {src.conv.toFixed(1)}% conv
-                </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 11 }}>
                 {/* Figures wear ink, not the series colour — the swatch beside
                     the source name already says which source they belong to. */}
                 {[
-                  [num(src.leads), 'leads', T.ink],
+                  [num(src.leads), 'leads received', T.ink],
                   [num(src.orders), 'orders', T.ink],
                   [inrK(src.rev), 'revenue', T.ink],
                 ].map(([v, l, color]) => (
@@ -1467,7 +1486,11 @@ export default class App extends React.Component {
     );
     return (
       <div style={{
-        flex: '0 0 auto', background: T.card, border: `1px solid ${T.line}`,
+        // Shares the column with the source panel instead of sitting at its
+        // content height, so the two cards bottom out level with the ones beside
+        // them. The source panel keeps the larger share — it has more to show.
+        flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column',
+        background: T.card, border: `1px solid ${T.line}`,
         borderRadius: T.radius, boxShadow: T.shadow, padding: '16px 20px 17px',
         animation: 'floatIn .6s cubic-bezier(.2,.7,.2,1) .42s both',
       }}>
@@ -1483,37 +1506,51 @@ export default class App extends React.Component {
         </div>
 
         {!o ? (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 34, lineHeight: 1, color: T.greyLt }}>N/A</div>
-            <div style={{ fontSize: 13, color: T.label, fontWeight: 500, marginTop: 7, lineHeight: 1.4 }}>
+          <div style={{
+            flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          }}>
+            <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 44, lineHeight: 1, color: T.greyLt }}>N/A</div>
+            <div style={{ fontSize: 13, color: T.label, fontWeight: 500, marginTop: 9, lineHeight: 1.45 }}>
               No orders on the board yet. The first one lands here.
             </div>
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 12 }}>
-              <span style={{
-                fontFamily: MONO_G, fontWeight: 700, fontSize: 34, lineHeight: 1,
-                letterSpacing: '-.02em', color: T.accent,
-              }}>{inr(o.value)}</span>
-              {o.qty > 1 && <span style={{ fontSize: 13, fontWeight: 700, color: T.label }}>× {num(o.qty)}</span>}
+            {/* The sale itself takes the middle of the card and grows with it;
+                the agent line stays pinned to the foot so the two cards in this
+                column keep a common baseline. */}
+            <div style={{
+              flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <span style={{
+                  fontFamily: MONO_G, fontWeight: 700, fontSize: 44, lineHeight: 1,
+                  letterSpacing: '-.02em', color: T.accent,
+                }}>{inr(o.value)}</span>
+                {o.qty > 1 && <span style={{ fontSize: 14, fontWeight: 700, color: T.label }}>× {num(o.qty)}</span>}
+              </div>
+              {o.prepaid > 0 && o.cod > 0 && (
+                <div style={{ fontSize: 12, fontWeight: 600, color: T.mute, marginTop: 7 }}>
+                  {inrK(o.prepaid)} paid · {inrK(o.cod)} on delivery
+                </div>
+              )}
+              <div style={{
+                fontSize: 15, fontWeight: 600, color: T.ink, marginTop: 9, lineHeight: 1.35,
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>{o.product}</div>
             </div>
             <div style={{
-              fontSize: 14, fontWeight: 600, color: T.ink, marginTop: 6,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{o.product}</div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10, marginTop: 12,
-              paddingTop: 12, borderTop: `1px solid ${T.line}`,
+              flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 10,
+              paddingTop: 13, borderTop: `1px solid ${T.line}`,
             }}>
               <span style={{
-                width: 30, height: 30, borderRadius: '50%', flex: '0 0 auto', background: T.track,
+                width: 34, height: 34, borderRadius: '50%', flex: '0 0 auto', background: T.track,
                 color: T.label, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: MONO_G, fontWeight: 700, fontSize: 12,
+                fontFamily: MONO_G, fontWeight: 700, fontSize: 13,
               }}>{initialsOf(o.agent)}</span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{
-                  fontSize: 14, fontWeight: 700, color: T.ink,
+                  fontSize: 15, fontWeight: 700, color: T.ink,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{o.agent}</div>
                 {label(o.customer ? `for ${o.customer}` : 'agent')}
@@ -1581,6 +1618,13 @@ export default class App extends React.Component {
             }}>{inr(o.value)}</span>
             {o.qty > 1 && (
               <span style={{ fontSize: 15, fontWeight: 700, color: T.label }}>× {num(o.qty)}</span>
+            )}
+            {/* Where the total came from, on the orders that are genuinely split
+                between money already in and money the courier still collects. */}
+            {o.prepaid > 0 && o.cod > 0 && (
+              <span style={{ fontSize: 13, fontWeight: 600, color: T.label, marginLeft: 'auto' }}>
+                {inrK(o.prepaid)} paid · {inrK(o.cod)} on delivery
+              </span>
             )}
           </div>
 

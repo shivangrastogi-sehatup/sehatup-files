@@ -48,7 +48,11 @@ export const FIELDS = {
   ],
   mens: [
     { key: 'date', label: 'Order date', fallback: 'Date', required: true },
-    { key: 'value', label: 'Order value (₹)', fallback: 'Product Value', required: true },
+    // Revenue = these two added. One or both is filled on every order; a
+    // part-paid one fills both. Product Value is the pre-discount list price
+    // and is deliberately not used.
+    { key: 'prepaid', label: 'Paid up front (₹)', fallback: 'Partial & Prepaid Pay', required: true },
+    { key: 'cod', label: 'COD collectable (₹)', fallback: 'COD Collectable', required: true },
     { key: 'product', label: 'Product name', fallback: 'Pdt Name', required: true },
     { key: 'agent', label: 'Agent', fallback: 'Agent Name', required: true },
     { key: 'leadSource', label: 'Lead source', fallback: 'Lead Source' },

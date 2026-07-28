@@ -118,12 +118,20 @@ function normalizeFulfilment(raw) {
 
 /**
  * Map one raw Men's Wellness ORDERS row to an order, or null if unusable.
- * Product Value = ₹ amount, Pdt Name = product, Date = order date (DD-MM-YYYY),
+ * Pdt Name = product, Date = order date (DD-MM-YYYY),
  * Lead Source = channel (Quick Reply / Healthscore).
  */
 function unifyOrder(r, idx, map = {}) {
   const iso = toISO(parseDate(pick(r, map.date, 'Date', 'Order Date', 'Delivered Date')));
-  const value = toNumber(pick(r, map.value, 'Product Value', 'Order Value', 'Amount')) || 0;
+  // Revenue is what the customer actually pays, and the sheet splits that across
+  // two columns: whatever came in up front, and whatever the courier still has
+  // to collect. Most orders are part-paid and fill BOTH, so they add.
+  //
+  // NOT "Product Value" — that's the list price before discounts, so it doesn't
+  // match what was banked. It ran the board's revenue until 2026-07-28.
+  const prepaid = toNumber(pick(r, map.prepaid, 'Partial & Prepaid Pay', 'Partial and Prepaid Pay', 'Prepaid Pay')) || 0;
+  const cod = toNumber(pick(r, map.cod, 'COD Collectable', 'COD Collectible', 'COD Collection')) || 0;
+  const value = prepaid + cod;
   const product = String(pick(r, map.product, 'Pdt Name', 'Product Name', 'Product') ?? '').trim();
   if (!iso || (!value && !product)) return null; // blank / header-ish row
 
@@ -145,6 +153,8 @@ function unifyOrder(r, idx, map = {}) {
     mode,
     date: iso,
     value,
+    // Kept alongside the total so a part-paid order can show its split.
+    prepaid, cod,
     product: titleCase(product) || '—',
     qty: toNumber(pick(r, map.qty, 'Qty', 'Quantity')) || 1,
     agent: titleCase(pick(r, map.agent, 'Agent Name', 'Caller')) || 'Unassigned',
@@ -182,18 +192,6 @@ function buildMeta(rows) {
  * Fetch both live lead sheets, map every row into the unified shape, and build
  * the meta the dashboard needs. Never throws — returns empty rows on failure.
  */
-/** Monthly aggregate used for the top-row KPIs + month-over-month deltas. */
-function aggregate(rows, orders) {
-  const cnt = (n) => rows.filter((r) => r.norm === n).length;
-  return {
-    total: rows.length,
-    connected: cnt('Connected'), ringing: cnt('Ringing'),
-    notConn: cnt('Not Connected'), followUp: cnt('Follow Up'), other: cnt('Other'),
-    orders: orders.length,
-    revenue: orders.reduce((s, o) => s + (o.value || 0), 0),
-  };
-}
-
 const mapRows = (sheet, source, map) => {
   const out = [];
   (sheet.rows || []).forEach((r, i) => { const u = unifyRow(r, source, i, map); if (u) out.push(u); });
@@ -217,23 +215,16 @@ export async function loadData(cfg) {
   const rows = [...mapRows(health, 'healthscore', col.health), ...mapRows(quick, 'quickreply', col.quick)];
   const orders = mapOrders(mens, col.mens);
 
-  // PREVIOUS month — aggregate only the SAME month-to-date window as the current
-  // month (e.g. on Jul 6 compare Jul 1–6 vs Jun 1–6), so an early-month total isn't
-  // unfairly compared against a full prior month.
-  const dayCutoff = new Date().getDate();
-  const inMTD = (r) => { const d = Number(String(r.date).split('-')[2]); return d >= 1 && d <= dayCutoff; };
+  // PREVIOUS month, in full. It feeds the weekly revenue bars (which look back
+  // past the 1st) and any custom date range that reaches into last month.
   const prevRowsAll = [...mapRows(healthPrev, 'healthscore', col.health), ...mapRows(quickPrev, 'quickreply', col.quick)];
   const prevOrdersAll = mapOrders(mensPrev, col.mens);
-  const prevAgg = aggregate(prevRowsAll.filter(inMTD), prevOrdersAll.filter(inMTD));
-  prevAgg.tab = { health: healthPrev.tab, quick: quickPrev.tab, mens: mensPrev.tab };
 
   // ok:true only when all three CURRENT sheets loaded — keeps last-good data on a
-  // transient partial failure. Previous-month failures just make deltas neutral.
+  // transient partial failure.
   const ok = health.ok && quick.ok && mens.ok;
   return {
-    rows, orders, prevAgg, ok,
-    // Full previous month (NOT clipped to MTD) — the weekly revenue bars look back
-    // 6 calendar weeks, which spills past the 1st of the current month.
+    rows, orders, ok,
     prevRows: prevRowsAll, prevOrders: prevOrdersAll,
     meta: buildMeta(rows),
     tabs: { health: health.tab, quick: quick.tab, mens: mens.tab },
