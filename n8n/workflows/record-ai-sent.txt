@@ -1,0 +1,37 @@
+// After the WhatsApp send: capture the id QuickReply returned (data.id) so the
+// message doc is keyed by it - then the CF's forwarded SENT/DELIVERED/READ status
+// callbacks update THIS doc in place instead of making a "Bot replied" placeholder.
+const send = $input.first().json || {};
+let sentId = null;
+const cands = [send.id, send.messageId, send.message_id,
+  send.data && send.data.id, send.data && send.data.messageId,
+  send.message && send.message.id, send.result && send.result.id];
+for (const c of cands) { if (c) { sentId = String(c); break; } }
+
+const ai = $('Extract AI Response').first().json;
+const now = Date.now();
+const convId = String(ai.phone || '').replace(/[^0-9]/g, '');
+const msgId = sentId || ('local_' + now + '_' + Math.floor(Math.random() * 1e6));
+
+console.log('QR send response (first 200):', JSON.stringify(send).slice(0, 200), '| id:', sentId);
+
+return [{
+  json: {
+    convId,
+    msgId,
+    id: msgId,
+    phone: ai.phone,
+    direction: 'out',
+    // messageBy is overwritten by QuickReply's status callback ('AI' -> 'AGENT'), and so
+    // is agentId - both end up identical to a human agent's CRM reply. senderKind is
+    // written once here and never touched again, so it is the ONLY field that lets
+    // "Decide Process" tell the AI's own replies apart from a human takeover.
+    senderKind: 'AI',
+    messageBy: 'AI',
+    _type: 'AGENT_TEXT',
+    text: ai.lastAiReply,
+    status: 'SENT',
+    msgTime: now,
+    createdAt: new Date().toISOString()
+  }
+}];

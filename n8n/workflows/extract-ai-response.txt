@@ -1,0 +1,112 @@
+const geminiResponse = $input.first().json;
+const _parts = geminiResponse.candidates?.[0]?.content?.parts || [];
+// This tuned model emits a "think"/reasoning part first and the REAL reply as the
+// LAST text part - so take the last non-empty part, not parts[0].
+let aiText = '';
+for (let i = _parts.length - 1; i >= 0; i--) {
+  const tx = _parts[i] && _parts[i].text ? _parts[i].text.trim() : '';
+  if (tx) { aiText = tx; break; }
+}
+aiText = aiText.replace(/^\s*(think|thought|reasoning)\b[\s\S]*?\n\n/i, '').trim();  // strip any leading reasoning block
+if (!aiText) aiText = 'Sorry, kuch problem aa gayi. Please dobara try karein.';
+
+const buildData = $('Build AI Prompt').first().json || {};
+let phone = buildData.phone;
+if (!phone) { try { phone = $('Decide Process').first().json.phone; } catch (e) {} }
+if (!phone) throw new Error('Extract AI Response: phone missing. buildData=' + JSON.stringify(buildData));
+const name = buildData.name || 'Customer';
+const newMsgText = buildData.newMsgText || '';
+
+// ---- Have we already greeted? - authoritative, from the REAL conversation history.
+//      (The fine-tuned model ignores the "greet once" rule, so we control it here.) ----
+let greetedBefore = false;
+try {
+  const items = $('Fetch Conversation History').all();
+  for (const it of items) {
+    const m = it && it.json; if (!m) continue;
+    const txt = (m.text || '').toLowerCase();
+    if (m.direction === 'out' && (m.text || m.placeholder)) greetedBefore = true;   // a prior bot/agent reply
+    if (txt.includes('ananya') && txt.includes('sehat')) greetedBefore = true;      // intro already sent
+  }
+} catch (e) {}
+
+// ---- Sanitize + strip ANY model-generated intro (kept: time greetings, titles) ----
+function sanitizeReply(t) {
+  if (!t) return '';
+  let s = String(t);
+  s = s.replace(/\b(good\s*(morning|afternoon|evening|noon)|gud\s*(mrng|morning|evening|evng)|shubh\s*(prabhat|sandhya)|subh\s*prabhat)\b[\s,!.-]*/gi, '');
+  // Titles - the customer's gender is unknown, so none of these may ever survive.
+  // Covers bare "mam", curly apostrophes and a trailing "-ji" ("mam ji" -> "ji").
+  // The optional ji is inside its own group so a plain "mam aapko" does not eat the space.
+  s = s.replace(/\b(ma['\u2019`]?am|m['\u2019`]am|mam|madam|mdm|mem(\s*(saab|sahab|saheb|sahib))?)(\s*(ji|jee))?\b/gi, 'ji');
+  // "sirf" is safe (no word boundary); "sir dard" is a headache, not an address.
+  s = s.replace(/\bsirs?(\s*(ji|jee))?\b(?!\s*(dard|dukh|dukhna|pain|ache|ghum|ghoom|chakkar|bhari|heavy|me\b|mein\b))/gi, 'ji');
+  s = s.replace(/\b(bhai|bhaiya|bhaiyya|bhaisahab|bro|brother|behen|bahen|behn|didi|bhabhi)(\s*(ji|jee))?\b/gi, 'ji');
+  // Devanagari equivalents: madam / maim / mem / sarji / bhaiya / didi / bahan-ji -> "ji".
+  // Written as \u escapes so copy-paste can never corrupt them. Bare "sar" (U+0938 U+0930)
+  // also means head, so it is deliberately NOT matched.
+  s = s.replace(/(\u092E\u0948\u0921\u092E|\u092E\u0948\u092E|\u092E\u0947\u092E|\u092E\u0947\u092E\u0938\u093E\u0939\u092C|\u0938\u0930\s*\u091C\u0940|\u0938\u0930\u091C\u0940|\u092D\u0948\u092F\u093E|\u092D\u093E\u0908\u0938\u093E\u0939\u092C|\u092D\u093E\u0908\s*\u0938\u093E\u0939\u092C|\u0926\u0940\u0926\u0940|\u092C\u0939\u0928\s*\u091C\u0940)/g, '\u091C\u0940');
+  // Speaker label leaked from the fine-tune's training format ("Ananya:- ...").
+  // Multiline: the model puts it on continuation lines too, not just the first.
+  s = s.replace(/^[\s>*-]*(ananya|agent|bot|assistant)\s*(ji)?\s*[:\-\u2013\u2014]+\s*/gim, '');
+  s = s.replace(/hello\s*ji[\s,!.]*/gi, '');
+  s = s.replace(/\bma?i?n?\s*ananya\s+baat\s+kar\s+rah[iy]\s*hu?n?\s*,?\s*(sehat\s*up\s*se)?[\s,.!]*/gi, '');
+  s = s.replace(/\bma?i?n?\s*ananya\s+(hu|hoon)\b[\s,.!]*/gi, '');
+  s = s.replace(/\b(ji)(\s*,?\s*ji\b)+/gi, 'ji');
+  s = s.replace(/(\u091C\u0940)(\s*,?\s*\u091C\u0940)+/g, '\u091C\u0940');
+  s = s.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n');
+  s = s.replace(/^[\s,.:;!-]+/, '').replace(/[ \t]+([,.!?])/g, '$1').trim();
+  return s;
+}
+aiText = sanitizeReply(aiText);
+
+// ---- DOSAGE GUARD (deterministic, same reason we control the greeting here:
+//      the fine-tuned model does not reliably obey prompt rules). If the customer
+//      asked for a dose - or the model slipped one into the reply - we replace the
+//      whole reply with the fixed "team will connect" line. ----
+const DOSE_HANDOFF = 'Dose doctor hi batate hain ji. Hamari team aapse thodi hi der me connect kar rahi hai, please thoda wait kijiye.';
+const _q = String(newMsgText || '').toLowerCase();
+// "kitne din" alone is usually "how long till results" - only a dose question when
+// paired with a take/eat/drink verb.
+const _DOSE_VERB = /(len[aeiu]|lene|khan[aeiu]|khaye|khaun|pee?n[aei]|piye|piyu|\btake\b|\bconsume\b|istemal|use\s*kar)/;
+const askedDose =
+     /\bdos(e|es|age|ages)\b/.test(_q)
+  || /khura+k|\bmatra\b|\bmaatra\b/.test(_q)
+  || /(kitni|kitne|kitna|kitnii)\s+(\S+\s+){0,2}(goli|goliy|tablet|tablets|capsule|cap\b|churan|churna|chammach|spoon|boond|drop|drops|scoop|sachet|\bml\b|\bmg\b)/.test(_q)
+  || (/(kitni|kitne)\s+(\S+\s+){0,2}(din|days|baar|dafa|hafte|weeks|mahine|months)/.test(_q) && _DOSE_VERB.test(_q))
+  || /(kaise|kab|kis\s*time|kis\s*samay|kitne\s*din|kitni\s*der|khali\s*pet)\s*(\S+\s+){0,3}(len[aei]|lene|khan[aei]|khaye|khaun|pee?n[aei]|piye|piyu|use|istemal|isteml)/.test(_q)
+  || /\bhow\s+(many|much|often|long)\b/.test(_q)
+  || /\b(when|how)\s+(should\s+i\s+|do\s+i\s+|to\s+)?(take|consume|use)\b/.test(_q)
+  || /(empty\s*stomach|before\s+(food|meal)|after\s+(food|meal))/.test(_q);
+
+const _a = String(aiText || '').toLowerCase();
+const gaveDose =
+     /\b\d+\s*(-|to|se|se\s*\d+)?\s*(goli|goliya|goliyan|tablet|tablets|capsule|capsules|chammach|spoon|boond|drop|drops|scoop|sachet)\b/.test(_a)
+  || /\b(ek|do|teen|char|one|two|three|four)\s+(goli|goliya|goliyan|tablet|tablets|capsule|capsules|chammach|spoon|boond|drop|drops|scoop|sachet)\b/.test(_a)
+  || /\b(once|twice|thrice)\s+(a\s+)?(day|daily)\b/.test(_a)
+  || /\b(din|roz|rozana)\s*(me|mein)?\s*(ek|do|teen|\d+)\s*baar\b/.test(_a);
+
+const doseGuard = askedDose || gaveDose;
+if (doseGuard) {
+  console.log('[Dose Guard] replaced reply | askedDose=' + askedDose + ' gaveDose=' + gaveDose + ' | q=' + _q.slice(0, 60));
+  aiText = DOSE_HANDOFF;
+}
+
+// ---- Add the introduction EXACTLY ONCE, only on genuine first contact ----
+if (!greetedBefore) {
+  aiText = 'Hello ji, mai Ananya baat kar rahi hu SehatUP se. ' + (aiText || 'mai aapki kya help kar sakti hu?');
+}
+if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
+
+const docId = phone.replace(/[^0-9]/g, '');
+return [{
+  json: {
+    phone,
+    name,
+    lastAiReply: aiText,
+    lastUserMessage: newMsgText,
+    docId,
+    doseGuard,
+    lastUpdated: new Date().toISOString()
+  }
+}];

@@ -1,0 +1,133 @@
+const decide = $('Decide Process').first().json;
+const phone = decide.phone;
+const name = decide.name || 'Customer';
+
+let items = [];
+try { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }
+const tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();
+const evs = items.map(i => i.json).filter(m => m && (m.msgTime || m.createdAt))
+  .map(m => ({ ...m, _t: tval(m) })).sort((a, b) => a._t - b._t);
+
+const isAiMsg = m => m.direction === 'out' && !!m.text && !m.placeholder && m._type !== 'AGENT_PLACEHOLDER' && m._type !== 'BOT_PLACEHOLDER';
+const isHumanMsg = m => m.direction === 'out' && (m._type === 'AGENT_PLACEHOLDER' || (m.placeholder && !m.text));
+
+let lastAiAt = 0, lastHumanAt = 0;
+for (const m of evs) {
+  if (isAiMsg(m)) lastAiAt = Math.max(lastAiAt, m._t);
+  else if (isHumanMsg(m)) lastHumanAt = Math.max(lastHumanAt, m._t);
+}
+const cutoff = Math.max(lastAiAt, lastHumanAt);
+const resumedFromHuman = lastHumanAt > 0 && lastHumanAt >= lastAiAt;
+
+// current turn = inbound user messages not yet answered
+const unanswered = evs.filter(m => m.direction === 'in' && m._t > cutoff);
+let newMsgText = unanswered.map(m => m.text || '').filter(Boolean).join('\n');
+// Fallbacks so Gemini never receives an empty user message:
+if (!newMsgText) {
+  const lastUser = [...evs].reverse().find(m => m.direction === 'in' && m.text);
+  if (lastUser) newMsgText = lastUser.text || '';
+}
+if (!newMsgText) {
+  try { newMsgText = ($('Extract Message Details').first().json.text || '').trim(); } catch (e) {}
+}
+
+// transcript for context (human-agent turns are text-less; flagged via note below)
+const history = [];
+for (const m of evs) {
+  if (m.direction === 'in') { if (m._t > cutoff) continue; history.push({ role: 'user', content: m.text || '' }); }
+  else if (isAiMsg(m)) history.push({ role: 'assistant', content: m.text || '' });
+}
+const recentHistory = history.slice(-20);
+
+const isFirstContact = !history.some(h => h.role === 'assistant');
+
+// ---- TIME AWARENESS: use the customer's OWN message time (msg_time), not Date.now() ----
+let curMsgTime = 0;
+if (unanswered.length) curMsgTime = unanswered[unanswered.length - 1]._t;
+if (!curMsgTime) { const lu = [...evs].reverse().find(m => m.direction === 'in'); if (lu) curMsgTime = lu._t; }
+if (!curMsgTime) { try { curMsgTime = Number($('Extract Message Details').first().json.msgTime) || 0; } catch (e) {} }
+if (!curMsgTime) curMsgTime = Date.now();
+
+const istNow = new Date(curMsgTime + (5.5 * 60 * 60 * 1000));
+const H = istNow.getUTCHours();
+const Min = istNow.getUTCMinutes();
+const clock = (((H + 11) % 12) + 1) + ':' + String(Min).padStart(2, '0') + ' ' + (H < 12 ? 'AM' : 'PM') + ' IST';
+let partOfDay = 'night';
+if (H >= 5 && H < 12) partOfDay = 'morning';
+else if (H >= 12 && H < 17) partOfDay = 'afternoon';
+else if (H >= 17 && H < 21) partOfDay = 'evening';
+const totalMinutes = H * 60 + Min;
+const isOfficeHours = totalMinutes >= (9 * 60 + 30) && totalMinutes < (18 * 60 + 30);
+
+// gap since the customer's PREVIOUS inbound message (how long they were away)
+const firstUnansweredAt = unanswered.length ? unanswered[0]._t : curMsgTime;
+let prevInboundAt = 0;
+for (const m of evs) { if (m.direction === 'in' && m._t < firstUnansweredAt) prevInboundAt = Math.max(prevInboundAt, m._t); }
+const gapMs = prevInboundAt ? (firstUnansweredAt - prevInboundAt) : 0;
+function fmtGap(ms) {
+  if (!ms) return 'first message / no prior';
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return min + ' min ago';
+  const hr = Math.round(min / 60);
+  if (hr < 24) return hr + ' hr ago';
+  const d = Math.round(hr / 24);
+  return d + ' day' + (d > 1 ? 's' : '') + ' ago';
+}
+const gapLabel = fmtGap(gapMs);
+
+let basePrompt = 'You are Ananya, a Health Expert at SehatUP.';
+try {
+  const docData = $('Get a document').first().json;
+  if (docData && docData.body && docData.body.content && Array.isArray(docData.body.content)) {
+    const extracted = docData.body.content
+      .map(b => b.paragraph && b.paragraph.elements
+        ? b.paragraph.elements.map(e => (e.textRun && e.textRun.content) ? e.textRun.content : '').join('')
+        : '')
+      .join('').trim();
+    if (extracted) basePrompt = extracted;
+  }
+} catch (e) { console.log('Could not read Google Doc, using default prompt:', e.message); }
+
+const conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();
+const hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');
+
+let systemPrompt = basePrompt
+  + '\n\nCONTEXT:\nFirst contact: ' + (isFirstContact ? 'YES' : 'NO')
+  + '\nCurrent time (customer message, IST): ' + clock + ' (' + partOfDay + ')'
+  + '\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')
+  + '\nTime since customer\'s previous message: ' + gapLabel
+  + '\nCustomer name: ' + name
+  + '\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')
+  + '\n\nCRITICAL ANTI-SPAM RULES:\n'
+  + '1. If "Greeting already sent: YES", NEVER send greeting again. Jump straight to answering the question.\n'
+  + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\n'
+  + '3. Only greet if: First contact: YES AND Greeting already sent: NO AND no assistant messages in history.\n'
+  + '4. For follow-up questions, respond directly without any greeting or introduction.'
+  + '\n5. Agar aapne pichle assistant message mein already free consultation/doctor-pitch wala paragraph bheja hai, to usko word-for-word ya near-identical dobara mat bhejo - short naya angle do ya seedha agla step (jaise time confirm karna) pucho.';
+
+systemPrompt += '\n\nTIME AWARENESS: The times in CONTEXT are the real IST time of the customer\'s message (not "now"). Use them naturally: if it is late night, suggest a next-day consultation slot; if office hours are CLOSED, say the team will call during working hours (9:30am-6:30pm) instead of promising an immediate call; if the customer is returning after a long gap, continue warmly without repeating the full introduction. Do NOT open with good morning/afternoon/evening.';
+
+if (resumedFromHuman) {
+  systemPrompt += '\n\nHANDOFF NOTE: A human support agent was chatting with this customer and has now gone quiet, so you are taking over again. You CANNOT see the human agent\'s messages. Read the customer\'s latest message(s), avoid repeating earlier greetings/pitches, and continue helpfully from the current point.';
+}
+
+const messages = [
+  { role: 'system', content: systemPrompt },
+  ...recentHistory.map(h => ({ role: h.role, content: h.content })),
+  { role: 'user', content: newMsgText }
+];
+
+// ---- DEBUG: exactly what history the AI fetched, in sequence, and what it got ----
+const _debug = {
+  fetchedMessages: evs.length,
+  time: clock + ' ' + partOfDay + ' | office=' + (isOfficeHours ? 'OPEN' : 'CLOSED') + ' | gap=' + gapLabel,
+  sequence: evs.map(m => `${new Date(m._t).toISOString().slice(11, 19)} | ${m.direction || '?'} | ${(m._type || '').replace('AGENT_', '')} | ${(m.text || m.placeholder || '').slice(0, 50)}`),
+  historyToAI: recentHistory.map(h => `${h.role}: ${(h.content || '').slice(0, 50)}`),
+  currentTurn: newMsgText,
+  isFirstContact,
+  resumedFromHuman,
+};
+console.log('[Build AI Prompt] fetched=' + evs.length + ' time=' + _debug.time + ' history=' + JSON.stringify(_debug.sequence));
+
+return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];

@@ -2466,13 +2466,23 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
         if (msgSnap.exists) {
           // We already stored this message (e.g. one sent from the CRM, or a prior
           // status for this same id) → just refresh its delivery status + sender meta.
+          //
+          // IMPORTANT: if we wrote the doc ourselves it carries senderKind ('AI' from
+          // n8n's "Record AI Sent", 'HUMAN' from qrSendMessage below) and we must NOT
+          // touch messageBy/agentId. QuickReply reports every outbound as
+          // messageBy: "AGENT" with the shared API account's agentId, so copying those
+          // in overwrites the only record of who actually sent it — and then the n8n
+          // handoff check cannot tell a human agent's reply from the bot's own, so the
+          // bot talks straight over the agent.
           if (ev) {
+            const known = !!(msgSnap.data() || {}).senderKind;
             await msgRef.update({
               status: ev,
               statusUpdatedAt: FieldValue.serverTimestamp(),
-              ...(b.messageBy ? { messageBy: b.messageBy } : {}),
-              ...(b.agentId ? { agentId: b.agentId } : {}),
+              ...(!known && b.messageBy ? { messageBy: b.messageBy } : {}),
+              ...(!known && b.agentId ? { agentId: b.agentId } : {}),
               ...(b.automationBy ? { automationBy: b.automationBy } : {}),
+              ...(known && b.agentId ? { qrAgentId: b.agentId } : {}),
             }).catch(() => { /* race on a just-deleted doc — ignore */ });
           }
         } else if (ev === "SENT" && (b.messageBy === "AGENT" || b.messageBy === "AUTOMATION")) {
@@ -2485,6 +2495,10 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
           // re-opens the chat), so creating from those would stamp the reply too late and
           // sort it BELOW newer customer messages (the bug we saw). Skipping them for
           // creation keeps the bot/agent bubble in its correct position in the thread.
+          // No senderKind here on purpose: this branch fires for a human agent replying
+          // in the QuickReply dashboard AND (as a race) for the AI's own reply when the
+          // SENT callback beats n8n's "Save AI Message" write. The two are only
+          // distinguishable by agentId, which is what n8n's AI_AGENT_IDS check uses.
           const isAgent = b.messageBy === "AGENT";
           const label = isAgent ? "Agent replied" : "Bot replied";
           const msgTime = Number(b.msg_time) || Date.now();
@@ -2625,6 +2639,12 @@ exports.qrSendMessage = onCall({ region: "us-central1" }, async (request) => {
     direction: "out",
     _type: "AGENT_TEXT",
     text,
+    // A CRM reply is byte-for-byte shaped like one of the bot's own replies (out +
+    // AGENT_TEXT + text), and QuickReply's status callback then rewrites messageBy to
+    // "AGENT" and agentId to the shared API account for BOTH. senderKind is the durable
+    // marker the n8n "Decide Process" handoff check reads to pause the bot — without it
+    // the bot reads this message as one of its own and keeps replying over the agent.
+    senderKind: "HUMAN",
     messageBy: "AGENT",
     agentId: callerUid,
     status: data.state || "SENT",
@@ -2640,6 +2660,216 @@ exports.qrSendMessage = onCall({ region: "us-central1" }, async (request) => {
 
   return { success: true, id: msgId, state: data.state || "SENT" };
 });
+
+// ── Customer / order context for the WhatsApp bot ────────────────────────────
+// n8n calls this once per inbound message, right before it builds the Gemini prompt, so
+// Ananya can answer "mera order kaha hai" from real data instead of guessing. Shopify is
+// the source of truth for order + delivery status.
+//
+// It returns a pre-rendered `summary` string (not just raw JSON) on purpose: the wording
+// of the facts is a place bugs hide, so it lives here where it can be logged and changed
+// without touching the n8n Code node.
+//
+// GET /qrCustomerContext?phone=%2B917300978845&token=...   [&fresh=1]
+const SHOPIFY_HOST = process.env.SHOPIFY_HOST || "0ec320-gj.myshopify.com";
+const SHOPIFY_VERSION = process.env.SHOPIFY_VERSION || "2024-01";
+const QR_CTX_TTL_MS = 10 * 60 * 1000;   // Shopify REST allows ~2 req/s; cache per phone.
+
+async function shopifyGet(pathname) {
+  const token = process.env.SHOPIFY_ACCESS_TOKEN;
+  if (!token) throw new Error("SHOPIFY_ACCESS_TOKEN is not configured");
+  const r = await axios.get(`https://${SHOPIFY_HOST}/admin/api/${SHOPIFY_VERSION}${pathname}`, {
+    headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
+    timeout: 10000,
+  });
+  return r.data || {};
+}
+
+// Shopify stores Indian numbers inconsistently (+917300978845 / 917300978845 /
+// 7300978845 / spaced), and its search does not support a leading wildcard — so try the
+// realistic forms in order rather than one "clever" query.
+async function shopifyFindCustomerByPhone(p10) {
+  const queries = [`phone:"+91${p10}"`, `phone:"91${p10}"`, `phone:"${p10}"`, p10];
+  for (const q of queries) {
+    try {
+      const d = await shopifyGet(`/customers/search.json?query=${encodeURIComponent(q)}&limit=5`);
+      const list = d.customers || [];
+      // Confirm on the digits, never on Shopify's fuzzy match: a broad `p10` query can
+      // return near-misses, and answering about someone else's order is far worse than
+      // answering "let me check".
+      const hit = list.find((c) => {
+        const cand = [c.phone, ...(c.addresses || []).map((a) => a && a.phone)];
+        return cand.some((v) => String(v || "").replace(/\D/g, "").slice(-10) === p10);
+      });
+      if (hit) return hit;
+    } catch (e) {
+      console.warn("[qrCustomerContext] customer search failed for", q, e.message);
+    }
+  }
+  return null;
+}
+
+// Shopify has no delivery ETA, so this label is the whole truth we can offer.
+function qrOrderStatusLabel(o) {
+  if (o.cancelled_at) return "Cancelled";
+  const fs = (o.fulfillment_status || "").toLowerCase();
+  const ships = (o.fulfillments || [])
+    .map((f) => String(f.shipment_status || "").toLowerCase())
+    .filter(Boolean);
+  const s = ships[ships.length - 1] || "";
+  if (s === "delivered") return "Delivered";
+  if (s === "out_for_delivery") return "Out for delivery";
+  if (s === "attempted_delivery") return "Delivery attempted, not delivered";
+  if (s === "failure") return "Delivery failed";
+  if (s === "in_transit" || s === "confirmed" || s === "label_printed" || s === "label_purchased") return "In transit";
+  if (fs === "fulfilled") return "Shipped";
+  if (fs === "partial") return "Partly shipped";
+  if (fs === "restocked") return "Returned/restocked";
+  return "Order placed, not shipped yet";
+}
+
+// Shopify product titles carry the store's SEO suffix ("… - 20g | SehatUP"). Two reasons
+// to strip it: it reads like a webpage when Ananya says it out loud, and the pipe collides
+// with the field separator in the summary, so the model cannot see where `items` ends.
+function qrCleanTitle(t) {
+  return String(t || "")
+    .replace(/\s*\|\s*sehat\s*up\s*$/i, "")
+    .replace(/\s*\|\s*/g, " - ")
+    .trim();
+}
+
+// Shopify's financial_status is internal vocabulary. "voided" on a cancelled order is
+// noise at best and alarming at worst, so cancelled orders report no payment state.
+function qrPaymentLabel(o) {
+  if (o.cancelled_at) return "";
+  switch (String(o.financial_status || "").toLowerCase()) {
+    case "paid": return "paid";
+    case "pending": return "payment pending";
+    case "partially_paid": return "partly paid";
+    case "refunded": return "refunded";
+    case "partially_refunded": return "partly refunded";
+    case "authorized": return "payment authorized";
+    default: return "";
+  }
+}
+
+function qrCompactOrder(o) {
+  const f = (o.fulfillments || [])[(o.fulfillments || []).length - 1] || {};
+  const gateways = (o.payment_gateway_names || []).join(", ");
+  return {
+    name: o.name || (o.order_number != null ? `#${o.order_number}` : ""),
+    placedAt: o.created_at || null,
+    status: qrOrderStatusLabel(o),
+    cancelled: !!o.cancelled_at,
+    total: Math.round(Number(o.total_price) || 0),
+    paymentStatus: qrPaymentLabel(o),
+    cod: /cash on delivery|\bcod\b/i.test(gateways),
+    items: (o.line_items || []).map((li) => `${qrCleanTitle(li.title)}${li.quantity > 1 ? ` x${li.quantity}` : ""}`),
+    courier: f.tracking_company || "",
+    trackingNumber: f.tracking_number || "",
+    trackingUrl: f.tracking_url || "",
+  };
+}
+
+// Choose which of a customer's orders the bot gets to see. Newest-first, but the newest
+// non-cancelled orders are GUARANTEED a place. A flat "newest 5" looks right and fails
+// badly: an account whose five newest orders are all cancelled would tell the bot nothing
+// about the live order the customer is actually asking about.
+function qrPickOrders(all, liveMin = 3, max = 5) {
+  const newestFirst = (a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0);
+  const sorted = [...all].sort(newestFirst);
+  const picked = sorted.filter((o) => !o.cancelled).slice(0, liveMin);
+  for (const o of sorted) { if (picked.length >= max) break; if (!picked.includes(o)) picked.push(o); }
+  return picked.sort(newestFirst);
+}
+
+exports.qrCustomerContext = onRequest(
+  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  async (req, res) => {
+    // Never fail the caller: n8n runs this inline in the reply path, so an error here
+    // must degrade to "no data" (the bot then says the team will check) rather than
+    // block the reply.
+    const out = { found: false, orderCount: 0, orders: [], summary: "", source: "none" };
+    try {
+      const expected = process.env.QR_CONTEXT_TOKEN || process.env.QUICKREPLY_WEBHOOK_TOKEN;
+      const given = req.query.token || (req.body && req.body.token);
+      if (expected && given !== expected) return res.status(401).json({ ...out, error: "unauthorized" });
+
+      const rawPhone = String(req.query.phone || (req.body && req.body.phone) || "").trim();
+      const p10 = rawPhone.replace(/\D/g, "").slice(-10);
+      if (p10.length !== 10) return res.status(200).json({ ...out, error: "invalid phone" });
+      out.phone = rawPhone;
+
+      const db = getFirestore();
+      const cacheRef = db.collection("qr_context_cache").doc(p10);
+      if (!req.query.fresh) {
+        const snap = await cacheRef.get().catch(() => null);
+        const c = snap && snap.exists ? snap.data() : null;
+        if (c && c.at && Date.now() - c.at < QR_CTX_TTL_MS && c.payload) {
+          return res.status(200).json({ ...JSON.parse(c.payload), source: "cache" });
+        }
+      }
+
+      const customer = await shopifyFindCustomerByPhone(p10);
+      if (!customer) {
+        out.source = "shopify";
+        out.summary = "";
+        await cacheRef.set({ at: Date.now(), payload: JSON.stringify(out) }, { merge: true }).catch(() => {});
+        console.log("[qrCustomerContext]", p10, "-> no Shopify customer");
+        return res.status(200).json(out);
+      }
+
+      const od = await shopifyGet(`/customers/${customer.id}/orders.json?status=any&limit=25`);
+      const all = (od.orders || [])
+        .map(qrCompactOrder)
+        .sort((a, b) => new Date(b.placedAt || 0) - new Date(a.placedAt || 0));
+
+      const orders = qrPickOrders(all);
+      const cancelledCount = all.filter((o) => o.cancelled).length;
+
+      out.found = orders.length > 0;
+      out.source = "shopify";
+      out.customerName = customer.first_name || customer.last_name
+        ? `${customer.first_name || ""} ${customer.last_name || ""}`.trim()
+        : "";
+      out.orderCount = Number(customer.orders_count) || orders.length;
+      out.orders = orders;
+
+      if (orders.length) {
+        const fmt = (iso) => {
+          if (!iso) return "unknown date";
+          const d = new Date(iso);
+          return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+        };
+        // Fields are separated by " · ", never "|" — product titles contain pipes.
+        const lines = orders.map((o) => {
+          const bits = [
+            `${o.name || "(no number)"} placed ${fmt(o.placedAt)}`,
+            o.status,
+            `Rs${o.total} ${o.cod ? "COD" : "prepaid"}${o.paymentStatus ? `, ${o.paymentStatus}` : ""}`,
+            `items: ${o.items.join(", ") || "n/a"}`,
+          ];
+          if (o.courier || o.trackingNumber) bits.push(`courier: ${o.courier || "n/a"}${o.trackingNumber ? `, AWB ${o.trackingNumber}` : ""}`);
+          return `- ${bits.join(" · ")}`;
+        });
+        const shown = orders.length === out.orderCount
+          ? `All ${out.orderCount} orders`
+          : `Showing ${orders.length} of ${out.orderCount} orders`;
+        out.summary = `${shown} for this customer, most recent first`
+          + `${cancelledCount ? ` (${cancelledCount} of their orders are cancelled)` : ""}:\n`
+          + `${lines.join("\n")}\n`
+          + "No delivery date/ETA exists in our system for any order, and orders not listed above are not visible to you.";
+      }
+
+      await cacheRef.set({ at: Date.now(), payload: JSON.stringify(out) }, { merge: true }).catch(() => {});
+      console.log("[qrCustomerContext]", p10, "->", orders.length, "orders |", orders.map((o) => `${o.name}:${o.status}`).join(", "));
+      return res.status(200).json(out);
+    } catch (err) {
+      console.error("[qrCustomerContext] failed:", err.message);
+      return res.status(200).json({ ...out, error: err.message });
+    }
+  },
+);
 
 // ── QuickReply Tester clear ──────────────────────────────────────────────────
 // Wipes a phone's qr_conversations/{phone}/events so the bot starts a fresh

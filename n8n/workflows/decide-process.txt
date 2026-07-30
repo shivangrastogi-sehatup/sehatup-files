@@ -1,0 +1,106 @@
+const RESUME_AFTER_SILENCE_MS = 30 * 60 * 1000; // human-silence before AI resumes
+
+// This message's own trigger time (from the webhook). No static data - the whole
+// decision is derived from the durable Firestore messages, so it works the same in
+// test and production executions.
+const src = $('Extract Message Details').first().json;
+const phone = src.phone;
+const name = src.name || 'Customer';
+const myMsgTime = Number(src.msgTime) || 0;
+
+// ---- per-number lists (global 'off' already short-circuited by "AI Enabled?") ----
+let mode = 'on';
+let testNumbers = ['+917300978845', '+918756112227'];
+let blockedNumbers = [];
+const toList = (v) => {
+  if (!v) return [];
+  const raw = Array.isArray(v) ? v.join(',') : String(v);
+  return raw.split(',').map(s => s.trim()).filter(Boolean);
+};
+try {
+  const cfg = $('Get AI Config').first().json;
+  if (cfg && typeof cfg.mode === 'string' && cfg.mode.trim()) mode = cfg.mode.trim().toLowerCase();
+  const tn = toList(cfg && cfg.testNumbers);
+  if (tn.length) testNumbers = tn;
+  blockedNumbers = toList(cfg && cfg.blockedNumbers);
+} catch (e) {}
+
+if (blockedNumbers.includes(phone)) return [{ json: { phone, name, shouldProcess: false, reason: 'ai_blocked_number' } }];
+if (mode === 'off') return [{ json: { phone, name, shouldProcess: false, reason: 'ai_paused_global' } }];
+if (mode === 'test' && !testNumbers.includes(phone)) return [{ json: { phone, name, shouldProcess: false, reason: 'ai_test_mode_only' } }];
+
+// ---- read messages from conversations/{convId}/messages ----
+//   customer      = direction 'in'
+//   AI reply      = out + senderKind 'AI'     (Save AI Message; legacy: messageBy 'AI')
+//   human reply   = out + senderKind 'HUMAN'  (CRM composer / qrSendMessage) - HAS text
+//                   OR an AGENT_PLACEHOLDER   (QuickReply dashboard)         - no text
+let items = [];
+try { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }
+const tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();
+
+// The AI sends via ONE fixed QuickReply agent account; a dashboard takeover comes from
+// a DIFFERENT account, told apart by agentId.
+const AI_AGENT_IDS = new Set(['u9ocdFtszn6BAXa7L_ag']);  // <- AI's own QuickReply send account(s)
+
+// senderKind is stamped at write time and is never touched by the status callbacks, so
+// it survives; messageBy and agentId are both overwritten in place by QuickReply's
+// SENT/DELIVERED/READ callbacks and cannot be trusted on their own.
+const isAiOut = m => m.senderKind === 'AI' || m.messageBy === 'AI';
+const isHumanOut = m => !isAiOut(m) && (
+     m.senderKind === 'HUMAN'
+  || (m._type === 'AGENT_PLACEHOLDER' && !m.automationBy && !AI_AGENT_IDS.has(String(m.agentId || '')))
+);
+
+// Pass 1 - learn extra AI send accounts, but ONLY from messages explicitly marked as the
+// AI's own. The old code learned from "any outbound message that has text", so a human
+// agent's CRM reply (AGENT_TEXT + text) both counted as an AI reply AND registered that
+// agent as an AI account - after which the bot never paused for them again.
+for (const it of items) {
+  const m = it && it.json; if (!m) continue;
+  if (m.direction === 'out' && m.agentId && isAiOut(m)) AI_AGENT_IDS.add(String(m.agentId));
+}
+
+let latestInboundAt = 0, lastAiAt = 0, lastHumanAt = 0;
+for (const it of items) {
+  const m = it && it.json; if (!m) continue;
+  const t = tval(m);
+  if (m.direction === 'in') { latestInboundAt = Math.max(latestInboundAt, t); continue; }
+  if (m.direction !== 'out') continue;
+  if (isHumanOut(m)) { lastHumanAt = Math.max(lastHumanAt, t); continue; }
+  if (isAiOut(m)) { lastAiAt = Math.max(lastAiAt, t); continue; }
+  // Legacy / ambiguous outbound text, written before senderKind existed. Count it as the
+  // AI: calling it "human" would read every historical AI reply as a takeover and
+  // silence the bot on every chat it has ever answered.
+  if (m.text && !m.placeholder && m._type !== 'BOT_PLACEHOLDER') lastAiAt = Math.max(lastAiAt, t);
+}
+
+console.log('[Decide Process] fetched=' + items.length
+  + ' lastInbound=' + (latestInboundAt ? new Date(latestInboundAt).toISOString() : '-')
+  + ' lastAi=' + (lastAiAt ? new Date(lastAiAt).toISOString() : '-')
+  + ' lastHuman=' + (lastHumanAt ? new Date(lastHumanAt).toISOString() : '-'));
+
+// ---- DEBOUNCE (Firestore-based): if a newer customer message arrived during the
+//      wait, let THAT execution answer the whole batch - this one bows out. ----
+if (latestInboundAt > myMsgTime) {
+  return [{ json: { phone, name, shouldProcess: false, reason: 'newer_message_wins', myMsgTime, latestInboundAt } }];
+}
+
+// ---- HANDOFF: a human agent is actively handling this chat ----
+// Once a human agent has sent ANYTHING in the last RESUME window, the AI backs off -
+// even if an in-flight AI reply happened to land after the human's message. The AI
+// resumes only after the human has been quiet for the whole window.
+const now = Date.now();
+const humanActive = lastHumanAt > 0 && (now - lastHumanAt) < RESUME_AFTER_SILENCE_MS;
+if (humanActive) {
+  return [{ json: { phone, name, shouldProcess: false, reason: 'human_active', minsSinceHuman: Math.round((now - lastHumanAt) / 60000), lastHumanAt } }];
+}
+
+// ---- already answered? ANY reply (AI text or a genuine human reply) newer than the
+//      latest customer message => this / a duplicate execution bows out. ----
+// NOT a QuickReply automation/bot template - those don't answer the query.
+const answeredAt = Math.max(lastAiAt, lastHumanAt);
+if (latestInboundAt > 0 && latestInboundAt <= answeredAt) {
+  return [{ json: { phone, name, shouldProcess: false, reason: 'already_answered', lastAiAt, lastHumanAt } }];
+}
+
+return [{ json: { phone, name, shouldProcess: true, reason: 'process', lastAiAt, lastHumanAt, resumedFromHuman: (lastHumanAt > 0 && lastHumanAt >= lastAiAt) } }];

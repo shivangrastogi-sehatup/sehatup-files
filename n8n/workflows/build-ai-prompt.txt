@@ -1,0 +1,225 @@
+const decide = $('Decide Process').first().json;
+const phone = decide.phone;
+const name = decide.name || 'Customer';
+
+let items = [];
+try { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }
+const tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();
+const evs = items.map(i => i.json).filter(m => m && (m.msgTime || m.createdAt))
+  .map(m => ({ ...m, _t: tval(m) })).sort((a, b) => a._t - b._t);
+
+// Same classification as "Decide Process" - keep the two in sync. senderKind is stamped
+// at write time and survives; messageBy and agentId are overwritten in place by
+// QuickReply's status callbacks, so neither can be trusted on its own. A CRM-composer
+// reply from a human agent is an AGENT_TEXT WITH text, which is exactly what an AI reply
+// looks like - only senderKind tells them apart.
+const AI_AGENT_IDS = new Set(['u9ocdFtszn6BAXa7L_ag']);
+const isAiOut = m => m.senderKind === 'AI' || m.messageBy === 'AI';
+const isHumanOut = m => !isAiOut(m) && (
+     m.senderKind === 'HUMAN'
+  || (m._type === 'AGENT_PLACEHOLDER' && !m.automationBy && !AI_AGENT_IDS.has(String(m.agentId || '')))
+);
+for (const m of evs) { if (m.direction === 'out' && m.agentId && isAiOut(m)) AI_AGENT_IDS.add(String(m.agentId)); }
+
+const isHumanMsg = m => m.direction === 'out' && isHumanOut(m);
+// legacy/ambiguous outbound text counts as the AI (see Decide Process for why)
+const isAiMsg = m => m.direction === 'out' && !isHumanOut(m)
+  && (isAiOut(m) || (!!m.text && !m.placeholder && m._type !== 'BOT_PLACEHOLDER'));
+
+let lastAiAt = 0, lastHumanAt = 0, humanTextSeen = false;
+for (const m of evs) {
+  if (isHumanMsg(m)) { lastHumanAt = Math.max(lastHumanAt, m._t); if (m.text) humanTextSeen = true; }
+  else if (isAiMsg(m)) lastAiAt = Math.max(lastAiAt, m._t);
+}
+const cutoff = Math.max(lastAiAt, lastHumanAt);
+const resumedFromHuman = lastHumanAt > 0 && lastHumanAt >= lastAiAt;
+
+// current turn = inbound user messages not yet answered
+const unanswered = evs.filter(m => m.direction === 'in' && m._t > cutoff);
+let newMsgText = unanswered.map(m => m.text || '').filter(Boolean).join('\n');
+// Fallbacks so Gemini never receives an empty user message:
+if (!newMsgText) {
+  const lastUser = [...evs].reverse().find(m => m.direction === 'in' && m.text);
+  if (lastUser) newMsgText = lastUser.text || '';
+}
+if (!newMsgText) {
+  try { newMsgText = ($('Extract Message Details').first().json.text || '').trim(); } catch (e) {}
+}
+
+// transcript for context. A human agent's CRM reply HAS text, so feed it in as an
+// assistant turn - the model then continues from what the human actually said instead of
+// guessing. A QuickReply-dashboard takeover is text-less; those turns are invisible here
+// and are flagged via the HANDOFF NOTE below.
+const history = [];
+for (const m of evs) {
+  if (m.direction === 'in') { if (m._t > cutoff) continue; history.push({ role: 'user', content: m.text || '' }); }
+  else if (isHumanMsg(m)) { if (m.text) history.push({ role: 'assistant', content: m.text }); }
+  else if (isAiMsg(m)) history.push({ role: 'assistant', content: m.text || '' });
+}
+const recentHistory = history.slice(-20);
+
+const isFirstContact = !history.some(h => h.role === 'assistant');
+
+// ---- TIME AWARENESS: use the customer's OWN message time (msg_time), not Date.now() ----
+let curMsgTime = 0;
+if (unanswered.length) curMsgTime = unanswered[unanswered.length - 1]._t;
+if (!curMsgTime) { const lu = [...evs].reverse().find(m => m.direction === 'in'); if (lu) curMsgTime = lu._t; }
+if (!curMsgTime) { try { curMsgTime = Number($('Extract Message Details').first().json.msgTime) || 0; } catch (e) {} }
+if (!curMsgTime) curMsgTime = Date.now();
+
+const istNow = new Date(curMsgTime + (5.5 * 60 * 60 * 1000));
+const H = istNow.getUTCHours();
+const Min = istNow.getUTCMinutes();
+const clock = (((H + 11) % 12) + 1) + ':' + String(Min).padStart(2, '0') + ' ' + (H < 12 ? 'AM' : 'PM') + ' IST';
+let partOfDay = 'night';
+if (H >= 5 && H < 12) partOfDay = 'morning';
+else if (H >= 12 && H < 17) partOfDay = 'afternoon';
+else if (H >= 17 && H < 21) partOfDay = 'evening';
+const totalMinutes = H * 60 + Min;
+const isOfficeHours = totalMinutes >= (9 * 60 + 30) && totalMinutes < (18 * 60 + 30);
+
+// gap since the customer's PREVIOUS inbound message (how long they were away)
+const firstUnansweredAt = unanswered.length ? unanswered[0]._t : curMsgTime;
+let prevInboundAt = 0;
+for (const m of evs) { if (m.direction === 'in' && m._t < firstUnansweredAt) prevInboundAt = Math.max(prevInboundAt, m._t); }
+const gapMs = prevInboundAt ? (firstUnansweredAt - prevInboundAt) : 0;
+function fmtGap(ms) {
+  if (!ms) return 'first message / no prior';
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return min + ' min ago';
+  const hr = Math.round(min / 60);
+  if (hr < 24) return hr + ' hr ago';
+  const d = Math.round(hr / 24);
+  return d + ' day' + (d > 1 ? 's' : '') + ' ago';
+}
+const gapLabel = fmtGap(gapMs);
+
+let basePrompt = 'You are Ananya, a Health Expert at SehatUP.';
+try {
+  const docData = $('Get a document').first().json;
+  if (docData && docData.body && docData.body.content && Array.isArray(docData.body.content)) {
+    const extracted = docData.body.content
+      .map(b => b.paragraph && b.paragraph.elements
+        ? b.paragraph.elements.map(e => (e.textRun && e.textRun.content) ? e.textRun.content : '').join('')
+        : '')
+      .join('').trim();
+    if (extracted) basePrompt = extracted;
+  }
+} catch (e) { console.log('Could not read Google Doc, using default prompt:', e.message); }
+
+// ---- LANGUAGE: detect the script the customer typed in. We still answer only in
+//      Hindi / English / Hinglish, but the model is told what it is reading. ----
+const SCRIPTS = [
+  { name: 'Hindi (Devanagari)', re: /[\u0900-\u097F]/ },
+  { name: 'Bengali', re: /[\u0980-\u09FF]/ },
+  { name: 'Punjabi (Gurmukhi)', re: /[\u0A00-\u0A7F]/ },
+  { name: 'Gujarati', re: /[\u0A80-\u0AFF]/ },
+  { name: 'Odia', re: /[\u0B00-\u0B7F]/ },
+  { name: 'Tamil', re: /[\u0B80-\u0BFF]/ },
+  { name: 'Telugu', re: /[\u0C00-\u0C7F]/ },
+  { name: 'Kannada', re: /[\u0C80-\u0CFF]/ },
+  { name: 'Malayalam', re: /[\u0D00-\u0D7F]/ },
+  { name: 'Urdu/Arabic', re: /[\u0600-\u06FF]/ }
+];
+const detectedScripts = SCRIPTS.filter(s => s.re.test(newMsgText)).map(s => s.name);
+// Anything that is NOT Devanagari and NOT plain Roman = a language we must not reply in.
+const foreignScripts = detectedScripts.filter(s => s !== 'Hindi (Devanagari)');
+const scriptLabel = detectedScripts.length ? detectedScripts.join(', ') : 'Roman/Latin letters';
+
+// ---- CUSTOMER / ORDER CONTEXT (qrCustomerContext -> Shopify) ----
+// The node is set to continue on error and always output data, so a Shopify outage or a
+// missing token degrades to "no data" and the bot says the team will check - it must never
+// block the reply.
+let orderSummary = '';
+let orderCtxDebug = 'node missing';
+try {
+  const cx = $('Fetch Customer Context').first().json || {};
+  if (cx.error) orderCtxDebug = 'error: ' + cx.error;
+  else if (cx.found && cx.summary) { orderSummary = String(cx.summary); orderCtxDebug = cx.orderCount + ' orders (' + (cx.source || '?') + ')'; }
+  else orderCtxDebug = 'no orders found (' + (cx.source || '?') + ')';
+} catch (e) { orderCtxDebug = 'node missing'; }
+
+const conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();
+const hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');
+
+let systemPrompt = basePrompt
+  + '\n\nCONTEXT:\nFirst contact: ' + (isFirstContact ? 'YES' : 'NO')
+  + '\nCurrent time (customer message, IST): ' + clock + ' (' + partOfDay + ')'
+  + '\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')
+  + '\nTime since customer\'s previous message: ' + gapLabel
+  + '\nCustomer name: ' + name
+  + '\nCustomer wrote in: ' + scriptLabel
+  + '\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')
+  + '\n\nCRITICAL ANTI-SPAM RULES:\n'
+  + '1. If "Greeting already sent: YES", NEVER send greeting again. Jump straight to answering the question.\n'
+  + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\n'
+  + '3. Only greet if: First contact: YES AND Greeting already sent: NO AND no assistant messages in history.\n'
+  + '4. For follow-up questions, respond directly without any greeting or introduction.'
+  + '\n5. Agar aapne pichle assistant message mein already free consultation/doctor-pitch wala paragraph bheja hai, to usko word-for-word ya near-identical dobara mat bhejo - short naya angle do ya seedha agla step (jaise time confirm karna) pucho.';
+
+systemPrompt += '\n\nADDRESS POLICY (hard rule): the customer\'s gender is UNKNOWN. NEVER write sir, mam, ma\'am, madam, mem, ji sir, ji mam, bhai, bhaiya, bro, brother, behen, didi or bhabhi - not even if the customer calls themselves that, and not even once. Address them only as "ji", "aap", or their first name.';
+
+systemPrompt += '\n\nLANGUAGE POLICY (hard rule - overrides any "match the customer\'s language" line above):'
+  + '\n1. You reply ONLY in Hindi, English, or Hinglish (Hindi written in Roman letters). Nothing else. Default is simple Hinglish in Roman letters.'
+  + '\n2. Customer writes Hinglish -> reply Hinglish. Customer writes English -> reply English. Customer writes Hindi in Devanagari -> reply in Hindi or Hinglish.'
+  + '\n3. Customer writes in ANY other language or script (Tamil, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia, Assamese, Urdu, Arabic, Nepali, Bhojpuri, or any foreign language) -> understand it fully, but STILL answer only in simple Hinglish or English. Use short easy words so they can follow.'
+  + '\n4. Never type in that other script, never mix its words into your reply, never say sorry for the language and never say you cannot speak it. Just answer the question normally.';
+
+if (foreignScripts.length) {
+  systemPrompt += '\n\nLANGUAGE NOTE: this customer typed in ' + foreignScripts.join(', ') + '. Reply ONLY in simple Hinglish (Roman letters) - do not use that script anywhere in your reply.';
+}
+
+systemPrompt += '\n\nDOSAGE POLICY (hard rule):'
+  + '\n1. You NEVER give the dose, quantity, timing or duration of anything - tablet, capsule, powder, drops, tea, kit or home remedy. Not a "general" dose, not a "normal" one, not even if the customer insists, has already bought it, or says a doctor told them.'
+  + '\n2. If the customer asks kitni goli / kitni matra / khurak / dose / kaise leni hai / kab leni hai / kitne din leni hai / khali pet ya khane ke baad / how many / how much / how to take - do NOT answer and do NOT guess. Reply in this spirit, 1-2 short lines: "Dose doctor hi batate hain ji. Hamari team aapse thodi hi der me connect kar rahi hai, please thoda wait kijiye."'
+  + '\n3. You may still tell them what the product helps with and its catalog price. Only the dose, timing and duration are off limits.';
+
+// ---- ORDER POLICY ----
+// Both branches matter. The "no data" branch is not boilerplate: without it the model
+// invents order numbers and delivery dates when the lookup comes back empty, which is
+// exactly the failure this whole feature exists to remove.
+if (orderSummary) {
+  systemPrompt += '\n\nTHIS CUSTOMER\'S ORDER DATA (from our own system - these are FACTS, use them):\n' + orderSummary;
+  systemPrompt += '\n\nORDER POLICY (hard rule):'
+    + '\n1. Answer any order, delivery, payment or tracking question ONLY from the ORDER DATA above. It is the only order information you have.'
+    + '\n2. NEVER invent or guess an order number, amount, courier, AWB/tracking number, or delivery date - not even an approximate one. No "2-3 din me aa jayega".'
+    + '\n3. There is NO delivery date in our system. If they ask when it will arrive, tell them the current status and that the team will confirm the exact delivery date - do not estimate it yourself.'
+    + '\n4. Quote the status in simple words (e.g. "aapka order ship ho chuka hai", "abhi tak ship nahi hua hai"). Do not read out raw status codes.'
+    + '\n5. If they ask about an order that is NOT listed above, say you can see only these orders and the team will check the rest.'
+    + '\n6. Never cancel, refund, change an address or promise money back yourself - say the team will do it.';
+} else {
+  systemPrompt += '\n\nORDER POLICY (hard rule): We could NOT find any order for this number in our system.'
+    + ' If they ask about an order, delivery, refund or payment: do NOT guess and do NOT invent an order number, amount or date.'
+    + ' Say honestly that you are checking with the team and ask for the order id or the name the order was placed under, if useful.';
+}
+
+systemPrompt += '\n\nTIME AWARENESS: The times in CONTEXT are the real IST time of the customer\'s message (not "now"). Use them naturally: if it is late night, suggest a next-day consultation slot; if office hours are CLOSED, say the team will call during working hours (9:30am-6:30pm) instead of promising an immediate call; if the customer is returning after a long gap, continue warmly without repeating the full introduction. Do NOT open with good morning/afternoon/evening.';
+
+if (resumedFromHuman) {
+  systemPrompt += humanTextSeen
+    ? '\n\nHANDOFF NOTE: A human support agent was chatting with this customer and has now gone quiet, so you are taking over again. The agent\'s replies appear as assistant messages in the history above - treat everything already said there as said. Do not repeat it, do not re-greet, do not contradict it; continue from that point.'
+    : '\n\nHANDOFF NOTE: A human support agent was chatting with this customer and has now gone quiet, so you are taking over again. You CANNOT see the human agent\'s messages. Read the customer\'s latest message(s), avoid repeating earlier greetings/pitches, and continue helpfully from the current point.';
+}
+
+const messages = [
+  { role: 'system', content: systemPrompt },
+  ...recentHistory.map(h => ({ role: h.role, content: h.content })),
+  { role: 'user', content: newMsgText }
+];
+
+// ---- DEBUG: exactly what history the AI fetched, in sequence, and what it got ----
+const _debug = {
+  fetchedMessages: evs.length,
+  time: clock + ' ' + partOfDay + ' | office=' + (isOfficeHours ? 'OPEN' : 'CLOSED') + ' | gap=' + gapLabel,
+  sequence: evs.map(m => `${new Date(m._t).toISOString().slice(11, 19)} | ${m.direction || '?'} | ${m.direction === 'out' ? (isHumanMsg(m) ? 'HUMAN' : 'AI') + '/' : ''}${(m._type || '').replace('AGENT_', '')} | ${(m.text || m.placeholder || '').slice(0, 50)}`),
+  historyToAI: recentHistory.map(h => `${h.role}: ${(h.content || '').slice(0, 50)}`),
+  currentTurn: newMsgText,
+  isFirstContact,
+  resumedFromHuman,
+  humanTextSeen,
+  orderContext: orderCtxDebug,
+};
+console.log('[Build AI Prompt] fetched=' + evs.length + ' time=' + _debug.time + ' orders=' + orderCtxDebug + ' history=' + JSON.stringify(_debug.sequence));
+
+return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, orderCtxDebug, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];
