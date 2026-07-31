@@ -108,6 +108,25 @@ try {
   }
 } catch (e) { console.log('Could not read Google Doc, using default prompt:', e.message); }
 
+// ---- GOOGLE DOC INTEGRITY ----
+// The Doc has come back truncated more than once, and it fails SILENTLY: the prompt still
+// reads plausibly, it has just lost clauses - including safety rules. The damage is a
+// fixed-width artifact (chunks of exactly 29-30 characters missing at intervals), which is
+// what you get when the text is copied out of a panel that renders it with part of each
+// line scrolled out of view, then pasted back into the Doc. Copy from ananya-prompt.txt in
+// a plain text editor, never from a rendered panel.
+// This check cannot repair it, but it makes it loud instead of invisible.
+const DOC_MIN_CHARS = 15000;                        // ananya-prompt.txt is ~17.9k
+const DOC_REQUIRED = ['RULES:', 'DOSAGE', 'ORDERS, DELIVERY & PAYMENT', 'LIVE PRODUCT DATA & PRICES', 'CATALOG', 'FIRST-MESSAGE TEMPLATE', 'EXAMPLES'];
+const docChars = basePrompt.length;
+const docMissing = DOC_REQUIRED.filter(k => basePrompt.indexOf(k) < 0);
+const docOk = docChars >= DOC_MIN_CHARS && docMissing.length === 0;
+if (!docOk) {
+  console.log('[Build AI Prompt] !! GOOGLE DOC LOOKS DAMAGED: ' + docChars + ' chars (expected >= '
+    + DOC_MIN_CHARS + ')' + (docMissing.length ? ' | MISSING SECTIONS: ' + docMissing.join(' / ') : '')
+    + ' -- re-paste from ananya-prompt.txt using a plain text editor, not a rendered panel.');
+}
+
 // ---- LANGUAGE: detect the script the customer typed in. We still answer only in
 //      Hindi / English / Hinglish, but the model is told what it is reading. ----
 const SCRIPTS = [
@@ -139,6 +158,16 @@ try {
   else if (cx.found && cx.summary) { orderSummary = String(cx.summary); orderCtxDebug = cx.orderCount + ' orders (' + (cx.source || '?') + ')'; }
   else orderCtxDebug = 'no orders found (' + (cx.source || '?') + ')';
 } catch (e) { orderCtxDebug = 'node missing'; }
+
+// ---- LIVE PRODUCT / PRICE MATCHES (qrProductLookup -> Shopify catalog) ----
+let productSummary = '';
+let productCtxDebug = 'node missing';
+try {
+  const px = $('Fetch Product Matches').first().json || {};
+  if (px.error) productCtxDebug = 'error: ' + px.error;
+  else if (px.found && px.summary) { productSummary = String(px.summary); productCtxDebug = px.matches.length + ' match(es) of ' + px.catalogSize + ' (' + (px.source || '?') + ')'; }
+  else productCtxDebug = 'no match of ' + (px.catalogSize || 0) + ' (' + (px.source || '?') + ')';
+} catch (e) { productCtxDebug = 'node missing'; }
 
 const conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();
 const hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');
@@ -175,11 +204,53 @@ systemPrompt += '\n\nDOSAGE POLICY (hard rule):'
   + '\n2. If the customer asks kitni goli / kitni matra / khurak / dose / kaise leni hai / kab leni hai / kitne din leni hai / khali pet ya khane ke baad / how many / how much / how to take - do NOT answer and do NOT guess. Reply in this spirit, 1-2 short lines: "Dose doctor hi batate hain ji. Hamari team aapse thodi hi der me connect kar rahi hai, please thoda wait kijiye."'
   + '\n3. You may still tell them what the product helps with and its catalog price. Only the dose, timing and duration are off limits.';
 
+// ---- PRODUCT POLICY ----
+// The Google Doc still carries a CATALOG block with hand-typed prices. It goes stale the
+// moment anything changes in Shopify, so where the two disagree the live data must win -
+// stated explicitly, because the model will otherwise happily quote the prompt's number.
+if (productSummary) {
+  systemPrompt += '\n\nLIVE PRODUCT DATA (from Shopify right now):\n' + productSummary;
+  systemPrompt += '\n\nPRODUCT POLICY (hard rule, OVERRIDES the CATALOG list above):'
+    + '\n1. For any product named in LIVE PRODUCT DATA, the price, stock and link there are the ONLY correct ones. If the CATALOG block above shows a different price, the CATALOG is out of date - use the live price and never mention the difference.'
+    + '\n2. Never quote a price for a product that is not in LIVE PRODUCT DATA. Say the team will confirm the exact price.'
+    + '\n3. A product marked PRESCRIPTION ONLY: never share its link or price. Say it needs a doctor\'s prescription and offer the free consultation (for performance you may offer Vaji Bati instead, if it appears above).'
+    + '\n4. A product marked OUT OF STOCK: do not push it or send its link. Offer the free consultation so the team can suggest an alternative.'
+    + '\n5. Share at most 2 products, the most relevant one first. Never dump the list.'
+    + '\n6. Use the exact product name shown above, and paste the link as a plain URL.'
+    + '\n7. An "about:" line is what that product is for. Use it to explain the product in your own short simple Hinglish - 1-2 lines, never a paragraph, never copy it word for word, never read it out like a webpage.'
+    + '\n8. The "about:" text is the ONLY product information you have. Do not add benefits, ingredients, results or timelines that are not in it. If they ask something it does not answer (how it works, ingredients, side effects, how long till results), say the doctor will explain properly in the free consultation.'
+    + '\n9. Never state a dose, quantity, timing or duration even if you think you know it - that stays with the doctor (see DOSAGE POLICY).';
+} else {
+  systemPrompt += '\n\nPRODUCT POLICY (hard rule): no live product match was found for this message.'
+    + ' You may still describe what a product is for, but do NOT quote any price and do NOT share a product link from memory - prices in the CATALOG list above may be out of date.'
+    + ' If they asked a price, say the team will confirm the exact price, and offer the free consultation.';
+}
+
 // ---- ORDER POLICY ----
-// Both branches matter. The "no data" branch is not boilerplate: without it the model
-// invents order numbers and delivery dates when the lookup comes back empty, which is
-// exactly the failure this whole feature exists to remove.
-if (orderSummary) {
+// Three branches. The "no data" one is not boilerplate: without it the model invents order
+// numbers and delivery dates when the lookup comes back empty.
+//
+// The order data is supplied ONLY when the customer is actually asking about an order.
+// Injecting it on every message backfired in production: with five cancelled orders in the
+// prompt, "mujhe shilajit medicine ka link bhejo, doctor consultation need nhi h" was
+// answered with "ji aapka order to cancel kr diya gya h". Prominent unrelated facts get
+// latched onto, so they are withheld until they are relevant.
+const _orderQ = (String(newMsgText || '') + ' ' + recentHistory.slice(-2).map(h => h.content || '').join(' ')).toLowerCase();
+const isOrderQuestion =
+     /\border(s|id)?\b/.test(_orderQ)
+  || /\b(track|tracking|awb|courier|parcel|shipment|shipping|deliver|delivery)\b/.test(_orderQ)
+  || /kab\s*(tak\s*)?(aa?yega|aaega|milega|pahunchega|pahuchega)/.test(_orderQ)
+  || /kaha\s*(hai|h|pe|par|tak)/.test(_orderQ)
+  || /\b(cancel|cancelled|refund|return|wapas|wapsi)\b/.test(_orderQ)
+  || /#\d{3,}/.test(_orderQ)
+  || /(mila\s*(nahi|nhi)|(nahi|nhi)\s*aaya|receive\s*(nahi|nhi))/.test(_orderQ);
+
+if (orderSummary && !isOrderQuestion) {
+  systemPrompt += '\n\nORDER POLICY (hard rule): this is NOT an order question, so do not bring up'
+    + ' the customer\'s past or cancelled orders at all - not as a greeting, not as context, not to fill a gap.'
+    + ' Answer only what they actually asked. If they ask about an order later you will be given the order data then;'
+    + ' until then never state an order number, amount, status or date.';
+} else if (orderSummary) {
   systemPrompt += '\n\nTHIS CUSTOMER\'S ORDER DATA (from our own system - these are FACTS, use them):\n' + orderSummary;
   systemPrompt += '\n\nORDER POLICY (hard rule):'
     + '\n1. Answer any order, delivery, payment or tracking question ONLY from the ORDER DATA above. It is the only order information you have.'
@@ -193,6 +264,16 @@ if (orderSummary) {
     + ' If they ask about an order, delivery, refund or payment: do NOT guess and do NOT invent an order number, amount or date.'
     + ' Say honestly that you are checking with the team and ask for the order id or the name the order was placed under, if useful.';
 }
+
+// ---- BOOKING POLICY ----
+// The persona tells her to ask for a time and confirm it, and nothing constrained WHICH
+// times are acceptable - "raat k 10 baje ki consultation fix krwa do" got a "theek h".
+// The slot guard in Extract AI Response is what actually enforces this; stating it here
+// helps the model get it right first time instead of being corrected after the fact.
+systemPrompt += '\n\nBOOKING POLICY (hard rule): consultations happen ONLY between 9:30 AM and 6:30 PM IST, any day.'
+  + '\n1. If the customer asks for a slot outside those hours (early morning, late evening, night), do NOT agree to it. Say that time is not available, state the 9:30 AM - 6:30 PM window, and ask them to pick a time inside it.'
+  + '\n2. Never confirm a slot you were not given a time for, and never invent a time yourself.'
+  + '\n3. Once they give a valid time, confirm simply that the team will call them then. You cannot see a doctor calendar, so never promise a specific doctor or claim the slot is guaranteed.';
 
 systemPrompt += '\n\nTIME AWARENESS: The times in CONTEXT are the real IST time of the customer\'s message (not "now"). Use them naturally: if it is late night, suggest a next-day consultation slot; if office hours are CLOSED, say the team will call during working hours (9:30am-6:30pm) instead of promising an immediate call; if the customer is returning after a long gap, continue warmly without repeating the full introduction. Do NOT open with good morning/afternoon/evening.';
 
@@ -219,7 +300,9 @@ const _debug = {
   resumedFromHuman,
   humanTextSeen,
   orderContext: orderCtxDebug,
+  productContext: productCtxDebug,
+  doc: docOk ? 'ok ' + docChars + ' chars' : 'DAMAGED ' + docChars + ' chars' + (docMissing.length ? ' missing: ' + docMissing.join('/') : ''),
 };
-console.log('[Build AI Prompt] fetched=' + evs.length + ' time=' + _debug.time + ' orders=' + orderCtxDebug + ' history=' + JSON.stringify(_debug.sequence));
+console.log('[Build AI Prompt] fetched=' + evs.length + ' doc=' + _debug.doc + ' time=' + _debug.time + ' orders=' + orderCtxDebug + ' products=' + productCtxDebug + ' history=' + JSON.stringify(_debug.sequence));
 
-return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, orderCtxDebug, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];
+return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, orderCtxDebug, productCtxDebug, docOk, docChars, docMissing, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];

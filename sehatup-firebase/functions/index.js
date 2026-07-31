@@ -2871,6 +2871,345 @@ exports.qrCustomerContext = onRequest(
   },
 );
 
+// ── Product / price lookup for the WhatsApp bot ──────────────────────────────
+// Ananya used to read prices from a hardcoded CATALOG block in the Google Doc, so every
+// Shopify price change silently made her wrong. This fetches the live catalog instead.
+//
+// Why the whole catalog is cached and matched HERE instead of querying Shopify per message:
+// Shopify's product search is a prefix search, so "shiljit" / "vajji bati" / "harmen tea"
+// — exactly how customers type — match nothing. The catalog is small (tens of products), so
+// we pull it once, cache it, and do the fuzzy matching locally where misspellings can be
+// handled properly.
+//
+// GET /qrProductLookup?text=vajji%20bati%20price&token=...   [&fresh=1]
+const QR_CATALOG_TTL_MS = 60 * 60 * 1000;
+const QR_STORE_URL = process.env.SEHATUP_STORE_URL || "https://sehatup.com";
+
+// Rx status is a SehatUP safety rule, NOT a Shopify field — it cannot be looked up, so it
+// lives here. Getting this wrong means handing a customer a link to a prescription drug,
+// which is the worst thing this endpoint could do. Matched against the product title.
+const QR_RX_PATTERNS = [
+  /tadalafil/i, /dapoxetine/i, /orlistat/i, /sildenafil/i,
+  /\bendless\b/i, /\bhard\s*(5|10)\b/i, /\bmighty\b/i, /boombatti/i,
+  /control\s*tantra/i, /four\s*play/i, /hard\s*yatra/i, /max\s*drive/i,
+  /rocket\s*ras/i, /lovelinga/i, /thrill\s*drill/i, /thrust\s*rx/i,
+  /confidence\s*(&|and)?\s*performance/i,
+];
+const qrIsRx = (title) => QR_RX_PATTERNS.some((re) => re.test(String(title || "")));
+
+// How customers actually spell these on WhatsApp. Applied to the whole normalised string
+// before tokenising, so multi-word aliases ("blue tea" -> hormoniherb) work too.
+const QR_ALIAS_PHRASES = [
+  [/\bshil?a?j(i|ee|e)?t\w*\b/g, "shilajit"],
+  [/\bsilaj\w*\b/g, "shilajit"],
+  [/\bvaj+i?j?\w*\b/g, "vaji"],
+  [/\bbatti\b/g, "bati"],
+  [/\bharmen\w*\b/g, "her menses"],
+  [/\bher\s*mens\w*\b/g, "her menses"],
+  [/\b(blue|period|periods)\s*tea\b/g, "hormoniherb"],
+  [/\bhormoni\w*\b/g, "hormoniherb"],
+  [/\bashwa\w*\b/g, "ashwagandha"],
+  [/\bgarc(i|e)n\w*\b/g, "garcinia"],
+  [/\bthyro\w*\b/g, "thyrostatin"],
+  [/\bdiab\w*\b/g, "diaboglob"],
+  [/\balo+e?zy?\b/g, "aloezy"],
+  [/\bd3\s*k2\b/g, "zencal"],
+  [/\bvitamin\s*d\b/g, "zencal"],
+  [/\bkern\b/g, "kern drops"],
+  [/\blean\s*rout\w*\b/g, "leanroutine"],
+  [/\bslim\s*tox\b/g, "slimtox"],
+  [/\bhoney\s*stick\w*\b/g, "shilajit honey sticks"],
+];
+
+// Words that carry no product signal — without stripping these, "mujhe price batao"
+// scores against every product that happens to share a stray letter.
+const QR_STOPWORDS = new Set([
+  "price", "rate", "kitne", "kitna", "ka", "ki", "ke", "hai", "he", "batao", "bata",
+  "do", "dijiye", "mujhe", "me", "chahiye", "chaiye", "kya", "aur", "and", "the", "of",
+  "for", "cost", "kimat", "keemat", "rs", "rupees", "rupaye", "please", "plz", "ek",
+  "kitni", "much", "how", "what", "is", "send", "bhejo", "bhej", "order", "karna", "karo",
+]);
+
+function qrNormalise(s) {
+  let t = String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  for (const [re, to] of QR_ALIAS_PHRASES) t = t.replace(re, to);
+  return t.replace(/\s+/g, " ").trim();
+}
+
+function qrTokens(s, dropStopwords = true) {
+  return qrNormalise(s).split(" ")
+    .filter((w) => w.length > 1 && (!dropStopwords || !QR_STOPWORDS.has(w)));
+}
+
+// Levenshtein, capped — used only on short product words, so the O(n*m) is irrelevant.
+function qrEditDistance(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+// 0..1 similarity between one query word and one title word.
+function qrWordScore(q, t) {
+  if (q === t) return 1;
+  if (t.startsWith(q) || q.startsWith(t)) return 0.9;
+  if (t.includes(q) && q.length >= 4) return 0.8;
+  const d = qrEditDistance(q, t);
+  const max = Math.max(q.length, t.length);
+  const sim = 1 - d / max;
+  return sim >= 0.7 ? sim * 0.85 : 0;   // below 0.7 it is a different word, not a typo
+}
+
+// Best score for a query against one product title.
+function qrMatchScore(queryTokens, title) {
+  const tTokens = qrTokens(title, false);
+  if (!queryTokens.length || !tTokens.length) return 0;
+  const normQ = queryTokens.join(" ");
+  const normT = qrNormalise(title);
+  if (normT === normQ) return 1;
+  if (normT.includes(normQ) && normQ.length >= 4) return 0.95;
+  let total = 0, hits = 0, strong = 0;
+  for (const q of queryTokens) {
+    let best = 0;
+    for (const t of tTokens) best = Math.max(best, qrWordScore(q, t));
+    if (best > 0) hits++;
+    total += best;
+    // One distinctive word matching exactly is a strong signal by itself. Without this,
+    // the averaging below dilutes a real hit below the floor as soon as the customer adds
+    // a word the title doesn't contain: "endless tablet ka price" scored 0.43 and matched
+    // NOTHING, which meant the Rx rule never fired for it. Same for "blue tea period"
+    // (aliased to hormoniherb) and any "<product> chahiye mujhe" phrasing.
+    if (q.length >= 5 && tTokens.includes(q)) strong = Math.max(strong, 0.85);
+  }
+  // Average over query words, then reward matching more than one of them: "vaji bati"
+  // hitting both words should beat "bati" alone hitting one.
+  const avg = total / queryTokens.length;
+  return Math.max(avg * (0.7 + 0.3 * (hits / queryTokens.length)), strong);
+}
+
+// ── Product description condensing ───────────────────────────────────────────
+// Shopify's copy is written for a product page, not for a health advisor, and feeding it
+// raw would import three things Ananya must never say. Measured over the real 34-product
+// catalog: 68% of descriptions carry a "How to use / Dosage" heading, 35% an explicit dose
+// ("Use one heaping of 250 mg serving daily"), 47% mg/ml quantities and 44% an absolute
+// claim ("100%", "instant", "no side effects"). Median length is 2045 chars.
+//
+// The saving grace is that the copy is machine-delimited:
+//   [description]…[/description][benefits]…[/benefits][how_to_use]…[/how_to_use]
+//   (+ optional [details] / [ingredients]), present on 33 of 34 products.
+// Keeping only [description] + [benefits] removes the dose problem STRUCTURALLY rather
+// than by hoping a regex catches every phrasing. Measured after condensing: 0/19 OTC
+// descriptions retain a dose, a claim or an mg/ml figure.
+const QR_DESC_CAP = 340;
+const QR_DESC_MIN = 80;          // below this the sentence filter has cut too much
+// Absolute/unprovable claims - forbidden by persona rule 4. These are NOT hallucinations,
+// they come from the store's own copy, so rule 4 does not stop the model repeating them.
+const QR_CLAIM_WORDS = /(100\s*%|\bcure[sd]?\b|\bcuring\b|guarantee[ds]?|permanent(ly)?|\bmiracle\b|\binstant(ly)?\b|no\s+side\s+effects?|clinically\s+proven|\bsafest\b|\bfastest\b)/gi;
+// Product-page puffery. Ananya is explicitly "never pushy/salesy" (rule 8), so superlatives
+// break the persona even though they are harmless factually.
+const QR_PUFF_WORDS = /(most\s+acclaimed|finest|premium|top-?tier|world-?class|unmatched|unrivalled|unrivaled|\bno\.?\s*1\b|#1\b|truly\s+(exclusive|unique)|\bbest\b|leading)/gi;
+const QR_MGML = /\b\d+(\.\d+)?\s*(mg|mcg|ml|gm|g)\b/gi;
+// Serving sizes spelled as WORDS, which slip past both the digit-based mg/ml strip and the
+// output-side dose guard: Shilajit's copy ends "Avail of all the modern benefits in one
+// regular scoop" - "one" and "scoop" are separated by an adjective, so the guard's
+// number-then-unit pattern never fires and the serving size reaches the customer.
+const QR_DOSEISH_WORDS = /\b(one|two|three|half|a|ek|do|teen|aadha)\s+(\w+\s+){0,2}(scoop|spoon|chammach|teaspoon|tablespoon|tablet|capsule|goli|drop|boond|sachet|serving|dose|khurak)s?\b|\b(daily|per\s+day|roz|rozana|twice|thrice)\b[^.!?]{0,30}\b(scoop|spoon|tablet|capsule|goli|drop|sachet|serving)s?\b/gi;
+
+function qrDescSection(text, name) {
+  const s = String(text || '');
+  const open = s.search(new RegExp('\\[' + name + '\\]', 'i'));
+  if (open < 0) return '';
+  const after = s.slice(open).replace(new RegExp('^\\[' + name + '\\]', 'i'), '');
+  const stop = after.search(/\[\/?[a-z0-9_ -]{2,30}\]/i);   // next marker of any kind
+  return (stop < 0 ? after : after.slice(0, stop)).replace(/\s+/g, ' ').trim();
+}
+
+function qrCondenseDescription(title, raw) {
+  if (qrIsRx(title)) return '';   // an Rx product gets no description: detail reads as endorsement
+  let t = (qrDescSection(raw, 'description') + ' ' + qrDescSection(raw, 'benefits')).trim();
+  // 1 of 34 products has no markers at all - fall back to the whole text with markers removed.
+  if (!t) t = String(raw || '').replace(/\[\/?[a-z0-9_ -]{2,30}\]/gi, ' ');
+  t = t.replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+
+  // Drop whole sentences carrying a claim or puffery - scrubbing words inline leaves
+  // mangled grammar ("the natural product of Shilajit").
+  const sentences = t.match(/[^.!?]+[.!?]+/g) || [t];
+  // lastIndex MUST be reset before every .test(): these are /g regexes, so a match on one
+  // sentence otherwise makes the next test start mid-string and silently miss. That bug let
+  // "This product is truly exclusive and unique" through on the Shilajit description.
+  const hasBad = (s) => {
+    QR_CLAIM_WORDS.lastIndex = 0; QR_PUFF_WORDS.lastIndex = 0; QR_DOSEISH_WORDS.lastIndex = 0;
+    return QR_CLAIM_WORDS.test(s) || QR_PUFF_WORDS.test(s) || QR_DOSEISH_WORDS.test(s);
+  };
+  let keep = sentences.filter((s) => !hasBad(s));
+  if (keep.join(' ').trim().length < QR_DESC_MIN) {
+    // The filter ate almost everything (some products are pure marketing prose). Keep the
+    // sentences but scrub the offending words, so we degrade to clumsy rather than empty.
+    keep = sentences.map((s) => s.replace(QR_CLAIM_WORDS, '').replace(QR_PUFF_WORDS, '').replace(QR_DOSEISH_WORDS, ''));
+  }
+  let out = keep.join(' ');
+
+  out = out.replace(QR_MGML, '');
+  out = out.replace(/\bShehatUP\b/gi, 'SehatUP');              // brand misspelt in their own copy
+  out = out.replace(/\bless\s+hassle\s+free\b/gi, 'hassle-free'); // double negative in their copy
+  // An OTC item must not be called a medicine: it collides with the OTC/Rx split (rule 5)
+  // and with "never diagnose or prescribe". The lookbehind spares phrases like "conventional
+  // medicine" / "allopathic medicine", where the word refers to something else entirely and
+  // rewriting produced "the negative aftereffects of conventional product".
+  out = out.replace(/(?<!\b(?:conventional|allopathic|modern|english|western|traditional)\s)\bmedications?\b/gi, 'product');
+  out = out.replace(/(?<!\b(?:conventional|allopathic|modern|english|western|traditional)\s)\bmedicines?\b/gi, 'product');
+  out = out.replace(/\s+([,.;:])/g, '$1').replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim();
+  out = out.replace(/^[\s,.;:-]+/, '').trim();
+
+  if (out.length > QR_DESC_CAP) {
+    const cut = out.slice(0, QR_DESC_CAP);
+    const lastStop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '));
+    out = (lastStop > 120 ? cut.slice(0, lastStop + 1) : cut).trim();
+  }
+  return out;
+}
+
+async function shopifyGraphQL(query) {
+  const token = process.env.SHOPIFY_ACCESS_TOKEN;
+  if (!token) throw new Error("SHOPIFY_ACCESS_TOKEN is not configured");
+  const r = await axios.post(
+    `https://${SHOPIFY_HOST}/admin/api/${SHOPIFY_VERSION}/graphql.json`,
+    { query },
+    { headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" }, timeout: 15000 },
+  );
+  const d = r.data || {};
+  if (d.errors) throw new Error("Shopify GraphQL: " + JSON.stringify(d.errors).slice(0, 300));
+  return d.data || {};
+}
+
+// Whole active catalog, flattened to one row per product (cheapest variant is the one we
+// quote — customers ask "X ka price kya hai", not "which variant".)
+async function qrFetchCatalog() {
+  const data = await shopifyGraphQL(`{
+    products(first: 250, query: "status:active") {
+      edges { node {
+        id title handle description
+        variants(first: 20) { edges { node { id title price availableForSale inventoryQuantity } } }
+      } }
+    }
+  }`);
+  const out = [];
+  for (const e of (data.products && data.products.edges) || []) {
+    const n = e.node || {};
+    const variants = ((n.variants && n.variants.edges) || []).map((v) => v.node || {});
+    if (!variants.length) continue;
+    const priced = variants
+      .map((v) => ({
+        variantId: String(v.id || "").split("/").pop(),
+        variantTitle: v.title || "",
+        price: Math.round(Number(v.price) || 0),
+        inStock: v.availableForSale !== false,
+        qty: typeof v.inventoryQuantity === "number" ? v.inventoryQuantity : null,
+      }))
+      .filter((v) => v.price > 0)
+      .sort((a, b) => a.price - b.price);
+    if (!priced.length) continue;
+    const cheapest = priced[0];
+    out.push({
+      title: qrCleanTitle(n.title),
+      rawTitle: n.title || "",
+      handle: n.handle || "",
+      url: n.handle ? `${QR_STORE_URL}/products/${n.handle}` : "",
+      price: cheapest.price,
+      variantId: cheapest.variantId,
+      // In stock if ANY variant is sellable — a sold-out size shouldn't hide the product.
+      inStock: priced.some((v) => v.inStock),
+      variantCount: priced.length,
+      isRx: qrIsRx(n.title),
+      about: qrCondenseDescription(n.title, n.description),
+    });
+  }
+  return out;
+}
+
+function qrSearchCatalog(text, catalog, limit = 3, floor = 0.55) {
+  const q = qrTokens(text);
+  if (!q.length) return [];
+  return catalog
+    .map((p) => ({ ...p, score: Math.round(qrMatchScore(q, p.rawTitle) * 100) / 100 }))
+    .filter((p) => p.score >= floor)
+    .sort((a, b) => b.score - a.score || a.price - b.price)
+    .slice(0, limit);
+}
+
+exports.qrProductLookup = onRequest(
+  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  async (req, res) => {
+    // Same contract as qrCustomerContext: never fail the caller, always HTTP 200.
+    const out = { found: false, matches: [], summary: "", catalogSize: 0, source: "none" };
+    try {
+      const expected = process.env.QR_CONTEXT_TOKEN || process.env.QUICKREPLY_WEBHOOK_TOKEN;
+      const given = req.query.token || (req.body && req.body.token);
+      if (expected && given !== expected) return res.status(401).json({ ...out, error: "unauthorized" });
+
+      const text = String(req.query.text || (req.body && req.body.text) || "").trim();
+      if (!text) return res.status(200).json({ ...out, error: "no text" });
+
+      const db = getFirestore();
+      const cacheRef = db.collection("qr_context_cache").doc("_catalog");
+      let catalog = null;
+      if (!req.query.fresh) {
+        const snap = await cacheRef.get().catch(() => null);
+        const c = snap && snap.exists ? snap.data() : null;
+        if (c && c.at && Date.now() - c.at < QR_CATALOG_TTL_MS && c.payload) {
+          catalog = JSON.parse(c.payload);
+          out.source = "cache";
+        }
+      }
+      if (!catalog) {
+        catalog = await qrFetchCatalog();
+        out.source = "shopify";
+        await cacheRef.set({ at: Date.now(), payload: JSON.stringify(catalog) }, { merge: true }).catch(() => {});
+      }
+      out.catalogSize = catalog.length;
+
+      const matches = qrSearchCatalog(text, catalog);
+      out.matches = matches;
+      out.found = matches.length > 0;
+
+      if (matches.length) {
+        const lines = matches.map((p) => {
+          const bits = [p.title, `Rs${p.price}`];
+          if (p.isRx) bits.push("PRESCRIPTION ONLY - never share the link or price");
+          else {
+            bits.push(p.inStock ? "in stock" : "OUT OF STOCK - do not push this");
+            if (p.url) bits.push(p.url);
+          }
+          if (p.variantCount > 1) bits.push(`${p.variantCount} variants, price shown is the lowest`);
+          let line = `- ${bits.join(" · ")}`;
+          // The blurb goes on its own indented line: product names and URLs already contain
+          // punctuation, and burying 250 chars of prose behind a " · " made it unreadable.
+          if (p.about) line += `\n  about: ${p.about}`;
+          return line;
+        });
+        out.summary = `Live catalog matches for what the customer wrote (prices are current, from Shopify):\n${lines.join("\n")}`;
+      }
+
+      console.log("[qrProductLookup]", JSON.stringify(text).slice(0, 60), "-> ",
+        matches.map((p) => `${p.title}=${p.price}@${p.score}`).join(", ") || "no match",
+        `| catalog=${catalog.length} (${out.source})`);
+      return res.status(200).json(out);
+    } catch (err) {
+      console.error("[qrProductLookup] failed:", err.message);
+      return res.status(200).json({ ...out, error: err.message });
+    }
+  },
+);
+
 // ── QuickReply Tester clear ──────────────────────────────────────────────────
 // Wipes a phone's qr_conversations/{phone}/events so the bot starts a fresh
 // conversation (the n8n "Build AI Prompt" node feeds recent events back to the

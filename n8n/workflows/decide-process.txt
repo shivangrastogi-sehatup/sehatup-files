@@ -61,10 +61,15 @@ for (const it of items) {
 }
 
 let latestInboundAt = 0, lastAiAt = 0, lastHumanAt = 0;
+const inbound = [];
 for (const it of items) {
   const m = it && it.json; if (!m) continue;
   const t = tval(m);
-  if (m.direction === 'in') { latestInboundAt = Math.max(latestInboundAt, t); continue; }
+  if (m.direction === 'in') {
+    latestInboundAt = Math.max(latestInboundAt, t);
+    if (m.text) inbound.push({ t, text: String(m.text) });
+    continue;
+  }
   if (m.direction !== 'out') continue;
   if (isHumanOut(m)) { lastHumanAt = Math.max(lastHumanAt, t); continue; }
   if (isAiOut(m)) { lastAiAt = Math.max(lastAiAt, t); continue; }
@@ -103,4 +108,14 @@ if (latestInboundAt > 0 && latestInboundAt <= answeredAt) {
   return [{ json: { phone, name, shouldProcess: false, reason: 'already_answered', lastAiAt, lastHumanAt } }];
 }
 
-return [{ json: { phone, name, shouldProcess: true, reason: 'process', lastAiAt, lastHumanAt, resumedFromHuman: (lastHumanAt > 0 && lastHumanAt >= lastAiAt) } }];
+// ---- text of the current turn, for the product lookup ----
+// "Fetch Product Matches" runs before "Build AI Prompt", so it cannot use that node's
+// newMsgText. It must not use only the triggering message either: a customer who types
+// "vaji bati" and then "price?" would have the product name in the PREVIOUS message and
+// match nothing. This is the same unanswered-messages set Build AI Prompt assembles.
+let recentUserText = inbound.filter(m => m.t > answeredAt).map(m => m.text).join(' ');
+if (!recentUserText && inbound.length) recentUserText = inbound[inbound.length - 1].text;
+if (!recentUserText) recentUserText = String(src.text || '');
+recentUserText = recentUserText.replace(/\s+/g, ' ').trim().slice(0, 300);
+
+return [{ json: { phone, name, shouldProcess: true, reason: 'process', lastAiAt, lastHumanAt, recentUserText, resumedFromHuman: (lastHumanAt > 0 && lastHumanAt >= lastAiAt) } }];
