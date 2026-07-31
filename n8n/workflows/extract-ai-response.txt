@@ -8,7 +8,30 @@ for (let i = _parts.length - 1; i >= 0; i--) {
   if (tx) { aiText = tx; break; }
 }
 aiText = aiText.replace(/^\s*(think|thought|reasoning)\b[\s\S]*?\n\n/i, '').trim();  // strip any leading reasoning block
-if (!aiText) aiText = 'Sorry, kuch problem aa gayi. Please dobara try karein.';
+
+// ---- EMPTY MODEL RESPONSE ----
+// Seen twice in a row in production, and the customer was shown
+// "Sorry, kuch problem aa gayi. Please dobara try karein." - which breaks character (Ananya
+// is never a system), tells them to retry something they cannot retry, and reads as broken
+// software. A human agent had to take the chat over.
+// Gemini returns NO text part when it stops for a reason other than STOP - a safety block,
+// a recitation block, or hitting maxOutputTokens mid-reasoning. The old code could not tell
+// which, because it never looked. Log the reason, and stay in character to the customer.
+let emptyReason = '';
+if (!aiText) {
+  const cand = (geminiResponse.candidates || [])[0] || {};
+  emptyReason = String(cand.finishReason || '')
+    || String((geminiResponse.promptFeedback || {}).blockReason || '')
+    || 'no_text_part';
+  const safetyHit = ((cand.safetyRatings || []).filter(r => r && r.blocked) || [])
+    .map(r => r.category).join(',');
+  console.log('[Empty Reply] model returned no text | finishReason=' + emptyReason
+    + (safetyHit ? ' | blockedCategories=' + safetyHit : '')
+    + ' | parts=' + _parts.length
+    + ' | promptTokens=' + ((geminiResponse.usageMetadata || {}).promptTokenCount || '?'));
+  // In character, moves the conversation forward, promises nothing.
+  aiText = 'ji, bataiye - aapko kya problem ho rahi hai aur kab se? Main aapki help karti hu.';
+}
 
 const buildData = $('Build AI Prompt').first().json || {};
 let phone = buildData.phone;
@@ -60,11 +83,96 @@ function sanitizeReply(t) {
 }
 aiText = sanitizeReply(aiText);
 
+// ---- MEDICAL CLAIM GUARD (runs FIRST - outranks every other guard) ----
+// Asked "I want to Check My Free PCOD Health Score", the model replied:
+//     "ji / your score is 7 / you have a PCOD / and you need to consultation for it"
+// A fabricated score and a fabricated diagnosis. There is no health-score integration at
+// all, so the number was invented outright. This is the worst output the system can
+// produce - worse than a dose - because the customer has no way to know it is fiction, and
+// it is a medical claim made to a patient. It runs before everything else: whatever else is
+// true about the message, a reply containing an invented score or diagnosis must not go out.
+//
+// Echoing the customer's own words is NOT diagnosing. If they said "mera PCOD hai", Ananya
+// saying "aapko PCOD hai" is ordinary conversation, so both checks are suppressed when the
+// customer themselves raised the condition or the number.
+const _qLower = String(newMsgText || '').toLowerCase();
+const _CONDITIONS = '(pcod|pcos|thyroid|hypothyroid|hyperthyroid|diabetes|sugar|bp|blood\\s*pressure|infertility|anemia|anaemia|cancer|hormonal\\s*imbalance)';
+const _custRaisedCondition = new RegExp(_CONDITIONS, 'i').test(_qLower);
+const _custGaveNumber = /\b(score|skor)\b[^.!?]{0,20}\d/i.test(_qLower);
+
+const gaveScore = !_custGaveNumber && (
+     /\b(score|skor)\b[^.!?]{0,24}\b\d{1,3}\b/i.test(aiText)
+  || /\b\d{1,3}\s*(\/|out\s*of)\s*(10|100)\b/i.test(aiText)
+);
+
+// An assertion, not a question. The persona REQUIRES Ananya to ask "aapko thyroid, sugar ya
+// BP ki koi problem hai?" (safety gating, rule 3) - that must survive untouched, so any
+// sentence that is a question or a conditional is skipped.
+function qrAssertsCondition(t) {
+  const RE = new RegExp('\\b(aapko|apko|aap\\s*ko|aapka|apka|you\\s*have|you\\s*are\\s*having|u\\s*have)\\b[^.!?]{0,26}\\b' + _CONDITIONS + '\\b', 'i');
+  const sentences = String(t || '').split(/(?<=[.!?])\s+|\n+/);
+  for (const s of sentences) {
+    if (/\?/.test(s)) continue;
+    if (/\bkya\b/i.test(s)) continue;
+    if (/\b(agar|if|jab|yadi|shayad|ho\s*sakta)\b/i.test(s)) continue;
+    if (RE.test(s)) return true;
+  }
+  return false;
+}
+const gaveDiagnosis = !_custRaisedCondition && qrAssertsCondition(aiText);
+
+// ---- WHATSAPP PROFILE NAME GUARD ----
+// The reply "PCOD Health Score Check for My Love My Papa" used the customer's WhatsApp
+// PROFILE name. Profile names are whatever someone set for themselves - "My Love My Papa",
+// emoji, a shop name, a phone number - and are not the person's name. Reading one back makes
+// the bot sound broken. A plausible-looking name is left alone; anything else is scrubbed
+// out of the reply entirely.
+const _rawName = String(name || '').trim();
+const _nameIsPlausible = /^[A-Za-z][A-Za-z.'-]{1,20}(\s+[A-Za-z][A-Za-z.'-]{1,20}){0,2}$/.test(_rawName)
+  && !/(love|papa|mumm?y|\bmom\b|dad+y?|jaan|baby|king|queen|\bji\b|\bsir\b|madam|boss|bhai|didi|angel|princess|hero|star|customer|unknown)/i.test(_rawName);
+let nameGuard = false;
+if (_rawName && !_nameIsPlausible) {
+  const _esc = _rawName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(_esc, 'i').test(aiText)) {
+    aiText = aiText.replace(new RegExp(_esc, 'ig'), '')
+      .replace(/\s+for\s*$/i, '').replace(/\s*,\s*,/g, ',')
+      .replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
+    if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
+    nameGuard = true;
+    console.log('[Name Guard] stripped the WhatsApp profile name from the reply | name=' + JSON.stringify(_rawName));
+  }
+}
+
+// ---- HEALTH SCORE RESPONDER (runs before the claim guard) ----
+// A health-score request has exactly one correct answer: the real link. QuickReply's flow
+// only recognises a few exact button texts and replies to anything else with a generic
+// greeting, so the AI has to handle the rest - and left to itself it invents a score.
+// The reply is built here, never generated.
+const HEALTH_SCORE_URL = 'https://www.sehatup.com/pages/health-score-360';
+let scoreGuard = false;
+const askedHealthScore = /health\s*score|healthscore|health\s*check|score\s*check|score\s*(chahiye|batao|bata|check)/i.test(_qLower);
+if (askedHealthScore) {
+  scoreGuard = true;
+  aiText = 'Ji, apna free health score aap yahan check kar sakte hain: ' + HEALTH_SCORE_URL
+    + ' - ye bilkul free hai. Score aane ke baad free consultation me doctor aapko detail me samjha denge.';
+  console.log('[Health Score] sent the official link | q=' + _qLower.slice(0, 60));
+}
+
+let claimGuard = false;
+if (!scoreGuard && (gaveScore || gaveDiagnosis)) {
+  claimGuard = gaveScore ? 'invented_score' : 'invented_diagnosis';
+  aiText = 'Ji, main khud se koi score ya health condition nahi bata sakti - ye doctor properly check karke hi batate hain. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye, main free consultation set kara deti hu.';
+  console.log('[Claim Guard] BLOCKED ' + claimGuard + ' | q=' + _qLower.slice(0, 60));
+}
+
 // ---- DOSAGE GUARD (deterministic, same reason we control the greeting here:
 //      the fine-tuned model does not reliably obey prompt rules). If the customer
 //      asked for a dose - or the model slipped one into the reply - we replace the
 //      whole reply with the fixed "team will connect" line. ----
-const DOSE_HANDOFF = 'Dose doctor hi batate hain ji. Hamari team aapse thodi hi der me connect kar rahi hai, please thoda wait kijiye.';
+// Reworded 2026-07-31: the old line ended "team aapse thodi hi der me connect kar rahi hai",
+// which is the same unkeepable promise as "doctor will call in 5 minutes". The callback time
+// is the patient's choice, so the handoff now asks for it instead of committing to one.
+const DOSE_HANDOFF = 'Dose doctor hi batate hain ji. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye, main free consultation set kara deti hu - doctor sab detail me samjha denge.';
 const _q = String(newMsgText || '').toLowerCase();
 // "kitne din" alone is usually "how long till results" - only a dose question when
 // paired with a take/eat/drink verb.
@@ -91,7 +199,7 @@ const gaveDose =
   || /\b(once|twice|thrice)\s+(a\s+)?(day|daily)\b/.test(_a)
   || /\b(din|roz|rozana)\s*(me|mein)?\s*(ek|do|teen|\d+)\s*baar\b/.test(_a);
 
-const doseGuard = askedDose || gaveDose;
+const doseGuard = !claimGuard && (askedDose || gaveDose);
 if (doseGuard) {
   console.log('[Dose Guard] replaced reply | askedDose=' + askedDose + ' gaveDose=' + gaveDose + ' | q=' + _q.slice(0, 60));
   aiText = DOSE_HANDOFF;
@@ -143,7 +251,7 @@ function qrParseSlot(text) {
 
 let slotGuard = false;
 const _slotMin = qrParseSlot(newMsgText);
-if (!doseGuard && _slotMin !== null && (_slotMin < WORK_START_MIN || _slotMin >= WORK_END_MIN)) {
+if (!claimGuard && !doseGuard && _slotMin !== null && (_slotMin < WORK_START_MIN || _slotMin >= WORK_END_MIN)) {
   slotGuard = true;
   aiText = _hhmm(_slotMin) + ' par consultation nahi ho paayegi ji, hamare doctor '
     + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN)
@@ -184,7 +292,7 @@ const replyHasLink = /sehatup\.com\/products\//i.test(String(aiText));
 const needsPrice = askedPrice && !replyHasPrice;
 const needsLink = askedLink && !replyHasLink;
 
-if (!doseGuard && !slotGuard && (needsPrice || needsLink) && _matches.length) {
+if (!claimGuard && !doseGuard && !slotGuard && (needsPrice || needsLink) && _matches.length) {
   const sellable = _matches.filter(p => !p.isRx && p.inStock);
   const rx = _matches.filter(p => p.isRx);
   const oos = _matches.filter(p => !p.isRx && !p.inStock);
@@ -213,6 +321,52 @@ if (!doseGuard && !slotGuard && (needsPrice || needsLink) && _matches.length) {
   }
 }
 
+// ---- CALLBACK PROMISE GUARD ----
+// "Okay ji I will share your details with the doctor and they will call you in 5 minutes"
+// and "They will call you in 5 minutes ji" - the model invents a commitment nobody can keep.
+// Nobody promised it in the prompt; it comes from the fine-tune, where agents used to say it.
+// The callback time is the PATIENT'S choice, so a promise is replaced with the ask: name +
+// a preferred time inside working hours.
+// Deliberately not matched: "10-15 min free consultation" describes how long the consultation
+// LASTS, which is true and useful - hence the lookbehind on a "N-M" range and the fact that
+// "consultation" is not one of the call words.
+let promiseGuard = false;
+const _CALLWORD = '(call|phone|ring|baat|connect|contact|sampark)';
+const _MINS = '(?<!\\d\\s?-\\s?)\\b\\d{1,2}\\s*(minute|minutes|min|mins|minit|minut)\\b';
+const _promiseRe = new RegExp(
+  _MINS + '[^.!?]{0,30}\\b' + _CALLWORD + '\\b'
+  + '|\\b' + _CALLWORD + '\\b[^.!?]{0,30}' + _MINS
+  + '|\\b(abhi|turant|immediately|right\\s*now|just\\s*now)\\b[^.!?]{0,26}\\b' + _CALLWORD + '\\b'
+  + '|\\b' + _CALLWORD + '\\b[^.!?]{0,26}\\b(abhi|turant|immediately|right\\s*now|just\\s*now)\\b', 'i');
+
+if (!claimGuard && !doseGuard && !slotGuard && !priceGuard && _promiseRe.test(String(aiText))) {
+  promiseGuard = true;
+  aiText = 'Ji, main aapki free consultation set kara deti hu. Aapka naam aur kaunsa time aapke liye theek rahega bata dijiye ('
+    + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), doctor us time par call karenge.';
+  console.log('[Promise Guard] replaced an invented callback promise | q=' + String(newMsgText || '').slice(0, 50));
+}
+
+// ---- SUBSTANCE GUARD ----
+// A patient wrote out her full symptom history - cycle length, flow, how it changed over two
+// months - and the reply was "ji". A bare acknowledgement to someone who has just described
+// a health problem reads as not listening, and it is the fastest way to lose the customer.
+// The tuned model does this because it was trained on agent chatter where "ji" is a filler
+// turn; it has no sense of when a message deserves a real answer.
+// Only fires when the customer clearly said something substantial AND the reply is pure
+// filler, so short exchanges ("Okay" -> "ji") are untouched.
+let substanceGuard = false;
+const _custWords = String(newMsgText || '').trim().split(/\s+/).filter(Boolean).length;
+const _replyIsFiller = /^(ji|jee|g|ok|okay|okey|k|hmm+|hm|acha|accha|achha|theek|thik|theek hai|thik hai|haan|han|ha|yes|sure|right|ji haan|ji ok|noted|welcome|most welcome)[\s.,!]*$/i
+  .test(String(aiText || '').trim());
+if (!claimGuard && !scoreGuard && !doseGuard && !slotGuard && !priceGuard && !promiseGuard
+    && _replyIsFiller && (_custWords >= 12 || String(newMsgText || '').trim().length >= 70)) {
+  substanceGuard = true;
+  aiText = 'Ji, aapne jo bataya wo maine samajh liya - aap pareshaan mat hoiye, isko manage kiya ja sakta hai. '
+    + 'Free consultation me doctor aapki puri history dekh kar sahi plan batayenge, consultation aur diet plan dono free hain. '
+    + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye?';
+  console.log('[Substance Guard] filler reply "' + String(aiText).slice(0, 0) + '" replaced | custWords=' + _custWords);
+}
+
 // ---- Add the introduction EXACTLY ONCE, only on genuine first contact ----
 if (!greetedBefore) {
   aiText = 'Hello ji, mai Ananya baat kar rahi hu SehatUP se. ' + (aiText || 'mai aapki kya help kar sakti hu?');
@@ -227,9 +381,15 @@ return [{
     lastAiReply: aiText,
     lastUserMessage: newMsgText,
     docId,
+    scoreGuard,
+    substanceGuard,
+    nameGuard,
+    claimGuard,
     doseGuard,
     slotGuard,
     priceGuard,
+    promiseGuard,
+    emptyReason,
     lastUpdated: new Date().toISOString()
   }
 }];

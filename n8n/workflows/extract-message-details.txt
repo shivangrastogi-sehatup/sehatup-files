@@ -1,0 +1,91 @@
+// Original QuickReply payload lives on the webhook node. Guard so testing a
+// single node in isolation doesn't hard-crash.
+let body = {};
+try {
+  body = $('QuickReply Webhook').first().json.body || {};
+} catch (e) {
+  const inp = $input.first();
+  body = (inp && inp.json && (inp.json.body || inp.json)) || {};
+}
+
+const phone = body.phone || '';
+const name = body.name || 'Customer';
+const msgId = body.id || '';
+const msgTime = Number(body.msg_time) || Date.now();
+const payload = body.payload || {};
+const text = payload.text || '';
+
+// ---- Classify the message (confirmed from prod cloud-run logs) ----
+//  text        -> _type USER_TEXT, has payload.text
+//  image       -> _type USER_FILE, contentType image/jpeg
+//  audio/voice -> _type USER_FILE, contentType audio/ogg, audioText ""
+//  button tap  -> _type USER_LIST_REPLY / USER_BUTTON_REPLY
+const ptype = String(payload._type || '').toUpperCase();
+const contentType = String(payload.contentType || '').toLowerCase();
+const hasText = !!(text && String(text).trim());
+
+// MEDIA = any uploaded file: image, audio voice-note, report, document.
+const isMedia = ptype === 'USER_FILE'
+  || (!hasText && ptype && ptype !== 'USER_TEXT')
+  || (!hasText && (contentType.startsWith('image/') || contentType.startsWith('audio/')));
+let mediaKind = 'text';
+if (isMedia) {
+  if (contentType.startsWith('image/')) mediaKind = 'image';
+  else if (contentType.startsWith('audio/')) mediaKind = 'audio';
+  else mediaKind = 'file';
+}
+const mediaPath = payload.path || '';
+
+// AUTOMATION / TEMPLATE triggers the AI must NOT answer - QuickReply's own flows
+// already handle these (e.g. the Health Score CTA sends its link automatically).
+// Add new predefined-button texts to AUTOMATION_TRIGGERS (matched case-insensitive).
+// Matched as PATTERNS, not exact substrings. The literal-substring list missed the real
+// button text "I want to Check My Free PCOD Health Score" - the word PCOD sits between
+// "Free" and "Health Score", so none of the four literals matched, the AI was not skipped,
+// and it answered by INVENTING a health score and a PCOD diagnosis. Patterns survive the
+// wording changes a marketing team makes to a button; exact strings do not.
+// Punctuation is stripped before matching, so "Health-Score" and "health score!" both work.
+// Health-score phrasings are deliberately NOT here. The four literal button texts below are
+// the ones QuickReply's own flow demonstrably answers. A NEW variant it does not recognise
+// ("I want to Check My Free PCOD Health Score") produced only the generic
+// "Hi! Please let us know how we can help you." - so skipping the AI on those would leave the
+// customer with a greeting and no link at all. Anything else mentioning a health score now
+// reaches the AI, where a deterministic responder sends the real link.
+// >> If QuickReply is later configured to answer the PCOD variant too, add it here, or the
+//    customer will get the link twice.
+const AUTOMATION_TRIGGER_RES = [
+  /^\s*check my free health score\s*$/,
+  /^\s*check free healthscore\s*$/,
+  /^\s*i want my detailed healthscore\s*$/,
+  /vaji\s*bati\s*(or|aur|and)?\s*kern\s*drops/
+];
+const textLc = String(text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+const isTriggerText = AUTOMATION_TRIGGER_RES.some(re => re.test(textLc));
+const isButtonReply = ptype === 'USER_LIST_REPLY' || ptype === 'USER_BUTTON_REPLY';
+const isAutomation = isTriggerText || isButtonReply;
+
+// The AI answers ONLY real typed questions. Skip media + automation/button messages.
+const skipAi = isMedia || isAutomation;
+let skipReason = '';
+if (isMedia) skipReason = 'media_' + mediaKind;
+else if (isButtonReply) skipReason = 'button_reply';
+else if (isTriggerText) skipReason = 'automation_trigger';
+
+return [{
+  json: {
+    phone,
+    name,
+    msgId,
+    msgTime,
+    text,
+    msgType: ptype,
+    isMedia,
+    mediaKind,
+    mediaPath,
+    isAutomation,
+    skipAi,
+    skipReason,
+    convId: phone.replace(/[^0-9]/g, ''),   // matches CF qrConvId()
+    savedAt: new Date().toISOString()
+  }
+}];

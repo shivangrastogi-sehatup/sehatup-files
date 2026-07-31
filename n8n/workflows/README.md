@@ -98,6 +98,9 @@ n8n/workflows  ·  order-data gating           11/11   (withheld on product asks
 functions      ·  description condenser      171/171  (9 assertions x 19 OTC; run against the REAL catalog, not fixtures)
 n8n/workflows  ·  Google Doc integrity         7/7    (healthy / 29-char periodic damage / half doc / deleted section)
 n8n/workflows  ·  consultation slot guard     19/19   (6 blocked, 6 allowed, 5 no-time, 2 precedence)
+n8n/workflows  ·  promise + empty-reply guard 13/13   (4 promises replaced, 4 false-positive checks, 4 empty-response, dose handoff)
+n8n/workflows  ·  medical claim guard         19/19   (7 triggers skip, 4 still reach AI, 6 claims blocked, 4 legit survive, precedence)
+n8n/workflows  ·  name + substance + score    31/31   (13 name cases, 11 filler/substance, 3 health-score, 2 claim, 5 file-hygiene)
 ```
 
 Re-run these before pasting anything — see [Regression cases](#regression-cases).
@@ -237,14 +240,16 @@ AI branch.
 
 - **media** — `_type: USER_FILE` or any non-text payload: images, voice notes, reports, documents (`skipReason: media_image` / `media_audio` / `media_file`). The bot cannot read a report photo, so it stays silent rather than guessing.
 - **button taps** — `USER_LIST_REPLY` / `USER_BUTTON_REPLY` (`button_reply`).
-- **automation trigger texts** — QuickReply's own no-code flows already answer these, so the AI must stay out (`automation_trigger`). The list lives in `AUTOMATION_TRIGGERS`, matched case-insensitively as a substring:
-  - `check my free health score`
-  - `check free healthscore`
-  - `i want my detailed healthscore`
-  - `mujhe vaji bati or kern drops chahiye`
+- **automation trigger texts** — QuickReply's own no-code flows already answer these, so the AI must stay out (`automation_trigger`). Matched as **patterns**, against text with punctuation stripped:
+  - `/health\s*scores?/` and `/healthscores?/`
+  - `/vaji\s*bati\s*(or|aur|and)?\s*kern\s*drops/`
 
-  **Add every new predefined-button text here**, or the AI will talk over the automation
-  and the customer gets two different answers.
+  > **Why patterns and not exact strings.** The list used to hold four literal substrings
+  > matched with `.includes()`. The real button text is
+  > **"I want to Check My Free PCOD Health Score"** — the word `PCOD` sits between "Free" and
+  > "Health Score", so `check my free health score` never matched. The AI was not skipped, it
+  > answered, and it **invented a health score and a PCOD diagnosis**. A marketing team will
+  > reword a button; a pattern survives that, a literal does not.
 
 ### Debounce + handoff
 
@@ -462,17 +467,24 @@ one exists because the model failed at it in production.
 
 | # | Step | Why it is in code |
 |---|---|---|
+| 0 | **Medical claim guard** — *highest precedence* | Asked *"I want to Check My Free PCOD Health Score"*, the model replied **"your score is 7 / you have a PCOD"**. There is no health-score integration in this system, so the number was invented outright, and so was the diagnosis. Worse than a dose: the customer has no way to know it is fiction. Blocks any invented score or asserted condition before every other guard. |
+| 0b | **Health score responder** | A health-score request has exactly one right answer: the real link, `https://www.sehatup.com/pages/health-score-360`. QuickReply's flow only recognises a few exact button texts and replies to anything else with a generic greeting, so the AI has to handle the rest — and left alone it invents a number. The reply is built, never generated. |
+| 0c | **Profile name guard** | The reply *"PCOD Health Score Check for My Love My Papa"* used the customer's **WhatsApp display name**. Those are whatever someone set for themselves — nicknames, shop names, emoji, phone numbers. `Build AI Prompt` withholds an implausible one from CONTEXT entirely; this strips it from the reply if it leaks. |
+| 0d | **Substance guard** | A patient wrote out her full cycle history and got **"ji"**. The tuned model treats `ji` as a filler turn. When the customer says something substantial and the reply is pure filler, it is replaced with acknowledgement + the booking ask. |
 | 1 | **Take the last non-empty part** | The tuned model emits a reasoning part first and the real reply last. `parts[0]` sends the model's private thinking to the customer. |
 | 2 | **Strip time greetings** | The model says "good evening" for a noon message — the wait + retries make wall-clock time meaningless. |
 | 3 | **Rewrite gendered titles → `ji`** | Rule 1 has said "never sir/mam" since day one. The model says it anyway. |
 | 4 | **Dose guard** | The highest-risk failure: a bot handing out dosages. Prompt-level refusal is not good enough. |
 | 5 | **Consultation slot guard** | `"meri raat k 10 bje ki consultation fix krwa do"` got `"theek h"` — a 10 PM slot no doctor will attend. Nothing validated it: `isOfficeHours` only says whether the office is open **right now**, which tells you nothing about a time proposed for later, and the persona instructs her to ask for a time and confirm it with no constraint on which times are acceptable. |
-| 6 | **Price guard** | Asked `Shilajit ki price kya h?` with both prices in the prompt *and* PRODUCT POLICY spelling out that they are the only correct ones, the model replied `ji free consultation me aapko sab bata diya jayega` and named no price. The answer is now built from the live data instead of requested. |
-| 7 | **Inject the intro exactly once** | `greetedBefore` is computed from real Firestore history, not from the model's memory, which re-introduces Ananya mid-conversation. |
+| 6 | **Callback promise guard** | The model invents commitments nobody can keep: `"they will call you in 5 minutes"`, twice in one chat. Nothing in the prompt says that — it comes from the fine-tune, where agents used to. The callback time is the **patient's** choice, so a promise is replaced with the ask (name + preferred time). |
+| 7 | **Price guard** | Asked `Shilajit ki price kya h?` with both prices in the prompt *and* PRODUCT POLICY spelling out that they are the only correct ones, the model replied `ji free consultation me aapko sab bata diya jayega` and named no price. The answer is now built from the live data instead of requested. |
+| 8 | **Inject the intro exactly once** | `greetedBefore` is computed from real Firestore history, not from the model's memory, which re-introduces Ananya mid-conversation. |
 
 Order matters: sanitising happens before the dose guard (so a dose reply is caught on clean
 text), and the greeting is prepended last so it survives any replacement. Guard precedence is
-**dose > slot > price**: a dose is a doctor's call and must never be answered with a price
+**health-score > claim > dose > slot > price > promise > substance**, with the name guard
+running on whatever survives. The claim guard is unconditional — whatever else
+is true about a message, a reply containing a fabricated score or diagnosis must not go out: a dose is a doctor's call and must never be answered with a price
 pitch or a booking confirmation, and an impossible slot must be corrected before anything
 else — a customer who writes `"raat 10 baje, vaji bati ka price kya hai"` needs to hear that
 10 PM is not available, not just the price.
@@ -892,6 +904,60 @@ them in isolation. Re-run these if you touch either regex.
 | `XYZ kit ka price` | none | `false` — nothing to quote |
 | `shilajit kitna lena hai roz aur price` | Shilajit ×2 | `false` + **`doseGuard` fires instead** |
 
+**Profile name — must be withheld from the prompt and stripped from replies:**
+`My Love My Papa` · `TEST TEST` · `Baby Doll` · `9876543210` · `King` · `Papa ji` · empty
+
+**Profile name — must pass through untouched:**
+`Shivang Rastogi` · `Ananya` · `Jiya Sharma` · `Momita Das` · `Mustafa` · `D'Souza`
+
+> The blocklist needs real word boundaries. Without them `ji` rejects **Jiya**, `mom` rejects
+> **Momita** and `star` rejects **Mustafa**.
+
+**Substance guard — must replace** a filler reply (`ji`, `ok`, `hmm`, `theek hai`, `ji haan`,
+`accha`, `noted`) when the customer wrote 12+ words or 70+ characters.
+**Must NOT fire:** a short exchange (`"Okay"` -> `"ji"`), or any reply that actually says
+something.
+
+**Medical claim guard — must block:**
+`ji / your score is 7 / you have a PCOD` (the exact production reply) ·
+`aapka health score 82 hai ji` · `aapko thyroid hai ji` (unprompted) · `You have PCOS`
+
+**Medical claim guard — must NOT fire:**
+`ji aapko thyroid, sugar ya BP ki koi problem hai?` — **the persona's own safety check
+(rule 3); asking is required, asserting is forbidden** · `ji aapko PCOD hai to doctor se baat
+karna zaroori hai` when the customer already said they have PCOD (echoing, not diagnosing) ·
+`agar aapko thyroid hai to…` (conditional) · any ordinary product reply
+
+**Automation triggers — must skip the AI:**
+`I want to Check My Free PCOD Health Score` · `Check My Free Health Score` ·
+`check free healthscore` · `I want my detailed healthscore` · `Health-Score chahiye` ·
+`mera health score kya hai` · `Mujhe Vaji Bati or Kern Drops chahiye`
+
+**Automation triggers — must still reach the AI:**
+`mera PCOD hai` · `vaji bati ka price` · `mera order kaha hai` · `hello ji`
+
+**Empty model response — must never show the customer an error.** Gemini returns no text part
+when it stops for a reason other than `STOP` (safety block, recitation block, `MAX_TOKENS`
+mid-reasoning). Production showed the raw fallback **twice in a row**:
+`"Sorry, kuch problem aa gayi. Please dobara try karein."` — which breaks character, tells the
+customer to retry something they cannot retry, and reads as broken software. A human had to
+take the chat over. The reply is now an in-character question, and `finishReason` /
+`blockReason` / blocked safety categories are logged as `[Empty Reply]` and surfaced as
+`emptyReason` so the cause is diagnosable rather than invisible.
+
+**Promise guard — must replace:**
+`Okay ji I will share your details with the doctor and they will call you in 5 minutes` ·
+`They will call you in 5 minutes ji` · `doctor abhi aapko call karenge` ·
+`main abhi aapko connect karti hu`
+
+**Promise guard — must NOT fire:**
+`10-15 min ki free consultation hoti hai ji` (that is how long the consultation *lasts*) ·
+`ji aap apna naam aur time bata dijiye` · `5 minute me asar dikhna shuru ho jata hai`
+(no call word)
+
+> `DOSE_HANDOFF` was reworded for the same reason — it used to end
+> *"team aapse thodi hi der me connect kar rahi hai"*, which is the same unkeepable promise.
+
 **Slot guard — must block (outside 09:30-18:30):**
 `meri raat k 10 bje ki consultation fix krwa do` · `raat 9 baje call karo` ·
 `subah 7 baje kara do` · `8 pm slot chahiye` · `7:30 am ka time de do` · `raat ko 11 baje`
@@ -1038,6 +1104,7 @@ kept alongside the JSON for exactly this reason:
 - `extract-ai-response.txt`
 - `decide-process.txt`
 - `record-ai-sent.txt`
+- `extract-message-details.txt`
 
 (`build-ai-prompt-OLD.txt` is the pre-2026-07-28 body, kept only for reference.)
 
@@ -1100,6 +1167,12 @@ a real WhatsApp message.
 | Reply re-introduces Ananya | `greetedBefore` in `Extract AI Response` — it scans real history, so check the conversation actually has prior `out` messages. |
 | Reply says "mam" / "sir" / some other title | A variant the regex misses. Add it to the title block in `sanitizeReply()` — the prompt rule alone has never held. |
 | Reply answers in Tamil/Bengali/etc. | LANGUAGE POLICY is prompt-only. Check the Google Doc still carries rule 6, and that `Customer wrote in:` is being set in the prompt. |
+| Bot replied "ji" to a long message | `substanceGuard` should be `true`. |
+| Bot used the customer's WhatsApp nickname | `nameGuard` should be `true`, and the prompt's CONTEXT should read `Customer name: NOT KNOWN`. |
+| **Bot stated a health score or told someone they have a condition** | `claimGuard` on the `Extract AI Response` output must be `invented_score` / `invented_diagnosis`. If it is `false`, the node is a stale copy. Also check `skipReason` on `Extract Message Details` — a health-score button should have been `automation_trigger` and never reached the model at all. |
+| AI answers on top of a QuickReply automation | Add the pattern to `AUTOMATION_TRIGGER_RES` in `Extract Message Details`. Check the real button text character by character — the PCOD case failed on one word inserted mid-phrase. |
+| Customer was shown "Sorry, kuch problem aa gayi" | The model returned no text. `emptyReason` on the `Extract AI Response` output and the `[Empty Reply]` log line give `finishReason` — `SAFETY` / `RECITATION` / `MAX_TOKENS`. Repeated `SAFETY` on health wording is the case to watch. |
+| Bot promised a callback in N minutes | `promiseGuard` should be `true`. If it is `false`, the node is a stale copy. |
 | Bot agreed to an impossible appointment time | `slotGuard` in `Extract AI Response`. If it is `false` on an out-of-hours request, the node is a stale copy, or the time was phrased without a `baje`/`am`/`pm` marker — the parser deliberately requires one so `5 months se` cannot be read as a slot. |
 | `doc=DAMAGED` in the log | The Google Doc lost text. `docMissing` names the sections. Re-paste from `ananya-prompt.txt` **via a plain text editor** — copying from a rendered panel is what causes it (fixed 29-30 char gaps). |
 | Generic "You are Ananya, a Health Expert at SehatUP." personality | The Google Doc fetch failed and fell back to the stub. Check the Docs OAuth credential. |

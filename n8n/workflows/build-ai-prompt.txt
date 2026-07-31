@@ -169,6 +169,19 @@ try {
   else productCtxDebug = 'no match of ' + (px.catalogSize || 0) + ' (' + (px.source || '?') + ')';
 } catch (e) { productCtxDebug = 'node missing'; }
 
+// ---- WHATSAPP PROFILE NAME ----
+// `name` is the WhatsApp PROFILE name, i.e. whatever the person set for themselves. Real
+// examples: "My Love My Papa", "TEST TEST", shop names, emoji. Handing that to the model as
+// "Customer name" produced the reply "PCOD Health Score Check for My Love My Papa". Only a
+// plausible-looking name is passed through; anything else is withheld and the model is told
+// it does not have one.
+// Word boundaries matter: without them "ji" would reject Jiya, "mom" would reject Momita
+// and "star" would reject Mustafa. Only whole words disqualify a name.
+const NAME_BLOCKLIST = /\b(love|papa|pappa|mumm?y|mom|maa|dad|daddy|jaan|jaanu|baby|babu|king|queen|sir|madam|boss|bhai|bhaiya|didi|angel|princess|hero|star|ji|customer|unknown|test)\b/i;
+const nameIsPlausible = /^[A-Za-z][A-Za-z.'-]{1,20}(\s+[A-Za-z][A-Za-z.'-]{1,20}){0,2}$/.test(String(name || '').trim())
+  && !NAME_BLOCKLIST.test(String(name || ''));
+const displayName = nameIsPlausible ? String(name).trim() : '';
+
 const conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();
 const hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');
 
@@ -177,7 +190,7 @@ let systemPrompt = basePrompt
   + '\nCurrent time (customer message, IST): ' + clock + ' (' + partOfDay + ')'
   + '\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')
   + '\nTime since customer\'s previous message: ' + gapLabel
-  + '\nCustomer name: ' + name
+  + "\nCustomer name: " + (displayName || 'NOT KNOWN - do not use any name, and never repeat their WhatsApp display name')
   + '\nCustomer wrote in: ' + scriptLabel
   + '\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')
   + '\n\nCRITICAL ANTI-SPAM RULES:\n'
@@ -265,6 +278,24 @@ if (orderSummary && !isOrderQuestion) {
     + ' Say honestly that you are checking with the team and ask for the order id or the name the order was placed under, if useful.';
 }
 
+// ---- NAME POLICY ----
+systemPrompt += '\n\nNAME POLICY (hard rule): the name in CONTEXT is a WhatsApp display name, not necessarily the person\'s real name.'
+  + '\n1. If CONTEXT says the name is NOT KNOWN, do not use any name at all - say "ji" or "aap". Never invent one, and never repeat their WhatsApp display name back to them.'
+  + '\n2. Only treat something as their name if THEY typed it in this chat.'
+  + '\n3. Never build a sentence around the name, and never echo it inside a product or service line.';
+
+// ---- MEDICAL CLAIM POLICY ----
+// The model invented a health score AND a diagnosis for a customer who had given it neither
+// ("your score is 7 / you have a PCOD"). There is no health-score integration in this system
+// at all, so any number it produces is fiction. The claim guard in Extract AI Response is
+// what actually blocks this; the rule is stated here so it gets it right first time.
+systemPrompt += '\n\nMEDICAL CLAIM POLICY (hard rule, highest priority):'
+  + '\n1. You do NOT have the customer\'s health score. There is no health score in front of you, ever. NEVER state a score, a number out of 10 or 100, a percentage, or a "level" for any customer - not even approximately, not even if they ask directly and insist.'
+  + '\n2. NEVER tell a customer they HAVE a condition (PCOD, PCOS, thyroid, diabetes, BP, infertility, anything). You cannot diagnose. Only a doctor can, after checking.'
+  + '\n3. You MAY discuss a condition the customer has already told you they have, and you MAY ask whether they have one (that is the safety check). Asking is fine; asserting is not.'
+  + '\n4. If they want their health score, tell them the free health score check will give it to them, or that the doctor will go through it in the free consultation. Do not produce a number yourself.'
+  + '\n5. If you are not sure whether something is a fact you were given or a guess, treat it as a guess and say the doctor will confirm.';
+
 // ---- BOOKING POLICY ----
 // The persona tells her to ask for a time and confirm it, and nothing constrained WHICH
 // times are acceptable - "raat k 10 baje ki consultation fix krwa do" got a "theek h".
@@ -273,7 +304,11 @@ if (orderSummary && !isOrderQuestion) {
 systemPrompt += '\n\nBOOKING POLICY (hard rule): consultations happen ONLY between 9:30 AM and 6:30 PM IST, any day.'
   + '\n1. If the customer asks for a slot outside those hours (early morning, late evening, night), do NOT agree to it. Say that time is not available, state the 9:30 AM - 6:30 PM window, and ask them to pick a time inside it.'
   + '\n2. Never confirm a slot you were not given a time for, and never invent a time yourself.'
-  + '\n3. Once they give a valid time, confirm simply that the team will call them then. You cannot see a doctor calendar, so never promise a specific doctor or claim the slot is guaranteed.';
+  + '\n3. Once they give a valid time, confirm simply that the team will call them then. You cannot see a doctor calendar, so never promise a specific doctor or claim the slot is guaranteed.'
+  + '\n4. NEVER promise a callback in a number of minutes. Not "5 minutes", not "10 minutes", not "abhi call karenge", not "turant". You have no control over when anyone calls, and a missed promise is worse than no promise. The call time is the CUSTOMER\'S choice, not ours.'
+  + '\n5. To book, you need three things: their NAME, what the problem is and since when, and their preferred TIME inside 9:30 AM - 6:30 PM. Ask for whatever is still missing - one or two things per message, never all three at once, never as a form.'
+  + '\n6. If they ask "kab call aayega", do not invent a time. Ask which time suits them and confirm the team will call then.'
+  + '\n7. Do not say the details have been "shared with the doctor" unless they have actually given you a name and a time. Until then nothing has been booked.';
 
 systemPrompt += '\n\nTIME AWARENESS: The times in CONTEXT are the real IST time of the customer\'s message (not "now"). Use them naturally: if it is late night, suggest a next-day consultation slot; if office hours are CLOSED, say the team will call during working hours (9:30am-6:30pm) instead of promising an immediate call; if the customer is returning after a long gap, continue warmly without repeating the full introduction. Do NOT open with good morning/afternoon/evening.';
 
