@@ -53,11 +53,16 @@ const mediaPath = payload.path || '';
 // reaches the AI, where a deterministic responder sends the real link.
 // >> If QuickReply is later configured to answer the PCOD variant too, add it here, or the
 //    customer will get the link twice.
+// got no reply at all, because QuickReply does not answer that phrasing either. The AI now
+// handles it and the product guard sends both products with live prices.
+// The vaji-bati/kern-drops trigger was REMOVED 2026-07-31. A customer typed
+// "Mujhe vaji bati or kern drop chahiye" at 13:45 and got NO reply at all - QuickReply does
+// not answer that phrasing either, so skipping the AI just produced silence. The AI now
+// handles it and the product guard sends both products with live prices.
 const AUTOMATION_TRIGGER_RES = [
   /^\s*check my free health score\s*$/,
   /^\s*check free healthscore\s*$/,
-  /^\s*i want my detailed healthscore\s*$/,
-  /vaji\s*bati\s*(or|aur|and)?\s*kern\s*drops/
+  /^\s*i want my detailed healthscore\s*$/
 ];
 const textLc = String(text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 const isTriggerText = AUTOMATION_TRIGGER_RES.some(re => re.test(textLc));

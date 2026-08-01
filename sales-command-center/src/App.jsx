@@ -72,7 +72,10 @@ const WEEK_RAMP = ['#A8CBE9', '#8AB8E0', '#6BA4D6', '#4C90CC', '#2E7CBC', '#1F6C
 const weekTint = (i, n) =>
   n <= 1 ? WEEK_RAMP[2] : WEEK_RAMP[Math.round((i / (n - 1)) * (WEEK_RAMP.length - 1))];
 
-const MONO_G = "'Space Grotesk', sans-serif";
+// Archivo carries every figure on the board. Chosen for true tabular
+// numerals — each numeric column here is right-aligned in a fixed cell, so
+// digits that change width between refreshes would make the numbers twitch.
+const NUM = "'Archivo', sans-serif";
 
 // ── formatting ───────────────────────────────────────────────────────────────
 const inr = (n) => '₹' + Math.round(n || 0).toLocaleString('en-IN');
@@ -115,8 +118,8 @@ export default class App extends React.Component {
     modal: null, settingsOpen: false, config: loadConfig(), landed: null, pulse: 0,
   };
 
-  /** How long an order card stays up before dismissing itself. */
-  static TOAST_MS = 12000;
+  /** How long the Latest Order card stays lit after a sale lands. */
+  static LANDED_MS = 12000;
 
   /** Persist the view preferences whenever one of them changes. */
   setPref(patch) {
@@ -196,7 +199,7 @@ export default class App extends React.Component {
     clearTimeout(this._toastT); clearTimeout(this._pulseT);
     this.setState({ landed, pulse: 1 });
     this._pulseT = setTimeout(() => this.setState({ pulse: 0 }), 1400);
-    this._toastT = setTimeout(() => this.setState({ landed: null }), App.TOAST_MS);
+    this._toastT = setTimeout(() => this.setState({ landed: null }), App.LANDED_MS);
   }
 
   // ── filtering ──────────────────────────────────────────────────────────────
@@ -333,45 +336,46 @@ export default class App extends React.Component {
     // since the sheet is appended to in the order sales come in.
     const latest = ordersEver.reduce((best, o) => (!best || o.date >= best.date ? o : best), null);
 
-    // ---- weekly revenue: the current month's weeks, W1 forward ----
-    // Monday-start weeks, clipped to the month — so W1 is the 1st through the
-    // first Sunday, and the last bar is the week in progress.
+    // ---- weekly revenue: 7-day blocks counted from the 1st ----
+    // Days 1–7, 8–14, 15–21, 22–28, then whatever the month has left. NOT
+    // Monday-start calendar weeks: those made the first bar however many days
+    // were left after the 1st fell mid-week (July's was 5), so its height was
+    // not comparable with the full weeks beside it. Every block here is 7 days
+    // except the month's tail, which makes the bars read against each other.
     const todayD = parseISO(today);
-    const monthStart = new Date(todayD.getFullYear(), todayD.getMonth(), 1);
+    const Y = todayD.getFullYear();
+    const Mo = todayD.getMonth();
+    const monthEnd = new Date(Y, Mo + 1, 0).getDate();
     const weeks = [];
-    for (let ws = weekStart(monthStart), n = 1; ws <= todayD; ws = addDays(ws, 7), n++) {
-      const wEnd = addDays(ws, 6);
-      const from = ws < monthStart ? monthStart : ws;   // W1 starts at the 1st
-      const current = wEnd >= todayD;                   // the week in progress
-      const to = current ? todayD : wEnd;
-      // The bar is labelled with the dates it actually covers rather than "W1".
-      // These are Monday-start weeks clipped to the month, so the first and last
-      // are usually short — "1–5" says that on its face, where "W1" hid it.
-      // Day numbers alone are unambiguous because every week is inside the month;
-      // the fuller form is only needed if one ever straddles a boundary.
-      const span = from.getMonth() === to.getMonth()
-        ? `${from.getDate()}–${to.getDate()}`
-        : `${shortDate(from)} – ${shortDate(to)}`;
+    for (let d1 = 1, n = 1; d1 <= todayD.getDate(); d1 += 7, n++) {
+      const dEnd = Math.min(d1 + 6, monthEnd);
+      const current = todayD.getDate() <= dEnd;          // the block in progress
+      const from = new Date(Y, Mo, d1);
+      const to = current ? todayD : new Date(Y, Mo, dEnd);
       weeks.push({
-        n, tag: current ? 'THIS' : 'W' + n, span, latest: current, from, to,
+        n, tag: current ? 'THIS' : 'W' + n,
+        // Labelled with the days the bar actually covers, so a block still in
+        // progress says so by ending on today rather than on its final day.
+        span: `${from.getDate()}–${to.getDate()}`,
+        latest: current, from, to,
         rev: revenue(ordersEver.filter((o) => this.inWin(o, from, to))),
         days: Math.round((to - from) / 86400000) + 1,
       });
     }
     const maxWeek = Math.max(...weeks.map((w) => w.rev), 1);
 
-    // ---- WoW: like-for-like, not a part-week against a whole one ----
-    // The week in progress is only N days old, so comparing its total against a
-    // finished 7-day week always reads as a crash. Compare Mon→today against
-    // Mon→the same weekday of last week instead.
-    const curWs = weekStart(todayD);
-    const elapsed = Math.round((todayD - curWs) / 86400000); // 0 = Monday
-    const prevWs = addDays(curWs, -7);
-    const wtd = revenue(ordersEver.filter((o) => this.inWin(o, curWs, todayD)));
-    const prevWtd = revenue(ordersEver.filter((o) => this.inWin(o, prevWs, addDays(prevWs, elapsed))));
+    // ---- WoW: like-for-like, not a part-block against a whole one ----
+    // The block in progress is only N days old, so comparing its total against a
+    // finished 7-day block always reads as a crash. Compare it against the same
+    // number of days at the start of the previous block.
+    const curStart = weeks.length ? weeks[weeks.length - 1].from : todayD;
+    const elapsed = Math.round((todayD - curStart) / 86400000);   // 0 = first day
+    const prevStart = addDays(curStart, -7);
+    const wtd = revenue(ordersEver.filter((o) => this.inWin(o, curStart, todayD)));
+    const prevWtd = revenue(ordersEver.filter((o) => this.inWin(o, prevStart, addDays(prevStart, elapsed))));
     const wow = delta(wtd, prevWtd);
-    const wowBasis = `${shortDate(curWs)}–${shortDate(todayD)} (${elapsed + 1}d) vs `
-      + `${shortDate(prevWs)}–${shortDate(addDays(prevWs, elapsed))} · ${inrK(wtd)} vs ${inrK(prevWtd)}`;
+    const wowBasis = `${shortDate(curStart)}–${shortDate(todayD)} (${elapsed + 1}d) vs `
+      + `${shortDate(prevStart)}–${shortDate(addDays(prevStart, elapsed))} · ${inrK(wtd)} vs ${inrK(prevWtd)}`;
 
     // ---- leaderboard: leads handled (Caller 1) + orders/revenue (Agent Name) ----
     // Each agent carries BOTH today's numbers and the selected range's, so the
@@ -405,16 +409,24 @@ export default class App extends React.Component {
       .slice(0, 6);
 
     // ---- fulfillment: only real when the orders sheet carries a status column ----
+    // Orders with no status yet get their OWN slice rather than being dropped.
+    // Dropping them made this donut total 49 while Payment Mode beside it
+    // totalled 50 — two cards labelled "orders" disagreeing about how many
+    // there are. Both now count every order in the window.
     const fulfilRows = ordersWin.filter((o) => o.fulfilment);
     const fulfilMap = {};
-    fulfilRows.forEach((o) => { fulfilMap[o.fulfilment] = (fulfilMap[o.fulfilment] || 0) + 1; });
-    const fulfilOrder = ['Delivered', 'In Transit', 'Processing', 'Undelivered', 'RTO', 'Cancelled', 'Other'];
+    ordersWin.forEach((o) => {
+      const k = o.fulfilment || 'Awaiting status';
+      fulfilMap[k] = (fulfilMap[k] || 0) + 1;
+    });
+    const fulfilOrder = ['Delivered', 'In Transit', 'Processing', 'Undelivered', 'RTO', 'Cancelled', 'Other', 'Awaiting status'];
     // Processing and Undelivered used to share one amber, so two different
-    // states drew as one slice. They're separate hues now; the two states that
-    // carry no judgement (Cancelled, Other) stay deliberately neutral.
+    // states drew as one slice. They're separate hues now; the states that
+    // carry no judgement (Cancelled, Other, Awaiting) stay deliberately neutral.
     const fulfilColor = {
       Delivered: T.leaf, 'In Transit': T.blue, Processing: T.orchid,
       Undelivered: T.gold, RTO: T.rose, Cancelled: T.grey, Other: T.greyLt,
+      'Awaiting status': T.greyLt,
     };
     const fulfil = fulfilOrder
       .filter((k) => fulfilMap[k])
@@ -459,7 +471,9 @@ export default class App extends React.Component {
       todayRev: revenue(ordersToday), monthRev: revenue(ordersAll),
       weeks, maxWeek, wow, wowBasis,
       team,
-      fulfil, fulfilTotal: fulfilRows.length, hasFulfil: fulfilRows.length > 0,
+      // fulfilTracked = orders that actually carry a status; the donut's total is
+      // every order, so the two are deliberately different numbers.
+      fulfil, fulfilTracked: fulfilRows.length, hasFulfil: fulfilRows.length > 0,
       payments, payTotal: ordersWin.length,
       sources, totLeads, totRev, maxSrcRev,
     };
@@ -473,7 +487,7 @@ export default class App extends React.Component {
       width: 1920, height: 1080, flex: '0 0 auto', transformOrigin: 'center center',
       transform: `scale(${s.scale})`, overflow: 'hidden', position: 'relative',
       boxSizing: 'border-box', padding: '26px 32px 26px', display: 'flex',
-      flexDirection: 'column', gap: 18, fontFamily: "'Inter', sans-serif",
+      flexDirection: 'column', gap: 18, fontFamily: "'Instrument Sans', sans-serif",
       color: T.ink, background: T.stage,
       '--card': T.card, '--line': T.line, '--ink': T.ink, '--label': T.label,
       '--accent': T.accent, '--accent-hi': T.accentHi, '--accent-mid': T.accentMid,
@@ -497,7 +511,6 @@ export default class App extends React.Component {
               {this.bottomRow()}
             </>
           )}
-          {s.landed && this.orderToast()}
           {s.modal && this.modal()}
           {s.settingsOpen && (
             <Settings
@@ -543,7 +556,7 @@ export default class App extends React.Component {
       ? s.lastSync.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
       : '—';
     const modeBtn = (on) => ({
-      border: 'none', cursor: 'pointer', fontFamily: "'Inter'", fontWeight: 700, fontSize: 12,
+      border: 'none', cursor: 'pointer', fontFamily: "'Instrument Sans'", fontWeight: 700, fontSize: 12,
       letterSpacing: '.06em', padding: '8px 16px', borderRadius: 9, display: 'flex',
       alignItems: 'center', gap: 7, transition: 'all .2s ease',
       background: on ? '#fff' : 'transparent', color: on ? T.accentInk : T.label,
@@ -569,7 +582,7 @@ export default class App extends React.Component {
             <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: '.16em', color: T.posInk }}>LIVE</span>
           </div>
           <div style={{ textAlign: 'right', lineHeight: 1.1 }}>
-            <div style={{ fontFamily: MONO_G, fontWeight: 600, fontSize: 24, letterSpacing: '.01em', color: T.ink }}>
+            <div style={{ fontFamily: NUM, fontWeight: 600, fontSize: 24, letterSpacing: '.01em', color: T.ink }}>
               {s.now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             </div>
             <div style={{ fontSize: 12, color: T.label, fontWeight: 500 }}>
@@ -652,7 +665,7 @@ export default class App extends React.Component {
     const s = this.state;
     const b = this.bounds();
     const field = {
-      fontFamily: "'Inter'", fontWeight: 600, fontSize: 13, color: T.ink,
+      fontFamily: "'Instrument Sans'", fontWeight: 600, fontSize: 13, color: T.ink,
       border: `1px solid ${T.line}`, background: '#fff', borderRadius: 8,
       padding: '6px 9px', cursor: 'pointer', colorScheme: 'light',
     };
@@ -680,7 +693,7 @@ export default class App extends React.Component {
     const s = this.state;
     const M = this.model();
     const selectStyle = {
-      fontFamily: "'Inter'", fontWeight: 600, fontSize: 13, color: T.ink,
+      fontFamily: "'Instrument Sans'", fontWeight: 600, fontSize: 13, color: T.ink,
       border: `1px solid ${T.line}`, background: '#fff', borderRadius: 8,
       padding: '7px 10px', cursor: 'pointer',
     };
@@ -701,7 +714,7 @@ export default class App extends React.Component {
             const on = s.range === key;
             return (
               <button key={key} onClick={() => this.pickRange(key)} style={{
-                border: 'none', cursor: 'pointer', fontFamily: "'Inter'", fontWeight: 600, fontSize: 12,
+                border: 'none', cursor: 'pointer', fontFamily: "'Instrument Sans'", fontWeight: 600, fontSize: 12,
                 padding: '6px 14px', borderRadius: 7, transition: 'all .18s ease',
                 background: on ? '#fff' : 'transparent', color: on ? T.accentInk : T.label,
                 boxShadow: on ? '0 1px 3px rgba(22,32,46,.12)' : 'none',
@@ -744,7 +757,7 @@ export default class App extends React.Component {
     const monthLeads = M.leadsAll.length;
     const stat = (v, l, color) => (
       <div>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: MONO_G, color: color || T.ink }}>{v}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: NUM, color: color || T.ink }}>{v}</div>
         <div style={{ fontSize: 11, color: T.label, textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>{l}</div>
       </div>
     );
@@ -767,14 +780,14 @@ export default class App extends React.Component {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.accent }} />
             <span style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '.14em', color: T.ink, fontWeight: 700 }}>Today's Revenue</span>
           </div>
-          <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 74, lineHeight: .9, letterSpacing: '-.02em', color: T.accent, marginTop: 'auto' }}>{inr(M.todayRev)}</div>
+          <div style={{ fontFamily: NUM, fontWeight: 700, fontSize: 74, lineHeight: .9, letterSpacing: '-.02em', color: T.accent, marginTop: 'auto' }}>{inr(M.todayRev)}</div>
           <div style={{ display: 'flex', gap: 40, marginTop: 14 }}>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 700, fontFamily: MONO_G, color: T.ink }}>{num(M.ordersToday.length)}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, fontFamily: NUM, color: T.ink }}>{num(M.ordersToday.length)}</div>
               <div style={{ fontSize: 11, color: T.label, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>orders today</div>
             </div>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 700, fontFamily: MONO_G, color: T.ink }}>{pctStr(M.ordersToday.length, M.leadsToday.length)}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, fontFamily: NUM, color: T.ink }}>{pctStr(M.ordersToday.length, M.leadsToday.length)}</div>
               <div style={{ fontSize: 11, color: T.label, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>conversion</div>
             </div>
           </div>
@@ -786,7 +799,7 @@ export default class App extends React.Component {
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.accentMid }} />
             <span style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '.14em', color: T.label, fontWeight: 700 }}>This Month · MTD</span>
           </div>
-          <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 52, lineHeight: .9, letterSpacing: '-.02em', marginTop: 'auto', color: T.ink }}>{inr(M.monthRev)}</div>
+          <div style={{ fontFamily: NUM, fontWeight: 700, fontSize: 52, lineHeight: .9, letterSpacing: '-.02em', marginTop: 'auto', color: T.ink }}>{inr(M.monthRev)}</div>
           <div style={{ display: 'flex', gap: 34, marginTop: 14, flexWrap: 'wrap' }}>
             {stat(num(monthOrders), 'orders MTD')}
             {stat(pctStr(monthOrders, monthLeads), 'conversion')}
@@ -827,7 +840,7 @@ export default class App extends React.Component {
                   title={`${w.tag === 'THIS' ? 'This week' : 'Week ' + w.n}: ${shortDate(w.from)}–${shortDate(w.to)} (${w.days} day${w.days === 1 ? '' : 's'}) · ${inr(w.rev)}`}
                   style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: 6 }}
                 >
-                  <div style={{ fontSize: 12, color: labelColor, fontWeight: 700, fontFamily: MONO_G, flex: '0 0 auto' }}>{inrK(w.rev)}</div>
+                  <div style={{ fontSize: 12, color: labelColor, fontWeight: 700, fontFamily: NUM, flex: '0 0 auto' }}>{inrK(w.rev)}</div>
                   <div style={{ flex: 1, width: '100%', minHeight: 0, display: 'flex', alignItems: 'flex-end' }}>
                     {/* A week still in progress is drawn hollow, so a short bar
                         reads as "not finished yet" rather than "collapsed". */}
@@ -842,7 +855,7 @@ export default class App extends React.Component {
                       is which days it covers, since they aren't all the same
                       length. The month sits in the panel title above. */}
                   <div style={{
-                    fontSize: 12, color: labelColor, fontWeight: 700, fontFamily: MONO_G,
+                    fontSize: 12, color: labelColor, fontWeight: 700, fontFamily: NUM,
                     letterSpacing: '.01em', whiteSpace: 'nowrap', flex: '0 0 auto',
                   }}>{w.span}</div>
                 </div>
@@ -945,7 +958,7 @@ export default class App extends React.Component {
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 'auto', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: MONO_G, fontWeight: 700, lineHeight: 1,
+                    fontFamily: NUM, fontWeight: 700, lineHeight: 1,
                     fontSize: hero ? heroSize(todaySize) : todaySize, letterSpacing: '-.02em',
                     color: hero ? T.accent : T.ink,
                   }}>{num(d.today)}</div>
@@ -957,7 +970,7 @@ export default class App extends React.Component {
                 <div style={{ width: 1, alignSelf: 'stretch', background: hero ? T.accentMid : T.line, margin: '4px 2px' }} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
                   <div style={{
-                    fontFamily: MONO_G, fontWeight: 700, lineHeight: 1,
+                    fontFamily: NUM, fontWeight: 700, lineHeight: 1,
                     fontSize: hero ? heroSize(monthSize) : monthSize, letterSpacing: '-.02em',
                     color: hero ? T.accentInk : T.ink,
                   }}>{num(d.month)}</div>
@@ -1114,7 +1127,7 @@ export default class App extends React.Component {
           alignItems: 'flex-end', gap: 3,
         }}>
           <span style={{
-            fontFamily: MONO_G, fontWeight: 700, fontSize: 56, lineHeight: 1,
+            fontFamily: NUM, fontWeight: 700, fontSize: 56, lineHeight: 1,
             letterSpacing: '-.03em', color: big ? T.accent : T.greyLt,
           }}>{num(big)}</span>
           {/* The month is a separate statement, not a denominator — the word is
@@ -1122,7 +1135,7 @@ export default class App extends React.Component {
           {cols === 'both' && (
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 5, maxWidth: '100%' }}>
               <span style={{
-                fontFamily: MONO_G, fontWeight: 700, fontSize: 17, lineHeight: 1,
+                fontFamily: NUM, fontWeight: 700, fontSize: 17, lineHeight: 1,
                 color: p.orders ? T.label : T.greyLt,
               }}>{num(p.orders)}</span>
               <span style={{
@@ -1179,7 +1192,7 @@ export default class App extends React.Component {
                     width: g.avatar, height: g.avatar, borderRadius: '50%', flex: '0 0 auto',
                     background: lead ? T.accent : T.track, color: lead ? '#fff' : T.label,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: MONO_G, fontWeight: 700, fontSize: 18,
+                    fontFamily: NUM, fontWeight: 700, fontSize: 18,
                   }}>{initialsOf(p.name)}</span>
                   <span style={{
                     flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -1300,7 +1313,7 @@ export default class App extends React.Component {
               alignItems: 'center', justifyContent: 'center',
             }}>
               <div style={{
-                fontFamily: MONO_G, fontWeight: 700, fontSize: 42, lineHeight: 1,
+                fontFamily: NUM, fontWeight: 700, fontSize: 42, lineHeight: 1,
                 letterSpacing: '-.02em', color: T.ink,
               }}>{num(total)}</div>
               <div style={{
@@ -1340,14 +1353,14 @@ export default class App extends React.Component {
                       larger than the share without the row looking stepped. */}
                   <span style={{ display: 'flex', alignItems: 'baseline', gap: c.gap, flex: '0 0 auto' }}>
                     <span style={{
-                      width: c.count, textAlign: 'right', fontFamily: MONO_G, fontWeight: 700,
+                      width: c.count, textAlign: 'right', fontFamily: NUM, fontWeight: 700,
                       fontSize: 19, lineHeight: 1, letterSpacing: '-.01em',
                       color: bad ? T.negInk : T.ink,
                     }}>{num(sl.count)}</span>
                     {/* The donut already shows the share; this is the precise
                         readout of it, so it sits behind the count. */}
                     <span style={{
-                      width: c.pct, textAlign: 'right', fontFamily: MONO_G, fontWeight: 700,
+                      width: c.pct, textAlign: 'right', fontFamily: NUM, fontWeight: 700,
                       fontSize: 13.5, lineHeight: 1, color: bad ? T.neg : T.mute,
                     }}>{pct}%</span>
                   </span>
@@ -1364,21 +1377,30 @@ export default class App extends React.Component {
 
   fulfilmentCard() {
     const M = this.model();
+    // Every order in the window, so this donut and Payment Mode below it always
+    // agree on how many orders there are.
+    const total = M.ordersWin.length;
+    const untracked = total - M.fulfilTracked;
     return this.donutCard({
       title: `Fulfillment · ${this.rangeLabel()}`,
       slices: M.fulfil,
-      total: M.hasFulfil ? M.fulfilTotal : M.ordersWin.length,
-      empty: M.ordersWin.length
+      total,
+      empty: total
         ? 'These orders have no value in the "Order Status" column yet.'
         : 'No orders in this window yet.',
       delay: '.24s',
       onClick: M.hasFulfil ? () => this.openModal({
         kicker: `Fulfillment · ${this.rangeLabel()}`,
-        title: `${num(M.fulfilTotal)} Orders Tracked`,
-        big: pctStr((M.fulfil.find((f) => f.label === 'Delivered') || { count: 0 }).count, M.fulfilTotal),
-        bigLabel: 'delivered rate',
-        rows: M.fulfil.map((f) => ({ label: f.label, value: `${num(f.count)} · ${Math.round((f.count / M.fulfilTotal) * 100)}%`, color: f.color })),
-        note: `Based on the orders sheet's status column for ${this.rangeLabel().toLowerCase()}.`,
+        title: `${num(total)} Orders`,
+        // The delivered RATE is only meaningful against orders that have a
+        // status — an untracked order isn't undelivered, it's unknown.
+        big: pctStr((M.fulfil.find((f) => f.label === 'Delivered') || { count: 0 }).count, M.fulfilTracked),
+        bigLabel: 'delivered, of those tracked',
+        rows: M.fulfil.map((f) => ({ label: f.label, value: `${num(f.count)} · ${Math.round((f.count / (total || 1)) * 100)}%`, color: f.color })),
+        note: untracked
+          ? `${num(M.fulfilTracked)} of ${num(total)} carry a status; ${num(untracked)} `
+            + `${untracked === 1 ? 'is' : 'are'} still blank in the sheet's "Order Status" column.`
+          : `All ${num(total)} orders carry a delivery status.`,
       }) : null,
     });
   }
@@ -1416,7 +1438,7 @@ export default class App extends React.Component {
       <div style={{
         // Takes the larger share of the column — two source blocks with bars
         // need more room than one order does.
-        flex: '1.75 1 0', minHeight: 0,
+        flex: '1.45 1 0', minHeight: 0,
         background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radius, boxShadow: T.shadow,
         padding: '18px 22px', display: 'flex', flexDirection: 'column',
         animation: 'floatIn .6s cubic-bezier(.2,.7,.2,1) .36s both',
@@ -1448,7 +1470,7 @@ export default class App extends React.Component {
                   [inrK(src.rev), 'revenue', T.ink],
                 ].map(([v, l, color]) => (
                   <div key={l}>
-                    <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 23, color }}>{v}</div>
+                    <div style={{ fontFamily: NUM, fontWeight: 700, fontSize: 23, color }}>{v}</div>
                     <div style={{ fontSize: 10, color: T.label, textTransform: 'uppercase', letterSpacing: '.05em', fontWeight: 700 }}>{l}</div>
                   </div>
                 ))}
@@ -1469,211 +1491,125 @@ export default class App extends React.Component {
   }
 
   /**
-   * The last order that landed, kept on screen permanently.
+   * The last order that landed — now the ONLY place a sale announces itself,
+   * since the pop-up card is gone. That makes this block do two jobs at once:
+   * a standing record of the most recent sale, and the moment when a new one
+   * arrives. It handles the second by lighting up rather than by appearing,
+   * which is why it can be permanent and still feel like news.
    *
-   * The popup is the event and this is the record: once the card has dismissed
-   * itself there's still somewhere to look for what the most recent sale was.
-   * It ignores the date filter on purpose — "latest" that goes blank when you
+   * It ignores the date filter on purpose — a "latest" that goes blank when you
    * look at an older window would be answering a different question.
    */
   latestOrderCard() {
     const o = this.model().latest;
-    const label = (text) => (
+    const fresh = Boolean(this.state.landed);   // set for ~12s after a new order
+    const cap = (text, color) => (
       <span style={{
-        fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em',
-        fontWeight: 700, color: T.mute,
+        fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em',
+        fontWeight: 700, color: color || T.mute,
       }}>{text}</span>
     );
     return (
       <div style={{
-        // Shares the column with the source panel instead of sitting at its
-        // content height, so the two cards bottom out level with the ones beside
-        // them. The source panel keeps the larger share — it has more to show.
         flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column',
-        background: T.card, border: `1px solid ${T.line}`,
-        borderRadius: T.radius, boxShadow: T.shadow, padding: '16px 20px 17px',
+        background: fresh ? T.accentSoft : T.card,
+        border: `1px solid ${fresh ? T.accent : T.line}`,
+        borderRadius: T.radius, padding: '16px 22px 18px',
+        boxShadow: fresh
+          ? '0 0 0 3px rgba(255,71,87,.16), 0 10px 26px rgba(214,42,65,.20)'
+          : T.shadow,
+        // The arrival is a change of state, not an entrance — a transition keeps
+        // the card in place and still marks the moment.
+        transition: 'background .45s ease, border-color .45s ease, box-shadow .45s ease',
         animation: 'floatIn .6s cubic-bezier(.2,.7,.2,1) .42s both',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: o ? T.accent : T.greyLt }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto' }}>
+          <span style={{ position: 'relative', width: 9, height: 9, borderRadius: '50%', background: o ? T.accent : T.greyLt }}>
+            {fresh && <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: T.accent, animation: 'livePulse 2s ease-out infinite' }} />}
+          </span>
           <span style={{
-            fontSize: 12, textTransform: 'uppercase', letterSpacing: '.13em',
-            color: T.label, fontWeight: 700,
+            fontSize: 13, textTransform: 'uppercase', letterSpacing: '.13em',
+            color: fresh ? T.accentInk : T.label, fontWeight: 700,
           }}>Latest Order</span>
-          <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: T.mute }}>
-            {o ? (o.date === this.state.meta.today ? 'today' : shortDate(parseISO(o.date))) : '—'}
+          <span style={{ marginLeft: 'auto' }}>
+            {fresh
+              ? <span style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
+                  color: '#fff', background: T.accent, padding: '4px 10px', borderRadius: 999,
+                }}>Just in</span>
+              : cap(o ? (o.date === this.state.meta.today ? 'today' : shortDate(parseISO(o.date))) : '—')}
           </span>
         </div>
 
         {!o ? (
-          <div style={{
-            flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
-          }}>
-            <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 44, lineHeight: 1, color: T.greyLt }}>N/A</div>
-            <div style={{ fontSize: 13, color: T.label, fontWeight: 500, marginTop: 9, lineHeight: 1.45 }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontFamily: NUM, fontWeight: 700, fontSize: 48, lineHeight: 1, color: T.greyLt }}>N/A</div>
+            <div style={{ fontSize: 15, color: T.label, fontWeight: 500, marginTop: 10, lineHeight: 1.45 }}>
               No orders on the board yet. The first one lands here.
             </div>
           </div>
         ) : (
           <>
-            {/* The sale itself takes the middle of the card and grows with it;
-                the agent line stays pinned to the foot so the two cards in this
-                column keep a common baseline. */}
-            <div style={{
-              flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={{
-                  fontFamily: MONO_G, fontWeight: 700, fontSize: 44, lineHeight: 1,
-                  letterSpacing: '-.02em', color: T.accent,
-                }}>{inr(o.value)}</span>
-                {o.qty > 1 && <span style={{ fontSize: 14, fontWeight: 700, color: T.label }}>× {num(o.qty)}</span>}
-              </div>
-              {o.prepaid > 0 && o.cod > 0 && (
-                <div style={{ fontSize: 12, fontWeight: 600, color: T.mute, marginTop: 7 }}>
-                  {inrK(o.prepaid)} paid · {inrK(o.cod)} on delivery
+            {/* Money on the left, what was actually sold on the right. The card is
+                wider than it is tall, so this reads across instead of stacking
+                everything into a narrow column of small type. */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 26, flex: 1, minHeight: 0, marginTop: 14 }}>
+              <div style={{ flex: '0 0 auto' }}>
+                <div style={{
+                  fontFamily: NUM, fontWeight: 700, fontSize: 54, lineHeight: 1,
+                  letterSpacing: '-.03em', color: T.accent,
+                }}>{inr(o.value)}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
+                  {o.qty > 1 ? (
+                    <>
+                      <span style={{ fontFamily: NUM, fontSize: 19, fontWeight: 700, color: T.label }}>{num(o.qty)}</span>
+                      {cap('units')}
+                    </>
+                  ) : cap('single unit')}
                 </div>
-              )}
-              <div style={{
-                fontSize: 15, fontWeight: 600, color: T.ink, marginTop: 9, lineHeight: 1.35,
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>{o.product}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 19, fontWeight: 600, color: T.ink, lineHeight: 1.3,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}>{o.product}</div>
+                {o.prepaid > 0 && o.cod > 0 && (
+                  <div style={{ fontSize: 14, fontWeight: 600, color: T.label, marginTop: 8 }}>
+                    {inrK(o.prepaid)} paid · {inrK(o.cod)} on delivery
+                  </div>
+                )}
+              </div>
             </div>
+
             <div style={{
-              flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 10,
-              paddingTop: 13, borderTop: `1px solid ${T.line}`,
+              flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 12,
+              paddingTop: 14, marginTop: 4, borderTop: `1px solid ${fresh ? T.accentMid : T.line}`,
             }}>
               <span style={{
-                width: 34, height: 34, borderRadius: '50%', flex: '0 0 auto', background: T.track,
-                color: T.label, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: MONO_G, fontWeight: 700, fontSize: 13,
+                width: 40, height: 40, borderRadius: '50%', flex: '0 0 auto',
+                background: fresh ? T.accent : T.track, color: fresh ? '#fff' : T.label,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: NUM, fontWeight: 700, fontSize: 15,
               }}>{initialsOf(o.agent)}</span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{
-                  fontSize: 15, fontWeight: 700, color: T.ink,
+                  fontSize: 19, fontWeight: 700, color: T.ink,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{o.agent}</div>
-                {label(o.customer ? `for ${o.customer}` : 'agent')}
+                {o.customer && (
+                  <div style={{
+                    fontSize: 14, color: T.label, fontWeight: 500, marginTop: 1,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>for {o.customer}</div>
+                )}
               </div>
               <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.label }}>{o.leadSource}</div>
-                {o.mode !== 'Other' && label(o.mode)}
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.label }}>{o.leadSource}</div>
+                {o.mode !== 'Other' && cap(o.mode)}
               </div>
             </div>
           </>
         )}
-      </div>
-    );
-  }
-
-  // ── order landed popup ─────────────────────────────────────────────────────
-  /**
-   * The order card. Replaces the rolling ticker that used to sit along the foot:
-   * that rail was always on and always showing something, so a real sale looked
-   * exactly like the twelve before it. This appears only when an order actually
-   * lands, shows only that order, and takes itself away again.
-   *
-   * It sits bottom-right rather than centre so it never covers a figure someone
-   * on the floor might be reading at that moment.
-   */
-  orderToast() {
-    const { order: o, extra } = this.state.landed;
-    const meta = [o.leadSource, o.mode !== 'Other' ? o.mode : null, o.region || null].filter(Boolean);
-    const chip = (text, i) => (
-      <span key={text + i} style={{
-        fontSize: 12, fontWeight: 700, letterSpacing: '.03em', padding: '5px 11px',
-        borderRadius: 999, background: T.track, color: T.label, whiteSpace: 'nowrap',
-      }}>{text}</span>
-    );
-    return (
-      <div style={{
-        position: 'absolute', right: 32, bottom: 26, width: 470, zIndex: 60,
-        background: T.card, borderRadius: 20, overflow: 'hidden',
-        border: `1px solid ${T.accentMid}`,
-        boxShadow: '0 18px 48px rgba(214,42,65,.24),0 4px 12px rgba(22,32,46,.10)',
-        // `forwards`, never `both`: with a backwards fill the card holds the
-        // keyframe's opacity:0 before the animation starts, so anything that
-        // stalls it — a throttled background tab — leaves the card invisible.
-        // This way the card is legible even if the animation never runs at all.
-        animation: 'toastIn .62s cubic-bezier(.16,1.02,.3,1) forwards',
-      }}>
-        <div style={{ height: 4, background: T.accent }} />
-        <div style={{ padding: '18px 24px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ position: 'relative', width: 9, height: 9, borderRadius: '50%', background: T.accent }}>
-              <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: T.accent, animation: 'livePulse 2s ease-out infinite' }} />
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.accentInk }}>
-              Order landed
-            </span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: T.mute }}>
-              {o.date === this.state.meta.today ? 'just now' : shortDate(parseISO(o.date))}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 12 }}>
-            <span style={{
-              fontFamily: MONO_G, fontWeight: 700, fontSize: 48, lineHeight: 1,
-              letterSpacing: '-.02em', color: T.accent,
-            }}>{inr(o.value)}</span>
-            {o.qty > 1 && (
-              <span style={{ fontSize: 15, fontWeight: 700, color: T.label }}>× {num(o.qty)}</span>
-            )}
-            {/* Where the total came from, on the orders that are genuinely split
-                between money already in and money the courier still collects. */}
-            {o.prepaid > 0 && o.cod > 0 && (
-              <span style={{ fontSize: 13, fontWeight: 600, color: T.label, marginLeft: 'auto' }}>
-                {inrK(o.prepaid)} paid · {inrK(o.cod)} on delivery
-              </span>
-            )}
-          </div>
-
-          <div style={{
-            fontSize: 16, fontWeight: 600, color: T.ink, marginTop: 8, lineHeight: 1.35,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          }}>{o.product}</div>
-
-          {/* Who closed it — the same initials mark the leaderboard uses, so the
-              name on the card and the name in the table read as one person. */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 11, marginTop: 16,
-            paddingTop: 15, borderTop: `1px solid ${T.line}`,
-          }}>
-            <span style={{
-              width: 38, height: 38, borderRadius: '50%', flex: '0 0 auto', background: T.accent,
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: MONO_G, fontWeight: 700, fontSize: 15,
-            }}>{initialsOf(o.agent)}</span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize: 17, fontWeight: 700, color: T.ink,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{o.agent}</div>
-              {o.customer && (
-                <div style={{ fontSize: 13, color: T.label, fontWeight: 500, marginTop: 1 }}>
-                  for {o.customer}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {meta.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 14 }}>
-              {meta.map(chip)}
-            </div>
-          )}
-
-          {extra > 0 && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.accentInk, marginTop: 13 }}>
-              +{num(extra)} more landed in the same sync
-            </div>
-          )}
-        </div>
-        {/* Draws down its own remaining time, so the card never just vanishes. */}
-        <div style={{
-          height: 3, background: T.accent, transformOrigin: 'left',
-          animation: `toastBar ${App.TOAST_MS}ms linear both`,
-        }} />
       </div>
     );
   }
@@ -1697,7 +1633,7 @@ export default class App extends React.Component {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
             <div>
               <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.14em', color: T.accentInk, fontWeight: 700 }}>{m.kicker}</div>
-              <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 30, letterSpacing: '-.01em', marginTop: 4, color: T.ink }}>{m.title}</div>
+              <div style={{ fontFamily: NUM, fontWeight: 700, fontSize: 30, letterSpacing: '-.01em', marginTop: 4, color: T.ink }}>{m.title}</div>
             </div>
             <button className="scc-closebtn" onClick={() => this.setState({ modal: null })} style={{
               border: 'none', background: T.track, width: 38, height: 38, borderRadius: 10, cursor: 'pointer',
@@ -1707,7 +1643,7 @@ export default class App extends React.Component {
             </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginTop: 20, paddingBottom: 18, borderBottom: `1px solid ${T.line}` }}>
-            <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 56, lineHeight: .9, color: T.accent }}>{m.big}</div>
+            <div style={{ fontFamily: NUM, fontWeight: 700, fontSize: 56, lineHeight: .9, color: T.accent }}>{m.big}</div>
             <div style={{ fontSize: 14, color: T.label, fontWeight: 600 }}>{m.bigLabel}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
@@ -1716,7 +1652,7 @@ export default class App extends React.Component {
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15, color: T.label, fontWeight: 600 }}>
                   <span style={{ width: 9, height: 9, borderRadius: 3, background: row.color }} />{row.label}
                 </span>
-                <span style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 20, color: T.ink }}>{row.value}</span>
+                <span style={{ fontFamily: NUM, fontWeight: 700, fontSize: 20, color: T.ink }}>{row.value}</span>
               </div>
             ))}
           </div>

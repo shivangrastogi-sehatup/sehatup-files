@@ -19,17 +19,20 @@ const T = {
   neg: '#D93A5C', negInk: '#C22947', negSoft: '#FDECEF',
   warn: '#D68A06', warnInk: '#A96A04', warnSoft: '#FDF3E0',
 };
-const MONO_G = "'Space Grotesk', sans-serif";
+// Archivo carries every figure on the board. Chosen for true tabular
+// numerals — each numeric column here is right-aligned in a fixed cell, so
+// digits that change width between refreshes would make the numbers twitch.
+const NUM = "'Archivo', sans-serif";
 
 const inputStyle = {
-  width: '100%', fontFamily: "'Inter'", fontSize: 13, fontWeight: 500, color: T.ink,
+  width: '100%', fontFamily: "'Instrument Sans'", fontSize: 13, fontWeight: 500, color: T.ink,
   border: `1px solid ${T.line}`, background: '#fff', borderRadius: 8, padding: '9px 11px',
 };
 const btn = (kind) => ({
   border: kind === 'ghost' ? `1px solid ${T.line}` : 'none',
   background: kind === 'primary' ? T.accent : kind === 'ghost' ? '#fff' : T.track,
   color: kind === 'primary' ? '#fff' : T.label,
-  fontFamily: "'Inter'", fontWeight: 700, fontSize: 12, letterSpacing: '.02em',
+  fontFamily: "'Instrument Sans'", fontWeight: 700, fontSize: 12, letterSpacing: '.02em',
   padding: '9px 14px', borderRadius: 9, cursor: 'pointer', whiteSpace: 'nowrap',
 });
 const tinyLabel = {
@@ -98,7 +101,7 @@ export default class Settings extends React.Component {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, padding: '26px 30px 18px', borderBottom: `1px solid ${T.line}` }}>
             <div>
               <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.14em', color: T.accent, fontWeight: 700 }}>Configuration</div>
-              <div style={{ fontFamily: MONO_G, fontWeight: 700, fontSize: 26, letterSpacing: '-.01em', marginTop: 4, color: T.ink }}>Data Sources &amp; Columns</div>
+              <div style={{ fontFamily: NUM, fontWeight: 700, fontSize: 26, letterSpacing: '-.01em', marginTop: 4, color: T.ink }}>Data Sources &amp; Columns</div>
               <div style={{ fontSize: 13, color: T.label, fontWeight: 500, marginTop: 6, lineHeight: 1.5 }}>
                 Leave a sheet blank to keep the one configured on the server. The service account
                 must be shared on any sheet you point at, or it will come back empty.
@@ -119,7 +122,7 @@ export default class Settings extends React.Component {
               const st = status && status[src.id];
               return (
                 <button key={src.id} onClick={() => this.setState({ open: src.id })} style={{
-                  border: 'none', cursor: 'pointer', fontFamily: "'Inter'", fontWeight: 700, fontSize: 13,
+                  border: 'none', cursor: 'pointer', fontFamily: "'Instrument Sans'", fontWeight: 700, fontSize: 13,
                   padding: '10px 16px', borderRadius: '9px 9px 0 0',
                   background: on ? T.accentSoft : 'transparent', color: on ? T.accentInk : T.label,
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -227,7 +230,7 @@ export default class Settings extends React.Component {
                 return (
                   <button key={t} onClick={() => this.setSheet(src.id, { tab: t })} style={{
                     border: `1px solid ${on ? T.accent : T.line}`, background: on ? T.accentSoft : '#fff',
-                    color: on ? T.accent : T.label, fontFamily: "'Inter'", fontWeight: 600, fontSize: 12,
+                    color: on ? T.accent : T.label, fontFamily: "'Instrument Sans'", fontWeight: 600, fontSize: 12,
                     padding: '6px 11px', borderRadius: 999, cursor: 'pointer',
                   }}>{t}</button>
                 );

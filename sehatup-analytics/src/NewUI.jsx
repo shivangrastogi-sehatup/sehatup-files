@@ -6574,10 +6574,13 @@ function OrderCreate({ context = {}, setRoute }) {
       }
 
       // Build advanced draft payload
+      // Must stay identical to the summary's getDiscountedUnitPrice — the operator is shown one
+      // and charged the other, so an over-100% percentage clamping differently here would price
+      // the line negative and have Shopify reject the whole order.
       const getDiscountedPrice = (item) => {
         const dv = parseFloat(item.discountValue) || 0;
         if (dv <= 0) return item.price;
-        if (item.discountType === 'percentage') return item.price * (1 - dv / 100);
+        if (item.discountType === 'percentage') return Math.max(0, item.price * (1 - Math.min(dv, 100) / 100));
         return Math.max(0, item.price - dv);
       };
 
@@ -6721,6 +6724,8 @@ function OrderCreate({ context = {}, setRoute }) {
       // Stored on the CRM row so the orders list can resolve the EXACT order instead of
       // guessing by phone number. Stays null for drafts (a draft has no order number).
       let finalOrderName = null;
+      // Set only if Shopify's own total disagrees with the total the operator was shown.
+      let totalMismatchWarning = null;
       if (mode === 'active') {
         try {
           console.log('--- CREATING ACTIVE ORDER (explicit payment method) ---');
@@ -6736,26 +6741,24 @@ function OrderCreate({ context = {}, setRoute }) {
           const d = draftRes;
           const orderPayload = {
             order: {
-              // Build line items from the source cart so each carries its REAL unit price
-              // plus a proper line-level `applied_discount` (e.g. the free Ashwagandha
-              // sample = 100% off). Built from `items` (not echoed from the draft response)
-              // so the discount is always present and the amount is correct.
+              // Build line items from the source cart, each at its NET unit price.
+              //
+              // The Orders REST API has no line-level `applied_discount` — that field exists
+              // only on DRAFT orders, and orders.json drops it without an error. Sending it
+              // here is what charged customers for the free Ashwagandha sample (and silently
+              // voided every per-product discount): the draft priced the sample at 0, the
+              // rebuilt order charged the full Rs.399, and the pending transaction was left
+              // short by that amount. `price` IS honoured on order creation and overrides the
+              // variant price, so the discount is baked into it instead — a 100%-off sample
+              // becomes a genuine Rs.0.00 line.
+              //
+              // Do NOT re-add `applied_discount` alongside this: if Shopify ever starts
+              // honouring it, the line would be discounted twice.
               line_items: items.map(item => {
-                const li = { quantity: item.qty, price: Number(item.price).toFixed(2) };
+                const netUnit = getDiscountedPrice(item);
+                const li = { quantity: item.qty, price: netUnit.toFixed(2) };
                 if (item.variantId) li.variant_id = item.variantId;
                 else if (item.name) li.title = item.name;
-                const dv = parseFloat(item.discountValue) || 0;
-                if (dv > 0) {
-                  const discountedUnit = getDiscountedPrice(item);
-                  const amount = (((Number(item.price) || 0) - discountedUnit) * item.qty).toFixed(2);
-                  li.applied_discount = {
-                    value_type: item.discountType === 'percentage' ? 'percentage' : 'fixed_amount',
-                    value: String(dv),
-                    amount,
-                    title: item.discountReason || 'Discount',
-                    description: item.discountReason || 'Discount',
-                  };
-                }
                 return li;
               }),
               shipping_lines: d.shipping_line
@@ -6792,21 +6795,18 @@ function OrderCreate({ context = {}, setRoute }) {
           }
 
           // Reconciliation guard — the transaction below is pinned to the draft's total_price,
-          // but the order is rebuilt from explicit line prices + per-line discounts + one combined
-          // order discount. Recompute the rebuilt order's total and bail BEFORE posting if it drifts
-          // from the draft total beyond the whole-rupee rounding tolerance, so a future mismatch
-          // fails loudly here instead of silently creating an over/under-paid order (the class of the
+          // but the order is rebuilt from net line prices + one combined order discount.
+          // Recompute the rebuilt order's total and bail BEFORE posting if it drifts from the
+          // draft total beyond the whole-rupee rounding tolerance, so a future mismatch fails
+          // loudly here instead of silently creating an over/under-paid order (the class of the
           // old "Rs.200 unauthorized" bug). ±Rs.1 is expected from integer-rounding the combined discount.
+          const draftTotal = parseFloat(d.total_price) || 0;
           {
-            const lineItemsTotal = orderPayload.order.line_items.reduce((s, it) => {
-              const gross = (parseFloat(it.price) || 0) * (Number(it.quantity) || 0);
-              const lineDisc = parseFloat(it.applied_discount?.amount) || 0;
-              return s + gross - lineDisc;
-            }, 0);
+            const lineItemsTotal = orderPayload.order.line_items.reduce(
+              (s, it) => s + (parseFloat(it.price) || 0) * (Number(it.quantity) || 0), 0);
             const shipTotal = (orderPayload.order.shipping_lines || []).reduce((s, sl) => s + (parseFloat(sl.price) || 0), 0);
             const orderDisc = (orderPayload.order.discount_codes || []).reduce((s, dc) => s + (parseFloat(dc.amount) || 0), 0);
             const recomputedTotal = lineItemsTotal + shipTotal - orderDisc;
-            const draftTotal = parseFloat(d.total_price) || 0;
             const drift = Math.abs(recomputedTotal - draftTotal);
             console.log('--- ORDER TOTAL RECONCILIATION ---', { recomputedTotal, draftTotal, drift });
             if (drift > 1) {
@@ -6827,6 +6827,20 @@ function OrderCreate({ context = {}, setRoute }) {
           finalOrderName = orderResData.order.name
             || (orderResData.order.order_number != null ? `#${orderResData.order.order_number}` : null);
           console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, finalOrderName, orderResData.order.payment_gateway_names);
+
+          // Post-create check against what Shopify ACTUALLY priced. The guard above only proves
+          // our payload is self-consistent; this proves Shopify agreed with it. Shopify dropping
+          // a discount it doesn't support is silent (no userError) — that is exactly how the free
+          // sample got charged for weeks. The order already exists, so this can't abort; it flags
+          // the order number so the operator can correct it in Shopify admin straight away.
+          const createdTotal = parseFloat(orderResData.order.total_price) || 0;
+          if (Math.abs(createdTotal - draftTotal) > 1) {
+            totalMismatchWarning =
+              `WARNING: Shopify priced ${finalOrderName || finalOrderId} at Rs.${createdTotal.toFixed(2)}, ` +
+              `but the order summary showed Rs.${draftTotal.toFixed(2)}. ` +
+              `Check the discounts on this order in Shopify admin before it ships.`;
+            console.error('--- ACTIVE ORDER TOTAL MISMATCH ---', { createdTotal, draftTotal });
+          }
 
           // The draft was only needed to compute prices/shipping/discounts — discard it.
           fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => { });
@@ -6884,7 +6898,8 @@ function OrderCreate({ context = {}, setRoute }) {
 
       alert(
         (mode === 'active' ? 'Active Order successfully created!' : 'Draft Order successfully saved!') +
-        (sheetSynced ? '' : '\n\n(Note: the CRM sheet log did not update, but the order is created in Shopify.)')
+        (sheetSynced ? '' : '\n\n(Note: the CRM sheet log did not update, but the order is created in Shopify.)') +
+        (totalMismatchWarning ? `\n\n${totalMismatchWarning}` : '')
       );
       if (setRoute) setRoute('crm_orders');
     } catch (err) {

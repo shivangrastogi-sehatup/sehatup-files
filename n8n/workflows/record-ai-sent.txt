@@ -13,7 +13,16 @@ const now = Date.now();
 const convId = String(ai.phone || '').replace(/[^0-9]/g, '');
 const msgId = sentId || ('local_' + now + '_' + Math.floor(Math.random() * 1e6));
 
-console.log('QR send response (first 200):', JSON.stringify(send).slice(0, 200), '| id:', sentId);
+// WHY the bot said what it said, stored next to the message itself. n8n Cloud prunes
+// executions, so an n8n-only record disappears exactly when you need it for a complaint that
+// came in last week - and console.log lines are per-execution and not searchable across
+// chats. This lands in Firestore, so it is queryable and shows in the CRM beside the reply.
+// Built in Extract AI Response, where the guard flags live, so the list of guards exists in
+// exactly one place.
+const aiGuards = String(ai.aiGuards || '');
+
+console.log('QR send response (first 200):', JSON.stringify(send).slice(0, 200), '| id:', sentId,
+  '| guards:', aiGuards || 'none');
 
 return [{
   json: {
@@ -22,6 +31,7 @@ return [{
     id: msgId,
     phone: ai.phone,
     direction: 'out',
+    aiGuards,
     // messageBy is overwritten by QuickReply's status callback ('AI' -> 'AGENT'), and so
     // is agentId - both end up identical to a human agent's CRM reply. senderKind is
     // written once here and never touched again, so it is the ONLY field that lets

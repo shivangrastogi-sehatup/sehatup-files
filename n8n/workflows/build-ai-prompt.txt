@@ -340,4 +340,4 @@ const _debug = {
 };
 console.log('[Build AI Prompt] fetched=' + evs.length + ' doc=' + _debug.doc + ' time=' + _debug.time + ' orders=' + orderCtxDebug + ' products=' + productCtxDebug + ' history=' + JSON.stringify(_debug.sequence));
 
-return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, orderCtxDebug, productCtxDebug, docOk, docChars, docMissing, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];
+return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, displayName, orderCtxDebug, productCtxDebug, docOk, docChars, docMissing, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];

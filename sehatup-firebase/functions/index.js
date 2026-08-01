@@ -2789,7 +2789,7 @@ exports.qrCustomerContext = onRequest(
     // Never fail the caller: n8n runs this inline in the reply path, so an error here
     // must degrade to "no data" (the bot then says the team will check) rather than
     // block the reply.
-    const out = { found: false, orderCount: 0, orders: [], summary: "", source: "none" };
+    const out = { found: false, orderCount: 0, orders: [], summary: "", source: "none", report: { found: false } };
     try {
       const expected = process.env.QR_CONTEXT_TOKEN || process.env.QUICKREPLY_WEBHOOK_TOKEN;
       const given = req.query.token || (req.body && req.body.token);
@@ -2802,11 +2802,45 @@ exports.qrCustomerContext = onRequest(
 
       const db = getFirestore();
       const cacheRef = db.collection("qr_context_cache").doc(p10);
+
+      // ---- Latest health-report submission ----------------------------------------
+      // "Hi I need help regarding my health report" almost always means: they finished the
+      // questionnaire but never pressed "Get My Report on WhatsApp" on the last page, so it
+      // was never delivered. The report itself exists either way - the submission is written
+      // on completion and CreatePDFOnFormSubmission fills reportDownloadUrl from a trigger,
+      // neither of which depends on the button. So this is a lookup, not a regeneration.
+      // Wrapped separately: a missing composite index here must not break order context.
+      try {
+        const rs = await db.collection("questionnaire_submissions")
+          .where("phone", "==", p10).orderBy("timestamp", "desc").limit(1).get();
+        if (!rs.empty) {
+          const d = rs.docs[0].data() || {};
+          const ts = d.timestamp && d.timestamp.toMillis ? d.timestamp.toMillis() : null;
+          out.report = {
+            found: true,
+            url: d.reportDownloadUrl || "",
+            generating: !d.reportDownloadUrl,     // PDF trigger has not finished yet
+            name: d.userName || "",
+            submittedAt: ts,
+            deliveredOnWhatsApp: !!d.isWhatsAppSent,
+          };
+        } else {
+          out.report = { found: false };
+        }
+      } catch (e) {
+        console.warn("[qrCustomerContext] report lookup failed:", e.message);
+        out.report = { found: false, error: e.message };
+      }
+
+      // The cache exists for Shopify's ~2 req/s REST limit, so ONLY the Shopify half is
+      // cached. The report is deliberately checked on every call and merged over the cached
+      // payload: someone finishes the questionnaire and messages within seconds, and a
+      // 10-minute-old "no report" would tell them they never filled it in.
       if (!req.query.fresh) {
         const snap = await cacheRef.get().catch(() => null);
         const c = snap && snap.exists ? snap.data() : null;
         if (c && c.at && Date.now() - c.at < QR_CTX_TTL_MS && c.payload) {
-          return res.status(200).json({ ...JSON.parse(c.payload), source: "cache" });
+          return res.status(200).json({ ...JSON.parse(c.payload), report: out.report, source: "cache" });
         }
       }
 
@@ -2976,7 +3010,7 @@ function qrMatchScore(queryTokens, title) {
   const normT = qrNormalise(title);
   if (normT === normQ) return 1;
   if (normT.includes(normQ) && normQ.length >= 4) return 0.95;
-  let total = 0, hits = 0, strong = 0;
+  let total = 0, hits = 0, strong = 0, exactHits = 0;
   for (const q of queryTokens) {
     let best = 0;
     for (const t of tTokens) best = Math.max(best, qrWordScore(q, t));
@@ -2987,11 +3021,19 @@ function qrMatchScore(queryTokens, title) {
     // a word the title doesn't contain: "endless tablet ka price" scored 0.43 and matched
     // NOTHING, which meant the Rx rule never fired for it. Same for "blue tea period"
     // (aliased to hormoniherb) and any "<product> chahiye mujhe" phrasing.
-    if (q.length >= 5 && tTokens.includes(q)) strong = Math.max(strong, 0.85);
+    // 4 characters, not 5. "Mujhe vaji bati or kern drop chahiye" returned Garcinia Cambogia
+    // Drops and NOT Vaji Bati: vaji/bati/kern are all 4 letters so none of them earned the
+    // boost, while "drops" (5) boosted every product with Drops in its name. The customer
+    // named two products by hand and got neither.
+    if (q.length >= 4 && tTokens.includes(q)) { exactHits++; strong = 0.85; }
   }
   // Average over query words, then reward matching more than one of them: "vaji bati"
   // hitting both words should beat "bati" alone hitting one.
   const avg = total / queryTokens.length;
+  // Matching MORE of the query's distinctive words should outrank matching one. Without this
+  // "vaji bati or kern drop" ties Vaji Bati (vaji+bati) with Garcinia Cambogia Drops (drops)
+  // at 0.85 and the price tiebreak picks the wrong one.
+  if (strong) strong = Math.min(0.95, strong + 0.05 * (exactHits - 1));
   return Math.max(avg * (0.7 + 0.3 * (hits / queryTokens.length)), strong);
 }
 

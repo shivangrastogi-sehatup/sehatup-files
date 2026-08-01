@@ -1,0 +1,36 @@
+const b = ($('QuickReply Webhook').first().json.body) || {};
+
+// Match "Is Real User Message?" EXACTLY: a real message is one that has a payload.
+// This used to test `b.payload._type`. QuickReply does not always send _type - the
+// workflow's own pinned sample body has a payload with text and no _type - so such a
+// message was tagged STATUS, its `text` tag was never set, and the execution looked
+// like a delivery callback in the list. That is why real conversations could not be
+// found among the hundreds of SENT/DELIVERED/READ executions.
+const isStatus = !b.payload;
+
+const tags = {
+  kind: isStatus ? 'STATUS' : 'MESSAGE',
+  phone: String(b.phone || ''),
+};
+if (isStatus) {
+  tags.event = String(b.event || '');
+  tags.by = String(b.messageBy || '');
+} else {
+  tags.text = String((b.payload && b.payload.text) || '').slice(0, 60);
+  // Kept so a media/button message is identifiable in the list without opening it.
+  tags.ptype = String((b.payload && b.payload._type) || 'none');
+}
+
+// customData is a PAID n8n feature and is stored on PRODUCTION executions only - a manual
+// run never keeps it. The old code swallowed the failure with a bare comment, so "no tags
+// in the executions list" was indistinguishable from "this plan does not support tags".
+// Log it instead: one line in the execution log tells you which of the two it is.
+// Limits: 10 keys per execution, key <= 50 chars, value <= 512 chars.
+try {
+  for (const k of Object.keys(tags)) $execution.customData.set(k, tags[k]);
+} catch (e) {
+  console.log('[Tag Execution] customData NOT saved - ' + e.message
+    + ' (paid feature, and production executions only). Tags attempted: ' + JSON.stringify(tags));
+}
+
+return $input.all();

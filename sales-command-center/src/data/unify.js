@@ -40,13 +40,29 @@ const toISO = (d) =>
 function isLeadRow(r, map = {}) {
   const named = String(pick(r, map.name, 'Name') ?? '').trim();
   const num = String(pick(r, map.mobile, 'Mobile', 'Number', 'Phone') ?? '').trim();
-  return (named || num) && !named.toLowerCase().includes('#');
+  if (!named && !num) return false;
+  // A "#" in the name marks a separator or remark line — but ONLY when the row
+  // carries no phone number. Leads arriving from social have handles like
+  // "#shahana", and the blanket "#" rule was silently dropping them: measured
+  // across both months it discarded 1 real lead and caught 0 actual separators.
+  if (!num && named.includes('#')) return false;
+  return true;
 }
 
-// First of the current month (ISO). The monthly tabs are auto-resolved to the
-// current month, so an undated lead in the tab still belongs to this month.
-function monthStartISO() {
-  const d = new Date();
+/**
+ * First of the month a sheet belongs to (ISO). `offset` is 0 for the current
+ * month's tab and -1 for the previous month's.
+ *
+ * This MUST follow the tab, not the calendar. It used to always return the
+ * current month, which stamped last month's undated leads onto the 1st of this
+ * one — so they fell inside the "This Month" window and were counted by the
+ * panels that read both months while the KPI card, reading only this month,
+ * never saw them. The two totals disagreed by exactly the number of undated
+ * rows in last month's tab.
+ */
+function monthStartISO(offset = 0) {
+  const n = new Date();
+  const d = new Date(n.getFullYear(), n.getMonth() + offset, 1);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
@@ -58,14 +74,15 @@ function monthStartISO() {
 const pick = (r, mapped, ...fallbacks) => field(r, ...[mapped, ...fallbacks].filter(Boolean));
 
 /** Map one raw sheet row to a unified row, or null if it can't be placed. */
-function unifyRow(r, source, idx, map = {}) {
+function unifyRow(r, source, idx, map = {}, monthOffset = 0) {
   if (!isLeadRow(r, map)) return null;
 
-  // A real lead with a blank/garbled Date still counts toward the month's totals —
-  // fall it back to the 1st of the current month (keeps it in "This Month", out of "Today").
+  // A real lead with a blank/garbled Date still counts toward its month's totals —
+  // fall it back to the 1st of the month ITS OWN TAB covers (keeps it in that
+  // month, out of "Today").
   let iso = toISO(parseDate(pick(r, map.date, 'Date (Leads)', 'Date Leads', 'Date')));
   const dateApprox = !iso;
-  if (!iso) iso = monthStartISO();
+  if (!iso) iso = monthStartISO(monthOffset);
 
   const callerRaw = String(pick(r, map.caller, 'Caller 1', 'Caller Name', 'Caller') ?? '').trim();
   const caller = (!callerRaw || callerRaw.toLowerCase() === 'none') ? 'Unassigned' : titleCase(callerRaw);
@@ -106,11 +123,17 @@ function unifyRow(r, source, idx, map = {}) {
 function normalizeFulfilment(raw) {
   const v = norm(raw);
   if (!v) return null;
-  // Order matters: "RTO delivered" and "Undelivered" both contain "delivered".
+  // Order matters, most specific first — these all contain the word "deliver",
+  // so a bare includes('deliver') would swallow every one of them:
+  //   "RTO delivered"     -> came back, not delivered
+  //   "Undelivered"       -> failed, not delivered
+  //   "Out for Delivery"  -> the courier has it, the customer doesn't
+  // "Out for Delivery" was being counted as Delivered, which is why the board
+  // read 38 against the sheet's 37.
   if (v.includes('rto') || v.includes('return') || v.includes('refus')) return 'RTO';
   if (v.includes('undeliver') || v.includes('not deliver')) return 'Undelivered';
+  if (v.includes('out for') || v.includes('transit') || v.includes('ship') || v.includes('dispatch')) return 'In Transit';
   if (v.includes('deliver')) return 'Delivered';
-  if (v.includes('transit') || v.includes('ship') || v.includes('dispatch') || v.includes('out for')) return 'In Transit';
   if (v.includes('cancel')) return 'Cancelled';
   if (v.includes('pend') || v.includes('process') || v.includes('confirm')) return 'Processing';
   return 'Other';
@@ -192,9 +215,10 @@ function buildMeta(rows) {
  * Fetch both live lead sheets, map every row into the unified shape, and build
  * the meta the dashboard needs. Never throws — returns empty rows on failure.
  */
-const mapRows = (sheet, source, map) => {
+/** `monthOffset` tells undated rows which month's tab they came from. */
+const mapRows = (sheet, source, map, monthOffset = 0) => {
   const out = [];
-  (sheet.rows || []).forEach((r, i) => { const u = unifyRow(r, source, i, map); if (u) out.push(u); });
+  (sheet.rows || []).forEach((r, i) => { const u = unifyRow(r, source, i, map, monthOffset); if (u) out.push(u); });
   return out;
 };
 const mapOrders = (sheet, map) => {
@@ -217,7 +241,7 @@ export async function loadData(cfg) {
 
   // PREVIOUS month, in full. It feeds the weekly revenue bars (which look back
   // past the 1st) and any custom date range that reaches into last month.
-  const prevRowsAll = [...mapRows(healthPrev, 'healthscore', col.health), ...mapRows(quickPrev, 'quickreply', col.quick)];
+  const prevRowsAll = [...mapRows(healthPrev, 'healthscore', col.health, -1), ...mapRows(quickPrev, 'quickreply', col.quick, -1)];
   const prevOrdersAll = mapOrders(mensPrev, col.mens);
 
   // ok:true only when all three CURRENT sheets loaded — keeps last-good data on a

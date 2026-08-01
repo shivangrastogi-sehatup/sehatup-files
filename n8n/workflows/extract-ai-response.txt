@@ -40,6 +40,22 @@ if (!phone) throw new Error('Extract AI Response: phone missing. buildData=' + J
 const name = buildData.name || 'Customer';
 const newMsgText = buildData.newMsgText || '';
 
+// Did the customer ask who she is? Then an introduction is the ANSWER, not spam, and the
+// intro stripper below must leave it alone. Computed here because sanitizeReply() closes
+// over it.
+const _askedIdentity = /\b(who\s*(are|r)\s*(you|u)|who\s*made\s*(you|u)|kaun\s*ho|kon\s*ho|kaun\s*hai|kon\s*hai|tum\s*kaun|tum\s*kon|aap\s*kaun|aap\s*kon|kisne\s*banaya|kisne\s*bnaya|introduce\s*your|apna\s*introduction)\b/i
+  .test(String(newMsgText || ''));
+
+// What Ananya said last. Several guards need it to read a short reply in context - "6:30"
+// only means a time because we just asked for one.
+let _lastOutText = '';
+try {
+  const _outs = $('Fetch Conversation History').all().map(i => i && i.json)
+    .filter(m => m && m.direction === 'out' && m.text)
+    .sort((a, b) => (Number(a.msgTime) || 0) - (Number(b.msgTime) || 0));
+  if (_outs.length) _lastOutText = String(_outs[_outs.length - 1].text || '');
+} catch (e) {}
+
 // ---- Have we already greeted? - authoritative, from the REAL conversation history.
 //      (The fine-tuned model ignores the "greet once" rule, so we control it here.) ----
 let greetedBefore = false;
@@ -73,15 +89,44 @@ function sanitizeReply(t) {
   // Multiline: the model puts it on continuation lines too, not just the first.
   s = s.replace(/^[\s>*-]*(ananya|agent|bot|assistant)\s*(ji)?\s*[:\-\u2013\u2014]+\s*/gim, '');
   s = s.replace(/hello\s*ji[\s,!.]*/gi, '');
-  s = s.replace(/\bma?i?n?\s*ananya\s+baat\s+kar\s+rah[iy]\s*hu?n?\s*,?\s*(sehat\s*up\s*se)?[\s,.!]*/gi, '');
-  s = s.replace(/\bma?i?n?\s*ananya\s+(hu|hoon)\b[\s,.!]*/gi, '');
+  // Self-introductions are stripped ONLY when the customer did not ask who she is. If they
+  // did, this is the answer to their question.
+  if (!_askedIdentity) {
+    // Sentence-level first, and word-order-independent. The two patterns below both hard-
+    // require an "m" before "ananya" (/\bma?i?n?\s*ananya/) AND require "ananya" to sit
+    // immediately before "baat kar" - so the two variants the model actually sent
+    // mid-conversation, "Ananya baat kar rahi hu SehatUP se" and "Mai SehatUP se baat kar
+    // rahi hu", matched neither and reached the customer as a re-introduction.
+    const QR_INTRO_SENT = /(\bananya\b[^.!?\n]{0,40}\b(baat\s*kar|bol\s*rah|hu\b|hoon\b)|\bsehat\s*up\s*se\b[^.!?\n]{0,30}\b(baat\s*kar|bol\s*rah))/i;
+    s = s.split(/(?<=[.!?])\s+|\n+/).filter(x => !QR_INTRO_SENT.test(x)).join(' ');
+    s = s.replace(/\bma?i?n?\s*ananya\s+baat\s+kar\s+rah[iy]\s*hu?n?\s*,?\s*(sehat\s*up\s*se)?[\s,.!]*/gi, '');
+    // "SehatUP se" is swallowed with the intro, not left behind: without it
+    // "Ji, main Ananya hu SehatUP se." sanitized to the fragment "Ji, SehatUP se.".
+    s = s.replace(/\bma?i?n?\s*ananya\s+(hu|hoon)\b\s*,?\s*(sehat\s*up\s*se)?[\s,.!]*/gi, '');
+  }
   s = s.replace(/\b(ji)(\s*,?\s*ji\b)+/gi, 'ji');
   s = s.replace(/(\u091C\u0940)(\s*,?\s*\u091C\u0940)+/g, '\u091C\u0940');
   s = s.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n');
-  s = s.replace(/^[\s,.:;!-]+/, '').replace(/[ \t]+([,.!?])/g, '$1').trim();
+  // Trailing debris too, not just leading: stripping the intro out of "Ji, mai Ananya baat
+  // kar rahi hu SehatUP se." leaves "Ji," - a dangling comma the old trim kept.
+  s = s.replace(/^[\s,.:;!-]+/, '').replace(/[ \t]+([,.!?])/g, '$1').replace(/[\s,;:-]+$/, '').trim();
   return s;
 }
 aiText = sanitizeReply(aiText);
+
+// ---- DID SANITIZING EAT THE WHOLE REPLY? ----
+// The intro-stripping above can consume the model's ENTIRE output. When the model answers
+// with nothing but its own introduction ("Ji, mai Ananya baat kar rahi hu SehatUP se."),
+// what survives is the filler "Ji" - and the greet-once block at the bottom then prepends
+// the workflow's own intro to it, producing the message customers actually received:
+//     "Hello ji, mai Ananya baat kar rahi hu SehatUP se. ji"
+// A leftover that is pure filler means the model produced no reply, so treat it as empty:
+// on first contact the intro block supplies the proper opener instead.
+const QR_FILLER_RE = /^(ji|jee|g|ok|okay|okey|k|hmm+|hm|acha|accha|achha|theek|thik|theek hai|thik hai|haan|han|ha|yes|sure|right|ji haan|ji ok|noted|welcome|most welcome)[\s.,!]*$/i;
+if (!greetedBefore && QR_FILLER_RE.test(String(aiText || '').trim())) {
+  console.log('[Sanitize] first-contact reply was intro-only - blanked so the opener is used | was=' + JSON.stringify(aiText));
+  aiText = '';
+}
 
 // ---- MEDICAL CLAIM GUARD (runs FIRST - outranks every other guard) ----
 // Asked "I want to Check My Free PCOD Health Score", the model replied:
@@ -131,16 +176,94 @@ const _rawName = String(name || '').trim();
 const _nameIsPlausible = /^[A-Za-z][A-Za-z.'-]{1,20}(\s+[A-Za-z][A-Za-z.'-]{1,20}){0,2}$/.test(_rawName)
   && !/(love|papa|mumm?y|\bmom\b|dad+y?|jaan|baby|king|queen|\bji\b|\bsir\b|madam|boss|bhai|didi|angel|princess|hero|star|customer|unknown)/i.test(_rawName);
 let nameGuard = false;
-if (_rawName && !_nameIsPlausible) {
+// Three safeguards, all of them earned:
+//  1. MIN LENGTH 3 - a display name of "a" stripped every letter a from the reply, turning
+//     "aap tension mat lijiye" into "p tension mt lijiye". Reached real customers.
+//  2. WORD BOUNDARIES - otherwise "Ram" would gut "program" and "Ana" would gut "banana".
+//  3. LENGTH SANITY - if the strip would remove more than 40% of the reply, something is
+//     wrong with the name and the original is kept. A mangled reply is worse than a stray name.
+const NAME_MIN_STRIP = 3;
+if (_rawName && !_nameIsPlausible && _rawName.length >= NAME_MIN_STRIP) {
   const _esc = _rawName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (new RegExp(_esc, 'i').test(aiText)) {
-    aiText = aiText.replace(new RegExp(_esc, 'ig'), '')
-      .replace(/\s+for\s*$/i, '').replace(/\s*,\s*,/g, ',')
+  const _re = new RegExp('\\b' + _esc + '\\b', 'ig');
+  const _hits = (aiText.match(_re) || []).length;
+  // A "name" that appears 4+ times is a common word (someone called "Hai" or "Hum"),
+  // not a name. Refuse rather than shred the sentence.
+  if (_hits > 0 && _hits <= 3) {
+    const _stripped = aiText.replace(_re, '')
+      .replace(/\s+for\s*$/i, '').replace(/\s*,+\s*,/g, ',')
       .replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
-    if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
-    nameGuard = true;
-    console.log('[Name Guard] stripped the WhatsApp profile name from the reply | name=' + JSON.stringify(_rawName));
+    if (_stripped && _stripped.length >= aiText.length * 0.4) {
+      aiText = _stripped;
+      nameGuard = true;
+      console.log('[Name Guard] stripped the WhatsApp profile name | name=' + JSON.stringify(_rawName));
+    } else {
+      console.log('[Name Guard] SKIPPED - stripping ' + JSON.stringify(_rawName) + ' (' + _hits + ' hits) would have destroyed the reply');
+    }
   }
+}
+
+// ---- HEALTH REPORT RESPONDER ----
+// "Hi I need help regarding my health report" almost always means one thing: they finished
+// the questionnaire but never pressed "Get My Report on WhatsApp" on the final page, so it
+// was never delivered. The report exists regardless - the submission is written on
+// completion and the PDF trigger fills reportDownloadUrl - so the fix is to hand them the
+// link, not to ask them to fill anything in again.
+// ---- WHATSAPP MESSAGE SHAPE (used by every guard that builds a reply) ----
+// A URL must END its line with nothing punctuating it. WhatsApp's link detection is
+// inconsistent about a trailing character: "(https://...)" and "https://...." can both pull
+// the bracket or the full stop into the href, and the link then 404s. The customer-visible
+// bug was a price reply of the form "Name Rs899 (https://...) aur Name Rs1349 (https://...)".
+// Putting each link alone on its own line removes the whole class of problem and is far
+// easier to read on a phone. Plain text only - no markdown (persona rule 7), even though
+// WhatsApp would render *bold*: these strings sit next to model output that must not use it.
+const _rs = (n) => 'Rs ' + n;
+// qrCleanTitle turns the Shopify title's internal pipe into " - ", so "Pure Himalayan
+// Shilajit Resin - 20g" already carries a dash and rendered as "... Resin - 20g - Rs 1349".
+// Collapsing it also matches how the Doc's CATALOG names the product.
+const _pname = (p) => String(p.title || '').replace(/\s+-\s+/g, ' ').trim();
+const _productLine = (p, i) => (i ? i + ') ' : '') + _pname(p) + ' - ' + _rs(p.price) + '\n' + p.url;
+
+const HEALTH_SCORE_URL_2 = 'https://www.sehatup.com/pages/health-score-360';
+let reportGuard = false;
+let _report = {};
+try { _report = ($('Fetch Customer Context').first().json || {}).report || {}; } catch (e) {}
+const _REPORTWORD = '(report|repot|reprot|rport|riport)';
+const askedReport = new RegExp('(health|medical)\\s*' + _REPORTWORD + '|\\b' + _REPORTWORD + '\\b|' + _REPORTWORD + '\\s*(chahiye|chaiye|nahi|nhi|nai|kaha|kahan|mila|milega|bhej|send|dijiye|do\\b)', 'i').test(_qLower)
+  || /(meri|mera|apni|apna|my)\s+report/i.test(_qLower);
+// "New" + "Report" arrived as two messages one second apart, then "Renew karne h". They do
+// not want the old PDF - they want a fresh assessment. Sending the existing report here
+// would be confidently wrong, which is worse than the vague answer they actually got.
+// \brenew\b is matched explicitly because the word boundary in \bnew\b will not find it.
+const _reportCtx = /report|assessment|score/i.test(_qLower) || /report|assessment|score/i.test(_lastOutText);
+const askedNewReport = _reportCtx && (
+     /\bre-?new\b|\brenewal\b/i.test(_qLower)
+  || /\b(new|naya|nayi|nayaa|fresh|dubara|dobara|again|update|updated)\b[^.!?]{0,16}\b(report|assessment|test|score)\b/i.test(_qLower)
+  || /\b(report|assessment|test|score)\b[^.!?]{0,16}\b(new|naya|nayi|fresh|dubara|dobara|again|update|updated)\b/i.test(_qLower)
+  || /phir\s*se[^.!?]{0,16}\b(report|assessment|banwa|karwa)\b/i.test(_qLower)
+);
+if (askedNewReport) {
+  reportGuard = 'new_requested';
+  aiText = 'Ji, nayi report ke liye assessment dobara complete kar lijiye:\n'
+    + HEALTH_SCORE_URL_2
+    + '\n\nReport ban jayegi, aur free consultation me doctor aapko usko detail me samjha denge.';
+  console.log('[Health Report] new_requested | q=' + _qLower.slice(0, 50));
+} else if (askedReport) {
+  if (_report.found && _report.url) {
+    reportGuard = 'sent';
+    aiText = 'Ji, ye rahi aapki health report:\n' + _report.url
+      + '\n\nIse download kar lijiye. Free consultation me doctor ise detail me samjha denge, wo bilkul free hai.';
+  } else if (_report.found && _report.generating) {
+    reportGuard = 'generating';
+    aiText = 'Ji, aapki report abhi tayaar ho rahi hai. Ready hote hi hamari team aapko bhej degi. Tab tak koi sawaal ho to bataiye.';
+  } else {
+    // No submission at all - they are asking about a report they never generated.
+    reportGuard = 'no_submission';
+    aiText = 'Ji, aapka health assessment abhi complete nahi dikh raha. Yahan se kar lijiye, report ban jayegi:\n'
+      + HEALTH_SCORE_URL_2
+      + '\n\nUske baad free consultation me doctor aapko sab detail me samjha denge.';
+  }
+  console.log('[Health Report] ' + reportGuard + ' | url=' + (_report.url ? 'yes' : 'no') + ' | q=' + _qLower.slice(0, 50));
 }
 
 // ---- HEALTH SCORE RESPONDER (runs before the claim guard) ----
@@ -151,15 +274,29 @@ if (_rawName && !_nameIsPlausible) {
 const HEALTH_SCORE_URL = 'https://www.sehatup.com/pages/health-score-360';
 let scoreGuard = false;
 const askedHealthScore = /health\s*score|healthscore|health\s*check|score\s*check|score\s*(chahiye|batao|bata|check)/i.test(_qLower);
-if (askedHealthScore) {
+if (!reportGuard && askedHealthScore) {
   scoreGuard = true;
-  aiText = 'Ji, apna free health score aap yahan check kar sakte hain: ' + HEALTH_SCORE_URL
-    + ' - ye bilkul free hai. Score aane ke baad free consultation me doctor aapko detail me samjha denge.';
+  aiText = 'Ji, apna free health score aap yahan check kar sakte hain:\n' + HEALTH_SCORE_URL
+    + '\n\nYe bilkul free hai. Score aane ke baad free consultation me doctor aapko detail me samjha denge.';
   console.log('[Health Score] sent the official link | q=' + _qLower.slice(0, 60));
 }
 
+// ---- IDENTITY RESPONDER ----
+// "Who are you" then "And who made you" got back "ji", followed by the bare fragment
+// "Ananya baat kar rahi hu SehatUP se" on its own line. The model has no reliable answer to
+// this and the intro stripper mangled what it did produce. There is one right answer, so it
+// is built here rather than generated.
+let identityGuard = false;
+if (!reportGuard && !scoreGuard && _askedIdentity) {
+  identityGuard = true;
+  aiText = 'Mai Ananya hu ji, SehatUP ki health advisor. SehatUP India ki digital clinic hai - '
+    + 'Ayurveda, Homeopathy aur modern medicine ke doctors ek saath, aur consultation bilkul free hai. '
+    + 'Aap apni health ki koi bhi problem bata dijiye, main help kar deti hu.';
+  console.log('[Identity] answered a who-are-you question | q=' + _qLower.slice(0, 60));
+}
+
 let claimGuard = false;
-if (!scoreGuard && (gaveScore || gaveDiagnosis)) {
+if (!reportGuard && !scoreGuard && !identityGuard && (gaveScore || gaveDiagnosis)) {
   claimGuard = gaveScore ? 'invented_score' : 'invented_diagnosis';
   aiText = 'Ji, main khud se koi score ya health condition nahi bata sakti - ye doctor properly check karke hi batate hain. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye, main free consultation set kara deti hu.';
   console.log('[Claim Guard] BLOCKED ' + claimGuard + ' | q=' + _qLower.slice(0, 60));
@@ -199,7 +336,13 @@ const gaveDose =
   || /\b(once|twice|thrice)\s+(a\s+)?(day|daily)\b/.test(_a)
   || /\b(din|roz|rozana)\s*(me|mein)?\s*(ek|do|teen|\d+)\s*baar\b/.test(_a);
 
-const doseGuard = !claimGuard && (askedDose || gaveDose);
+// One place for 'a higher-precedence guard already built this reply'. The per-guard lists
+// had drifted apart - bookingGuard never checked reportGuard, and doseGuard/slotGuard/
+// priceGuard never checked scoreGuard - so a reply that one guard had already built could
+// be silently overwritten by a lower-precedence one.
+const _answered = () => !!(reportGuard || scoreGuard || identityGuard || claimGuard);
+
+const doseGuard = !_answered() && (askedDose || gaveDose);
 if (doseGuard) {
   console.log('[Dose Guard] replaced reply | askedDose=' + askedDose + ' gaveDose=' + gaveDose + ' | q=' + _q.slice(0, 60));
   aiText = DOSE_HANDOFF;
@@ -251,13 +394,72 @@ function qrParseSlot(text) {
 
 let slotGuard = false;
 const _slotMin = qrParseSlot(newMsgText);
-if (!claimGuard && !doseGuard && _slotMin !== null && (_slotMin < WORK_START_MIN || _slotMin >= WORK_END_MIN)) {
+if (!_answered() && !doseGuard && _slotMin !== null && (_slotMin < WORK_START_MIN || _slotMin > WORK_END_MIN)) {
   slotGuard = true;
   aiText = _hhmm(_slotMin) + ' par consultation nahi ho paayegi ji, hamare doctor '
     + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN)
     + ' tak available rehte hain. Is beech ka koi time bata dijiye, main slot fix kara deti hu.';
   console.log('[Slot Guard] requested ' + _hhmm(_slotMin) + ' is outside '
     + _hhmm(WORK_START_MIN) + '-' + _hhmm(WORK_END_MIN) + ' | q=' + String(newMsgText || '').slice(0, 60));
+}
+
+// ---- BOOKING REPLY GUARD ----
+// We ask "Aapka naam aur kaunsa time aapke liye theek rahega" and the customer answers
+// "6:30" - and the model replies "ji". Two things were wrong: qrParseSlot requires a
+// marker (baje/am/pm), so a bare "6:30" parsed to null and nothing recognised it; and the
+// substance guard ignores short messages by design, so a 4-character answer slipped past.
+// Since WE generated the question, the answer is predictable - so it is handled here
+// instead of being left to the model.
+let bookingGuard = false;
+
+const _weAskedForTime = /kaunsa time|naam aur|time aapke liye theek|time bata dijiye|kis time|konsa time/i.test(_lastOutText);
+
+// In booking context a bare number IS a time, so the marker requirement is relaxed. Outside
+// that context it stays strict, otherwise "5 months se" would read as 5 o'clock.
+function qrParseBareTime(text) {
+  const m = String(text || '').trim().match(/^\s*(\d{1,2})(?:[:.]?(\d{2}))?\s*$/);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  if (h < 1 || h > 24 || min > 59) return null;
+  if (h >= 1 && h <= 6) h += 12;          // "4" or "6:30" means the afternoon, as with baje
+  if (h === 24) h = 0;
+  return h * 60 + min;
+}
+
+// Is this reply their name? "Short and alphabetic" was not enough - it accepted whole
+// questions like "aapka product kaisa hai". A name is one or two words and is not a
+// question word, so both constraints are required.
+const _replyWords = String(newMsgText || '').trim().split(/\s+/).filter(Boolean);
+const _NOT_A_NAME = /^(ji|jee|ok|okay|haan|han|ha|yes|no|nahi|nhi|hmm|acha|accha|theek|thik|hi|hello|hey|namaste|kya|kyu|kyun|kaisa|kaise|kaisi|kab|kahan|kaun|kaunsa|konsa|mera|meri|aapka|apka|aap|main|mai|hai|h|price|order|product|dawa|medicine|consultation|time|naam)$/i;
+const _isNameWord = (x) => /^[A-Za-z][A-Za-z.'-]{1,20}$/.test(x || '') && !_NOT_A_NAME.test(x || '');
+let _givenName = '';
+// "mera naam Priya hai" / "my name is Priya" - the most common phrasing, so read it directly.
+const _nameStated = String(newMsgText || '').match(/(?:mera\s+naam|my\s+name\s+is|naam\s+hai|i\s*am)\s+([A-Za-z][A-Za-z.'-]{1,20})/i);
+if (_nameStated && _isNameWord(_nameStated[1])) _givenName = _nameStated[1];
+else if (_replyWords.length >= 1 && _replyWords.length <= 2 && _replyWords.every(_isNameWord)) _givenName = _replyWords.join(' ');
+const _looksLikeName = !!_givenName;
+const _haveName = !!(buildData.displayName || '').trim();
+
+if (!_answered() && !doseGuard && !slotGuard && _weAskedForTime) {
+  const _t = (_slotMin !== null) ? _slotMin : qrParseBareTime(newMsgText);
+  if (_t !== null && (_t < WORK_START_MIN || _t > WORK_END_MIN)) {
+    bookingGuard = 'out_of_hours';
+    aiText = _hhmm(_t) + ' par consultation nahi ho paayegi ji, hamare doctor '
+      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN)
+      + ' tak available rehte hain. Is beech ka koi time bata dijiye.';
+  } else if (_t !== null) {
+    bookingGuard = 'time_taken';
+    aiText = 'Ji, ' + _hhmm(_t) + ' note kar liya. '
+      + (_haveName
+        ? 'Hamari team us time par aapko call karegi.'
+        : 'Aapka naam bhi bata dijiye, main consultation confirm kar deti hu.');
+  } else if (_looksLikeName && !_haveName) {
+    bookingGuard = 'name_taken';
+    aiText = 'Shukriya ' + _givenName + ' ji. Ab bas ye bata dijiye ki kaunsa time aapke liye theek rahega ('
+      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
+  }
+  if (bookingGuard) console.log('[Booking Guard] ' + bookingGuard + ' | reply=' + JSON.stringify(String(newMsgText || '').slice(0, 30)));
 }
 
 // ---- PRICE GUARD (deterministic, same reason as the dose guard) ----
@@ -289,25 +491,49 @@ const replyHasPrice = /(rs\.?\s*\d{2,}|\u20B9\s*\d{2,}|\b\d{3,}\s*(rupees|rupaye
 // same deterministic treatment as a price ask.
 const askedLink = /\b(link|url)\b/.test(_pq) || /\b(bhej\s*d(o|ijiye|ena)|bhejo|send\s*kar|share\s*kar)\b/.test(_pq);
 const replyHasLink = /sehatup\.com\/products\//i.test(String(aiText));
+// Asked "Mujhe weight loss krna h iske liye konse products h aapke pass?" - twice - the
+// model answered "ji aapko doctor hi batyegi" while the live catalog had the weight kits
+// sitting in the prompt. The guard stayed silent because it only watched for PRICE and LINK
+// requests, and "which products do you have" is neither. Wanting a product is the most
+// common product intent there is.
+const askedProduct =
+     /\b(chahiye|chaiye|chahie|mangwana|mangana|khareed|buy|order\s*karna|lena\s*(hai|h)\b)/i.test(_pq)
+  || /\b(konsa|konse|kaunsa|kaunse|kaun\s*sa|which|what)\b[^.!?]{0,24}\b(product|products|dawa|dawai|medicine|item|option|options|kit)\b/i.test(_pq)
+  || /\b(product|products|dawa|dawai|medicine|kit|option|options)\b[^.!?]{0,24}\b(batao|bata|bta|dikhao|dikha|suggest|recommend|hai|\bh\b|available|milega|milta)/i.test(_pq)
+  || /\b(recommend|suggest)\b/i.test(_pq)
+  || /\bke\s*liye\b[^.!?]{0,24}\b(kya|konsa|konse|kaunsa|product)\b/i.test(_pq);
+
+// Did the model actually name one of the products it was handed? Comparing on the first
+// significant word of each title, because it will say "Vaji Bati" not the full Shopify name.
+const _replyNamesAMatch = _matches.some(p => {
+  const key = String(p.title || '').split(/[^A-Za-z0-9]+/).filter(w => w.length > 3)[0];
+  return key && new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(String(aiText));
+});
+
 const needsPrice = askedPrice && !replyHasPrice;
+// They asked for a product, we had matches, and the reply named none of them.
+const ignoredTheCatalog = askedProduct && !_replyNamesAMatch && !replyHasPrice && !replyHasLink;
 const needsLink = askedLink && !replyHasLink;
 
-if (!claimGuard && !doseGuard && !slotGuard && (needsPrice || needsLink) && _matches.length) {
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && (needsPrice || needsLink || ignoredTheCatalog) && _matches.length) {
   const sellable = _matches.filter(p => !p.isRx && p.inStock);
   const rx = _matches.filter(p => p.isRx);
   const oos = _matches.filter(p => !p.isRx && !p.inStock);
-  const CONSULT = ' Chahein to free consultation me doctor aapke liye best option confirm kar denge, wo free hai.';
+  const CONSULT = 'Chahein to free consultation me doctor aapke liye best option confirm kar denge, wo free hai.';
   if (sellable.length === 1) {
     const p = sellable[0];
-    aiText = p.title + ' ka price Rs' + p.price + ' hai ji. Ye raha link: ' + p.url + '.' + CONSULT;
-    priceGuard = 'one';
+    aiText = _pname(p) + ' ka price ' + _rs(p.price) + ' hai ji.\n' + p.url + '\n\n' + CONSULT;
+    priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended' : 'one';
   } else if (sellable.length > 1) {
     // Two candidates is not a failure to resolve - "shilajit" genuinely matches two
     // products. Give both prices and let the customer pick (PRODUCT POLICY rule 5).
+    // Numbered so they can answer "1" instead of typing a product name back.
     const [a, b] = sellable;
-    aiText = 'Ji, do options hain: ' + a.title + ' Rs' + a.price + ' (' + a.url + ') aur '
-      + b.title + ' Rs' + b.price + ' (' + b.url + '). Aapko kaunsa chahiye?';
-    priceGuard = 'ambiguous';
+    aiText = 'Ji, do options hain:\n\n'
+      + _productLine(a, 1) + '\n\n'
+      + _productLine(b, 2) + '\n\n'
+      + 'Aapko kaunsa chahiye - 1 ya 2?';
+    priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended_2' : 'ambiguous';
   } else if (rx.length) {
     aiText = rx[0].title + ' me allopathic medicine hoti hai ji, iske liye doctor ki salah zaroori hai - iska price share nahi kar sakti. 10-15 min ki free consultation kara deti hu.';
     priceGuard = 'rx';
@@ -339,7 +565,7 @@ const _promiseRe = new RegExp(
   + '|\\b(abhi|turant|immediately|right\\s*now|just\\s*now)\\b[^.!?]{0,26}\\b' + _CALLWORD + '\\b'
   + '|\\b' + _CALLWORD + '\\b[^.!?]{0,26}\\b(abhi|turant|immediately|right\\s*now|just\\s*now)\\b', 'i');
 
-if (!claimGuard && !doseGuard && !slotGuard && !priceGuard && _promiseRe.test(String(aiText))) {
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && _promiseRe.test(String(aiText))) {
   promiseGuard = true;
   aiText = 'Ji, main aapki free consultation set kara deti hu. Aapka naam aur kaunsa time aapke liye theek rahega bata dijiye ('
     + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), doctor us time par call karenge.';
@@ -354,17 +580,30 @@ if (!claimGuard && !doseGuard && !slotGuard && !priceGuard && _promiseRe.test(St
 // turn; it has no sense of when a message deserves a real answer.
 // Only fires when the customer clearly said something substantial AND the reply is pure
 // filler, so short exchanges ("Okay" -> "ji") are untouched.
+// A filler reply is ALSO always wrong when WE just asked a question. Production, twice in a
+// row: "aapki age kitni h" -> customer "24" -> "ji". They answered us and got nothing back,
+// so they repeated themselves - and got "ji" again. The old condition could never catch it,
+// because it required a LONG customer message (12+ words / 70+ chars) and a factual answer
+// to our own question is one or two words by definition.
 let substanceGuard = false;
 const _custWords = String(newMsgText || '').trim().split(/\s+/).filter(Boolean).length;
-const _replyIsFiller = /^(ji|jee|g|ok|okay|okey|k|hmm+|hm|acha|accha|achha|theek|thik|theek hai|thik hai|haan|han|ha|yes|sure|right|ji haan|ji ok|noted|welcome|most welcome)[\s.,!]*$/i
-  .test(String(aiText || '').trim());
-if (!claimGuard && !scoreGuard && !doseGuard && !slotGuard && !priceGuard && !promiseGuard
-    && _replyIsFiller && (_custWords >= 12 || String(newMsgText || '').trim().length >= 70)) {
-  substanceGuard = true;
-  aiText = 'Ji, aapne jo bataya wo maine samajh liya - aap pareshaan mat hoiye, isko manage kiya ja sakta hai. '
-    + 'Free consultation me doctor aapki puri history dekh kar sahi plan batayenge, consultation aur diet plan dono free hain. '
-    + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye?';
-  console.log('[Substance Guard] filler reply "' + String(aiText).slice(0, 0) + '" replaced | custWords=' + _custWords);
+const _replyIsFiller = QR_FILLER_RE.test(String(aiText || '').trim());
+const _custSaidSomething = _custWords >= 12 || String(newMsgText || '').trim().length >= 70;
+const _weAskedQuestion = /\?/.test(_lastOutText)
+  || /\b(bata\s*d(o|ijiye|ena)|bataiye|batao|bta\s*d(o|ijiye)|kitni|kitna|kitne|kab\s*se|kaunsa|konsa|kaun\s*sa|kya\s*problem|naam)\b/i.test(_lastOutText);
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard
+    && _replyIsFiller && (_custSaidSomething || _weAskedQuestion)) {
+  substanceGuard = _custSaidSomething ? 'long_message' : 'answered_our_question';
+  aiText = _custSaidSomething
+    ? 'Ji, aapne jo bataya wo maine samajh liya - aap pareshaan mat hoiye, isko manage kiya ja sakta hai. '
+      + 'Free consultation me doctor aapki puri history dekh kar sahi plan batayenge, consultation aur diet plan dono free hain. '
+      + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye?'
+    // They answered a short factual question, so acknowledge it and move to the next step
+    // rather than re-explaining - BOOKING POLICY rule 5, one or two asks at a time.
+    : 'Ji, note kar liya. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
+      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), main free consultation set kara deti hu - doctor aapko sahi plan batayenge.';
+  console.log('[Substance Guard] ' + substanceGuard + ' | custWords=' + _custWords
+    + ' | lastOut=' + JSON.stringify(String(_lastOutText).slice(0, 40)));
 }
 
 // ---- Add the introduction EXACTLY ONCE, only on genuine first contact ----
@@ -373,15 +612,37 @@ if (!greetedBefore) {
 }
 if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
 
+// ---- WHY THIS REPLY LOOKS THE WAY IT DOES ----
+// Built here, where the flags live, and used twice: tagged onto the n8n execution so the
+// list is searchable, and written to Firestore by Record AI Sent / Save AI Message so it
+// outlives n8n's execution retention. Compact on purpose - "price=ambiguous", not a blob.
+const _guardNames = ['scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
+  'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard'];
+const _flagVals = { scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
+  nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard };
+const _flags = _guardNames.filter(k => _flagVals[k])
+  .map(k => k.replace(/Guard$/, '') + (typeof _flagVals[k] === 'string' ? '=' + _flagVals[k] : ''));
+if (emptyReason) _flags.push('empty=' + emptyReason);
+const aiGuards = _flags.join(',');
+try {
+  $execution.customData.set('reply', String(aiText).slice(0, 60));
+  $execution.customData.set('guards', aiGuards || 'none');
+} catch (e) { /* paid feature; Tag Execution already logs when it is unavailable */ }
+console.log('[Extract AI Response] guards=' + (aiGuards || 'none') + ' | reply=' + JSON.stringify(String(aiText).slice(0, 60)));
+
 const docId = phone.replace(/[^0-9]/g, '');
 return [{
   json: {
     phone,
     name,
     lastAiReply: aiText,
+    aiGuards,
     lastUserMessage: newMsgText,
     docId,
     scoreGuard,
+    reportGuard,
+    identityGuard,
+    bookingGuard,
     substanceGuard,
     nameGuard,
     claimGuard,

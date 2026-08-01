@@ -1105,6 +1105,7 @@ kept alongside the JSON for exactly this reason:
 - `decide-process.txt`
 - `record-ai-sent.txt`
 - `extract-message-details.txt`
+- `tag-execution.txt`
 
 (`build-ai-prompt-OLD.txt` is the pre-2026-07-28 body, kept only for reference.)
 
@@ -1126,7 +1127,8 @@ gets silently overwritten):
 node -e "
 const fs=require('fs'), p='whatsapp-chatbot-unified.json', w=JSON.parse(fs.readFileSync(p,'utf8'));
 const m={'Decide Process':'decide-process.txt','Build AI Prompt':'build-ai-prompt.txt',
-         'Extract AI Response':'extract-ai-response.txt','Record AI Sent':'record-ai-sent.txt'};
+         'Extract AI Response':'extract-ai-response.txt','Record AI Sent':'record-ai-sent.txt',
+         'Extract Message Details':'extract-message-details.txt','Tag Execution':'tag-execution.txt'};
 for (const [name,file] of Object.entries(m))
   w.nodes.find(n=>n.name===name).parameters.jsCode=fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');
 fs.writeFileSync(p, JSON.stringify(w,null,2)+'\n');
@@ -1204,6 +1206,54 @@ indistinguishable in the QuickReply CSV export, so `auto_clean.py` labels the bo
 output as a human turn — training on it feeds the model its own mistakes. Collect clean
 data only with `mode: "off"`. Note also that `MARKETING_SOURCES` does not exclude
 `CHATBOT`, so QuickReply's native no-code template messages can leak in as model turns.
+
+### Booking system — planned
+
+Designed 2026-07-31, deferred. Nothing exists yet: there is **no appointment, slot or booking
+concept anywhere** in the CRM or the functions. `doctor_details` (roster + signatures) and
+doctor accounts in `users` exist; calendars and capacity do not.
+
+**Model capacity as a pool, not per-doctor calendars.** The persona says "multi-doctor" and
+"team will call" — customers never pick a doctor. One counter per time slot is far simpler
+than a calendar per doctor and matches how the business actually runs. Doctor assignment stays
+an ops decision made after booking.
+
+| Collection | Purpose |
+|---|---|
+| `consult_config/rules` | `slotMinutes`, `openMin`/`closeMin` (IST minutes), `capacityPerSlot`, `daysAhead`, `closedWeekdays`, `leadMinutes` |
+| `consult_exceptions/{YYYY-MM-DD}` | holidays, reduced staffing, blocked slots — only days that differ |
+| `appointment_slots/{YYYY-MM-DD_HHMM}` | created **lazily on first booking**; holds `booked` / `capacity`. Exists to be the thing a transaction can lock |
+| `appointments/{apptId}` | `slotId, startAt, phone, convId, name, concern, status, doctorUid` |
+
+Availability is **computed** (rule − exceptions − bookings), not pre-generated, so there is no
+cron to break and no thousands of empty slot docs.
+
+Three functions, following the existing `qr*` pattern and fail-open contract:
+`qrAvailableSlots` (next 3-5 free, cached 60s) · `qrBookSlot` · `qrMyAppointment`.
+
+> **The only genuinely hard part is the double-booking race.** `qrBookSlot` must use a
+> Firestore **transaction** on the slot doc — read `booked`, compare to `capacity`, increment,
+> write the appointment, all atomically. A read-then-write gets this wrong under load and
+> double-books patients. Everything else in the design is arithmetic and formatting.
+
+**Deliver as numbered text first, not a form.** Ananya offers "1. Aaj 4:00 PM  2. Aaj 5:30 PM",
+the customer replies `2`, a guard parses it and books. Plain `AGENT_TEXT` — the API already in
+use, no new UI, no new domain, and nobody leaves WhatsApp. Upgrade later to interactive buttons
+(the webhook already handles `USER_LIST_REPLY` / `USER_BUTTON_REPLY`, so only the *send* side
+needs verifying), and only then to a web page on `book.sehatup.com`.
+
+**Not a Shopify booking app** — it would put patient bookings in a third-party silo that never
+joins Firestore, the CRM or `conversations`, which is the entire value of building it.
+
+The bot must **offer** slots deterministically, not generate them — same lesson as every other
+guard here.
+
+**Five answers are needed before any code**, because they *are* the availability model:
+`capacityPerSlot` (how many consults can genuinely run at 4 PM), slot length, working days,
+how far ahead bookings are allowed, and minimum lead time.
+
+Once live, the slot guard and promise guard become mostly redundant — **keep them anyway** as
+backstops; the model still free-forms around a booking flow.
 
 ---
 
@@ -1303,6 +1353,7 @@ bot *feels*; the third is the one that stops the guard count from growing foreve
 | 2 | **Escalation that reaches a person** | The dose guard promises a callback and creates no ticket. Write `needsHuman: {reason, at}` + `aiPausedUntil` on the conversation, badge it in the CRM inbox, ping a group for the urgent classes. Reuse for red flags, "baat karao", anger, refunds. |
 | 3 | **An eval set, before any further fine-tuning** | Five guards now exist — greeting, titles, dose, price, order-relevance — each because the model ignored an explicit instruction it was given. Every new capability will need its own. Build ~100 real conversation prefixes from `data-cleaning/`, score candidates offline on checkable properties (no dose, no title, right language, price matches catalog, greeting exactly once, ≤3 lines), and gate every prompt/model change on it. Without this you cannot tell whether a new checkpoint is better or worse. |
 | 4 | **Red-flag medical guard** | Chest pain, breathlessness, heavy bleeding, fainting, suicidal ideation, pregnancy complications → fixed "see a doctor now" + escalate, never a product. Rule 3's safety gating is still prompt-only, and prompt-only has never held with this model. |
+| 4b | **Consultation booking (planned — designed 2026-07-31, not started)** | See [Booking system](#booking-system--planned) below. Retires the slot guard and promise guard by giving the bot real slots instead of asking it to reason about time. |
 | 5 | **Cart links instead of product pages** | `qrProductLookup` already returns `variantId`; `generateCartUrl()` already exists at `functions/index.js:54`. Passing `utm_source=whatsapp_ananya` gives attribution for every sale Ananya closes. |
 | 6 | **Fix the history fetch** | `getAll` + `limit: 500` is not time-ordered. Past ~500 messages in one chat, recent docs can fall outside the page — breaking handoff *and* context. |
 | 7 | **Conversation state / slot filling** | `history.slice(-20)` is the bot's entire memory. Track concern, duration, comorbidities-asked, consultation-offered, stage on the conversation doc so it stops circling and starts progressing. |
