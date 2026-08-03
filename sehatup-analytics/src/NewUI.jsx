@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode, FIREBASE_CONFIGS } from './config/firebaseEnvironment';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
-import { searchCustomers, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { searchCustomers, findCustomersByPhone, matchesPhone, phoneKey, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth, storage, functions } from './firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -6503,6 +6503,11 @@ function OrderCreate({ context = {}, setRoute }) {
   const [discountSnapshot, setDiscountSnapshot] = useStateO(null);
   const [savingMode, setSavingMode] = useStateO(null);
   const [cityManual, setCityManual] = useStateO(false); // true = free-text city input instead of locality dropdown
+  // Custom (off-catalogue) line item — a Shopify line with a title+price instead of a
+  // variant_id. Used for bundles, replacements and manual adjustments that have no SKU.
+  // null when closed; otherwise the in-progress draft of the item.
+  const [customItemModal, setCustomItemModal] = useStateO(null);
+  const [customItemClosing, setCustomItemClosing] = useStateO(false);
 
   const handleSaveToCRM = async (mode = 'draft') => {
     const rawPhone = (custPhone || preset?.phone || '').replace(/\D/g, '');
@@ -6516,12 +6521,35 @@ function OrderCreate({ context = {}, setRoute }) {
     setSavingMode(mode);
     try {
       let finalCustomerId = null;
-      if (cust && cust.id) {
+      // Trust the selected customer only while their number still matches the one on the form.
+      // Edit the phone after picking a suggestion and `cust` is stale — the order would be
+      // filed against the previous person while the form shows the new number.
+      // An explicit pick from the dropdown stands as long as that customer still owns the
+      // number on the form — the agent chose them with the details in front of them. Edit the
+      // phone afterwards and the pick is stale: the order would be filed against the previous
+      // person while the form shows the new number.
+      const selectedStillMatches = cust && cust.id && matchesPhone(cust, phoneKey(normalizedPhone));
+      if (selectedStillMatches) {
         finalCustomerId = cust.id;
       } else {
-        const existingCustomers = await searchCustomers(normalizedPhone);
-        if (existingCustomers && existingCustomers.length > 0) {
-          finalCustomerId = existingCustomers[0].id;
+        if (cust && cust.id) {
+          console.warn('[Customer] Selected customer does not own the entered phone — re-resolving.');
+        }
+        // findCustomersByPhone verifies ownership instead of trusting Shopify's prefix search,
+        // and returns every genuine owner (a number really can be shared) with the established
+        // profile ranked first.
+        const owners = await findCustomersByPhone(normalizedPhone);
+        // Auto-attach only when the number is the customer's OWN profile phone. A number that
+        // merely appears on someone's saved address is usually a different person (a relative,
+        // a previous occupant) — and the profile sync below would overwrite their real number
+        // with this one. Creating a possible duplicate is the safer of the two mistakes.
+        const profileOwners = owners.filter(o => phoneKey(o.phone) === phoneKey(normalizedPhone));
+        if (profileOwners.length > 1) {
+          console.warn(`[Customer] ${profileOwners.length} customers share this number; using the established profile.`,
+            profileOwners.map(o => ({ id: o.id, name: `${o.first_name || ''} ${o.last_name || ''}`.trim(), orders: o.orders_count })));
+        }
+        if (profileOwners.length > 0) {
+          finalCustomerId = profileOwners[0].id;
         } else {
           console.log('--- SHOPIFY CREATE CUSTOMER ---');
           try {
@@ -6584,8 +6612,21 @@ function OrderCreate({ context = {}, setRoute }) {
         return Math.max(0, item.price - dv);
       };
 
+      // A custom line has no variant to price it, so Shopify requires an explicit title +
+      // price and `variant_id: null` — send a variant_id of undefined and it rejects the
+      // whole draft. Catalogue lines stay variant-priced so they track Shopify price changes.
       const line_items = items.map(item => {
-        const li = { variant_id: item.variantId, quantity: item.qty, taxable: true };
+        const li = item.isCustom
+          ? {
+            variant_id: null,
+            title: item.name,
+            price: Number(item.price || 0).toFixed(2),
+            quantity: item.qty,
+            taxable: item.taxable !== false,
+            requires_shipping: item.requiresShipping !== false,
+            grams: Number(item.grams) || 0,
+          }
+          : { variant_id: item.variantId, quantity: item.qty, taxable: true };
         const dv = parseFloat(item.discountValue) || 0;
         if (dv > 0) {
           const discountedPrice = getDiscountedPrice(item);
@@ -6757,8 +6798,18 @@ function OrderCreate({ context = {}, setRoute }) {
               line_items: items.map(item => {
                 const netUnit = getDiscountedPrice(item);
                 const li = { quantity: item.qty, price: netUnit.toFixed(2) };
-                if (item.variantId) li.variant_id = item.variantId;
-                else if (item.name) li.title = item.name;
+                if (item.isCustom) {
+                  // Custom lines carry their own identity and shipping/tax facts — there is no
+                  // variant behind them to supply any of it.
+                  li.title = item.name;
+                  li.taxable = item.taxable !== false;
+                  li.requires_shipping = item.requiresShipping !== false;
+                  li.grams = Number(item.grams) || 0;
+                } else if (item.variantId) {
+                  li.variant_id = item.variantId;
+                } else if (item.name) {
+                  li.title = item.name;
+                }
                 return li;
               }),
               shipping_lines: d.shipping_line
@@ -7104,8 +7155,16 @@ function OrderCreate({ context = {}, setRoute }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let active = true;
-    const query = focusedInput === 'name' ? custFirstName : (focusedInput === 'phone' ? custPhone : "");
-    if (!query || query.length < 2) {
+    const isPhone = focusedInput === 'phone';
+    const raw = focusedInput === 'name' ? custFirstName : (isPhone ? custPhone : "");
+    // Shopify's phone search is a PREFIX match: "98" returns 50 unrelated customers. Showing
+    // those as suggestions is how an order ended up filed under a stranger — the agent clicks
+    // the top of a list that never matched their number. Require enough digits to be
+    // meaningful, then verify every result actually owns them before offering it.
+    const digits = isPhone ? phoneKey(raw) : "";
+    const query = isPhone ? digits : raw.trim();
+    const minLength = isPhone ? 6 : 2;
+    if (!query || query.length < minLength) {
       setCustomerRecommendations([]);
       return;
     }
@@ -7114,7 +7173,8 @@ function OrderCreate({ context = {}, setRoute }) {
       try {
         const res = await searchCustomers(query);
         if (active) {
-          setCustomerRecommendations(res.slice(0, 5));
+          const list = isPhone ? (res || []).filter(c => matchesPhone(c, digits)) : (res || []);
+          setCustomerRecommendations(list.slice(0, 5));
         }
       } catch (err) {
         console.error("Error fetching customer recommendations", err);
@@ -7542,6 +7602,53 @@ function OrderCreate({ context = {}, setRoute }) {
     }
   }, [freeSampleVariant]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Custom line items ──────────────────────────────────────────────────────
+  // Opened from the search dropdown, so whatever the agent typed and failed to find
+  // becomes the item's name — that search text is already the customer's words for it.
+  const openCustomItemModal = (prefillName = "") => {
+    setCustomItemModal({ name: prefillName.trim(), price: "", qty: "1", taxable: true, physical: true, weight: "", unit: "kg" });
+  };
+  const closeCustomItemModal = () => {
+    setCustomItemClosing(true);
+    setTimeout(() => { setCustomItemClosing(false); setCustomItemModal(null); }, 200);
+  };
+  const updateCustomItem = (field, value) => setCustomItemModal(current => current && { ...current, [field]: value });
+
+  const customItemQty = Math.max(1, Math.floor(Number(customItemModal?.qty) || 0) || 1);
+  const customItemPrice = Number(customItemModal?.price);
+  // Price 0 is legitimate (a free replacement), so only a blank or negative price blocks the add.
+  const customItemValid = !!customItemModal
+    && customItemModal.name.trim().length > 0
+    && customItemModal.price !== ""
+    && Number.isFinite(customItemPrice)
+    && customItemPrice >= 0;
+
+  const addCustomItem = () => {
+    if (!customItemValid) return;
+    const { name, taxable, physical, weight, unit } = customItemModal;
+    const grams = physical ? Math.round((Number(weight) || 0) * (unit === "kg" ? 1000 : 1)) : 0;
+    setItems(current => [...current, {
+      id: `custom-${Date.now()}`,
+      variantId: null,
+      isCustom: true,
+      name: name.trim(),
+      subtitle: "Custom item",
+      price: customItemPrice,
+      sku: "",
+      image: null,
+      qty: customItemQty,
+      taxable,
+      requiresShipping: physical,
+      grams,
+      discountType: "amount",
+      discountValue: "",
+      discountReason: "",
+    }]);
+    setProductSearch("");
+    setSearchResults([]);
+    closeCustomItemModal();
+  };
+
   const removeOrderItem = (index) => {
     if (items[index]?.isFreeSample) setIncludeSample(false);
     if (items[index]?.id === activeDiscountItemId) setActiveDiscountItemId(null);
@@ -7611,14 +7718,36 @@ function OrderCreate({ context = {}, setRoute }) {
                 <div className="span-6 field" style={{ position: "relative" }}>
                   <span className="lbl">Phone number *</span>
                   <input className="input" value={custPhone} onFocus={() => setFocusedInput('phone')} onBlur={() => setFocusedInput(null)} onChange={e => { setCustPhone(e.target.value); setFocusedInput('phone'); }} placeholder="+91 98765 43210" />
-                  {focusedInput === 'phone' && (customerRecommendations.length > 0 || isFetchingRecommendations) && (
+                  {focusedInput === 'phone' && phoneKey(custPhone).length >= 6 && (
                     <div style={{ position: "absolute", top: "100%", left: 0, width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 12px 32px rgba(15,23,42,.12)", zIndex: 100, overflow: "hidden", marginTop: 4 }}>
-                      {isFetchingRecommendations ? <div className="muted" style={{ padding: 12, textAlign: "center", fontSize: 12 }}>Searching...</div> : customerRecommendations.map(c => (
-                        <div key={c.id} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-soft)", cursor: "pointer" }} onMouseDown={(e) => { e.preventDefault(); handleSelectRecommendation(c); }}>
-                          <div className="fw5">{c.first_name} {c.last_name}</div>
-                          <div className="muted" style={{ fontSize: 12 }}>{c.phone || c.email || 'No contact info'}</div>
-                        </div>
-                      ))}
+                      {isFetchingRecommendations
+                        ? <div className="muted" style={{ padding: 12, textAlign: "center", fontSize: 12 }}>Searching...</div>
+                        : customerRecommendations.length === 0
+                          // Saying so beats an empty box: the agent stops hunting and knows a
+                          // new customer will be created on save.
+                          ? <div className="muted" style={{ padding: "10px 12px", fontSize: 12 }}>No customer has this number yet — a new one will be created.</div>
+                          // Every row here has been verified to own the typed digits. When a
+                          // number is genuinely shared, all owners are listed with the details
+                          // that tell them apart.
+                          : customerRecommendations.map(c => {
+                            const addr = c.default_address || (c.addresses && c.addresses[0]) || {};
+                            const facts = [
+                              `${Number(c.orders_count) || 0} order${(Number(c.orders_count) || 0) === 1 ? '' : 's'}`,
+                              addr.city,
+                            ].filter(Boolean).join(' · ');
+                            return (
+                              <div key={c.id} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-soft)", cursor: "pointer" }} onMouseDown={(e) => { e.preventDefault(); handleSelectRecommendation(c); }}>
+                                <div className="hstack-8" style={{ minWidth: 0 }}>
+                                  <span className="fw5" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {`${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed customer'}
+                                  </span>
+                                  <span className="spacer" />
+                                  <span className="muted num" style={{ fontSize: 12, flexShrink: 0 }}>{c.phone || '—'}</span>
+                                </div>
+                                <div className="muted" style={{ fontSize: 12 }}>{facts}</div>
+                              </div>
+                            );
+                          })}
                     </div>
                   )}
                 </div>
@@ -7793,11 +7922,42 @@ function OrderCreate({ context = {}, setRoute }) {
                 <label className="checkbox"><input type="checkbox" checked={includeSample} onChange={e => toggleFreeSample(e.target.checked)} /> Include Ashwagandha 30 Tablets (free sample)</label>
               )}
             </div>
-            <div style={{ position: "relative", margin: "12px 0 8px" }}>
-              <input className="input" value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search products by name..." style={{ paddingLeft: 34 }} />
-              <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }}><Icon name="search" size={14} /></span>
+            {/* Add bar — searching the catalogue and adding an off-catalogue line are the same
+                job (put a line on this order), so they share one control instead of competing
+                as two buttons. */}
+            <div className="order-addbar" style={{ margin: "12px 0 8px" }}>
+              <span className="order-addbar-icon"><Icon name="search" size={15} /></span>
+              <input
+                className="order-addbar-input"
+                value={productSearch}
+                onChange={e => setProductSearch(e.target.value)}
+                placeholder="Search products by name..."
+                aria-label="Search products to add to this order"
+              />
+              <button
+                type="button"
+                className="order-addbar-custom"
+                onClick={() => openCustomItemModal(productSearch)}
+              >
+                <Icon name="plus" size={14} /> Custom item
+              </button>
             </div>
             {isSearchingProducts && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Searching products...</div>}
+            {/* Nothing found is the moment a custom line is needed — so that is where the
+                offer lives, carrying the typed text through as the item name. */}
+            {!isSearchingProducts && productSearch.trim().length > 0 && searchResults.length === 0 && (
+              <div style={{ margin: "0 0 12px", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "var(--surface)" }}>
+                <div className="muted" style={{ padding: "12px 12px 4px", fontSize: 13 }}>
+                  No products match “{productSearch.trim()}”.
+                </div>
+                <button type="button" className="order-custom-row" onClick={() => openCustomItemModal(productSearch)}>
+                  <span className="order-custom-row-tile"><Icon name="plus" size={15} /></span>
+                  <span style={{ minWidth: 0 }}>
+                    Add “<span className="fw6">{productSearch.trim()}</span>” as a custom item
+                  </span>
+                </button>
+              </div>
+            )}
             {searchResults.length > 0 && (
               <div style={{ margin: "0 0 12px", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "var(--surface)" }}>
                 <div className="stack-2" style={{ maxHeight: 280, overflowY: "auto" }}>
@@ -7839,12 +7999,20 @@ function OrderCreate({ context = {}, setRoute }) {
                     );
                   })}
                 </div>
+                {productSearch.trim().length > 0 && (
+                  <button type="button" className="order-custom-row bordered" onClick={() => openCustomItemModal(productSearch)}>
+                    <span className="order-custom-row-tile"><Icon name="plus" size={15} /></span>
+                    <span style={{ minWidth: 0 }}>
+                      Not the right one? Add “<span className="fw6">{productSearch.trim()}</span>” as a custom item
+                    </span>
+                  </button>
+                )}
               </div>
             )}
             <div className="stack-8">
               {items.length === 0 && !includeSample && (
                 <div className="center muted" style={{ padding: "18px 12px", border: "1px dashed var(--border)", borderRadius: 8, fontSize: 13 }}>
-                  Search and add products to start this order.
+                  Search for a product, or add a custom item, to start this order.
                 </div>
               )}
               {items.map((p, i) => {
@@ -7853,12 +8021,37 @@ function OrderCreate({ context = {}, setRoute }) {
                 const money = (value) => Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 return (
                   <div key={p.id || i} className="hstack-12" style={{ padding: 12, border: "1px solid var(--border)", borderRadius: 10, position: "relative" }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 8, background: "var(--accent-soft)", display: "grid", placeItems: "center", color: "var(--accent-ink)", overflow: "hidden", flexShrink: 0 }}>
-                      {p.image ? <img src={p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Icon name="pill" size={20} />}
+                    <div
+                      style={{
+                        width: 44, height: 44, borderRadius: 8, display: "grid", placeItems: "center",
+                        overflow: "hidden", flexShrink: 0,
+                        // A custom line is priced by hand, not by the catalogue. The dashed,
+                        // unfilled tile says that at a glance so its price is read, not assumed.
+                        background: p.isCustom ? "transparent" : "var(--accent-soft)",
+                        border: p.isCustom ? "1px dashed var(--border-strong, var(--border))" : "none",
+                        color: p.isCustom ? "var(--muted)" : "var(--accent-ink)",
+                      }}
+                    >
+                      {p.image
+                        ? <img src={p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <Icon name={p.isCustom ? "layers" : "pill"} size={20} />}
                     </div>
                     <div className="stack-2" style={{ flex: 1, minWidth: 0 }}>
-                      <div className="fw5" style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>{p.name}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>{p.subtitle} · SKU <span className="mono">{p.sku}</span></div>
+                      <div className="hstack-8" style={{ minWidth: 0 }}>
+                        <span className="fw5" style={{ textDecoration: "underline", textUnderlineOffset: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                        {p.isCustom && <span className="order-custom-chip">Custom</span>}
+                      </div>
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        {p.isCustom
+                          // Only the facts that differ from the default are worth the row's
+                          // width — a taxable, physical item reads as plain "Custom item".
+                          ? ["Custom item",
+                            p.taxable === false && "Not taxed",
+                            p.requiresShipping === false && "No shipping",
+                            p.grams > 0 && `${(p.grams / 1000).toLocaleString("en-IN", { maximumFractionDigits: 3 })} kg`,
+                          ].filter(Boolean).join(" · ")
+                          : <>{p.subtitle} · SKU <span className="mono">{p.sku}</span></>}
+                      </div>
                     </div>
                     <div
                       className="stack-2 num fw6"
@@ -7945,6 +8138,120 @@ function OrderCreate({ context = {}, setRoute }) {
               })}
             </div>
           </div>
+
+          {/* Add custom item — same chrome as the order-discount dialog so the two money
+              dialogs on this page behave identically. */}
+          {customItemModal && createPortal(
+            <div className={`theme-light accent-rose ${customItemClosing ? 'fade-out' : 'fade-in'}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg)' }}>
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={closeCustomItemModal} />
+              <form
+                onSubmit={(e) => { e.preventDefault(); addCustomItem(); }}
+                style={{ position: "relative", width: "min(34rem, 94vw)", maxHeight: "88vh", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "0 24px 60px rgba(0,0,0,.2)", textAlign: "left", display: "flex", flexDirection: "column", overflow: "hidden" }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="hstack-10" style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
+                  <div className="fw6">Add custom item</div>
+                  <span className="spacer" />
+                  <button type="button" className="btn sm ghost" onClick={closeCustomItemModal} aria-label="Close"><Icon name="x" /></button>
+                </div>
+
+                <div style={{ padding: 20, overflowY: "auto" }}>
+                  <div className="grid-12 order-custom-fields" style={{ alignItems: "end" }}>
+                    <div className="span-6 field">
+                      <span className="lbl">Item name</span>
+                      <input
+                        className="input"
+                        autoFocus
+                        value={customItemModal.name}
+                        onChange={e => updateCustomItem("name", e.target.value)}
+                        placeholder="Shilajit combo (2 pack)"
+                      />
+                    </div>
+                    <div className="span-3 field">
+                      <span className="lbl">Price</span>
+                      <div className="np-money">
+                        <span className="np-money-prefix">Rs.</span>
+                        <input
+                          className="input num"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={customItemModal.price}
+                          onChange={e => updateCustomItem("price", e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div className="span-3 field">
+                      <span className="lbl">Quantity</span>
+                      <input
+                        className="input num"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={customItemModal.qty}
+                        onChange={e => updateCustomItem("qty", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="stack-8" style={{ marginTop: 18 }}>
+                    <label className="checkbox">
+                      <input type="checkbox" checked={customItemModal.taxable} onChange={e => updateCustomItem("taxable", e.target.checked)} />
+                      Item is taxable
+                    </label>
+                    <label className="checkbox">
+                      <input type="checkbox" checked={customItemModal.physical} onChange={e => updateCustomItem("physical", e.target.checked)} />
+                      Item is a physical product
+                    </label>
+                  </div>
+
+                  {/* Weight only exists for something that ships. Hiding it otherwise keeps the
+                      dialog to the fields that can actually affect this order. */}
+                  {customItemModal.physical && (
+                    <div className="field" style={{ marginTop: 18, maxWidth: 260 }}>
+                      <span className="lbl">Item weight (optional)</span>
+                      <div className="hstack-8">
+                        <input
+                          className="input num"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={customItemModal.weight}
+                          onChange={e => updateCustomItem("weight", e.target.value)}
+                          placeholder="0"
+                        />
+                        <select
+                          className="select"
+                          style={{ width: 84, flexShrink: 0 }}
+                          value={customItemModal.unit}
+                          onChange={e => updateCustomItem("unit", e.target.value)}
+                          aria-label="Weight unit"
+                        >
+                          <option value="kg">kg</option>
+                          <option value="g">g</option>
+                        </select>
+                      </div>
+                      <span className="muted" style={{ fontSize: 12, marginTop: 6 }}>Used to calculate shipping rates accurately.</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="hstack-10" style={{ padding: "14px 20px", borderTop: "1px solid var(--border)", alignItems: "center", background: "var(--surface-2)" }}>
+                  {/* The number the agent is committing to, spelled out before they commit it. */}
+                  <span className="muted" style={{ fontSize: 13 }}>
+                    {customItemValid
+                      ? <>{customItemQty} × Rs. {customItemPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = <span className="num fw6" style={{ color: "var(--fg)" }}>Rs. {(customItemPrice * customItemQty).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></>
+                      : "Enter a name and price to add this item."}
+                  </span>
+                  <span className="spacer" />
+                  <button type="button" className="btn" onClick={closeCustomItemModal}>Cancel</button>
+                  <button type="submit" className="btn primary" disabled={!customItemValid}>Add item</button>
+                </div>
+              </form>
+            </div>,
+            document.body
+          )}
         </div>
 
         {/* Summary */}

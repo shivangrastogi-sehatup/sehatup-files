@@ -426,6 +426,10 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       console.warn('[enrich] shopify sync failed for', awb, '-', shopifySync.error);
     } else if (shopifySync.event) {
       console.log('[enrich] shopify', awb, '→', shopifySync.event, shopifySync.created ? '(fulfillment created)' : '');
+    } else if (shopifySync.reason === 'duplicate_suppressed') {
+      // Logged deliberately: this is the line that shows the duplicate-message fix doing
+      // its job. Seeing it means a concurrent run is already pushing this exact scan.
+      console.log('[enrich] shopify', awb, 'duplicate suppressed —', shopifySync.claimKey);
     }
 
     // ─── Mirror into the Google Sheet "shipments" tab (standalone tracker) ───
