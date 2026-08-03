@@ -737,6 +737,112 @@ input, select, textarea { font: inherit; color: inherit; }
   opacity: 1;
 }
 
+/* Create-order "add bar" — searching the catalogue and adding an off-catalogue line are
+   the same job, so they read as one control rather than two competing buttons. */
+.order-addbar {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.order-addbar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.order-addbar-icon { display: inline-flex; align-items: center; padding-left: 12px; color: var(--muted); }
+.order-addbar-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--fg);
+}
+.order-addbar-input::placeholder { color: var(--faint); }
+.order-addbar-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.order-addbar-custom:hover { background: var(--hover); }
+.order-addbar-custom:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* The offer to create a custom line, shown where the catalogue runs out. */
+.order-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.order-custom-row.bordered { border-top: 1px solid var(--border); }
+.order-custom-row:hover { background: var(--surface-2); }
+.order-custom-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.order-custom-row-tile {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  color: var(--muted);
+}
+/* Marks a line priced by hand rather than by the catalogue. */
+.order-custom-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* Name gets its own row once price + quantity stop fitting beside it. */
+@media (max-width: 560px) {
+  .order-custom-fields .span-6 { grid-column: span 12; }
+  .order-custom-fields .span-3 { grid-column: span 6; }
+}
+
+/* Currency-prefixed input. */
+.np-money { position: relative; }
+.np-money .input { padding-left: 40px; }
+.np-money-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
 /* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Misc Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 .row { display: flex; gap: var(--gap); }
 .col { display: flex; flex-direction: column; gap: var(--gap); }
@@ -809,7 +915,13 @@ input, select, textarea { font: inherit; color: inherit; }
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+@keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
 .fade-in { animation: fadein .22s ease both; }
+/* Both order dialogs already ask for this class on close; without it they vanished instantly. */
+.fade-out { animation: fadeout .2s ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .fade-out { animation-duration: .01ms; }
+}
 
 /* Sparkline / mini bars */
 .sparkbars { display: flex; align-items: flex-end; gap: 2px; height: 28px; }

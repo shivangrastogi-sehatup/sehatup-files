@@ -9,10 +9,22 @@
 //
 // Everything here is best-effort: it never throws, because a Shopify hiccup must not
 // fail the webhook or lose the Firestore write that already succeeded.
+//
+// Concurrency: Nimbus replays an AWB's whole history as a burst of simultaneous webhooks,
+// so this function routinely runs several times at once with identical arguments. An
+// atomic Firestore claim (claim.js) keyed on (AWB, target status, Nimbus event time) lets
+// exactly one of them write — without it, each concurrent run read the same pre-write
+// `shipment_status`, all decided an update was needed, and the customer got one WhatsApp
+// message per racing run.
+
+import { claim, claimKey, release } from './claim.js';
 
 const SHOPIFY_HOSTNAME    = '0ec320-gj.myshopify.com';
 const SHOPIFY_API_VERSION = '2024-01';
 const SHOPIFY_TOKEN       = process.env.SHOPIFY_ACCESS_TOKEN || '';
+
+// One doc per (AWB, target status, Nimbus event time) that has been pushed to Shopify.
+const CLAIM_COLLECTION = 'shopify_sync_claims';
 
 // All three default ON except the customer email, which stays off — these updates are
 // bookkeeping, often days after the fact, and must not spam customers.
@@ -116,7 +128,11 @@ async function createFulfillment(orderId, awb, courier) {
  * @param {string}  opts.status    newest Nimbus status text
  * @param {string}  opts.eventTime newest Nimbus event_time
  * @param {string}  opts.courier
- * @returns {object} { ok, skipped?, reason?, event?, fulfillmentId?, created? }
+ * @returns {object} { ok, skipped?, reason?, event?, fulfillmentId?, created?, claimKey? }
+ *
+ * `event` is set only when an event was actually posted — that is the signal callers
+ * should log on. `reason: 'duplicate_suppressed'` means a concurrent run is handling
+ * this exact scan and this one deliberately did nothing.
  */
 export async function syncShopifyFulfillment({ order, awb, status, eventTime, courier }) {
   try {
@@ -134,40 +150,77 @@ export async function syncShopifyFulfillment({ order, awb, status, eventTime, co
       fulfillments[fulfillments.length - 1] ||
       null;
 
+    // ── Cheap local guards ──
+    // These only settle the case where the order we ALREADY fetched proves there is
+    // nothing to do, so the common no-op costs no extra round trip. They cannot be
+    // trusted to prevent duplicates: `shipment_status` here comes from an order fetched
+    // before any concurrent run wrote, so racing runs all read the same stale value.
+    // That job belongs to the claim below.
+    const current = match ? (match.shipment_status || null) : null;
+    if (match) {
+      if (current === target) {
+        return { ok: true, skipped: true, reason: 'already_' + target, fulfillmentId: String(match.id), created: false };
+      }
+      // Never walk a delivered parcel backwards on a late/duplicate scan. An RTO after
+      // delivery is the one legitimate exception.
+      if (current === 'delivered' && target !== 'failure') {
+        return { ok: true, skipped: true, reason: 'already_delivered', fulfillmentId: String(match.id), created: false };
+      }
+    } else if (!CREATE_FULFILLMENT) {
+      return { ok: false, skipped: true, reason: 'no_fulfillment_and_create_disabled' };
+    }
+
+    // ── Idempotency claim ──
+    // Everything past this point WRITES to Shopify, and Nimbus's history-replay bursts
+    // put several runs here at the same instant with identical values (see claim.js).
+    // Exactly one of them may continue.
+    //
+    // The Nimbus event time is part of the key on purpose: a genuine SECOND "out for
+    // delivery" days later is a different scan and must still reach the customer. Only
+    // repeats of the same scan are suppressed. When a status arrives with no event time,
+    // the key falls back to the UTC date so a burst still collapses but a later day can
+    // retry.
+    const key = claimKey(awb, target, eventTime || new Date().toISOString().slice(0, 10));
+    if (!(await claim(CLAIM_COLLECTION, key, { awb, target, eventTime: eventTime || '', orderId: String(order.id) }))) {
+      return { ok: true, skipped: true, reason: 'duplicate_suppressed', claimKey: key, fulfillmentId: match ? String(match.id) : null };
+    }
+
     let created = false;
-    if (!match) {
-      if (!CREATE_FULFILLMENT) return { ok: false, skipped: true, reason: 'no_fulfillment_and_create_disabled' };
-      match = await createFulfillment(order.id, awb, courier);
-      if (!match) return { ok: false, skipped: true, reason: 'no_open_fulfillment_order' };
-      created = true;
-    }
-
-    const current = match.shipment_status || null;
-    if (current === target) {
-      return { ok: true, skipped: true, reason: 'already_' + target, fulfillmentId: String(match.id), created };
-    }
-    // Never walk a delivered parcel backwards on a late/duplicate scan. An RTO after
-    // delivery is the one legitimate exception.
-    if (current === 'delivered' && target !== 'failure') {
-      return { ok: true, skipped: true, reason: 'already_delivered', fulfillmentId: String(match.id), created };
-    }
-
-    const happenedAt = toIso(eventTime);
-    const post = (withTime) =>
-      shopify(`/orders/${order.id}/fulfillments/${match.id}/events.json`, {
-        method: 'POST',
-        body: { event: withTime ? { status: target, happened_at: withTime } : { status: target } },
-      });
     try {
-      await post(happenedAt);
+      if (!match) {
+        match = await createFulfillment(order.id, awb, courier);
+        if (!match) {
+          // Nothing was written, so the claim must go back — otherwise this AWB could
+          // never be fulfilled for this scan, not even by the daily cron.
+          await release(CLAIM_COLLECTION, key);
+          return { ok: false, skipped: true, reason: 'no_open_fulfillment_order' };
+        }
+        created = true;
+      }
+
+      const happenedAt = toIso(eventTime);
+      const post = (withTime) =>
+        shopify(`/orders/${order.id}/fulfillments/${match.id}/events.json`, {
+          method: 'POST',
+          body: { event: withTime ? { status: target, happened_at: withTime } : { status: target } },
+        });
+      try {
+        await post(happenedAt);
+      } catch (e) {
+        // Shopify rejects a happened_at that predates the fulfillment it belongs to —
+        // retry letting Shopify stamp "now" rather than losing the status change.
+        if (happenedAt && /happened_at|invalid/i.test(e.message)) await post(null);
+        else throw e;
+      }
     } catch (e) {
-      // Shopify rejects a happened_at that predates the fulfillment it belongs to —
-      // retry letting Shopify stamp "now" rather than losing the status change.
-      if (happenedAt && /happened_at|invalid/i.test(e.message)) await post(null);
-      else throw e;
+      // The push failed, so hand the claim back and let the next scan or the daily cron
+      // try again. A claim left behind by a failed attempt would suppress this status
+      // permanently.
+      await release(CLAIM_COLLECTION, key);
+      throw e;
     }
 
-    return { ok: true, event: target, fulfillmentId: String(match.id), created, from: current };
+    return { ok: true, event: target, fulfillmentId: String(match.id), created, from: current, claimKey: key };
   } catch (e) {
     console.error('[shopify-sync] failed for AWB', awb, '-', e?.message || e);
     return { ok: false, error: e?.message || String(e) };

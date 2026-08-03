@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import { enrichAwbAndCache } from './_lib/enrich.js';
 import { authHeader, hasServiceAccount } from './_lib/google-auth.js';
+import { claim, claimKey } from './_lib/claim.js';
+
+// One doc per Nimbus scan we have already enriched, keyed on (AWB, event_time, status).
+const EVENT_COLLECTION = 'nimbus_events_seen';
 
 // Vercel Fluid compute can finish background work after the response is sent, via
 // `waitUntil` from "@vercel/functions". We load it defensively: if the package isn't
@@ -130,6 +134,29 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[nimbus-webhook] raw write failed for AWB', body.awb_number, '-', e?.message || e);
     // Still ACK 200 so Nimbus stays enabled; the cron re-enriches active AWBs.
+  }
+
+  // Skip the enrichment when this exact scan has already been enriched. Nimbus redelivers
+  // events it thinks failed, and this endpoint has historically taken 4–21s to answer —
+  // well past Nimbus's few-second timeout — so redeliveries are routine.
+  //
+  // Scope note: this catches literal repeats of ONE scan. It does NOT collapse Nimbus's
+  // history-replay bursts, where several genuinely different events for one AWB arrive at
+  // once — each has its own event_time and each is legitimately new here. Those still run
+  // in parallel; what stops them from writing the same status to Shopify N times is the
+  // claim inside syncShopifyFulfillment(), not this check. Deduping the burst any harder
+  // (say, one enrichment per AWB per N seconds) would risk dropping a scan that lands
+  // while an earlier enrichment is mid-flight, and the raw write above has already
+  // captured the timeline either way.
+  const eventKey = claimKey(body.awb_number, body.event_time || '', body.status || '');
+  const fresh = await claim(EVENT_COLLECTION, eventKey, {
+    awb: body.awb_number,
+    status: body.status || '',
+    eventTime: body.event_time || '',
+  });
+  if (!fresh) {
+    console.log('[nimbus-webhook] duplicate scan, skipping enrichment:', body.awb_number, body.event_time, body.status);
+    return res.status(200).json({ ok: true, awb: body.awb_number, deduped: true });
   }
 
   await runInBackground(enrichAwbAndCache(body.awb_number, body, 'nimbus-webhook'));
