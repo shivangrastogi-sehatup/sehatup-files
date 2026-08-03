@@ -101,6 +101,15 @@ n8n/workflows  ·  consultation slot guard     19/19   (6 blocked, 6 allowed, 5 
 n8n/workflows  ·  promise + empty-reply guard 13/13   (4 promises replaced, 4 false-positive checks, 4 empty-response, dose handoff)
 n8n/workflows  ·  medical claim guard         19/19   (7 triggers skip, 4 still reach AI, 6 claims blocked, 4 legit survive, precedence)
 n8n/workflows  ·  name + substance + score    31/31   (13 name cases, 11 filler/substance, 3 health-score, 2 claim, 5 file-hygiene)
+n8n/workflows  ·  product matcher + combo kit 32/32   (tests/product-matcher.test.js — runnable)
+n8n/workflows  ·  reply guard chain           21/21   (tests/reply-guards.test.js — runnable, replays the 2026-08-03 transcript)
+```
+
+The last two are **committed and runnable**, and they read the shipping code rather than a copy:
+
+```
+node n8n/workflows/tests/product-matcher.test.js
+node n8n/workflows/tests/reply-guards.test.js
 ```
 
 Re-run these before pasting anything — see [Regression cases](#regression-cases).
@@ -109,7 +118,7 @@ Re-run these before pasting anything — see [Regression cases](#regression-case
 
 | Item | State |
 |---|---|
-| **`Wait` node** | Repo says `Wait 3 Minutes` (`amount: 3`, `unit: minutes`). A copy of the **live** workflow showed it renamed `Wait 20 Seconds` with **`amount: 0`** — debounce effectively off. They do not match; decide which you want. |
+| **`Wait` node** | Repo says `Wait 3 Minutes` (`amount: 3`, `unit: minutes`). A copy of the **live** workflow showed it renamed `Wait 20 Seconds` with **`amount: 0`** — debounce effectively off. **This is what produced the 2026-08-03 spam report**: four customer messages two minutes apart got four separate replies, where a working debounce would have collapsed them into one. Set the live node back to match the repo. |
 | **`Fetch Conversation History`** | `getAll` + `limit: 500` is **not** time-ordered. Past ~500 messages in a chat, recent docs can fall outside the page, breaking handoff *and* context. Unfixed. |
 | **`QUICKREPLY_WEBHOOK_TOKEN`** | Referenced in code, absent from `.env`, and the check is `if (expected && …)` → both HTTP endpoints are currently **unauthenticated**. |
 | **Uncommitted work** | The 2026-07-28 *and* 07-30 changes live in the working tree, **not** in a commit. `git checkout` on these files would discard both. Commit before attempting any rollback. |
@@ -895,6 +904,8 @@ them in isolation. Re-run these if you touch either regex.
 
 | Customer asks | Live matches | Expected `priceGuard` |
 |---|---|---|
+| `vaji bati aur kern drop dono chahiye` | Vaji Bati Rs849 + Kern Drops Rs509 + the kit Rs1099 | `both_with_combo` — **both** prices, then the kit as the cheaper way. Never `1 ya 2?`: they named two different products, so they want both |
+| `confidence performance kit ka price` | the kit Rs1099 | `kit` — name, price, link |
 | `Shilajit ki price kya h?` | Honey Sticks Rs899 + Resin Rs1349 | `ambiguous` — both prices and both links, asks which |
 | `vaji bati kitne ka hai` | Vaji Bati Rs849 | `one` — name, price, link |
 | `endless ka price batao` | Endless (Rx) | `rx` — **no price, no link** |
@@ -903,6 +914,29 @@ them in isolation. Re-run these if you touch either regex.
 | `mujhe PCOD hai` | any | `false` — no price was asked |
 | `XYZ kit ka price` | none | `false` — nothing to quote |
 | `shilajit kitna lena hai roz aur price` | Shilajit ×2 | `false` + **`doseGuard` fires instead** |
+
+**Product matcher — a form word is not a product name.** `drops`, `tablet`, `capsule`, `tea`,
+`kit`, `powder`, `oil`, `syrup`, `resin` each appear in more than one Shopify title, so an exact
+hit on one identifies nothing. They live in `QR_WEAK_MATCH_WORDS` and may never earn the
+"one distinctive word matched" boost in `qrMatchScore`.
+
+> Why: `Mujhe vaji bati or kern drop chahiye` returned **Garcinia Cambogia Drops** and not Vaji
+> Bati. The `kern -> "kern drops"` alias injected the word `drops` into the query, `drops` then
+> scored a full exact hit against Garcinia, and the cheapest-price tiebreak put Garcinia
+> (Rs499) above Vaji Bati (Rs849). The alias is gone — `kern` already scores 1.0 against the
+> title `Kern Drops` unaided — and ties now break on `named` (how many of the product's own
+> distinctive words the customer actually typed) before price.
+
+**Combo kits are matched explicitly, never fuzzily** (`QR_KITS`). A kit is offered only when the
+customer named **every** component, or one component plus a combo word (`combo`, `kit`, `dono`,
+`sath`, `pack`, `set`). Feeding component names in as title aliases was tried first and made the
+Rs1099 kit outrank Vaji Bati on the query `vaji bati` alone.
+
+> `Confidence & Performance Booster Kit` (handle `p-e-e-d-integrated-kit`) **was removed from
+> `QR_RX_PATTERNS` on 2026-08-03.** It is the Vaji Bati + Kern Drop kit and ships no tablet —
+> confirmed by the business. Being on that list meant the bot refused to price or link a
+> Rs1099 OTC product *and* suppressed its description entirely, since
+> `qrCondenseDescription` returns `''` for anything Rx.
 
 **Profile name — must be withheld from the prompt and stripped from replies:**
 `My Love My Papa` · `TEST TEST` · `Baby Doll` · `9876543210` · `King` · `Papa ji` · empty
@@ -917,6 +951,26 @@ them in isolation. Re-run these if you touch either regex.
 `accha`, `noted`) when the customer wrote 12+ words or 70+ characters.
 **Must NOT fire:** a short exchange (`"Okay"` -> `"ji"`), or any reply that actually says
 something.
+
+**Substance guard — widened 2026-08-03**, after a customer got four non-answers in a row
+(`"ji yah drops hai"` ×2, then `"ji"` ×2). Three separate holes, all now covered by
+`tests/reply-guards.test.js`:
+
+1. **`QR_FILLER_RE` is anchored**, so it recognises a bare `ji` and nothing else. `qrIsNonAnswer()`
+   now also catches a reply of ≤ `QR_NONANSWER_MAX_WORDS` (5) words that quotes no price, sends
+   no link and asks nothing. Raise that constant if it ever fires on a legitimate short reply.
+2. **The trigger only read `_lastOutText`** — what *we* said last. Once a junk reply went out it
+   *became* `_lastOutText`, which contains no `?` and none of the keywords, so the guard was
+   disarmed for the next turn, which produced more junk. The loop sustained itself. There is now
+   a `_custAskedQuestion` trigger reading the customer's own message, which our output cannot
+   corrupt. (The last customer message in that transcript was literally `"Batao"` — already in
+   the keyword list, but only ever searched for in *our* text.)
+3. **Nothing compared a reply to the previous one.** `repeatGuard` replaces a reply that is
+   identical to, or contained in, the last outbound. Guard-built replies are exempt: if the
+   customer asks the same price question twice, the same price is the right answer twice.
+
+**Repeat guard — must NOT fire** on a guard-built reply (price, dose, booking, slot, promise,
+substance). Only raw model output is deduplicated.
 
 **Medical claim guard — must block:**
 `ji / your score is 7 / you have a PCOD` (the exact production reply) ·

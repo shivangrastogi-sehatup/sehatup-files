@@ -123,6 +123,27 @@ aiText = sanitizeReply(aiText);
 // A leftover that is pure filler means the model produced no reply, so treat it as empty:
 // on first contact the intro block supplies the proper opener instead.
 const QR_FILLER_RE = /^(ji|jee|g|ok|okay|okey|k|hmm+|hm|acha|accha|achha|theek|thik|theek hai|thik hai|haan|han|ha|yes|sure|right|ji haan|ji ok|noted|welcome|most welcome)[\s.,!]*$/i;
+
+// A reply can be content-free without being one of the exact words above. QR_FILLER_RE is
+// anchored, so it recognises a bare "ji" and nothing else - and production sent
+// "ji yah drops hai" TWICE IN A ROW to someone asking which drops they had been offered.
+// Four words, no product name, no price, no link, no question: it is the same non-answer,
+// it just did not look like one to an anchored regex.
+// A reply is treated as substantive if it asks something, quotes a price or sends a link -
+// otherwise anything this short is the model stalling.
+const QR_NONANSWER_MAX_WORDS = 5;
+function qrIsNonAnswer(t) {
+  const s = String(t || '').trim();
+  if (!s) return true;
+  if (QR_FILLER_RE.test(s)) return true;
+  if (/\?/.test(s)) return false;
+  // No rupee SIGN here, deliberately: this file must stay pure ASCII (see replyHasPrice
+  // below for why), and every price this workflow writes goes through _rs(), which emits
+  // "Rs 849". A reply carrying the symbol instead came from the model, and the price guard
+  // below is what handles that case.
+  if (/(rs\.?\s*\d{2,}|\b\d{3,}\s*(rupees|rupaye|rupay)\b|sehatup\.com|https?:\/\/)/i.test(s)) return false;
+  return s.split(/\s+/).filter(Boolean).length <= QR_NONANSWER_MAX_WORDS;
+}
 if (!greetedBefore && QR_FILLER_RE.test(String(aiText || '').trim())) {
   console.log('[Sanitize] first-contact reply was intro-only - blanked so the opener is used | was=' + JSON.stringify(aiText));
   aiText = '';
@@ -324,7 +345,11 @@ const askedDose =
   // straight through). Kept tight to 2 intervening words so "kitne ka hai" (a PRICE
   // question) and "kitne din me asar dikhega" (a timeline question) still do not match.
   || /(kitna|kitni|kitne)\s+(\S+\s+){0,2}(len[aeiu]|lene|leni|khan[aeiu]|khani|khaye|khaun|pee?n[aei]|piye|piyu|istemal|use)/.test(_q)
-  || /(kaise|kab|kis\s*time|kis\s*samay|kitne\s*din|kitni\s*der|khali\s*pet)\s*(\S+\s+){0,3}(len[aei]|lene|khan[aei]|khaye|khaun|pee?n[aei]|piye|piyu|use|istemal|isteml)/.test(_q)
+  // "kese" and "upayog" were both missing. "Kese upayog karna hai" is a how-to-take question
+  // in the plainest possible words, and it reached the model instead of DOSE_HANDOFF - the
+  // customer got back "ji". Hinglish has no fixed spelling, so kaise/kese/kaisay and
+  // upyog/upayog/istemal all have to be listed.
+  || /(kaise|kese|kaisay|kab|kis\s*time|kis\s*samay|kis\s*tarah|kitne\s*din|kitni\s*der|khali\s*pet)\s*(\S+\s+){0,3}(len[aei]|lene|leni|khan[aei]|khani|khaye|khaun|pee?n[aei]|piye|piyu|use|istemal|isteml|upyog|upayog|upyaog|lagan[aei]|lagani)/.test(_q)
   || /\bhow\s+(many|much|often|long)\b/.test(_q)
   || /\b(when|how)\s+(should\s+i\s+|do\s+i\s+|to\s+)?(take|consume|use)\b/.test(_q)
   || /(empty\s*stomach|before\s+(food|meal)|after\s+(food|meal))/.test(_q);
@@ -496,10 +521,23 @@ const replyHasLink = /sehatup\.com\/products\//i.test(String(aiText));
 // sitting in the prompt. The guard stayed silent because it only watched for PRICE and LINK
 // requests, and "which products do you have" is neither. Wanting a product is the most
 // common product intent there is.
+// The noun list used to be product|dawa|dawai|medicine|item|option|kit - abstract words for
+// a product, none of which a customer types. They name the FORM: "Yah kaun sa drops hai".
+// That is the most literal product question there is and it matched nothing, so the catalog
+// fallback never fired and the model's content-free "ji yah drops hai" went out as the answer
+// while both drops sat in the prompt with prices, links and descriptions.
+const _PRODUCT_NOUN = '(product|products|dawa|dawai|medicine|item|option|options|kit|combo|pack'
+  + '|drops?|boond|goli|goliyan|tablet|tablets|capsule|capsules|churna|churan|powder'
+  + '|tel|oil|syrup|tea|bati|vati|resin|sachet|cream|gel)';
 const askedProduct =
      /\b(chahiye|chaiye|chahie|mangwana|mangana|khareed|buy|order\s*karna|lena\s*(hai|h)\b)/i.test(_pq)
-  || /\b(konsa|konse|kaunsa|kaunse|kaun\s*sa|which|what)\b[^.!?]{0,24}\b(product|products|dawa|dawai|medicine|item|option|options|kit)\b/i.test(_pq)
-  || /\b(product|products|dawa|dawai|medicine|kit|option|options)\b[^.!?]{0,24}\b(batao|bata|bta|dikhao|dikha|suggest|recommend|hai|\bh\b|available|milega|milta)/i.test(_pq)
+  || new RegExp('\\b(konsa|konse|kaunsa|kaunse|kaun\\s*sa|which|what)\\b[^.!?]{0,24}\\b' + _PRODUCT_NOUN + '\\b', 'i').test(_pq)
+  || new RegExp('\\b' + _PRODUCT_NOUN + '\\b[^.!?]{0,24}\\b(batao|bata|bta|dikhao|dikha|suggest|recommend|hai|\\bh\\b|available|milega|milta)', 'i').test(_pq)
+  // "Yah kaun sa drops hai" / "Kya chij ka he" - they are asking WHAT the thing is. The
+  // branches above need a question word AND a noun within 24 chars of each other; these two
+  // sit side by side with nothing in between, and "chij/cheez" was in no list at all.
+  || new RegExp('\\b(kya|kaun|konsa|kaunsa|kaunse|kis)\\b\\s*(\\S+\\s+){0,2}(chij|cheez|chiz|chize|cheez)\\b', 'i').test(_pq)
+  || new RegExp('\\b(kya|kaun|konsa|kaunsa|kis)\\b\\s*(\\S+\\s+){0,2}' + _PRODUCT_NOUN + '\\b', 'i').test(_pq)
   || /\b(recommend|suggest)\b/i.test(_pq)
   || /\bke\s*liye\b[^.!?]{0,24}\b(kya|konsa|konse|kaunsa|product)\b/i.test(_pq);
 
@@ -520,20 +558,45 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && (needsPrice || 
   const rx = _matches.filter(p => p.isRx);
   const oos = _matches.filter(p => !p.isRx && !p.inStock);
   const CONSULT = 'Chahein to free consultation me doctor aapke liye best option confirm kar denge, wo free hai.';
-  if (sellable.length === 1) {
-    const p = sellable[0];
+  // qrProductLookup marks a combo pack (isKit) and, per product, how many of ITS OWN
+  // distinctive words the customer actually typed (named). Both are absent on responses
+  // from before that deploy, so everything below degrades to the old behaviour.
+  const kit = sellable.find(p => p.isKit);
+  const parts = sellable.filter(p => !p.isKit);
+  const namedParts = parts.filter(p => (p.named || 0) > 0);
+  if (namedParts.length >= 2) {
+    // They typed two DIFFERENT product names, so they want BOTH. The "1 ya 2?" reply below
+    // exists to resolve an ambiguous word ("shilajit" matches two products) - firing it here
+    // answers a question the customer never asked and makes them drop one of the two things
+    // they came to buy.
+    const [a, b] = namedParts;
+    const sum = a.price + b.price;
+    aiText = 'Ji, dono ke rate ye hain:\n\n' + _productLine(a, 1) + '\n\n' + _productLine(b, 2);
+    // The combo is offered as a better deal, not as a third thing to choose between.
+    if (kit && kit.price < sum) {
+      aiText += '\n\nDono ka combo ' + _pname(kit) + ' me ' + _rs(kit.price)
+        + ' me mil jata hai, alag-alag lene par ' + _rs(sum) + ' padta hai:\n' + kit.url;
+    }
+    aiText += '\n\n' + CONSULT;
+    priceGuard = (kit && kit.price < sum) ? 'both_with_combo' : 'both';
+  } else if (parts.length === 1) {
+    const p = parts[0];
     aiText = _pname(p) + ' ka price ' + _rs(p.price) + ' hai ji.\n' + p.url + '\n\n' + CONSULT;
     priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended' : 'one';
-  } else if (sellable.length > 1) {
+  } else if (parts.length > 1) {
     // Two candidates is not a failure to resolve - "shilajit" genuinely matches two
     // products. Give both prices and let the customer pick (PRODUCT POLICY rule 5).
     // Numbered so they can answer "1" instead of typing a product name back.
-    const [a, b] = sellable;
+    const [a, b] = parts;
     aiText = 'Ji, do options hain:\n\n'
       + _productLine(a, 1) + '\n\n'
       + _productLine(b, 2) + '\n\n'
       + 'Aapko kaunsa chahiye - 1 ya 2?';
     priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended_2' : 'ambiguous';
+  } else if (kit) {
+    // Only the combo matched - they asked for it by its own name.
+    aiText = _pname(kit) + ' ka price ' + _rs(kit.price) + ' hai ji.\n' + kit.url + '\n\n' + CONSULT;
+    priceGuard = 'kit';
   } else if (rx.length) {
     aiText = rx[0].title + ' me allopathic medicine hoti hai ji, iske liye doctor ki salah zaroori hai - iska price share nahi kar sakti. 10-15 min ki free consultation kara deti hu.';
     priceGuard = 'rx';
@@ -587,23 +650,64 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && 
 // to our own question is one or two words by definition.
 let substanceGuard = false;
 const _custWords = String(newMsgText || '').trim().split(/\s+/).filter(Boolean).length;
-const _replyIsFiller = QR_FILLER_RE.test(String(aiText || '').trim());
+const _replyIsFiller = qrIsNonAnswer(aiText);
 const _custSaidSomething = _custWords >= 12 || String(newMsgText || '').trim().length >= 70;
 const _weAskedQuestion = /\?/.test(_lastOutText)
   || /\b(bata\s*d(o|ijiye|ena)|bataiye|batao|bta\s*d(o|ijiye)|kitni|kitna|kitne|kab\s*se|kaunsa|konsa|kaun\s*sa|kya\s*problem|naam)\b/i.test(_lastOutText);
+// THE CUSTOMER's side of the turn, which nothing looked at before. Both triggers above read
+// only _lastOutText - what WE said last - and that is exactly what fails once a bad reply has
+// gone out: production sent "ji yah drops hai", which became _lastOutText, which contains no
+// "?" and none of the keywords, so the guard was disarmed for the NEXT turn, which produced
+// "ji", which disarmed it again. One junk reply poisoned the signal used to catch the next
+// one, and the customer got four non-answers in a row. A question from the customer is a
+// fact about this turn and cannot be corrupted by our own output.
+// Note the last message in that exchange was literally "Batao" - the guard already had
+// "batao" in its keyword list, but was only ever looking for it in OUR text.
+const _custAskedQuestion = /\?/.test(String(newMsgText || ''))
+  || /\b(kya|kyu|kyun|kyo|kyon|kaise|kese|kaisa|kaisi|kab|kahan|kaha|kaun|kaunsa|konsa|kis|kisliye|kitna|kitni|kitne|batao|bataiye|bta|btao|btaiye|samjhao|samjhaiye|explain|tell)\b/i.test(String(newMsgText || ''));
 if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard
-    && _replyIsFiller && (_custSaidSomething || _weAskedQuestion)) {
-  substanceGuard = _custSaidSomething ? 'long_message' : 'answered_our_question';
+    && _replyIsFiller && (_custSaidSomething || _weAskedQuestion || _custAskedQuestion)) {
+  substanceGuard = _custSaidSomething ? 'long_message'
+    : (_weAskedQuestion ? 'answered_our_question' : 'unanswered_question');
   aiText = _custSaidSomething
     ? 'Ji, aapne jo bataya wo maine samajh liya - aap pareshaan mat hoiye, isko manage kiya ja sakta hai. '
       + 'Free consultation me doctor aapki puri history dekh kar sahi plan batayenge, consultation aur diet plan dono free hain. '
       + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye?'
+    : _weAskedQuestion
     // They answered a short factual question, so acknowledge it and move to the next step
     // rather than re-explaining - BOOKING POLICY rule 5, one or two asks at a time.
-    : 'Ji, note kar liya. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
-      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), main free consultation set kara deti hu - doctor aapko sahi plan batayenge.';
+    ? 'Ji, note kar liya. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
+      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), main free consultation set kara deti hu - doctor aapko sahi plan batayenge.'
+    // They asked US something and the model had no answer. Do NOT invent product facts to
+    // fill the gap - say honestly that the doctor will explain, which is the persona's own
+    // fallback, and move to booking.
+    : 'Ji, iske baare me doctor aapko theek se samjha denge - free consultation me sab detail mil jayegi, wo bilkul free hai. '
+      + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
+      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
   console.log('[Substance Guard] ' + substanceGuard + ' | custWords=' + _custWords
+    + ' | reply=' + JSON.stringify(String(aiText).slice(0, 30))
     + ' | lastOut=' + JSON.stringify(String(_lastOutText).slice(0, 40)));
+}
+
+// ---- REPEAT GUARD ----
+// "ji yah drops hai" went out VERBATIM twice in a row. Nothing has ever compared an outgoing
+// reply with the previous one; the only defence was CRITICAL ANTI-SPAM rule 5 in the prompt,
+// and this model does not obey prompt rules (which is why every other guard here exists).
+// Repeating yourself is the single most obvious way to look like a broken bot, and it is
+// what the customer reacts to by repeating THEMSELVES - which is how these loops lengthen.
+// Guard-built replies are exempt: they are correct answers, and if the customer asks the same
+// question twice the same price or dose answer is the right one to send again.
+let repeatGuard = false;
+const _normReply = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard && !substanceGuard) {
+  const _now = _normReply(aiText), _prev = _normReply(_lastOutText);
+  if (_now && _prev && (_now === _prev || (_now.length >= 12 && (_prev.includes(_now) || _now.includes(_prev))))) {
+    repeatGuard = true;
+    aiText = 'Ji, lagta hai main aapko theek se samjha nahi paayi. Free consultation me doctor aapke saare sawaal ka jawaab de denge, wo bilkul free hai. '
+      + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
+      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
+    console.log('[Repeat Guard] reply repeated the previous one | was=' + JSON.stringify(String(_lastOutText).slice(0, 50)));
+  }
 }
 
 // ---- Add the introduction EXACTLY ONCE, only on genuine first contact ----
@@ -617,9 +721,9 @@ if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
 // list is searchable, and written to Firestore by Record AI Sent / Save AI Message so it
 // outlives n8n's execution retention. Compact on purpose - "price=ambiguous", not a blob.
 const _guardNames = ['scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
-  'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard'];
+  'repeatGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard'];
 const _flagVals = { scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
-  nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard };
+  repeatGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard };
 const _flags = _guardNames.filter(k => _flagVals[k])
   .map(k => k.replace(/Guard$/, '') + (typeof _flagVals[k] === 'string' ? '=' + _flagVals[k] : ''));
 if (emptyReason) _flags.push('empty=' + emptyReason);
@@ -644,6 +748,7 @@ return [{
     identityGuard,
     bookingGuard,
     substanceGuard,
+    repeatGuard,
     nameGuard,
     claimGuard,
     doseGuard,
