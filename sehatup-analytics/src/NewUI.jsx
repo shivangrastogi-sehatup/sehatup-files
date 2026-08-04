@@ -11,6 +11,7 @@ import { httpsCallable } from 'firebase/functions';
 import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { computeAnalytics } from "./utils/analytics";
+import { useProductSearch } from './utils/productSearchAPI';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import DatePicker from 'react-datepicker';
@@ -5341,98 +5342,10 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Product Search State
+  // Product Search State — matching, debounce and request cancellation all live in
+  // utils/productSearchAPI so this and the OrderCreate add-bar cannot drift apart again.
   const [productSearch, setProductSearch] = useStateD("");
-  const [searchResults, setSearchResults] = useStateD([]);
-  const [isSearchingProducts, setIsSearchingProducts] = useStateD(false);
-
-  const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-  const fetchProducts = useCallback(async (term) => {
-    setIsSearchingProducts(true);
-    try {
-      const cleanTerm = term.replace(/"/g, '\\"');
-      const query = `{
-        products(first: 15, query: "${cleanTerm}*") {
-          edges {
-            node {
-              id
-              title
-              handle
-              featuredImage { url }
-              variants(first: 50) {
-                edges {
-                  node {
-                    id
-                    title
-                    sku
-                    price
-                  }
-                }
-              }
-            }
-          }
-        }
-      }`;
-
-      const res = await fetch('/shopify-v2/graphql.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      });
-      const data = await res.json();
-
-      if (data.errors) {
-        setSearchResults([]);
-        return;
-      }
-
-      const products = (data?.data?.products?.edges || []).map(edge => {
-        const node = edge.node;
-        return {
-          id: parseInt(node.id.split('/').pop(), 10) || node.id,
-          title: node.title,
-          handle: node.handle,
-          image: node.featuredImage?.url || null,
-          variants: (node.variants?.edges || []).map(vEdge => {
-            const vNode = vEdge.node;
-            return {
-              id: parseInt(vNode.id.split('/').pop(), 10) || vNode.id,
-              title: vNode.title,
-              sku: vNode.sku || '',
-              price: Math.round(parseFloat(vNode.price) * 100),
-            };
-          }),
-        };
-      });
-
-      const tokens = normalizeSearchText(term).split(/\s+/).filter(Boolean);
-      const strictMatches = products.filter(product => {
-        if (!product.variants?.length) return false;
-        const searchable = normalizeSearchText([
-          product.title,
-          product.handle,
-          ...product.variants.flatMap(variant => [variant.title, variant.sku]),
-        ].join(" "));
-        return tokens.every(token => searchable.includes(token));
-      });
-
-      setSearchResults(strictMatches);
-    } catch (err) {
-      setSearchResults([]);
-    } finally {
-      setIsSearchingProducts(false);
-    }
-  }, [setIsSearchingProducts, setSearchResults]);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      const term = productSearch.trim();
-      if (term.length > 1) fetchProducts(term);
-      else setSearchResults([]);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [fetchProducts, productSearch, setSearchResults]);
+  const { results: searchResults, isSearching: isSearchingProducts } = useProductSearch(productSearch);
 
   const toggleProduct = (product, variant) => {
     const vid = variant ? variant.id : null;
@@ -5459,7 +5372,6 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         durationUnit: catalogEntry?.durationUnit || 'month',
       }]);
       setProductSearch("");
-      setSearchResults([]);
     }
   };
 
@@ -6453,10 +6365,10 @@ function OrderCreate({ context = {}, setRoute }) {
   const [city, setCity] = useStateO(preset?.city || "");
   const [stateName, setStateName] = useStateO(preset?.state || "");
   const [country, setCountry] = useStateO(preset?.country || "India");
+  // Matching, debounce and request cancellation all live in utils/productSearchAPI so this
+  // and the PrescriptionEditor medicine search cannot drift apart again.
   const [productSearch, setProductSearch] = useStateO("");
-  const [searchResults, setSearchResults] = useStateO([]);
-  const [isSearchingProducts, setIsSearchingProducts] = useStateO(false);
-  const [, setSelectedSearchVariants] = useStateO({});
+  const { results: searchResults, isSearching: isSearchingProducts } = useProductSearch(productSearch);
   const [freeSampleVariant, setFreeSampleVariant] = useStateO(null);
   const [activeDiscountItemId, setActiveDiscountItemId] = useStateO(null);
   const [hoveredDiscountItemId, setHoveredDiscountItemId] = useStateO(null);
@@ -7448,100 +7360,6 @@ function OrderCreate({ context = {}, setRoute }) {
     setHealthscoreLead(true);
   };
 
-  const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-  const fetchProducts = useCallback(async (term) => {
-    setIsSearchingProducts(true);
-    try {
-      const cleanTerm = term.replace(/"/g, '\\"');
-      const query = `{
-        products(first: 15, query: "${cleanTerm}*") {
-          edges {
-            node {
-              id
-              title
-              handle
-              featuredImage { url }
-              variants(first: 50) {
-                edges {
-                  node {
-                    id
-                    title
-                    sku
-                    price
-                  }
-                }
-              }
-            }
-          }
-        }
-      }`;
-
-      const res = await fetch('/shopify-v2/graphql.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      });
-      const data = await res.json();
-
-      if (data.errors) {
-        console.error('[Product search] GraphQL errors:', data.errors);
-        setSearchResults([]);
-        return;
-      }
-
-      const products = (data?.data?.products?.edges || []).map(edge => {
-        const node = edge.node;
-        return {
-          id: parseInt(node.id.split('/').pop(), 10) || node.id,
-          title: node.title,
-          handle: node.handle,
-          image: node.featuredImage?.url || null,
-          variants: (node.variants?.edges || []).map(vEdge => {
-            const vNode = vEdge.node;
-            return {
-              id: parseInt(vNode.id.split('/').pop(), 10) || vNode.id,
-              title: vNode.title,
-              sku: vNode.sku || '',
-              price: Math.round(parseFloat(vNode.price) * 100),
-            };
-          }),
-        };
-      });
-
-      const tokens = normalizeSearchText(term).split(/\s+/).filter(Boolean);
-      const strictMatches = products.filter(product => {
-        if (!product.variants?.length) return false;
-        const searchable = normalizeSearchText([
-          product.title,
-          product.handle,
-          ...product.variants.flatMap(variant => [variant.title, variant.sku]),
-        ].join(" "));
-        return tokens.every(token => searchable.includes(token));
-      });
-
-      setSearchResults(strictMatches);
-    } catch (err) {
-      console.error('[Product search] failed:', err);
-      setSearchResults([]);
-    } finally {
-      setIsSearchingProducts(false);
-    }
-  }, [setIsSearchingProducts, setSearchResults]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const term = productSearch.trim();
-      if (term.length > 1) fetchProducts(term);
-      else {
-        setSearchResults([]);
-        setSelectedSearchVariants({});
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [fetchProducts, productSearch, setSearchResults, setSelectedSearchVariants]);
-
   const addVariantToOrder = (variant, product) => {
     setItems((current) => {
       let next = [...current];
@@ -7568,7 +7386,6 @@ function OrderCreate({ context = {}, setRoute }) {
       return next;
     });
     setProductSearch("");
-    setSearchResults([]);
   };
 
   const toggleFreeSample = (checked) => {
@@ -7645,7 +7462,6 @@ function OrderCreate({ context = {}, setRoute }) {
       discountReason: "",
     }]);
     setProductSearch("");
-    setSearchResults([]);
     closeCustomItemModal();
   };
 

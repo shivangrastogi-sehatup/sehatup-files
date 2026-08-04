@@ -7,10 +7,17 @@ const NODE = path.join(__dirname, "../extract-ai-response.txt");
 const body = fs.readFileSync(NODE, "utf8");
 
 // One turn -> what the customer would actually receive.
-function run({ model, cust, lastOut, matches = [], name = "Customer", greeted = true, report = {} }) {
+function run({ model, cust, lastOut, matches = [], name = "Customer", greeted = true, report = {},
+              automationReplied = false }) {
   const history = [];
   if (lastOut) history.push({ json: { direction: "out", text: lastOut, msgTime: 1000, senderKind: "AI" } });
   if (greeted && !lastOut) history.push({ json: { direction: "out", text: "Hello ji", msgTime: 500, senderKind: "AI" } });
+  // The customer's message, then optionally QuickReply's own automation replying after it.
+  history.push({ json: { direction: "in", text: cust, msgTime: 2000 } });
+  if (automationReplied) {
+    history.push({ json: { direction: "out", _type: "BOT_PLACEHOLDER", text: "",
+      placeholder: "Bot replied", messageBy: "AUTOMATION", msgTime: 2100 } });
+  }
 
   const nodes = {
     "Build AI Prompt": [{ json: { phone: "+919999999999", name, newMsgText: cust, displayName: "" } }],
@@ -94,6 +101,34 @@ const kitOnly = run({ cust: "confidence performance kit ka price", model: "ji", 
 check("kit asked for by name gets a price + link", /1099/.test(kitOnly.reply) && /http/.test(kitOnly.reply), kitOnly);
 const ambiguous = run({ cust: "shilajit ka price", model: "ji", lastOut: "ji bataiye", matches: [P("Shilajit Honey Sticks", 899), P("Pure Himalayan Shilajit Resin - 20g", 1349)] });
 check("genuinely ambiguous still asks '1 ya 2?'", /1 ya 2/.test(ambiguous.reply), ambiguous);
+
+console.log("\n--- company / trust questions (2026-08-03 transcript, second report) ---");
+const whereFrom = run({ cust: "Recording karke bataiye kahan se aap", model: "ji", lastOut: "Ji, dono ke rate ye hain: ..." });
+check("answers where-we-are instead of 'doctor will explain'", /digital clinic/i.test(whereFrom.reply) && !/doctor aapko theek se samjha/.test(whereFrom.reply), whereFrom);
+check("says it cannot send a voice note", /voice note nahi bhej sakti/i.test(whereFrom.reply), whereFrom.reply);
+check("flagged where_from_voice", /company=where_from_voice/.test(whereFrom.guards), whereFrom.guards);
+check("invents no address", !/(gurgaon|noida|delhi|mumbai|bangalore|pune|sector|street|road|pin\s*code)/i.test(whereFrom.reply), whereFrom.reply);
+const whereOnly = run({ cust: "aap kahan se ho", model: "ji", lastOut: "ji bataiye" });
+check('"aap kahan se ho" answered', /digital clinic/i.test(whereOnly.reply) && /company=where_from\b/.test(whereOnly.guards), whereOnly);
+const orderWhere = run({ cust: "mera order kaha hai", model: "ji", lastOut: "ji bataiye" });
+check("an ORDER 'kaha hai' is not hijacked", !/company/.test(orderWhere.guards), orderWhere);
+
+console.log("\n--- the generic fallback must not assume a medical question ---");
+const nonMedical = run({ cust: "aapka GST number kya hai", model: "ji", lastOut: "Ji, ye rahi jaankari." });
+check("non-medical question -> team will confirm", /team se confirm/.test(nonMedical.reply), nonMedical);
+const medical = run({ cust: "ye dawa kaise kaam karti hai", model: "ji", lastOut: "Ji, ye rahi jaankari." });
+check("medical question -> doctor will explain", /doctor aapko theek se samjha/.test(medical.reply), medical);
+
+console.log("\n--- report guard must not duplicate what the automation already sent ---");
+const REPORT = { found: true, url: "https://storage.googleapis.com/x/HealthScore360Report.pdf?sig=abc" };
+const dup = run({ cust: "I want my detailed HealthScore360 report", model: "ji", lastOut: "Hello ji",
+                  report: REPORT, automationReplied: true });
+check("no second copy of the report link", !/storage\.googleapis\.com/.test(dup.reply), dup);
+check("report guard did not fire", !/report=/.test(dup.guards), dup.guards);
+const normalReport = run({ cust: "mujhe meri report chahiye", model: "ji", lastOut: "Hello ji",
+                           report: REPORT, automationReplied: false });
+check("still sends the report when no automation replied", /storage\.googleapis\.com/.test(normalReport.reply), normalReport);
+check("flagged report=sent", /report=sent/.test(normalReport.guards), normalReport.guards);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

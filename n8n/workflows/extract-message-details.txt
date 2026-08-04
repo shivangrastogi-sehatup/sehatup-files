@@ -59,10 +59,17 @@ const mediaPath = payload.path || '';
 // "Mujhe vaji bati or kern drop chahiye" at 13:45 and got NO reply at all - QuickReply does
 // not answer that phrasing either, so skipping the AI just produced silence. The AI now
 // handles it and the product guard sends both products with live prices.
+// >> ADDED 2026-08-04: "I want my detailed HealthScore360 report". QuickReply's flow answers
+//    this one end to end - it posts "We're processing your HealthScore360 Report", then the
+//    PDF itself. The AI was not skipped (the old pattern ended at "healthscore", so the
+//    trailing "360 report" made it miss), so the report guard fired too and sent a SECOND
+//    copy as a raw signed storage URL. The customer got the report twice.
+//    Whitespace and the "360"/"report" tails are optional so the same entry survives
+//    "healthscore360", "health score 360" and "HealthScore 360 Report".
 const AUTOMATION_TRIGGER_RES = [
-  /^\s*check my free health score\s*$/,
-  /^\s*check free healthscore\s*$/,
-  /^\s*i want my detailed healthscore\s*$/
+  /^\s*check my free health\s*score\s*(360)?\s*$/,
+  /^\s*check free health\s*score\s*(360)?\s*$/,
+  /^\s*i want my detailed health\s*score\s*(360)?\s*(report)?\s*$/
 ];
 const textLc = String(text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 const isTriggerText = AUTOMATION_TRIGGER_RES.some(re => re.test(textLc));

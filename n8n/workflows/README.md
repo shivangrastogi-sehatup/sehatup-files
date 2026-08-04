@@ -102,14 +102,16 @@ n8n/workflows  ·  promise + empty-reply guard 13/13   (4 promises replaced, 4 f
 n8n/workflows  ·  medical claim guard         19/19   (7 triggers skip, 4 still reach AI, 6 claims blocked, 4 legit survive, precedence)
 n8n/workflows  ·  name + substance + score    31/31   (13 name cases, 11 filler/substance, 3 health-score, 2 claim, 5 file-hygiene)
 n8n/workflows  ·  product matcher + combo kit 32/32   (tests/product-matcher.test.js — runnable)
-n8n/workflows  ·  reply guard chain           21/21   (tests/reply-guards.test.js — runnable, replays the 2026-08-03 transcript)
+n8n/workflows  ·  reply guard chain           33/33   (tests/reply-guards.test.js — runnable, replays the 2026-08-03 transcript)
+n8n/workflows  ·  automation triggers         16/16   (tests/automation-triggers.test.js — runnable)
 ```
 
-The last two are **committed and runnable**, and they read the shipping code rather than a copy:
+The last three are **committed and runnable**, and they read the shipping code rather than a copy:
 
 ```
 node n8n/workflows/tests/product-matcher.test.js
 node n8n/workflows/tests/reply-guards.test.js
+node n8n/workflows/tests/automation-triggers.test.js
 ```
 
 Re-run these before pasting anything — see [Regression cases](#regression-cases).
@@ -982,13 +984,28 @@ substance). Only raw model output is deduplicated.
 karna zaroori hai` when the customer already said they have PCOD (echoing, not diagnosing) ·
 `agar aapko thyroid hai to…` (conditional) · any ordinary product reply
 
-**Automation triggers — must skip the AI:**
-`I want to Check My Free PCOD Health Score` · `Check My Free Health Score` ·
-`check free healthscore` · `I want my detailed healthscore` · `Health-Score chahiye` ·
-`mera health score kya hai` · `Mujhe Vaji Bati or Kern Drops chahiye`
+**Automation triggers — must skip the AI** (covered by `tests/automation-triggers.test.js`):
+`Check My Free Health Score` · `check free healthscore` · `I want my detailed healthscore` ·
+`I want my detailed HealthScore360 report`
 
 **Automation triggers — must still reach the AI:**
+`I want to Check My Free PCOD Health Score` (QuickReply does **not** answer this variant) ·
+`Health-Score chahiye` · `mera health score kya hai` · `mujhe report chahiye` ·
 `mera PCOD hai` · `vaji bati ka price` · `mera order kaha hai` · `hello ji`
+
+> **`HealthScore360 report` added 2026-08-04.** QuickReply's flow answers that button end to
+> end — progress message, then the PDF. The old pattern ended at `healthscore`, so the trailing
+> `360 report` made it miss, the AI was not skipped, and the report guard sent a **second** copy
+> as a raw signed storage URL. The `(360)?` and `(report)?` tails are optional so one entry
+> survives `healthscore360`, `health score 360` and `HealthScore 360 Report`.
+>
+> **Second layer, in the report guard:** if a QuickReply automation replied *after* the
+> customer's last message (`BOT_PLACEHOLDER` / `messageBy: AUTOMATION`), the report guard stands
+> down rather than adding a duplicate link. QuickReply's outbound messages carry no text, so we
+> can see *that* its flow answered but never *what* it said — enough for this one decision.
+> Scoped to the report guard only, on purpose: the generic "Hi! Please let us know how we can
+> help you" automation fires on other messages and must never be able to silence the bot.
+> The AI's own replies come back as `AGENT_PLACEHOLDER`, so this cannot trip on itself.
 
 **Empty model response — must never show the customer an error.** Gemini returns no text part
 when it stops for a reason other than `STOP` (safety block, recitation block, `MAX_TOKENS`

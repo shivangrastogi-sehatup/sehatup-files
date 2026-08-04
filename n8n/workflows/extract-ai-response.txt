@@ -249,6 +249,32 @@ const HEALTH_SCORE_URL_2 = 'https://www.sehatup.com/pages/health-score-360';
 let reportGuard = false;
 let _report = {};
 try { _report = ($('Fetch Customer Context').first().json || {}).report || {}; } catch (e) {}
+
+// ---- DID QUICKREPLY'S OWN AUTOMATION ALREADY ANSWER THIS? ----
+// "I want my detailed HealthScore360 report" is a button whose QuickReply flow posts a
+// progress message AND the PDF itself. The AI answered it as well and sent a second copy as a
+// raw signed storage URL - the customer received the report twice.
+// The exact button text is now in AUTOMATION_TRIGGER_RES (Extract Message Details), which
+// skips the AI outright. This is the net under that: marketing rewords buttons, and the last
+// time they did, the AI invented a health score for the variant nobody had listed.
+// QuickReply's outbound messages arrive as BOT_PLACEHOLDER with text:"" - the Cloud Function
+// cannot see their content - so we cannot check WHAT it sent, only that its flow replied
+// after the customer's last message. For the report guard that is enough: the file is already
+// in the chat. Deliberately scoped to this guard alone, NOT to the whole AI, because the
+// generic "Hi! Please let us know how we can help you" automation fires on other messages too
+// and must not be able to silence the bot.
+// The AI's own replies come back as AGENT_PLACEHOLDER (messageBy AGENT), never BOT_, so this
+// cannot trip on ourselves.
+let _automationAnswered = false;
+try {
+  const _hist = $('Fetch Conversation History').all().map(i => i && i.json).filter(Boolean);
+  const _inTimes = _hist.filter(m => m.direction === 'in').map(m => Number(m.msgTime) || 0);
+  const _lastIn = _inTimes.length ? Math.max.apply(null, _inTimes) : 0;
+  _automationAnswered = _hist.some(m => m.direction === 'out'
+    && (m._type === 'BOT_PLACEHOLDER' || m.messageBy === 'AUTOMATION' || !!m.automationBy)
+    && (Number(m.msgTime) || 0) >= _lastIn);
+  if (_automationAnswered) console.log('[Report Guard] a QuickReply automation already replied to this message');
+} catch (e) {}
 const _REPORTWORD = '(report|repot|reprot|rport|riport)';
 const askedReport = new RegExp('(health|medical)\\s*' + _REPORTWORD + '|\\b' + _REPORTWORD + '\\b|' + _REPORTWORD + '\\s*(chahiye|chaiye|nahi|nhi|nai|kaha|kahan|mila|milega|bhej|send|dijiye|do\\b)', 'i').test(_qLower)
   || /(meri|mera|apni|apna|my)\s+report/i.test(_qLower);
@@ -263,7 +289,12 @@ const askedNewReport = _reportCtx && (
   || /\b(report|assessment|test|score)\b[^.!?]{0,16}\b(new|naya|nayi|fresh|dubara|dobara|again|update|updated)\b/i.test(_qLower)
   || /phir\s*se[^.!?]{0,16}\b(report|assessment|banwa|karwa)\b/i.test(_qLower)
 );
-if (askedNewReport) {
+if (_automationAnswered && (askedNewReport || askedReport)) {
+  // The flow has already sent it. Saying nothing here leaves the model's own reply in place,
+  // and the guards below still police that - we only decline to add a duplicate link.
+  reportGuard = false;
+  console.log('[Report Guard] SKIPPED - QuickReply automation already delivered the report | q=' + _qLower.slice(0, 50));
+} else if (askedNewReport) {
   reportGuard = 'new_requested';
   aiText = 'Ji, nayi report ke liye assessment dobara complete kar lijiye:\n'
     + HEALTH_SCORE_URL_2
@@ -316,6 +347,32 @@ if (!reportGuard && !scoreGuard && _askedIdentity) {
   console.log('[Identity] answered a who-are-you question | q=' + _qLower.slice(0, 60));
 }
 
+// ---- COMPANY / TRUST + VOICE-NOTE DETECTION ----
+// "Recording karke bataiye kahan se aap" - asked immediately after the QuickReply automation
+// warned that the callback number "Spam dikha sakta hai". That is a customer checking whether
+// we are real, and it is the highest-stakes question in the chat: answer it badly and nothing
+// else matters. It got the generic "doctor aapko samjha denge" fallback, which answers a
+// health question nobody asked.
+// Built deterministically for the same reason as the identity responder, plus one worse risk:
+// there is NO address anywhere in the persona, the Doc or the catalog, so any office, city or
+// street the model produces is invented outright - a fabricated business identity. The only
+// sanctioned description is ABOUT SEHATUP in ananya-prompt.txt line 42, quoted below.
+// The flag is declared up here because _answered() closes over it.
+let companyGuard = false;
+// Order questions own "kaha hai" ("mera order kaha hai"), so they are excluded outright
+// rather than fought over with more regex.
+const _orderish = /\b(order|parcel|shipment|courier|delivery|awb|track|tracking|refund|return)\b/i.test(_qLower);
+const _askedWhereFrom = !_orderish && (
+     /\b(kaha|kahan|kahaa)\s*se\b[^.!?]{0,20}\b(aap|ho|hain|bol|baat|call|ka?r)/i.test(_qLower)
+  || /\b(aap|aapka|apka|tum|tumhara|ye|yah|sehatup|company|office)\b[^.!?]{0,20}\b(kaha|kahan|kahaa)\b/i.test(_qLower)
+  || /\bwhere\b[^.!?]{0,20}\b(are\s*you|from|based|located)\b/i.test(_qLower)
+  || /\b(company|office|address|pata)\b[^.!?]{0,20}\b(kaha|kahan|kya|kis|batao|bataiye)\b/i.test(_qLower)
+);
+// "Recording karke bataiye" - they want a voice note. Send WhatsApp Reply posts an AGENT_TEXT
+// payload and nothing else, so this workflow physically cannot send audio. Agreeing would be
+// the same unkeepable promise as "doctor will call in 5 minutes".
+const _askedRecording = /\b(recording|record\s*kar|voice\s*(note|msg|message)?|audio|awaz|awaaz)\b/i.test(_qLower);
+
 let claimGuard = false;
 if (!reportGuard && !scoreGuard && !identityGuard && (gaveScore || gaveDiagnosis)) {
   claimGuard = gaveScore ? 'invented_score' : 'invented_diagnosis';
@@ -365,7 +422,7 @@ const gaveDose =
 // had drifted apart - bookingGuard never checked reportGuard, and doseGuard/slotGuard/
 // priceGuard never checked scoreGuard - so a reply that one guard had already built could
 // be silently overwritten by a lower-precedence one.
-const _answered = () => !!(reportGuard || scoreGuard || identityGuard || claimGuard);
+const _answered = () => !!(reportGuard || scoreGuard || identityGuard || claimGuard || companyGuard);
 
 const doseGuard = !_answered() && (askedDose || gaveDose);
 if (doseGuard) {
@@ -610,6 +667,27 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && (needsPrice || 
   }
 }
 
+// ---- COMPANY / TRUST RESPONDER ----
+// Deliberately placed AFTER the price guard. In the transcript this came from, the customer's
+// first unanswered message was "Mujhe Vaji Bati or Kern Drops Chahiye" and the where-from
+// question arrived in the same unanswered batch - the prices are what they actually came for,
+// so those win. On the NEXT turn they asked only the trust question, no product matched, the
+// price guard stayed silent, and this responder answers it.
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard
+    && (_askedWhereFrom || _askedRecording)) {
+  companyGuard = _askedWhereFrom ? (_askedRecording ? 'where_from_voice' : 'where_from') : 'voice_note';
+  aiText = (_askedRecording ? 'Main voice note nahi bhej sakti ji, isliye likh kar bata rahi hu. ' : '')
+    + (_askedWhereFrom
+      // Every fact here is from ABOUT SEHATUP in the persona. No city, no address, because we
+      // do not have one to give - and a made-up one is worse than none.
+      ? 'SehatUP India ki digital clinic hai - Ayurveda, Homeopathy aur modern medicine ke doctors ek saath. '
+        + 'Sab kuch online aur phone par hota hai, isliye aap kisi bhi shehar me ho hum help kar dete hain. '
+        + 'Hum AYUSH-approved aur GMP-certified hain, aur call hamare verified business number se hi aati hai. '
+        + 'Aur kuch jaanna ho to bata dijiye.'
+      : 'Aap jo jaanna chahte hain wo likh kar puch lijiye, main detail me bata deti hu.');
+  console.log('[Company Guard] ' + companyGuard + ' | q=' + _qLower.slice(0, 60));
+}
+
 // ---- CALLBACK PROMISE GUARD ----
 // "Okay ji I will share your details with the doctor and they will call you in 5 minutes"
 // and "They will call you in 5 minutes ji" - the model invents a commitment nobody can keep.
@@ -663,6 +741,10 @@ const _weAskedQuestion = /\?/.test(_lastOutText)
 // fact about this turn and cannot be corrupted by our own output.
 // Note the last message in that exchange was literally "Batao" - the guard already had
 // "batao" in its keyword list, but was only ever looking for it in OUR text.
+// Is the unanswered question even about health or a product? The catch-all reply below
+// promises a doctor's explanation, which is only meaningful if that is what they asked about.
+const _healthOrProductQ = _matches.length > 0
+  || /\b(dawa|dawai|medicine|product|tablet|goli|capsule|drops?|churna|powder|kit|combo|price|dose|khurak|matra|problem|pareshani|dard|symptom|ilaj|treatment|fayda|faida|asar|side\s*effect|istemal|upyog|upayog|health|body|weight|skin|hair)\b/i.test(String(newMsgText || ''));
 const _custAskedQuestion = /\?/.test(String(newMsgText || ''))
   || /\b(kya|kyu|kyun|kyo|kyon|kaise|kese|kaisa|kaisi|kab|kahan|kaha|kaun|kaunsa|konsa|kis|kisliye|kitna|kitni|kitne|batao|bataiye|bta|btao|btaiye|samjhao|samjhaiye|explain|tell)\b/i.test(String(newMsgText || ''));
 if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard
@@ -678,12 +760,15 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && 
     // rather than re-explaining - BOOKING POLICY rule 5, one or two asks at a time.
     ? 'Ji, note kar liya. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
       + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), main free consultation set kara deti hu - doctor aapko sahi plan batayenge.'
-    // They asked US something and the model had no answer. Do NOT invent product facts to
-    // fill the gap - say honestly that the doctor will explain, which is the persona's own
-    // fallback, and move to booking.
-    : 'Ji, iske baare me doctor aapko theek se samjha denge - free consultation me sab detail mil jayegi, wo bilkul free hai. '
+    // They asked US something and the model had no answer. Do NOT invent facts to fill the
+    // gap - but do not assume the question was medical either. "Recording karke bataiye kahan
+    // se aap" is a question about the COMPANY, and answering it with "doctor aapko samjha
+    // denge" is a non-sequitur that reads as the bot not having understood at all.
+    : _healthOrProductQ
+    ? 'Ji, iske baare me doctor aapko theek se samjha denge - free consultation me sab detail mil jayegi, wo bilkul free hai. '
       + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
-      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
+      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?'
+    : 'Ji, ye main hamari team se confirm karke aapko bata deti hu. Tab tak aapko health ya product se juda koi sawaal ho to bata dijiye, main abhi help kar deti hu.';
   console.log('[Substance Guard] ' + substanceGuard + ' | custWords=' + _custWords
     + ' | reply=' + JSON.stringify(String(aiText).slice(0, 30))
     + ' | lastOut=' + JSON.stringify(String(_lastOutText).slice(0, 40)));
@@ -721,9 +806,9 @@ if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
 // list is searchable, and written to Firestore by Record AI Sent / Save AI Message so it
 // outlives n8n's execution retention. Compact on purpose - "price=ambiguous", not a blob.
 const _guardNames = ['scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
-  'repeatGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard'];
+  'repeatGuard', 'companyGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard'];
 const _flagVals = { scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
-  repeatGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard };
+  repeatGuard, companyGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard };
 const _flags = _guardNames.filter(k => _flagVals[k])
   .map(k => k.replace(/Guard$/, '') + (typeof _flagVals[k] === 'string' ? '=' + _flagVals[k] : ''));
 if (emptyReason) _flags.push('empty=' + emptyReason);
@@ -749,6 +834,7 @@ return [{
     bookingGuard,
     substanceGuard,
     repeatGuard,
+    companyGuard,
     nameGuard,
     claimGuard,
     doseGuard,
