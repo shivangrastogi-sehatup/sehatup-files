@@ -7,7 +7,11 @@ var SOURCE = 'health';        // 'health' | 'quick' | 'mens'
 
 var KEY = 'bc25c945a72e666daebe8e516ea8a265f12524b6556ea42f47e00ece13e36635';
 
-var TTL_CURRENT = 15;         // seconds; the live month
+// The cache TTL is a floor on how stale the wall can be, so it is kept just long
+// enough to absorb several screens polling out of step. 15s + a 20s poll used to
+// put the worst case near 40s; with last month no longer re-sent (see readBoard)
+// each request is small enough to poll faster, and 5s + 10s lands nearer 16s.
+var TTL_CURRENT = 5;          // seconds; the live month
 var TTL_PREV = 600;           // seconds; last month, which no longer changes
 
 var BOARDS = {
@@ -76,11 +80,24 @@ function openSpreadsheet(cfg) {
 
 function readBoard(p) {
   var cfg = boardConfig(p);
+  var previous = readMonth(cfg, -1, TTL_PREV);
+
+  // Last month is 83% of this response and it does not change. Re-sending it
+  // every 20s cost ~1.6GB/day per screen and several seconds of every request,
+  // which is latency the wall feels directly. The client sends back the `sig` it
+  // already holds; when it still matches, the rows are left out entirely.
+  //
+  // A signature rather than a blanket "skip previous": July CAN be edited, and a
+  // client that had been told to stop asking would never find out.
+  if (previous.ok && p.prevSig && String(p.prevSig) === previous.sig) {
+    previous = { ok: true, unchanged: true, tab: previous.tab, sig: previous.sig };
+  }
+
   return {
     ok: true,
     source: SOURCE,
     current: readMonth(cfg, 0, TTL_CURRENT),
-    previous: readMonth(cfg, -1, TTL_PREV),
+    previous: previous,
     at: new Date().toISOString(),
   };
 }
@@ -105,8 +122,20 @@ function readMonth(cfg, monthOffset, ttl) {
     out = { ok: false, values: [], tab: null, error: String(err && err.message || err) };
   }
 
-  if (out.ok) cachePut(cache, key, JSON.stringify(out), ttl);
+  // Computed once per cache fill, not per request, and stored with the payload —
+  // so the common path (a cache hit) never hashes anything.
+  if (out.ok) {
+    out.sig = contentSig(out.values, out.tab);
+    cachePut(cache, key, JSON.stringify(out), ttl);
+  }
   return out;
+}
+
+/** Short content fingerprint for a month's values. */
+function contentSig(values, tab) {
+  var digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.MD5, JSON.stringify([tab, values]), Utilities.Charset.UTF_8);
+  return Utilities.base64EncodeWebSafe(digest).replace(/=+$/, '');
 }
 
 function readTab(sheet) {

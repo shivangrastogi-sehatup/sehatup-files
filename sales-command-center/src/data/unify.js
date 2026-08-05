@@ -10,7 +10,7 @@
  *   { id, source:'healthscore'|'quickreply', date:'YYYY-MM-DD',
  *     caller, name, norm, converted(bool), work, product?, category?, paymentMode? }
  * ========================================================================== */
-import { fetchAll } from '../api/sheets';
+import { fetchAll, clearPrevCache } from '../api/sheets';
 import { field, parseDate, toNumber } from '../utils/dataProcessor';
 
 // Unified status buckets used everywhere (the funnel + KPIs), in funnel order.
@@ -227,13 +227,59 @@ const mapOrders = (sheet, map) => {
   return out;
 };
 
+/* ---------------------------------------------------------------------------
+ * Last-good, PER BOARD.
+ *
+ * The old rule was all-or-nothing — `ok = health.ok && quick.ok && mens.ok`, and
+ * App.jsx discarded the ENTIRE refresh when that was false. One board hiccuping
+ * therefore froze the other two as well, with no time bound and no retry: the
+ * wall simply held its numbers until a tick where all three happened to succeed
+ * at once. At ~4s per request against Apps Script that is not rare, and an
+ * unlucky run is minutes of stale numbers under a green LIVE badge.
+ *
+ * Each slice now keeps its own last-good copy and its own age — which is what the
+ * README always described: "a board fails alone".
+ * ------------------------------------------------------------------------- */
+const EMPTY_SLICE = { rows: [], tab: null, ok: false };
+const lastGood = Object.create(null);
+
+/**
+ * The freshest usable version of one slice. A successful fetch is recorded and
+ * returned; a failed one falls back to whatever that slice last returned, tagged
+ * with how old it now is so the UI can say so out loud.
+ */
+function freshest(name, slice) {
+  if (slice && slice.ok) {
+    lastGood[name] = { slice, at: Date.now() };
+    return { ...slice, fresh: true, ageMs: 0 };
+  }
+  const held = lastGood[name];
+  // Never fetched successfully in this session — there is nothing to hold.
+  if (!held) return { ...EMPTY_SLICE, fresh: false, ageMs: null };
+  return { ...held.slice, fresh: false, ageMs: Date.now() - held.at };
+}
+
+/** Drop every held slice — used when the Settings panel repoints a sheet, where
+ *  last-good data belongs to the OLD sheet and must not survive the switch.
+ *  Clears the previous-month signature cache for the same reason. */
+export function clearLastGood() {
+  for (const k of Object.keys(lastGood)) delete lastGood[k];
+  clearPrevCache();
+}
+
 /**
  * @param {object} [cfg] Settings-panel config — { sheets, columns }. Omit it and
  *   every source reads its .env sheet with the built-in column names.
  */
 export async function loadData(cfg) {
   const col = cfg?.columns || {};
-  const { health, quick, mens, healthPrev, quickPrev, mensPrev } = await fetchAll(cfg);
+  const raw = await fetchAll(cfg);
+  const health = freshest('health', raw.health);
+  const quick = freshest('quick', raw.quick);
+  const mens = freshest('mens', raw.mens);
+  const healthPrev = freshest('healthPrev', raw.healthPrev);
+  const quickPrev = freshest('quickPrev', raw.quickPrev);
+  const mensPrev = freshest('mensPrev', raw.mensPrev);
 
   // CURRENT month — leads (health+quick) + orders (mens, kept SEPARATE from leads).
   const rows = [...mapRows(health, 'healthscore', col.health), ...mapRows(quick, 'quickreply', col.quick)];
@@ -244,20 +290,27 @@ export async function loadData(cfg) {
   const prevRowsAll = [...mapRows(healthPrev, 'healthscore', col.health, -1), ...mapRows(quickPrev, 'quickreply', col.quick, -1)];
   const prevOrdersAll = mapOrders(mensPrev, col.mens);
 
-  // ok:true only when all three CURRENT sheets loaded — keeps last-good data on a
-  // transient partial failure.
+  // ok = every current board has USABLE data (fresh this tick, or held from an
+  // earlier one). It no longer means "everything is fresh" — `fresh` per board
+  // carries that, and is what the staleness chip reads. The distinction matters:
+  // ok is "can the wall be drawn at all", which is only false before the first
+  // successful fetch of a board.
   const ok = health.ok && quick.ok && mens.ok;
+  const stale = [
+    !health.fresh && 'health', !quick.fresh && 'quick', !mens.fresh && 'mens',
+  ].filter(Boolean);
   return {
-    rows, orders, ok,
+    rows, orders, ok, stale,
     prevRows: prevRowsAll, prevOrders: prevOrdersAll,
     meta: buildMeta(rows),
     tabs: { health: health.tab, quick: quick.tab, mens: mens.tab },
     // Per-sheet outcome, so the UI can name the sheet that came back empty
-    // instead of leaving the viewer to guess why a panel is blank.
+    // instead of leaving the viewer to guess why a panel is blank. `fresh` and
+    // `ageMs` are what stop a held board from passing itself off as live.
     status: {
-      health: { ok: health.ok, tab: health.tab, rows: health.rows.length },
-      quick: { ok: quick.ok, tab: quick.tab, rows: quick.rows.length },
-      mens: { ok: mens.ok, tab: mens.tab, rows: mens.rows.length },
+      health: { ok: health.ok, tab: health.tab, rows: health.rows.length, fresh: health.fresh, ageMs: health.ageMs },
+      quick: { ok: quick.ok, tab: quick.tab, rows: quick.rows.length, fresh: quick.fresh, ageMs: quick.ageMs },
+      mens: { ok: mens.ok, tab: mens.tab, rows: mens.rows.length, fresh: mens.fresh, ageMs: mens.ageMs },
     },
   };
 }

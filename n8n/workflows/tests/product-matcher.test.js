@@ -128,5 +128,38 @@ console.log("\n--- a bare form word must not confidently name a product ---");
 check('"Yah kaun sa drops hai" -> no match', qrSearchCatalog("Yah kaun sa drops hai", catalog).length, 0);
 check('"Watsapp pr msg" -> no match', qrSearchCatalog("Watsapp pr msg", catalog).length, 0);
 
+console.log("\n--- a common ENGLISH word must not name a product either (2026-08-05) ---");
+// Production: "Hello! Can I get more info for PCOD/PCOS?" put Hard Yatra (Rs1999, Rx, out of
+// stock) into a women's-health chat. "more" is an exact token hit on the marketing tail
+// "No more tricks & just kick" and earned the full 0.85 "one distinctive word" boost.
+// Document frequency would NOT have caught this - "more" appears in exactly one title. The
+// word is common in English, not in the catalog, so it has to be listed as a stopword.
+check('the production query -> no match', qrSearchCatalog("Hello! Can I get more info for PCOD/PCOS? K", catalog).length, 0);
+check('"can I get more info" alone -> no match', qrSearchCatalog("can I get more info", catalog).length, 0);
+check('"I need help with something" -> no match', qrSearchCatalog("I need help with something", catalog).length, 0);
+check('"tell me more about your products" -> no match', qrSearchCatalog("tell me more about your products", catalog).length, 0);
+check('"best product batao" -> no match', qrSearchCatalog("best product batao", catalog).length, 0);
+// The words above are still allowed to DESCRIBE a product the customer also named.
+check('"pure himalayan shilajit" still resolves', offered("pure himalayan shilajit"), ["Pure Himalayan Shilajit Resin - 20g - SehatUP"]);
+// Ranked first, not alone: "energy" legitimately also hits Slimtox Energy Tea, both before
+// and after this change. The prompt shows at most 2, most relevant first, so first is the
+// assertion that matters.
+check('"daily energy stamina kit" still ranks first', offered("daily energy stamina kit")[0], "Daily Energy & Stamina Support Kit");
+
+console.log("\n--- conditions map to products ONLY on purchase intent (persona rule 3) ---");
+// Naming a condition is a disclosure, not a request to buy. Rule 3 requires the safety check
+// and the free-consultation offer first, so a bare mention must still surface nothing -
+// putting two priced products in the prompt is what invites the pitch rule 3 forbids.
+check('"mujhe PCOD hai" -> still no match', qrSearchCatalog("mujhe PCOD hai", catalog).length, 0);
+check('"PCOD hai mera" -> still no match', qrSearchCatalog("PCOD hai mera", catalog).length, 0);
+check('"periods irregular hain" -> still no match', qrSearchCatalog("periods irregular hain", catalog).length, 0);
+// ...but once they ask for something to take, the lookup must not come back empty.
+check('"PCOD ke liye kaunsa product lu"', offered("PCOD ke liye kaunsa product lu"),
+  ["Her Menses (For Rhythmic Relief & Hormonal Harmony)", "HormoniHerb - Herbal Blue Tea - Your All in One Tea"]);
+check('"pcos ki dawa chahiye"', offered("pcos ki dawa chahiye").length, 2);
+check('"periods ke liye koi tea batao"', offered("periods ke liye koi tea batao").length, 2);
+// A product the customer NAMED always wins - condition products never dilute a real match.
+check('"PCOD me vaji bati chalegi" -> only Vaji Bati', offered("PCOD me vaji bati chalegi"), ["Vaji Bati"]);
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

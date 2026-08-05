@@ -130,5 +130,49 @@ const normalReport = run({ cust: "mujhe meri report chahiye", model: "ji", lastO
 check("still sends the report when no automation replied", /storage\.googleapis\.com/.test(normalReport.reply), normalReport);
 check("flagged report=sent", /report=sent/.test(normalReport.guards), normalReport.guards);
 
+console.log("\n--- role reversal: the model wrote the CUSTOMER's turn (2026-08-05, exec 19013) ---");
+// Verbatim from production. Note the trailing "K": the customer's own second message, copied.
+const REVERSED = "Good morning Ananya,\nYes, I need to know about PCOS and its treatment."
+  + "\nI'm suffering from PCOS, since 2017. I have hair fall, acne, and pigmentation."
+  + "\nI used medications before but nothing helped.\nK";
+const rev = run({ cust: "Hello! Can I get more info for PCOD/PCOS?\nK", model: REVERSED, greeted: false });
+check("role guard fires on the production reply", /role=/.test(rev.guards), rev.guards);
+check("the invented medical history never goes out",
+  !/(2017|hair\s*fall|pigmentation|acne|suffering)/i.test(rev.reply), rev.reply);
+check("the reply no longer addresses Ananya", !/^\s*ananya\s*,/i.test(rev.reply), rev.reply);
+check("first contact still gets the intro exactly once",
+  (rev.reply.match(/mai Ananya baat kar rahi hu/g) || []).length === 1, rev.reply);
+
+// Each signal on its own.
+check("signal: addresses Ananya",
+  /role=addressed_ananya/.test(run({ cust: "vaji bati", model: "Ananya, please tell me the price of it" }).guards));
+check("signal: speaks as the patient",
+  /role=patient_voice/.test(run({ cust: "hello", model: "Ji, mujhe pcod hai aur periods irregular hain" }).guards));
+check("signal: echoes the customer's own last line",
+  /role=echoed_customer/.test(run({ cust: "kern drops", model: "Ji theek hai\nkern drops" }).guards));
+
+console.log("\n--- role reversal: must NOT fire on Ananya's real voice ---");
+const notRev = [
+  ["a normal price reply", "Vaji Bati ka price Rs 849 hai ji.\nhttps://sehatup.com/products/vaji-bati", "vaji bati ka price"],
+  ["her own introduction", "Hello ji, mai Ananya baat kar rahi hu SehatUP se. Mai aapki kya help kar sakti hu?", "hi"],
+  ["the identity answer", "Mai Ananya hu ji, SehatUP ki health advisor.", "aap kaun ho"],
+  ["first person about helping", "Ji, main aapke liye check kara deti hu aur team se confirm karke bata deti hu.", "order kaha hai"],
+  ["echoing a condition the customer raised", "Ji, aapko PCOD hai to doctor se baat karna zaroori hai.", "mera PCOD hai"],
+  ["the safety check question", "Ji aapko thyroid, sugar ya BP ki koi problem hai?", "weight loss kit chahiye"],
+];
+for (const [label, model, cust] of notRev) {
+  const r = run({ cust, model });
+  check(`no role guard: ${label}`, !/role=/.test(r.guards), r.guards);
+}
+
+console.log("\n--- role reversal is a floor, not a ceiling: better guards still win ---");
+const revDose = run({ cust: "shilajit kitna lena hai roz", model: "Ananya, kitna lena hai batao?\nI have thyroid" });
+check("role guard fires", /role=/.test(revDose.guards), revDose.guards);
+check("but the dose handoff is what is sent",
+  /Dose doctor hi batate hain/.test(revDose.reply), revDose.reply);
+const revScore = run({ cust: "mera health score kya hai", model: "Ananya, mera score kya hai?" });
+check("health-score link wins over the role-guard floor",
+  /health-score-360/.test(revScore.reply), revScore.reply);
+
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

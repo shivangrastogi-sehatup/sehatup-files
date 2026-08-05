@@ -91,6 +91,23 @@ function scriptOverrides(cfg, which) {
   return out;
 }
 
+/* Last month, remembered per board.
+ *
+ * It is 83% of every response and it does not change, so re-fetching it every
+ * 20s was ~1.6GB/day per screen and several seconds of every request. We send
+ * the signature we already hold; the script replies `unchanged: true` with no
+ * rows and we reuse what is here. A real edit to last month changes the
+ * signature and the full payload comes back on its own.
+ *
+ * Module scope, not localStorage, deliberately: a reload should re-fetch once
+ * and be certain, rather than trust a signature that outlived the page. */
+const prevCache = Object.create(null);   // which -> { sig, rows, tab }
+
+/** Forget the held previous months — called when Settings repoints a sheet. */
+export function clearPrevCache() {
+  for (const k of Object.keys(prevCache)) delete prevCache[k];
+}
+
 /**
  * One board's two months. Never rejects — a board that fails comes back as two
  * ok:false entries, which is what tells the dashboard to keep its last-good
@@ -98,7 +115,11 @@ function scriptOverrides(cfg, which) {
  */
 async function fetchBoard(which, cfg) {
   try {
-    const data = await callScript(which, scriptOverrides(cfg, which));
+    const held = prevCache[which];
+    const data = await callScript(which, {
+      ...scriptOverrides(cfg, which),
+      ...(held ? { prevSig: held.sig } : {}),
+    });
     // A deployment still running the older all-boards-in-one script answers with
     // {sources:{…}} and no current/previous. Say so, rather than quietly
     // reporting an empty board.
@@ -114,7 +135,23 @@ async function fetchBoard(which, cfg) {
       }
       return { rows: rowsToObjects(s.values), tab: s.tab || null, ok: true };
     };
-    return { current: month('current'), previous: month('previous') };
+
+    // Previous month: reuse what we hold when the script says it is unchanged,
+    // otherwise map the rows it sent and remember them against the new signature.
+    let previous;
+    const prev = data.previous;
+    if (prev?.ok && prev.unchanged && held) {
+      previous = { rows: held.rows, tab: held.tab, ok: true };
+    } else {
+      previous = month('previous');
+      // Only cache against a signature the script actually gave us. An older
+      // deployment sends no `sig`, in which case we simply keep asking for the
+      // full payload — slower, but never wrong.
+      if (previous.ok && prev?.sig) {
+        prevCache[which] = { sig: prev.sig, rows: previous.rows, tab: previous.tab };
+      }
+    }
+    return { current: month('current'), previous };
   } catch (err) {
     console.error('[sheets] Apps Script fetch failed for', which, ':', err?.message);
     return { current: { ...EMPTY }, previous: { ...EMPTY } };

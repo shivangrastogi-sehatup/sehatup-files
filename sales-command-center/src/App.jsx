@@ -1,5 +1,5 @@
 import React from 'react';
-import { loadData } from './data/unify';
+import { loadData, clearLastGood } from './data/unify';
 import Settings from './Settings';
 import { loadConfig, saveConfig, resetConfig, loadPrefs, savePrefs } from './config';
 
@@ -97,6 +97,21 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const weekStart = (d) => { const x = new Date(d); const wd = (x.getDay() + 6) % 7; return addDays(x, -wd); };
 const shortDate = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
+/**
+ * Elapsed time, short enough for the header. Reads at a glance from across a
+ * room, which a clock time does not: "4m ago" is obviously wrong on a board that
+ * claims to be live, where "3:04 pm" needs you to know what time it is now.
+ */
+const agoLabel = (ms) => {
+  if (!(ms >= 0)) return '—';
+  const s = Math.round(ms / 1000);
+  if (s < 10) return 'just now';
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ${m % 60}m ago`;
+};
+
 /** Percent change cur vs prev, or null when there's no comparable previous value. */
 const delta = (cur, prev) => {
   if (prev === undefined || prev === null || !prev) return null;
@@ -110,7 +125,7 @@ export default class App extends React.Component {
   state = {
     // live data
     rows: null, orders: [], prevRows: [], prevOrders: [], meta: null,
-    loaded: false, error: false, lastSync: null, status: null,
+    loaded: false, error: false, lastSync: null, status: null, stale: [],
     // ui — mode/range/source/agent are restored from the last session, so a
     // refresh doesn't silently drop you back onto an empty "Today" board.
     now: new Date(), scale: 1,
@@ -135,7 +150,12 @@ export default class App extends React.Component {
     window.addEventListener('resize', this.fit);
     this.refresh(true);
     this._clock = setInterval(() => this.setState({ now: new Date() }), 1000);
-    this._poll = setInterval(() => this.refresh(false), 20000);
+    // 10s, not 20s. This is affordable only because the previous month stopped
+    // riding along on every response — the payload, and so the Apps Script
+    // runtime per execution, is a fraction of what it was. Raise it again if the
+    // Apps Script quota page (Executions -> runtime) shows the daily total
+    // approaching the 6h Workspace ceiling.
+    this._poll = setInterval(() => this.refresh(false), 10000);
   }
   componentWillUnmount() {
     window.removeEventListener('resize', this.fit);
@@ -148,17 +168,25 @@ export default class App extends React.Component {
     this.setState({ scale: s });
   };
 
-  /** Pull the live sheets. Keeps the last-good data when a refresh partly fails. */
+  /**
+   * Pull the live sheets.
+   *
+   * There used to be an early return here — `if (!d.ok && !first && rows.length)
+   * return;` — which threw away the WHOLE tick whenever any single board failed,
+   * freezing the two that had succeeded along with it, for as long as the bad
+   * luck lasted. loadData now holds last-good data per board instead, so whatever
+   * arrives is always the freshest available for every board and can be rendered
+   * unconditionally. Staleness is reported (see `stale`), not hidden.
+   */
   async refresh(first) {
     try {
       const d = await loadData(this.state.config);
-      if (!d.ok && !first && this.state.rows && this.state.rows.length) return;
       const landed = this.findLanded(d.orders || [], first);
       this._model = null; this._sig = null;
       this.setState({
         rows: d.rows, orders: d.orders || [], prevRows: d.prevRows || [],
         prevOrders: d.prevOrders || [],
-        status: d.status || null,
+        status: d.status || null, stale: d.stale || [],
         meta: d.rows.length ? d.meta : null,
         loaded: true, error: !d.rows.length && !(d.orders || []).length,
         lastSync: new Date(),
@@ -519,13 +547,18 @@ export default class App extends React.Component {
               onClose={() => this.setState({ settingsOpen: false })}
               onReset={() => {
                 const cfg = resetConfig();
-                this.setState({ config: cfg }, () => this.refresh(true));
+                // Last-good data belongs to the sheet it came from. Carrying it
+                // across a repoint would show the OLD sheet's numbers under the
+                // new one's name.
+                clearLastGood();
+                this.setState({ config: cfg, stale: [] }, () => this.refresh(true));
               }}
               onSave={(cfg) => {
                 saveConfig(cfg);
+                clearLastGood();
                 // Drop the current numbers so a bad mapping shows as empty rather
                 // than leaving stale figures that look like they came from it.
-                this.setState({ config: cfg, settingsOpen: false, loaded: false, rows: null, meta: null },
+                this.setState({ config: cfg, settingsOpen: false, loaded: false, rows: null, meta: null, stale: [] },
                   () => this.refresh(true));
               }}
             />
@@ -552,9 +585,20 @@ export default class App extends React.Component {
   // ── header ─────────────────────────────────────────────────────────────────
   header() {
     const s = this.state;
-    const syncedAgo = s.lastSync
-      ? s.lastSync.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-      : '—';
+    // Relative, not a clock time. "synced 3:04 pm" next to a green LIVE badge is
+    // how a board sat minutes stale without anyone noticing: a wall clock reading
+    // is only recognisable as old if you happen to look at the real clock too.
+    // The 1s `_clock` tick already re-renders the header, so this counts up on
+    // its own even when no data arrives — which is exactly when it matters.
+    const syncedAgo = s.lastSync ? agoLabel(Date.now() - s.lastSync.getTime()) : '—';
+    // The oldest board on screen. Only boards that HAVE held data count: one that
+    // has never loaded has ageMs null, and "HELD just now" would be a nonsense
+    // reading of it — that case is the red "unavailable" chip's job, not this one.
+    const heldAges = (s.stale || [])
+      .map((k) => s.status?.[k]?.ageMs)
+      .filter((a) => typeof a === 'number');
+    const held = heldAges.length > 0;
+    const oldestHeld = held ? Math.max(...heldAges) : 0;
     const modeBtn = (on) => ({
       border: 'none', cursor: 'pointer', fontFamily: "'Instrument Sans'", fontWeight: 700, fontSize: 12,
       letterSpacing: '.06em', padding: '8px 16px', borderRadius: 9, display: 'flex',
@@ -575,11 +619,16 @@ export default class App extends React.Component {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
           {this.sheetWarning()}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 14px', borderRadius: 999, background: T.posSoft }}>
-            <span style={{ position: 'relative', width: 8, height: 8, borderRadius: '50%', background: T.pos, display: 'inline-block' }}>
-              <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: T.pos, animation: 'livePulse 2s ease-out infinite' }} />
+          {/* LIVE means live. When a board is running on held data the badge has
+              to stop saying so — an amber HELD carrying the age is the whole
+              point: the failure used to be completely invisible. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 14px', borderRadius: 999, background: held ? T.warnSoft : T.posSoft }}>
+            <span style={{ position: 'relative', width: 8, height: 8, borderRadius: '50%', background: held ? T.warn : T.pos, display: 'inline-block' }}>
+              {!held && <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: T.pos, animation: 'livePulse 2s ease-out infinite' }} />}
             </span>
-            <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: '.16em', color: T.posInk }}>LIVE</span>
+            <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: '.16em', color: held ? T.warnInk : T.posInk }}>
+              {held ? `HELD ${agoLabel(oldestHeld)}` : 'LIVE'}
+            </span>
           </div>
           <div style={{ textAlign: 'right', lineHeight: 1.1 }}>
             <div style={{ fontFamily: NUM, fontWeight: 600, fontSize: 24, letterSpacing: '.01em', color: T.ink }}>
@@ -628,12 +677,21 @@ export default class App extends React.Component {
     const st = this.state.status;
     if (!st) return null;
     const names = { health: 'Healthscore', quick: 'Quick Reply', mens: 'Orders' };
-    const bad = Object.keys(st).filter((k) => !st[k].ok || !st[k].rows);
+    // `fresh: false` has to be in here. A board running on last-good now reports
+    // ok:true with a full row count — which is the point, it still has numbers to
+    // draw — so without this check the one condition worth warning about would be
+    // the only one that never showed.
+    const bad = Object.keys(st).filter((k) => !st[k].ok || !st[k].rows || st[k].fresh === false);
     if (!bad.length) return null;
     const failed = bad.filter((k) => !st[k].ok);
+    const reason = (k) => {
+      if (!st[k].ok) return 'fetch failed';
+      if (st[k].fresh === false) return `not updating — showing data from ${agoLabel(st[k].ageMs)}`;
+      return 'loaded, 0 rows';
+    };
     return (
       <div
-        title={bad.map((k) => `${names[k]}: ${!st[k].ok ? 'fetch failed' : 'loaded, 0 rows'}`).join('\n')}
+        title={bad.map((k) => `${names[k]}: ${reason(k)}`).join('\n')}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 999,
           background: failed.length ? T.negSoft : T.warnSoft,
@@ -643,7 +701,8 @@ export default class App extends React.Component {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" />
         </svg>
-        {bad.map((k) => names[k]).join(' · ')} {failed.length ? 'unavailable' : 'empty'}
+        {bad.map((k) => names[k]).join(' · ')}{' '}
+        {failed.length ? 'unavailable' : (bad.some((k) => st[k].fresh === false) ? 'not updating' : 'empty')}
       </div>
     );
   }

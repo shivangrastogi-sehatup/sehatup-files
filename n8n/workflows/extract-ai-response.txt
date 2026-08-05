@@ -112,6 +112,10 @@ function sanitizeReply(t) {
   s = s.replace(/^[\s,.:;!-]+/, '').replace(/[ \t]+([,.!?])/g, '$1').replace(/[\s,;:-]+$/, '').trim();
   return s;
 }
+// Kept for the role-reversal guard below, which has to see what the model ACTUALLY wrote:
+// sanitizeReply strips time greetings and speaker labels, and "Good morning Ananya," - the
+// clearest evidence the model was writing as the customer - survives only here.
+const _rawModelText = String(aiText || '');
 aiText = sanitizeReply(aiText);
 
 // ---- DID SANITIZING EAT THE WHOLE REPLY? ----
@@ -149,7 +153,77 @@ if (!greetedBefore && QR_FILLER_RE.test(String(aiText || '').trim())) {
   aiText = '';
 }
 
-// ---- MEDICAL CLAIM GUARD (runs FIRST - outranks every other guard) ----
+// ---- ROLE-REVERSAL GUARD (runs before every other guard) ----
+// It is deliberately NOT in _answered(). Its job is to make the model's output unusable, not
+// to own the reply: it drops a safe, topic-neutral floor in place, and any later guard that
+// builds a BETTER answer from the customer's own question - the health-score link, the dose
+// handoff, the price reply, the out-of-hours slot correction - is still allowed to override
+// it. The guards that only inspect the model's text (claim, promise, substance) then read
+// this safe replacement and correctly stay silent.
+// 2026-08-05, execution 19013. A first-contact customer asked "Hello! Can I get more info for
+// PCOD/PCOS?" then "K", and was sent back:
+//     "Ananya, Yes, I need to know about PCOS and its treatment. I'm suffering from PCOS,
+//      since 2017. I have hair fall, acne, and pigmentation. I used medications before but
+//      nothing helped. K"
+// The model wrote the CUSTOMER'S next turn instead of Ananya's. It addressed Ananya, spoke in
+// the first person as the patient, and copied her own trailing "K". The bot therefore invented
+// a medical history - PCOS since 2017, hair fall, acne, pigmentation, failed prior medication -
+// and sent it to the patient as though she had said it. It is also poisoned training data: it
+// is stored with senderKind 'AI' and reads as a genuine patient turn.
+//
+// All thirteen other guards returned false, and none of them was broken. Every one asks WHAT
+// the reply claims - a dose, a price, a score, a diagnosis, a callback promise. Not one asks
+// WHO IS SPEAKING, and a reply written in the customer's voice claims nothing forbidden.
+//
+// Why the model does it: the system prompt is ~26,000 characters whose largest block is
+// EXAMPLES written as two-sided dialogue ("Cust "..." -> "..."", sixteen of them). On first
+// contact there is NO assistant turn in the history to anchor the role, so a transcript-shaped
+// prompt gets CONTINUED rather than answered. That makes it likeliest exactly when the stakes
+// are highest - a stranger's opening message, where there is no history to fall back on.
+// (avgLogprobs was -1.79 on that call, against roughly -0.5 for a confident reply.)
+let roleGuard = false;
+{
+  // Both texts: signals 1 and 2 can appear in either, since sanitizeReply removes the leading
+  // "Good morning" and any "Ananya:" speaker label before the guards ever run.
+  const _rt = _rawModelText + '\n' + String(aiText || '');
+
+  // 1. It addresses Ananya. She never addresses herself; a self-introduction ("mai Ananya
+  //    baat kar rahi hu") has no comma or colon after the name, so it cannot match here.
+  const _vocativeAnanya =
+       /(^|\n)\s*((hi|hello|hey|namaste|dear|good\s*(morning|afternoon|evening))\b[\s,]*)?ananya\s*[,:]/i.test(_rt)
+    || /\b(to|dear|thanks|thank\s*you|ok|okay)\s+ananya\b/i.test(_rt);
+
+  // 2. It speaks as the patient. Ananya's own first person is always about helping ("main
+  //    check kara deti hu"), never about having a symptom, so the condition/symptom word is
+  //    what makes this safe.
+  const _SYMPTOMS = '(pcod|pcos|thyroid|diabetes|sugar|bp|acne|pigmentation|hair\\s*fall|hairfall|infertility|anxiety|stress|dard|pain|problem|issue)';
+  const _patientVoice =
+       new RegExp('\\b(i\\s*am|i\\s*m|im)\\s+(suffering|facing|dealing)\\b', 'i').test(_rt)
+    || new RegExp('\\bi\\s+(have|had|ve\\s*got|got)\\s+(been\\s+)?' + _SYMPTOMS, 'i').test(_rt)
+    || new RegExp('\\bi\\s+(used|tried|took)\\s+(medication|medicine|tablet|tablets|treatment|dawa)', 'i').test(_rt)
+    || new RegExp('\\bmujhe\\s+' + _SYMPTOMS + '\\b[^.!?]{0,14}\\b(hai|h)\\b', 'i').test(_rt)
+    || new RegExp('\\bmer[ia]\\s+' + _SYMPTOMS + '\\b[^.!?]{0,14}\\b(hai|h)\\b', 'i').test(_rt);
+
+  // 3. It ends by echoing one of the customer's own messages verbatim - the "K" above. A real
+  //    reply never closes by quoting back a whole line the customer just sent.
+  const _custLines = String(newMsgText || '').split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const _replyLines = _rawModelText.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const _lastLine = (_replyLines[_replyLines.length - 1] || '').toLowerCase();
+  const _echoesCustomer = _replyLines.length > 1 && !!_lastLine
+    && _custLines.some(c => c.toLowerCase() === _lastLine);
+
+  if (_vocativeAnanya || _patientVoice || _echoesCustomer) {
+    roleGuard = _vocativeAnanya ? 'addressed_ananya' : (_patientVoice ? 'patient_voice' : 'echoed_customer');
+    // Topic-neutral on purpose: this fires on any subject, so it cannot assume what was asked.
+    // It promises nothing (BOOKING POLICY rule 4) and states no condition (CLAIM POLICY).
+    aiText = 'Ji bilkul, main aapki help karti hu. Aap thoda detail me bata dijiye - problem kya hai aur kab se hai? '
+      + 'Free consultation me doctor aapko sahi plan bata denge, consultation aur diet plan dono free hain.';
+    console.log('[Role Guard] BLOCKED ' + roleGuard + ' - model replied as the CUSTOMER'
+      + ' | was=' + JSON.stringify(_rawModelText.slice(0, 120)));
+  }
+}
+
+// ---- MEDICAL CLAIM GUARD (outranks every guard except the role-reversal guard above) ----
 // Asked "I want to Check My Free PCOD Health Score", the model replied:
 //     "ji / your score is 7 / you have a PCOD / and you need to consultation for it"
 // A fabricated score and a fabricated diagnosis. There is no health-score integration at
@@ -805,9 +879,9 @@ if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
 // Built here, where the flags live, and used twice: tagged onto the n8n execution so the
 // list is searchable, and written to Firestore by Record AI Sent / Save AI Message so it
 // outlives n8n's execution retention. Compact on purpose - "price=ambiguous", not a blob.
-const _guardNames = ['scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
+const _guardNames = ['roleGuard', 'scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
   'repeatGuard', 'companyGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard'];
-const _flagVals = { scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
+const _flagVals = { roleGuard, scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
   repeatGuard, companyGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard };
 const _flags = _guardNames.filter(k => _flagVals[k])
   .map(k => k.replace(/Guard$/, '') + (typeof _flagVals[k] === 'string' ? '=' + _flagVals[k] : ''));
@@ -828,6 +902,7 @@ return [{
     aiGuards,
     lastUserMessage: newMsgText,
     docId,
+    roleGuard,
     scoreGuard,
     reportGuard,
     identityGuard,

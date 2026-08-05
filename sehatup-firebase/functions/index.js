@@ -2975,10 +2975,41 @@ const QR_ALIAS_PHRASES = [
 // to the averaged score (a query that matches the form as well as the name should rank
 // higher), they just may never earn the "one distinctive word matched" boost in
 // qrMatchScore, which is what let a form word masquerade as a product name.
+// A second group, for the same reason but a different failure. Shopify titles carry marketing
+// tails - "No more tricks & just kick", "Your All in One Tea", "Best intimate wash" - and a
+// generic adjective inside one of them is not a product name either. "best"/"pure"/"daily"
+// identify nothing; they only describe.
 const QR_WEAK_MATCH_WORDS = new Set([
   "drops", "drop", "tablet", "tablets", "capsule", "capsules", "tea", "kit", "kits",
   "powder", "oil", "syrup", "resin", "sachet", "wash", "booster", "formula", "support",
+  "best", "pure", "natural", "daily", "just", "free", "sample",
 ]);
+
+// Conditions customers name INSTEAD of a product. "PCOD" appears in no Shopify title, so the
+// fuzzy matcher scores it 0 against all 32 products - the single condition SehatUP treats most
+// produced no product context at all.
+//
+// Mapped to HANDLES, never as a text alias. Rewriting the query is exactly what the old
+// `kern -> "kern drops"` alias did (see QR_ALIAS_PHRASES): it injected a generic word that
+// then out-scored the product the customer had actually named.
+//
+// The benefit wording here is the Google Doc's own CATALOG mapping, not a new medical claim.
+const QR_CONDITION_PRODUCTS = [
+  {
+    re: /\b(pcod|pcos|poly\s*cystic|period|periods|menses|menstrual|hormonal|hormone|cramps)\b/,
+    handles: ["her-menses", "hormoniherb"],
+  },
+];
+
+// ...but ONLY when they are asking for something to take. Naming a condition is not a request
+// for a product: persona rule 3 requires the safety check and the free-consultation offer
+// FIRST, and "mujhe PCOD hai" is a disclosure, not a purchase intent. Putting two priced
+// products into the prompt for it invites exactly the pitch rule 3 forbids - the same failure
+// the order block hit, where five cancelled orders in the prompt got latched onto and answered
+// a question nobody asked.
+// So "mujhe PCOD hai" still resolves to no match, and "PCOD ke liye kaunsa product lu" does not.
+const QR_CONDITION_INTENT =
+  /\b(product|medicine|dawa|dawai|tablet|goli|capsule|kit|tea|churna|powder|syrup|drops?|ilaj|treatment|cure|upay|upchar|solution|chahiye|chaiye|recommend|suggest|kaunsa|konsa|kaun\s*sa|link|price|rate|lena|lu|lenge|de\s*do|dijiye|bhejo)\b/;
 
 // Kits customers ask for by their CONTENTS, not by their name. Nobody types "Confidence &
 // Performance Booster Kit"; they type "vaji bati kern drop combo". The kit therefore scored
@@ -3009,11 +3040,21 @@ function qrKitHandles(text) {
 
 // Words that carry no product signal — without stripping these, "mujhe price batao"
 // scores against every product that happens to share a stray letter.
+// Conversational filler belongs here too, and its absence was a live bug: "Hello! Can I get
+// more info for PCOD/PCOS?" put an OUT-OF-STOCK Rx MEN'S product (Hard Yatra, Rs1999) into a
+// women's-health chat. The culprit was the word "more", which is an exact token hit on the
+// title "No more tricks & just kick" and so earned the full 0.85 "one distinctive word"
+// boost in qrMatchScore. A word that is common in English is not a product name, however
+// rare it happens to be inside the catalog - so document frequency would not have caught it
+// either. It has to be listed.
 const QR_STOPWORDS = new Set([
   "price", "rate", "kitne", "kitna", "ka", "ki", "ke", "hai", "he", "batao", "bata",
   "do", "dijiye", "mujhe", "me", "chahiye", "chaiye", "kya", "aur", "and", "the", "of",
   "for", "cost", "kimat", "keemat", "rs", "rupees", "rupaye", "please", "plz", "ek",
   "kitni", "much", "how", "what", "is", "send", "bhejo", "bhej", "order", "karna", "karo",
+  "hello", "hi", "hey", "can", "could", "get", "more", "info", "information", "about",
+  "know", "need", "want", "tell", "help", "give", "some", "any", "your", "my", "regarding",
+  "detail", "details", "jankari", "sawaal", "bataye", "bataiye", "puchna",
 ]);
 
 function qrNormalise(s) {
@@ -3261,6 +3302,24 @@ function qrSearchCatalog(text, catalog, limit = 3, floor = 0.55) {
     .filter((p) => p.score >= floor)
     .sort((a, b) => b.score - a.score || b.named - a.named || a.price - b.price)
     .slice(0, limit);
+
+  // Condition fallback - ONLY when the fuzzy search found nothing. A customer who names a
+  // product must never have their answer diluted by condition suggestions, so this cannot
+  // run alongside a real match; it exists to fill the "PCOD ke baare me batao" hole, where
+  // the alternative is an empty LIVE PRODUCT DATA block.
+  if (!hits.length && QR_CONDITION_INTENT.test(qrNormalise(text))) {
+    const qc = qrNormalise(text);
+    for (const c of QR_CONDITION_PRODUCTS) {
+      if (!c.re.test(qc)) continue;
+      for (const h of c.handles) {
+        if (hits.some((p) => p.handle === h)) continue;
+        const p = catalog.find((x) => x.handle === h);
+        // Score sits just above the floor: these were inferred from a condition, not named,
+        // and must never outrank a product the customer actually typed.
+        if (p) hits.push({ ...p, score: 0.6, named: 0, isKit: false, byCondition: true });
+      }
+    }
+  }
 
   // A matching kit rides ALONGSIDE the components, never instead of them - the customer
   // asked for the parts, so the parts must still be the answer. The kit is appended so the

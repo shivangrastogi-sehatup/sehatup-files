@@ -32,8 +32,69 @@ Three sheets feed it:
   *revenue, orders, payment mode, delivery status and lead source*. Orders never
   come from the lead sheets.
 
-Data refreshes every 20 s. A partial failure (one sheet throttled) keeps the
-last-good numbers on screen rather than showing a half-empty board.
+Data refreshes every 10 s. A partial failure (one sheet throttled) keeps that
+**board's** last-good numbers on screen rather than showing a half-empty board.
+
+### How fast a sheet edit reaches the wall
+
+| Stage | Cost |
+| --- | --- |
+| Apps Script cache (`TTL_CURRENT`) | up to 5 s |
+| Client poll (`App.jsx` `_poll`) | up to 10 s |
+| Request round trip | ~1 s |
+| **Worst case** | **~16 s** |
+
+It used to be ~40 s at best and *unbounded* at worst — see below. If you need
+better than this, polling is the wrong shape and no amount of tuning fixes it:
+you need a push channel (an Apps Script `onChange` trigger writing a revision
+stamp somewhere the browser can hold a socket open to, e.g. Firestore, which the
+dashboard then listens on). That lands around 3 s and would *reduce* the Apps
+Script quota load, because executions would track real edits instead of a timer.
+
+#### Fixed 2026-08-05 — one board's failure used to freeze all three
+
+`unify.js` computed `ok = health.ok && quick.ok && mens.ok` and `App.jsx` threw
+away the **entire** refresh when that was false:
+
+```js
+if (!d.ok && !first && this.state.rows && this.state.rows.length) return;   // gone
+```
+
+So a single board hiccuping discarded the two that had succeeded as well, with
+no time bound and no retry — the wall held its numbers until a tick where all
+three happened to succeed at once. At ~4 s per Apps Script request that is not
+rare, and an unlucky run is **minutes** of stale numbers.
+
+It was invisible, too: the header printed `synced 3:04 pm` next to a permanently
+green **LIVE** badge, so a frozen board looked healthy.
+
+Now each of the six slices (three boards × two months) keeps **its own**
+last-good copy and its own age. Whatever arrives is rendered unconditionally,
+and staleness is reported rather than hidden:
+
+- the LIVE badge turns amber and reads **HELD 2m ago** when any board is running
+  on held data;
+- the header reads `synced 12s ago`, relative — a clock time is only
+  recognisable as stale if you also know what time it is now;
+- the warning chip names the board and says *not updating*.
+
+If you ever see minutes again, the header now tells you where the time went.
+
+#### Last month is not re-sent
+
+83% of every response was the previous month (394 KB of 473 KB), re-serialised
+and re-sent every tick forever — ~1.6 GB/day per screen of data that cannot
+change, and several seconds of every request.
+
+The script now returns a `sig` (an MD5 of the tab name + values, computed once
+per cache fill, not per request). The client sends back the `sig` it holds and
+gets `previous: { unchanged: true }` with no rows, reusing what it already
+mapped. A real edit to last month changes the signature and the full payload
+comes back on its own — so this is a cache, not a blanket "skip last month".
+
+An older deployment sends no `sig`, in which case the client just keeps asking
+for the full payload. **The frontend is safe to ship before the scripts are
+redeployed.**
 
 ### Why the Apps Script endpoint
 
@@ -54,10 +115,18 @@ a board fails alone: if the Healthscore script errors, Quick Reply and Men's
 Wellness still answer and only the Healthscore numbers hold at their last-good
 values.
 
-What it costs instead is Apps Script *runtime* — 6 h/day on Workspace. At a 20 s
-poll that lands around 3–4 h/day, which fits with room. If you add a lot more
-boards or want more headroom, raise the poll interval in `App.jsx`
-(`this._poll = setInterval(… , 20000)`) rather than the cache TTL.
+What it costs instead is Apps Script *runtime* — 6 h/day on Workspace. At the old
+20 s poll that landed around 3–4 h/day. The poll is now **10 s**, which doubles
+the execution count to ~26,000/day, and is only affordable because dropping the
+previous month made each execution far cheaper. **Check this before adding
+screens or boards**: Apps Script → Executions → runtime. If the daily total
+approaches 6 h, raise `this._poll = setInterval(…, 10000)` in `App.jsx` rather
+than the cache TTL — the TTL is a floor on staleness, the poll is not.
+
+> Polling faster than this is not the answer. At a 5 s poll you are over quota,
+> executions start failing, and a failing board is worse than a slow one. Past
+> ~16 s the only real improvement is push — see [How fast a sheet edit reaches
+> the wall](#how-fast-a-sheet-edit-reaches-the-wall).
 
 **Deploying it**, once per board:
 
