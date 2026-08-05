@@ -150,12 +150,19 @@ export default class App extends React.Component {
     window.addEventListener('resize', this.fit);
     this.refresh(true);
     this._clock = setInterval(() => this.setState({ now: new Date() }), 1000);
-    // 10s, not 20s. This is affordable only because the previous month stopped
-    // riding along on every response — the payload, and so the Apps Script
-    // runtime per execution, is a fraction of what it was. Raise it again if the
-    // Apps Script quota page (Executions -> runtime) shows the daily total
-    // approaching the 6h Workspace ceiling.
-    this._poll = setInterval(() => this.refresh(false), 10000);
+    // 20s, and MEASURED rather than reasoned. Dropping the previous month cut the
+    // payload by 83% (475KB -> 80KB per tick) but barely moved the request time:
+    // 4.7s average, 9.1s worst, and the 5KB mens board still takes 1.9-4.1s. The
+    // cost is Apps Script's per-invocation overhead, not the bytes — so halving
+    // the poll would roughly double quota usage for a per-execution cost that did
+    // not fall, and 26k executions/day would put the ~3.6h/day estimate over the
+    // 6h Workspace ceiling.
+    //
+    // Note the quota is per USER, so every extra screen multiplies it: the script
+    // cache saves the sheet read, not the execution. Check Apps Script ->
+    // Executions -> runtime before lowering this; if there is real headroom, 10s
+    // gets the worst case to ~20s.
+    this._poll = setInterval(() => this.refresh(false), 20000);
   }
   componentWillUnmount() {
     window.removeEventListener('resize', this.fit);
@@ -179,8 +186,20 @@ export default class App extends React.Component {
    * unconditionally. Staleness is reported (see `stale`), not hidden.
    */
   async refresh(first) {
+    // A tick can outlast the interval — requests measured 4.7s on average but 9.1s
+    // at worst, and two in-flight loadData calls can resolve out of order, letting
+    // an OLDER response land after a newer one and put stale numbers on the wall.
+    // (They also race over unify.js's per-board last-good store.) Skipping is the
+    // right call rather than queueing: the request already running will deliver
+    // fresher data than a duplicate would, and it saves an Apps Script execution.
+    if (this._inflight && !first) return;
+    this._inflight = true;
+    const seq = (this._seq = (this._seq || 0) + 1);
     try {
       const d = await loadData(this.state.config);
+      // A first=true refresh (settings save, reset) bypasses the skip above, so
+      // two can still be in flight. Whichever started last wins.
+      if (seq !== this._seq) return;
       const landed = this.findLanded(d.orders || [], first);
       this._model = null; this._sig = null;
       this.setState({
@@ -194,6 +213,8 @@ export default class App extends React.Component {
       if (landed) this.announce(landed);
     } catch (e) {
       this.setState({ loaded: true, error: !this.state.rows });
+    } finally {
+      this._inflight = false;
     }
   }
 

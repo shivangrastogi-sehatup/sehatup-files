@@ -32,17 +32,25 @@ Three sheets feed it:
   *revenue, orders, payment mode, delivery status and lead source*. Orders never
   come from the lead sheets.
 
-Data refreshes every 10 s. A partial failure (one sheet throttled) keeps that
+Data refreshes every 20 s. A partial failure (one sheet throttled) keeps that
 **board's** last-good numbers on screen rather than showing a half-empty board.
 
 ### How fast a sheet edit reaches the wall
 
+Measured 2026-08-05, five ticks, three boards in parallel, signatures held:
+
 | Stage | Cost |
 | --- | --- |
 | Apps Script cache (`TTL_CURRENT`) | up to 5 s |
-| Client poll (`App.jsx` `_poll`) | up to 10 s |
-| Request round trip | ~1 s |
-| **Worst case** | **~16 s** |
+| Client poll (`App.jsx` `_poll`) | up to 20 s |
+| Request round trip | **4.7 s avg, 9.1 s worst** |
+| **Worst case** | **~30 s** |
+
+> **The request time is Apps Script overhead, not bytes.** Dropping the previous
+> month cut the payload 83% (475 KB → 80 KB per tick) and the round trip barely
+> moved; the 5 KB mens board still takes 1.9–4.1 s. Anything that assumes "smaller
+> payload ⇒ cheaper execution" — including a faster poll — is reasoning from the
+> wrong bottleneck. This is why the poll went back to 20 s after briefly being 10 s.
 
 It used to be ~40 s at best and *unbounded* at worst — see below. If you need
 better than this, polling is the wrong shape and no amount of tuning fixes it:
@@ -115,18 +123,23 @@ a board fails alone: if the Healthscore script errors, Quick Reply and Men's
 Wellness still answer and only the Healthscore numbers hold at their last-good
 values.
 
-What it costs instead is Apps Script *runtime* — 6 h/day on Workspace. At the old
-20 s poll that landed around 3–4 h/day. The poll is now **10 s**, which doubles
-the execution count to ~26,000/day, and is only affordable because dropping the
-previous month made each execution far cheaper. **Check this before adding
-screens or boards**: Apps Script → Executions → runtime. If the daily total
-approaches 6 h, raise `this._poll = setInterval(…, 10000)` in `App.jsx` rather
-than the cache TTL — the TTL is a floor on staleness, the poll is not.
+What it costs instead is Apps Script *runtime* — 6 h/day on Workspace. At a 20 s
+poll that lands around 3–4 h/day, which fits with room.
 
-> Polling faster than this is not the answer. At a 5 s poll you are over quota,
-> executions start failing, and a failing board is worse than a slow one. Past
-> ~16 s the only real improvement is push — see [How fast a sheet edit reaches
-> the wall](#how-fast-a-sheet-edit-reaches-the-wall).
+**The quota is per USER, and every screen multiplies it.** The script cache saves
+the *sheet read*, not the *execution* — a second TV polling the same endpoint
+still costs a full execution. Two screens at a 20 s poll is already ~26,000
+executions/day.
+
+Before lowering the poll, look at Apps Script → Executions → runtime and see what
+the daily total actually is. A 10 s poll doubles the count for a per-execution
+cost that measurement shows does **not** fall with payload size, so it only fits
+if there is genuine headroom — and it buys ~10 s.
+
+> Polling faster is not the answer past that. At a 5 s poll you are over quota,
+> executions start failing, and a failing board is worse than a slow one. The only
+> real improvement past ~20 s is push — see [How fast a sheet edit reaches the
+> wall](#how-fast-a-sheet-edit-reaches-the-wall).
 
 **Deploying it**, once per board:
 
@@ -135,6 +148,19 @@ than the cache TTL — the TTL is a floor on staleness, the poll is not.
    quotes; a bare `mens` is an identifier, not a string, and throws
    `ReferenceError: mens is not defined`. Nothing else needs editing — the
    spreadsheet IDs are already in `BOARDS`.
+
+   > ⚠️ **This is the step that goes wrong.** The file in this repo ships with
+   > `'health'`, so pasting it into the Quick Reply or Men's project and
+   > forgetting line 5 leaves that endpoint serving **Healthscore** rows. It
+   > happened on 2026-08-05: the Quick Reply endpoint returned Healthscore leads,
+   > `unify.js` relabelled them `source: 'quickreply'`, and the wall counted the
+   > same 194 leads twice while Quick Reply's ~488 vanished. Nothing looked
+   > broken — the rows were real, well-formed and non-empty — so the board showed
+   > confident wrong numbers rather than an obvious failure.
+   >
+   > `callScript()` now compares the `source` in every response against the slot
+   > it asked for and refuses a mismatch by name, so this fails loudly instead.
+   > Running `setup()` (step 3) also catches it before the dashboard ever calls.
 3. Run `setup` from the editor and accept the permission prompt. It logs the
    spreadsheet name and both resolved tab titles, so a wrong `SOURCE` or a
    renamed tab shows up before the dashboard ever calls it.

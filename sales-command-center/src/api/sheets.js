@@ -79,6 +79,23 @@ async function callScript(which, params) {
     throw new Error('Endpoint did not return JSON — check the deployment is set to "Anyone" access.');
   }
   if (data.ok === false) throw new Error(data.error || 'Endpoint reported a failure.');
+  // Does this deployment serve the board we asked for?
+  //
+  // Each deployment hard-codes its own `SOURCE`, and the repo's Code.gs ships with
+  // 'health' as the default — so pasting the file into the Quick Reply project
+  // without editing line 5 makes that endpoint quietly serve HEALTHSCORE rows.
+  // It happened on 2026-08-05. Nothing detected it, because the rows were real,
+  // well-formed and non-empty: unify.js relabelled them `source: 'quickreply'`,
+  // so Healthscore leads were counted twice and Quick Reply's vanished. The wall
+  // showed confident wrong numbers, which is worse than showing none.
+  //
+  // Every response has always carried `source`. It was simply never compared.
+  if (data.source && data.source !== which) {
+    throw new Error(
+      `Endpoint mismatch: the "${which}" URL is served by a deployment running SOURCE='${data.source}'. `
+      + `Open that Apps Script project, set var SOURCE = '${which}', and redeploy `
+      + `(Manage deployments -> edit -> Version: New version).`);
+  }
   return data;
 }
 
