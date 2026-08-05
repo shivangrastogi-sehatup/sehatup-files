@@ -175,10 +175,34 @@ export default async function handler(req, res) {
       valueRenderOption: 'FORMATTED_VALUE',
     });
 
-    // Near-live: browsers always revalidate (max-age=0); the CDN may share a
-    // response for at most 10s across viewers, serving stale up to 20s while it
-    // refetches. So a sheet edit shows up within ~10–25s, not minutes.
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=10, stale-while-revalidate=20');
+    // ---- CDN caching: this is the single biggest lever on how stale the wall is ----
+    //
+    // It used to be `s-maxage=10, stale-while-revalidate=20` for BOTH months, with
+    // a comment promising "~10-25s, not minutes". stale-while-revalidate does not
+    // work that way: once the 10s freshness window passes, the CDN keeps serving
+    // the OLD response for a further 20s while it refetches in the background. So
+    // the CDN alone could be 30s behind, and the client's 20s poll stacked on top
+    // of it — a measured ~60s from sheet edit to wall, which is exactly what was
+    // reported.
+    //
+    // The CDN itself is the right idea and worth keeping: every screen shares one
+    // cached response, so Google sees the same handful of reads whether one TV is
+    // watching or ten. That fan-in is what protects the 60-reads-per-minute quota.
+    // Only the numbers were wrong.
+    //
+    // Current month: 5s, no stale-while-revalidate. Three current-month endpoints
+    // revalidating every 5s is ~36 reads/min, inside the quota with headroom, and
+    // it is flat in the number of viewers.
+    //
+    // Previous month: it does not change. Caching it for 10 minutes takes it off
+    // the quota almost entirely (~0.3 reads/min) and pays for the tighter current
+    // month. Worth knowing: last month was HALF of every poll — 3 of the 6
+    // requests per tick — spent re-fetching data that cannot change.
+    res.setHeader(
+      'Cache-Control',
+      monthOffset === 0
+        ? 'public, max-age=0, s-maxage=5'
+        : 'public, max-age=0, s-maxage=600, stale-while-revalidate=600');
     return res.status(200).json({ values: data.values || [], tab: title || null });
   } catch (err) {
     console.error('[api/sheet] error:', err?.message);

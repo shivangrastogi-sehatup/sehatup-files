@@ -73,8 +73,17 @@ const EMPTY = { rows: [], tab: null, ok: false };
  * Apps Script answers a thrown script with a 200 and an HTML error page, so a
  * successful HTTP status is not enough — the payload has to say ok itself.
  */
+// Apps Script has no upper bound on how long it may take to answer, and axios has
+// no default timeout — a single hung request would otherwise leave App.jsx's
+// in-flight guard stuck true, which skips EVERY subsequent poll and freezes the
+// board permanently. 20s is comfortably above the worst measured round trip
+// (9.1s) and at or below the poll interval, so ticks cannot pile up.
+const REQUEST_TIMEOUT_MS = 20000;
+
 async function callScript(which, params) {
-  const { data } = await axios.get(ENDPOINTS[which], { params: { key: KEY, ...params } });
+  const { data } = await axios.get(ENDPOINTS[which], {
+    params: { key: KEY, ...params }, timeout: REQUEST_TIMEOUT_MS,
+  });
   if (!data || typeof data !== 'object') {
     throw new Error('Endpoint did not return JSON — check the deployment is set to "Anyone" access.');
   }
@@ -198,7 +207,7 @@ async function fetchSheetLegacy(which, month, cfg) {
   try {
     const params = { which, ...overrides(cfg, which) };
     if (month) params.month = month;
-    const { data } = await axios.get('/api/sheet', { params });
+    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
     return { rows: rowsToObjects(data?.values), tab: data?.tab || null, ok: true };
   } catch (err) {
     // ok:false lets the UI tell a transient failure (quota/network) apart from a
@@ -239,7 +248,7 @@ export async function fetchTabs(which, idOverride) {
     }
     const params = { which, list: 'tabs' };
     if (idOverride) params.id = idOverride;
-    const { data } = await axios.get('/api/sheet', { params });
+    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
     return { ok: true, title: data?.title || null, tabs: data?.tabs || [] };
   } catch (err) {
     return { ok: false, tabs: [], error: err?.response?.data?.error || err?.message || 'Could not read that sheet' };
@@ -263,7 +272,7 @@ export async function fetchHeaders(which, idOverride, tabOverride) {
     const params = { which };
     if (idOverride) params.id = idOverride;
     if (tabOverride) params.tab = tabOverride;
-    const { data } = await axios.get('/api/sheet', { params });
+    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
     return { ok: true, tab: data?.tab || null, columns: headerColumns(data?.values) };
   } catch (err) {
     return { ok: false, columns: [], error: err?.response?.data?.error || err?.message || 'Could not read that tab' };

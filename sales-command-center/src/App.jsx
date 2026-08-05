@@ -150,23 +150,50 @@ export default class App extends React.Component {
     window.addEventListener('resize', this.fit);
     this.refresh(true);
     this._clock = setInterval(() => this.setState({ now: new Date() }), 1000);
-    // 20s, and MEASURED rather than reasoned. Dropping the previous month cut the
-    // payload by 83% (475KB -> 80KB per tick) but barely moved the request time:
-    // 4.7s average, 9.1s worst, and the 5KB mens board still takes 1.9-4.1s. The
-    // cost is Apps Script's per-invocation overhead, not the bytes — so halving
-    // the poll would roughly double quota usage for a per-execution cost that did
-    // not fall, and 26k executions/day would put the ~3.6h/day estimate over the
-    // 6h Workspace ceiling.
+    // 5s — and this is cheap ONLY on the /api/sheet path, which is what production
+    // actually runs (see the note on `useScript` in api/sheets.js).
     //
-    // Note the quota is per USER, so every extra screen multiplies it: the script
-    // cache saves the sheet read, not the execution. Check Apps Script ->
-    // Executions -> runtime before lowering this; if there is real headroom, 10s
-    // gets the worst case to ~20s.
-    this._poll = setInterval(() => this.refresh(false), 20000);
+    // On that path the browser talks to the Vercel CDN, not to Google: measured
+    // 131ms average per request. Google is only read when a CDN entry expires,
+    // which is governed by `s-maxage` in api/sheet.js and is INDEPENDENT of how
+    // often the browser polls. So polling faster costs the CDN a few more edge
+    // hits and Google nothing at all. The end-to-end budget becomes 5s CDN +
+    // 5s poll + ~0.2s = ~10s, down from the ~60s that was reported.
+    //
+    // !! If VITE_SHEETS_ENDPOINT_* are ever set (which switches `useScript` on and
+    // sends the browser STRAIGHT to Apps Script), this number becomes dangerous:
+    // every poll is then a real Apps Script execution against a 6h/day quota, and
+    // 5s would be roughly 8x over it. Put this back to 20s before flipping that.
+    this._poll = setInterval(() => this.refresh(false), 5000);
+
+    // Browsers throttle setInterval in hidden/background tabs — Chrome clamps it
+    // to once a MINUTE, so a 20s poll silently becomes a 60s one whenever the
+    // board is not the visible foreground tab (another window in front, the
+    // display asleep, a second tab). Nothing server-side can fix that, and it is
+    // invisible from the outside. Refresh the moment the tab becomes visible
+    // again so a glance at the wall is never showing throttled-stale numbers.
+    this._onVis = () => { if (!document.hidden) this.refresh(false); };
+    document.addEventListener('visibilitychange', this._onVis);
+
+    // Measure the interval rather than trust it: if the gap between ticks is much
+    // longer than asked for, the tab is being throttled and that is the whole
+    // explanation for a slow board. Surfaced in the console so it can be
+    // confirmed from the TV's own devtools instead of guessed at.
+    this._lastTick = Date.now();
+    this._drift = setInterval(() => {
+      const gap = Date.now() - this._lastTick;
+      this._lastTick = Date.now();
+      if (gap > 17000) {
+        console.warn(`[poll] ${(gap / 1000).toFixed(0)}s since the last tick, asked for 5s — `
+          + 'this tab is being throttled by the browser (hidden/background). '
+          + 'The board updates as slowly as this gap, whatever the server does.');
+      }
+    }, 5000);
   }
   componentWillUnmount() {
     window.removeEventListener('resize', this.fit);
-    clearInterval(this._clock); clearInterval(this._poll);
+    if (this._onVis) document.removeEventListener('visibilitychange', this._onVis);
+    clearInterval(this._clock); clearInterval(this._poll); clearInterval(this._drift);
     clearTimeout(this._pulseT); clearTimeout(this._toastT);
   }
 

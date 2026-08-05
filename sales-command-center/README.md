@@ -15,6 +15,27 @@ npm run build
 
 ## How it's put together
 
+> ### ⚠️ Which path is LIVE — read this before optimising anything
+>
+> **Production (`sehatup-sales.vercel.app`) runs the `/api/sheet` fallback, not
+> Apps Script.** Verified in the browser on 2026-08-05: the page requests
+> `/api/sheet?which=health|quick|mens` (six per poll — each source twice, current
+> and `month=prev`) and never contacts `script.google.com` at all.
+>
+> Why: `useScript` requires all three `VITE_SHEETS_ENDPOINT_*`. Vite inlines those
+> at **build** time, and they exist only in `.env`, which is gitignored — so the
+> Vercel build sees them undefined and silently takes the fallback. Setting them in
+> the Vercel project's Environment Variables is what would flip it.
+>
+> A whole day was spent tuning the Apps Script path — cache TTL, payload
+> signatures, poll interval — while production executed none of it. **Check
+> `x-vercel-cache` on `/api/sheet` before believing any diagram in this file.**
+>
+> And the fallback is not obviously the worse option. Requests measured **131ms
+> average** through Vercel's CDN versus **4.2s** direct to Apps Script, and the CDN
+> fans in — every screen shares one cached response, so Google's read quota is flat
+> in the number of viewers. Think twice before switching.
+
 | Layer | File | Notes |
 | --- | --- | --- |
 | Sheet reader (preferred) | `apps-script/Code.gs` | Apps Script Web App, **one deployment per board** (same file, different `CONFIG.SOURCE`). Each returns its board's current *and* previous month in one response. Reads via `SpreadsheetApp`, so it doesn't touch the Sheets API quota. |
@@ -37,14 +58,35 @@ Data refreshes every 20 s. A partial failure (one sheet throttled) keeps that
 
 ### How fast a sheet edit reaches the wall
 
-Measured 2026-08-05, five ticks, three boards in parallel, signatures held:
+**On the path production actually runs** (`/api/sheet` behind Vercel's CDN):
 
-| Stage | Cost |
-| --- | --- |
-| Apps Script cache (`TTL_CURRENT`) | up to 5 s |
-| Client poll (`App.jsx` `_poll`) | up to 20 s |
-| Request round trip | **4.7 s avg, 9.1 s worst** |
-| **Worst case** | **~30 s** |
+| Stage | Was | Now |
+| --- | --- | --- |
+| CDN staleness (`s-maxage` + `stale-while-revalidate` in `api/sheet.js`) | **up to 30 s** | up to 5 s |
+| Client poll (`App.jsx` `_poll`) | up to 20 s | up to 5 s |
+| Request round trip (CDN edge, measured) | ~0.13 s | ~0.13 s |
+| **Worst case** | **~50-60 s** | **~10 s** |
+
+The 60 s that was reported for weeks was `stale-while-revalidate=20` stacked on a
+20 s poll. Caught by reading `x-vercel-cache` on the live endpoint:
+
+```
+/api/sheet?which=mens   x-vercel-cache: STALE   age: 19
+```
+
+`age: 19` — the CDN was handing browsers a 19-second-old response and refreshing it
+in the background. Note Vercel rewrites the client-facing header to
+`public, max-age=0`, so the staleness is invisible in `cache-control`; only
+`x-vercel-cache` and `age` reveal it.
+
+Polling at 5 s is cheap **because of the CDN**: the browser hits the edge, and
+Google is only read when a CDN entry expires, which `s-maxage` governs
+independently of poll rate. Previous-month responses are cached 10 minutes — they
+cannot change, and they were half of every poll.
+
+*(For reference, if `VITE_SHEETS_ENDPOINT_*` were ever set, the browser would go
+straight to Apps Script: 4.7 s average round trip, 9.1 s worst, no CDN, and every
+poll a real execution against a 6 h/day quota. Restore the 20 s poll first.)*
 
 > **The request time is Apps Script overhead, not bytes.** Dropping the previous
 > month cut the payload 83% (475 KB → 80 KB per tick) and the round trip barely
