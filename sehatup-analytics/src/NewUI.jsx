@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode, FIREBASE_CONFIGS } from './config/firebaseEnvironment';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
-import { searchCustomers, findCustomersByPhone, matchesPhone, phoneKey, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { searchCustomers, findCustomersByPhone, matchesPhone, matchesProfilePhone, filterProfileOwners, phoneKey, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth, storage, functions } from './firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -3589,7 +3589,10 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
     searchCustomers(ten)
       .then(list => {
         if (cancelled) return;
-        const match = (list || []).find(cu => (cu.phone || '').replace(/\D/g, '').endsWith(ten)) || (list || [])[0];
+        // Profile phone only, and no "first result" fallback — Shopify's prefix search also
+        // matches address phones, so falling back to list[0] showed a stranger's order count
+        // and lifetime value on this patient's card.
+        const match = filterProfileOwners(list, ten)[0];
         setShopStats({
           orders: match ? (match.orders_count ?? 0) : 0,
           ltv: match ? parseFloat(match.total_spent ?? 0) : 0,
@@ -6375,6 +6378,9 @@ function OrderCreate({ context = {}, setRoute }) {
   const [discountPopupPos, setDiscountPopupPos] = useStateO('bottom');
   const [customerRecommendations, setCustomerRecommendations] = useStateO([]);
   const [isFetchingRecommendations, setIsFetchingRecommendations] = useStateO(false);
+  // Customers who have the typed number only on a saved address — never offered as a match,
+  // just counted so the dropdown can say they exist.
+  const [addressOnlyMatches, setAddressOnlyMatches] = useStateO(0);
   const [focusedInput, setFocusedInput] = useStateO(null);
   const [autofillMessage, setAutofillMessage] = useStateO("");
   const [pincodeLoading, setPincodeLoading] = useStateO(false);
@@ -6436,26 +6442,25 @@ function OrderCreate({ context = {}, setRoute }) {
       // Trust the selected customer only while their number still matches the one on the form.
       // Edit the phone after picking a suggestion and `cust` is stale — the order would be
       // filed against the previous person while the form shows the new number.
-      // An explicit pick from the dropdown stands as long as that customer still owns the
-      // number on the form — the agent chose them with the details in front of them. Edit the
-      // phone afterwards and the pick is stale: the order would be filed against the previous
-      // person while the form shows the new number.
-      const selectedStillMatches = cust && cust.id && matchesPhone(cust, phoneKey(normalizedPhone));
+      // An explicit pick from the dropdown stands as long as the form's number is that
+      // customer's OWN profile number — the agent chose them with the details in front of them.
+      // Edit the phone afterwards and the pick is stale: the order would be filed against the
+      // previous person while the form shows the new number. Address phones do NOT count here;
+      // accepting them is what filed an order under the Akash Mathur whose number is 8126898208
+      // because 9353965895 sat on one of his addresses.
+      const selectedStillMatches = cust && cust.id && matchesProfilePhone(cust, phoneKey(normalizedPhone));
       if (selectedStillMatches) {
         finalCustomerId = cust.id;
       } else {
         if (cust && cust.id) {
           console.warn('[Customer] Selected customer does not own the entered phone — re-resolving.');
         }
-        // findCustomersByPhone verifies ownership instead of trusting Shopify's prefix search,
-        // and returns every genuine owner (a number really can be shared) with the established
-        // profile ranked first.
-        const owners = await findCustomersByPhone(normalizedPhone);
-        // Auto-attach only when the number is the customer's OWN profile phone. A number that
-        // merely appears on someone's saved address is usually a different person (a relative,
-        // a previous occupant) — and the profile sync below would overwrite their real number
-        // with this one. Creating a possible duplicate is the safer of the two mistakes.
-        const profileOwners = owners.filter(o => phoneKey(o.phone) === phoneKey(normalizedPhone));
+        // findCustomersByPhone returns only customers whose OWN profile phone is this number,
+        // established profile first — never someone who merely has it on a saved address. Such
+        // a person is usually a different human (a relative, a previous occupant), and the
+        // profile sync below would overwrite their real number with this one. Creating a
+        // possible duplicate is the safer of the two mistakes.
+        const profileOwners = await findCustomersByPhone(normalizedPhone);
         if (profileOwners.length > 1) {
           console.warn(`[Customer] ${profileOwners.length} customers share this number; using the established profile.`,
             profileOwners.map(o => ({ id: o.id, name: `${o.first_name || ''} ${o.last_name || ''}`.trim(), orders: o.orders_count })));
@@ -7069,15 +7074,17 @@ function OrderCreate({ context = {}, setRoute }) {
     let active = true;
     const isPhone = focusedInput === 'phone';
     const raw = focusedInput === 'name' ? custFirstName : (isPhone ? custPhone : "");
-    // Shopify's phone search is a PREFIX match: "98" returns 50 unrelated customers. Showing
+    // Shopify's phone search is a PREFIX match over profile AND address phones: "98" returns 50
+    // unrelated customers, and a full number returns everyone who ever shipped to it. Showing
     // those as suggestions is how an order ended up filed under a stranger — the agent clicks
-    // the top of a list that never matched their number. Require enough digits to be
-    // meaningful, then verify every result actually owns them before offering it.
+    // the top of a list that never was their number. Require enough digits to be meaningful,
+    // then keep only the customers whose OWN profile phone is what was typed.
     const digits = isPhone ? phoneKey(raw) : "";
     const query = isPhone ? digits : raw.trim();
     const minLength = isPhone ? 6 : 2;
     if (!query || query.length < minLength) {
       setCustomerRecommendations([]);
+      setAddressOnlyMatches(0);
       return;
     }
     const timer = setTimeout(async () => {
@@ -7085,8 +7092,14 @@ function OrderCreate({ context = {}, setRoute }) {
       try {
         const res = await searchCustomers(query);
         if (active) {
-          const list = isPhone ? (res || []).filter(c => matchesPhone(c, digits)) : (res || []);
+          const list = isPhone ? filterProfileOwners(res, digits) : (res || []);
           setCustomerRecommendations(list.slice(0, 5));
+          // Not offered, but worth telling the agent about: someone has the number saved on an
+          // address only. Without this the box just says "no customer" and they create a
+          // duplicate, never learning the profile exists under a different number.
+          setAddressOnlyMatches(isPhone
+            ? (res || []).filter(c => !matchesProfilePhone(c, digits) && matchesPhone(c, digits)).length
+            : 0);
         }
       } catch (err) {
         console.error("Error fetching customer recommendations", err);
@@ -7542,7 +7555,7 @@ function OrderCreate({ context = {}, setRoute }) {
                           // Saying so beats an empty box: the agent stops hunting and knows a
                           // new customer will be created on save.
                           ? <div className="muted" style={{ padding: "10px 12px", fontSize: 12 }}>No customer has this number yet — a new one will be created.</div>
-                          // Every row here has been verified to own the typed digits. When a
+                          // Every row here has the typed digits as their PROFILE number. When a
                           // number is genuinely shared, all owners are listed with the details
                           // that tell them apart.
                           : customerRecommendations.map(c => {
@@ -7564,6 +7577,14 @@ function OrderCreate({ context = {}, setRoute }) {
                               </div>
                             );
                           })}
+                      {/* Not selectable — attaching an order to one of these would file it
+                          against someone whose real number is different, and the profile sync
+                          on save would then overwrite that number with this one. */}
+                      {!isFetchingRecommendations && addressOnlyMatches > 0 && (
+                        <div className="muted" style={{ padding: "8px 12px", fontSize: 11.5, lineHeight: 1.45, borderTop: customerRecommendations.length ? "1px solid var(--border-soft)" : "none" }}>
+                          {addressOnlyMatches} other {addressOnlyMatches === 1 ? 'customer has' : 'customers have'} this number on a saved address, but not as their own — not shown. Search by name if you meant them.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

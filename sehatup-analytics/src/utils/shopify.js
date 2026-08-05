@@ -20,8 +20,9 @@ export const phoneKey = (phone) => String(phone || '').replace(/\D/g, '').slice(
  * Search for customers by name or phone number.
  *
  * A phone query is a PREFIX search — "phone:98*" matches 50+ unrelated customers whose
- * number merely starts with 98. Callers driving a type-ahead must not present raw results
- * as matches; use matchesPhone/findCustomersByPhone to narrow them first.
+ * number merely starts with 98 — and it also matches on ADDRESS phones, so it returns people
+ * who merely have the number saved on a shipping address. Callers driving a type-ahead must
+ * not present raw results as matches; narrow them with filterProfileOwners/findCustomersByPhone.
  *
  * @param {string} queryStr - The name or phone to search for.
  * @returns {Promise<Array>} - List of customers.
@@ -65,35 +66,60 @@ export const matchesPhone = (customer, digits) => {
 };
 
 /**
- * Every customer who genuinely owns this phone number, best first.
+ * Is this the customer's OWN number — the one on their profile?
  *
- * Shopify's search is a prefix match, so its raw results include people who merely share a
- * leading run of digits — taking result[0] attaches the order to a stranger. This filters to
- * real owners and, when a number is genuinely shared (family, one handset per household),
- * returns them ALL so the caller can choose rather than guess.
+ * The strict test, and the only one an order may be filed on. matchesPhone above also accepts
+ * address phones, which is how "9353965895" resolved to the Akash Mathur whose profile number
+ * is 8126898208: the digits sat on one of his saved shipping addresses. Two people really do
+ * share an address; they do not share a profile.
  *
- * Ranked by: exact profile-phone match, then order count, then most recently updated — so
- * the established profile wins over an empty duplicate created by a mistyped earlier order.
+ * @param {Object} customer
+ * @param {string} digits - Digits the user typed. 10+ must match exactly; fewer is a prefix
+ *                          (the type-ahead is still mid-number).
+ * @returns {boolean}
+ */
+export const matchesProfilePhone = (customer, digits) => {
+    if (!digits) return false;
+    const key = phoneKey(customer && customer.phone);
+    if (!key) return false;
+    return digits.length >= 10 ? key === phoneKey(digits) : key.startsWith(digits);
+};
+
+/**
+ * Narrow raw search results to the customers whose profile phone IS these digits, best first.
+ *
+ * Ranked by order count, then most recently updated, so an established profile wins over an
+ * empty duplicate created by a mistyped earlier order. A number genuinely shared across two
+ * profiles returns both — the caller shows them and lets a human choose.
+ *
+ * @param {Array} customers - Raw results from searchCustomers.
+ * @param {string} digits - Digits the user typed.
+ * @returns {Array} - Profile owners, best first.
+ */
+export const filterProfileOwners = (customers, digits) =>
+    (customers || [])
+        .filter(c => matchesProfilePhone(c, digits))
+        .sort((a, b) => {
+            const aOrders = Number(a.orders_count) || 0;
+            const bOrders = Number(b.orders_count) || 0;
+            if (aOrders !== bOrders) return bOrders - aOrders;
+            return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+        });
+
+/**
+ * Every customer whose profile phone is this number, best first.
+ *
+ * Shopify's search is a prefix match over profile AND address phones, so its raw results
+ * include people who merely share a leading run of digits or once shipped to this number —
+ * taking result[0] attaches the order to a stranger.
  *
  * @param {string} phone - Any format; only the last 10 digits are used.
- * @returns {Promise<Array>} - Matching customers, best first. Empty if none own the number.
+ * @returns {Promise<Array>} - Profile owners, best first. Empty if the number is on no profile.
  */
 export const findCustomersByPhone = async (phone) => {
     const ten = phoneKey(phone);
     if (ten.length < 10) return [];
-
-    const results = await searchCustomers(ten);
-    const owners = (results || []).filter(c => matchesPhone(c, ten));
-
-    return owners.sort((a, b) => {
-        const aExact = phoneKey(a.phone) === ten ? 1 : 0;
-        const bExact = phoneKey(b.phone) === ten ? 1 : 0;
-        if (aExact !== bExact) return bExact - aExact;
-        const aOrders = Number(a.orders_count) || 0;
-        const bOrders = Number(b.orders_count) || 0;
-        if (aOrders !== bOrders) return bOrders - aOrders;
-        return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
-    });
+    return filterProfileOwners(await searchCustomers(ten), ten);
 };
 
 /**
