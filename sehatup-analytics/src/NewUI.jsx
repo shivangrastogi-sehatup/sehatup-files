@@ -7072,17 +7072,23 @@ function OrderCreate({ context = {}, setRoute }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let active = true;
-    const isPhone = focusedInput === 'phone';
-    const raw = focusedInput === 'name' ? custFirstName : (isPhone ? custPhone : "");
+    // Phone is the ONLY thing we look customers up on. Typing a name used to drive this box too,
+    // but Shopify's name query is a loose prefix match across first name, last name and email —
+    // "Aamina" lists every Aamina in the store, they all look alike in a dropdown, and picking
+    // the wrong row files the order against a stranger. A number identifies a person; a name
+    // does not. Agents who genuinely need a name search use the Customers screen.
+    if (focusedInput !== 'phone') {
+      setCustomerRecommendations([]);
+      setAddressOnlyMatches(0);
+      return;
+    }
     // Shopify's phone search is a PREFIX match over profile AND address phones: "98" returns 50
     // unrelated customers, and a full number returns everyone who ever shipped to it. Showing
     // those as suggestions is how an order ended up filed under a stranger — the agent clicks
     // the top of a list that never was their number. Require enough digits to be meaningful,
     // then keep only the customers whose OWN profile phone is what was typed.
-    const digits = isPhone ? phoneKey(raw) : "";
-    const query = isPhone ? digits : raw.trim();
-    const minLength = isPhone ? 6 : 2;
-    if (!query || query.length < minLength) {
+    const digits = phoneKey(custPhone);
+    if (digits.length < 6) {
       setCustomerRecommendations([]);
       setAddressOnlyMatches(0);
       return;
@@ -7090,16 +7096,15 @@ function OrderCreate({ context = {}, setRoute }) {
     const timer = setTimeout(async () => {
       setIsFetchingRecommendations(true);
       try {
-        const res = await searchCustomers(query);
+        const res = await searchCustomers(digits);
         if (active) {
-          const list = isPhone ? filterProfileOwners(res, digits) : (res || []);
-          setCustomerRecommendations(list.slice(0, 5));
+          setCustomerRecommendations(filterProfileOwners(res, digits).slice(0, 5));
           // Not offered, but worth telling the agent about: someone has the number saved on an
           // address only. Without this the box just says "no customer" and they create a
           // duplicate, never learning the profile exists under a different number.
-          setAddressOnlyMatches(isPhone
-            ? (res || []).filter(c => !matchesProfilePhone(c, digits) && matchesPhone(c, digits)).length
-            : 0);
+          setAddressOnlyMatches(
+            (res || []).filter(c => !matchesProfilePhone(c, digits) && matchesPhone(c, digits)).length
+          );
         }
       } catch (err) {
         console.error("Error fetching customer recommendations", err);
@@ -7111,7 +7116,7 @@ function OrderCreate({ context = {}, setRoute }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [custFirstName, custPhone, focusedInput]);
+  }, [custPhone, focusedInput]);
 
   const handleSelectRecommendation = (c) => {
     // Pull the customer's address from their Shopify profile and hand the whole
@@ -7529,19 +7534,11 @@ function OrderCreate({ context = {}, setRoute }) {
             </div>
             {(
               <div className="grid-12" style={{ marginTop: 12 }}>
-                <div className="span-6 field" style={{ position: "relative" }}>
+                {/* No type-ahead here on purpose — customer lookup happens on the phone field
+                    below, which is the only field that identifies one person. */}
+                <div className="span-6 field">
                   <span className="lbl">First name *</span>
-                  <input className="input" value={custFirstName} onFocus={() => setFocusedInput('name')} onBlur={() => setFocusedInput(null)} onChange={e => { setCustFirstName(e.target.value); setFocusedInput('name'); }} placeholder="Aamina" />
-                  {focusedInput === 'name' && (customerRecommendations.length > 0 || isFetchingRecommendations) && (
-                    <div style={{ position: "absolute", top: "100%", left: 0, width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 12px 32px rgba(15,23,42,.12)", zIndex: 100, overflow: "hidden", marginTop: 4 }}>
-                      {isFetchingRecommendations ? <div className="muted" style={{ padding: 12, textAlign: "center", fontSize: 12 }}>Searching...</div> : customerRecommendations.map(c => (
-                        <div key={c.id} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-soft)", cursor: "pointer" }} onMouseDown={(e) => { e.preventDefault(); handleSelectRecommendation(c); }}>
-                          <div className="fw5">{c.first_name} {c.last_name}</div>
-                          <div className="muted" style={{ fontSize: 12 }}>{c.phone || c.email || 'No contact info'}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <input className="input" value={custFirstName} onChange={e => setCustFirstName(e.target.value)} placeholder="Aamina" />
                 </div>
                 <div className="span-6 field"><span className="lbl">Last name *</span><input className="input" value={custLastName} onChange={e => setCustLastName(e.target.value)} placeholder="Jan" /></div>
                 <div className="span-6 field" style={{ position: "relative" }}>
@@ -7582,7 +7579,7 @@ function OrderCreate({ context = {}, setRoute }) {
                           on save would then overwrite that number with this one. */}
                       {!isFetchingRecommendations && addressOnlyMatches > 0 && (
                         <div className="muted" style={{ padding: "8px 12px", fontSize: 11.5, lineHeight: 1.45, borderTop: customerRecommendations.length ? "1px solid var(--border-soft)" : "none" }}>
-                          {addressOnlyMatches} other {addressOnlyMatches === 1 ? 'customer has' : 'customers have'} this number on a saved address, but not as their own — not shown. Search by name if you meant them.
+                          {addressOnlyMatches} other {addressOnlyMatches === 1 ? 'customer has' : 'customers have'} this number on a saved address, but not as their own — not shown. Look them up on the Customers screen if you meant them.
                         </div>
                       )}
                     </div>
