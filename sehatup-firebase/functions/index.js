@@ -2922,12 +2922,22 @@ const QR_STORE_URL = process.env.SEHATUP_STORE_URL || "https://sehatup.com";
 // Rx status is a SehatUP safety rule, NOT a Shopify field — it cannot be looked up, so it
 // lives here. Getting this wrong means handing a customer a link to a prescription drug,
 // which is the worst thing this endpoint could do. Matched against the product title.
+// The branded kits below all ship an allopathic tablet inside, which is why they are listed
+// by brand name and not by drug — the drug never appears in their Shopify title.
+//
+// "Confidence & Performance Booster Kit" was REMOVED from this list 2026-08-03. It is the
+// Vaji Bati + Kern Drop kit (handle `p-e-e-d-integrated-kit`, product photos literally
+// Vaji_Bati_Kern_Drop.webp) and ships no tablet — Vaji Bati is Ayurvedic and Kern Drops is
+// homoeopathic, and both are sold individually with a price and a link. Being on this list
+// made the bot refuse to price or link a Rs1099 OTC product, AND suppressed its description
+// entirely (qrCondenseDescription returns '' for Rx), so it could not even be explained.
+// The three sibling combos that DO carry a drug are caught by /tadalafil/ and /dapoxetine/
+// via their own titles, so removing this pattern does not weaken them.
 const QR_RX_PATTERNS = [
   /tadalafil/i, /dapoxetine/i, /orlistat/i, /sildenafil/i,
   /\bendless\b/i, /\bhard\s*(5|10)\b/i, /\bmighty\b/i, /boombatti/i,
   /control\s*tantra/i, /four\s*play/i, /hard\s*yatra/i, /max\s*drive/i,
   /rocket\s*ras/i, /lovelinga/i, /thrill\s*drill/i, /thrust\s*rx/i,
-  /confidence\s*(&|and)?\s*performance/i,
 ];
 const qrIsRx = (title) => QR_RX_PATTERNS.some((re) => re.test(String(title || "")));
 
@@ -2949,19 +2959,102 @@ const QR_ALIAS_PHRASES = [
   [/\balo+e?zy?\b/g, "aloezy"],
   [/\bd3\s*k2\b/g, "zencal"],
   [/\bvitamin\s*d\b/g, "zencal"],
-  [/\bkern\b/g, "kern drops"],
+  // NOT `kern -> "kern drops"`. That alias INJECTED the generic word "drops" into every
+  // query mentioning Kern, and "drops" then scored a full exact-word hit against Garcinia
+  // Cambogia Drops. "kern drop chahiye" returned Garcinia as the second option, and
+  // "vaji bati kern drops" pushed Vaji Bati out of the top two entirely. The alias was never
+  // needed: "kern" already scores 1.0 against the title "Kern Drops" on its own.
   [/\blean\s*rout\w*\b/g, "leanroutine"],
   [/\bslim\s*tox\b/g, "slimtox"],
   [/\bhoney\s*stick\w*\b/g, "shilajit honey sticks"],
 ];
 
+// Words that describe the FORM of a product, not which product it is. Every one of them
+// appears in more than one Shopify title, so an exact hit on one carries no information -
+// "drops" alone cannot tell Kern Drops from Garcinia Cambogia Drops. They still contribute
+// to the averaged score (a query that matches the form as well as the name should rank
+// higher), they just may never earn the "one distinctive word matched" boost in
+// qrMatchScore, which is what let a form word masquerade as a product name.
+// A second group, for the same reason but a different failure. Shopify titles carry marketing
+// tails - "No more tricks & just kick", "Your All in One Tea", "Best intimate wash" - and a
+// generic adjective inside one of them is not a product name either. "best"/"pure"/"daily"
+// identify nothing; they only describe.
+const QR_WEAK_MATCH_WORDS = new Set([
+  "drops", "drop", "tablet", "tablets", "capsule", "capsules", "tea", "kit", "kits",
+  "powder", "oil", "syrup", "resin", "sachet", "wash", "booster", "formula", "support",
+  "best", "pure", "natural", "daily", "just", "free", "sample",
+]);
+
+// Conditions customers name INSTEAD of a product. "PCOD" appears in no Shopify title, so the
+// fuzzy matcher scores it 0 against all 32 products - the single condition SehatUP treats most
+// produced no product context at all.
+//
+// Mapped to HANDLES, never as a text alias. Rewriting the query is exactly what the old
+// `kern -> "kern drops"` alias did (see QR_ALIAS_PHRASES): it injected a generic word that
+// then out-scored the product the customer had actually named.
+//
+// The benefit wording here is the Google Doc's own CATALOG mapping, not a new medical claim.
+const QR_CONDITION_PRODUCTS = [
+  {
+    re: /\b(pcod|pcos|poly\s*cystic|period|periods|menses|menstrual|hormonal|hormone|cramps)\b/,
+    handles: ["her-menses", "hormoniherb"],
+  },
+];
+
+// ...but ONLY when they are asking for something to take. Naming a condition is not a request
+// for a product: persona rule 3 requires the safety check and the free-consultation offer
+// FIRST, and "mujhe PCOD hai" is a disclosure, not a purchase intent. Putting two priced
+// products into the prompt for it invites exactly the pitch rule 3 forbids - the same failure
+// the order block hit, where five cancelled orders in the prompt got latched onto and answered
+// a question nobody asked.
+// So "mujhe PCOD hai" still resolves to no match, and "PCOD ke liye kaunsa product lu" does not.
+const QR_CONDITION_INTENT =
+  /\b(product|medicine|dawa|dawai|tablet|goli|capsule|kit|tea|churna|powder|syrup|drops?|ilaj|treatment|cure|upay|upchar|solution|chahiye|chaiye|recommend|suggest|kaunsa|konsa|kaun\s*sa|link|price|rate|lena|lu|lenge|de\s*do|dijiye|bhejo)\b/;
+
+// Kits customers ask for by their CONTENTS, not by their name. Nobody types "Confidence &
+// Performance Booster Kit"; they type "vaji bati kern drop combo". The kit therefore scored
+// 0 against the words its own buyers use and could never be sold.
+//
+// Feeding the component names into the fuzzy matcher as title aliases was tried first and
+// backfired badly: the kit then matched "vaji bati" on its own and OUTRANKED Vaji Bati
+// itself, so every single-product question started returning the Rs1099 kit. Kit matching is
+// therefore explicit, not fuzzy - a kit is offered only when the customer named every
+// component, or named one component together with a combo word.
+const QR_KITS = [
+  { handle: "p-e-e-d-integrated-kit", parts: [/\bvaji\b/, /\bkern\b/] },
+];
+const QR_COMBO_WORDS = /\b(combo|kit|dono|donon|both|sath|saath|together|pack|package|set)\b/;
+
+// Handles of the kits this query is actually asking for.
+function qrKitHandles(text) {
+  const q = qrNormalise(text);
+  if (!q) return [];
+  const wantsCombo = QR_COMBO_WORDS.test(q);
+  return QR_KITS
+    .filter((k) => {
+      const hits = k.parts.filter((re) => re.test(q)).length;
+      return hits === k.parts.length || (hits >= 1 && wantsCombo);
+    })
+    .map((k) => k.handle);
+}
+
 // Words that carry no product signal — without stripping these, "mujhe price batao"
 // scores against every product that happens to share a stray letter.
+// Conversational filler belongs here too, and its absence was a live bug: "Hello! Can I get
+// more info for PCOD/PCOS?" put an OUT-OF-STOCK Rx MEN'S product (Hard Yatra, Rs1999) into a
+// women's-health chat. The culprit was the word "more", which is an exact token hit on the
+// title "No more tricks & just kick" and so earned the full 0.85 "one distinctive word"
+// boost in qrMatchScore. A word that is common in English is not a product name, however
+// rare it happens to be inside the catalog - so document frequency would not have caught it
+// either. It has to be listed.
 const QR_STOPWORDS = new Set([
   "price", "rate", "kitne", "kitna", "ka", "ki", "ke", "hai", "he", "batao", "bata",
   "do", "dijiye", "mujhe", "me", "chahiye", "chaiye", "kya", "aur", "and", "the", "of",
   "for", "cost", "kimat", "keemat", "rs", "rupees", "rupaye", "please", "plz", "ek",
   "kitni", "much", "how", "what", "is", "send", "bhejo", "bhej", "order", "karna", "karo",
+  "hello", "hi", "hey", "can", "could", "get", "more", "info", "information", "about",
+  "know", "need", "want", "tell", "help", "give", "some", "any", "your", "my", "regarding",
+  "detail", "details", "jankari", "sawaal", "bataye", "bataiye", "puchna",
 ]);
 
 function qrNormalise(s) {
@@ -3025,7 +3118,12 @@ function qrMatchScore(queryTokens, title) {
     // Drops and NOT Vaji Bati: vaji/bati/kern are all 4 letters so none of them earned the
     // boost, while "drops" (5) boosted every product with Drops in its name. The customer
     // named two products by hand and got neither.
-    if (q.length >= 4 && tTokens.includes(q)) { exactHits++; strong = 0.85; }
+    // ...and lowering it to 4 was only half the fix, because "drops" still earned the boost.
+    // A form word is not a name: it is shared by several titles, so exactly the products it
+    // cannot distinguish all got 0.85 from it. With "vaji bati kern drops" that tied Garcinia
+    // (drops x2) with Vaji Bati (vaji + bati) at 0.90, the cheaper-price tiebreak below put
+    // Garcinia first, and the two-option reply dropped Vaji Bati off the end.
+    if (q.length >= 4 && !QR_WEAK_MATCH_WORDS.has(q) && tTokens.includes(q)) { exactHits++; strong = 0.85; }
   }
   // Average over query words, then reward matching more than one of them: "vaji bati"
   // hitting both words should beat "bati" alone hitting one.
@@ -3178,14 +3276,61 @@ async function qrFetchCatalog() {
   return out;
 }
 
+// Did the customer type a word that IDENTIFIES this product, as opposed to merely
+// describing it? Used only to break score ties, where "cheapest wins" is the wrong rule:
+// asked for "vaji bati kern drops", Vaji Bati (Rs849) and Garcinia (Rs499) tied and the
+// customer was shown the one they had not named.
+function qrNamedHits(queryTokens, title) {
+  const tTokens = qrTokens(title, false);
+  let n = 0;
+  for (const q of queryTokens) {
+    if (q.length >= 4 && !QR_WEAK_MATCH_WORDS.has(q) && tTokens.includes(q)) n++;
+  }
+  return n;
+}
+
 function qrSearchCatalog(text, catalog, limit = 3, floor = 0.55) {
   const q = qrTokens(text);
   if (!q.length) return [];
-  return catalog
-    .map((p) => ({ ...p, score: Math.round(qrMatchScore(q, p.rawTitle) * 100) / 100 }))
+  const hits = catalog
+    .map((p) => ({
+      ...p,
+      score: Math.round(qrMatchScore(q, p.rawTitle) * 100) / 100,
+      named: qrNamedHits(q, p.rawTitle),
+      isKit: false,
+    }))
     .filter((p) => p.score >= floor)
-    .sort((a, b) => b.score - a.score || a.price - b.price)
+    .sort((a, b) => b.score - a.score || b.named - a.named || a.price - b.price)
     .slice(0, limit);
+
+  // Condition fallback - ONLY when the fuzzy search found nothing. A customer who names a
+  // product must never have their answer diluted by condition suggestions, so this cannot
+  // run alongside a real match; it exists to fill the "PCOD ke baare me batao" hole, where
+  // the alternative is an empty LIVE PRODUCT DATA block.
+  if (!hits.length && QR_CONDITION_INTENT.test(qrNormalise(text))) {
+    const qc = qrNormalise(text);
+    for (const c of QR_CONDITION_PRODUCTS) {
+      if (!c.re.test(qc)) continue;
+      for (const h of c.handles) {
+        if (hits.some((p) => p.handle === h)) continue;
+        const p = catalog.find((x) => x.handle === h);
+        // Score sits just above the floor: these were inferred from a condition, not named,
+        // and must never outrank a product the customer actually typed.
+        if (p) hits.push({ ...p, score: 0.6, named: 0, isKit: false, byCondition: true });
+      }
+    }
+  }
+
+  // A matching kit rides ALONGSIDE the components, never instead of them - the customer
+  // asked for the parts, so the parts must still be the answer. The kit is appended so the
+  // reply can offer it as the cheaper way to get both.
+  const kitHandles = qrKitHandles(text);
+  for (const h of kitHandles) {
+    if (hits.some((p) => p.handle === h)) continue;
+    const kit = catalog.find((p) => p.handle === h);
+    if (kit) hits.push({ ...kit, score: 1, named: 0, isKit: true });
+  }
+  return hits;
 }
 
 exports.qrProductLookup = onRequest(
@@ -3232,6 +3377,10 @@ exports.qrProductLookup = onRequest(
             if (p.url) bits.push(p.url);
           }
           if (p.variantCount > 1) bits.push(`${p.variantCount} variants, price shown is the lowest`);
+          // Say plainly that this one IS the other two in a box. Without it the model reads
+          // three unrelated products and offers a Rs1099 item next to a Rs509 one with no
+          // explanation of why anyone would take it.
+          if (p.isKit) bits.push("COMBO PACK - contains the other products listed here, cheaper than buying them separately");
           let line = `- ${bits.join(" · ")}`;
           // The blurb goes on its own indented line: product names and URLs already contain
           // punctuation, and burying 250 chars of prose behind a " · " made it unreadable.

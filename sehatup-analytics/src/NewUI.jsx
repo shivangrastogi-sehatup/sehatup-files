@@ -4,13 +4,14 @@ import { createPortal } from 'react-dom';
 import { FIREBASE_MODE, setFirebaseMode, FIREBASE_CONFIGS } from './config/firebaseEnvironment';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
-import { searchCustomers, findCustomersByPhone, matchesPhone, phoneKey, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
+import { searchCustomers, findCustomersByPhone, matchesPhone, matchesProfilePhone, filterProfileOwners, phoneKey, getAllOrders, getOrdersChannelMap, getCustomersCount, createDraftOrder, createCustomer } from './utils/shopify';
 import { triggerOrderPlacedWebhook, triggerHealthKitReadyWebhook } from './utils/webhookHelpers';
 import { db, auth, storage, functions } from './firebase';
 import { httpsCallable } from 'firebase/functions';
 import { collection, collectionGroup, query, orderBy, where, limit, getDocs, onSnapshot, getDoc, doc, updateDoc, setDoc, serverTimestamp, addDoc, runTransaction, writeBatch, deleteDoc, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { computeAnalytics } from "./utils/analytics";
+import { useProductSearch } from './utils/productSearchAPI';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import DatePicker from 'react-datepicker';
@@ -3588,7 +3589,10 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
     searchCustomers(ten)
       .then(list => {
         if (cancelled) return;
-        const match = (list || []).find(cu => (cu.phone || '').replace(/\D/g, '').endsWith(ten)) || (list || [])[0];
+        // Profile phone only, and no "first result" fallback — Shopify's prefix search also
+        // matches address phones, so falling back to list[0] showed a stranger's order count
+        // and lifetime value on this patient's card.
+        const match = filterProfileOwners(list, ten)[0];
         setShopStats({
           orders: match ? (match.orders_count ?? 0) : 0,
           ltv: match ? parseFloat(match.total_spent ?? 0) : 0,
@@ -5341,98 +5345,10 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Product Search State
+  // Product Search State — matching, debounce and request cancellation all live in
+  // utils/productSearchAPI so this and the OrderCreate add-bar cannot drift apart again.
   const [productSearch, setProductSearch] = useStateD("");
-  const [searchResults, setSearchResults] = useStateD([]);
-  const [isSearchingProducts, setIsSearchingProducts] = useStateD(false);
-
-  const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-  const fetchProducts = useCallback(async (term) => {
-    setIsSearchingProducts(true);
-    try {
-      const cleanTerm = term.replace(/"/g, '\\"');
-      const query = `{
-        products(first: 15, query: "${cleanTerm}*") {
-          edges {
-            node {
-              id
-              title
-              handle
-              featuredImage { url }
-              variants(first: 50) {
-                edges {
-                  node {
-                    id
-                    title
-                    sku
-                    price
-                  }
-                }
-              }
-            }
-          }
-        }
-      }`;
-
-      const res = await fetch('/shopify-v2/graphql.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      });
-      const data = await res.json();
-
-      if (data.errors) {
-        setSearchResults([]);
-        return;
-      }
-
-      const products = (data?.data?.products?.edges || []).map(edge => {
-        const node = edge.node;
-        return {
-          id: parseInt(node.id.split('/').pop(), 10) || node.id,
-          title: node.title,
-          handle: node.handle,
-          image: node.featuredImage?.url || null,
-          variants: (node.variants?.edges || []).map(vEdge => {
-            const vNode = vEdge.node;
-            return {
-              id: parseInt(vNode.id.split('/').pop(), 10) || vNode.id,
-              title: vNode.title,
-              sku: vNode.sku || '',
-              price: Math.round(parseFloat(vNode.price) * 100),
-            };
-          }),
-        };
-      });
-
-      const tokens = normalizeSearchText(term).split(/\s+/).filter(Boolean);
-      const strictMatches = products.filter(product => {
-        if (!product.variants?.length) return false;
-        const searchable = normalizeSearchText([
-          product.title,
-          product.handle,
-          ...product.variants.flatMap(variant => [variant.title, variant.sku]),
-        ].join(" "));
-        return tokens.every(token => searchable.includes(token));
-      });
-
-      setSearchResults(strictMatches);
-    } catch (err) {
-      setSearchResults([]);
-    } finally {
-      setIsSearchingProducts(false);
-    }
-  }, [setIsSearchingProducts, setSearchResults]);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      const term = productSearch.trim();
-      if (term.length > 1) fetchProducts(term);
-      else setSearchResults([]);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [fetchProducts, productSearch, setSearchResults]);
+  const { results: searchResults, isSearching: isSearchingProducts } = useProductSearch(productSearch);
 
   const toggleProduct = (product, variant) => {
     const vid = variant ? variant.id : null;
@@ -5459,7 +5375,6 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         durationUnit: catalogEntry?.durationUnit || 'month',
       }]);
       setProductSearch("");
-      setSearchResults([]);
     }
   };
 
@@ -6453,16 +6368,19 @@ function OrderCreate({ context = {}, setRoute }) {
   const [city, setCity] = useStateO(preset?.city || "");
   const [stateName, setStateName] = useStateO(preset?.state || "");
   const [country, setCountry] = useStateO(preset?.country || "India");
+  // Matching, debounce and request cancellation all live in utils/productSearchAPI so this
+  // and the PrescriptionEditor medicine search cannot drift apart again.
   const [productSearch, setProductSearch] = useStateO("");
-  const [searchResults, setSearchResults] = useStateO([]);
-  const [isSearchingProducts, setIsSearchingProducts] = useStateO(false);
-  const [, setSelectedSearchVariants] = useStateO({});
+  const { results: searchResults, isSearching: isSearchingProducts } = useProductSearch(productSearch);
   const [freeSampleVariant, setFreeSampleVariant] = useStateO(null);
   const [activeDiscountItemId, setActiveDiscountItemId] = useStateO(null);
   const [hoveredDiscountItemId, setHoveredDiscountItemId] = useStateO(null);
   const [discountPopupPos, setDiscountPopupPos] = useStateO('bottom');
   const [customerRecommendations, setCustomerRecommendations] = useStateO([]);
   const [isFetchingRecommendations, setIsFetchingRecommendations] = useStateO(false);
+  // Customers who have the typed number only on a saved address — never offered as a match,
+  // just counted so the dropdown can say they exist.
+  const [addressOnlyMatches, setAddressOnlyMatches] = useStateO(0);
   const [focusedInput, setFocusedInput] = useStateO(null);
   const [autofillMessage, setAutofillMessage] = useStateO("");
   const [pincodeLoading, setPincodeLoading] = useStateO(false);
@@ -6524,26 +6442,25 @@ function OrderCreate({ context = {}, setRoute }) {
       // Trust the selected customer only while their number still matches the one on the form.
       // Edit the phone after picking a suggestion and `cust` is stale — the order would be
       // filed against the previous person while the form shows the new number.
-      // An explicit pick from the dropdown stands as long as that customer still owns the
-      // number on the form — the agent chose them with the details in front of them. Edit the
-      // phone afterwards and the pick is stale: the order would be filed against the previous
-      // person while the form shows the new number.
-      const selectedStillMatches = cust && cust.id && matchesPhone(cust, phoneKey(normalizedPhone));
+      // An explicit pick from the dropdown stands as long as the form's number is that
+      // customer's OWN profile number — the agent chose them with the details in front of them.
+      // Edit the phone afterwards and the pick is stale: the order would be filed against the
+      // previous person while the form shows the new number. Address phones do NOT count here;
+      // accepting them is what filed an order under the Akash Mathur whose number is 8126898208
+      // because 9353965895 sat on one of his addresses.
+      const selectedStillMatches = cust && cust.id && matchesProfilePhone(cust, phoneKey(normalizedPhone));
       if (selectedStillMatches) {
         finalCustomerId = cust.id;
       } else {
         if (cust && cust.id) {
           console.warn('[Customer] Selected customer does not own the entered phone — re-resolving.');
         }
-        // findCustomersByPhone verifies ownership instead of trusting Shopify's prefix search,
-        // and returns every genuine owner (a number really can be shared) with the established
-        // profile ranked first.
-        const owners = await findCustomersByPhone(normalizedPhone);
-        // Auto-attach only when the number is the customer's OWN profile phone. A number that
-        // merely appears on someone's saved address is usually a different person (a relative,
-        // a previous occupant) — and the profile sync below would overwrite their real number
-        // with this one. Creating a possible duplicate is the safer of the two mistakes.
-        const profileOwners = owners.filter(o => phoneKey(o.phone) === phoneKey(normalizedPhone));
+        // findCustomersByPhone returns only customers whose OWN profile phone is this number,
+        // established profile first — never someone who merely has it on a saved address. Such
+        // a person is usually a different human (a relative, a previous occupant), and the
+        // profile sync below would overwrite their real number with this one. Creating a
+        // possible duplicate is the safer of the two mistakes.
+        const profileOwners = await findCustomersByPhone(normalizedPhone);
         if (profileOwners.length > 1) {
           console.warn(`[Customer] ${profileOwners.length} customers share this number; using the established profile.`,
             profileOwners.map(o => ({ id: o.id, name: `${o.first_name || ''} ${o.last_name || ''}`.trim(), orders: o.orders_count })));
@@ -7155,26 +7072,39 @@ function OrderCreate({ context = {}, setRoute }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let active = true;
-    const isPhone = focusedInput === 'phone';
-    const raw = focusedInput === 'name' ? custFirstName : (isPhone ? custPhone : "");
-    // Shopify's phone search is a PREFIX match: "98" returns 50 unrelated customers. Showing
-    // those as suggestions is how an order ended up filed under a stranger — the agent clicks
-    // the top of a list that never matched their number. Require enough digits to be
-    // meaningful, then verify every result actually owns them before offering it.
-    const digits = isPhone ? phoneKey(raw) : "";
-    const query = isPhone ? digits : raw.trim();
-    const minLength = isPhone ? 6 : 2;
-    if (!query || query.length < minLength) {
+    // Phone is the ONLY thing we look customers up on. Typing a name used to drive this box too,
+    // but Shopify's name query is a loose prefix match across first name, last name and email —
+    // "Aamina" lists every Aamina in the store, they all look alike in a dropdown, and picking
+    // the wrong row files the order against a stranger. A number identifies a person; a name
+    // does not. Agents who genuinely need a name search use the Customers screen.
+    if (focusedInput !== 'phone') {
       setCustomerRecommendations([]);
+      setAddressOnlyMatches(0);
+      return;
+    }
+    // Shopify's phone search is a PREFIX match over profile AND address phones: "98" returns 50
+    // unrelated customers, and a full number returns everyone who ever shipped to it. Showing
+    // those as suggestions is how an order ended up filed under a stranger — the agent clicks
+    // the top of a list that never was their number. Require enough digits to be meaningful,
+    // then keep only the customers whose OWN profile phone is what was typed.
+    const digits = phoneKey(custPhone);
+    if (digits.length < 6) {
+      setCustomerRecommendations([]);
+      setAddressOnlyMatches(0);
       return;
     }
     const timer = setTimeout(async () => {
       setIsFetchingRecommendations(true);
       try {
-        const res = await searchCustomers(query);
+        const res = await searchCustomers(digits);
         if (active) {
-          const list = isPhone ? (res || []).filter(c => matchesPhone(c, digits)) : (res || []);
-          setCustomerRecommendations(list.slice(0, 5));
+          setCustomerRecommendations(filterProfileOwners(res, digits).slice(0, 5));
+          // Not offered, but worth telling the agent about: someone has the number saved on an
+          // address only. Without this the box just says "no customer" and they create a
+          // duplicate, never learning the profile exists under a different number.
+          setAddressOnlyMatches(
+            (res || []).filter(c => !matchesProfilePhone(c, digits) && matchesPhone(c, digits)).length
+          );
         }
       } catch (err) {
         console.error("Error fetching customer recommendations", err);
@@ -7186,7 +7116,7 @@ function OrderCreate({ context = {}, setRoute }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [custFirstName, custPhone, focusedInput]);
+  }, [custPhone, focusedInput]);
 
   const handleSelectRecommendation = (c) => {
     // Pull the customer's address from their Shopify profile and hand the whole
@@ -7448,100 +7378,6 @@ function OrderCreate({ context = {}, setRoute }) {
     setHealthscoreLead(true);
   };
 
-  const normalizeSearchText = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-  const fetchProducts = useCallback(async (term) => {
-    setIsSearchingProducts(true);
-    try {
-      const cleanTerm = term.replace(/"/g, '\\"');
-      const query = `{
-        products(first: 15, query: "${cleanTerm}*") {
-          edges {
-            node {
-              id
-              title
-              handle
-              featuredImage { url }
-              variants(first: 50) {
-                edges {
-                  node {
-                    id
-                    title
-                    sku
-                    price
-                  }
-                }
-              }
-            }
-          }
-        }
-      }`;
-
-      const res = await fetch('/shopify-v2/graphql.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      });
-      const data = await res.json();
-
-      if (data.errors) {
-        console.error('[Product search] GraphQL errors:', data.errors);
-        setSearchResults([]);
-        return;
-      }
-
-      const products = (data?.data?.products?.edges || []).map(edge => {
-        const node = edge.node;
-        return {
-          id: parseInt(node.id.split('/').pop(), 10) || node.id,
-          title: node.title,
-          handle: node.handle,
-          image: node.featuredImage?.url || null,
-          variants: (node.variants?.edges || []).map(vEdge => {
-            const vNode = vEdge.node;
-            return {
-              id: parseInt(vNode.id.split('/').pop(), 10) || vNode.id,
-              title: vNode.title,
-              sku: vNode.sku || '',
-              price: Math.round(parseFloat(vNode.price) * 100),
-            };
-          }),
-        };
-      });
-
-      const tokens = normalizeSearchText(term).split(/\s+/).filter(Boolean);
-      const strictMatches = products.filter(product => {
-        if (!product.variants?.length) return false;
-        const searchable = normalizeSearchText([
-          product.title,
-          product.handle,
-          ...product.variants.flatMap(variant => [variant.title, variant.sku]),
-        ].join(" "));
-        return tokens.every(token => searchable.includes(token));
-      });
-
-      setSearchResults(strictMatches);
-    } catch (err) {
-      console.error('[Product search] failed:', err);
-      setSearchResults([]);
-    } finally {
-      setIsSearchingProducts(false);
-    }
-  }, [setIsSearchingProducts, setSearchResults]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const term = productSearch.trim();
-      if (term.length > 1) fetchProducts(term);
-      else {
-        setSearchResults([]);
-        setSelectedSearchVariants({});
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [fetchProducts, productSearch, setSearchResults, setSelectedSearchVariants]);
-
   const addVariantToOrder = (variant, product) => {
     setItems((current) => {
       let next = [...current];
@@ -7568,7 +7404,6 @@ function OrderCreate({ context = {}, setRoute }) {
       return next;
     });
     setProductSearch("");
-    setSearchResults([]);
   };
 
   const toggleFreeSample = (checked) => {
@@ -7645,7 +7480,6 @@ function OrderCreate({ context = {}, setRoute }) {
       discountReason: "",
     }]);
     setProductSearch("");
-    setSearchResults([]);
     closeCustomItemModal();
   };
 
@@ -7700,19 +7534,11 @@ function OrderCreate({ context = {}, setRoute }) {
             </div>
             {(
               <div className="grid-12" style={{ marginTop: 12 }}>
-                <div className="span-6 field" style={{ position: "relative" }}>
+                {/* No type-ahead here on purpose — customer lookup happens on the phone field
+                    below, which is the only field that identifies one person. */}
+                <div className="span-6 field">
                   <span className="lbl">First name *</span>
-                  <input className="input" value={custFirstName} onFocus={() => setFocusedInput('name')} onBlur={() => setFocusedInput(null)} onChange={e => { setCustFirstName(e.target.value); setFocusedInput('name'); }} placeholder="Aamina" />
-                  {focusedInput === 'name' && (customerRecommendations.length > 0 || isFetchingRecommendations) && (
-                    <div style={{ position: "absolute", top: "100%", left: 0, width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "0 12px 32px rgba(15,23,42,.12)", zIndex: 100, overflow: "hidden", marginTop: 4 }}>
-                      {isFetchingRecommendations ? <div className="muted" style={{ padding: 12, textAlign: "center", fontSize: 12 }}>Searching...</div> : customerRecommendations.map(c => (
-                        <div key={c.id} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-soft)", cursor: "pointer" }} onMouseDown={(e) => { e.preventDefault(); handleSelectRecommendation(c); }}>
-                          <div className="fw5">{c.first_name} {c.last_name}</div>
-                          <div className="muted" style={{ fontSize: 12 }}>{c.phone || c.email || 'No contact info'}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <input className="input" value={custFirstName} onChange={e => setCustFirstName(e.target.value)} placeholder="Aamina" />
                 </div>
                 <div className="span-6 field"><span className="lbl">Last name *</span><input className="input" value={custLastName} onChange={e => setCustLastName(e.target.value)} placeholder="Jan" /></div>
                 <div className="span-6 field" style={{ position: "relative" }}>
@@ -7726,7 +7552,7 @@ function OrderCreate({ context = {}, setRoute }) {
                           // Saying so beats an empty box: the agent stops hunting and knows a
                           // new customer will be created on save.
                           ? <div className="muted" style={{ padding: "10px 12px", fontSize: 12 }}>No customer has this number yet — a new one will be created.</div>
-                          // Every row here has been verified to own the typed digits. When a
+                          // Every row here has the typed digits as their PROFILE number. When a
                           // number is genuinely shared, all owners are listed with the details
                           // that tell them apart.
                           : customerRecommendations.map(c => {
@@ -7748,6 +7574,14 @@ function OrderCreate({ context = {}, setRoute }) {
                               </div>
                             );
                           })}
+                      {/* Not selectable — attaching an order to one of these would file it
+                          against someone whose real number is different, and the profile sync
+                          on save would then overwrite that number with this one. */}
+                      {!isFetchingRecommendations && addressOnlyMatches > 0 && (
+                        <div className="muted" style={{ padding: "8px 12px", fontSize: 11.5, lineHeight: 1.45, borderTop: customerRecommendations.length ? "1px solid var(--border-soft)" : "none" }}>
+                          {addressOnlyMatches} other {addressOnlyMatches === 1 ? 'customer has' : 'customers have'} this number on a saved address, but not as their own — not shown. Look them up on the Customers screen if you meant them.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

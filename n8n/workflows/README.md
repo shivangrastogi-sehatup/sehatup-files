@@ -20,7 +20,7 @@ fine-tuned Gemini model, and sends the reply back through QuickReply.
 3. [Nodes, one by one](#nodes-one-by-one)
 4. [The Ananya persona — full system prompt](#the-ananya-persona--full-system-prompt)
 5. [What the code enforces that the prompt cannot](#what-the-code-enforces-that-the-prompt-cannot)
-6. [Changelog — 2026-07-30](#changelog--2026-07-30) · [2026-07-28](#changelog--2026-07-28)
+6. [Changelog — 2026-08-05](#changelog--2026-08-05) · [2026-07-30](#changelog--2026-07-30) · [2026-07-28](#changelog--2026-07-28)
 7. [Regression cases](#regression-cases)
 8. [Runtime config](#runtime-config--qr_configchatbot-firestore)
 9. [Data model](#data-model)
@@ -35,9 +35,22 @@ fine-tuned Gemini model, and sends the reply back through QuickReply.
 
 ## Where things stand right now
 
-*Last updated 2026-07-30. Update this table whenever you paste a node or deploy a
+*Last updated 2026-08-05. Update this table whenever you paste a node or deploy a
 function — it is the only place that records what is actually **live** as opposed to what
 is merely committed.*
+
+### 2026-08-05 rollout — NOT YET LIVE
+
+Committed to the repo and green under test. **Neither half is in production yet**, and they
+are independent — the guard needs a paste, the matcher needs a deploy.
+
+| # | Task | Repo | Cloud Fn | Live n8n |
+|---|---|---|---|---|
+| 1 | `Extract AI Response` — role-reversal guard | ✅ | — | ❌ paste it |
+| 2 | `qrProductLookup` — stopwords, weak words, condition mapping | ✅ | ❌ deploy it | — |
+
+See [the 2026-08-05 changelog](#changelog--2026-08-05). Until #1 is pasted, the bot can still
+reply in the customer's voice and invent a medical history for them.
 
 There are **three** places a change has to land, and they drift independently:
 
@@ -101,6 +114,17 @@ n8n/workflows  ·  consultation slot guard     19/19   (6 blocked, 6 allowed, 5 
 n8n/workflows  ·  promise + empty-reply guard 13/13   (4 promises replaced, 4 false-positive checks, 4 empty-response, dose handoff)
 n8n/workflows  ·  medical claim guard         19/19   (7 triggers skip, 4 still reach AI, 6 claims blocked, 4 legit survive, precedence)
 n8n/workflows  ·  name + substance + score    31/31   (13 name cases, 11 filler/substance, 3 health-score, 2 claim, 5 file-hygiene)
+n8n/workflows  ·  product matcher + combo kit 46/46   (tests/product-matcher.test.js — runnable, incl. the 2026-08-05 "more" bug)
+n8n/workflows  ·  reply guard chain           49/49   (tests/reply-guards.test.js — runnable, replays the 08-03 and 08-05 transcripts)
+n8n/workflows  ·  automation triggers         16/16   (tests/automation-triggers.test.js — runnable)
+```
+
+The last three are **committed and runnable**, and they read the shipping code rather than a copy:
+
+```
+node n8n/workflows/tests/product-matcher.test.js
+node n8n/workflows/tests/reply-guards.test.js
+node n8n/workflows/tests/automation-triggers.test.js
 ```
 
 Re-run these before pasting anything — see [Regression cases](#regression-cases).
@@ -109,7 +133,7 @@ Re-run these before pasting anything — see [Regression cases](#regression-case
 
 | Item | State |
 |---|---|
-| **`Wait` node** | Repo says `Wait 3 Minutes` (`amount: 3`, `unit: minutes`). A copy of the **live** workflow showed it renamed `Wait 20 Seconds` with **`amount: 0`** — debounce effectively off. They do not match; decide which you want. |
+| **`Wait` node** | Repo says `Wait 3 Minutes` (`amount: 3`, `unit: minutes`). A copy of the **live** workflow showed it renamed `Wait 20 Seconds` with **`amount: 0`** — debounce effectively off. **This is what produced the 2026-08-03 spam report**: four customer messages two minutes apart got four separate replies, where a working debounce would have collapsed them into one. Set the live node back to match the repo. |
 | **`Fetch Conversation History`** | `getAll` + `limit: 500` is **not** time-ordered. Past ~500 messages in a chat, recent docs can fall outside the page, breaking handoff *and* context. Unfixed. |
 | **`QUICKREPLY_WEBHOOK_TOKEN`** | Referenced in code, absent from `.env`, and the check is `if (expected && …)` → both HTTP endpoints are currently **unauthenticated**. |
 | **Uncommitted work** | The 2026-07-28 *and* 07-30 changes live in the working tree, **not** in a commit. `git checkout` on these files would discard both. Commit before attempting any rollback. |
@@ -467,7 +491,8 @@ one exists because the model failed at it in production.
 
 | # | Step | Why it is in code |
 |---|---|---|
-| 0 | **Medical claim guard** — *highest precedence* | Asked *"I want to Check My Free PCOD Health Score"*, the model replied **"your score is 7 / you have a PCOD"**. There is no health-score integration in this system, so the number was invented outright, and so was the diagnosis. Worse than a dose: the customer has no way to know it is fiction. Blocks any invented score or asserted condition before every other guard. |
+| 0− | **Role-reversal guard** — *runs before everything* | The model wrote the **customer's** turn instead of Ananya's: *"Good morning Ananya, … I'm suffering from PCOS, since 2017. I have hair fall, acne, and pigmentation … K"* — addressing Ananya, speaking as the patient, and copying the customer's own trailing "K". It invented a medical history and sent it to the patient as though she had said it. **All thirteen other guards passed it**, and none was broken: every one asks *what the reply claims*, none asked *who is speaking*. See [the 2026-08-05 changelog](#changelog--2026-08-05). |
+| 0 | **Medical claim guard** — *highest precedence after the role guard* | Asked *"I want to Check My Free PCOD Health Score"*, the model replied **"your score is 7 / you have a PCOD"**. There is no health-score integration in this system, so the number was invented outright, and so was the diagnosis. Worse than a dose: the customer has no way to know it is fiction. Blocks any invented score or asserted condition before every other guard. |
 | 0b | **Health score responder** | A health-score request has exactly one right answer: the real link, `https://www.sehatup.com/pages/health-score-360`. QuickReply's flow only recognises a few exact button texts and replies to anything else with a generic greeting, so the AI has to handle the rest — and left alone it invents a number. The reply is built, never generated. |
 | 0c | **Profile name guard** | The reply *"PCOD Health Score Check for My Love My Papa"* used the customer's **WhatsApp display name**. Those are whatever someone set for themselves — nicknames, shop names, emoji, phone numbers. `Build AI Prompt` withholds an implausible one from CONTEXT entirely; this strips it from the reply if it leaks. |
 | 0d | **Substance guard** | A patient wrote out her full cycle history and got **"ji"**. The tuned model treats `ji` as a filler turn. When the customer says something substantial and the reply is pure filler, it is replaced with acknowledgement + the booking ask. |
@@ -482,8 +507,15 @@ one exists because the model failed at it in production.
 
 Order matters: sanitising happens before the dose guard (so a dose reply is caught on clean
 text), and the greeting is prepended last so it survives any replacement. Guard precedence is
-**health-score > claim > dose > slot > price > promise > substance**, with the name guard
-running on whatever survives. The claim guard is unconditional — whatever else
+**role > health-score > claim > dose > slot > price > promise > substance**, with the name guard
+running on whatever survives.
+
+> **The role guard is a floor, not a ceiling** — deliberately not in `_answered()`. Its job is
+> to make the model's output unusable, not to own the reply: it drops a safe topic-neutral line
+> in place, and any later guard that builds a *better* answer from the customer's own question
+> (the health-score link, the dose handoff, the price reply, the slot correction) still
+> overrides it. The guards that only inspect the model's text then read the safe replacement
+> and correctly stay silent. The claim guard is unconditional — whatever else
 is true about a message, a reply containing a fabricated score or diagnosis must not go out: a dose is a doctor's call and must never be answered with a price
 pitch or a booking confirmation, and an impossible slot must be corrected before anything
 else — a customer who writes `"raat 10 baje, vaji bati ka price kya hai"` needs to hear that
@@ -493,6 +525,99 @@ else — a customer who writes `"raat 10 baje, vaji bati ka price kya hai"` need
 > (09:30-18:30 IST). They are stated in **three** places — those constants, the BOOKING POLICY
 > and TIME AWARENESS blocks in `Build AI Prompt`, and the Google Doc. Change one and you must
 > change all three, or the bot will promise a window it then refuses to book.
+
+---
+
+## Changelog — 2026-08-05
+
+**The bot replied as the customer, and invented her medical history.** Execution `19013`,
+first contact, phone `+916309323984`. She wrote *"Hello! Can I get more info for PCOD/PCOS?"*
+then *"K"*. What went out:
+
+> Ananya, Yes, I need to know about PCOS and its treatment. I'm suffering from PCOS, since
+> 2017. I have hair fall, acne, and pigmentation. I used medications before but nothing
+> helped. K
+
+Three tells that the model was writing *her* turn: it **addresses Ananya**, it speaks in the
+**first person as the patient**, and it **copies her own trailing "K"**. PCOS since 2017, hair
+fall, acne, pigmentation, failed prior medication — she said none of it. The `sanitizeReply()`
+time-greeting strip removed the leading "Good morning", which is the only reason the reply did
+not also open with one. It is stored with `senderKind: 'AI'`, so it is poisoned training data
+as well as a bad message.
+
+**Why every guard missed it, without any of them being broken.** All thirteen ask *what the
+reply claims* — a dose, a price, a score, a diagnosis, a callback promise. **None asked who is
+speaking**, and a reply written in the customer's voice claims nothing forbidden. `aiGuards`
+and `emptyReason` both rendered as `empty` in the n8n table, which is n8n's display for an
+empty string: no guard fired, and the model did return text (`finishReason: STOP`).
+
+**Why the model does it.** The system prompt is ~26,000 characters whose largest block is
+EXAMPLES written as two-sided dialogue (`Cust "…" → "…"`, sixteen of them). On first contact
+`historyToAI` is `[]` — there is no assistant turn to anchor the role — so a transcript-shaped
+prompt gets *continued* rather than answered. That makes it likeliest exactly when the stakes
+are highest: a stranger's opening message. `avgLogprobs` was **−1.79** on that call, against
+roughly −0.5 for a confident reply.
+
+> Worth checking separately: the response reported `modelVersion: gemini-2.5-flash@default`,
+> the **base** model string. If endpoint `1853645212790816768` is serving base rather than the
+> tuned checkpoint, that alone would cost role stability.
+
+### The role-reversal guard
+
+New, in `Extract AI Response`, running before every other guard. Three independent signals,
+each sufficient on its own, evaluated against **both** the raw model text and the sanitized
+text (the raw is kept in `_rawModelText` because sanitising destroys the evidence):
+
+| Signal | Fires on |
+|---|---|
+| `addressed_ananya` | the reply addresses Ananya (`Ananya,` / `Ananya:` / `dear Ananya`). A self-introduction has no comma or colon after the name, so it cannot match. |
+| `patient_voice` | first person + a symptom — `I'm suffering`, `I have PCOD`, `I used medication`, `mujhe … hai`, `meri … hai`. Ananya's own first person is always about *helping*, which is what makes the symptom word safe. |
+| `echoed_customer` | the reply's last line is a verbatim copy of one of the customer's messages — the `K`. |
+
+The replacement is topic-neutral (it fires on any subject, so it cannot assume what was
+asked), promises nothing, and states no condition. It is a **floor, not a ceiling** — see the
+note under [what the code enforces](#what-the-code-enforces-that-the-prompt-cannot).
+
+### A common English word could name a product
+
+Same execution, second bug: `LIVE PRODUCT DATA` offered **Hard Yatra, Rs1999, PRESCRIPTION
+ONLY, out of stock** — a men's Rx product — for a PCOS question. The word **`more`** in *"can I
+get more info"* is an exact token hit on the marketing tail *"No **more** tricks & just kick"*
+and earned the full `0.85` "one distinctive word matched" boost.
+
+> **Document frequency would not have caught this.** `more` appears in exactly one title, so a
+> DF-based distinctiveness check would have rated it maximally distinctive. The word is common
+> in *English*, not in the catalog — that has to be listed, not computed.
+
+Conversational filler (`hello`, `can`, `get`, `more`, `info`, `about`, `know`, `need`, `want`,
+`tell`, `help`, `your`, `jankari`, …) went into `QR_STOPWORDS`; generic marketing adjectives
+that really do appear in titles (`best`, `pure`, `natural`, `daily`, `just`, `free`, `sample`)
+went into `QR_WEAK_MATCH_WORDS`, where they still contribute to the averaged score but can
+never earn the boost.
+
+Meanwhile **`pcod` and `pcos` matched nothing at all** — they appear in no Shopify title, so
+the condition SehatUP treats most produced no product context. `QR_CONDITION_PRODUCTS` maps
+them to `her-menses` + `hormoniherb`, **by handle, never as a text alias** (rewriting the query
+is what the old `kern -> "kern drops"` alias did, and it injected a generic word that
+out-scored the product the customer had named).
+
+> **Gated on purchase intent, and this is the load-bearing part.** Naming a condition is a
+> disclosure, not a request to buy, and persona **rule 3** requires the safety check and the
+> free-consultation offer *first*. Putting two priced products into the prompt for
+> `"mujhe PCOD hai"` invites exactly the pitch rule 3 forbids — the same failure the order
+> block hit, where five cancelled orders in the prompt got latched onto and answered a question
+> nobody asked. So `QR_CONDITION_INTENT` requires a product/treatment/purchase word:
+> `"mujhe PCOD hai"` still resolves to **no match**, `"PCOD ke liye kaunsa product lu"` does
+> not. The condition fallback also only runs when the fuzzy search found **nothing**, so a
+> product the customer actually named is never diluted.
+
+### Deployment
+
+| Layer | What |
+|---|---|
+| Live n8n | paste `extract-ai-response.txt` into **Extract AI Response** |
+| Cloud Fn | `firebase deploy --only functions:qrProductLookup` |
+| Cache | the catalog is cached 60 min; `&fresh=1` bypasses it while testing |
 
 ---
 
@@ -895,6 +1020,8 @@ them in isolation. Re-run these if you touch either regex.
 
 | Customer asks | Live matches | Expected `priceGuard` |
 |---|---|---|
+| `vaji bati aur kern drop dono chahiye` | Vaji Bati Rs849 + Kern Drops Rs509 + the kit Rs1099 | `both_with_combo` — **both** prices, then the kit as the cheaper way. Never `1 ya 2?`: they named two different products, so they want both |
+| `confidence performance kit ka price` | the kit Rs1099 | `kit` — name, price, link |
 | `Shilajit ki price kya h?` | Honey Sticks Rs899 + Resin Rs1349 | `ambiguous` — both prices and both links, asks which |
 | `vaji bati kitne ka hai` | Vaji Bati Rs849 | `one` — name, price, link |
 | `endless ka price batao` | Endless (Rx) | `rx` — **no price, no link** |
@@ -903,6 +1030,29 @@ them in isolation. Re-run these if you touch either regex.
 | `mujhe PCOD hai` | any | `false` — no price was asked |
 | `XYZ kit ka price` | none | `false` — nothing to quote |
 | `shilajit kitna lena hai roz aur price` | Shilajit ×2 | `false` + **`doseGuard` fires instead** |
+
+**Product matcher — a form word is not a product name.** `drops`, `tablet`, `capsule`, `tea`,
+`kit`, `powder`, `oil`, `syrup`, `resin` each appear in more than one Shopify title, so an exact
+hit on one identifies nothing. They live in `QR_WEAK_MATCH_WORDS` and may never earn the
+"one distinctive word matched" boost in `qrMatchScore`.
+
+> Why: `Mujhe vaji bati or kern drop chahiye` returned **Garcinia Cambogia Drops** and not Vaji
+> Bati. The `kern -> "kern drops"` alias injected the word `drops` into the query, `drops` then
+> scored a full exact hit against Garcinia, and the cheapest-price tiebreak put Garcinia
+> (Rs499) above Vaji Bati (Rs849). The alias is gone — `kern` already scores 1.0 against the
+> title `Kern Drops` unaided — and ties now break on `named` (how many of the product's own
+> distinctive words the customer actually typed) before price.
+
+**Combo kits are matched explicitly, never fuzzily** (`QR_KITS`). A kit is offered only when the
+customer named **every** component, or one component plus a combo word (`combo`, `kit`, `dono`,
+`sath`, `pack`, `set`). Feeding component names in as title aliases was tried first and made the
+Rs1099 kit outrank Vaji Bati on the query `vaji bati` alone.
+
+> `Confidence & Performance Booster Kit` (handle `p-e-e-d-integrated-kit`) **was removed from
+> `QR_RX_PATTERNS` on 2026-08-03.** It is the Vaji Bati + Kern Drop kit and ships no tablet —
+> confirmed by the business. Being on that list meant the bot refused to price or link a
+> Rs1099 OTC product *and* suppressed its description entirely, since
+> `qrCondenseDescription` returns `''` for anything Rx.
 
 **Profile name — must be withheld from the prompt and stripped from replies:**
 `My Love My Papa` · `TEST TEST` · `Baby Doll` · `9876543210` · `King` · `Papa ji` · empty
@@ -918,6 +1068,54 @@ them in isolation. Re-run these if you touch either regex.
 **Must NOT fire:** a short exchange (`"Okay"` -> `"ji"`), or any reply that actually says
 something.
 
+**Substance guard — widened 2026-08-03**, after a customer got four non-answers in a row
+(`"ji yah drops hai"` ×2, then `"ji"` ×2). Three separate holes, all now covered by
+`tests/reply-guards.test.js`:
+
+1. **`QR_FILLER_RE` is anchored**, so it recognises a bare `ji` and nothing else. `qrIsNonAnswer()`
+   now also catches a reply of ≤ `QR_NONANSWER_MAX_WORDS` (5) words that quotes no price, sends
+   no link and asks nothing. Raise that constant if it ever fires on a legitimate short reply.
+2. **The trigger only read `_lastOutText`** — what *we* said last. Once a junk reply went out it
+   *became* `_lastOutText`, which contains no `?` and none of the keywords, so the guard was
+   disarmed for the next turn, which produced more junk. The loop sustained itself. There is now
+   a `_custAskedQuestion` trigger reading the customer's own message, which our output cannot
+   corrupt. (The last customer message in that transcript was literally `"Batao"` — already in
+   the keyword list, but only ever searched for in *our* text.)
+3. **Nothing compared a reply to the previous one.** `repeatGuard` replaces a reply that is
+   identical to, or contained in, the last outbound. Guard-built replies are exempt: if the
+   customer asks the same price question twice, the same price is the right answer twice.
+
+**Repeat guard — must NOT fire** on a guard-built reply (price, dose, booking, slot, promise,
+substance). Only raw model output is deduplicated.
+
+**Role-reversal guard — must block** (the model writing the customer's turn):
+the full 2026-08-05 production reply · `Ananya, please tell me the price of it` ·
+`Ji, mujhe pcod hai aur periods irregular hain` · a reply whose last line copies the
+customer's own message verbatim
+
+**Role-reversal guard — must NOT fire:**
+a normal price reply · Ananya's own introduction · the identity answer
+(`Mai Ananya hu ji, SehatUP ki health advisor`) · first person about *helping*
+(`main aapke liye check kara deti hu`) · echoing a condition the customer raised
+(`ji aapko PCOD hai to doctor se baat karna zaroori hai`) · the rule-3 safety check
+(`ji aapko thyroid, sugar ya BP ki koi problem hai?`)
+
+> And it must not swallow a better answer: a dose question that also triggers the role guard
+> must still send the **dose handoff**, and a health-score question must still send the
+> **real link**.
+
+**Product matcher — a common English word is not a product name either.**
+`Hello! Can I get more info for PCOD/PCOS?` · `can I get more info` ·
+`I need help with something` · `tell me more about your products` · `best product batao`
+→ all must return **no match**. `pure himalayan shilajit` and `daily energy stamina kit` must
+still resolve, because those words may still *describe* a product the customer also named.
+
+**Condition mapping — disclosure vs purchase intent.**
+Must return no match: `mujhe PCOD hai` · `PCOD hai mera` · `periods irregular hain`.
+Must return Her Menses + HormoniHerb: `PCOD ke liye kaunsa product lu` ·
+`pcos ki dawa chahiye` · `periods ke liye koi tea batao`.
+Must return **only Vaji Bati**: `PCOD me vaji bati chalegi` — a named product is never diluted.
+
 **Medical claim guard — must block:**
 `ji / your score is 7 / you have a PCOD` (the exact production reply) ·
 `aapka health score 82 hai ji` · `aapko thyroid hai ji` (unprompted) · `You have PCOS`
@@ -928,13 +1126,28 @@ something.
 karna zaroori hai` when the customer already said they have PCOD (echoing, not diagnosing) ·
 `agar aapko thyroid hai to…` (conditional) · any ordinary product reply
 
-**Automation triggers — must skip the AI:**
-`I want to Check My Free PCOD Health Score` · `Check My Free Health Score` ·
-`check free healthscore` · `I want my detailed healthscore` · `Health-Score chahiye` ·
-`mera health score kya hai` · `Mujhe Vaji Bati or Kern Drops chahiye`
+**Automation triggers — must skip the AI** (covered by `tests/automation-triggers.test.js`):
+`Check My Free Health Score` · `check free healthscore` · `I want my detailed healthscore` ·
+`I want my detailed HealthScore360 report`
 
 **Automation triggers — must still reach the AI:**
+`I want to Check My Free PCOD Health Score` (QuickReply does **not** answer this variant) ·
+`Health-Score chahiye` · `mera health score kya hai` · `mujhe report chahiye` ·
 `mera PCOD hai` · `vaji bati ka price` · `mera order kaha hai` · `hello ji`
+
+> **`HealthScore360 report` added 2026-08-04.** QuickReply's flow answers that button end to
+> end — progress message, then the PDF. The old pattern ended at `healthscore`, so the trailing
+> `360 report` made it miss, the AI was not skipped, and the report guard sent a **second** copy
+> as a raw signed storage URL. The `(360)?` and `(report)?` tails are optional so one entry
+> survives `healthscore360`, `health score 360` and `HealthScore 360 Report`.
+>
+> **Second layer, in the report guard:** if a QuickReply automation replied *after* the
+> customer's last message (`BOT_PLACEHOLDER` / `messageBy: AUTOMATION`), the report guard stands
+> down rather than adding a duplicate link. QuickReply's outbound messages carry no text, so we
+> can see *that* its flow answered but never *what* it said — enough for this one decision.
+> Scoped to the report guard only, on purpose: the generic "Hi! Please let us know how we can
+> help you" automation fires on other messages and must never be able to silence the bot.
+> The AI's own replies come back as `AGENT_PLACEHOLDER`, so this cannot trip on itself.
 
 **Empty model response — must never show the customer an error.** Gemini returns no text part
 when it stops for a reason other than `STOP` (safety block, recitation block, `MAX_TOKENS`
@@ -1172,6 +1385,8 @@ a real WhatsApp message.
 | Bot replied "ji" to a long message | `substanceGuard` should be `true`. |
 | Bot used the customer's WhatsApp nickname | `nameGuard` should be `true`, and the prompt's CONTEXT should read `Customer name: NOT KNOWN`. |
 | **Bot stated a health score or told someone they have a condition** | `claimGuard` on the `Extract AI Response` output must be `invented_score` / `invented_diagnosis`. If it is `false`, the node is a stale copy. Also check `skipReason` on `Extract Message Details` — a health-score button should have been `automation_trigger` and never reached the model at all. |
+| **Bot replied as the customer** (talks to Ananya, describes its own symptoms, echoes their message back) | `roleGuard` must be `addressed_ananya` / `patient_voice` / `echoed_customer`. `false` means the node is a stale copy. Most likely on **first contact**, where `historyToAI` is `[]` and nothing anchors the role — check `_debug.historyToAI` on `Build AI Prompt`, and `avgLogprobs` on the Gemini response (≈ −1.8 means the model was guessing). Also confirm the endpoint is serving the tuned checkpoint and not `gemini-2.5-flash@default`. |
+| An unrelated product appears in `LIVE PRODUCT DATA` | A generic word in the customer's message matched a title's marketing tail. Add it to `QR_STOPWORDS` (common English/Hinglish) or `QR_WEAK_MATCH_WORDS` (a descriptor that really is in titles) in `functions/index.js`, then redeploy `qrProductLookup`. `Build AI Prompt`'s log line prints `products=`. |
 | AI answers on top of a QuickReply automation | Add the pattern to `AUTOMATION_TRIGGER_RES` in `Extract Message Details`. Check the real button text character by character — the PCOD case failed on one word inserted mid-phrase. |
 | Customer was shown "Sorry, kuch problem aa gayi" | The model returned no text. `emptyReason` on the `Extract AI Response` output and the `[Empty Reply]` log line give `finishReason` — `SAFETY` / `RECITATION` / `MAX_TOKENS`. Repeated `SAFETY` on health wording is the case to watch. |
 | Bot promised a callback in N minutes | `promiseGuard` should be `true`. If it is `false`, the node is a stale copy. |
@@ -1272,7 +1487,7 @@ a paste goes wrong there is no other record of what was there.
 
 | | Before 2026-07-30 | After |
 |---|---|---|
-| Node count | **23** | **24** |
+| Node count | **23** | **24**, then **25** once `Fetch Product Matches` landed in Part 3 (what the JSON holds today) |
 | Chain after `Process or Skip?` | `Process or Skip? → Get a document` | `Process or Skip? → Fetch Customer Context → Get a document` |
 | `Save AI Message` *Columns* | `id,direction,messageBy,_type,text,status,msgTime,createdAt` | `id,direction,senderKind,messageBy,_type,text,status,msgTime,createdAt` |
 | `Fetch Customer Context` | did not exist | HTTP GET `qrCustomerContext` |

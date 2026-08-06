@@ -73,12 +73,38 @@ const EMPTY = { rows: [], tab: null, ok: false };
  * Apps Script answers a thrown script with a 200 and an HTML error page, so a
  * successful HTTP status is not enough — the payload has to say ok itself.
  */
+// Apps Script has no upper bound on how long it may take to answer, and axios has
+// no default timeout — a single hung request would otherwise leave App.jsx's
+// in-flight guard stuck true, which skips EVERY subsequent poll and freezes the
+// board permanently. 20s is comfortably above the worst measured round trip
+// (9.1s) and at or below the poll interval, so ticks cannot pile up.
+const REQUEST_TIMEOUT_MS = 20000;
+
 async function callScript(which, params) {
-  const { data } = await axios.get(ENDPOINTS[which], { params: { key: KEY, ...params } });
+  const { data } = await axios.get(ENDPOINTS[which], {
+    params: { key: KEY, ...params }, timeout: REQUEST_TIMEOUT_MS,
+  });
   if (!data || typeof data !== 'object') {
     throw new Error('Endpoint did not return JSON — check the deployment is set to "Anyone" access.');
   }
   if (data.ok === false) throw new Error(data.error || 'Endpoint reported a failure.');
+  // Does this deployment serve the board we asked for?
+  //
+  // Each deployment hard-codes its own `SOURCE`, and the repo's Code.gs ships with
+  // 'health' as the default — so pasting the file into the Quick Reply project
+  // without editing line 5 makes that endpoint quietly serve HEALTHSCORE rows.
+  // It happened on 2026-08-05. Nothing detected it, because the rows were real,
+  // well-formed and non-empty: unify.js relabelled them `source: 'quickreply'`,
+  // so Healthscore leads were counted twice and Quick Reply's vanished. The wall
+  // showed confident wrong numbers, which is worse than showing none.
+  //
+  // Every response has always carried `source`. It was simply never compared.
+  if (data.source && data.source !== which) {
+    throw new Error(
+      `Endpoint mismatch: the "${which}" URL is served by a deployment running SOURCE='${data.source}'. `
+      + `Open that Apps Script project, set var SOURCE = '${which}', and redeploy `
+      + `(Manage deployments -> edit -> Version: New version).`);
+  }
   return data;
 }
 
@@ -91,6 +117,23 @@ function scriptOverrides(cfg, which) {
   return out;
 }
 
+/* Last month, remembered per board.
+ *
+ * It is 83% of every response and it does not change, so re-fetching it every
+ * 20s was ~1.6GB/day per screen and several seconds of every request. We send
+ * the signature we already hold; the script replies `unchanged: true` with no
+ * rows and we reuse what is here. A real edit to last month changes the
+ * signature and the full payload comes back on its own.
+ *
+ * Module scope, not localStorage, deliberately: a reload should re-fetch once
+ * and be certain, rather than trust a signature that outlived the page. */
+const prevCache = Object.create(null);   // which -> { sig, rows, tab }
+
+/** Forget the held previous months — called when Settings repoints a sheet. */
+export function clearPrevCache() {
+  for (const k of Object.keys(prevCache)) delete prevCache[k];
+}
+
 /**
  * One board's two months. Never rejects — a board that fails comes back as two
  * ok:false entries, which is what tells the dashboard to keep its last-good
@@ -98,7 +141,11 @@ function scriptOverrides(cfg, which) {
  */
 async function fetchBoard(which, cfg) {
   try {
-    const data = await callScript(which, scriptOverrides(cfg, which));
+    const held = prevCache[which];
+    const data = await callScript(which, {
+      ...scriptOverrides(cfg, which),
+      ...(held ? { prevSig: held.sig } : {}),
+    });
     // A deployment still running the older all-boards-in-one script answers with
     // {sources:{…}} and no current/previous. Say so, rather than quietly
     // reporting an empty board.
@@ -114,7 +161,23 @@ async function fetchBoard(which, cfg) {
       }
       return { rows: rowsToObjects(s.values), tab: s.tab || null, ok: true };
     };
-    return { current: month('current'), previous: month('previous') };
+
+    // Previous month: reuse what we hold when the script says it is unchanged,
+    // otherwise map the rows it sent and remember them against the new signature.
+    let previous;
+    const prev = data.previous;
+    if (prev?.ok && prev.unchanged && held) {
+      previous = { rows: held.rows, tab: held.tab, ok: true };
+    } else {
+      previous = month('previous');
+      // Only cache against a signature the script actually gave us. An older
+      // deployment sends no `sig`, in which case we simply keep asking for the
+      // full payload — slower, but never wrong.
+      if (previous.ok && prev?.sig) {
+        prevCache[which] = { sig: prev.sig, rows: previous.rows, tab: previous.tab };
+      }
+    }
+    return { current: month('current'), previous };
   } catch (err) {
     console.error('[sheets] Apps Script fetch failed for', which, ':', err?.message);
     return { current: { ...EMPTY }, previous: { ...EMPTY } };
@@ -144,7 +207,7 @@ async function fetchSheetLegacy(which, month, cfg) {
   try {
     const params = { which, ...overrides(cfg, which) };
     if (month) params.month = month;
-    const { data } = await axios.get('/api/sheet', { params });
+    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
     return { rows: rowsToObjects(data?.values), tab: data?.tab || null, ok: true };
   } catch (err) {
     // ok:false lets the UI tell a transient failure (quota/network) apart from a
@@ -185,7 +248,7 @@ export async function fetchTabs(which, idOverride) {
     }
     const params = { which, list: 'tabs' };
     if (idOverride) params.id = idOverride;
-    const { data } = await axios.get('/api/sheet', { params });
+    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
     return { ok: true, title: data?.title || null, tabs: data?.tabs || [] };
   } catch (err) {
     return { ok: false, tabs: [], error: err?.response?.data?.error || err?.message || 'Could not read that sheet' };
@@ -209,7 +272,7 @@ export async function fetchHeaders(which, idOverride, tabOverride) {
     const params = { which };
     if (idOverride) params.id = idOverride;
     if (tabOverride) params.tab = tabOverride;
-    const { data } = await axios.get('/api/sheet', { params });
+    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
     return { ok: true, tab: data?.tab || null, columns: headerColumns(data?.values) };
   } catch (err) {
     return { ok: false, columns: [], error: err?.response?.data?.error || err?.message || 'Could not read that tab' };
