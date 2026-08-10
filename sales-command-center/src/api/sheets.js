@@ -55,16 +55,6 @@ function rowsToObjects(values) {
   });
 }
 
-/** Header row -> the column names a mapped row will actually have. */
-function headerColumns(values) {
-  const header = (values || [])[0] || [];
-  const seen = {};
-  return header
-    .map((h) => String(h ?? '').trim())
-    .filter(Boolean)
-    .map((h) => { seen[h] = (seen[h] || 0) + 1; return seen[h] === 1 ? h : `${h} (${seen[h]})`; });
-}
-
 const EMPTY = { rows: [], tab: null, ok: false };
 
 // ── Apps Script path ────────────────────────────────────────────────────────
@@ -108,15 +98,6 @@ async function callScript(which, params) {
   return data;
 }
 
-/** Settings-panel override for one source, as query params. */
-function scriptOverrides(cfg, which) {
-  const sc = cfg?.sheets?.[which];
-  const out = {};
-  if (sc?.id) out.id = sc.id;
-  if (sc?.tab) out.tab = sc.tab;
-  return out;
-}
-
 /* Last month, remembered per board.
  *
  * It is 83% of every response and it does not change, so re-fetching it every
@@ -129,21 +110,19 @@ function scriptOverrides(cfg, which) {
  * and be certain, rather than trust a signature that outlived the page. */
 const prevCache = Object.create(null);   // which -> { sig, rows, tab }
 
-/** Forget the held previous months — called when Settings repoints a sheet. */
-export function clearPrevCache() {
-  for (const k of Object.keys(prevCache)) delete prevCache[k];
-}
+// No invalidation hook: nothing repoints a source at runtime any more, so the
+// only thing that can change a previous month is an edit to it, and the
+// signature already catches that.
 
 /**
  * One board's two months. Never rejects — a board that fails comes back as two
  * ok:false entries, which is what tells the dashboard to keep its last-good
  * numbers for that board while the other two carry on.
  */
-async function fetchBoard(which, cfg) {
+async function fetchBoard(which) {
   try {
     const held = prevCache[which];
     const data = await callScript(which, {
-      ...scriptOverrides(cfg, which),
       ...(held ? { prevSig: held.sig } : {}),
     });
     // A deployment still running the older all-boards-in-one script answers with
@@ -184,8 +163,8 @@ async function fetchBoard(which, cfg) {
   }
 }
 
-async function fetchAllScript(cfg) {
-  const [health, quick, mens] = await Promise.all(SOURCES.map((s) => fetchBoard(s, cfg)));
+async function fetchAllScript() {
+  const [health, quick, mens] = await Promise.all(SOURCES.map((s) => fetchBoard(s)));
   return {
     health: health.current, quick: quick.current, mens: mens.current,
     healthPrev: health.previous, quickPrev: quick.previous, mensPrev: mens.previous,
@@ -194,18 +173,9 @@ async function fetchAllScript(cfg) {
 
 // ── legacy /api/sheet path ──────────────────────────────────────────────────
 
-/** Sheet/tab overrides from the Settings panel, as query params. */
-function overrides(cfg, which) {
-  const sc = cfg?.sheets?.[which];
-  const out = {};
-  if (sc?.id) out.id = sc.id;
-  if (sc?.tab) out.tab = sc.tab;
-  return out;
-}
-
-async function fetchSheetLegacy(which, month, cfg) {
+async function fetchSheetLegacy(which, month) {
   try {
-    const params = { which, ...overrides(cfg, which) };
+    const params = { which };
     if (month) params.month = month;
     const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
     return { rows: rowsToObjects(data?.values), tab: data?.tab || null, ok: true };
@@ -217,10 +187,10 @@ async function fetchSheetLegacy(which, month, cfg) {
   }
 }
 
-async function fetchAllLegacy(cfg) {
+async function fetchAllLegacy() {
   const [health, quick, mens, healthPrev, quickPrev, mensPrev] = await Promise.all([
-    fetchSheetLegacy('health', null, cfg), fetchSheetLegacy('quick', null, cfg), fetchSheetLegacy('mens', null, cfg),
-    fetchSheetLegacy('health', 'prev', cfg), fetchSheetLegacy('quick', 'prev', cfg), fetchSheetLegacy('mens', 'prev', cfg),
+    fetchSheetLegacy('health', null), fetchSheetLegacy('quick', null), fetchSheetLegacy('mens', null),
+    fetchSheetLegacy('health', 'prev'), fetchSheetLegacy('quick', 'prev'), fetchSheetLegacy('mens', 'prev'),
   ]);
   return { health, quick, mens, healthPrev, quickPrev, mensPrev };
 }
@@ -232,49 +202,7 @@ async function fetchAllLegacy(cfg) {
  * six { rows, tab, ok } objects. Never rejects.
  * health + quick are caller+status LEAD boards; mens is the ORDERS board.
  */
-export async function fetchAll(cfg) {
-  return useScript ? fetchAllScript(cfg) : fetchAllLegacy(cfg);
+export async function fetchAll() {
+  return useScript ? fetchAllScript() : fetchAllLegacy();
 }
 
-/**
- * Settings-panel helper: list the tabs of whatever spreadsheet a source points
- * at. `idOverride` lets the panel probe a URL the user just typed, before saving.
- */
-export async function fetchTabs(which, idOverride) {
-  try {
-    if (useScript) {
-      const data = await callScript(which, { mode: 'tabs', ...(idOverride ? { id: idOverride } : {}) });
-      return { ok: true, title: data.title || null, tabs: data.tabs || [] };
-    }
-    const params = { which, list: 'tabs' };
-    if (idOverride) params.id = idOverride;
-    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
-    return { ok: true, title: data?.title || null, tabs: data?.tabs || [] };
-  } catch (err) {
-    return { ok: false, tabs: [], error: err?.response?.data?.error || err?.message || 'Could not read that sheet' };
-  }
-}
-
-/**
- * Settings-panel helper: read a tab's header row so column mapping can offer the
- * real column names instead of asking the user to type them.
- */
-export async function fetchHeaders(which, idOverride, tabOverride) {
-  try {
-    if (useScript) {
-      const data = await callScript(which, {
-        mode: 'headers',
-        ...(idOverride ? { id: idOverride } : {}),
-        ...(tabOverride ? { tab: tabOverride } : {}),
-      });
-      return { ok: true, tab: data.tab || null, columns: headerColumns(data.values) };
-    }
-    const params = { which };
-    if (idOverride) params.id = idOverride;
-    if (tabOverride) params.tab = tabOverride;
-    const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
-    return { ok: true, tab: data?.tab || null, columns: headerColumns(data?.values) };
-  } catch (err) {
-    return { ok: false, columns: [], error: err?.response?.data?.error || err?.message || 'Could not read that tab' };
-  }
-}

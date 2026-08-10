@@ -115,16 +115,18 @@ n8n/workflows  ·  promise + empty-reply guard 13/13   (4 promises replaced, 4 f
 n8n/workflows  ·  medical claim guard         19/19   (7 triggers skip, 4 still reach AI, 6 claims blocked, 4 legit survive, precedence)
 n8n/workflows  ·  name + substance + score    31/31   (13 name cases, 11 filler/substance, 3 health-score, 2 claim, 5 file-hygiene)
 n8n/workflows  ·  product matcher + combo kit 46/46   (tests/product-matcher.test.js — runnable, incl. the 2026-08-05 "more" bug)
-n8n/workflows  ·  reply guard chain           49/49   (tests/reply-guards.test.js — runnable, replays the 08-03 and 08-05 transcripts)
+n8n/workflows  ·  reply guard chain           87/87   (tests/reply-guards.test.js — runnable, replays the 08-03, 08-05 and 08-07 transcripts)
 n8n/workflows  ·  automation triggers         16/16   (tests/automation-triggers.test.js — runnable)
+n8n/workflows  ·  click-to-WhatsApp ad ctx    16/16   (tests/ad-context.test.js — runnable, real 08-07 adPreview payload)
 ```
 
-The last three are **committed and runnable**, and they read the shipping code rather than a copy:
+The last four are **committed and runnable**, and they read the shipping code rather than a copy:
 
 ```
 node n8n/workflows/tests/product-matcher.test.js
 node n8n/workflows/tests/reply-guards.test.js
 node n8n/workflows/tests/automation-triggers.test.js
+node n8n/workflows/tests/ad-context.test.js
 ```
 
 Re-run these before pasting anything — see [Regression cases](#regression-cases).
@@ -495,7 +497,8 @@ one exists because the model failed at it in production.
 | 0 | **Medical claim guard** — *highest precedence after the role guard* | Asked *"I want to Check My Free PCOD Health Score"*, the model replied **"your score is 7 / you have a PCOD"**. There is no health-score integration in this system, so the number was invented outright, and so was the diagnosis. Worse than a dose: the customer has no way to know it is fiction. Blocks any invented score or asserted condition before every other guard. |
 | 0b | **Health score responder** | A health-score request has exactly one right answer: the real link, `https://www.sehatup.com/pages/health-score-360`. QuickReply's flow only recognises a few exact button texts and replies to anything else with a generic greeting, so the AI has to handle the rest — and left alone it invents a number. The reply is built, never generated. |
 | 0c | **Profile name guard** | The reply *"PCOD Health Score Check for My Love My Papa"* used the customer's **WhatsApp display name**. Those are whatever someone set for themselves — nicknames, shop names, emoji, phone numbers. `Build AI Prompt` withholds an implausible one from CONTEXT entirely; this strips it from the reply if it leaks. |
-| 0d | **Substance guard** | A patient wrote out her full cycle history and got **"ji"**. The tuned model treats `ji` as a filler turn. When the customer says something substantial and the reply is pure filler, it is replaced with acknowledgement + the booking ask. |
+| 0d | **Substance guard** | A patient wrote out her full cycle history and got **"ji"**. The tuned model treats `ji` as a filler turn. When the customer says something substantial and the reply is pure filler, it is replaced with acknowledgement + the booking ask. A **question** from the customer now outranks "we asked something last turn" — asked *"Offline hi ya online hi"* right after we asked for her name, it used to reply *"Ji, note kar liya"* and note a question down as an answer. |
+| 0e | **Consultation mode responder** | *"Offline hi ya online hi"* got filler because **the persona never said how a consultation happens** — `ABOUT SEHATUP` gave the duration but not the mode, and *"the team will call you"* lives only in the injected BOOKING POLICY. There was no answer in the model's context to find. It is the most common practical question a new customer asks and has exactly one right answer, so it is built: online, on a call, at their chosen time, free, ~10–15 min, nothing to visit. Order and payment questions are excluded — there, *"online"* means how they **paid**. |
 | 1 | **Take the last non-empty part** | The tuned model emits a reasoning part first and the real reply last. `parts[0]` sends the model's private thinking to the customer. |
 | 2 | **Strip time greetings** | The model says "good evening" for a noon message — the wait + retries make wall-clock time meaningless. |
 | 3 | **Rewrite gendered titles → `ji`** | Rule 1 has said "never sir/mam" since day one. The model says it anyway. |
@@ -503,12 +506,16 @@ one exists because the model failed at it in production.
 | 5 | **Consultation slot guard** | `"meri raat k 10 bje ki consultation fix krwa do"` got `"theek h"` — a 10 PM slot no doctor will attend. Nothing validated it: `isOfficeHours` only says whether the office is open **right now**, which tells you nothing about a time proposed for later, and the persona instructs her to ask for a time and confirm it with no constraint on which times are acceptable. |
 | 6 | **Callback promise guard** | The model invents commitments nobody can keep: `"they will call you in 5 minutes"`, twice in one chat. Nothing in the prompt says that — it comes from the fine-tune, where agents used to. The callback time is the **patient's** choice, so a promise is replaced with the ask (name + preferred time). |
 | 7 | **Price guard** | Asked `Shilajit ki price kya h?` with both prices in the prompt *and* PRODUCT POLICY spelling out that they are the only correct ones, the model replied `ji free consultation me aapko sab bata diya jayega` and named no price. The answer is now built from the live data instead of requested. |
-| 8 | **Inject the intro exactly once** | `greetedBefore` is computed from real Firestore history, not from the model's memory, which re-introduces Ananya mid-conversation. |
+| 7b | **Pitch guard** | A customer who tapped a **women's menstrual-health ad** and asked nothing but `"Kya help kariyega aap bataiye"` was told *"Ye ek ayurvedic medicine hai … Ye aapki sex life ko bahter banata hai."* Nothing had matched the catalog, so PRODUCT POLICY had already told the model no product matched — every word was invented. Asked an empty question the model must volunteer a topic, and **performance/Vaji Bati is the most repeated product theme in the persona** (Rules 5a, 5b, 11e, 14c + three examples), so that is what falls out. If nothing matched *and* the customer asked for no product, the reply may not name or describe one. See [the 2026-08-07 changelog](#changelog--2026-08-07). |
+| 7c | **Safety claim guard** — *unconditional* | The same reply promised `"jiska koi side effect nhi hota hai"`. That is a regulatory claim about a medicine, not a matter of tone, and Rule 4 already forbids it. Checked against the final text **and** against the model's own words, so a claim another guard happened to overwrite is still counted in `aiGuards` (`safetyClaim=model_only`) rather than vanishing. |
+| 8 | **Inject the intro exactly once** | `greetedBefore` is computed from real Firestore history, not from the model's memory, which re-introduces Ananya mid-conversation. A text-less QuickReply `BOT_PLACEHOLDER` does **not** count — it is QuickReply's automation logging that *it* replied, and treating it as a greeting deleted Ananya's introduction on genuinely fresh chats. |
 
 Order matters: sanitising happens before the dose guard (so a dose reply is caught on clean
 text), and the greeting is prepended last so it survives any replacement. Guard precedence is
-**role > health-score > claim > dose > slot > price > promise > substance**, with the name guard
-running on whatever survives.
+**role > health-score > claim > dose > slot > price > consult-mode > promise > pitch > substance**,
+with the name guard running on whatever survives and the **safety claim guard last and
+unconditional** — no other guard's output is allowed to carry an absolute safety or cure claim
+either.
 
 > **The role guard is a floor, not a ceiling** — deliberately not in `_answered()`. Its job is
 > to make the model's output unusable, not to own the reply: it drops a safe topic-neutral line
@@ -525,6 +532,63 @@ else — a customer who writes `"raat 10 baje, vaji bati ka price kya hai"` need
 > (09:30-18:30 IST). They are stated in **three** places — those constants, the BOOKING POLICY
 > and TIME AWARENESS blocks in `Build AI Prompt`, and the Google Doc. Change one and you must
 > change all three, or the bot will promise a window it then refuses to book.
+
+---
+
+## Changelog — 2026-08-07
+
+**A women's-health ad click was answered with an invented sexual-performance pitch.**
+Executions `23132` / `23143`, phone `+917903801499`, first contact. She tapped the WhatsApp
+button on a Meta ad headlined *"Chat with Women's Health Experts"* (menstrual wellness), and
+wrote only *"Hello"*, *"Isme kya hota hai"*, *"Kya help kariyega aap bataiye"*. What went out:
+
+> Ye ek ayurvedic medicine hai jiska koi side effect nhi hota hai. Ye aapki sex life ko bahter
+> banata hai.
+
+No product was named by her and none matched: `productContext` was `no match of 36 (cache)`, so
+`Build AI Prompt` had already injected *"no live product match was found for this message"*.
+Every word of that reply was invented — and the model knew it: **`avgLogprobs -1.51`** against
+`-0.11` for its greeting on the same chat.
+
+**Four failures stacked up, and the first three are what made the fourth possible.**
+
+| # | Failure | Fix |
+|---|---|---|
+| 1 | The **ad was thrown away.** A click-to-WhatsApp customer arrives with the ad on the first message's `preview.adPreview` — headline, body, `fb.me` link. Nothing in any node read that field. On the one kind of chat where the ad is the *only* context that exists, the model was blind to it, and *"isme kya hota hai"* — a perfectly specific question once you know what `isme` points at — looked topic-less. | `Build AI Prompt` now emits an **AD CONTEXT** block. Fields are pulled by name wherever they sit, because the payload shape is not stable. |
+| 2 | **Ananya's introduction was deleted.** QuickReply's own automation answered *"Hello"* and wrote a text-less `BOT_PLACEHOLDER`. `greetedBefore` counted any outbound row with `text \|\| placeholder`, so that placeholder read as *"we already greeted"*, and the intro stripper removed *"mai Ananya baat kar rahi hu SehatUP se"* from a reply the model had produced correctly. | `greetedBefore` now requires real outbound **text** and explicitly ignores `BOT_PLACEHOLDER`. |
+| 3 | The customer therefore got **two how-can-I-help messages and no introduction** — QuickReply's *"Hi! Please let us know how we can help you."* then a bare *"Mai aapki kya help kar sakti hu?"*. *"Kya help kariyega aap bataiye"* is the correct human response to that. It is an **empty prompt**, and the model had to fill it. | — |
+| 4 | Filling it, the model reached for the **most repeated product theme in the persona**. Vaji Bati / performance / ED appears in Rules 5a, 5b, 11e, 14c, the ED example, the price example and the Rx list. It is what falls out of an empty prompt. | **Pitch guard** + **safety claim guard**. |
+
+**Why all fourteen guards passed it.** `substanceGuard` only fires on **filler** replies — this
+one is fluent and confident. `claimGuard` only catches an invented **score or diagnosis** — this
+asserts a product *benefit*. Every guard was built from a past incident and this was a new
+shape: *a confident, unsolicited product claim*. `aiGuards` came back empty.
+
+Both new guards are pinned by `tests/reply-guards.test.js` (87/87), the ad plumbing by
+`tests/ad-context.test.js` (16/16) against the real payload.
+
+**Same day, same ad, a second chat: *"Offline hi ya online hi"* was never answered.** A PCOD
+customer described her symptoms, got the booking ask, and replied with that. What went back was
+*"Ji, note kar liya. Aap apna naam aur kaunsa time…"* — the substance guard's **"you answered our
+question"** line. She had asked one.
+
+Two independent faults, and the guard was the smaller of them:
+
+- **The persona does not say how a consultation happens.** `ABOUT SEHATUP` gives *"Consultation
+  ~10-15 min"* and calls SehatUP a *"digital clinic"*, but never states the **mode**; *"the team
+  will call you"* appears only inside the injected BOOKING POLICY. Asked online-or-offline, the
+  model produced filler because **there was no answer anywhere in its context**. Fixed in
+  `ananya-prompt.txt` with a `HOW THE CONSULTATION WORKS` block, and built deterministically in
+  the guard chain because this model reads late-appended Doc context unreliably.
+- **The substance guard classified a question as an answer.** `_weAskedQuestion` was true (we had
+  just asked for a name and time) and outranked the customer's own question, so it chose
+  `answered_our_question` → *"note kar liya"*. A customer question now wins. A short factual
+  answer to our question (*"24"*, *"subah"*) still lands on the old branch — `_custAskedQuestion`
+  requires a real question word or a `?`.
+
+> **Update the Google Doc, not just the file.** `Build AI Prompt` fetches the persona from the
+> Doc *SehatUP AI System Prompt*. `ananya-prompt.txt` is the repo's mirror — editing it alone
+> changes nothing in production.
 
 ---
 

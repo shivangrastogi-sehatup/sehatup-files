@@ -174,5 +174,188 @@ const revScore = run({ cust: "mera health score kya hai", model: "Ananya, mera s
 check("health-score link wins over the role-guard floor",
   /health-score-360/.test(revScore.reply), revScore.reply);
 
-console.log(`\n${pass} passed, ${fail} failed\n`);
+// ---------------------------------------------------------------------------------------
+// 2026-08-07, exec 23143. Customer tapped a WOMEN'S menstrual-health ad, said only "Hello" /
+// "Isme kya hota hai" / "Kya help kariyega aap bataiye", and was sent an invented sexual-
+// wellness pitch with a fabricated no-side-effects claim. Nothing had matched the catalog.
+// ---------------------------------------------------------------------------------------
+console.log("\n--- pitch guard: no catalog match + no product asked = no product in the reply ---");
+const PITCH = "Ye ek ayurvedic medicine hai jiska koi side effect nhi hota hai. Ye aapki sex life ko bahter banata hai.";
+const pitch = run({ cust: "Kya help kariyega aap bataiye", model: PITCH,
+  lastOut: "Mai aapki kya help kar sakti hu?" });
+check("the production reply is blocked", !/sex life/i.test(pitch.reply), pitch.reply);
+check("no invented medicine survives", !/ayurvedic medicine/i.test(pitch.reply), pitch.reply);
+check("asks what the concern actually is", /kya problem ho rahi hai/i.test(pitch.reply), pitch.reply);
+check("flagged", /pitch=/.test(pitch.guards), pitch.guards);
+
+const named = run({ cust: "haan bataiye", model: "Aapke liye Vaji Bati sahi rahega, ye stamina badhata hai." });
+check("a catalog product named unasked is blocked", !/vaji/i.test(named.reply), named.reply);
+check("flagged as named_product", /pitch=named_product/.test(named.guards), named.guards);
+
+console.log("\n--- pitch guard must stay silent when the customer DID ask ---");
+const notPitch = [
+  ["asked for a product by name", "vaji bati ka price kya hai", [VAJI]],
+  ["asked which products exist", "weight loss ke liye konse product hai", [GARC]],
+  ["asked for a link", "shilajit ka link bhejo", [VAJI]],
+];
+for (const [label, cust, matches] of notPitch) {
+  const r = run({ cust, matches, model: "Vaji Bati ka price Rs 849 hai ji.\nhttps://sehatup.com/products/vaji-bati" });
+  check(`no pitch guard: ${label}`, !/pitch=/.test(r.guards), r.guards);
+}
+const consult = run({ cust: "mujhe periods ki problem hai", model: "Ji, aap pareshaan mat hoiye - isko manage kiya ja sakta hai. Kab se ho raha hai?" });
+check("no pitch guard: a normal empathy + question reply", !/pitch=/.test(consult.guards), consult.guards);
+
+console.log("\n--- safety claim guard: absolute safety / cure claims never ship ---");
+const claims = [
+  ["koi side effect nhi hota hai", "Ye dawa hai, iska koi side effect nhi hota hai."],
+  ["no side effects (English)", "This has no side effects at all."],
+  ["100% safe", "Ye 100% safe hai ji."],
+  ["bilkul safe", "Ye bilkul safe hai, aap le sakte hain."],
+  ["guaranteed result", "Iska guarantee result milta hai."],
+];
+// The claim must never reach the customer. WHICH guard removes it does not matter - a short
+// claim like "Ye 100% safe hai ji" is also filler, so the substance guard may replace it first
+// with a better answer; the safety guard then records the attempt instead of overwriting it.
+const CLAIM_RE = /(side\s*effects?\s*(nhi|nahi)|no side effects|100% safe|bilkul safe|guarantee result)/i;
+for (const [label, model] of claims) {
+  const r = run({ cust: "iske baare me bataiye", model, matches: [VAJI] });
+  check(`never ships: ${label}`, !CLAIM_RE.test(r.reply), r.reply);
+  check(`flagged: ${label}`, /safetyClaim/.test(r.guards), r.guards);
+}
+
+console.log("\n--- safety claim guard must not fire on a normal side-effect question ---");
+const sideQ = run({ cust: "iska side effect hai kya", matches: [VAJI],
+  model: "Ji, side effect ke baare me doctor aapko theek se bata denge - free consultation me sab detail mil jayegi." });
+check("an honest 'ask the doctor' answer survives", !/safetyClaim/.test(sideQ.guards), sideQ.guards);
+
+// ---------------------------------------------------------------------------------------
+// The same incident's upstream cause: QuickReply's own automation had already written a
+// text-less BOT_PLACEHOLDER, which counted as "we greeted", so the intro stripper deleted
+// Ananya's introduction and the customer never learned who was talking to them.
+// ---------------------------------------------------------------------------------------
+console.log("\n--- a QuickReply placeholder is not a greeting ---");
+const afterAuto = run({ cust: "Isme kya hota hai", greeted: false, automationReplied: true,
+  model: "Hello ji, mai Ananya baat kar rahi hu SehatUP se. Mai aapki kya help kar sakti hu?" });
+check("the introduction still goes out", /mai Ananya baat kar rahi hu SehatUP se/.test(afterAuto.reply), afterAuto.reply);
+check("and exactly once", afterAuto.reply.match(/Ananya/g).length === 1, afterAuto.reply);
+
+const afterReal = run({ cust: "aur kya", lastOut: "Ji bataiye, kya problem hai?",
+  model: "Hello ji, mai Ananya baat kar rahi hu SehatUP se. Ji bataiye." });
+check("a real prior reply still suppresses the intro", !/mai Ananya baat kar rahi hu/.test(afterReal.reply), afterReal.reply);
+
+// ---------------------------------------------------------------------------------------
+// 2026-08-07: a PCOD customer mid-booking asked "Offline hi ya online hi" and got
+// "Ji, note kar liya. Aap apna naam aur kaunsa time..." - her QUESTION was noted down as if it
+// were an ANSWER, and never answered. The persona had no statement of how a consultation
+// happens, so the model had nothing to reply with in the first place.
+// ---------------------------------------------------------------------------------------
+console.log("\n--- consultation mode: online vs offline is answered, not noted ---");
+const offline = run({ cust: "Offline hi ya online hi", model: "ji",
+  lastOut: "Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye?" });
+check("does not note a question down", !/note kar liya/.test(offline.reply), offline.reply);
+check("says it is online", /online/i.test(offline.reply), offline.reply);
+check("says nobody has to travel", /aana nahi padta/i.test(offline.reply), offline.reply);
+check("flagged", /consultMode/.test(offline.guards), offline.guards);
+
+const modeQs = [
+  ["clinic aana padega kya", "clinic aana padega kya"],
+  ["kahan aana hai", "consultation kahan hoti hai"],
+  ["video call hai kya", "video call hai kya"],
+  ["kaise hogi", "consultation kaise hoti hai"],
+];
+for (const [label, cust] of modeQs) {
+  const r = run({ cust, model: "ji" });
+  check(`answered: ${label}`, /online/i.test(r.reply) && /consultMode/.test(r.guards), r.reply);
+}
+
+console.log("\n--- consultation mode must not hijack order or payment questions ---");
+const notMode = [
+  ["an online ORDER question", "maine online order kiya tha wo kaha hai"],
+  ["an online PAYMENT question", "online payment kar sakte hain kya"],
+];
+for (const [label, cust] of notMode) {
+  const r = run({ cust, model: "ji" });
+  check(`no consult-mode guard: ${label}`, !/consultMode/.test(r.guards), r.guards);
+}
+
+console.log("\n--- substance guard: a question is never 'noted' ---");
+const asked = run({ cust: "aapke paas kya kya hai", model: "ji",
+  lastOut: "Aap apna naam aur kaunsa time bata dijiye?" });
+check("a real question is not noted down", !/note kar liya/.test(asked.reply), asked.reply);
+check("flagged unanswered_question", /substance=unanswered_question/.test(asked.guards), asked.guards);
+
+const answeredUs = run({ cust: "24", model: "ji", lastOut: "aapki age kitni h?" });
+check("a short factual ANSWER is still acknowledged", /note kar liya/.test(answeredUs.reply), answeredUs.reply);
+check("still flagged answered_our_question", /substance=answered_our_question/.test(answeredUs.guards), answeredUs.guards);
+
+console.log("\n--- role reversal: the model PARROTS the customer (2026-08-08, exec 25843) ---");
+// Verbatim from production. Single line, never names Ananya, no symptom word — so all three
+// earlier signals missed it and this reached a real customer as:
+//   "Hello ji, mai Ananya baat kar rahi hu SehatUP se. ji mujhe Vaji Bati or Kern Drops chahiye"
+const parrot = run({
+  cust: "Mujhe Vaji Bati or Kern Drops Chahiye",
+  model: "Good morning sir mujhe Vaji Bati or Kern Drops chahiye",
+  greeted: false, matches: [VAJI, KERN],
+});
+check("role guard fires on the parroted reply", /role=/.test(parrot.guards), parrot.guards);
+check("the customer's own words are not sent back",
+  !/mujhe Vaji Bati or Kern Drops chahiye/i.test(parrot.reply), parrot.reply);
+
+console.log("\n--- ...but reusing the customer's product name is normal and must pass ---");
+const reuse = [
+  ["confirms with a link", "Aap Vaji Bati ki baat kar rahe hain? Ye raha link: https://sehatup.com/products/vaji-bati"],
+  ["quotes the price", "Vaji Bati ka price Rs 849 hai ji."],
+  ["asks a question back", "Vaji Bati ya Kern Drops - aapko kaunsa chahiye?"],
+  ["acknowledges and moves on", "Ji bilkul, Vaji Bati aur Kern Drops dono available hain, main detail bata deti hu."],
+];
+for (const [label, model] of reuse) {
+  const r = run({ cust: "Mujhe Vaji Bati or Kern Drops Chahiye", model, matches: [VAJI, KERN] });
+  check(`no role guard: ${label}`, !/role=/.test(r.guards), `${r.guards} | ${r.reply}`);
+}
+
+
+console.log("\n--- SALES POLICY: consultation only where a doctor changes the answer (2026-08-08) ---");
+const HERMEN = P("Her Menses", 499);
+const SHILA = P("Pure Himalayan Shilajit Resin - 20g", 1349);
+const THYRO = P("Thyrostatin 3X", 249);
+
+// DIRECT SALE — men's performance / stamina / weight. Price + link, no consultation pitch:
+// these do not need a doctor, and the extra step only delays an order already decided on.
+for (const c of [
+  { label: "vaji bati", cust: "vaji bati ka price", ms: [VAJI] },
+  { label: "kern drops", cust: "kern drops ka price kya hai", ms: [KERN] },
+  { label: "both + combo", cust: "vaji bati aur kern drop dono chahiye", ms: [VAJI, KERN, KIT] },
+  { label: "the combo kit", cust: "confidence performance kit ka price", ms: [KIT] },
+  { label: "shilajit", cust: "shilajit resin ka price", ms: [SHILA] },
+]) {
+  const r = run({ cust: c.cust, model: "ji", lastOut: "ji bataiye", matches: c.ms });
+  check("direct sale, no consult pitch: " + c.label,
+    !/free consultation/i.test(r.reply) && /Rs\s*\d/.test(r.reply), r.reply);
+  check("direct sale still asks the health question: " + c.label,
+    /dawai chal rahi ho|health problem/i.test(r.reply), r.reply);
+}
+
+// CONSULT TOPICS — women's hormonal range and the condition products keep the pitch.
+for (const c of [
+  { label: "Her Menses", cust: "her menses ka price", ms: [HERMEN] },
+  { label: "Thyrostatin", cust: "thyrostatin ka price", ms: [THYRO] },
+  // The TOPIC decides, not just the product: a male product asked about for PCOD still
+  // routes to the doctor, because the customer's own words named a consult condition.
+  { label: "PCOD named alongside a male product", cust: "PCOD ke liye vaji bati ka price", ms: [VAJI] },
+]) {
+  const r = run({ cust: c.cust, model: "ji", lastOut: "ji bataiye", matches: c.ms });
+  check("consult topic keeps the pitch: " + c.label, /free consultation/i.test(r.reply), r.reply);
+}
+
+// Rx is untouched by the sales policy — a prescription requirement, not a sales choice.
+const rxSale = run({
+  cust: "endless ka price batao", model: "ji", lastOut: "ji bataiye",
+  matches: [P("Dapoxetine Hydrochloride tablets IP 30 mg (Endless)", 171, { isRx: true })],
+});
+check("Rx still refuses the price and routes to a doctor",
+  !/171/.test(rxSale.reply) && /doctor/i.test(rxSale.reply), rxSale.reply);
+
+console.log(`
+${pass} passed, ${fail} failed
+`);
 process.exit(fail ? 1 : 0);

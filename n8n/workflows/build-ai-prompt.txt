@@ -60,6 +60,60 @@ const recentHistory = history.slice(-20);
 
 const isFirstContact = !history.some(h => h.role === 'assistant');
 
+// ---- AD CONTEXT (click-to-WhatsApp) ----
+// A customer who taps the WhatsApp button on a Meta ad arrives with that ad attached to their
+// FIRST inbound message, on preview.adPreview - headline, body copy and the fb.me link.
+// Nothing read it, so on the one kind of chat where the ad is the ONLY context that exists the
+// model was blind to it. 7 Aug: someone tapped "Chat with Women's Health Experts" (menstrual
+// wellness), wrote "Hello" / "Isme kya hota hai" / "Kya help kariyega aap bataiye", and got an
+// invented sexual-performance pitch - the exact opposite of what they came for. "Isme kya hota
+// hai" is not a vague question at all once you know what "isme" points at.
+// The adPreview shape is not stable across QuickReply payloads (headline and text have been
+// seen at different depths), so fields are pulled out by NAME wherever they sit rather than by
+// a fixed path, and the whole thing is wrapped so a malformed preview can never break a reply.
+let adContext = '';
+let adDebug = 'none';
+try {
+  const _firstIn = evs.find(m => m.direction === 'in' && m.preview);
+  let _p = _firstIn && _firstIn.preview;
+  if (typeof _p === 'string') { try { _p = JSON.parse(_p); } catch (e) { _p = null; } }
+  const _ad = _p && typeof _p === 'object' ? (_p.adPreview || _p.ad || _p) : null;
+  if (_ad && typeof _ad === 'object') {
+    const _found = {};
+    const _walk = (o, depth) => {
+      if (!o || typeof o !== 'object' || depth > 4) return;
+      for (const k of Object.keys(o)) {
+        const v = o[k];
+        const kl = k.toLowerCase();
+        if (typeof v === 'string' && v.trim()) {
+          if (!_found[kl] && (kl === 'headline' || kl === 'title' || kl === 'text' || kl === 'body' || kl === 'caption')) {
+            _found[kl] = v.trim();
+          }
+        } else _walk(v, depth + 1);
+      }
+    };
+    _walk(_ad, 0);
+    const _headline = _found.headline || _found.title || '';
+    const _body = String(_found.text || _found.body || _found.caption || '').replace(/\s+/g, ' ').slice(0, 300);
+    if (_headline || _body) {
+      adDebug = (_headline || _body).slice(0, 40);
+      adContext = '\n\nAD CONTEXT (hard rule): this customer did not come looking for us - they tapped the '
+        + 'WhatsApp button on one of our ads, and THIS is the ad they tapped:'
+        + (_headline ? '\nAd headline: ' + _headline : '')
+        + (_body ? '\nAd text: ' + _body : '')
+        + '\n1. That ad is the subject they came to talk about. Open on THAT topic.'
+        + '\n2. Their first messages will often be vague - "hello", "isme kya hota hai", "kya help karoge", '
+        + '"price kya hai". Vague does NOT mean topic-less: they mean the ad. Ask them about the concern '
+        + 'the ad is about instead of guessing a new one.'
+        + '\n3. NEVER steer them to an unrelated health area, and never bring up a product or condition the '
+        + 'ad did not mention - especially not sexual wellness, weight or performance unless the ad or the '
+        + 'customer raised it.'
+        + '\n4. Do not read the ad back to them, do not quote it, and do not say "aapne ad dekha tha". '
+        + 'Just talk about the subject it was about.';
+    }
+  }
+} catch (e) { adContext = ''; adDebug = 'error'; }
+
 // ---- TIME AWARENESS: use the customer's OWN message time (msg_time), not Date.now() ----
 let curMsgTime = 0;
 if (unanswered.length) curMsgTime = unanswered[unanswered.length - 1]._t;
@@ -193,6 +247,7 @@ let systemPrompt = basePrompt
   + "\nCustomer name: " + (displayName || 'NOT KNOWN - do not use any name, and never repeat their WhatsApp display name')
   + '\nCustomer wrote in: ' + scriptLabel
   + '\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')
+  + adContext
   + '\n\nCRITICAL ANTI-SPAM RULES:\n'
   + '1. If "Greeting already sent: YES", NEVER send greeting again. Jump straight to answering the question.\n'
   + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\n'
@@ -234,10 +289,28 @@ if (productSummary) {
     + '\n8. The "about:" text is the ONLY product information you have. Do not add benefits, ingredients, results or timelines that are not in it. If they ask something it does not answer (how it works, ingredients, side effects, how long till results), say the doctor will explain properly in the free consultation.'
     + '\n9. Never state a dose, quantity, timing or duration even if you think you know it - that stays with the doctor (see DOSAGE POLICY).';
 } else {
+  // fall through to the no-match policy below
   systemPrompt += '\n\nPRODUCT POLICY (hard rule): no live product match was found for this message.'
     + ' You may still describe what a product is for, but do NOT quote any price and do NOT share a product link from memory - prices in the CATALOG list above may be out of date.'
     + ' If they asked a price, say the team will confirm the exact price, and offer the free consultation.';
 }
+
+// ---- SALES POLICY: when the consultation is the goal, and when it is not ----
+// Business rule, 2026-08-08. Until now EVERY path closed with the free-consultation pitch,
+// because Goal A in the persona makes booking one the main objective. That is right for the
+// concerns a doctor genuinely changes the answer on, and wrong for the rest: Vaji Bati and
+// Kern Drops need no doctor, so pitching a consultation on "Vaji Bati ka price kya hai" only
+// puts a step between the customer and a sale they already decided on.
+//
+// Stated as an injected hard rule rather than left to the Doc, for the usual reason - the
+// tuned model reads late-appended context far more reliably than the Doc, and Goal A pulls
+// hard the other way. Extract AI Response enforces the same split on the replies it builds.
+systemPrompt += '\n\nSALES POLICY (hard rule - this decides whether you pitch the free consultation at all):'
+  + '\n1. BOOK A CONSULTATION for: PCOD, PCOS, periods and any women\'s hormonal or menstrual concern; thyroid; blood sugar / diabetes; and vitamin D / bone / calcium. For these the doctor genuinely changes the plan, so steer to the free consultation as before.'
+  + '\n2. SELL DIRECTLY, no consultation pitch, for: men\'s performance and stamina (Vaji Bati, Kern Drops, the Confidence & Performance Booster Kit, Shilajit, Ashwagandha, the energy/stamina kit) and the whole weight range (LeanRoutine, Slimtox, Garcinia, the weight kits). Give the benefit in one line, the live price and the link, and stop. Do NOT add "chahein to free consultation bhi kara deti hu" to these.'
+  + '\n3. ALWAYS ask the health question first, whichever bucket it is: "koi health problem hai ya koi dawai chal rahi hai?" If the answer is clear, send the link with a short caution to tell you if anything comes up. If they name ANY condition (thyroid, sugar, BP, heart, kidney, liver, pregnancy, breastfeeding, or a regular medicine), stop selling and offer the free consultation - that is rule 3 of the persona and it still applies to everyone, men included.'
+  + '\n4. PRESCRIPTION ONLY products are NOT affected by this policy. They still get no price and no link, and still go to a doctor - that is a prescription requirement, not a sales choice.'
+  + '\n5. If the customer asks for a consultation themselves, book it, whatever the topic.';
 
 // ---- ORDER POLICY ----
 // Three branches. The "no data" one is not boilerplate: without it the model invents order
@@ -336,8 +409,9 @@ const _debug = {
   humanTextSeen,
   orderContext: orderCtxDebug,
   productContext: productCtxDebug,
+  ad: adDebug,
   doc: docOk ? 'ok ' + docChars + ' chars' : 'DAMAGED ' + docChars + ' chars' + (docMissing.length ? ' missing: ' + docMissing.join('/') : ''),
 };
-console.log('[Build AI Prompt] fetched=' + evs.length + ' doc=' + _debug.doc + ' time=' + _debug.time + ' orders=' + orderCtxDebug + ' products=' + productCtxDebug + ' history=' + JSON.stringify(_debug.sequence));
+console.log('[Build AI Prompt] fetched=' + evs.length + ' doc=' + _debug.doc + ' time=' + _debug.time + ' orders=' + orderCtxDebug + ' products=' + productCtxDebug + ' ad=' + adDebug + ' history=' + JSON.stringify(_debug.sequence));
 
-return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, displayName, orderCtxDebug, productCtxDebug, docOk, docChars, docMissing, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];
+return [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, displayName, orderCtxDebug, productCtxDebug, adDebug, docOk, docChars, docMissing, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];

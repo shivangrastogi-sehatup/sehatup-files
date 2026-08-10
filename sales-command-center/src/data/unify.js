@@ -10,7 +10,7 @@
  *   { id, source:'healthscore'|'quickreply', date:'YYYY-MM-DD',
  *     caller, name, norm, converted(bool), work, product?, category?, paymentMode? }
  * ========================================================================== */
-import { fetchAll, clearPrevCache } from '../api/sheets';
+import { fetchAll } from '../api/sheets';
 import { field, parseDate, toNumber } from '../utils/dataProcessor';
 
 // Unified status buckets used everywhere (the funnel + KPIs), in funnel order.
@@ -37,9 +37,9 @@ const toISO = (d) =>
   d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : null;
 
 /** True for a usable lead row (has a name or number, not a header/remark line). */
-function isLeadRow(r, map = {}) {
-  const named = String(pick(r, map.name, 'Name') ?? '').trim();
-  const num = String(pick(r, map.mobile, 'Mobile', 'Number', 'Phone') ?? '').trim();
+function isLeadRow(r) {
+  const named = String(field(r, 'Name') ?? '').trim();
+  const num = String(field(r, 'Mobile', 'Number', 'Phone') ?? '').trim();
   if (!named && !num) return false;
   // A "#" in the name marks a separator or remark line — but ONLY when the row
   // carries no phone number. Leads arriving from social have handles like
@@ -66,32 +66,32 @@ function monthStartISO(offset = 0) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
-/**
- * Read a cell, preferring the column the Settings panel mapped and falling back
- * to the built-in candidate names when nothing is mapped. `field()` already
- * tolerates casing/spacing drift, so a mapped name need not match exactly.
- */
-const pick = (r, mapped, ...fallbacks) => field(r, ...[mapped, ...fallbacks].filter(Boolean));
+/* The candidate column names passed to field() below ARE the column mapping.
+ * There used to be a runtime override on top of them, editable from a Settings
+ * panel; it was removed on 2026-08-06 because the sheets do not change and a
+ * repoint is a code change. field() already tolerates casing and spacing drift,
+ * so a real sheet renaming "Caller 1" to "caller1" still matches — and if a
+ * column is genuinely renamed, add it to the list here. */
 
 /** Map one raw sheet row to a unified row, or null if it can't be placed. */
-function unifyRow(r, source, idx, map = {}, monthOffset = 0) {
-  if (!isLeadRow(r, map)) return null;
+function unifyRow(r, source, idx, monthOffset = 0) {
+  if (!isLeadRow(r)) return null;
 
   // A real lead with a blank/garbled Date still counts toward its month's totals —
   // fall it back to the 1st of the month ITS OWN TAB covers (keeps it in that
   // month, out of "Today").
-  let iso = toISO(parseDate(pick(r, map.date, 'Date (Leads)', 'Date Leads', 'Date')));
+  let iso = toISO(parseDate(field(r, 'Date (Leads)', 'Date Leads', 'Date')));
   const dateApprox = !iso;
   if (!iso) iso = monthStartISO(monthOffset);
 
-  const callerRaw = String(pick(r, map.caller, 'Caller 1', 'Caller Name', 'Caller') ?? '').trim();
+  const callerRaw = String(field(r, 'Caller 1', 'Caller Name', 'Caller') ?? '').trim();
   const caller = (!callerRaw || callerRaw.toLowerCase() === 'none') ? 'Unassigned' : titleCase(callerRaw);
 
-  const statusBucket = normalizeStatus(pick(r, map.status, 'Call Status', 'Status'));
+  const statusBucket = normalizeStatus(field(r, 'Call Status', 'Status'));
   const converted = statusBucket === 'Converted';
 
-  const product = String(pick(r, map.product, 'Product name', 'Product') ?? '').trim();
-  const category = String(pick(r, map.category, 'Category', 'Sub Category', 'Segment') ?? '').trim();
+  const product = String(field(r, 'Product name', 'Product') ?? '').trim();
+  const category = String(field(r, 'Category', 'Sub Category', 'Segment') ?? '').trim();
   const work =
     (source === 'quickreply' ? product || category : category || product) || '—';
 
@@ -101,14 +101,14 @@ function unifyRow(r, source, idx, map = {}, monthOffset = 0) {
     date: iso,
     dateApprox,
     caller,
-    name: titleCase(pick(r, map.name, 'Name')) || '—',
+    name: titleCase(field(r, 'Name')) || '—',
     norm: statusBucket,
     converted,
     work: titleCase(work),
   };
   if (source === 'quickreply') {
     row.product = titleCase(product) || work;
-    row.paymentMode = titleCase(pick(r, map.payment, 'Payment Mode', 'Payment', 'Mode of Payment')) || '—';
+    row.paymentMode = titleCase(field(r, 'Payment Mode', 'Payment', 'Mode of Payment')) || '—';
   } else {
     row.category = titleCase(category) || work;
   }
@@ -144,27 +144,27 @@ function normalizeFulfilment(raw) {
  * Pdt Name = product, Date = order date (DD-MM-YYYY),
  * Lead Source = channel (Quick Reply / Healthscore).
  */
-function unifyOrder(r, idx, map = {}) {
-  const iso = toISO(parseDate(pick(r, map.date, 'Date', 'Order Date', 'Delivered Date')));
+function unifyOrder(r, idx) {
+  const iso = toISO(parseDate(field(r, 'Date', 'Order Date', 'Delivered Date')));
   // Revenue is what the customer actually pays, and the sheet splits that across
   // two columns: whatever came in up front, and whatever the courier still has
   // to collect. Most orders are part-paid and fill BOTH, so they add.
   //
   // NOT "Product Value" — that's the list price before discounts, so it doesn't
   // match what was banked. It ran the board's revenue until 2026-07-28.
-  const prepaid = toNumber(pick(r, map.prepaid, 'Partial & Prepaid Pay', 'Partial and Prepaid Pay', 'Prepaid Pay')) || 0;
-  const cod = toNumber(pick(r, map.cod, 'COD Collectable', 'COD Collectible', 'COD Collection')) || 0;
+  const prepaid = toNumber(field(r, 'Partial & Prepaid Pay', 'Partial and Prepaid Pay', 'Prepaid Pay')) || 0;
+  const cod = toNumber(field(r, 'COD Collectable', 'COD Collectible', 'COD Collection')) || 0;
   const value = prepaid + cod;
-  const product = String(pick(r, map.product, 'Pdt Name', 'Product Name', 'Product') ?? '').trim();
+  const product = String(field(r, 'Pdt Name', 'Product Name', 'Product') ?? '').trim();
   if (!iso || (!value && !product)) return null; // blank / header-ish row
 
   // leadSource = the ACTUAL "Lead Source" value (dynamic — can be Quick Reply,
   // Healthscore, or anything else). `source` is a coarse binary used only by the
   // health-vs-quick source filter; the orders-by-source panel groups on leadSource.
-  const rawLs = String(pick(r, map.leadSource, 'Lead Source', 'Source') ?? '').trim();
+  const rawLs = String(field(r, 'Lead Source', 'Source') ?? '').trim();
   const source = rawLs.toLowerCase().includes('health') ? 'healthscore' : 'quickreply';
   // Payment mode from the Men's "Mode" column: COD | Prepaid | Partially Paid.
-  const modeRaw = String(pick(r, map.mode, 'Mode', 'Payment Mode', 'Mode of Payment') ?? '').trim().toLowerCase();
+  const modeRaw = String(field(r, 'Mode', 'Payment Mode', 'Mode of Payment') ?? '').trim().toLowerCase();
   const mode = modeRaw.includes('cod') ? 'COD'
     : modeRaw.includes('partial') ? 'Partial'
     : (modeRaw.includes('prepaid') || modeRaw.includes('paid')) ? 'Prepaid'
@@ -179,15 +179,15 @@ function unifyOrder(r, idx, map = {}) {
     // Kept alongside the total so a part-paid order can show its split.
     prepaid, cod,
     product: titleCase(product) || '—',
-    qty: toNumber(pick(r, map.qty, 'Qty', 'Quantity')) || 1,
-    agent: titleCase(pick(r, map.agent, 'Agent Name', 'Caller')) || 'Unassigned',
+    qty: toNumber(field(r, 'Qty', 'Quantity')) || 1,
+    agent: titleCase(field(r, 'Agent Name', 'Caller')) || 'Unassigned',
     // Delivery status + region are optional columns — the panels that use them
     // degrade gracefully (see normalizeFulfilment) when the sheet lacks them.
-    fulfilment: normalizeFulfilment(pick(r, map.orderStatus, 'Order Status', 'Delivery Status', 'Shipment Status', 'Status')),
+    fulfilment: normalizeFulfilment(field(r, 'Order Status', 'Delivery Status', 'Shipment Status', 'Status')),
     // No state/region column on the orders board by default — Address is free
     // text, so the ticker falls back to the lead source for its third field.
-    region: titleCase(pick(r, map.state, 'State', 'Region', 'City')) || '',
-    customer: titleCase(pick(r, map.name, 'Name', 'Customer Name', 'Customer')) || '',
+    region: titleCase(field(r, 'State', 'Region', 'City')) || '',
+    customer: titleCase(field(r, 'Name', 'Customer Name', 'Customer')) || '',
   };
 }
 
@@ -216,14 +216,14 @@ function buildMeta(rows) {
  * the meta the dashboard needs. Never throws — returns empty rows on failure.
  */
 /** `monthOffset` tells undated rows which month's tab they came from. */
-const mapRows = (sheet, source, map, monthOffset = 0) => {
+const mapRows = (sheet, source, monthOffset = 0) => {
   const out = [];
-  (sheet.rows || []).forEach((r, i) => { const u = unifyRow(r, source, i, map, monthOffset); if (u) out.push(u); });
+  (sheet.rows || []).forEach((r, i) => { const u = unifyRow(r, source, i, monthOffset); if (u) out.push(u); });
   return out;
 };
-const mapOrders = (sheet, map) => {
+const mapOrders = (sheet) => {
   const out = [];
-  (sheet.rows || []).forEach((r, i) => { const o = unifyOrder(r, i, map); if (o) out.push(o); });
+  (sheet.rows || []).forEach((r, i) => { const o = unifyOrder(r, i); if (o) out.push(o); });
   return out;
 };
 
@@ -259,21 +259,9 @@ function freshest(name, slice) {
   return { ...held.slice, fresh: false, ageMs: Date.now() - held.at };
 }
 
-/** Drop every held slice — used when the Settings panel repoints a sheet, where
- *  last-good data belongs to the OLD sheet and must not survive the switch.
- *  Clears the previous-month signature cache for the same reason. */
-export function clearLastGood() {
-  for (const k of Object.keys(lastGood)) delete lastGood[k];
-  clearPrevCache();
-}
-
-/**
- * @param {object} [cfg] Settings-panel config — { sheets, columns }. Omit it and
- *   every source reads its .env sheet with the built-in column names.
- */
-export async function loadData(cfg) {
-  const col = cfg?.columns || {};
-  const raw = await fetchAll(cfg);
+/** Every source reads its configured sheet with the column names above. */
+export async function loadData() {
+  const raw = await fetchAll();
   const health = freshest('health', raw.health);
   const quick = freshest('quick', raw.quick);
   const mens = freshest('mens', raw.mens);
@@ -282,13 +270,13 @@ export async function loadData(cfg) {
   const mensPrev = freshest('mensPrev', raw.mensPrev);
 
   // CURRENT month — leads (health+quick) + orders (mens, kept SEPARATE from leads).
-  const rows = [...mapRows(health, 'healthscore', col.health), ...mapRows(quick, 'quickreply', col.quick)];
-  const orders = mapOrders(mens, col.mens);
+  const rows = [...mapRows(health, 'healthscore'), ...mapRows(quick, 'quickreply')];
+  const orders = mapOrders(mens);
 
   // PREVIOUS month, in full. It feeds the weekly revenue bars (which look back
   // past the 1st) and any custom date range that reaches into last month.
-  const prevRowsAll = [...mapRows(healthPrev, 'healthscore', col.health, -1), ...mapRows(quickPrev, 'quickreply', col.quick, -1)];
-  const prevOrdersAll = mapOrders(mensPrev, col.mens);
+  const prevRowsAll = [...mapRows(healthPrev, 'healthscore', -1), ...mapRows(quickPrev, 'quickreply', -1)];
+  const prevOrdersAll = mapOrders(mensPrev);
 
   // ok = every current board has USABLE data (fresh this tick, or held from an
   // earlier one). It no longer means "everything is fresh" — `fresh` per board

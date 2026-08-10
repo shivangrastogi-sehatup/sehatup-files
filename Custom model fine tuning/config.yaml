@@ -1,0 +1,50 @@
+# =====================================================================
+# Ananya (SehatUP) Hinglish SFT — single source of truth.
+# Every value here is logged to MLflow as a run param, so a run is fully
+# reproducible from its MLflow record alone.
+# =====================================================================
+
+base_model: Qwen/Qwen2.5-3B-Instruct   # strong multilingual small instruct base; good for Hinglish
+output_dir: ./outputs/ananya-lora
+
+data:
+  # Produced by prepare_split.py from training_ready.jsonl
+  train_file: ./data/train.jsonl
+  val_file: ./data/val.jsonl
+  max_seq_length: 2048
+
+# LoRA / QLoRA adapter config
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  # "all-linear" lets PEFT pick every linear layer, or list explicit module names.
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+quantization:
+  load_in_4bit: true          # QLoRA. Set false if you have enough VRAM / no bitsandbytes.
+
+train:
+  epochs: 3
+  per_device_batch_size: 2
+  grad_accum: 4               # effective batch = 2 * 4 = 8
+  learning_rate: 2.0e-4
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler: cosine
+  logging_steps: 5
+  eval_steps: 20
+  save_steps: 20
+  save_total_limit: 2
+  seed: 42
+  bf16: true                 # set false + fp16:true on older GPUs (e.g. T4)
+  fp16: false
+
+mlflow:
+  tracking_uri: file:./mlruns        # local. Point at http://host:5000 for a server.
+  experiment: ananya-sehatup-sft
+  run_name: null                     # null -> auto timestamp
+  log_checkpoints: false             # true = upload every checkpoint as an artifact (heavy)
+  register_model: false              # true = also log a loadable transformers model + register it
+  registered_model_name: ananya-hinglish
+  n_eval_samples: 6                  # held-out generations logged as a table at end of run

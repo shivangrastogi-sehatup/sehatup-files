@@ -1,0 +1,8 @@
+# Training outputs & experiment tracking — do not commit
+outputs/
+mlruns/
+mlartifacts/
+data/train.jsonl
+data/val.jsonl
+__pycache__/
+*.pyc

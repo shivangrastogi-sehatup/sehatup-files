@@ -387,7 +387,30 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
       awbDoc.amount      = parseFloat(order.total_price || 0);
       awbDoc.paymentMode = derivePaymentMode(order);
     }
+    // The Nimbus pull is what makes a status authoritative. When it comes back with
+    // NO history, `timeline` holds only the webhook event we folded in above — and
+    // during a Nimbus history replay that event is OLD. Writing it would walk `status`
+    // backwards, and cron-sync-shipments reads exactly this field through isTerminal()
+    // to decide what still needs polling: a delivered shipment whose status regressed
+    // looks active again and gets re-enriched daily forever, which is itself another
+    // source of repeated Shopify writes.
+    //
+    // PATCH uses an updateMask, so simply omitting these keys preserves whatever is
+    // already stored. A brand-new AWB is left with no status at all, which is correct —
+    // it reads as "not terminal", so the cron picks it up and fills it in properly.
+    const pullOk = rawHistory.length > 0;
+    if (!pullOk) {
+      for (const k of ['status', 'rawStatus', 'lastLocation', 'lastEventTime', 'lastMessage', 'history', 'eventCount']) {
+        delete awbDoc[k];
+      }
+      console.warn('[enrich] Nimbus returned no history for', awb, '— keeping the stored status rather than trusting the webhook event');
+    }
+
     const awbWrite = await patchFirestoreDoc(`${rootCollection}/${phoneKey}/awbs/${awb}`, awbDoc);
+    // PATCH returns the document AFTER the write, and the updateMask preserved every
+    // field we did not send — so the previously-pushed Shopify status comes back here
+    // for free, with no extra read.
+    const alreadySent = awbWrite?.fields?.shopifyStatus?.stringValue || '';
 
     // If we resolved a real customer phone, remove any stale placeholder doc written
     // under `unknown_<awb>` by an earlier enrichment (before Shopify returned a
@@ -415,13 +438,35 @@ export async function enrichAwbAndCache(awb, latestEvent = {}, source = 'webhook
     // stopped on 9 May 2026), then posts a fulfillment event so the order's Fulfillment
     // status and Delivery status track Nimbus without anyone triggering it by hand.
     // Best-effort by construction — syncShopifyFulfillment never throws.
-    const shopifySync = await syncShopifyFulfillment({
-      order,
-      awb,
-      status:    awbDoc.status,
-      eventTime: awbDoc.lastEventTime,
-      courier:   awbDoc.courier,
-    });
+    // Nothing to push when the pull gave us no authoritative status — the fields were
+    // stripped above precisely so we would not act on a replayed event.
+    const shopifySync = pullOk
+      ? await syncShopifyFulfillment({
+        order,
+        awb,
+        status:    awbDoc.status,
+        eventTime: awbDoc.lastEventTime,
+        courier:   awbDoc.courier,
+        alreadySent,
+      })
+      : { ok: false, skipped: true, reason: 'no_nimbus_history' };
+
+    // Remember what Shopify was actually told. This is the field `alreadySent` reads on
+    // the next run, and it is the memory the system never had: before this, the result
+    // of the push was logged and thrown away, so the only record that a status had been
+    // sent lived in a claims collection keyed on the wrong thing.
+    if (shopifySync.event) {
+      try {
+        await patchFirestoreDoc(`${rootCollection}/${phoneKey}/awbs/${awb}`, {
+          shopifyStatus:   shopifySync.event,
+          shopifyStatusAt: new Date().toISOString(),
+        });
+      } catch (e) {
+        // Non-fatal: the claim still guards the next run. Worth a loud log though —
+        // if this keeps failing, the second line of defence is silently missing.
+        console.warn('[enrich] could not record shopifyStatus for', awb, '-', e?.message || e);
+      }
+    }
     if (shopifySync.error) {
       console.warn('[enrich] shopify sync failed for', awb, '-', shopifySync.error);
     } else if (shopifySync.event) {
