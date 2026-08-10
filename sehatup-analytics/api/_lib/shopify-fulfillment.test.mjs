@@ -19,6 +19,11 @@ const { syncShopifyFulfillment } = await import('./shopify-fulfillment.js');
 const firestoreDocs = new Set();
 let shopifyEventPosts = [];
 let fulfillmentCreates = [];
+// What Shopify actually holds right now. Posting an event moves it, and the pre-write
+// re-read (guard 4) sees this — NOT the possibly-stale `order` object passed in, which
+// is what the caller fetched minutes earlier. Modelling the two separately is the whole
+// point: every duplicate in production came from judging on the stale copy.
+let liveShipmentStatus = 'in_transit';
 
 const resp = (status, body = '{}') => ({
   ok: status >= 200 && status < 300,
@@ -49,7 +54,9 @@ globalThis.fetch = async (url, opts = {}) => {
 
   if (u.includes('myshopify.com')) {
     if (u.includes('/events.json') && method === 'POST') {
-      shopifyEventPosts.push(JSON.parse(opts.body).event.status);
+      const st = JSON.parse(opts.body).event.status;
+      shopifyEventPosts.push(st);
+      liveShipmentStatus = st;              // Shopify applies it
       return resp(200, '{"fulfillment_event":{"id":1}}');
     }
     if (u.includes('/fulfillments.json') && method === 'POST') {
@@ -59,11 +66,19 @@ globalThis.fetch = async (url, opts = {}) => {
     if (u.includes('/fulfillment_orders.json')) {
       return resp(200, '{"fulfillment_orders":[{"id":77,"status":"open","supported_actions":["create_fulfillment"]}]}');
     }
+    // The pre-write re-read: what Shopify holds at this instant.
+    if (/\/orders\/\d+\.json/.test(u) && method === 'GET') {
+      return resp(200, JSON.stringify({
+        order: { id: 123, fulfillments: [{ id: 999, tracking_number: 'AWB1234567', shipment_status: liveShipmentStatus }] },
+      }));
+    }
   }
   throw new Error('unexpected fetch: ' + method + ' ' + u);
 };
 
-const reset = () => { firestoreDocs.clear(); shopifyEventPosts = []; fulfillmentCreates = []; };
+const reset = (live = 'in_transit') => {
+  firestoreDocs.clear(); shopifyEventPosts = []; fulfillmentCreates = []; liveShipmentStatus = live;
+};
 const orderWithFulfillment = () => ({
   id: 123,
   fulfillments: [{ id: 999, tracking_number: 'AWB1234567', shipment_status: 'in_transit' }],
@@ -99,12 +114,29 @@ await Promise.all([1, 2, 3, 4].map(() => syncShopifyFulfillment(args({ order: { 
 check('burst with no existing fulfillment creates exactly 1 fulfillment',
   fulfillmentCreates.length === 1, `created ${fulfillmentCreates.length}`);
 
-// 3. A genuine second out-for-delivery on another day must still reach the customer.
+// 3. CHANGED 2026-08-07. This used to assert the opposite — that a second
+// out-for-delivery on another day should post again, because the claim key carried the
+// Nimbus event time. Production showed that rule is what caused the duplicates: Nimbus
+// emits several DIFFERENT scans meaning the SAME thing (hub A and hub B minutes apart,
+// a delivery scan and a POD upload), each with its own event_time, so each posted.
+// 9 of 43 delivered shipments got `delivered` twice, and each duplicate enrolled the
+// customer in the drip campaign again. One push per status per shipment now.
 reset();
 await syncShopifyFulfillment(args());
-await syncShopifyFulfillment(args({ eventTime: '2026-08-05 09:00:00' }));
-check('a real second OFD scan on another day still posts',
-  shopifyEventPosts.length === 2, `posted ${shopifyEventPosts.length}`);
+const laterOfd = await syncShopifyFulfillment(args({ eventTime: '2026-08-05 09:00:00' }));
+check('the same status on a later scan does NOT post again',
+  shopifyEventPosts.length === 1,
+  `posted ${shopifyEventPosts.length}: ${shopifyEventPosts} (${laterOfd.reason})`);
+
+// 3b. ...but the two statuses that carry new information every time still repeat.
+// A second failed delivery attempt is a real, different event; a second "delivered"
+// never is.
+reset();
+await syncShopifyFulfillment(args({ status: 'Undelivered', eventTime: '2026-08-03 10:00:00' }));
+await syncShopifyFulfillment(args({ status: 'Undelivered', eventTime: '2026-08-04 10:00:00' }));
+check('a genuine SECOND failed delivery attempt still posts',
+  shopifyEventPosts.length === 2 && shopifyEventPosts.every((s) => s === 'attempted_delivery'),
+  `posted ${shopifyEventPosts.length}: ${shopifyEventPosts}`);
 
 // 4. Same scan replayed after the claim exists (e.g. the daily cron re-running).
 reset();
@@ -142,6 +174,101 @@ const noop = await syncShopifyFulfillment(args({
 }));
 check('already-at-target still skips without claiming',
   noop.reason === 'already_out_for_delivery' && firestoreDocs.size === 0, JSON.stringify(noop));
+
+// ── Replays of REAL production sequences ────────────────────────────────────
+// Pulled from Shopify on 2026-08-06 by listing the fulfillment events on orders that
+// actually duplicated. These are not invented cases: each one shipped to a customer.
+
+/** Feed a whole Nimbus timeline through, sequentially, as it arrived. */
+async function replay(scans, startLive) {
+  reset(startLive);
+  let sent = '';                              // stands in for the doc's shopifyStatus
+  for (const [status, eventTime] of scans) {
+    const r = await syncShopifyFulfillment(args({
+      status, eventTime,
+      // The caller's `order` is a snapshot, deliberately stale — exactly as in enrich.js.
+      order: { id: 123, fulfillments: [{ id: 999, tracking_number: 'AWB1234567', shipment_status: startLive }] },
+      alreadySent: sent,
+    }));
+    if (r.event) sent = r.event;
+  }
+  return shopifyEventPosts;
+}
+
+// Order #1872 — 7 events went out; in_transit, out_for_delivery and delivered all twice.
+const p1872 = await replay([
+  ['Shipped',          '2026-08-01 13:37:00'],
+  ['In Transit',       '2026-08-01 17:34:17'],
+  ['In Transit',       '2026-08-01 17:35:21'],
+  ['Out For Delivery', '2026-08-03 09:09:59'],
+  ['Out For Delivery', '2026-08-03 09:11:59'],
+  ['Delivered',        '2026-08-03 12:49:59'],
+  ['Delivered',        '2026-08-03 13:07:11'],
+], null);
+check('#1872 replay: 7 scans -> 4 events, each status once',
+  JSON.stringify(p1872) === JSON.stringify(['confirmed', 'in_transit', 'out_for_delivery', 'delivered']),
+  JSON.stringify(p1872));
+check('#1872 replay: delivered posted exactly once (was twice)',
+  p1872.filter((s) => s === 'delivered').length === 1, JSON.stringify(p1872));
+
+// Order #1864 — the regression: an OLD out_for_delivery arrived AFTER delivered.
+const p1864 = await replay([
+  ['Out For Delivery', '2026-08-03 10:57:38'],
+  ['Delivered',        '2026-08-03 12:23:39'],
+  ['Out For Delivery', '2026-08-03 12:41:55'],
+  ['Delivered',        '2026-08-03 16:10:00'],
+], null);
+check('#1864 replay: status never walks backwards after delivered',
+  JSON.stringify(p1864) === JSON.stringify(['out_for_delivery', 'delivered']),
+  JSON.stringify(p1864));
+
+// Order #1868 — in_transit, out_for_delivery and delivered each twice, hours apart.
+const p1868 = await replay([
+  ['In Transit',       '2026-07-31 12:44:28'],
+  ['In Transit',       '2026-07-31 14:34:34'],
+  ['Out For Delivery', '2026-08-03 09:38:41'],
+  ['Out For Delivery', '2026-08-03 10:17:03'],
+  ['Delivered',        '2026-08-03 13:49:31'],
+  ['Delivered',        '2026-08-03 14:05:23'],
+], null);
+check('#1868 replay: 6 scans -> 3 events',
+  JSON.stringify(p1868) === JSON.stringify(['in_transit', 'out_for_delivery', 'delivered']),
+  JSON.stringify(p1868));
+
+// ── The two new guards, in isolation ────────────────────────────────────────
+
+// alreadySent short-circuits before any Firestore or Shopify call at all.
+reset();
+const seen = await syncShopifyFulfillment(args({ status: 'Delivered', alreadySent: 'delivered' }));
+check('alreadySent=delivered skips with no claim and no network write',
+  seen.reason === 'already_sent' && shopifyEventPosts.length === 0 && firestoreDocs.size === 0,
+  JSON.stringify(seen));
+
+// The rank guard, judged on the STALE order object.
+reset();
+const backwards = await syncShopifyFulfillment(args({
+  status: 'In Transit',
+  order: { id: 123, fulfillments: [{ id: 999, tracking_number: 'AWB1234567', shipment_status: 'out_for_delivery' }] },
+}));
+check('in_transit after out_for_delivery is refused as stale',
+  String(backwards.reason).startsWith('stale_status:') && shopifyEventPosts.length === 0,
+  JSON.stringify(backwards));
+
+// A failure may still interrupt at any point — RTO after delivery is legitimate.
+reset('delivered');
+const rto = await syncShopifyFulfillment(args({
+  status: 'RTO Delivered',
+  order: { id: 123, fulfillments: [{ id: 999, tracking_number: 'AWB1234567', shipment_status: 'delivered' }] },
+}));
+check('RTO after delivered still posts (failure is not "backwards")',
+  rto.event === 'failure', JSON.stringify(rto));
+
+// Guard 4: the caller's order says in_transit, but Shopify already moved on.
+reset('delivered');
+const stale = await syncShopifyFulfillment(args({ status: 'Delivered' }));
+check('pre-write re-read catches a stale caller snapshot',
+  String(stale.reason).includes('live') && shopifyEventPosts.length === 0,
+  JSON.stringify(stale));
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

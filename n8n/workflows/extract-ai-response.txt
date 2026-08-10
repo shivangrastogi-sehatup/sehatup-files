@@ -64,7 +64,17 @@ try {
   for (const it of items) {
     const m = it && it.json; if (!m) continue;
     const txt = (m.text || '').toLowerCase();
-    if (m.direction === 'out' && (m.text || m.placeholder)) greetedBefore = true;   // a prior bot/agent reply
+    // A QuickReply BOT_PLACEHOLDER ("Bot replied", automationBy CHAT_BOT) is NOT Ananya
+    // introducing herself - it is QuickReply's own automation logging that IT answered, and it
+    // carries no text at all. Counting it as "already greeted" deleted her introduction on a
+    // genuinely fresh chat: 7 Aug, the model produced "Hello ji, mai Ananya baat kar rahi hu
+    // SehatUP se. Mai aapki kya help kar sakti hu?", the intro stripper below took the first
+    // sentence off it because of this line, and what the customer got - right after
+    // QuickReply's own "Hi! Please let us know how we can help you." - was two how-can-I-help
+    // messages in a row and nobody saying who they were. They answered "Kya help kariyega aap
+    // bataiye", an empty question, and the model filled it with an invented product pitch.
+    // Only a real outbound TEXT from our side counts as having greeted.
+    if (m.direction === 'out' && m.text && String(m._type || '') !== 'BOT_PLACEHOLDER') greetedBefore = true;
     if (txt.includes('ananya') && txt.includes('sehat')) greetedBefore = true;      // intro already sent
   }
 } catch (e) {}
@@ -153,6 +163,12 @@ if (!greetedBefore && QR_FILLER_RE.test(String(aiText || '').trim())) {
   aiText = '';
 }
 
+// What the MODEL said, before any guard rewrote it. The safety-claim guard at the bottom reads
+// this as well as the final text: a claim that another guard happened to overwrite still needs
+// to be counted, because "the model tried to promise a medicine has no side effects" is a fact
+// about the model worth having in the execution tags even when the customer never saw it.
+const _modelText = String(aiText || '');
+
 // ---- ROLE-REVERSAL GUARD (runs before every other guard) ----
 // It is deliberately NOT in _answered(). Its job is to make the model's output unusable, not
 // to own the reply: it drops a safe, topic-neutral floor in place, and any later guard that
@@ -212,8 +228,35 @@ let roleGuard = false;
   const _echoesCustomer = _replyLines.length > 1 && !!_lastLine
     && _custLines.some(c => c.toLowerCase() === _lastLine);
 
-  if (_vocativeAnanya || _patientVoice || _echoesCustomer) {
-    roleGuard = _vocativeAnanya ? 'addressed_ananya' : (_patientVoice ? 'patient_voice' : 'echoed_customer');
+  // 4. The whole reply IS the customer's message, handed back. 2026-08-08, exec 25843:
+  //      customer -> "Mujhe Vaji Bati or Kern Drops Chahiye"
+  //      model    -> "Good morning sir mujhe Vaji Bati or Kern Drops chahiye"
+  //    and what went out, after sanitizing and the first-contact intro, was
+  //      "Hello ji, mai Ananya baat kar rahi hu SehatUP se. ji mujhe Vaji Bati or Kern
+  //       Drops chahiye"
+  //    - Ananya introducing herself and then ordering products from the customer.
+  //
+  //    All three signals above missed it: it never names Ananya (it says "sir"), it carries
+  //    no SYMPTOM word so patient_voice could not fire on a PRODUCT request, and signal 3
+  //    only inspects the last line of a MULTI-line reply while this was a single line.
+  //
+  //    Compared on token overlap, not string equality, so a "Good morning sir" prefix and a
+  //    change of case cannot hide it.
+  const _norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const _replyTok = _norm(_rawModelText)
+    .replace(/\b(good\s*(morning|afternoon|evening)|hello|hi|hey|namaste|ji|sir|mam|madam|ok|okay)\b/g, ' ')
+    .split(/\s+/).filter(w => w.length > 1);
+  const _custTok = new Set(_norm(newMsgText).split(/\s+/).filter(Boolean));
+  const _overlap = _replyTok.length ? _replyTok.filter(w => _custTok.has(w)).length / _replyTok.length : 0;
+  // A reply that sends a link, quotes a price or asks something is doing real work even when
+  // it reuses the customer's words ("Aap Vaji Bati ki baat kar rahe hain? Ye raha link: ...").
+  const _addsSomething = /(https?:\/\/|sehatup\.com|rs\.?\s*\d{2,}|\?)/i.test(_rawModelText);
+  const _parrotsCustomer = _replyTok.length >= 3 && _overlap >= 0.8 && !_addsSomething;
+
+  if (_vocativeAnanya || _patientVoice || _echoesCustomer || _parrotsCustomer) {
+    roleGuard = _vocativeAnanya ? 'addressed_ananya'
+      : (_patientVoice ? 'patient_voice'
+      : (_echoesCustomer ? 'echoed_customer' : 'parroted_customer'));
     // Topic-neutral on purpose: this fires on any subject, so it cannot assume what was asked.
     // It promises nothing (BOOKING POLICY rule 4) and states no condition (CLAIM POLICY).
     aiText = 'Ji bilkul, main aapki help karti hu. Aap thoda detail me bata dijiye - problem kya hai aur kab se hai? '
@@ -496,7 +539,11 @@ const gaveDose =
 // had drifted apart - bookingGuard never checked reportGuard, and doseGuard/slotGuard/
 // priceGuard never checked scoreGuard - so a reply that one guard had already built could
 // be silently overwritten by a lower-precedence one.
-const _answered = () => !!(reportGuard || scoreGuard || identityGuard || claimGuard || companyGuard);
+// consultModeGuard is declared here rather than at its block below so _answered() can close
+// over it: "is it online or offline" is a built answer like the identity and company ones, and
+// nothing further down may overwrite it.
+let consultModeGuard = false;
+const _answered = () => !!(reportGuard || scoreGuard || identityGuard || claimGuard || companyGuard || consultModeGuard);
 
 const doseGuard = !_answered() && (askedDose || gaveDose);
 if (doseGuard) {
@@ -689,6 +736,28 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && (needsPrice || 
   const rx = _matches.filter(p => p.isRx);
   const oos = _matches.filter(p => !p.isRx && !p.inStock);
   const CONSULT = 'Chahein to free consultation me doctor aapke liye best option confirm kar denge, wo free hai.';
+
+  // ---- WHICH TOPICS ACTUALLY NEED A CONSULTATION (business rule, 2026-08-08) ----
+  // The free consultation is for the concerns where a doctor genuinely changes the answer:
+  // PCOD/PCOS, periods and the rest of the women's hormonal range, plus the condition
+  // products (thyroid, blood sugar, vitamin D / bone). Male performance and stamina, and the
+  // weight range, are sold directly - Vaji Bati and Kern Drops do not need a doctor, and
+  // pitching a consultation on top of "Vaji Bati ka price kya hai" only slows down a sale.
+  //
+  // The safety question does NOT go away. It is asked first; if it comes back clear the link
+  // goes out with a caution, and if the customer names a condition the topic becomes a
+  // consult topic below and they are routed to the doctor as before.
+  //
+  // Rx is deliberately untouched - those still refuse price and link and route to a doctor.
+  // That is a prescription requirement, not a sales decision.
+  const CONSULT_HANDLES = /(her-menses|harmen|hormoniherb|tea-for-period-cramps|aloezy|thyrostatin|diaboglob|vitamin-d3k2|zencal)/i;
+  const CONSULT_TOPIC_RE = /\b(pcod|pcos|poly\s*cystic|period|periods|menses|menstrual|cramp|cramps|hormonal|hormone|thyroid|thyro|sugar|diabetes|diabetic|bp|blood\s*pressure|vitamin\s*d|d3|calcium|haddi|bone|pregnan|breastfeed|heart|kidney|liver)\b/i;
+  const _consultTopic = CONSULT_TOPIC_RE.test(_pq)
+    || _matches.some(p => CONSULT_HANDLES.test(String(p.url || '') + ' ' + String(p.title || '')));
+  // Sent in place of the consultation pitch on a direct-sale product. It does not claim the
+  // product is safe for them - it asks, which is the safety check in one line.
+  const CAUTION = 'Koi health problem ho ya koi dawai chal rahi ho to bata dijiye, main doctor se check kara deti hu - warna aap order kar sakte hain.';
+  const CLOSE = _consultTopic ? CONSULT : CAUTION;
   // qrProductLookup marks a combo pack (isKit) and, per product, how many of ITS OWN
   // distinctive words the customer actually typed (named). Both are absent on responses
   // from before that deploy, so everything below degrades to the old behaviour.
@@ -708,11 +777,11 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && (needsPrice || 
       aiText += '\n\nDono ka combo ' + _pname(kit) + ' me ' + _rs(kit.price)
         + ' me mil jata hai, alag-alag lene par ' + _rs(sum) + ' padta hai:\n' + kit.url;
     }
-    aiText += '\n\n' + CONSULT;
+    aiText += '\n\n' + CLOSE;
     priceGuard = (kit && kit.price < sum) ? 'both_with_combo' : 'both';
   } else if (parts.length === 1) {
     const p = parts[0];
-    aiText = _pname(p) + ' ka price ' + _rs(p.price) + ' hai ji.\n' + p.url + '\n\n' + CONSULT;
+    aiText = _pname(p) + ' ka price ' + _rs(p.price) + ' hai ji.\n' + p.url + '\n\n' + CLOSE;
     priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended' : 'one';
   } else if (parts.length > 1) {
     // Two candidates is not a failure to resolve - "shilajit" genuinely matches two
@@ -726,13 +795,13 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && (needsPrice || 
     priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended_2' : 'ambiguous';
   } else if (kit) {
     // Only the combo matched - they asked for it by its own name.
-    aiText = _pname(kit) + ' ka price ' + _rs(kit.price) + ' hai ji.\n' + kit.url + '\n\n' + CONSULT;
+    aiText = _pname(kit) + ' ka price ' + _rs(kit.price) + ' hai ji.\n' + kit.url + '\n\n' + CLOSE;
     priceGuard = 'kit';
   } else if (rx.length) {
     aiText = rx[0].title + ' me allopathic medicine hoti hai ji, iske liye doctor ki salah zaroori hai - iska price share nahi kar sakti. 10-15 min ki free consultation kara deti hu.';
     priceGuard = 'rx';
   } else if (oos.length) {
-    aiText = oos[0].title + ' abhi available nahi hai ji. Free consultation me doctor aapke liye sahi alternative bata denge, consultation aur diet plan free hai.';
+    aiText = oos[0].title + ' abhi available nahi hai ji. ' + (_consultTopic ? 'Free consultation me doctor aapke liye sahi alternative bata denge, consultation aur diet plan free hai.' : 'Hamari team aapko iska sahi alternative bata degi.');
     priceGuard = 'out_of_stock';
   }
   if (priceGuard) {
@@ -762,6 +831,38 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard
   console.log('[Company Guard] ' + companyGuard + ' | q=' + _qLower.slice(0, 60));
 }
 
+// ---- CONSULTATION MODE RESPONDER ----
+// 7 Aug: a PCOD customer who had just described her symptoms asked "Offline hi ya online hi".
+// She got "Ji, note kar liya. Aap apna naam aur kaunsa time..." - the substance guard's
+// "you answered our question" line, which noted down a question as though it were an answer.
+// Two things were wrong and only one of them was the guard.
+// The real cause: the persona never said how a consultation happens. "Digital clinic" was the
+// closest it came; ABOUT SEHATUP gave the duration but never the MODE, and "the team will call
+// you" appears only in the injected BOOKING POLICY. The model produced filler because it had
+// nothing to answer with - there was no answer anywhere in its context to find.
+// ananya-prompt.txt now states it outright, but the Doc is late-appended context that this
+// tuned model reads unreliably (the same reason the price, dose and identity answers are built
+// here), and "how does your service work" is the most common practical question a new customer
+// asks. There is exactly one right answer, so it is built.
+// Excluded: order/payment questions, where "online" means how they PAID, not how they consult.
+const _payish = /\b(pay|payment|paid|paisa|paise|rupee|rupay|cod|prepaid|upi|card|netbanking|emi)\b/i.test(_qLower);
+const _consultModeRe = new RegExp(
+     '\\b(online|offline|on\\s*line|off\\s*line)\\b'
+  + '|\\b(clinic|hospital|centre|center|branch|showroom)\\b'
+  + '|\\b(video\\s*call|phone\\s*(pe|par|call)|call\\s*(pe|par))\\b'
+  + '|\\b(aana|ana|aanaa|jana|jaana|visit|milna|milne|aake|aakar)\\b[^.!?]{0,18}\\b(padega|padegi|padta|padti|hoga|hogi|hai|h|kya)\\b'
+  + '|\\bconsultation\\b[^.!?]{0,18}\\b(kaise|kese|kahan|kaha|kidhar)\\b'
+  + '|\\b(kaise|kese|kahan|kaha|kidhar)\\b[^.!?]{0,18}\\b(consultation|consult|checkup|check\\s*up)\\b', 'i');
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard
+    && !_orderish && !_payish && _consultModeRe.test(_qLower)) {
+  consultModeGuard = true;
+  aiText = 'Ji, consultation puri tarah online hoti hai - doctor aapko call karke baat karte hain, '
+    + 'aapko kahin aana nahi padta. 10-15 minute lagte hain aur consultation bilkul free hai. '
+    + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
+    + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
+  console.log('[Consult Mode Guard] answered online-vs-offline | q=' + _qLower.slice(0, 60));
+}
+
 // ---- CALLBACK PROMISE GUARD ----
 // "Okay ji I will share your details with the doctor and they will call you in 5 minutes"
 // and "They will call you in 5 minutes ji" - the model invents a commitment nobody can keep.
@@ -785,6 +886,44 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && 
   aiText = 'Ji, main aapki free consultation set kara deti hu. Aapka naam aur kaunsa time aapke liye theek rahega bata dijiye ('
     + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), doctor us time par call karenge.';
   console.log('[Promise Guard] replaced an invented callback promise | q=' + String(newMsgText || '').slice(0, 50));
+}
+
+// ---- PITCH GUARD ----
+// 7 Aug, production: a customer who had tapped a WOMEN'S menstrual-health ad wrote only
+// "Hello", "Isme kya hota hai" and "Kya help kariyega aap bataiye" - no product, no symptom,
+// no topic whatsoever. The reply was "Ye ek ayurvedic medicine hai jiska koi side effect nhi
+// hota hai. Ye aapki sex life ko bahter banata hai." Nothing had matched the catalog
+// (productContext was "no match of 36"), so Build AI Prompt had already told the model in
+// PRODUCT POLICY that no product matched - every word of that reply was invented, and
+// avgLogprobs was -1.51 against -0.11 for the greeting on the same chat.
+// Why THAT product: asked an empty question, the model must volunteer a topic, and the
+// performance/Vaji Bati cluster is the single most repeated product theme in the persona
+// (Rules 5a, 5b, 11e, 14c plus three of the examples). It is what falls out of an empty prompt.
+// No existing guard could see it: substanceGuard only fires on FILLER replies and this one is
+// fluent and confident; claimGuard only catches an invented score or an asserted diagnosis.
+// The rule enforced here is the one PRODUCT POLICY already states in words - if nothing in the
+// live catalog matched and the customer asked for no product, the reply may not name a product
+// or describe one. It stays silent the moment the customer shows any product intent, and the
+// price guard above owns every case where a match did exist.
+let pitchGuard = false;
+const _CATALOG_NAME_RE = new RegExp('\\b(vaji\\s*bati|kern\\s*drops?|shilajit|ashwagandha|her\\s*menses|harmen'
+  + '|hormoniherb|aloezy|leanroutine|slimtox|garcinia|diaboglob|thyrostatin|zencal|shaktisurge'
+  + '|boombatti|control\\s*tantra|fourplay|hard\\s*yatra|max\\s*drive|rocket\\s*ras|lovelinga'
+  + '|thrill\\s*drill|thrustrx|endless|tadalafil|dapoxetine|orlistat)\\b', 'i');
+// "Ye ek ayurvedic medicine hai ... aapki sex life ko behtar banata hai" - a product pitched
+// without ever being named, so the catalog list above cannot catch it. Needs BOTH halves: the
+// thing ("ye ek ... medicine hai") and the claim about it, so that merely using the word
+// "dawai" in a sentence is not enough to fire.
+const _pitchThing = /\b(ye|yeh|yah|is|isme|ismein)\b[^.!?]{0,24}\b(ayurvedic|herbal|homeopathic|allopathic)?\s*(medicine|dawa|dawai|tablet|goli|goliyan|drops?|churna|powder|kit|capsule|syrup|tea|product)\b/i.test(String(aiText));
+const _pitchClaim = /\b(behtar|behter|bahter|bahtar|improve|badhata|badhati|badhane|theek\s*karta|thik\s*karta|fayda|faida|asar\s*karta|help\s*karta|kaam\s*karta|sex\s*life|stamina|performance)\b/i.test(String(aiText));
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard
+    && !_matches.length && !askedProduct && !askedPrice && !askedLink
+    && (_CATALOG_NAME_RE.test(String(aiText)) || (_pitchThing && _pitchClaim))) {
+  pitchGuard = _CATALOG_NAME_RE.test(String(aiText)) ? 'named_product' : 'described_product';
+  aiText = 'Ji bataiye, aapko kya problem ho rahi hai aur kab se? Aapki baat sun kar main sahi guidance de deti hu - '
+    + 'free consultation me doctor aapke liye best plan batayenge, consultation aur diet plan dono free hain.';
+  console.log('[Pitch Guard] BLOCKED ' + pitchGuard + ' - no catalog match and no product asked'
+    + ' | q=' + String(newMsgText || '').slice(0, 50));
 }
 
 // ---- SUBSTANCE GUARD ----
@@ -821,15 +960,25 @@ const _healthOrProductQ = _matches.length > 0
   || /\b(dawa|dawai|medicine|product|tablet|goli|capsule|drops?|churna|powder|kit|combo|price|dose|khurak|matra|problem|pareshani|dard|symptom|ilaj|treatment|fayda|faida|asar|side\s*effect|istemal|upyog|upayog|health|body|weight|skin|hair)\b/i.test(String(newMsgText || ''));
 const _custAskedQuestion = /\?/.test(String(newMsgText || ''))
   || /\b(kya|kyu|kyun|kyo|kyon|kaise|kese|kaisa|kaisi|kab|kahan|kaha|kaun|kaunsa|konsa|kis|kisliye|kitna|kitni|kitne|batao|bataiye|bta|btao|btaiye|samjhao|samjhaiye|explain|tell)\b/i.test(String(newMsgText || ''));
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard && !pitchGuard
     && _replyIsFiller && (_custSaidSomething || _weAskedQuestion || _custAskedQuestion)) {
+  // A QUESTION from the customer outranks "we asked something last turn". Both were true on
+  // 7 Aug - we had just asked for a name and time, and she asked "Offline hi ya online hi" -
+  // and the old order picked 'answered_our_question', so a question got "Ji, note kar liya"
+  // (noted) and was never answered. Nothing is noted when someone asks you something.
+  // _custAskedQuestion needs a real question word or a "?", so a short factual ANSWER to our
+  // own question ("24", "subah") still lands on 'answered_our_question' as before.
   substanceGuard = _custSaidSomething ? 'long_message'
-    : (_weAskedQuestion ? 'answered_our_question' : 'unanswered_question');
-  aiText = _custSaidSomething
+    : (_custAskedQuestion ? 'unanswered_question'
+    : (_weAskedQuestion ? 'answered_our_question' : 'unanswered_question'));
+  // Keyed off substanceGuard, not off the raw signals: the branch decision above is the single
+  // source of truth, and when the two drifted apart a question could be classified one way and
+  // answered the other.
+  aiText = substanceGuard === 'long_message'
     ? 'Ji, aapne jo bataya wo maine samajh liya - aap pareshaan mat hoiye, isko manage kiya ja sakta hai. '
       + 'Free consultation me doctor aapki puri history dekh kar sahi plan batayenge, consultation aur diet plan dono free hain. '
       + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye?'
-    : _weAskedQuestion
+    : substanceGuard === 'answered_our_question'
     // They answered a short factual question, so acknowledge it and move to the next step
     // rather than re-explaining - BOOKING POLICY rule 5, one or two asks at a time.
     ? 'Ji, note kar liya. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
@@ -858,7 +1007,7 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && 
 // question twice the same price or dose answer is the right one to send again.
 let repeatGuard = false;
 const _normReply = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard && !substanceGuard) {
+if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard && !substanceGuard && !pitchGuard) {
   const _now = _normReply(aiText), _prev = _normReply(_lastOutText);
   if (_now && _prev && (_now === _prev || (_now.length >= 12 && (_prev.includes(_now) || _now.includes(_prev))))) {
     repeatGuard = true;
@@ -867,6 +1016,39 @@ if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && 
       + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
     console.log('[Repeat Guard] reply repeated the previous one | was=' + JSON.stringify(String(_lastOutText).slice(0, 50)));
   }
+}
+
+// ---- SAFETY CLAIM GUARD ----
+// "jiska koi side effect nhi hota hai" shipped in the same 7 Aug reply. This is a regulatory
+// claim about a medicine, not a matter of tone: we cannot promise any product is
+// side-effect-free, cures anything, or is 100% safe, and persona Rule 4 forbids exactly this
+// ("no fake claims/cure guarantees, no 100% cure").
+// Deliberately NOT gated on the guards above - whoever wrote the sentence, model or guard, it
+// must not reach a customer - and placed last so it sees the final text.
+// Every branch requires an explicit negation or an absolute word, so a customer asking "iska
+// side effect hai kya?" still gets a normal answer; only the CLAIM of no side effects trips it.
+let safetyClaimGuard = false;
+const _SAFETY_CLAIM_RE = new RegExp(
+     '\\b(side\\s*effects?|nuksan|nuksaan|haani)\\b[^.!?]{0,24}\\b(nahi|nhi|nai)\\b'
+  + '|\\bno\\s+side\\s*effects?\\b'
+  + '|\\b100\\s*(%|percent|pratishat)\\s*(safe|sure|cure|guaranteed?|result)\\b'
+  + '|\\b(bilkul|puri\\s*tarah|puri\\s*trah|totally|completely)\\s*safe\\b'
+  + '|\\b(guarantee|guaranteed)\\b[^.!?]{0,20}\\b(result|cure|ilaj|theek|thik)\\b', 'i');
+// Checked against the FINAL text and against the model's own words. If a guard above already
+// replaced the claim with something safe we leave that better answer alone and only record the
+// attempt - overwriting it would throw away a real price or dose answer to say less.
+const _claimInReply = _SAFETY_CLAIM_RE.test(String(aiText));
+const _claimByModel = _SAFETY_CLAIM_RE.test(_modelText);
+if (_claimInReply || _claimByModel) {
+  const _blocked = (_claimInReply ? String(aiText) : _modelText).slice(0, 80);
+  safetyClaimGuard = _claimInReply ? 'blocked' : 'model_only';
+  if (_claimInReply) {
+    aiText = 'Ji, kisi bhi product ki safety ya result ka dava main khud se nahi kar sakti - ye doctor hi aapki '
+      + 'puri history dekh kar batate hain. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye, '
+      + 'main free consultation set kara deti hu.';
+  }
+  console.log('[Safety Claim Guard] ' + safetyClaimGuard + ' an absolute safety/cure claim | was='
+    + JSON.stringify(_blocked));
 }
 
 // ---- Add the introduction EXACTLY ONCE, only on genuine first contact ----
@@ -880,9 +1062,11 @@ if (!aiText) aiText = 'ji, bataiye mai aapki kya help kar sakti hu?';
 // list is searchable, and written to Firestore by Record AI Sent / Save AI Message so it
 // outlives n8n's execution retention. Compact on purpose - "price=ambiguous", not a blob.
 const _guardNames = ['roleGuard', 'scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
-  'repeatGuard', 'companyGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard'];
+  'repeatGuard', 'companyGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard',
+  'pitchGuard', 'safetyClaimGuard', 'consultModeGuard'];
 const _flagVals = { roleGuard, scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
-  repeatGuard, companyGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard };
+  repeatGuard, companyGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard,
+  pitchGuard, safetyClaimGuard, consultModeGuard };
 const _flags = _guardNames.filter(k => _flagVals[k])
   .map(k => k.replace(/Guard$/, '') + (typeof _flagVals[k] === 'string' ? '=' + _flagVals[k] : ''));
 if (emptyReason) _flags.push('empty=' + emptyReason);
@@ -916,6 +1100,9 @@ return [{
     slotGuard,
     priceGuard,
     promiseGuard,
+    pitchGuard,
+    safetyClaimGuard,
+    consultModeGuard,
     emptyReason,
     lastUpdated: new Date().toISOString()
   }

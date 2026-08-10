@@ -23,8 +23,40 @@ const SHOPIFY_HOSTNAME    = '0ec320-gj.myshopify.com';
 const SHOPIFY_API_VERSION = '2024-01';
 const SHOPIFY_TOKEN       = process.env.SHOPIFY_ACCESS_TOKEN || '';
 
-// One doc per (AWB, target status, Nimbus event time) that has been pushed to Shopify.
+// One doc per (AWB, target status) that has been pushed to Shopify.
 const CLAIM_COLLECTION = 'shopify_sync_claims';
+
+// ── Why the claim key no longer contains the Nimbus event time ──────────────
+// It used to be (AWB, target, event_time), to allow "a genuine SECOND out-for-
+// delivery days later" through. That reasoning was wrong about how Nimbus behaves:
+// it emits SEVERAL DIFFERENT SCANS THAT MEAN THE SAME THING — "In Transit" at hub A
+// 17:34 and hub B 17:35, a delivery scan and a POD-upload scan. Each carries its own
+// event_time, so each produced a different key and each posted again.
+//
+// Measured over 35 days before this change: 9 of the 43 shipments that reached
+// delivered posted `delivered` MORE THAN ONCE (21%), and 16 of 56 fulfillments
+// carried some repeated status. They were 16 minutes to 4 hours apart — sequential,
+// not the concurrent bursts the claim was built for, so nothing was guarding them.
+//
+// Each duplicate `delivered` is a real cost: Shopify fires fulfillments/update,
+// QuickReply's "Fulfillment Event Created" drip (filtered on Delivery Status =
+// Delivered) enrols the customer again, and they get the same WhatsApp message again.
+//
+// So the key is now (AWB, target): one push per status per shipment, forever.
+const REPEATABLE = new Set([
+  // ...except the two that carry NEW information every time they happen. A second
+  // failed delivery attempt is a real, different event the customer should see; a
+  // second "delivered" never is.
+  'attempted_delivery',
+  'failure',
+]);
+
+// Delivery progresses in one direction. Used to refuse a late/replayed scan that
+// would walk the order backwards — order #1864 went
+// out_for_delivery -> delivered -> out_for_delivery -> delivered because an old
+// scan arrived after a newer one. failure/attempted_delivery are absent on purpose:
+// they may legitimately interrupt at any point.
+const RANK = { confirmed: 1, in_transit: 2, out_for_delivery: 3, delivered: 4 };
 
 // All three default ON except the customer email, which stays off — these updates are
 // bookkeeping, often days after the fact, and must not spam customers.
@@ -134,7 +166,7 @@ async function createFulfillment(orderId, awb, courier) {
  * should log on. `reason: 'duplicate_suppressed'` means a concurrent run is handling
  * this exact scan and this one deliberately did nothing.
  */
-export async function syncShopifyFulfillment({ order, awb, status, eventTime, courier }) {
+export async function syncShopifyFulfillment({ order, awb, status, eventTime, courier, alreadySent }) {
   try {
     if (!SYNC_ENABLED)  return { ok: false, skipped: true, reason: 'sync_disabled' };
     if (!SHOPIFY_TOKEN) return { ok: false, skipped: true, reason: 'no_shopify_token' };
@@ -142,6 +174,15 @@ export async function syncShopifyFulfillment({ order, awb, status, eventTime, co
 
     const target = mapNimbusToShopifyEvent(status);
     if (!target) return { ok: false, skipped: true, reason: `unmapped_status:${status || 'empty'}` };
+
+    // ── Guard 1: what did we already send for THIS shipment? ──
+    // `alreadySent` is shopifyStatus off the AWB doc — the status this shipment was
+    // last successfully pushed with. Costs no round trip (enrich.js already has the
+    // document) and, unlike the claim, it lives with the data: it is visible when
+    // debugging and it survives the claims collection being purged or TTL'd away.
+    if (alreadySent && alreadySent === target && !REPEATABLE.has(target)) {
+      return { ok: true, skipped: true, reason: 'already_sent', alreadySent };
+    }
 
     // Prefer the fulfillment carrying this AWB; otherwise the most recent one.
     let fulfillments = order.fulfillments || [];
@@ -158,7 +199,10 @@ export async function syncShopifyFulfillment({ order, awb, status, eventTime, co
     // That job belongs to the claim below.
     const current = match ? (match.shipment_status || null) : null;
     if (match) {
-      if (current === target) {
+      // REPEATABLE is exempt from every equality check, not just the claim: two
+      // consecutive failed delivery attempts legitimately produce the same target, and
+      // blocking the second would hide a real event from the customer.
+      if (current === target && !REPEATABLE.has(target)) {
         return { ok: true, skipped: true, reason: 'already_' + target, fulfillmentId: String(match.id), created: false };
       }
       // Never walk a delivered parcel backwards on a late/duplicate scan. An RTO after
@@ -166,23 +210,60 @@ export async function syncShopifyFulfillment({ order, awb, status, eventTime, co
       if (current === 'delivered' && target !== 'failure') {
         return { ok: true, skipped: true, reason: 'already_delivered', fulfillmentId: String(match.id), created: false };
       }
+      // ── Guard 2: delivery only moves forwards ──
+      // Generalises the rule above to every step. A replayed out_for_delivery landing
+      // after in_transit has already advanced is stale news, and posting it makes the
+      // order's Delivery status flap. failure/attempted_delivery are exempt — they
+      // are not "backwards", they are a different outcome and may land at any point.
+      if (RANK[target] && RANK[current] && RANK[target] < RANK[current]) {
+        return {
+          ok: true, skipped: true, reason: `stale_status:${target}_after_${current}`,
+          fulfillmentId: String(match.id), created: false,
+        };
+      }
     } else if (!CREATE_FULFILLMENT) {
       return { ok: false, skipped: true, reason: 'no_fulfillment_and_create_disabled' };
     }
 
-    // ── Idempotency claim ──
-    // Everything past this point WRITES to Shopify, and Nimbus's history-replay bursts
-    // put several runs here at the same instant with identical values (see claim.js).
-    // Exactly one of them may continue.
+    // ── Guard 3: the idempotency claim ──
+    // Everything past this point WRITES to Shopify. Firestore's create-if-absent is
+    // atomic server-side, so this settles both the concurrent case (Nimbus replay
+    // bursts arriving at the same instant) and the sequential one (the same status
+    // arriving hours apart on a different scan) in one round trip.
     //
-    // The Nimbus event time is part of the key on purpose: a genuine SECOND "out for
-    // delivery" days later is a different scan and must still reach the customer. Only
-    // repeats of the same scan are suppressed. When a status arrives with no event time,
-    // the key falls back to the UTC date so a burst still collapses but a later day can
-    // retry.
-    const key = claimKey(awb, target, eventTime || new Date().toISOString().slice(0, 10));
+    // Keyed on (AWB, target) — see the note at the top of this file for why the
+    // Nimbus event time was removed. REPEATABLE statuses keep it, because each
+    // failed delivery attempt is genuinely new information.
+    const key = REPEATABLE.has(target)
+      ? claimKey(awb, target, eventTime || new Date().toISOString().slice(0, 10))
+      : claimKey(awb, target);
     if (!(await claim(CLAIM_COLLECTION, key, { awb, target, eventTime: eventTime || '', orderId: String(order.id) }))) {
       return { ok: true, skipped: true, reason: 'duplicate_suppressed', claimKey: key, fulfillmentId: match ? String(match.id) : null };
+    }
+
+    // ── Guard 4: re-read Shopify immediately before writing ──
+    // `order` was fetched earlier in enrich.js — before the Nimbus pull, the Shopify
+    // lookups and several Firestore writes — so by now it can be seconds to minutes
+    // stale, and the local guards above judged on that stale copy. This is the only
+    // check that sees what Shopify holds RIGHT NOW. It costs one GET, and only on the
+    // path that was about to write anyway; every no-op returned before reaching here.
+    if (match) {
+      try {
+        const fresh = await shopify(`/orders/${order.id}.json?fields=id,fulfillments`);
+        const f = (fresh?.order?.fulfillments || []).find((x) => String(x.id) === String(match.id));
+        const liveStatus = f ? (f.shipment_status || null) : null;
+        if (liveStatus === target && !REPEATABLE.has(target)) {
+          // Shopify already has it — leave the claim in place, it is genuinely done.
+          return { ok: true, skipped: true, reason: 'already_' + target + '_live', claimKey: key, fulfillmentId: String(match.id), created: false };
+        }
+        if (RANK[target] && RANK[liveStatus] && RANK[target] < RANK[liveStatus]) {
+          return { ok: true, skipped: true, reason: `stale_status_live:${target}_after_${liveStatus}`, claimKey: key, fulfillmentId: String(match.id), created: false };
+        }
+      } catch (e) {
+        // A failed re-read must not block a real status update — the claim and the
+        // local guards have already done most of the work.
+        console.warn('[shopify-sync] pre-write re-read failed for', awb, '-', e?.message || e);
+      }
     }
 
     let created = false;

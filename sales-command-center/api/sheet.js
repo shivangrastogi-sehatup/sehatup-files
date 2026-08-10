@@ -112,14 +112,6 @@ async function resolveTabTitle(sheets, spreadsheetId, tabSpec, monthOffset = 0) 
   return null;
 }
 
-/** A full Sheets URL or a bare id -> the id. */
-function sheetIdFrom(input) {
-  const v = String(input || '').trim();
-  if (!v) return '';
-  const m = v.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  return m ? m[1] : v;
-}
-
 export default async function handler(req, res) {
   const which = req.query.which;
   const base = SHEETS[which];
@@ -130,34 +122,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: `Unknown sheet "${which}". Use which=health|quick|mens.` });
   }
 
-  // The Settings panel may point a source at a different spreadsheet/tab. Those
-  // overrides only widen the request to sheets the service account has already
-  // been granted access to — it cannot read anything it wasn't shared on.
-  const cfg = {
-    id: sheetIdFrom(req.query.id) || base.id,
-    tab: String(req.query.tab || '').trim() || base.tab,
-  };
+  // Fixed to the configured sheet. `?id=` / `?tab=` overrides used to be accepted
+  // here so a Settings panel could repoint a source from the browser; that panel
+  // was removed on 2026-08-06 and so were the overrides. Nothing sends them, and
+  // not accepting them means this endpoint can only ever read the three sheets it
+  // is configured for — change SHEET_ID_* / SHEET_TAB_* to point it elsewhere.
+  const cfg = { id: base.id, tab: base.tab };
   const cacheKey = `${which}:${monthOffset}:${cfg.id}:${cfg.tab}`;
 
   if (!cfg.id) {
-    return res.status(500).json({ error: `Missing sheet ID for "${which}" — set SHEET_ID_* in .env or point it at a sheet in Settings.` });
+    return res.status(500).json({ error: `Missing sheet ID for "${which}" — set SHEET_ID_${which.toUpperCase()} in the environment.` });
   }
 
   try {
     const auth = getAuth();
     const sheets = google.sheets({ version: 'v4', auth });
-
-    // list=tabs — used by Settings to show what tabs a spreadsheet actually has.
-    if (String(req.query.list || '') === 'tabs') {
-      const meta = await sheets.spreadsheets.get({
-        spreadsheetId: cfg.id,
-        fields: 'properties(title),sheets(properties(sheetId,title))',
-      });
-      return res.status(200).json({
-        title: meta.data.properties?.title || null,
-        tabs: (meta.data.sheets || []).map((s) => s.properties.title),
-      });
-    }
 
     let title;
     const cached = tabCache[cacheKey];
