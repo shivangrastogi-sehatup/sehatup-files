@@ -19,11 +19,13 @@ const { syncShopifyFulfillment } = await import('./shopify-fulfillment.js');
 const firestoreDocs = new Set();
 let shopifyEventPosts = [];
 let fulfillmentCreates = [];
-// What Shopify actually holds right now. Posting an event moves it, and the pre-write
-// re-read (guard 4) sees this — NOT the possibly-stale `order` object passed in, which
-// is what the caller fetched minutes earlier. Modelling the two separately is the whole
-// point: every duplicate in production came from judging on the stale copy.
-let liveShipmentStatus = 'in_transit';
+// What Shopify's fulfillment EVENT LIST holds right now. Posting an event appends here,
+// and the pre-write re-read (guard 4) reads it back — NOT the possibly-stale `order`
+// object passed in, which is what the caller fetched minutes earlier. Modelling the two
+// separately is the whole point: every duplicate in production came from judging on the
+// stale copy. The events list (not shipment_status) is the source of truth, because that
+// is what the customer's drip fires on.
+let liveEvents = [];
 
 const resp = (status, body = '{}') => ({
   ok: status >= 200 && status < 300,
@@ -56,8 +58,12 @@ globalThis.fetch = async (url, opts = {}) => {
     if (u.includes('/events.json') && method === 'POST') {
       const st = JSON.parse(opts.body).event.status;
       shopifyEventPosts.push(st);
-      liveShipmentStatus = st;              // Shopify applies it
+      liveEvents.push({ id: liveEvents.length + 1, status: st });   // Shopify appends it
       return resp(200, '{"fulfillment_event":{"id":1}}');
+    }
+    // Guard 4 reads the event list back to see what a racing run already posted.
+    if (u.includes('/events.json') && method === 'GET') {
+      return resp(200, JSON.stringify({ fulfillment_events: liveEvents }));
     }
     if (u.includes('/fulfillments.json') && method === 'POST') {
       fulfillmentCreates.push(u);
@@ -66,10 +72,11 @@ globalThis.fetch = async (url, opts = {}) => {
     if (u.includes('/fulfillment_orders.json')) {
       return resp(200, '{"fulfillment_orders":[{"id":77,"status":"open","supported_actions":["create_fulfillment"]}]}');
     }
-    // The pre-write re-read: what Shopify holds at this instant.
+    // Order re-read: no longer used by guard 4, kept benign for any other caller.
     if (/\/orders\/\d+\.json/.test(u) && method === 'GET') {
+      const last = liveEvents[liveEvents.length - 1];
       return resp(200, JSON.stringify({
-        order: { id: 123, fulfillments: [{ id: 999, tracking_number: 'AWB1234567', shipment_status: liveShipmentStatus }] },
+        order: { id: 123, fulfillments: [{ id: 999, tracking_number: 'AWB1234567', shipment_status: last ? last.status : null }] },
       }));
     }
   }
@@ -77,7 +84,8 @@ globalThis.fetch = async (url, opts = {}) => {
 };
 
 const reset = (live = 'in_transit') => {
-  firestoreDocs.clear(); shopifyEventPosts = []; fulfillmentCreates = []; liveShipmentStatus = live;
+  firestoreDocs.clear(); shopifyEventPosts = []; fulfillmentCreates = [];
+  liveEvents = live ? [{ id: 1, status: live }] : [];
 };
 const orderWithFulfillment = () => ({
   id: 123,
@@ -269,6 +277,28 @@ const stale = await syncShopifyFulfillment(args({ status: 'Delivered' }));
 check('pre-write re-read catches a stale caller snapshot',
   String(stale.reason).includes('live') && shopifyEventPosts.length === 0,
   JSON.stringify(stale));
+
+// Guard 4 — the real 2026-08-11 production leak: a burst that slips PAST the claim.
+// When the Firestore claim write hiccups, claim() FAILS OPEN (returns true) and both
+// racing scans reach the write path — this is how in_transit / out_for_delivery
+// duplicates still went out minutes apart after the first fix. The events-list re-read
+// is the backstop that now stops the second one. shipment_status could not: it does not
+// reliably mirror a just-posted intermediate event, which is exactly why only the
+// intermediate statuses kept duplicating while `delivered` was already clean.
+reset();
+const realFetchFO = globalThis.fetch;
+globalThis.fetch = async (url, opts = {}) => {
+  if (String(url).includes('firestore.googleapis.com') && (opts.method || 'GET') === 'POST') {
+    return resp(500, '{"error":{"status":"INTERNAL"}}');   // claim write refused → claim() fails open
+  }
+  return realFetchFO(url, opts);
+};
+await syncShopifyFulfillment(args());                    // first OFD scan posts
+const leaked = await syncShopifyFulfillment(args());     // second OFD scan, claim no longer guards it
+globalThis.fetch = realFetchFO;
+check('events-list re-read stops a duplicate when the claim fails open',
+  shopifyEventPosts.length === 1 && String(leaked.reason).includes('live'),
+  `posted ${shopifyEventPosts.length}: ${shopifyEventPosts} (${leaked.reason})`);
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

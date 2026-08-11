@@ -197,7 +197,7 @@ flowchart TD
     G2 -->|yes| X2["skip — stale_status"]
     G2 -->|no| G3{"3. claim (awb, target)<br/>atomic in Firestore"}
     G3 -->|taken| X3["skip — duplicate_suppressed"]
-    G3 -->|won| G4{"4. re-read Shopify NOW<br/>still not at target?"}
+    G3 -->|won| G4{"4. re-read Shopify's EVENT LIST NOW<br/>status already posted?"}
     G4 -->|already there| X4["skip — already_..._live"]
     G4 -->|no| P["POST the event"]
     P --> W["write shopifyStatus<br/>back to the AWB doc"]
@@ -214,7 +214,21 @@ flowchart TD
 | 1 · `shopifyStatus` on the AWB doc | `enrich.js` reads it off the PATCH response (no extra read) and passes it in | the same status arriving again, ever — survives the claims collection being purged |
 | 2 · rank guard | `confirmed(1) < in_transit(2) < out_for_delivery(3) < delivered(4)` | a replayed old scan walking the order backwards (#1864) |
 | 3 · claim on `(awb, target)` | `shopify-fulfillment.js`, event time removed from the key | everything else — concurrent bursts *and* scans hours apart |
-| 4 · re-read the order before writing | one Shopify GET, only on the path about to write | the caller's `order` snapshot being minutes stale |
+| 4 · re-read the fulfillment's EVENT LIST before writing | one Shopify GET, only on the path about to write | a burst that slipped past the claim when it failed open — reads the events the drip fires on, not the unreliable `shipment_status` |
+
+**Update 2026-08-11 — guard 4 now reads the EVENT LIST, not `shipment_status`.** After
+the first fix deployed (commit `aed8a8d`), delivered duplicates and long-gap repeats
+stopped, but `in_transit` / `out_for_delivery` still duplicated a few minutes apart in a
+concurrent burst (e.g. #1888 `out_for_delivery` 10:04 → 10:06 on 2026-08-11). Root cause:
+the Firestore **claim fails open** (`claim.js` returns `true` on any write error), so a
+burst can get two runs past guard 3; and the old guard 4 compared against the fulfillment's
+`shipment_status`, which does **not** reliably mirror a just-posted *intermediate* event —
+so the second run saw "not there yet" and posted again. `delivered` was fine because
+`shipment_status` tracks it well, which is exactly why only the intermediate statuses
+leaked. Guard 4 now GETs `/fulfillments/{id}/events.json` and skips if an event with this
+status already exists — the same source of truth `check-duplicates.mjs` audits. Same one
+GET; regression covered by "events-list re-read stops a duplicate when the claim fails
+open" in the test suite.
 
 **`attempted_delivery` and `failure` are exempt from all four equality checks.** A
 second failed delivery attempt is genuinely new information; a second "delivered"

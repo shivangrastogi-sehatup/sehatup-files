@@ -52,6 +52,17 @@ for (const t of [
   check(`reaches AI: ${JSON.stringify(t)}`, r.skipAi === false, r);
 }
 
+console.log("\n--- human-handoff: AI stays silent so a real agent + calling automation take over ---");
+for (const t of [
+  "Mujhe Vaji Bati or Kern Drops Chahiye",
+  "mujhe vaji bati or kern drop chahiye",
+  "mujhe vaji bati aur kern drops chahiye",
+  "vaji bati or kern drops chahiye",
+]) {
+  const r = classify(t);
+  check(`handoff: ${JSON.stringify(t)}`, r.skipAi === true && r.skipReason === "human_handoff_trigger", r);
+}
+
 console.log("\n--- media and button taps are skipped for their own reasons ---");
 check("button tap skipped", classify("YES", "USER_BUTTON_REPLY").skipReason === "button_reply");
 check("list reply skipped", classify("1", "USER_LIST_REPLY").skipReason === "list_reply" ||

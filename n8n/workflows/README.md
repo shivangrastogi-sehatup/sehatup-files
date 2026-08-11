@@ -268,7 +268,6 @@ AI branch.
 - **button taps** — `USER_LIST_REPLY` / `USER_BUTTON_REPLY` (`button_reply`).
 - **automation trigger texts** — QuickReply's own no-code flows already answer these, so the AI must stay out (`automation_trigger`). Matched as **patterns**, against text with punctuation stripped:
   - `/health\s*scores?/` and `/healthscores?/`
-  - `/vaji\s*bati\s*(or|aur|and)?\s*kern\s*drops/`
 
   > **Why patterns and not exact strings.** The list used to hold four literal substrings
   > matched with `.includes()`. The real button text is
@@ -276,6 +275,8 @@ AI branch.
   > "Health Score", so `check my free health score` never matched. The AI was not skipped, it
   > answered, and it **invented a health score and a PCOD diagnosis**. A marketing team will
   > reword a button; a pattern survives that, a literal does not.
+- **human-handoff texts** — the AI stays silent, but for the OPPOSITE reason to the automation triggers: nothing automated *replies*. A real agent takes over and a separate calling automation fires on the same phrasing (`human_handoff_trigger`). Matched by `HUMAN_HANDOFF_RES`, anchored to the whole message:
+  - `Mujhe vaji bati or kern drop chahiye` and close variants (optional leading "mujhe", `or`/`aur`, `drop`/`drops`, common spellings of chahiye). Added 2026-08-11. A lone `vaji bati ka price` still reaches the AI.
 
 ### Debounce + handoff
 
