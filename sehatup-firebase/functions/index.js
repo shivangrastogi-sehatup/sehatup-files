@@ -3401,6 +3401,157 @@ exports.qrProductLookup = onRequest(
   },
 );
 
+// ── AI run flight-recorder ───────────────────────────────────────────────────
+// One structured document per n8n execution, so "why didn't the bot reply to X?"
+// becomes a Firestore QUERY instead of opening executions one by one in the n8n UI.
+// The n8n workflow POSTs a run object from each terminal branch (Log Skipped, the
+// Decide-Process bow-out, Log Success) and from an Error Trigger sub-workflow.
+//
+// Contract (same as qrProductLookup): logging must NEVER break the chat flow, so every
+// path returns HTTP 200 except a bad token (401). The caller uses onError:continue too.
+//
+// Doc id = executionId when given, written with merge, so the Error Trigger's failure
+// blob lands on the SAME doc as the run it belongs to (n8n's Error Trigger exposes the
+// failed execution's id), and a retried branch updates one doc instead of duplicating.
+//
+// Auth: reuses QR_CONTEXT_TOKEN (the token qrCustomerContext / qrProductLookup already
+// use) — no new secret. n8n sends ?token=@@@ exactly as it does for those two.
+//
+// TTL: expireAt is a Timestamp AI_RUNS_RETENTION_DAYS ahead. Enable a Firestore TTL
+// policy on ai_runs.expireAt ONCE (console → Firestore → TTL) so old runs self-delete;
+// until that policy exists the field is inert and nothing is pruned.
+const AI_RUNS_RETENTION_DAYS = 60;
+const qrClip = (v, n) => (typeof v === "string" && v.length > n ? v.slice(0, n) : v);
+exports.qrLogRun = onRequest(
+  { region: "us-central1", timeoutSeconds: 15, memory: "256MiB" },
+  async (req, res) => {
+    try {
+      if (req.method !== "POST") return res.status(200).json({ ok: false, error: "use POST" });
+      const expected = process.env.QR_CONTEXT_TOKEN || process.env.QUICKREPLY_WEBHOOK_TOKEN;
+      const given = req.query.token || (req.body && req.body.token);
+      if (expected && given !== expected) return res.status(401).json({ ok: false, error: "unauthorized" });
+
+      const b = (req.body && typeof req.body === "object") ? req.body : {};
+      const run = { ...b };
+      delete run.token; // an auth param, not run data — do not persist it
+
+      const phone = String(run.phone || "");
+      const convId = run.convId ? String(run.convId) : qrConvId(phone);
+      const nowMs = Date.now();
+      const clientMs = Number(run.ts) || Number(run.msgTime) || nowMs;
+
+      // Trim only the few fields that can be large, so one runaway prompt can't bloat the
+      // doc (Firestore caps a document at ~1 MiB). Everything else passes through untouched,
+      // so a new field the workflow starts sending needs no change here.
+      if (run.ai && typeof run.ai === "object") {
+        run.ai.reply = qrClip(run.ai.reply, 4000);
+        if ("prompt" in run.ai) run.ai.prompt = qrClip(run.ai.prompt, 8000);
+      }
+      run.input = (run.input && typeof run.input === "object") ? run.input : {};
+      if (run.input.text) run.input.text = qrClip(String(run.input.text), 2000);
+
+      const doc = {
+        ...run,
+        phone,
+        convId,
+        outcome: String(run.outcome || "unknown"),
+        reason: run.reason != null ? String(run.reason) : "",
+        ts: clientMs,                             // client event time (ms) — order runs by this
+        loggedAt: FieldValue.serverTimestamp(),   // when THIS write landed (authoritative)
+        expireAt: Firestore.Timestamp.fromMillis(nowMs + AI_RUNS_RETENTION_DAYS * 86400000),
+      };
+
+      const db = getFirestore();
+      const col = db.collection("ai_runs");
+      const execId = run.executionId ? String(run.executionId) : "";
+      let id;
+      if (execId) {
+        id = execId;
+        await col.doc(id).set(doc, { merge: true });
+      } else {
+        const ref = await col.add(doc);
+        id = ref.id;
+      }
+      console.log(`[qrLogRun] ${doc.outcome} phone=${phone || "?"} reason=${doc.reason || "-"} id=${id}`);
+      return res.status(200).json({ ok: true, id });
+    } catch (err) {
+      console.error("[qrLogRun] failed:", err.message);
+      return res.status(200).json({ ok: false, error: err.message });
+    }
+  },
+);
+
+// ── AI run reader (powers the ai_runs dashboard) ─────────────────────────────
+// Read side of the flight recorder: returns ai_runs as JSON for the static dashboard
+// (n8n/workflows/ai-runs-dashboard.html). CORS-open + token-gated (same QR_CONTEXT_TOKEN),
+// so the page can call it from a hosted URL or a local file without touching Firestore
+// security rules — the PII stays behind the token instead of behind a public read rule.
+//
+// INDEX-FREE by design: Firestore auto-creates single-field indexes, so an equality filter
+// (phone / outcome / reason) needs no composite index; only the unfiltered "recent feed"
+// path uses orderBy(ts), which the automatic ts index already covers. Secondary filters are
+// applied in memory. This keeps the deploy to one function with no index step.
+exports.qrRuns = onRequest(
+  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    try {
+      // Own dedicated token so locking the dashboard (a PII read endpoint) never forces a
+      // token onto the fail-open write/context endpoints. Falls back to QR_CONTEXT_TOKEN, and
+      // if neither is set it stays open — same behaviour as everything else here today.
+      const expected = process.env.QR_RUNS_TOKEN || process.env.QR_CONTEXT_TOKEN || process.env.QUICKREPLY_WEBHOOK_TOKEN;
+      const given = req.query.token || (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+      if (expected && given !== expected) return res.status(401).json({ ok: false, error: "unauthorized", runs: [] });
+
+      const phone    = String(req.query.phone   || "").trim();
+      const outcome  = String(req.query.outcome || "").trim();
+      const reason   = String(req.query.reason  || "").trim();
+      const before   = Number(req.query.before) || 0;                  // cursor: return runs with ts < before
+      const pageSize = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+
+      const db = getFirestore();
+      const col = db.collection("ai_runs");
+      const mapDoc = (d) => {
+        const r = d.data() || {};
+        const { expireAt, loggedAt, ...rest } = r; // drop the raw Timestamps
+        return { id: d.id, ...rest, loggedAt: loggedAt && loggedAt.toDate ? loggedAt.toDate().toISOString() : null };
+      };
+
+      let runs;
+      if (phone || outcome || reason) {
+        // An equality filter — stay index-free (no orderBy): pull a window, then sort and
+        // paginate in memory. The `before` cursor and any secondary filter apply here too.
+        let q = col;
+        if (phone) q = q.where("phone", "==", phone);
+        else if (outcome) q = q.where("outcome", "==", outcome);
+        else q = q.where("reason", "==", reason);
+        runs = (await q.limit(500).get()).docs.map(mapDoc);
+        if (outcome) runs = runs.filter((r) => r.outcome === outcome);
+        if (reason)  runs = runs.filter((r) => r.reason === reason);
+        runs.sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
+        if (before) runs = runs.filter((r) => (Number(r.ts) || 0) < before);
+        runs = runs.slice(0, pageSize);
+      } else {
+        // Recent feed — the cursor paginates on the automatic single-field ts index (a range
+        // filter + orderBy on the SAME field needs no composite index).
+        let q = col.orderBy("ts", "desc");
+        if (before) q = q.where("ts", "<", before);
+        runs = (await q.limit(pageSize).get()).docs.map(mapDoc);
+      }
+
+      // A full page implies there may be more; hand back the last ts as the next cursor.
+      const nextCursor = runs.length === pageSize ? (Number(runs[runs.length - 1].ts) || null) : null;
+      return res.status(200).json({ ok: true, count: runs.length, runs, nextCursor });
+    } catch (err) {
+      console.error("[qrRuns] failed:", err.message);
+      return res.status(200).json({ ok: false, error: err.message, runs: [] });
+    }
+  },
+);
+
 // ── QuickReply Tester clear ──────────────────────────────────────────────────
 // Wipes a phone's qr_conversations/{phone}/events so the bot starts a fresh
 // conversation (the n8n "Build AI Prompt" node feeds recent events back to the

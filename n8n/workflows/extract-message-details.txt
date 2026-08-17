@@ -53,12 +53,13 @@ const mediaPath = payload.path || '';
 // reaches the AI, where a deterministic responder sends the real link.
 // >> If QuickReply is later configured to answer the PCOD variant too, add it here, or the
 //    customer will get the link twice.
-// got no reply at all, because QuickReply does not answer that phrasing either. The AI now
-// handles it and the product guard sends both products with live prices.
-// The vaji-bati/kern-drops trigger was REMOVED 2026-07-31. A customer typed
-// "Mujhe vaji bati or kern drop chahiye" at 13:45 and got NO reply at all - QuickReply does
-// not answer that phrasing either, so skipping the AI just produced silence. The AI now
-// handles it and the product guard sends both products with live prices.
+// The vaji-bati/kern-drops message ("Mujhe vaji bati or kern drop chahiye") is a
+// HUMAN-HANDOFF case, handled by HUMAN_HANDOFF_RES below - NOT by this AUTOMATION list.
+// History: it was a skip trigger, REMOVED 2026-07-31 when skipping produced silence (neither
+// QuickReply nor, at the time, anything else answered it), then RE-ADDED 2026-08-11 with a
+// different purpose: the AI must stay SILENT so a real agent takes over, and a separate
+// calling automation fires on the same phrasing. Silence is intentional now - do not delete
+// HUMAN_HANDOFF_RES expecting the AI to reply.
 // >> ADDED 2026-08-04: "I want my detailed HealthScore360 report". QuickReply's flow answers
 //    this one end to end - it posts "We're processing your HealthScore360 Report", then the
 //    PDF itself. The AI was not skipped (the old pattern ended at "healthscore", so the
@@ -73,14 +74,25 @@ const AUTOMATION_TRIGGER_RES = [
 ];
 const textLc = String(text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 const isTriggerText = AUTOMATION_TRIGGER_RES.some(re => re.test(textLc));
+// HUMAN-HANDOFF triggers: AI must NOT answer, but for the OPPOSITE reason to the automation
+// triggers above - nothing automated *replies*. A real agent takes over and a separate
+// calling automation fires on the same phrasing. Added 2026-08-11 for the vaji-bati/kern-drops
+// buying message. Anchored to the full message (only this phrasing), tolerating drop/drops,
+// or/aur, an optional leading "mujhe", and common spellings of chahiye. Add entries here only
+// for phrasings you want handed to a human instead of answered by the AI.
+const HUMAN_HANDOFF_RES = [
+  /^\s*(mujhe\s+)?vaji\s*bati\s+(or|aur)\s+kern\s*drops?\s+(chahiye|chahie|chaiye|chahiya)\s*$/
+];
+const isHumanHandoffText = HUMAN_HANDOFF_RES.some(re => re.test(textLc));
 const isButtonReply = ptype === 'USER_LIST_REPLY' || ptype === 'USER_BUTTON_REPLY';
-const isAutomation = isTriggerText || isButtonReply;
+const isAutomation = isTriggerText || isButtonReply || isHumanHandoffText;
 
 // The AI answers ONLY real typed questions. Skip media + automation/button messages.
 const skipAi = isMedia || isAutomation;
 let skipReason = '';
 if (isMedia) skipReason = 'media_' + mediaKind;
 else if (isButtonReply) skipReason = 'button_reply';
+else if (isHumanHandoffText) skipReason = 'human_handoff_trigger';
 else if (isTriggerText) skipReason = 'automation_trigger';
 
 return [{

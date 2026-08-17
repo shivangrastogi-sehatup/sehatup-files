@@ -1,0 +1,1139 @@
+Date & Time (UTC),Message ID,Conversation ID,Phone,Country,Direction,Message Type,Message Content,Delivery Status,Failure Reason,Template ID,Campaign Type,Template Category,Amount Charged,Automation Source Type,Automation Source ID,Channel Type,Replied,Button Clicks,CTA Link Clicks
+"2025-08-17T00:33:37.000Z","C8uqYKs5qSCFwze39_msg","686bdffdb8bcd013e2702e49_conv","+917007048900","India","Inbound","USER_TEXT","Hey there, I have a question!/🙏, namskar,sir, good, morning,7007048900","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-17T00:33:40.718Z","gAChtMSoxNjdrdBw2_msg","686bdffdb8bcd013e2702e49_conv","+917007048900","India","Outbound","SYSTEM_WARNING_TEXT","<div class=""header"">Customer data sync to Shopify failed.</div><p><b>Email - </b>has already been taken</p>","SENT","","","","","","OTHERS","","","No","",""
+"2025-08-17T00:33:41.843Z","xEieqWRYDqx8AKoxH_msg","686bdffdb8bcd013e2702e49_conv","+917007048900","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-17T01:34:50.000Z","cgRhkKqHvqtDZ4PLa_msg","68a131bd2eda039a83bb7155_conv","+919250623138","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-17T01:34:55.914Z","mbrpxy5oNSc8WYhza_msg","68a131bd2eda039a83bb7155_conv","+919250623138","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-17T02:05:46.000Z","R9ZuLQgpQPNfKg3J2_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-17T02:05:52.221Z","pKBy8eX6N9jJ2F3BT_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-17T03:53:37.000Z","WmpNS9rciDhYy9Bk2_msg","68a152432eda039a83bf6e23_conv","+919967188316","India","Inbound","USER_TEXT","Hey thehre, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-17T03:53:40.183Z","9caejtohA8ddeS6X2_msg","68a152432eda039a83bf6e23_conv","+919967188316","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-17T03:54:14.000Z","ptpoR2A3AJkMQXjkS_msg","68a152432eda039a83bf6e23_conv","+919967188316","India","Inbound","USER_TEXT","hii","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-17T03:54:18.000Z","pvcKgvRAcExdzAQL7_msg","68a152432eda039a83bf6e23_conv","+919967188316","India","Inbound","USER_TEXT","hello","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-17T04:13:00.516Z","3zD4KmPShXiok5ckS_msg","DagAusypicb2wnsj6_conv","+919660797612","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/6e3hbWc?qrId=c2p1TnVGdEhlaFFtcDRmOXd8Njg4YjI2YWMyNzQ2ZmU3OTk4Yjc1ZDFkX2N1]","DELIVERED","","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-17T05:10:46.000Z","v8vmcKTABmtPLiwBy_msg","68a1645880773763c860d697_conv","+919940214543","India","Inbound","USER_TEXT","Hey there, I have Hia question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-17T05:10:51.138Z","NPNkrNxAFcXD9zusq_msg","68a1645880773763c860d697_conv","+919940214543","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-17T08:08:10.100Z","68a18deae6b2eb4f39d3e0c3_msg","EhAh5Y5DuFEz7bKC4_conv","+917426972447","India","Outbound","WA_TEMPLATE","{""text"":""*Looking to boost your health even further?*\n\nPair your current supplement with *Ashwagandha Tablets* to *balance stress & hormones, supports immunity—completes the wellness loop* 🌿""}","FAILED","Error from Whatsapp : Message undeliverable.","685ba2d4decc5cf006ff0714_wt","","MARKETING","0","JOURNEY","685bc83ab4ea8297a00cf024","Whatsapp","No","",""
+"2025-08-17T10:14:09.797Z","68a1ab71a6857d86671e2d05_msg","Q4DqAuyD6pisijg4D_conv","+919535574805","India","Outbound","WA_TEMPLATE","{""text"":""*Looking to boost your health even further?*\n\nPair your current supplement with *Ashwagandha Tablets* to *balance stress & hormones, supports immunity—completes the wellness loop* 🌿""}","READ","","685ba2d4decc5cf006ff0714_wt","","MARKETING","0.94306","JOURNEY","685bc83ab4ea8297a00cf024","Whatsapp","No","",""
+"2025-08-17T11:56:00.624Z","nLDiqzar6ARqG8qLX_msg","tbwtfb72A6nEAXvvM_conv","+918145737385","India","Outbound","AGENT_TEXT","_Supplements tabhi kaam karte hain jab aap unhe regular lete ho._
+
+💊 + 😴 + 🍲 = *better health* | [Join sehatUP Community,https://qkrp.ly/6TyJHTn?qrId=dVJiamt5cWo2Z3V3YnpaQXJ8Njg3YTI0NGU3NjY2ZTQ5YmFkNjBlMTYyX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685e7f0c7f34f384782d1a4c_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","BjeGobuMNDDiYWRtu_camp","Whatsapp","No","",""
+"2025-08-18T04:13:01.608Z","hCSvv6Di675imZgPc_msg","DagAusypicb2wnsj6_conv","+919660797612","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/462w8T1?qrId=ZDRKTFJDdTZ1OUw5a2h5cHp8Njg4YjI2YWMyNzQ2ZmU3OTk4Yjc1ZDFkX2N1]","DELIVERED","","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-18T05:42:27.824Z","NtjDkR6EWmwo7wDqg_msg","eeXuPXPg4C4Cbbcui_conv","+919100553941","India","Outbound","AGENT_TEXT","*Your SehatUP order should have arrived!*
+
+For best results, just follow the instructions on the label.
+_Questions? Reply here or call us — we’re happy to help._
+
+*Stay healthy* 😊 | [Book an appointment]","READ","","686cf5838ce7bb0ff4afec2f_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","zM3FsxnM7KsXqWhPf_camp","Whatsapp","No","",""
+"2025-08-18T05:50:47.248Z","jK96XHdb88G5KKghS_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Outbound","AGENT_TEXT","*889690* is your verification code. | [Copy code,https://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp889690]","READ","","68592d88decc5cf006b673d1_wt","","AUTHENTICATION","0.17420000000000002","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T06:46:56.042Z","uLmDZJ4Qqsa2ELbp8_msg","689dfb461b42df37b8a2d8c4_conv","+919939066150","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T06:49:41.806Z","574aomHmsBZEaQpaS_msg","689dfb461b42df37b8a2d8c4_conv","+919939066150","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","Tfy4dmpnKLdrpCs6L_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T06:51:47.875Z","LkEdTJmY2nFkqTmLk_msg","689e00852eda039a83e63b09_conv","+918979727709","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T06:52:14.793Z","APoBsj5AFjGs2JYai_msg","689e00852eda039a83e63b09_conv","+918979727709","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","DELIVERED","","Tfy4dmpnKLdrpCs6L_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T06:52:41.476Z","nj2vND5NCK7r3wAiG_msg","689e0dfd2eda039a83ec3f72_conv","+918747093544","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T06:53:00.519Z","bWYn5C2fnj6LkTcHC_msg","689e0dfd2eda039a83ec3f72_conv","+918747093544","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T06:54:34.138Z","bhewP64vFgPKD2W3X_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T06:55:01.480Z","4aefEt8XpJQpBRLbS_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T06:55:37.774Z","nLWHnKReErCQvZvG5_msg","689ecaef1b42df37b8c6d438_conv","+919766872766","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T06:56:17.232Z","FDZGCZCWmf8j5cBbn_msg","689ecaef1b42df37b8c6d438_conv","+919766872766","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T06:56:24.183Z","tWrcZwAcwCds24DHd_msg","689ed8ba2eda039a830f4258_conv","+917461807490","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T06:59:09.373Z","GLqtHacgyH9rcinEw_msg","689ed8ba2eda039a830f4258_conv","+917461807490","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:00:18.861Z","nN9uNWKHWmd9iGTst_msg","689ef61f372519fb69bcd2fb_conv","+917000466363","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:00:37.120Z","3Gcub4HyrTdQNnRWF_msg","689ef61f372519fb69bcd2fb_conv","+917000466363","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:15:37.484Z","4LfFD95v9jeqioQ7n_msg","ret6GwHsugz4uyuF7_conv","+918849308317","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:15:54.554Z","SM8kfp7QfXQPDkFar_msg","ret6GwHsugz4uyuF7_conv","+918849308317","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","Yes","",""
+"2025-08-18T07:15:56.000Z","ABtqt7bzSP8Q5cnEF_msg","ret6GwHsugz4uyuF7_conv","+918849308317","India","Inbound","USER_TEXT","Thank you for contacting Auto John! Please let us know how we can help you.","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:15:59.570Z","noPyqq52wAgttfa6W_msg","ret6GwHsugz4uyuF7_conv","+918849308317","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:16:22.327Z","N6dkcbQ5he6s5Gvc8_msg","ret6GwHsugz4uyuF7_conv","+918849308317","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:16:27.865Z","Hrkh7nQ7gjFC32bXq_msg","ret6GwHsugz4uyuF7_conv","+918849308317","India","Outbound","AGENT_TEXT","Hello sir, ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:17:59.250Z","gqii2bpMQxW23XjGb_msg","689f43711b42df37b8ff2872_conv","+916284019230","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:18:15.379Z","bbigWbz6vkmsW8eS2_msg","689f43711b42df37b8ff2872_conv","+916284019230","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:20:00.356Z","5h7RDvfRWmSDWdM6C_msg","689f5650372519fb69ea5ade_conv","+919296104462","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:20:15.571Z","B7GiKGugLXzFHWscZ_msg","689f5650372519fb69ea5ade_conv","+919296104462","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : User's number is part of an experiment.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:20:33.128Z","Jm7h8LhqrAXSuTK7u_msg","689f64c0372519fb69efa101_conv","+917708768894","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:20:53.000Z","ovcfrXbKcpoNXGfpg_msg","688ce04f6348477ae04edf59_conv","+918890192122","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:20:59.244Z","c8piJbEKHxYzAXnz3_msg","688ce04f6348477ae04edf59_conv","+918890192122","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:21:14.722Z","BoK6LLBQwHcWiZpW5_msg","689f64c0372519fb69efa101_conv","+917708768894","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","Yes","",""
+"2025-08-18T07:21:50.000Z","nH3vWcLGYYyEx3B8J_msg","688ce04f6348477ae04edf59_conv","+918890192122","India","Inbound","USER_TEXT","कितने में मिल जाएगा","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:21:53.937Z","rMQdWJEjEFEPbgANs_msg","689fb0302eda039a83569fe0_conv","+918590399507","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:22:05.915Z","xdEQwXnBSeQEE4ben_msg","689fb0302eda039a83569fe0_conv","+918590399507","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:23:16.431Z","vuPrTtWuy2HAcPkr7_msg","68940d45e397e573b87e21f8_conv","+919328466356","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:23:28.393Z","YYepgzCMma4YPfCAd_msg","68940d45e397e573b87e21f8_conv","+919328466356","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:23:41.327Z","4GbW843d9ETSMedmh_msg","689feb672eda039a8359f59e_conv","+919214265125","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:23:52.914Z","zK346ofnarrde9q8W_msg","689feb672eda039a8359f59e_conv","+919214265125","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:35:49.202Z","Y9MrsrygXtucL6C4L_msg","68a03748edeebbd36ef52643_conv","+919759929138","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:36:03.853Z","btAdt9svqNoRPZbwR_msg","68a03748edeebbd36ef52643_conv","+919759929138","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:40:34.181Z","tYqe4zp3YpEFjSoiM_msg","68a03e1eedeebbd36ef90eed_conv","+916355915598","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:40:45.713Z","ZiJDbXqQohTeKzHEr_msg","68a03e1eedeebbd36ef90eed_conv","+916355915598","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:43:44.080Z","rWK6uaKQux3jHCCck_msg","68a043132eda039a83757fd7_conv","+919425991937","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:43:56.416Z","SCDtejZEc7Xt2ijS7_msg","68a043132eda039a83757fd7_conv","+919425991937","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:45:50.181Z","w2Yi6EhqLqdsckGn9_msg","68a0a18380773763c844b942_conv","+918103593308","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:46:01.952Z","2oBabwhP8JzNdrt4W_msg","68a0a18380773763c844b942_conv","+918103593308","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","Restart",""
+"2025-08-18T07:46:22.000Z","qWrFSsdCH9YzHzmqf_msg","68a0a18380773763c844b942_conv","+918103593308","India","Inbound","USER_TEXT","Restart","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:46:30.473Z","L9XjRE6iw5TEMawjn_msg","68a0a18380773763c844b942_conv","+918103593308","India","Outbound","AGENT_TEXT","Hello sir, ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:46:41.730Z","YbWA5MrGxCtxGMb3W_msg","68a0a18380773763c844b942_conv","+918103593308","India","Outbound","AGENT_TEXT","How Can I Help you?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:47:30.466Z","9ni2bmSgK9JEvNYax_msg","68a0e895372519fb69583f93_conv","+919588855277","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:47:43.095Z","fgBzwZJKqF4adn9xc_msg","68a0e895372519fb69583f93_conv","+919588855277","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","SENT","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:48:10.457Z","qhiNv4YLFArLREzkL_msg","68a0cf41372519fb69564ef9_conv","+919814917443","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:48:21.708Z","bFQw5aM7AgCTEqboN_msg","68a0cf41372519fb69564ef9_conv","+919814917443","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","DELIVERED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:48:55.334Z","mEEzJm6Qxnh96hkHY_msg","689b5186d3b7b9d6842cf268_conv","+919810959278","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:49:59.719Z","X3sn7Wxubaghjux8P_msg","689b5186d3b7b9d6842cf268_conv","+919810959278","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:50:55.664Z","TiaDmTLTMZJ5EdQJa_msg","686bdffdb8bcd013e2702e49_conv","+917007048900","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:51:08.901Z","5nXPCcQ2byNgJ9cCm_msg","686bdffdb8bcd013e2702e49_conv","+917007048900","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:51:25.666Z","FynNBmjAZRCZbaM8o_msg","68a131bd2eda039a83bb7155_conv","+919250623138","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:51:56.951Z","yqejJ4xk2s4xvnEFe_msg","68a131bd2eda039a83bb7155_conv","+919250623138","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T07:52:34.642Z","2REBFbr8FajuZ37zR_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:53:11.243Z","CMhkt3GusebCzkzy2_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","Restart",""
+"2025-08-18T07:53:55.582Z","96irzmzxfZeyKKauo_msg","68a152432eda039a83bf6e23_conv","+919967188316","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T07:54:07.001Z","JzWJuNtkM3274nEps_msg","68a152432eda039a83bf6e23_conv","+919967188316","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T08:00:56.238Z","uQ7QDyBhWgkdZMRc7_msg","688ce04f6348477ae04edf59_conv","+918890192122","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T08:04:30.000Z","y9u74Aw5BaMpd5ouq_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Inbound","USER_TEXT","Restart","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T08:12:13.901Z","AFKZfzxrdyX7vanyE_msg","688ce04f6348477ae04edf59_conv","+918890192122","India","Outbound","AGENT_TEXT","Hello Sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T08:12:21.331Z","7ePoTvFS9DpdyyqHW_msg","688ce04f6348477ae04edf59_conv","+918890192122","India","Outbound","AGENT_TEXT","Apko Shilajit ka price janna hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T08:13:01.935Z","Mkh9s9P8towNXwSTK_msg","68a1645880773763c860d697_conv","+919940214543","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-18T08:13:16.078Z","nAZnmDrCCNi85v9CG_msg","68a1645880773763c860d697_conv","+919940214543","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-18T08:13:50.651Z","pb7FCpXqe8CaSxoS3_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Outbound","AGENT_TEXT","Hello Sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T08:13:56.168Z","LwgeHy8MjSQFXKfcd_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Outbound","AGENT_TEXT","How can I Help You?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T09:33:32.010Z","zWLS8RLRbSS55Sg8e_msg","689b516f1aea5e4b89314b57_conv","+919849404210","India","Outbound","AGENT_TEXT","ji sir bataye mai apki kis prakar help kar sakta hu","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T09:34:20.065Z","2LX3Jq5NEBhgQWwF2_msg","68a0a18380773763c844b942_conv","+918103593308","India","Outbound","AGENT_TEXT","Hello Sir,","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T09:34:25.570Z","KEh7B3Nj9mcwp6PXE_msg","68a0a18380773763c844b942_conv","+918103593308","India","Outbound","AGENT_TEXT","Apko Shilajit kharidna hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-18T11:56:08.867Z","68a314d8bfb7f2fb40aebde6_msg","tbwtfb72A6nEAXvvM_conv","+918145737385","India","Outbound","WA_TEMPLATE","{""text"":""*Looking to boost your health even further?*\n\nPair your current supplement with *Ashwagandha Tablets* to *balance stress & hormones, supports immunity—completes the wellness loop* 🌿""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685ba2d4decc5cf006ff0714_wt","","MARKETING","0","JOURNEY","685bc83ab4ea8297a00cf024","Whatsapp","No","",""
+"2025-08-18T12:29:08.487Z","68a31c94ac9a0d803301e548_msg","689b51521aea5e4b893129e1_conv","+918171317539","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.624Z","68a31c94ac9a0d803301e56e_msg","689b51521aea5e4b89312a20_conv","+919818620022","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.633Z","68a31c9408c5911736120e0d_msg","689b51551aea5e4b89312df9_conv","+917042919688","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.640Z","68a31c9408c5911736120e0f_msg","689b51561aea5e4b89312eb5_conv","+919810702272","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.653Z","68a31c94ac9a0d803301e579_msg","689b51521aea5e4b893129f1_conv","+919717440687","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.725Z","68a31c9408c5911736120e2b_msg","689b5158d3b7b9d6842cc09b_conv","+919910232923","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.755Z","68a31c94ac9a0d803301e597_msg","689b5158d3b7b9d6842cbfde_conv","+919910003080","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.786Z","68a31c9408c5911736120e3d_msg","689b515cd3b7b9d6842cc551_conv","+918447934182","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.803Z","68a31c94ac9a0d803301e5a8_msg","689b5157d3b7b9d6842cbf09_conv","+919873318847","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.812Z","68a31c9408c5911736120e43_msg","689b515ed3b7b9d6842cc7bb_conv","+919821136479","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.823Z","68a31c94ac9a0d803301e5b1_msg","689b515ad3b7b9d6842cc285_conv","+917812996967","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.832Z","68a31c9408c5911736120e49_msg","689b515a1aea5e4b89313445_conv","+918368585825","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.843Z","68a31c94ac9a0d803301e5ba_msg","689b51591aea5e4b89313334_conv","+919811556853","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.847Z","68a31c9408c5911736120e4f_msg","689b515fd3b7b9d6842cc862_conv","+918510090801","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.893Z","68a31c94ac9a0d803301e5c3_msg","689b5156d3b7b9d6842cbd46_conv","+919717696941","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.894Z","68a31c9408c5911736120e5c_msg","689b515fd3b7b9d6842cc8b6_conv","+919582537595","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.949Z","68a31c94ac9a0d803301e5cb_msg","689b51611aea5e4b89313c0a_conv","+919910421904","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:08.982Z","68a31c94ac9a0d803301e5d2_msg","689b515b1aea5e4b89313576_conv","+919990933546","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:09.029Z","68a31c95ac9a0d803301e5de_msg","689b515d1aea5e4b89313740_conv","+919650494818","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:09.043Z","68a31c95ac9a0d803301e5e1_msg","689b515ed3b7b9d6842cc726_conv","+919810664193","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.630Z","68a31c96ac9a0d803301e676_msg","689b51621aea5e4b89313d4b_conv","+918130759854","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.746Z","68a31c9608c5911736120edd_msg","689b51671aea5e4b893143cc_conv","+919810824143","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.753Z","68a31c96ac9a0d803301e693_msg","689b51621aea5e4b89313dbb_conv","+919810577354","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.767Z","68a31c9608c5911736120ee4_msg","689b5164d3b7b9d6842cceeb_conv","+919654095030","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.859Z","68a31c9608c5911736120f00_msg","689b5169d3b7b9d6842cd453_conv","+919560888966","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.970Z","68a31c96ac9a0d803301e6bd_msg","689b51661aea5e4b893141f9_conv","+919928608469","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.982Z","68a31c9608c5911736120f2d_msg","689b516bd3b7b9d6842cd64e_conv","+919811631416","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","SENT","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:10.999Z","68a31c9608c5911736120f35_msg","689b516dd3b7b9d6842cd85d_conv","+919871508986","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.017Z","68a31c9708c5911736120f3c_msg","689b516ed3b7b9d6842cd9aa_conv","+917079372552","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.041Z","68a31c97ac9a0d803301e6d3_msg","689b516dd3b7b9d6842cd932_conv","+919625179336","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.045Z","68a31c97ac9a0d803301e6d5_msg","689b51681aea5e4b89314470_conv","+919811425594","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.046Z","68a31c97ac9a0d803301e6d6_msg","689b516a1aea5e4b89314603_conv","+919990682072","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.058Z","68a31c9708c5911736120f4c_msg","689b516ed3b7b9d6842cd9d7_conv","+919811799198","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.060Z","68a31c9708c5911736120f4d_msg","689b5172d3b7b9d6842cdd85_conv","+919891852267","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.092Z","68a31c97ac9a0d803301e6e2_msg","689b516f1aea5e4b89314b54_conv","+918826252639","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.106Z","68a31c97ac9a0d803301e6e5_msg","689b5171d3b7b9d6842cdc96_conv","+918745896067","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.116Z","68a31c9708c5911736120f5c_msg","689b51741aea5e4b89315062_conv","+919999907393","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.135Z","68a31c9708c5911736120f62_msg","689b5174d3b7b9d6842ce01e_conv","+919717620056","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.167Z","68a31c9708c5911736120f6c_msg","689b5177d3b7b9d6842ce2ce_conv","+919818201065","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:11.207Z","68a31c9708c5911736120f76_msg","689b51781aea5e4b893154c7_conv","+918800130097","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.156Z","68a31c98ac9a0d803301e6fb_msg","689b5179d3b7b9d6842ce5bc_conv","+919211151203","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.295Z","68a31c9808c5911736120fa1_msg","689b517b1aea5e4b893157f0_conv","+918826445493","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.382Z","68a31c9808c5911736120fc5_msg","689b517e1aea5e4b89315ad7_conv","+918586874419","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.487Z","68a31c98ac9a0d803301e756_msg","689b517cd3b7b9d6842ce8b4_conv","+918800186038","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.589Z","68a31c98ac9a0d803301e77a_msg","689b5175d3b7b9d6842ce137_conv","+917455818197","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","SENT","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.660Z","68a31c9808c591173612101a_msg","689b517fd3b7b9d6842ceb78_conv","+919654166478","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.678Z","68a31c98ac9a0d803301e793_msg","689b51801aea5e4b89315cfb_conv","+918266843903","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.680Z","68a31c98ac9a0d803301e794_msg","689b5180d3b7b9d6842cec01_conv","+919161415221","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.764Z","68a31c98ac9a0d803301e7a9_msg","689b51811aea5e4b89315e7a_conv","+919312847941","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.835Z","68a31c98ac9a0d803301e7c1_msg","689b51831aea5e4b89316007_conv","+919643946339","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.871Z","68a31c98ac9a0d803301e7ce_msg","689b5188d3b7b9d6842cf4cf_conv","+918527968607","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.924Z","68a31c9808c591173612104b_msg","689b51831aea5e4b89315fd2_conv","+919711736340","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.955Z","68a31c98ac9a0d803301e7d9_msg","689b51891aea5e4b893165ef_conv","+916296695982","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.957Z","68a31c9808c5911736121054_msg","689b5186d3b7b9d6842cf200_conv","+919953426963","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.968Z","68a31c9808c5911736121058_msg","689b51871aea5e4b893163f7_conv","+917838021934","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.980Z","68a31c9808c591173612105d_msg","689b5188d3b7b9d6842cf430_conv","+919971947901","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:12.994Z","68a31c98ac9a0d803301e7de_msg","689b51891aea5e4b8931669a_conv","+919599313131","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:13.035Z","68a31c9908c591173612106f_msg","689b518bd3b7b9d6842cf821_conv","+919871730674","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:13.063Z","68a31c99ac9a0d803301e7f5_msg","689b518cd3b7b9d6842cf926_conv","+919971219042","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:13.071Z","68a31c99ac9a0d803301e7f8_msg","689b518ad3b7b9d6842cf6eb_conv","+918505962678","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:13.604Z","68a31c99ac9a0d803301e815_msg","689b518e1aea5e4b89316b54_conv","+919953033028","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:13.797Z","68a31c9908c5911736121094_msg","689b51901aea5e4b89316d91_conv","+919990108030","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:13.832Z","68a31c99ac9a0d803301e82f_msg","689b51911aea5e4b89316e95_conv","+919810610815","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:13.854Z","68a31c9908c59117361210a3_msg","689b5191d3b7b9d6842cfe62_conv","+919068595114","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.045Z","68a31c9a08c59117361210bf_msg","689b51921aea5e4b89316f8c_conv","+917836084703","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.047Z","68a31c9a08c59117361210c0_msg","689b5192d3b7b9d6842cff48_conv","+919999646311","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.181Z","68a31c9a08c59117361210da_msg","689b51941aea5e4b89317251_conv","+919868986855","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : User's number is part of an experiment.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.324Z","68a31c9a08c591173612110b_msg","689b5197d3b7b9d6842d041c_conv","+919999198959","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.359Z","68a31c9a08c5911736121113_msg","689b5196d3b7b9d6842d02fd_conv","+918287593529","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : Message undeliverable.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.365Z","68a31c9aac9a0d803301e891_msg","689b51971aea5e4b89317582_conv","+919953886589","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.443Z","68a31c9aac9a0d803301e8b7_msg","689b51991aea5e4b8931771a_conv","+919654676757","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.444Z","68a31c9aac9a0d803301e8b8_msg","689b5198d3b7b9d6842d05b6_conv","+919648955558","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.559Z","68a31c9a08c5911736121151_msg","689b518f1aea5e4b89316ca6_conv","+919250079059","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.568Z","68a31c9a08c5911736121155_msg","689b6dd6372519fb690030ad_conv","+919712302559","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.602Z","68a31c9aac9a0d803301e8da_msg","689b5199d3b7b9d6842d06f5_conv","+918700447783","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","READ","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.672Z","68a31c9aac9a0d803301e8ef_msg","689b51911aea5e4b89316f37_conv","+918700229457","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","DELIVERED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","No","",""
+"2025-08-18T12:29:14.673Z","68a31c9aac9a0d803301e8f0_msg","689b5186d3b7b9d6842cf268_conv","+919810959278","India","Outbound","WA_TEMPLATE","{""text"":""This Independence Day 🇮🇳– get 2 jars of *Pure Himalayan Shilajit* + a premium *Sipper* absolutely *FREE* 🥤\n\nBoost your strength, stamina & recovery — naturally!\n\n💰 *Only ₹1,999*""}","ENGAGED","","689aef56edeebbd36ebe3008_wt","PROMOTIONAL","MARKETING","0.94306","BROADCAST","689c3b992eda039a8379e546_br","Whatsapp","Yes","",""
+"2025-08-18T15:19:00.745Z","qm4kvrMEKZzoFT5h6_msg","68764e5f2a8c0d96af08180d_conv","+919060407759","India","Outbound","AGENT_TEXT","How’s your health journey going? 🌿 
+ 
+Just a reminder to *start taking your supplements regularly for best results*.  
+
+Your well-being is our priority 💪 | [Join sehatUP Community,https://qkrp.ly/64QWMlr?qrId=dmZzUnBGR3JxY2JKSGNkRzd8Njg3NjRlNWYyYThjMGQ5NmFmMDgxODA3X2N1]","READ","","685b9f21decc5cf006fe7aaf_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","PrHe4d5EKF524yrDG_camp","Whatsapp","No","",""
+"2025-08-18T16:47:00.710Z","JrzyZp8RjNkc8xH74_msg","cWo8buyxPmFSPY6KB_conv","+919592115250","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/2elaukk?qrId=Rzh2ZlJ0ZTZGWnE1SHBzNVR8Njg4NzcxMzM3NjY2ZTQ5YmFkNzVkMWM3X2N1]","READ","","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-19T07:28:23.880Z","9fSJwDnZrMrakEZ2c_msg","689b51921aea5e4b89317038_conv","+919650929305","India","Outbound","SYSTEM_TEXT","clear_chat","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-19T08:09:00.963Z","wWaDNJLPKrKNB9MxF_msg","sCKSh5cyoDgAGDkvg_conv","+918307672501","India","Outbound","AGENT_TEXT","How’s your health journey going? 🌿 
+ 
+Just a reminder to *start taking your supplements regularly for best results*.  
+
+Your well-being is our priority 💪 | [Join sehatUP Community,https://qkrp.ly/5oD5S12?qrId=R29vYWhuYnRtUkNScHhkQTN8Njg5NDk4NzNlNzRiYjFhYWUzNGNhNWNjX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9f21decc5cf006fe7aaf_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","PrHe4d5EKF524yrDG_camp","Whatsapp","No","",""
+"2025-08-19T08:54:00.575Z","Axwt9JfBQ9Embw2W7_msg","gcWLpGdF4MfHB9EXX_conv","+919934967721","India","Outbound","AGENT_TEXT","How’s your health journey going? 🌿 
+ 
+Just a reminder to *start taking your supplements regularly for best results*.  
+
+Your well-being is our priority 💪 | [Join sehatUP Community,https://qkrp.ly/5mMLq7d?qrId=aFR3N1p1ZjZoQlBuN3d0ZnF8Njg5NDkzZWNlNzRiYjFhYWUzNGM2OWIyX2N1]","FAILED","Error from Whatsapp : Message undeliverable.","685b9f21decc5cf006fe7aaf_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","PrHe4d5EKF524yrDG_camp","Whatsapp","No","",""
+"2025-08-19T09:18:56.000Z","GPXoPuDgyqWuq8926_msg","689f64c0372519fb69efa101_conv","+917708768894","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-19T09:19:02.040Z","oMGkyDfGRKWHcnE2h_msg","689f64c0372519fb69efa101_conv","+917708768894","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-19T09:24:02.773Z","2yCLZNfTB2k9GwrcE_msg","689f64c0372519fb69efa101_conv","+917708768894","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-19T09:24:19.289Z","FrNSt7NdfYr3xcGyH_msg","689f64c0372519fb69efa101_conv","+917708768894","India","Outbound","AGENT_TEXT","Hello Sir , Bataye mai apki kis prakar help kar sakta hu.","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-19T11:37:00.575Z","tBHQpRKSe2nXCmJo3_msg","684fafdb902d11ad0d2f5685_conv","+919078799161","India","Outbound","AGENT_TEXT","_Supplements tabhi kaam karte hain jab aap unhe regular lete ho._
+
+💊 + 😴 + 🍲 = *better health* | [Join sehatUP Community,https://qkrp.ly/1zyroXk?qrId=RVJxY3c1QTlKTTRuRnVhU258d1N0NmR6VGJqVzVRWENOODVfY3U%3D]","FAILED","Error from Whatsapp : User's number is part of an experiment.","685e7f0c7f34f384782d1a4c_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","BjeGobuMNDDiYWRtu_camp","Whatsapp","No","",""
+"2025-08-19T12:09:48.640Z","DgyjtSepaNQSFo3Y6_msg","689dfb461b42df37b8a2d8c4_conv","+919939066150","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-19T12:10:27.148Z","XeZwkSkMqsuFxc8xb_msg","689e00852eda039a83e63b09_conv","+918979727709","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-19T13:54:42.000Z","WXHXXmsCJXPKtTWDg_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-19T13:54:46.633Z","7sFtZnn93KFxH5fEv_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-19T16:47:02.164Z","nsr2GmKpHyvH6MJHQ_msg","cWo8buyxPmFSPY6KB_conv","+919592115250","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/5H9MOvo?qrId=dkYyQ2piWVdMN3ZacHhLVzd8Njg4NzcxMzM3NjY2ZTQ5YmFkNzVkMWM3X2N1]","SENT","","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-19T20:29:09.000Z","4u9gCfkWbbZoP3Rxf_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-19T20:29:14.628Z","ADJoBir9qoCCyXCJ8_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","DELIVERED","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T02:35:20.000Z","vtkFdyNjnxvwquz32_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T02:35:24.808Z","vRt3kcuNh4croZ9kp_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T02:36:00.000Z","9X8HEPHZxzNJNzqLH_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Inbound","USER_TEXT","Shila ji original hai kya yah iska how much rate kitna hai","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T06:37:59.223Z","6Rn3fvJ5kE7T6rNnf_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T06:38:09.255Z","ZXYwbiHiDr2fMJa4H_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","Ji sir Shilajit original hai ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T06:38:27.761Z","c3CE4Xk3XkAqHeRiZ_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","iska price 1350 rs hai 200 rs iska Delivery charges hai","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T06:40:24.693Z","bH3EdhZvZ6vQZdm6y_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","sir boliye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T06:40:44.993Z","KqDDfFHCkgbYomJKN_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T06:40:54.505Z","2zRZJhwzcT7wXRidH_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","Ji sir bataye, Kya sawal hai apka","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T06:57:24.186Z","aCyGEcNr5CyKeRpiK_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T06:57:28.729Z","joP2eEZHJ3z4D8J7t_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Outbound","AGENT_TEXT","Ji sir bataye ","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-20T06:57:35.234Z","adfpNPz6c5FEzYD4S_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Outbound","AGENT_TEXT","Mai apki kaise hekp kar sakta hu","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T06:58:04.601Z","npXHSNkCLLkBMi9Ad_msg","689b516a1aea5e4b893146cd_conv","+918506979305","India","Outbound","SYSTEM_TEXT","clear_chat","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T06:59:33.195Z","AkikeLsMztGZdYauo_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","sir apko shilajit buy karna hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T08:22:51.201Z","qRydqRpqQrY9jwnfc_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Outbound","AGENT_TEXT","sir bataye , apko koi supplement ya koi medicine mangwana hai. ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T08:23:12.611Z","RYFA2Tx8Ghb2dpg6J_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","sir ap kuch mangwana chahte hai kya?","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T08:23:26.894Z","j5T2p8LubrGh8hZ7r_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","koi medicine ya koi supplement. ","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T08:35:51.000Z","4hofA9aRMnuQ79eYH_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Hey there, I have a question!how to use","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T08:35:54.179Z","74mC774arPnuozSXJ_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T08:39:51.000Z","qqFHXoaTd9D8AXzsu_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Hey there, I have a question!how to use","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T08:40:53.000Z","HvggTraQdjK2nQNBx_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:14:23.000Z","eqzKiQgKromJzXXap_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Garcinia cambogia drop","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:37:28.331Z","nQyhfWjfeeMYf2pbh_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T09:37:32.130Z","45disfAybzT5sTcpf_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","Hello Sir,","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:37:53.158Z","QBkDDPC7sdti6WWfC_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","Apko Garcinia Cambogia ke baire me information chahiye?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:38:09.000Z","SvJ5vpPpPFdDedg82_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Hmm","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:38:30.000Z","8CafhDZXiAWt7QwBN_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","How to use","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:39:47.948Z","jcp2eABpX642w5gSm_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","15 to 20 drops
+
+Half cup water
+
+Twice day","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:42:08.044Z","E37AakiMmazNRioez_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","Sir bataye apke liye Garcinia order kar du kya?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:42:28.000Z","LkK4qEj76qB3tFadJ_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Result kitne dino tak milega","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:43:18.000Z","ocbcAZNAfP77jSZsn_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Continue lena parega","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:43:32.669Z","Fksf7qrpcXjhrKEaC_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","Sir 7-10 days me results dikhne laega, ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:43:46.867Z","N96yJJYzSHKqNDvLh_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","lekin apko pahle din se apni diet par dhyan dena hoga","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:43:56.000Z","iQJwk3h2p46mb8RvB_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Bataye","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:44:13.247Z","YwcAzDozLX2WxpTcw_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","sir depends karta hai apki diet par ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:44:37.000Z","8RvvH9RJLXBeWnyFZ_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Diet karna parega","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:45:02.000Z","5YwpX5o8ttnHLpHpR_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Bina diet nihein chalega","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:45:21.977Z","u7h36mh2FxsSxoP9s_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","dawai ka jyada fayda hota hai , diet help karta hai,","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:45:41.000Z","BhbvBizPrdbf3xE6J_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Ooo","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:45:47.417Z","LnkXRHWKKGYgFhoes_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","ek bat bataye sir ap Garcinia le rahe hai lekin ab bahar ka fast food bhi kha rahe hai to kaise result milega","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:46:30.116Z","NM3HxtxNJx9Gd8WC2_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","diet se ye mtlb nhi hai ki apko khana chhodna padega , bas apko bahar ka fast food , maida ye sab kam karna padega, normal khana khaye koi dikkat nhi hai","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:47:20.682Z","TtAGa4bxq5fLo3GPB_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","Yes","",""
+"2025-08-20T09:47:40.000Z","dpAenAKcPyi5fwBuC_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Empty","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:47:47.000Z","nKAZjYXaLEGjepKHX_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Pet me","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:48:04.338Z","w7etjdeAid7YsWZvK_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","yes","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:48:22.000Z","y6oTghGqjNXYJKeAJ_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:48:28.226Z","JqGMFFQXd7PxCqT4Z_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T09:48:58.000Z","JgxBqhqn3JWtYvAud_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:50:57.939Z","5gjBmorj8bxD9hzTo_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","mai apko Sr. Executive se call arrange karwa deta hu sir.","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:51:05.214Z","fPc4Zsrx5pe7hrRZW_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T09:58:20.620Z","a6DyMxNaMBExfgc7s_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T09:59:41.518Z","pCcLELb7SM3wcWMr6_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:03:22.135Z","JbjNmtHR7TRMgm7XJ_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:03:22.525Z","RjBqbcqHYrkNXH3vr_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:12:07.000Z","DEGaJZzEAjEnY3hSt_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","No","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:12:33.000Z","NTHCGhi8kRpca9Tqq_msg","68a588e969697740d1d64863_conv","+919733892222","India","Inbound","USER_TEXT","Bat me","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:23:13.843Z","TXk6zc3NvuApXokzR_msg","68a588e969697740d1d64863_conv","+919733892222","India","Outbound","AGENT_TEXT","ok sir. ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:39:48.000Z","SQ4pF4wAoBLN5xHSK_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:41:22.445Z","QfX2wzwXG7kWpuPCu_msg","LNpGMuZkoNyygHhws_conv","+917652039478","India","Outbound","AGENT_TEXT","*192174* is your verification code. | [Copy code,https://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp192174]","READ","","68592d88decc5cf006b673d1_wt","","AUTHENTICATION","0.17420000000000002","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T10:41:22.718Z","hFnMgeq4Be77Ee7t9_msg","LNpGMuZkoNyygHhws_conv","+917652039478","India","Outbound","AGENT_TEXT","*192174* is your verification code. | [Copy code,https://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp192174]","READ","","68592d88decc5cf006b673d1_wt","","AUTHENTICATION","0.17420000000000002","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T10:41:58.382Z","4htvXbmMkEgc3ocgu_msg","LNpGMuZkoNyygHhws_conv","+917652039478","India","Outbound","AGENT_TEXT","*192174* is your verification code. | [Copy code,https://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp192174]","ENGAGED","","68592d88decc5cf006b673d1_wt","","AUTHENTICATION","0.17420000000000002","CHATBOT","","Whatsapp","Yes","",""
+"2025-08-20T10:43:08.000Z","nWReP7tCqA2wd6Xcj_msg","LNpGMuZkoNyygHhws_conv","+917652039478","India","Inbound","USER_TEXT","i want my detailed healthscore360 report for testing purposes only","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:43:15.186Z","2HTEAXvEvJ8gnMrAR_msg","LNpGMuZkoNyygHhws_conv","+917652039478","India","Outbound","AGENT_TEXT","Hi Piyush Gupta
+
+We're processing your HealthScore360 Report.
+
+Please wait ⏳","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T10:43:16.168Z","HWBur7w7fZHEMZ6Y6_msg","LNpGMuZkoNyygHhws_conv","+917652039478","India","Outbound","AGENT_TEXT","We couldn't find a report for the phone number","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T10:48:54.875Z","SQt9P4esy9Ase9sHf_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","sir ap apna number bataye mai ushpe call karwa deta hu","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T10:50:11.530Z","Cne6EzTpYihwLeqiq_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","bataye sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T11:27:39.903Z","zRCzvZ8E7ftWNrBRi_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","hello sir, we are waiting for your reply. ","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T11:30:20.632Z","4Ee6ecynFChYp2iLp_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Outbound","AGENT_TEXT","sir we are waiting for your reply","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T11:38:10.656Z","68a5b3a22e87d7e901f449cf_msg","684fafdb902d11ad0d2f5685_conv","+919078799161","India","Outbound","WA_TEMPLATE","{""text"":""*Looking to boost your health even further?*\n\nPair your current supplement with *Ashwagandha Tablets* to *balance stress & hormones, supports immunity—completes the wellness loop* 🌿""}","FAILED","Error from Whatsapp : User's number is part of an experiment.","685ba2d4decc5cf006ff0714_wt","","MARKETING","0","JOURNEY","685bc83ab4ea8297a00cf024","Whatsapp","No","",""
+"2025-08-20T12:03:39.287Z","PwurwHPWDXqRfRrMq_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","we are waiting for your reply sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T12:34:33.000Z","8w2gF2GeyGQiactm7_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T12:34:34.000Z","rdWpvkemP8vdMqSeR_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Inbound","USER_TEXT","Hi","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T12:34:38.205Z","9ebK3n2ZzBLKRTELd_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T13:05:22.020Z","8Ka48TR6JiSnAEmY7_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T13:05:26.682Z","oBydrksorpeBvPxv3_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","Hello Sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T13:05:35.702Z","aRXAWynuWkNMKhTLq_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","Boliye hoe can i Help You","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T13:10:44.803Z","PYTJxqka9tBw7bDLQ_msg","689e3eb2edeebbd36e7efc9b_conv","+919760349969","India","Outbound","AGENT_TEXT","hello sir, hum apke jawab ka wait kar rahe hai.","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T14:15:30.000Z","Qit2N9xaxxPs62eHt_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Inbound","USER_TEXT","Hurray! My next product is on you? Tell me more!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T14:15:35.532Z","dFSKi8DHqmTrmEbH3_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-20T23:17:19.000Z","HhPM5jHnqZ6CuKkMQ_msg","689b5186d3b7b9d6842cf268_conv","+919810959278","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-20T23:17:26.190Z","nddZabNbjWoTKHYL9_msg","689b5186d3b7b9d6842cf268_conv","+919810959278","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-21T06:08:43.000Z","8Z9kWo8gB2bXxhgAr_msg","68a6b7ee697ea6bfd3587e0e_conv","+919873349292","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T06:08:48.283Z","GoPJoBKdfXzp9eXDX_msg","68a6b7ee697ea6bfd3587e0e_conv","+919873349292","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-21T06:45:49.907Z","JTffBwJoLzZaQibb3_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-21T06:45:54.789Z","mGkCLNd76imXG5BBn_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Outbound","AGENT_TEXT","hello Sir","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-21T06:45:59.526Z","hGqY8DKaka3xhyBtw_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Outbound","AGENT_TEXT","how can I help you?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T06:49:19.740Z","s2DN4DwDKiJuvhBeR_msg","68a6b7ee697ea6bfd3587e0e_conv","+919873349292","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-21T06:49:29.196Z","ZzaSyD33zQAzrWX5y_msg","68a6b7ee697ea6bfd3587e0e_conv","+919873349292","India","Outbound","AGENT_TEXT","Hello Sir, How Can I help You?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T06:59:35.820Z","2RQ3bR4AKrqTrqQH5_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","Restart",""
+"2025-08-21T07:02:03.208Z","8bqrDNAvSWRbtPiKY_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","DELIVERED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-21T07:04:44.155Z","ox2jFzauCHML6xQNa_msg","68a482256f330da36d5c2e66_conv","+919376391930","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-21T07:05:29.715Z","6cLCi9EvRt2rt2Yxf_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","Hello Sir,","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-21T07:05:45.788Z","7fHzzXdF2zC9iqRYn_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","we are waiting for your reply","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T07:21:00.981Z","CozShYwugPhBfSgP7_msg","689513fade5498b759a27c9e_conv","+918448931345","India","Outbound","AGENT_TEXT","How’s your health journey going? 🌿 
+ 
+Just a reminder to *start taking your supplements regularly for best results*.  
+
+Your well-being is our priority 💪 | [Join sehatUP Community,https://qkrp.ly/56wO2GP?qrId=NXhZaERvZ2hneEZZWHVIcVJ8WVNpbzRYV2QzMjhERmRaUDlfY3U%3D]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9f21decc5cf006fe7aaf_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","PrHe4d5EKF524yrDG_camp","Whatsapp","No","","1"
+"2025-08-21T07:37:16.695Z","edfaa4okdLczkax6J_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","apko shilajit , ashwagandha, mangwana hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T07:37:28.460Z","azpDHeF4XSpNdSmsW_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","ya koi or Medicine Mangwana hai","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T07:38:35.109Z","krh2xHeQLEW7YsBKM_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","hamare yaha Allopathic, Ayurvedic or homeopathic sabhi prakar ki dawai milti hai.","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T08:04:41.000Z","kxcpwYWgyTTrwXWCQ_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Inbound","USER_TEXT","Restart","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T08:15:31.878Z","XtFLoGheJQhwgW5Ym_msg","68a0e895372519fb69583f93_conv","+919588855277","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T08:15:53.230Z","gxcaKA2FAyC6pQJNv_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","Hello Sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T08:16:02.343Z","gghMCnFHbGbW8mg8K_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","apko shilajit kharidna hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T08:16:36.577Z","X58sHGWYWNzo4T3kd_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","sir boliye ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T08:16:47.184Z","qY6raYt6mLoQHhfiJ_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","Jab tak bat nhi karenge kaise kisi chij ka solution milega","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-21T12:24:28.653Z","oGWdxJXJ228cDCiN8_msg","689dfb461b42df37b8a2d8c4_conv","+919939066150","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","READ","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","",""
+"2025-08-21T13:44:01.929Z","FadHnvxuWCKGbdjnk_msg","ret6GwHsugz4uyuF7_conv","+918849308317","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/5pk7iLu?qrId=YkRRUXF0QzR6bXhHVGhwUTl8Njg3ZTJiZjY3NjY2ZTQ5YmFkNjVlZTE0X2N1]","SENT","","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-21T14:41:00.638Z","XvsLDHtdY9Ncc5gzi_msg","6853ce7125a85962afdef568_conv","+919973367749","India","Outbound","AGENT_TEXT","_Supplements tabhi kaam karte hain jab aap unhe regular lete ho._
+
+💊 + 😴 + 🍲 = *better health* | [Join sehatUP Community,https://qkrp.ly/1TWj1lY?qrId=UnhFeUt5OXE3cEtlQ0t3SEV8RjlCYjZ0bk1LRVRFbXU2eWZfY3U%3D]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685e7f0c7f34f384782d1a4c_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","BjeGobuMNDDiYWRtu_camp","Whatsapp","No","",""
+"2025-08-21T15:19:00.622Z","5GXJKN6cFoX3acXmL_msg","68764e5f2a8c0d96af08180d_conv","+919060407759","India","Outbound","AGENT_TEXT","*Let your mind rest before your body sleeps.*
+
+📵 Try keeping your phone away 30 mins before bed tonight — *sleep better, feel better!* | [Join sehatUP Community,https://qkrp.ly/3hPJ68G?qrId=cjNHQXR0REpFR3lTZkttcEp8Njg3NjRlNWYyYThjMGQ5NmFmMDgxODA3X2N1]","READ","","685b9f96b4ea8297a006facd_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","jkWAjD8A4usvaztRr_camp","Whatsapp","No","",""
+"2025-08-21T16:40:59.237Z","k5iDEbq5ysxsygZ8c_msg","39hQgSSYmmn4Mbx3Y_conv","+918142266731","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","ENGAGED","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","Tap to confirm",""
+"2025-08-22T07:21:43.968Z","CsGg3MHBtZfyocdjb_msg","68a5346a697ea6bfd31ad515_conv","+919030060772","India","Outbound","AGENT_TEXT","Hello Sir,","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-22T07:22:19.951Z","yQABuw2Q5L3aikgke_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","Yes","",""
+"2025-08-22T07:23:41.218Z","ubtjQKHwu2Z8ndGv8_msg","68a5c0dd69697740d1e0a8bf_conv","+918320849807","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-22T07:24:04.603Z","JHpnC3XeaMpKRuhmm_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","Yes","",""
+"2025-08-22T07:25:16.901Z","prht3bGhakR687fBZ_msg","68a6b7ee697ea6bfd3587e0e_conv","+919873349292","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T07:26:26.000Z","EnGYi8Xqrxar2auB6_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Inbound","USER_TEXT","UNSUB","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T07:26:28.777Z","nNQDRuEyBgKbtLjkH_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Outbound","AGENT_TRIGGER_QUESTION","Are you sure you want to unsubscribe?","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-22T07:26:32.000Z","ECwD7aWA4krKxpPse_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Inbound","USER_BUTTON_REPLY","Yes","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T07:26:34.392Z","coFMkazXF4YBSv63g_msg","68a5d8866f330da36d997932_conv","+918384090532","India","Outbound","AGENT_TEXT","You have been unsubscribed successfully. You will no longer receive messages from us. If you wish to re-subscribe, kindly contact support.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-22T07:33:41.552Z","Wvnz9k3eTGWEhmduY_msg","ZpYynjNx95ZcaBRck_conv","+919993970636","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","DELIVERED","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","",""
+"2025-08-22T08:09:00.644Z","X6HB7RzQ38j6mbSrt_msg","sCKSh5cyoDgAGDkvg_conv","+918307672501","India","Outbound","AGENT_TEXT","*Let your mind rest before your body sleeps.*
+
+📵 Try keeping your phone away 30 mins before bed tonight — *sleep better, feel better!* | [Join sehatUP Community,https://qkrp.ly/2MJ4mbP?qrId=dzdjMmNTd2tOR3c4Zm00a2F8Njg5NDk4NzNlNzRiYjFhYWUzNGNhNWNjX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9f96b4ea8297a006facd_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","jkWAjD8A4usvaztRr_camp","Whatsapp","No","",""
+"2025-08-22T08:54:00.610Z","HZkdaCu5XuShKHP5o_msg","gcWLpGdF4MfHB9EXX_conv","+919934967721","India","Outbound","AGENT_TEXT","*Let your mind rest before your body sleeps.*
+
+📵 Try keeping your phone away 30 mins before bed tonight — *sleep better, feel better!* | [Join sehatUP Community,https://qkrp.ly/5VWvipw?qrId=V0tXcjNia2NhTWRyRzY4YWp8Njg5NDkzZWNlNzRiYjFhYWUzNGM2OWIyX2N1]","FAILED","Error from Whatsapp : Message undeliverable.","685b9f96b4ea8297a006facd_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","jkWAjD8A4usvaztRr_camp","Whatsapp","No","",""
+"2025-08-22T08:55:00.480Z","tX9Ee9WMzv9xCRji6_msg","eStgRW7LBuHdwhtjo_conv","+919511267948","India","Outbound","AGENT_TEXT","How’s your health journey going? 🌿 
+ 
+Just a reminder to *start taking your supplements regularly for best results*.  
+
+Your well-being is our priority 💪 | [Join sehatUP Community,https://qkrp.ly/1n5CJx7?qrId=NDNSY3R5RG9qeWtBU0RvQVh8Njg5ODVhYTBhMTIyNjRkNjA3ZTFhMmFkX2N1]","READ","","685b9f21decc5cf006fe7aaf_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","PrHe4d5EKF524yrDG_camp","Whatsapp","No","",""
+"2025-08-22T08:56:01.446Z","zKwjASca33zw5sA2j_msg","vzoyygrQNhTJd5BC2_conv","+919509944809","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/4lW9xaG?qrId=NDZOV3BYcTZhNkwyODU4OWh8Njg3ZTFhMzMyNzQ2ZmU3OTk4OWIyZDAxX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-22T10:11:56.000Z","Ra5uRCFgu4B6h6XEi_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T10:11:58.653Z","QKkxT2cJZ9ux6e6sg_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-22T10:34:09.720Z","R4KyHkGNGs8ChGBw2_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-22T10:34:17.119Z","heGZgGc7ytQ9Koe7y_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","yes sir boliye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T10:55:24.486Z","j6pv3WRmHCJcrjBuL_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","sir bataye mai apki kis prakar help kar sakta hu","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T13:49:01.446Z","A6sH8jn3G3vi8g2Mo_msg","PrXXXZACAaKembCDp_conv","+919825234853","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/6WjrG9W?qrId=S2FxOXRTbmFZUENkNHdrbUV8Njg3ZTFiNDQyNzQ2ZmU3OTk4OWIyZTM2X2N1]","READ","","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-22T14:25:30.000Z","3KQshJZ9AdSWF3fBR_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T14:25:33.101Z","FE6CwJcusW5rDnPKC_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","DELIVERED","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-22T16:28:59.551Z","u8zxue9CyDAG7jkLx_msg","rAvpRHnk2T8aaniaC_conv","+918882447366","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","ENGAGED","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","Tap to confirm",""
+"2025-08-22T16:29:34.000Z","ZkDjMuMSwi5nyN2hK_msg","rAvpRHnk2T8aaniaC_conv","+918882447366","India","Inbound","USER_TEXT","Tap to confirm","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T16:29:38.801Z","rr8Yr97eunDSQr4wZ_msg","rAvpRHnk2T8aaniaC_conv","+918882447366","India","Outbound","AGENT_TEXT","Thanks, your order is confirmed.
+
+*We will ship it soon!*","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-22T17:36:55.000Z","cEse4uYqK98t3paxe_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Inbound","USER_TEXT","Sir ye shilajit medicine hai","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-22T17:36:57.832Z","p4r6CDPAg6BuQ9SjB_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-23T04:13:00.666Z","eFYJMMmHDQqNXkDEa_msg","DagAusypicb2wnsj6_conv","+919660797612","India","Outbound","AGENT_TEXT","_Supplements tabhi kaam karte hain jab aap unhe regular lete ho._
+
+💊 + 😴 + 🍲 = *better health* | [Join sehatUP Community,https://qkrp.ly/5A39BSC?qrId=eEF2emUzWnhCQ0EzeGNlR3R8Njg4YjI2YWMyNzQ2ZmU3OTk4Yjc1ZDFkX2N1]","DELIVERED","","685e7f0c7f34f384782d1a4c_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","BjeGobuMNDDiYWRtu_camp","Whatsapp","No","",""
+"2025-08-23T06:57:05.837Z","D4rAJbcJN44zoafcF_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-23T06:57:17.879Z","Dr5ySN6DBBHH62pLF_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","ji sir bataye mai kis prakar help kar sakta hu","DELIVERED","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-23T06:57:34.566Z","NhsYg8X42H3y7F32H_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-23T06:57:39.782Z","iFLhPB34HJPp4t8CR_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","Yes sir shilajit hai","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-23T06:57:43.754Z","dJ2SJRwDkYgChntnv_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","apko mangwana hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-23T07:00:39.159Z","nXGNt3eDN7uJG9tBN_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","boliye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-23T07:04:28.007Z","M48kCkFGarb9dTRSn_msg","68a8426dbc9590fff249ac26_conv","+918291942142","India","Outbound","AGENT_TEXT","hello sir bataye mai apki kis prakar help kar sakta hu. ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-23T07:16:28.127Z","eLBc4RwTmFP7tPECN_msg","68a4de996f330da36d6fec4d_conv","+917796207522","India","Outbound","AGENT_TEXT","hello sir ","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-23T08:08:01.664Z","odd89vD9kyQoBAQKX_msg","EhAh5Y5DuFEz7bKC4_conv","+917426972447","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/2tIJQwg?qrId=TGZkd2I4bkM1WFlObWZpZVJ8Njg3ZTM0ZTQyNzQ2ZmU3OTk4OWI2YTkwX2N1]","FAILED","Error from Whatsapp : Message undeliverable.","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-23T08:22:06.646Z","DfnNjsWqKyyk8vPMT_msg","689dfb461b42df37b8a2d8c4_conv","+919939066150","India","Outbound","AGENT_TEXT","*Your order has been dispatched* via our fastest courier.  🎉 
+
+*Thanks for choosing SehatUP* 💚
+
+Track your package here 👇 | [Tracking Link,https://qkrp.ly/3sB4PiT?qrId=QXdLOHlUQUNaWGJyZWdTdm18Njg5ZGZiNDYxYjQyZGYzN2I4YTJkOGJlX2N1]","READ","","685b9bb5b4ea8297a0066172_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","9gtzC8k3tgkTC8Zxk_camp","Whatsapp","No","",""
+"2025-08-23T10:13:01.644Z","WtNFBJXPSdG2rMrqZ_msg","Q4DqAuyD6pisijg4D_conv","+919535574805","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/6u5BlNP?qrId=ekJodmdjQmZTajJwY1pxc0d8Njg3Y2Y5NzMyNzQ2ZmU3OTk4OTk5ODc0X2N1]","READ","","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-23T12:01:00.585Z","5NREeTr5hmjqT9zEv_msg","8DAeSreDsFWz95PwX_conv","+919391054297","India","Outbound","AGENT_TEXT","How’s your health journey going? 🌿 
+ 
+Just a reminder to *start taking your supplements regularly for best results*.  
+
+Your well-being is our priority 💪 | [Join sehatUP Community,https://qkrp.ly/2lhUE7k?qrId=REIzaDN6dWFHTEJjUWd5WEV8Njg5YWZmMTBhMTIyNjRkNjA3ZTY1OWVlX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9f21decc5cf006fe7aaf_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","PrHe4d5EKF524yrDG_camp","Whatsapp","No","",""
+"2025-08-23T14:45:14.000Z","NJBzP753iPGS7pvpJ_msg","68a9d3fda18dbe8a9923eb93_conv","+919927866694","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-23T14:45:18.387Z","HitWS5AuxpCDKRmae_msg","68a9d3fda18dbe8a9923eb93_conv","+919927866694","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-23T15:15:21.000Z","t6WbJ5EPDoRC432Yf_msg","39hQgSSYmmn4Mbx3Y_conv","+918142266731","India","Inbound","USER_TEXT","Tap to confirm","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-23T15:15:25.392Z","czj537tkTNR6MRBju_msg","39hQgSSYmmn4Mbx3Y_conv","+918142266731","India","Outbound","AGENT_TEXT","Thanks, your order is confirmed.
+
+*We will ship it soon!*","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-24T07:21:00.732Z","DCCznxxLPPXe6FDJ9_msg","689513fade5498b759a27c9e_conv","+918448931345","India","Outbound","AGENT_TEXT","*Let your mind rest before your body sleeps.*
+
+📵 Try keeping your phone away 30 mins before bed tonight — *sleep better, feel better!* | [Join sehatUP Community,https://qkrp.ly/5kTb9Sk?qrId=eldZZ3hKWHdKNzlDV3Q4UzR8WVNpbzRYV2QzMjhERmRaUDlfY3U%3D]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9f96b4ea8297a006facd_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","jkWAjD8A4usvaztRr_camp","Whatsapp","No","",""
+"2025-08-24T07:22:23.000Z","P8oN3gtec44fR42JX_msg","68aabdb1a18dbe8a99404347_conv","+919241217580","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T07:22:26.646Z","j7CXrHTnhWPZPM6ma_msg","68aabdb1a18dbe8a99404347_conv","+919241217580","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-24T10:22:16.000Z","PFR2MkWwsK3pei7wQ_msg","68aae7dc0b6f334d72918c81_conv","+919368601430","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T10:22:22.785Z","EjkEqor7E4R6PGyAo_msg","68aae7dc0b6f334d72918c81_conv","+919368601430","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","DELIVERED","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-24T11:56:01.663Z","6zBbqKMEtgXogdZ9u_msg","tbwtfb72A6nEAXvvM_conv","+918145737385","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/4NnMn04?qrId=OWhaS2tRQUdFSmFvZnREV3p8Njg3YTI0NGU3NjY2ZTQ5YmFkNjBlMTYyX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-24T13:00:16.688Z","pf6d96iy8rGvwBs2A_msg","xAmgp7Ntpa9ePo6K2_conv","+919345277984","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","READ","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","",""
+"2025-08-24T13:49:08.000Z","HYTmcMF45kRFaKHsB_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T13:49:12.964Z","iJ3w65QfmoaqtfiA7_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-24T13:49:54.000Z","pgWeDhzSGYw4qr2EF_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T13:50:04.000Z","4Z3jpdYQuuAk88tft_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Hello","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T13:51:16.000Z","3XERRyANT9ZYibnyP_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Bolo","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T15:26:42.000Z","JxigXJPcztaj2Kker_msg","68ab2f35bc9590fff2f49603_conv","+917508415086","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T15:26:45.956Z","TzNma3L2ZqnxXjAN4_msg","68ab2f35bc9590fff2f49603_conv","+917508415086","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-24T16:45:05.000Z","zR7JXx968yKQWpusr_msg","68ab419554034b496195635f_conv","+917417294743","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T16:45:10.425Z","grb2wfHyMCvHR9rbd_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-24T16:47:00.667Z","h3GtMjouhosjsEeWF_msg","cWo8buyxPmFSPY6KB_conv","+919592115250","India","Outbound","AGENT_TEXT","_Supplements tabhi kaam karte hain jab aap unhe regular lete ho._
+
+💊 + 😴 + 🍲 = *better health* | [Join sehatUP Community,https://qkrp.ly/25wDxoy?qrId=TnBZd3V4dGVCTFp3SEhERGR8Njg4NzcxMzM3NjY2ZTQ5YmFkNzVkMWM3X2N1]","SENT","","685e7f0c7f34f384782d1a4c_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","BjeGobuMNDDiYWRtu_camp","Whatsapp","No","",""
+"2025-08-24T18:16:44.000Z","CmfxryWT6XPDf8TjD_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","https://kapiva.in/checkout-custom/","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T18:16:47.682Z","z2Bk4bfzcoXSpMoB8_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-24T19:23:18.000Z","uKyvbMmiEwigPNTzD_msg","6888777552d70cf941f21fa0_conv","+919096842707","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-24T19:23:22.007Z","yTm9AxJ7WRQNGjK9t_msg","6888777552d70cf941f21fa0_conv","+919096842707","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T03:03:45.000Z","2vTe2tGGaEY5ScoWc_msg","6888777552d70cf941f21fa0_conv","+919096842707","India","Inbound","USER_TEXT","शिलाजीत कीप्राइस दिल्ली","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T03:03:48.235Z","Pa7MuzioCSQStKMfF_msg","6888777552d70cf941f21fa0_conv","+919096842707","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T05:43:00.633Z","F2hQoNxkfgfhfRnB5_msg","eeXuPXPg4C4Cbbcui_conv","+919100553941","India","Outbound","AGENT_TEXT","How’s your health journey going? 🌿 
+ 
+Just a reminder to *start taking your supplements regularly for best results*.  
+
+Your well-being is our priority 💪 | [Join sehatUP Community,https://qkrp.ly/7efMxep?qrId=RzUyTGVXNWhOYjZCNDRxYmN8Njg5YjIyZDJlNzRiYjFhYWUzNTczNGE2X2N1]","READ","","685b9f21decc5cf006fe7aaf_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","PrHe4d5EKF524yrDG_camp","Whatsapp","No","",""
+"2025-08-25T07:50:04.121Z","BqHdni5DmXnEzvqhW_msg","68aabdb1a18dbe8a99404347_conv","+919241217580","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T07:50:17.736Z","r2XE7vxZegDTW23xw_msg","68aabdb1a18dbe8a99404347_conv","+919241217580","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:50:44.975Z","mGuiBPtHPTYgA2hnf_msg","68aae7dc0b6f334d72918c81_conv","+919368601430","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T07:50:54.819Z","GE2c592aPrhznLqsb_msg","68aae7dc0b6f334d72918c81_conv","+919368601430","India","Outbound","AGENT_TEXT","Hello sir,","DELIVERED","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:51:09.206Z","qkC2D8FThxbAnAeD2_msg","68aae7dc0b6f334d72918c81_conv","+919368601430","India","Outbound","AGENT_TEXT"," bataye mai apki kis prakar help kar sakta hu?","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:51:43.635Z","k75kZuvRWqS5QGfv2_msg","68ab2f35bc9590fff2f49603_conv","+917508415086","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T07:51:48.329Z","LrwRWigzDni99xSDC_msg","68ab2f35bc9590fff2f49603_conv","+917508415086","India","Outbound","AGENT_TEXT","Hello Sir","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:52:04.922Z","t83YrYNECgt4PPKwN_msg","68ab2f35bc9590fff2f49603_conv","+917508415086","India","Outbound","AGENT_TEXT","How can i help you?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:52:15.311Z","ir3r45L7SrNgpL2Ph_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T07:52:35.636Z","34wmgAP8NZJjKp8m8_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","AGENT_TEXT","Hello sir,","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:52:45.613Z","khJr22sPiyRXLp77J_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","AGENT_TEXT","Bataye mai apki kis prakar help kar sakta hu?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:53:24.281Z","zJybu85DjPCKSWXkT_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T07:53:28.451Z","DMeToXdptymvRAhcN_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","Hello sir,","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:53:37.605Z","MsktCNDtR4pWiG2iX_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","how can i help you?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:55:09.953Z","d974RBfEn8ZbjAhTz_msg","6888777552d70cf941f21fa0_conv","+919096842707","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T07:55:14.052Z","qTYNXZXzFt6aNzJWC_msg","6888777552d70cf941f21fa0_conv","+919096842707","India","Outbound","AGENT_TEXT","Hello sir","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:55:27.130Z","o8vFFujLLMkhEqFCo_msg","6888777552d70cf941f21fa0_conv","+919096842707","India","Outbound","AGENT_TEXT","bataye mai apki kis prakar help kar sakta hu","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:58:54.000Z","zo7ZBgNzRPmALfdXA_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Inbound","USER_TEXT","Hello","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T07:58:58.079Z","dNuC3SwhL9k27m5tz_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T07:59:40.000Z","MYzai4xq6vEbY4eew_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Inbound","USER_TEXT","I am dr Vikas Mishra is there any vacancies for telemedicine consultant doctor","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:04:33.932Z","rikbmZCiEprxoHjo4_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T08:05:20.190Z","SKBZnGQHk479YvHy9_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Outbound","AGENT_TEXT","are u a ayurveda doctor or homeopathic doctor?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:24:49.000Z","DWvQAJFPauWfzhicz_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Inbound","USER_TEXT","MBBS Md","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:25:54.000Z","wshvpLumKPDczm6ji_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:26:10.000Z","esunnnumtH7b23pJq_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:28:39.588Z","jBfC4vL5eiCNvMneS_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Outbound","AGENT_TEXT","I will share your number with the HR Department. They will connect your shortly. ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:29:59.000Z","3avbtAT9qphmwPtdB_msg","68ac17c10b6f334d72c9e494_conv","+918287880080","India","Inbound","USER_TEXT","Ok","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:45:59.000Z","DjekEfJF3Z7ri2YGK_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Hello","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:46:15.425Z","7bu28AodQmg5sggop_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","ji sir boliye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:47:16.000Z","ZnP8NxB69Axa9cdm6_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Dabai hona","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:48:59.000Z","ZfpxtgbQwLP2H4iaw_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Bolo","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:50:13.000Z","BddHnJ3hDYAJzL3s7_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Kiya hua bolo ji","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T08:55:01.502Z","NtgqKAQzPDQyJFiq5_msg","eStgRW7LBuHdwhtjo_conv","+919511267948","India","Outbound","AGENT_TEXT","*Let your mind rest before your body sleeps.*
+
+📵 Try keeping your phone away 30 mins before bed tonight — *sleep better, feel better!* | [Join sehatUP Community,https://qkrp.ly/puzXIIT?qrId=NGJaU0puS0FKZGVqejJXSEx8Njg5ODVhYTBhMTIyNjRkNjA3ZTFhMmFkX2N1]","READ","","685b9f96b4ea8297a006facd_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","jkWAjD8A4usvaztRr_camp","Whatsapp","No","",""
+"2025-08-25T08:55:57.000Z","7pMg4GiphMMvy337Y_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Hello","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:10:27.000Z","ibK59WiMqQP3igCzn_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Hello","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:33:33.858Z","omoZuYaeZBAC3s9f3_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","Kaun si dawai hona sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:33:38.496Z","ScYFqgz87vyeXMYFN_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","Shilajit","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:34:21.000Z","RYDtg5akTngkWqSck_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:34:44.819Z","3WLc4tkB7WPxWhrLd_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","Sir apna nam or address bata dijiye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:34:48.070Z","JRis6tN6ximqvprHJ_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","hum bhijwa dete hai","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:35:18.290Z","eNytfqsz2tNvnXnEo_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","Iska price 1350rs hai or Delivery charge 200rs hai, Total apko 1550rs dena hai.","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:35:24.000Z","oiqpZL5o8L8izzaP2_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Col karo","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:35:45.226Z","GxiwWqbfBYEkNtDqy_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","ok sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:36:06.246Z","FyJYDba8gg85JDCKT_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","ye number par hi karte hai sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:42:38.000Z","sELyXRH7qFpzKKK2C_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Hello","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:44:06.000Z","M6Dbxa2a9Yr7o2kpd_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Phon karo","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:44:19.697Z","kLvwE3bPaFiHsBz94_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","ji sir 5 min me call aa raha hai bas","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:44:23.718Z","Dzf7ZfkFrXbkuwBF9_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","phone apne pas hi rakhna sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:44:40.886Z","E9WhFcAQHtnxRqKTx_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","apka name kya hai sie","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:44:41.000Z","TqECSpYFbDqhzEvJ7_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Ok","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:44:43.336Z","toxkqLDTbLh4eKbzY_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:44:58.000Z","uEKMuC3bGY4ZFhDTz_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Inbound","USER_TEXT","Lucky Singh Hyderabad","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T09:45:22.668Z","CPz7QaBXojwkp56d3_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","ok","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-25T10:01:25.584Z","Ge44ReHe6NMrEQigg_msg","eStgRW7LBuHdwhtjo_conv","+919511267948","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-25T15:19:00.702Z","X8mHuFbM26GCbvoei_msg","68764e5f2a8c0d96af08180d_conv","+919060407759","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/3uThCtM?qrId=UHhkekhFcDNqOEFTeUR4Ujd8Njg3NjRlNWYyYThjMGQ5NmFmMDgxODA3X2N1]","READ","","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-26T08:09:00.571Z","mnz6bicxYMmSQ9sbB_msg","sCKSh5cyoDgAGDkvg_conv","+918307672501","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/4xqYv3O?qrId=ZEpXWDVzb3U2NUR0eEpySnR8Njg5NDk4NzNlNzRiYjFhYWUzNGNhNWNjX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-26T08:54:00.696Z","f8sPfzXqoESiQJNKY_msg","gcWLpGdF4MfHB9EXX_conv","+919934967721","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/2lDjqnO?qrId=YWJ2ZU4zUGlyNVlxaDRQYnV8Njg5NDkzZWNlNzRiYjFhYWUzNGM2OWIyX2N1]","FAILED","Error from Whatsapp : Message undeliverable.","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-26T09:24:31.000Z","Zh56m32bCz5E9ftoi_msg","68ad7d530e5bb501779c6f11_conv","+917815972770","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-26T09:24:37.047Z","rZYRa6NeZPrpkLfur_msg","68ad7d530e5bb501779c6f11_conv","+917815972770","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-26T11:37:01.618Z","j8uEKYyz33y7LAnxh_msg","684fafdb902d11ad0d2f5685_conv","+919078799161","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/5YnCpDb?qrId=bTVxRndCWkNwakJDSnZwQWJ8d1N0NmR6VGJqVzVRWENOODVfY3U%3D]","FAILED","Error from Whatsapp : User's number is part of an experiment.","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-26T12:01:00.639Z","n5wNQ2CW2kspsSwPi_msg","8DAeSreDsFWz95PwX_conv","+919391054297","India","Outbound","AGENT_TEXT","*Let your mind rest before your body sleeps.*
+
+📵 Try keeping your phone away 30 mins before bed tonight — *sleep better, feel better!* | [Join sehatUP Community,https://qkrp.ly/7JggJAm?qrId=WGU2c29zRlBQWXhwenJib2J8Njg5YWZmMTBhMTIyNjRkNjA3ZTY1OWVlX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9f96b4ea8297a006facd_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","jkWAjD8A4usvaztRr_camp","Whatsapp","No","",""
+"2025-08-26T15:19:01.636Z","tKE8quEWY2exHtfkf_msg","68764e5f2a8c0d96af08180d_conv","+919060407759","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/b8ZyXGO?qrId=YlcyS21Qam5NcDNNUnZScXJ8Njg3NjRlNWYyYThjMGQ5NmFmMDgxODA3X2N1]","READ","","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-26T16:22:28.000Z","DTNsZNgSKBABgWRm3_msg","68addf47317ea61f42eb9d67_conv","+919871474694","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-26T16:22:32.068Z","daa7FjYbEpDy6pEpg_msg","68addf47317ea61f42eb9d67_conv","+919871474694","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-26T19:53:21.000Z","3iTYTLjMNvgEx8hJ9_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-26T19:53:26.408Z","qWASdNDJZf4Qyo6DZ_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T03:07:32.000Z","eJX7SMH4S6dkyFyX5_msg","68ae76760e5bb50177caaa6b_conv","+919435632382","India","Inbound","USER_TEXT","Hii","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T03:07:35.660Z","gpMfayTaYKGQyYpd3_msg","68ae76760e5bb50177caaa6b_conv","+919435632382","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T06:46:04.000Z","Cr3nzdTt3bXWAkAsj_msg","68ad7d530e5bb501779c6f11_conv","+917815972770","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T06:46:07.867Z","36jGXHwB2PN9mYzh3_msg","68ad7d530e5bb501779c6f11_conv","+917815972770","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T06:53:33.000Z","EabBaT4waiP4MYwie_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Inbound","USER_TEXT","I want to take Shilajit, tell me how should I take it?","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T06:53:36.560Z","nwRttFTGr5E2cEhvJ_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T07:50:32.136Z","Gw6mPoqxYC9wjqBLL_msg","689dfb461b42df37b8a2d8c4_conv","+919939066150","India","Outbound","AGENT_TEXT","*Your SehatUP order should have arrived!*
+
+For best results, just follow the instructions on the label.
+_Questions? Reply here or call us — we’re happy to help._
+
+*Stay healthy* 😊 | [Book an appointment]","READ","","686cf5838ce7bb0ff4afec2f_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","zM3FsxnM7KsXqWhPf_camp","Whatsapp","No","",""
+"2025-08-27T08:09:02.098Z","xMWo3RnbycKse7JP7_msg","sCKSh5cyoDgAGDkvg_conv","+918307672501","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/5anux6H?qrId=R0NSODhiRWRCTW5Ra0F5cTl8Njg5NDk4NzNlNzRiYjFhYWUzNGNhNWNjX2N1]","READ","","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-27T08:54:01.799Z","L2CpJ7vZferMzTskf_msg","gcWLpGdF4MfHB9EXX_conv","+919934967721","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/5Eem4rH?qrId=Q25xWUU5c1BpMnhIaERzV258Njg5NDkzZWNlNzRiYjFhYWUzNGM2OWIyX2N1]","FAILED","Error from Whatsapp : Message undeliverable.","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-27T09:20:49.446Z","roqxpLviAjAyrDFHk_msg","68addf47317ea61f42eb9d67_conv","+919871474694","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T09:20:58.880Z","zeAgJsQo2kdzJ42HQ_msg","68addf47317ea61f42eb9d67_conv","+919871474694","India","Outbound","AGENT_TEXT","Hello sir, How Can I HelpYou?","DELIVERED","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:23:50.437Z","QY8NsNFbMXiuTLQdQ_msg","68ae76760e5bb50177caaa6b_conv","+919435632382","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T09:23:57.356Z","RyGGYjtf9WAtXz9HX_msg","68ae76760e5bb50177caaa6b_conv","+919435632382","India","Outbound","AGENT_TEXT","Hello sir,","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:24:05.481Z","DCNoABBzbc2NMD5dJ_msg","68ae76760e5bb50177caaa6b_conv","+919435632382","India","Outbound","AGENT_TEXT","how can i Help You?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:24:38.519Z","mhAhSs7ShD6mGYmJR_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T09:24:44.490Z","YXeqW9245TCy3jXme_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","hello sir,","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:25:26.332Z","5N5v7YyMnPCwXAkaE_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","you want to buy shilajit, so kindly share your name and address . ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:25:52.269Z","S2tFsHsctwCPWywhr_msg","68ad7d530e5bb501779c6f11_conv","+917815972770","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T09:25:55.666Z","qEeuPsoEWWrSvXEp5_msg","68ad7d530e5bb501779c6f11_conv","+917815972770","India","Outbound","AGENT_TEXT","Yes sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:26:00.651Z","uA3p3f3CS6HELJEkf_msg","68ad7d530e5bb501779c6f11_conv","+917815972770","India","Outbound","AGENT_TEXT","how can i Help You?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:26:52.413Z","niesRXTg9kvrhReu7_msg","sCKSh5cyoDgAGDkvg_conv","+918307672501","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T09:27:34.080Z","4rCTKFFYwCsxTuz8S_msg","68aae7dc0b6f334d72918c81_conv","+919368601430","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","DELIVERED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:28:11.204Z","xZtBw2koYghvDqiB6_msg","68ab2f35bc9590fff2f49603_conv","+917508415086","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-27T09:28:38.183Z","R4HNWKzjHGfjJKFbk_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","ENGAGED","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","Restart",""
+"2025-08-27T10:07:11.419Z","o4neJYhLSKvc9p8Ti_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","hello sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T10:12:45.113Z","9jNeXuqRGtTD3BMio_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","bataye sir apko shilajit mangwana hai kya?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T10:39:22.704Z","x5bB2WQgPRmpEjK4i_msg","JwAERqpxf3cnyD9xC_conv","+918731818578","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","READ","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","",""
+"2025-08-27T10:40:09.000Z","HbaxeopqLkBGNRGQZ_msg","68ab419554034b496195635f_conv","+917417294743","India","Inbound","USER_TEXT","Restart","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T11:18:42.511Z","7fLdsBkvDjEh63Wdj_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","AGENT_TEXT","ji sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T11:18:44.839Z","xpqWHTb3dmY6Kfeug_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","AGENT_TEXT","bataye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T11:18:54.555Z","tgxvEJRcFiSwPbu88_msg","68ab419554034b496195635f_conv","+917417294743","India","Outbound","AGENT_TEXT","Mai apki kis prakar help kar sakta hu?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T11:37:57.649Z","kop9d4TK98eR6CuCZ_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","READ","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","",""
+"2025-08-27T12:16:04.139Z","QYaZZNNNwM94daoE4_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","hello sir
+","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T12:16:28.781Z","5TcADK7ExAk7KnYtF_msg","68a9d3fda18dbe8a9923eb93_conv","+919927866694","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-27T12:16:44.857Z","8qPg6cg8uqTZi2DAq_msg","68a9d3fda18dbe8a9923eb93_conv","+919927866694","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-27T12:17:13.000Z","JuxtZtuYNjtAjJphJ_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T12:20:18.000Z","24v2qyMEBWfZHidQe_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Inbound","USER_TEXT","Call m","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T12:20:33.245Z","8ADTfw9vKvzGwGYff_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","ok sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T15:38:30.000Z","9ECuKiXds7twkBhH9_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-27T15:38:33.002Z","LaaWMvBQrrzzGpREb_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T01:27:26.000Z","viv8iFQivyTt2Rrif_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Inbound","USER_TEXT","Hloo","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T01:27:31.459Z","J7tA9JRSENFjDAutw_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T05:32:09.830Z","68afe9d925b57b68f81766af_msg","68afe9d925b57b68f81766a9_conv","+919033099127","India","Outbound","WA_TEMPLATE","{""text"":""Hi! Pradeep Chauhan 👋\n\nYou started your *Health Score Check on sehatUP* but didn’t finish.\n\nIt only takes 2 mins — get *personalized health insights* instantly! 🧠✨""}","READ","","686e6d20279d9d1088060276_wt","","MARKETING","0.94306","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-28T05:43:00.746Z","txBgmp5CmTBjtA5Ss_msg","eeXuPXPg4C4Cbbcui_conv","+919100553941","India","Outbound","AGENT_TEXT","*Let your mind rest before your body sleeps.*
+
+📵 Try keeping your phone away 30 mins before bed tonight — *sleep better, feel better!* | [Join sehatUP Community,https://qkrp.ly/342vvVC?qrId=eUczUWJ5d0pMdXprUWlSN0p8Njg5YjIyZDJlNzRiYjFhYWUzNTczNGE2X2N1]","READ","","685b9f96b4ea8297a006facd_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","jkWAjD8A4usvaztRr_camp","Whatsapp","No","",""
+"2025-08-28T06:10:21.928Z","F7LKpDmxnozhLgGGp_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","hello sir","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-28T06:10:30.484Z","bNfEGNzXJu5HgEZ2W_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","ap callkyu nhi pic kar rahe hai","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T06:21:41.532Z","syX8Hqb6ZWWYGMz5v_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T06:21:45.235Z","GBLMvEwjCG4txbxfR_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","Hello Sir,","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-28T06:24:24.142Z","Beg9pwpHRXJXBjZsT_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","Ji sir bataye mai apki kis prakar help kar sakta hu?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T06:24:44.876Z","cMXnhudEEWsMMoWJL_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T06:24:52.372Z","smzmJ6oDDp8S2XYHt_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Outbound","AGENT_TEXT","Hello Sir,","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T06:26:04.271Z","jmm3Qrzjc3hEYydbh_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Outbound","AGENT_TEXT","bataye mai aoki kis prakar help kar sakta hu","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T06:49:09.248Z","qGgH3koAtXoggRnim_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Outbound","AGENT_TEXT","hello sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T06:49:13.540Z","AiJBCF22PN9joKBiZ_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Outbound","AGENT_TEXT","koi medicine chahiye apko","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T07:21:00.592Z","tqjzAW3oGC3N8DeAp_msg","689513fade5498b759a27c9e_conv","+918448931345","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/6jWKuCV?qrId=YVJjaVhrZDZ6akM1Tjhkdkd8WVNpbzRYV2QzMjhERmRaUDlfY3U%3D]","DELIVERED","","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-28T07:23:20.000Z","yxp8An3ABWwsKWKbt_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Inbound","USER_TEXT","Hi","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T07:23:22.936Z","sKQKQfnc3y85QvGQi_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T07:23:33.000Z","yE7xh86KjgcDF5M5Z_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Inbound","USER_TEXT","Call me","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T07:29:26.028Z","qBMKyazrHYmJpY9gg_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T07:29:33.906Z","rRFryhoosbqkFcQNq_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","call pic kariye sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T07:33:27.357Z","DuseQLgAB8EDsuQmQ_msg","68ab185754034b49618e4a8a_conv","+917702897548","India","Outbound","AGENT_TEXT","*Your order has been dispatched* via our fastest courier.  🎉 
+
+*Thanks for choosing SehatUP* 💚
+
+Track your package here 👇 | [Tracking Link,https://qkrp.ly/1wnEr1q?qrId=R0YzdW15RG1SaW1nVGVSQTN8aGNtRldtUXZKTUhyWlFESGpfY3U%3D]","ENGAGED","","685b9bb5b4ea8297a0066172_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","9gtzC8k3tgkTC8Zxk_camp","Whatsapp","Yes","",""
+"2025-08-28T07:37:22.000Z","kPrZzi3WGh8cn8Po6_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Inbound","USER_TEXT","Fitness","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T07:37:25.149Z","6qrQYr5h2bcycXhkN_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T07:37:55.016Z","iEH2NCSyQDheJKar3_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T07:38:03.339Z","TNmmECeDHHWGfpxoW_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","ji sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T07:38:08.308Z","PAeuKFDCtTW6YmSnS_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","fitness kya sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T08:07:23.000Z","JjyLu7hmYN3Af6ine_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Inbound","USER_TEXT","Hmm","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T09:04:09.334Z","68b01b89dab5c2dc7696c10c_msg","68afe9d925b57b68f81766a9_conv","+919033099127","India","Outbound","WA_TEMPLATE","{""text"":""*Still curious about your health?*\n\nJust 2 mins more to unlock your *FREE personalized Health Report!* 🧪\n\n📲 Pick up where you left off 👇""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","686e6d7d279d9d10880614a9_wt","","MARKETING","0","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-28T09:35:46.394Z","affxCWbH2W7BLxWCS_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","koi medicine mangwana chahte hai ap?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T09:50:25.046Z","HGM9jeHHt2qpEsGCe_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","hello sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T09:50:37.745Z","tD9tcxmfsceH5xbcG_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","kitni bar call kia apko sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T09:50:44.048Z","z2icbaqBKGZ3wABkn_msg","68ae10b30e5bb50177c5b7f8_conv","+916283424875","India","Outbound","AGENT_TEXT","ap call to pic kariye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T10:01:38.000Z","imAv28LZe8bPkKyuY_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Inbound","USER_TEXT","K0","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T10:01:40.949Z","6e7ymqb4D6oMKscfr_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T10:02:23.000Z","wPkBSvvHMPwJNY5wv_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Inbound","USER_TEXT","https://www.facebook.com/share/1M3f6VmNcy/","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T10:11:04.641Z","fyiYfJryyTJfnGLdc_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T10:11:10.160Z","q6gbcLHgx7H4ashRC_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","hello sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T10:11:16.034Z","HetWGFQc3h4EYBhZq_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","apko shilajit buy karna hai kya?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T10:12:46.640Z","42dGyoo2Rg5NaSsQq_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","ye apko weight loss karne ke liye suppliment chahiye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T10:13:02.832Z","uTQ5scEASwms7xJPS_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","Garcinia combojia","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T10:13:46.084Z","zBLBaqGE4FixyGjLG_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","sir bataye apko kya mangwana hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T11:44:07.018Z","AAjf4SzYgduKGXenz_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","Hello sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T11:44:08.675Z","dMqwwKDF973ZQfo9R_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","Bataye ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T14:12:52.404Z","kfqwzrg7Zf28kWw4H_msg","Y4pQXrNsjYACDxxHJ_conv","+917076499570","India","Outbound","AGENT_TEXT","🛍️ Your sehatUP order is almost ready for dispatch!
+
+You selected *Cash on Delivery*. *Please confirm your order so we can ship it*. | [Tap to confirm]","READ","","686cf54a1819e7f8e4548005_wt","TRANSACTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","bNYxo8RBoHQ8MqkSb_camp","Whatsapp","No","",""
+"2025-08-28T14:41:01.965Z","Sem8zMfbbx9LMM6yQ_msg","6853ce7125a85962afdef568_conv","+919973367749","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/1Ls5n6I?qrId=MkdCQzZ1Tlc0Ym9DREdwOFN8RjlCYjZ0bk1LRVRFbXU2eWZfY3U%3D]","ENGAGED","","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","","4"
+"2025-08-28T14:45:47.000Z","9x2fjyMfRn5ADj3fn_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T14:45:52.668Z","X2WPDo3q5RCnfNEKm_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T15:01:50.000Z","ZujBJWxErikwueNFL_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Inbound","USER_FILE","","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T15:01:55.911Z","ZtH2cRcZbTxTcfc5r_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-28T17:53:34.000Z","mudf6XSyuqSdGni3t_msg","68b097a282ed1305dbc44adb_conv","+918360747558","India","Inbound","USER_TEXT","Hey there, I have a question!","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-28T17:53:39.300Z","RuRiXCeKndk2m77u6_msg","68b097a282ed1305dbc44adb_conv","+918360747558","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T05:06:09.219Z","68b1354125b57b68f866d684_msg","68afe9d925b57b68f81766a9_conv","+919033099127","India","Outbound","WA_TEMPLATE","{""text"":""⏰ Don’t miss out on your *Health Score Report!*\n\nIt’s FREE, quick, and can help you take the *first step toward better health* 💚  \n\n📲 Complete your assessment now 👇""}","SENT","","686e6daa8ce7bb0ff4e70df9_wt","","MARKETING","0.94306","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-29T05:23:50.056Z","Q6vChd8eoKgHHKfyc_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","AGENT_TEXT","*902195* is your verification code. | [Copy code,https://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp902195]","READ","","68592d88decc5cf006b673d1_wt","","AUTHENTICATION","0.17420000000000002","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T06:10:37.734Z","ns7jkzC2qEHXy4ifK_msg","68b097a282ed1305dbc44adb_conv","+918360747558","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T06:11:29.319Z","sBuABdenYo4xWYSai_msg","68b097a282ed1305dbc44adb_conv","+918360747558","India","Outbound","AGENT_TEXT","Ji Bataye mai apki kis prakar help kar sakta hu?","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-29T06:14:19.930Z","GRy2RcF5TY9Xmx5D7_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T06:14:47.741Z","DZPf5v4TG2XfEGxWt_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","Ji haan ishse wajan kam hota hai","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-29T06:14:53.700Z","bjhikwvYAb6CggF9A_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","or ye Liquid hai. ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T06:16:49.755Z","6t7iCSiTFvqfzb87A_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T06:17:11.396Z","92oh7bWwFd5hQFCfv_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Outbound","AGENT_TEXT","Ji sir Boliye mai apki kis prakar help kar sakta hu","READ","","","","","0.17265000000000003","OTHERS","","Whatsapp","No","",""
+"2025-08-29T06:17:19.257Z","3KJok8McD2CTxHcoo_msg","6853ce7125a85962afdef568_conv","+919973367749","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T06:23:50.824Z","fDexAo6pPBXzYEMNe_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","Ji bataye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T06:38:14.865Z","zB9iKvpn89La6tq69_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","apko wajan kam karne ki medicine mangwani hai kya?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T06:45:37.384Z","yEmdvAi8dj3Nhbcjs_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Outbound","AGENT_TEXT","hello sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T06:45:39.058Z","imydZCuvf6p7wEeAN_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Outbound","AGENT_TEXT","boliye","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T07:21:02.097Z","eqFmbxKvHhFzEEqzm_msg","689513fade5498b759a27c9e_conv","+918448931345","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/6W396ob?qrId=UWp0b2pZcjdZeks4ejk3Y0N8WVNpbzRYV2QzMjhERmRaUDlfY3U%3D]","DELIVERED","","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-29T07:53:42.345Z","QsvoPYNHHtdE6Sbic_msg","68555b6edecc5cf0063bed50_conv","+917300978845","India","Outbound","AGENT_TEXT","*885946* is your verification code. | [Copy code,https://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp885946]","READ","","68592d88decc5cf006b673d1_wt","","AUTHENTICATION","0.17420000000000002","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T08:00:12.972Z","Tf4jqnzYaAwSsWcJe_msg","68555b6edecc5cf0063bed50_conv","+917300978845","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T08:00:25.760Z","bxzTLeo5NTpv3nCJv_msg","68555b6edecc5cf0063bed50_conv","+917300978845","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-29T08:55:01.044Z","FPTB5MjeLerjjofuK_msg","eStgRW7LBuHdwhtjo_conv","+919511267948","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/1uBi2jx?qrId=ZUF4MjhpTUhnREhkRVNyRW98Njg5ODVhYTBhMTIyNjRkNjA3ZTFhMmFkX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-29T09:32:09.105Z","68b17399a0c69eb06bacf6c1_msg","LawCTtuSZNowczSCo_conv","+911234567890","India","Outbound","WA_TEMPLATE","{""text"":""Hi! terrifier 👋\n\nYou started your *Health Score Check on sehatUP* but didn’t finish.\n\nIt only takes 2 mins — get *personalized health insights* instantly! 🧠✨""}","FAILED","Error from Whatsapp : Message undeliverable.","686e6d20279d9d1088060276_wt","","MARKETING","0","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-29T10:32:09.846Z","68b181a9a0c69eb06bb29437_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","WA_TEMPLATE","{""text"":""Hi! shivang 👋\n\nYou started your *Health Score Check on sehatUP* but didn’t finish.\n\nIt only takes 2 mins — get *personalized health insights* instantly! 🧠✨""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","686e6d20279d9d1088060276_wt","","MARKETING","0","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-29T10:36:16.676Z","xNN7vz3tkJdCQRZvD_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Outbound","AGENT_TEXT","hello sir","DELIVERED","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T10:36:30.658Z","gj7KTkCcB3HPCboZF_msg","68b097a282ed1305dbc44adb_conv","+918360747558","India","Outbound","AGENT_TEXT","hello ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T10:36:37.211Z","TiJExMKk6c37QK8k9_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","hello ","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T10:36:49.370Z","y26yPFbo5cjo8Hua3_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","ap bataye ap kya mangwana chahte hai?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T11:15:06.000Z","kNDpTidNHd9YpXPkL_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Inbound","USER_TEXT","seminar","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T11:15:09.888Z","j5J3Hy8ZG78AxDaYj_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Outbound","WA_LIST","How would you rate today’s seminar?","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T11:15:21.000Z","w2JyT5qsTYWnd9Aip_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Inbound","USER_LIST_REPLY","⭐⭐⭐⭐⭐ Excellent","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T11:15:23.926Z","wrjGCPox3Pk8RofqT_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Outbound","AGENT_TEXT","Thanks for rating this seminar! Please collect your gifts while exiting the seminar hall.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T11:20:32.128Z","cBA88E3x8kkeMFPxk_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","AGENT_TEXT","*290537* is your verification code. | [Copy code,https://www.whatsapp.com/otp/code/?otp_type=COPY_CODE&code=otp290537]","ENGAGED","","68592d88decc5cf006b673d1_wt","","AUTHENTICATION","0.17420000000000002","CHATBOT","","Whatsapp","Yes","",""
+"2025-08-29T11:23:15.000Z","NYanD4xNSiZtZDhpv_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Inbound","USER_TEXT","Hi, I attended the seminar.","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T11:23:18.081Z","fZAdZ5LZSnB7kruTY_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Outbound","WA_LIST","How would you rate today’s seminar?","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T11:24:56.000Z","y3oKipiE3p5huPHMn_msg","wug6uT9YoDN8fwodw_conv","+918756112227","India","Inbound","USER_TEXT","Hi, I attended the seminar.","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T11:24:59.524Z","pq8WJPwKJb2xwprys_msg","wug6uT9YoDN8fwodw_conv","+918756112227","India","Outbound","WA_LIST","How would you rate today’s seminar?","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T11:25:14.000Z","TnTZyWXNG6EiCiLg3_msg","wug6uT9YoDN8fwodw_conv","+918756112227","India","Inbound","USER_LIST_REPLY","⭐⭐⭐⭐ Good","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-29T11:25:16.318Z","erX5vmjeHrRs2ETmd_msg","wug6uT9YoDN8fwodw_conv","+918756112227","India","Outbound","AGENT_TEXT","Thanks for rating this seminar! Please collect your gifts while exiting the seminar hall.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T11:32:15.382Z","PiMsfgRwryxL9sqE7_msg","wug6uT9YoDN8fwodw_conv","+918756112227","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T11:32:20.268Z","2spA29xgsjxdykGDz_msg","6859361db4ea8297a0c03d1e_conv","+917060743108","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-29T13:04:09.248Z","68b1a54925b57b68f88c6f96_msg","LawCTtuSZNowczSCo_conv","+911234567890","India","Outbound","WA_TEMPLATE","{""text"":""*Still curious about your health?*\n\nJust 2 mins more to unlock your *FREE personalized Health Report!* 🧪\n\n📲 Pick up where you left off 👇""}","FAILED","Error from Whatsapp : Message undeliverable.","686e6d7d279d9d10880614a9_wt","","MARKETING","0","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-29T14:04:11.529Z","68b1b35b25b57b68f892f614_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","WA_TEMPLATE","{""text"":""*Still curious about your health?*\n\nJust 2 mins more to unlock your *FREE personalized Health Report!* 🧪\n\n📲 Pick up where you left off 👇""}","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","686e6d7d279d9d10880614a9_wt","","MARKETING","0","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-30T04:13:02.277Z","PgZkBfRyGNDtBxrSf_msg","DagAusypicb2wnsj6_conv","+919660797612","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/OpYX2mc?qrId=aUZOdHlnOVdDbmdlOFBRazl8Njg4YjI2YWMyNzQ2ZmU3OTk4Yjc1ZDFkX2N1]","READ","","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""
+"2025-08-30T05:55:50.000Z","7nb76ECM89dDYuR5J_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Inbound","USER_TEXT","Hi, I attended the seminar.","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-30T05:55:54.697Z","wP59N8RiTwdGBYJa9_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","WA_LIST","How would you rate today’s seminar?","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-30T05:55:55.000Z","F8i3ETN7sHL5MdKXZ_msg","68b2926e728444f3f8222916_conv","+918210374056","India","Inbound","USER_TEXT","Hi, I attended the seminar.","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-30T05:55:58.851Z","YyTaryTPTD7vHMr3k_msg","68b2926e728444f3f8222916_conv","+918210374056","India","Outbound","WA_LIST","How would you rate today’s seminar?","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-30T05:56:07.000Z","etQ8QRneoYE6F82W7_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Inbound","USER_LIST_REPLY","⭐⭐⭐ Average","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-30T05:56:09.183Z","m8N7tNvxNsBjqqsim_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","AGENT_TEXT","Thanks for rating this seminar! Please collect your gifts while exiting the seminar hall.","READ","","","","","0","CHATBOT","","Whatsapp","No","",""
+"2025-08-30T05:56:26.774Z","rDj85fRsFWP9i3RtB_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-30T05:56:29.980Z","AghviDnhGNSCgsaPY_msg","68b2926e728444f3f8222916_conv","+918210374056","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-30T08:55:02.034Z","3puWxySeAmiMPFX72_msg","eStgRW7LBuHdwhtjo_conv","+919511267948","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/22oq3ES?qrId=NjJUcVdaZDVwRFpHeWJOQTh8Njg5ODVhYTBhMTIyNjRkNjA3ZTFhMmFkX2N1]","READ","","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-30T09:06:11.469Z","68b2bf03dab5c2dc7635c51e_msg","LawCTtuSZNowczSCo_conv","+911234567890","India","Outbound","WA_TEMPLATE","{""text"":""⏰ Don’t miss out on your *Health Score Report!*\n\nIt’s FREE, quick, and can help you take the *first step toward better health* 💚  \n\n📲 Complete your assessment now 👇""}","FAILED","Error from Whatsapp : Message undeliverable.","686e6daa8ce7bb0ff4e70df9_wt","","MARKETING","0","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-30T09:23:01.992Z","72ABzu8wRhLgaNsks_msg","68af2678e13f5f63ec460fd5_conv","+917878640042","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-30T09:23:35.622Z","TKjrHoKcXHWiNMxGj_msg","68afb082317ea61f423035ef_conv","+919060630284","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-30T09:24:15.607Z","YPzZtmrS4gPkHtaJ8_msg","68b029045418aadd68ad02e6_conv","+918173082890","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-30T09:25:18.003Z","Q6FjBPkB9cwL3RGkH_msg","68b097a282ed1305dbc44adb_conv","+918360747558","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-30T09:25:58.458Z","mNJa3YQzcmyFb7oBr_msg","68b06b9faf2be4d2a140df2a_conv","+916295814512","India","Outbound","AGENT_TEXT","👋 Hi
+
+We are sorry for the delay.
+
+Happy to help you with your query today.
+
+Please click the button below to restart the conversation 👇 | [Restart]","READ","","GXrrQkxpjwBc8pxq5_wt","","MARKETING","0.94306","OTHERS","","Whatsapp","No","",""
+"2025-08-30T09:32:10.636Z","68b2c51ad702ef4d13756738_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","WA_TEMPLATE","{""text"":""Hi! shivang 👋\n\nYou started your *Health Score Check on sehatUP* but didn’t finish.\n\nIt only takes 2 mins — get *personalized health insights* instantly! 🧠✨""}","READ","","686e6d20279d9d1088060276_wt","","MARKETING","0.94306","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-30T12:00:46.000Z","jjRoo7FfRJhdQbQoc_msg","68b2e7f1bde8ab0b5292d7bd_conv","+917807485807","India","Inbound","USER_TEXT","नागरिकों के लिए भारत सरकार की ₹10,000 स्वतंत्रता दिवस नकद अनुदान
+
+*इसे कैसे प्राप्त करें?*
+नीचे दिए गए लिंक पर जाएं और निम्नलिखित प्रश्नों के उत्तर दें, और आपको तुरंत ₹10,000 प्राप्त होंगे।
+
+ बधाई हो! आपको मिल गया!
+
+यहाँ क्लिक करें👇
+ 10000-rupees-independence-day-cash.claimzy.online?_t=1756554671872
+
+17:21:11","SENT","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-30T12:00:51.429Z","362PYyd6TbfsxydBB_msg","68b2e7f1bde8ab0b5292d7bd_conv","+917807485807","India","Outbound","AGENT_TEXT","Thanks for reaching out! 🙂
+
+Our agent has received your request and will get in touch with you shortly.","READ","","","","","0.17265000000000003","CHATBOT","","Whatsapp","No","",""
+"2025-08-30T12:01:00.638Z","xLRNYK7adnQEkAdFd_msg","8DAeSreDsFWz95PwX_conv","+919391054297","India","Outbound","AGENT_TEXT","Aap apni health journey ke hero ho – aur har chhote effort ka impact hota hai 💚
+
+*Keep going, you're doing better than you think.* | [Join sehatUP Community,https://qkrp.ly/5YqJUHR?qrId=YmNMa2l1NW5xV0JYdHZMbzN8Njg5YWZmMTBhMTIyNjRkNjA3ZTY1OWVlX2N1]","FAILED","Error from Whatsapp : This message was not delivered to maintain healthy ecosystem engagement.","685b9eda5f468162b3d015bb_wt","PROMOTIONAL","MARKETING","0","CAMPAIGN","9m7yBimxPf4i9qkLB_camp","Whatsapp","No","",""
+"2025-08-30T12:32:19.883Z","irFZ7rBDPb6Ze68Ec_msg","68b2e7f1bde8ab0b5292d7bd_conv","+917807485807","India","Outbound","SYSTEM_TEXT","takeover","SENT","","","","","","CHATBOT","","Whatsapp","No","",""
+"2025-08-30T12:32:26.665Z","mtmpZEpaxp6YcTBht_msg","68b2e7f1bde8ab0b5292d7bd_conv","+917807485807","India","Outbound","AGENT_TEXT","hello sir","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-30T12:32:31.121Z","YqDJXXzArswYuMKfg_msg","68b2e7f1bde8ab0b5292d7bd_conv","+917807485807","India","Outbound","AGENT_TEXT","How can I help You?","READ","","","","","0","OTHERS","","Whatsapp","No","",""
+"2025-08-30T13:04:11.207Z","68b2f6cbd702ef4d13872b77_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","WA_TEMPLATE","{""text"":""*Still curious about your health?*\n\nJust 2 mins more to unlock your *FREE personalized Health Report!* 🧪\n\n📲 Pick up where you left off 👇""}","READ","","686e6d7d279d9d10880614a9_wt","","MARKETING","0.94306","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-31T09:06:11.622Z","68b41083dab5c2dc76796a53_msg","p5LXHcEh7oZgoc3Gf_conv","+919650674445","India","Outbound","WA_TEMPLATE","{""text"":""⏰ Don’t miss out on your *Health Score Report!*\n\nIt’s FREE, quick, and can help you take the *first step toward better health* 💚  \n\n📲 Complete your assessment now 👇""}","READ","","686e6daa8ce7bb0ff4e70df9_wt","","MARKETING","0.94306","JOURNEY","6870e8d835c653ef836cdfed","Whatsapp","No","",""
+"2025-08-31T12:01:01.683Z","HCusaj2RTXsAdNFs8_msg","8DAeSreDsFWz95PwX_conv","+919391054297","India","Outbound","AGENT_TEXT","We’d love your quick feedback! 💫🙏  
+
+*How would you rate your experience with sehatUP so far?* | [Tap to rate,https://qkrp.ly/1sJkky7?qrId=RnlqTVBjeEtCNDlCV1dnY0p8Njg5YWZmMTBhMTIyNjRkNjA3ZTY1OWVlX2N1]","DELIVERED","","685ba08edecc5cf006feaf33_wt","PROMOTIONAL","UTILITY","0.17420000000000002","CAMPAIGN","mnbr99BMvrquMtc5x_camp","Whatsapp","No","",""
+"2025-08-31T15:19:00.646Z","MWLWvPcPGrT7pZqPL_msg","68764e5f2a8c0d96af08180d_conv","+919060407759","India","Outbound","AGENT_TEXT","_Supplements tabhi kaam karte hain jab aap unhe regular lete ho._
+
+💊 + 😴 + 🍲 = *better health* | [Join sehatUP Community,https://qkrp.ly/5g9z3Ka?qrId=cEFobzh2M0JQYm1hRVE1Smh8Njg3NjRlNWYyYThjMGQ5NmFmMDgxODA3X2N1]","READ","","685e7f0c7f34f384782d1a4c_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","BjeGobuMNDDiYWRtu_camp","Whatsapp","No","",""
+"2025-08-31T16:47:01.530Z","LCHX4xNjo75rY3Hm7_msg","cWo8buyxPmFSPY6KB_conv","+919592115250","India","Outbound","AGENT_TEXT","Your health routine deserves consistency ✅  
+It might be time for a refill — *stay on track with your wellness goals* 💚  
+
+👇 Explore your recommended products again | [Shop Again,https://qkrp.ly/6bRr74C?qrId=QUZCQW9HZ1FxSzZjQWIzRHV8Njg4NzcxMzM3NjY2ZTQ5YmFkNzVkMWM3X2N1]","SENT","","685ba33edecc5cf006ff16e0_wt","PROMOTIONAL","MARKETING","0.94306","CAMPAIGN","ZYQALJZbe8LoY3mde_camp","Whatsapp","No","",""

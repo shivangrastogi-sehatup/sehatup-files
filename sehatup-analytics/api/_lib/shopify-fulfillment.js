@@ -241,28 +241,39 @@ export async function syncShopifyFulfillment({ order, awb, status, eventTime, co
       return { ok: true, skipped: true, reason: 'duplicate_suppressed', claimKey: key, fulfillmentId: match ? String(match.id) : null };
     }
 
-    // ── Guard 4: re-read Shopify immediately before writing ──
+    // ── Guard 4: re-read Shopify's EVENT LIST immediately before writing ──
     // `order` was fetched earlier in enrich.js — before the Nimbus pull, the Shopify
     // lookups and several Firestore writes — so by now it can be seconds to minutes
-    // stale, and the local guards above judged on that stale copy. This is the only
-    // check that sees what Shopify holds RIGHT NOW. It costs one GET, and only on the
-    // path that was about to write anyway; every no-op returned before reaching here.
+    // stale, and the local guards above judged on that stale copy. This is the last
+    // check before we write, and it is what catches a burst that slipped past guard 3:
+    // when the Firestore claim write hiccups, claim() FAILS OPEN (returns true) and two
+    // racing scans both reach here, so this must not assume the claim held.
+    //
+    // We read the fulfillment's EVENT LIST, not `shipment_status`. shipment_status is an
+    // unreliable mirror of a just-posted INTERMEDIATE event (in_transit / out_for_delivery)
+    // — the old order re-read compared against it and let exactly those duplicates through
+    // (delivered was fine, which is why only intermediate statuses kept duplicating). The
+    // events are the source of truth the customer's QuickReply drip fires on — literally
+    // what check-duplicates.mjs reads — so if one is already there, a racing run posted it
+    // and we must not post it again. Costs the same single GET as the old order re-read.
     if (match) {
       try {
-        const fresh = await shopify(`/orders/${order.id}.json?fields=id,fulfillments`);
-        const f = (fresh?.order?.fulfillments || []).find((x) => String(x.id) === String(match.id));
-        const liveStatus = f ? (f.shipment_status || null) : null;
-        if (liveStatus === target && !REPEATABLE.has(target)) {
-          // Shopify already has it — leave the claim in place, it is genuinely done.
+        const evs = (await shopify(`/orders/${order.id}/fulfillments/${match.id}/events.json`))?.fulfillment_events || [];
+        if (!REPEATABLE.has(target) && evs.some((e) => e.status === target)) {
+          // Already on the timeline — leave the claim in place, it is genuinely done.
           return { ok: true, skipped: true, reason: 'already_' + target + '_live', claimKey: key, fulfillmentId: String(match.id), created: false };
         }
-        if (RANK[target] && RANK[liveStatus] && RANK[target] < RANK[liveStatus]) {
-          return { ok: true, skipped: true, reason: `stale_status_live:${target}_after_${liveStatus}`, claimKey: key, fulfillmentId: String(match.id), created: false };
+        // Never walk backwards: if the timeline already reached a higher-ranked status,
+        // this scan is stale news. failure / attempted_delivery (RANK 0) are exempt — they
+        // may legitimately interrupt at any point.
+        const livePeak = evs.reduce((peak, e) => Math.max(peak, RANK[e.status] || 0), 0);
+        if (RANK[target] && livePeak && RANK[target] < livePeak) {
+          return { ok: true, skipped: true, reason: `stale_status_live:${target}_below_${livePeak}`, claimKey: key, fulfillmentId: String(match.id), created: false };
         }
       } catch (e) {
         // A failed re-read must not block a real status update — the claim and the
         // local guards have already done most of the work.
-        console.warn('[shopify-sync] pre-write re-read failed for', awb, '-', e?.message || e);
+        console.warn('[shopify-sync] pre-write events re-read failed for', awb, '-', e?.message || e);
       }
     }
 

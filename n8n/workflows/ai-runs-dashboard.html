@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ananya · Flight Recorder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* deep instrument slate — a blue-charcoal, not near-black */
+    --bg:#0d141c; --bg-glow:#12202f;
+    --panel:#111b25; --panel-2:#16222f; --raised:#1a2836;
+    --line:#243545; --line-2:#2f4356;
+    --ink:#eaf2f9; --ink-2:#95a9bd; --ink-3:#63788c;
+    /* triage — colours mirror WhatsApp's delivery-tick language */
+    --replied:#54bdeb;  --replied-bg:rgba(84,189,235,.13); --replied-dim:rgba(84,189,235,.34);
+    --skipped:#98a8bb;  --skipped-bg:rgba(152,168,187,.12);--skipped-dim:rgba(152,168,187,.3);
+    --bowed:#e6a44c;    --bowed-bg:rgba(230,164,76,.13);   --bowed-dim:rgba(230,164,76,.34);
+    --error:#f35a61;    --error-bg:rgba(243,90,97,.13);    --error-dim:rgba(243,90,97,.36);
+    --live:#37d69a;
+    --f-disp:'Space Grotesk',system-ui,sans-serif;
+    --f-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --f-sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+    --r:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--f-sans); font-size:14px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(1100px 460px at 76% -8%, var(--bg-glow), transparent 60%);
+    background-attachment:fixed;
+  }
+  ::selection{background:var(--replied-dim); color:#fff}
+  .mono{font-family:var(--f-mono)}
+  .muted{color:var(--ink-2)}
+  a{color:var(--replied)}
+
+  /* ── masthead ─────────────────────────────────────────── */
+  .mast{
+    display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap;
+    padding:22px 28px 18px; border-bottom:1px solid var(--line);
+  }
+  .brandmark{display:flex; align-items:center; gap:12px}
+  .rec{position:relative; width:11px; height:11px; flex:none}
+  .rec i{position:absolute; inset:0; border-radius:50%; background:var(--live)}
+  .rec i::after{content:''; position:absolute; inset:0; border-radius:50%; background:var(--live);
+    animation:ping 2.6s cubic-bezier(0,.2,.6,1) infinite}
+  @keyframes ping{0%{transform:scale(1);opacity:.6}70%,100%{transform:scale(3.4);opacity:0}}
+  .eyebrow{font-family:var(--f-mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--ink-3); margin:0 0 3px}
+  .mast h1{font-family:var(--f-disp); font-weight:600; font-size:23px; letter-spacing:-.01em; margin:0}
+  .mast .tag{color:var(--replied)}
+  .mast .sub{color:var(--ink-2); font-size:12.5px; margin-top:4px; max-width:52ch}
+  .mast .spacer{flex:1 1 40px}
+  .status-note{display:flex; align-items:center; gap:8px; font-family:var(--f-mono);
+    font-size:11.5px; color:var(--ink-2)}
+  .status-note .dot{width:6px;height:6px;border-radius:50%;background:var(--live)}
+  .gear{margin-left:6px; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--ink-2); width:32px; height:32px; border-radius:9px; cursor:pointer; font-size:14px;
+    display:inline-flex; align-items:center; justify-content:center; transition:.15s}
+  .gear:hover{color:var(--ink); border-color:var(--line-2)}
+
+  /* ── vitals board (hero) ──────────────────────────────── */
+  .board{
+    display:grid; grid-template-columns:auto 1fr; gap:26px; align-items:center;
+    padding:22px 28px; border-bottom:1px solid var(--line);
+  }
+  .total{display:flex; align-items:baseline; gap:12px}
+  .total .n{font-family:var(--f-disp); font-weight:600; font-size:54px; line-height:.9;
+    letter-spacing:-.03em; font-variant-numeric:tabular-nums}
+  .total .l{font-family:var(--f-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-3); max-width:7ch}
+  .triage{display:flex; gap:10px; flex-wrap:wrap}
+  .tri{
+    display:flex; align-items:center; gap:10px; padding:10px 14px 10px 12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
+    min-width:118px; position:relative; overflow:hidden; transition:.15s;
+  }
+  .tri::before{content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:currentColor}
+  .tri .ic{width:26px;height:26px;border-radius:7px; display:flex;align-items:center;justify-content:center;
+    background:var(--tri-bg); color:currentColor; flex:none}
+  .tri .ic svg{width:16px;height:16px}
+  .tri .c{font-family:var(--f-disp); font-weight:600; font-size:20px; line-height:1;
+    font-variant-numeric:tabular-nums; color:var(--ink)}
+  .tri .k{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-2); margin-top:3px}
+  .tri.replied{color:var(--replied);--tri-bg:var(--replied-bg)}
+  .tri.skipped{color:var(--skipped);--tri-bg:var(--skipped-bg)}
+  .tri.bowed_out{color:var(--bowed);--tri-bg:var(--bowed-bg)}
+  .tri.error{color:var(--error);--tri-bg:var(--error-bg)}
+  .tri:hover{border-color:var(--line-2)}
+  .dist{grid-column:1 / -1; display:flex; height:5px; border-radius:99px; overflow:hidden;
+    background:var(--panel-2); margin-top:2px}
+  .dist span{display:block; transition:flex-grow .5s ease}
+
+  /* ── controls ─────────────────────────────────────────── */
+  .controls{display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; padding:16px 28px;
+    border-bottom:1px solid var(--line)}
+  .field{display:flex; flex-direction:column; gap:5px}
+  .field label{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-3)}
+  input,select{font-family:var(--f-mono); font-size:13px; background:var(--panel-2); color:var(--ink);
+    border:1px solid var(--line); border-radius:9px; padding:9px 11px; outline:none; transition:.15s}
+  input::placeholder{color:var(--ink-3)}
+  input:focus,select:focus{border-color:var(--replied-dim); box-shadow:0 0 0 3px var(--replied-bg)}
+  select{cursor:pointer}
+  .btn{font-family:var(--f-disp); font-weight:600; font-size:13px; cursor:pointer; border-radius:9px;
+    padding:9px 18px; border:1px solid transparent; transition:.15s}
+  .btn.primary{background:var(--replied); color:#04222f; border-color:var(--replied)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.ghost{background:var(--panel-2); color:var(--ink); border-color:var(--line)}
+  .btn.ghost:hover{border-color:var(--line-2)}
+  .toggle{display:flex; align-items:center; gap:8px; font-family:var(--f-mono); font-size:12px;
+    color:var(--ink-2); cursor:pointer; user-select:none; padding-bottom:9px}
+  .toggle input{width:16px;height:16px;accent-color:var(--live)}
+  .controls .spacer{flex:1}
+
+  /* config (hidden behind ⚙) */
+  .cfg{display:none; gap:12px; flex-wrap:wrap; padding:14px 28px; background:var(--panel);
+    border-bottom:1px solid var(--line)}
+  .cfg.show{display:flex}
+  .cfg .field{flex:1; min-width:220px}
+
+  /* status line */
+  .statusline{padding:11px 28px; font-family:var(--f-mono); font-size:12px; color:var(--ink-2);
+    border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; min-height:41px}
+  .statusline b{color:var(--ink)}
+  .statusline .err{color:var(--error)}
+  .statusline .pill{padding:2px 8px; border-radius:99px; background:var(--panel-2);
+    border:1px solid var(--line); font-size:11px}
+
+  /* ── stream ──────────────────────────────────────────── */
+  .streamwrap{overflow-x:auto}
+  .stream{min-width:900px}
+  .grid{display:grid;
+    grid-template-columns:46px 118px 176px 156px minmax(180px,1fr) 200px;
+    align-items:center}
+  .streamhead{position:sticky; top:0; z-index:3; background:var(--bg);
+    border-bottom:1px solid var(--line)}
+  .streamhead .grid > span{font-family:var(--f-mono); font-size:10px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--ink-3); padding:12px 14px}
+  .rows{position:relative}
+  .rows::before{content:''; position:absolute; left:23px; top:0; bottom:0; width:1px;
+    background:linear-gradient(var(--line) 0 70%, transparent); pointer-events:none}
+  .run{cursor:pointer; border-bottom:1px solid rgba(36,53,69,.55); transition:background .12s}
+  .run > *{padding:13px 14px; min-width:0}
+  .run:hover{background:var(--panel)}
+  .run.sel{background:var(--panel-2)}
+  .run.sel .node b{box-shadow:0 0 0 4px var(--nd-bg)}
+
+  .node{display:flex; justify-content:center; position:relative; z-index:1}
+  .node b{width:10px;height:10px;border-radius:50%; background:var(--nd); box-shadow:0 0 0 3px var(--bg);
+    transition:box-shadow .15s}
+  .run:hover .node b{box-shadow:0 0 0 4px var(--nd-bg)}
+
+  .when{font-family:var(--f-mono); font-size:12px; line-height:1.35}
+  .when .t{color:var(--ink)}
+  .when .d{color:var(--ink-3); font-size:11px}
+
+  .oc{display:flex; flex-direction:column; gap:5px; align-items:flex-start}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:3px 9px 3px 7px; border-radius:99px;
+    font-family:var(--f-disp); font-weight:600; font-size:11.5px; letter-spacing:.01em;
+    color:var(--oc-c); background:var(--oc-bg); border:1px solid var(--oc-dim)}
+  .pill svg{width:14px;height:14px}
+  .reason{font-family:var(--f-mono); font-size:11px; color:var(--ink-2); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; max-width:100%}
+
+  .who .p{font-family:var(--f-mono); font-size:12.5px; color:var(--ink); white-space:nowrap}
+  .who .nm{font-size:11px; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+  .msg{font-size:13px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .msg.empty{color:var(--ink-3); font-style:italic}
+  .grds{overflow:hidden}
+  .grds .g{font-family:var(--f-mono); font-size:11px; color:var(--ink-2); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; display:block}
+  .grds .none{color:var(--ink-3)}
+
+  /* outcome theming via data attr */
+  .replied{--nd:var(--replied);--nd-bg:var(--replied-bg);--oc-c:var(--replied);--oc-bg:var(--replied-bg);--oc-dim:var(--replied-dim)}
+  .skipped{--nd:var(--skipped);--nd-bg:var(--skipped-bg);--oc-c:var(--skipped);--oc-bg:var(--skipped-bg);--oc-dim:var(--skipped-dim)}
+  .bowed_out{--nd:var(--bowed);--nd-bg:var(--bowed-bg);--oc-c:var(--bowed);--oc-bg:var(--bowed-bg);--oc-dim:var(--bowed-dim)}
+  .error{--nd:var(--error);--nd-bg:var(--error-bg);--oc-c:var(--error);--oc-bg:var(--error-bg);--oc-dim:var(--error-dim)}
+  .unknown{--nd:var(--ink-3);--nd-bg:rgba(99,120,140,.14);--oc-c:var(--ink-2);--oc-bg:rgba(99,120,140,.14);--oc-dim:rgba(99,120,140,.3)}
+
+  .empty-state{padding:64px 28px; text-align:center; color:var(--ink-3); font-family:var(--f-mono)}
+  .empty-state svg{width:34px;height:34px;opacity:.5;margin-bottom:12px}
+  .more{padding:16px 28px 44px; text-align:center; font-family:var(--f-mono); font-size:11px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); min-height:18px}
+
+  /* ── detail drawer ───────────────────────────────────── */
+  .scrim{position:fixed; inset:0; background:rgba(6,11,16,.55); opacity:0; pointer-events:none;
+    transition:opacity .2s; z-index:20; backdrop-filter:blur(2px)}
+  .scrim.on{opacity:1; pointer-events:auto}
+  .drawer{position:fixed; top:0; right:0; height:100%; width:min(500px,100%);
+    background:var(--panel); border-left:1px solid var(--line-2); z-index:21;
+    transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.1,1);
+    display:flex; flex-direction:column; box-shadow:-24px 0 60px rgba(0,0,0,.4)}
+  .drawer.open{transform:translateX(0)}
+  .dh{display:flex; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:var(--panel)}
+  .dh .pill{font-size:13px; padding:5px 12px 5px 9px}
+  .dh .rsn{font-family:var(--f-mono); font-size:12px; color:var(--ink-2)}
+  .dh .x{margin-left:auto; background:none; border:none; color:var(--ink-2); font-size:16px;
+    cursor:pointer; width:30px;height:30px;border-radius:8px; display:flex;align-items:center;justify-content:center}
+  .dh .x:hover{background:var(--panel-2); color:var(--ink)}
+  .dbody{padding:20px; overflow-y:auto; flex:1}
+  .dmeta{font-family:var(--f-mono); font-size:11.5px; color:var(--ink-3); margin-bottom:20px;
+    display:flex; gap:14px; flex-wrap:wrap}
+  .dmeta b{color:var(--ink-2); font-weight:500}
+
+  .sec{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+    color:var(--ink-3); margin:22px 0 10px}
+  .sec:first-child{margin-top:0}
+
+  /* whatsapp-style exchange */
+  .thread{display:flex; flex-direction:column; gap:8px}
+  .bub{max-width:86%; padding:9px 12px; border-radius:12px; font-size:13.5px; line-height:1.45;
+    white-space:pre-wrap; word-break:break-word; position:relative}
+  .bub.in{align-self:flex-start; background:var(--raised); border:1px solid var(--line);
+    border-bottom-left-radius:4px}
+  .bub.out{align-self:flex-end; background:var(--replied-bg); border:1px solid var(--replied-dim);
+    border-bottom-right-radius:4px}
+  .bub .meta{display:flex; align-items:center; gap:5px; justify-content:flex-end; margin-top:5px;
+    font-family:var(--f-mono); font-size:10px; color:var(--ink-3)}
+  .bub .meta svg{width:15px;height:11px; color:var(--replied)}
+  .sysline{align-self:center; font-family:var(--f-mono); font-size:11.5px; color:var(--ink-2);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:99px; padding:5px 12px}
+
+  .kv{display:grid; grid-template-columns:130px 1fr; gap:7px 14px; font-size:12.5px}
+  .kv .k{font-family:var(--f-mono); color:var(--ink-3); font-size:11.5px}
+  .kv .v{font-family:var(--f-mono); color:var(--ink); word-break:break-word}
+  .chips{display:flex; flex-wrap:wrap; gap:6px}
+  .chip{font-family:var(--f-mono); font-size:11.5px; padding:3px 9px; border-radius:7px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--ink)}
+  .chip.guard{background:var(--bowed-bg); border-color:var(--bowed-dim); color:var(--bowed)}
+  .errbox{font-family:var(--f-mono); font-size:12px; color:var(--error); background:var(--error-bg);
+    border:1px solid var(--error-dim); border-radius:10px; padding:12px; white-space:pre-wrap; line-height:1.5}
+  details{margin-top:22px}
+  summary{cursor:pointer; font-family:var(--f-mono); font-size:11px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--ink-3); list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:'▸ '; color:var(--ink-3)}
+  details[open] summary::before{content:'▾ '}
+  pre.raw{background:#0a1017; border:1px solid var(--line); border-radius:10px; padding:14px;
+    overflow:auto; font-family:var(--f-mono); font-size:11.5px; line-height:1.5; color:var(--ink-2);
+    max-height:340px; margin-top:12px}
+
+  :focus-visible{outline:2px solid var(--replied); outline-offset:2px; border-radius:6px}
+
+  @media (max-width:760px){
+    .mast,.board,.controls,.cfg,.statusline{padding-left:18px;padding-right:18px}
+    .board{grid-template-columns:1fr; gap:16px}
+    .total .n{font-size:44px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important; transition:none!important}
+    .rec i::after{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="brandmark">
+    <span class="rec"><i></i></span>
+    <div>
+      <p class="eyebrow">SehatUP · Ananya</p>
+      <h1>Flight <span class="tag">Recorder</span></h1>
+    </div>
+  </div>
+  <div class="sub">Every execution the WhatsApp bot runs — and why it replied, stayed out, stood down, or crashed.</div>
+  <div class="spacer"></div>
+  <div class="status-note"><span class="dot"></span><span id="livemsg">recording</span></div>
+  <button class="gear" id="gear" title="Endpoint & token" aria-label="Settings">⚙</button>
+</header>
+
+<div class="cfg" id="cfgbar">
+  <div class="field" style="flex:2"><label>Function base URL</label>
+    <input id="base" placeholder="https://us-central1-sehatup-f96b5.cloudfunctions.net/qrRuns" /></div>
+  <div class="field"><label>Token</label><input id="token" type="password" placeholder="QR_RUNS_TOKEN" /></div>
+</div>
+
+<section class="board">
+  <div class="total"><span class="n" id="v-total">—</span><span class="l">runs in view</span></div>
+  <div class="triage" id="triage"></div>
+  <div class="dist" id="dist"></div>
+</section>
+
+<section class="controls">
+  <div class="field"><label>Phone</label><input id="f-phone" placeholder="+9198…" style="width:150px"></div>
+  <div class="field"><label>Outcome</label>
+    <select id="f-outcome">
+      <option value="">all outcomes</option>
+      <option value="replied">replied</option>
+      <option value="skipped">skipped</option>
+      <option value="bowed_out">bowed out</option>
+      <option value="error">error</option>
+    </select></div>
+  <div class="field"><label>Reason</label><input id="f-reason" placeholder="human_active…" style="width:160px"></div>
+  <button class="btn primary" id="load">Search</button>
+  <button class="btn ghost" id="clear">Clear</button>
+  <div class="spacer"></div>
+  <label class="toggle"><input id="auto" type="checkbox"> auto-refresh 15s</label>
+</section>
+
+<div class="statusline" id="status">Loading the recorder…</div>
+
+<div class="streamwrap">
+  <div class="stream">
+    <div class="streamhead"><div class="grid">
+      <span></span><span>Time · IST</span><span>Outcome</span><span>Contact</span><span>Message</span><span>Guards</span>
+    </div></div>
+    <div class="rows" id="rows"></div>
+    <div class="empty-state" id="empty" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <div>No runs match these filters.</div>
+    </div>
+    <div class="more" id="more"></div>
+    <div id="sentinel" style="height:1px"></div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-live="polite"></aside>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// Local use — prefilled. Base is the name-based qrRuns URL (NOT the qrLogRun *.run.app URL).
+// A stale saved qrlogrun URL from an earlier attempt is ignored.
+const DEFAULT_BASE = 'https://us-central1-sehatup-f96b5.cloudfunctions.net/qrRuns';
+const DEFAULT_TOKEN = 'c8eb8c195916935cef1d4b8d441fc13365125098a872be26';
+const LS = {
+  get base(){ const b = localStorage.getItem('aiRunsBase'); return (b && !/qrlogrun/i.test(b)) ? b : DEFAULT_BASE; },
+  set base(v){ localStorage.setItem('aiRunsBase', v); },
+  get token(){ return localStorage.getItem('aiRunsToken') || DEFAULT_TOKEN; },
+  set token(v){ localStorage.setItem('aiRunsToken', v); },
+};
+$('base').value = LS.base;
+$('token').value = LS.token;
+
+let runs = [], selId = null, timer = null, cursor = null, loading = false, done = false;
+const PAGE = 50;
+const OUTCOMES = ['replied','skipped','bowed_out','error'];
+const LABEL = { replied:'Replied', skipped:'Skipped', bowed_out:'Bowed out', error:'Error', unknown:'Unknown' };
+const CVAR  = { replied:'replied', skipped:'skipped', bowed_out:'bowed', error:'error', unknown:'ink-3' }; // token names
+
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cls = (o) => OUTCOMES.includes(o) ? o : 'unknown';
+function istParts(ms){
+  if (!ms) return { t:'—', d:'' };
+  try {
+    const dt = new Date(Number(ms));
+    const opt = { timeZone:'Asia/Kolkata' };
+    return {
+      t: dt.toLocaleString('en-IN', {...opt, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true}),
+      d: dt.toLocaleString('en-IN', {...opt, day:'2-digit', month:'short'}),
+    };
+  } catch(e){ return { t:new Date(Number(ms)).toISOString(), d:'' }; }
+}
+
+// outcome glyphs — a small visual language echoing WhatsApp ticks
+function glyph(o){
+  const g = { fill:'none', stroke:'currentColor' };
+  switch(cls(o)){
+    case 'replied': // double read-tick
+      return '<svg viewBox="0 0 22 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 7.2 4.6 10.8 10.4 3.4"/><path d="M8.6 8.6 10 10 15.8 2.8"/></svg>';
+    case 'skipped': // deliberate dash — AI stayed out
+      return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h8"/></svg>';
+    case 'bowed_out': // pause — stood down / holding for a human
+      return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 4v8M10 4v8"/></svg>';
+    case 'error': // alert
+      return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.9 15 14H1z"/><path d="M8 6.3v3.4"/><circle cx="8" cy="11.7" r=".55" fill="currentColor" stroke="none"/></svg>';
+    default:
+      return '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3.2" fill="currentColor" stroke="none"/></svg>';
+  }
+}
+function pill(o){ return '<span class="pill">' + glyph(o) + LABEL[cls(o)] + '</span>'; }
+const readtick = '<svg viewBox="0 0 22 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 7.2 4.6 10.8 10.4 3.4"/><path d="M8.6 8.6 10 10 15.8 2.8"/></svg>';
+
+// reset=true starts a fresh query (new filters / refresh); reset=false appends the next page.
+async function load(reset){
+  if (loading) return;
+  const base = $('base').value.trim(), token = $('token').value.trim();
+  LS.base = base; LS.token = token;
+  if (reset){ runs = []; cursor = null; done = false; selId = null; }
+  else if (done) return;
+  loading = true; moreUI();
+  const p = new URLSearchParams();
+  if (token) p.set('token', token);
+  if ($('f-phone').value.trim())  p.set('phone', $('f-phone').value.trim());
+  if ($('f-outcome').value)       p.set('outcome', $('f-outcome').value);
+  if ($('f-reason').value.trim()) p.set('reason', $('f-reason').value.trim());
+  p.set('limit', String(PAGE));
+  if (cursor) p.set('before', String(cursor));
+  if (reset) $('status').innerHTML = 'Reading runs…';
+  try{
+    const res = await fetch(base + '?' + p.toString());
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    const incoming = data.runs || [];
+    if (reset) runs = incoming;
+    else { const seen = new Set(runs.map(r => r.id)); for (const r of incoming) if (!seen.has(r.id)) runs.push(r); }
+    cursor = data.nextCursor || null;
+    done = !cursor;
+    render(); summary();
+    const now = new Date().toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true});
+    $('status').innerHTML = '<b>' + runs.length + '</b> runs loaded &nbsp;·&nbsp; <span class="pill">' + esc(now) + ' IST</span>';
+  }catch(err){
+    done = true;
+    $('status').innerHTML = '<span class="err">Couldn\'t reach qrRuns — ' + esc(err.message) + '.</span> &nbsp;Check it\'s deployed and the token matches (⚙).';
+  } finally {
+    loading = false; moreUI();
+  }
+}
+function moreUI(){
+  const el = $('more');
+  el.textContent = loading ? 'loading more…' : (done && runs.length ? '— end of stream —' : '');
+}
+
+function summary(){
+  $('v-total').textContent = runs.length;
+  const counts = { replied:0, skipped:0, bowed_out:0, error:0, unknown:0 };
+  for (const r of runs) counts[cls(r.outcome)]++;
+  $('triage').innerHTML = OUTCOMES.map(o =>
+    '<div class="tri ' + o + '"><div class="ic">' + glyph(o) + '</div>'
+    + '<div><div class="c">' + counts[o] + '</div><div class="k">' + LABEL[o].toLowerCase() + '</div></div></div>'
+  ).join('');
+  const total = runs.length || 1;
+  $('dist').innerHTML = OUTCOMES.concat('unknown').filter(o => counts[o]).map(o =>
+    '<span title="' + LABEL[o] + ': ' + counts[o] + '" style="flex:' + counts[o] + ' 0 0; background:var(--' + CVAR[o] + ')"></span>'
+  ).join('');
+}
+
+function render(){
+  const rows = $('rows'); rows.innerHTML = '';
+  $('empty').style.display = runs.length ? 'none' : 'block';
+  for (const r of runs){
+    const o = cls(r.outcome);
+    const w = istParts(r.ts);
+    const text = (r.input && r.input.text) || (r.decision && r.decision.recentUserText) || (r.ai && r.ai.reply) || '';
+    const grds = (r.ai && r.ai.guardsSummary) || '';
+    const row = document.createElement('div');
+    row.className = 'run grid ' + o + (r.id === selId ? ' sel' : '');
+    row.tabIndex = 0;
+    row.innerHTML =
+      '<div class="node"><b></b></div>' +
+      '<div class="when"><div class="t">' + esc(w.t) + '</div><div class="d">' + esc(w.d) + '</div></div>' +
+      '<div class="oc">' + pill(o) + (r.reason ? '<span class="reason">' + esc(r.reason) + '</span>' : '') + '</div>' +
+      '<div class="who"><div class="p">' + esc(r.phone || '—') + '</div>' + (r.name ? '<div class="nm">' + esc(r.name) + '</div>' : '') + '</div>' +
+      '<div class="msg' + (text ? '' : ' empty') + '">' + esc(text || 'no message') + '</div>' +
+      '<div class="grds">' + (grds ? '<span class="g">' + esc(grds) + '</span>' : '<span class="g none">—</span>') + '</div>';
+    row.onclick = () => openDetail(r);
+    row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(r); } };
+    rows.appendChild(row);
+  }
+}
+
+function openDetail(r){
+  selId = r.id; render();
+  const o = cls(r.outcome), w = istParts(r.ts);
+  const dec = r.decision || {}, ai = r.ai || {}, err = r.error || null;
+  const msg = (r.input && r.input.text) || dec.recentUserText || '';
+
+  // WhatsApp-style replay of the exchange
+  let thread = '<div class="thread">';
+  if (msg) thread += '<div class="bub in">' + esc(msg) + '</div>';
+  if (ai.reply) {
+    thread += '<div class="bub out">' + esc(ai.reply)
+      + '<div class="meta">' + esc(w.t) + (ai.replied ? ' ' + readtick : '') + '</div></div>';
+  } else if (o === 'skipped') {
+    thread += '<div class="sysline">AI stayed out — ' + esc(r.reason || 'skipped') + '</div>';
+  } else if (o === 'bowed_out') {
+    thread += '<div class="sysline">Bot stood down — ' + esc(r.reason || 'bowed out') + '</div>';
+  } else if (o === 'error') {
+    thread += '<div class="sysline">Execution errored before a reply</div>';
+  }
+  if (!msg && !ai.reply && o !== 'error') thread += '<div class="sysline">No message captured</div>';
+  thread += '</div>';
+
+  const guards = (ai.guards && Object.keys(ai.guards).length)
+    ? '<div class="chips">' + Object.entries(ai.guards).map(([k,v]) =>
+        '<span class="chip guard">' + esc(k.replace(/Guard$/,'')) + (v === true ? '' : '=' + esc(v)) + '</span>').join('') + '</div>'
+    : '<span class="muted mono" style="font-size:12px">none fired</span>';
+  const products = (r.products && r.products.length)
+    ? '<div class="chips">' + r.products.map(p => '<span class="chip">' + esc(p) + '</span>').join('') + '</div>'
+    : '<span class="muted mono" style="font-size:12px">—</span>';
+
+  const kv = (k,v) => '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>';
+  let decHtml = '';
+  if (Object.keys(dec).length){
+    decHtml = '<div class="sec">Decision</div><div class="kv">'
+      + kv('shouldProcess', String(dec.shouldProcess))
+      + kv('this message', dec.thisMessage || '—')
+      + kv('latest inbound', dec.latestInbound || '—')
+      + kv('last AI', dec.lastAi || '—')
+      + kv('last human', dec.lastHuman || '—')
+      + kv('age (min)', String(dec.ageMins))
+      + kv('fetched', String(dec.fetched))
+      + '</div>';
+  }
+
+  let html =
+    '<div class="dh">' + pill(o) + (r.reason ? '<span class="rsn">' + esc(r.reason) + '</span>' : '')
+      + '<button class="x" id="dclose" aria-label="Close">✕</button></div>'
+    + '<div class="dbody">'
+      + '<div class="dmeta"><span><b>' + esc(w.d) + ' ' + esc(w.t) + '</b> IST</span>'
+        + '<span><b>' + esc(r.phone || '—') + '</b></span>'
+        + (r.name ? '<span>' + esc(r.name) + '</span>' : '')
+        + '<span>exec ' + esc(r.id) + '</span></div>'
+      + '<div class="sec">Exchange</div>' + thread
+      + (err ? '<div class="sec">Error</div><div class="errbox">' + esc(err.message || '') + '\n\nnode: ' + esc(err.node || '—') + '</div>' : '')
+      + (ai.emptyReason ? '<div class="sec">Empty reason</div><span class="chip">' + esc(ai.emptyReason) + '</span>' : '')
+      + '<div class="sec">Guards fired</div>' + guards
+      + '<div class="sec">Product matches</div>' + products
+      + decHtml
+      + '<details><summary>Raw JSON</summary><pre class="raw">' + esc(JSON.stringify(r, null, 2)) + '</pre></details>'
+    + '</div>';
+
+  const d = $('drawer'); d.innerHTML = html; d.classList.add('open'); $('scrim').classList.add('on');
+  $('dclose').onclick = closeDetail;
+}
+function closeDetail(){ $('drawer').classList.remove('open'); $('scrim').classList.remove('on'); selId = null; render(); }
+
+$('load').onclick = () => load(true);
+$('gear').onclick = () => $('cfgbar').classList.toggle('show');
+$('scrim').onclick = closeDetail;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+$('clear').onclick = () => { $('f-phone').value=''; $('f-outcome').value=''; $('f-reason').value=''; load(true); };
+$('f-outcome').onchange = () => load(true);
+[$('f-phone'),$('f-reason')].forEach(el => el.addEventListener('keydown', e => { if(e.key==='Enter') load(true); }));
+$('auto').onchange = (e) => {
+  clearInterval(timer);
+  $('livemsg').textContent = e.target.checked ? 'recording · live' : 'recording';
+  if (e.target.checked) timer = setInterval(() => load(true), 15000);
+};
+
+// Infinite scroll — fetch the next page as the sentinel nears the viewport.
+new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting && runs.length && !loading && !done) load(false);
+}, { rootMargin: '600px' }).observe($('sentinel'));
+
+load(true);
+</script>
+</body>
+</html>
