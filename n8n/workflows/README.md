@@ -52,6 +52,20 @@ are independent — the guard needs a paste, the matcher needs a deploy.
 See [the 2026-08-05 changelog](#changelog--2026-08-05). Until #1 is pasted, the bot can still
 reply in the customer's voice and invent a medical history for them.
 
+### 2026-08-11 rollout
+
+| # | Task | Repo | Cloud Fn | Live n8n |
+|---|---|---|---|---|
+| 1 | `Extract Message Details` — vaji-bati/kern-drops human-handoff (`HUMAN_HANDOFF_RES`) | ✅ | — | ✅ |
+| 2 | `qrLogRun` — `ai_runs` flight recorder | ✅ | ✅ | — |
+| 3 | `Build Run Log` + `Log Run` HTTP node on the 3 terminal branches | ✅ (`build-run-log.txt`) | — | ✅ |
+| 4 | Error Trigger workflow → `qrLogRun` | ✅ (`log-run-error.txt`) | — | ✅ |
+| 5 | `qrRuns` — dashboard read endpoint | ✅ | ❌ deploy it | — |
+| 6 | `ai-runs-dashboard.html` — viewer page | ✅ | — | — |
+
+Firestore **TTL** on `ai_runs.expireAt` — enabled 2026-08-11. See
+[Debugging: the `ai_runs` flight recorder](#debugging-the-ai_runs-flight-recorder).
+
 There are **three** places a change has to land, and they drift independently:
 
 | Layer | How to check | How to change |
@@ -1341,6 +1355,90 @@ composer replies, and by **Save AI Message** for the AI's own replies.
 
 ---
 
+## Debugging: the `ai_runs` flight recorder
+
+Finding *why the bot did (or didn't) reply to one person* used to mean opening n8n executions
+one by one — the list is ordered by time, not by phone or outcome. The flight recorder fixes
+that: **every execution writes one document to `ai_runs/{executionId}`**, so debugging becomes
+a Firestore query.
+
+**Cloud Function `qrLogRun`** (`functions/index.js`) receives a run object by POST and writes
+it. Same contract as `qrProductLookup`: always HTTP 200 (except a bad token → 401) so logging
+can never break the chat. Auth reuses `QR_CONTEXT_TOKEN` — no new secret. The doc id is the
+n8n execution id, written with `merge`, so the Error Trigger's failure record lands on the same
+doc as the run it belongs to. `expireAt` is stamped 60 days ahead for TTL.
+
+**n8n side — ONE code node on each of the three terminal branches:**
+
+```
+Log Skipped                      ─┐
+Process or Skip?  (FALSE output) ─┼─→ Build Run Log   (posts to qrLogRun itself)
+Log Success                      ─┘
+```
+
+- **Build Run Log** (Code node) — body in [`build-run-log.txt`](build-run-log.txt). One body for
+  all three branches; it infers `outcome` (`skipped` / `bowed_out` / `replied`) from how far the
+  message got, guards every upstream read (the skip branch runs before Decide Process), and
+  **POSTs the record to qrLogRun itself** via `this.helpers.httpRequest` — there is no separate
+  HTTP node, so there's no body field to misconfigure (a mis-set `Log Run` HTTP body silently
+  sent empty rows for a whole afternoon). Node Mode must stay **Run Once for All Items**.
+- **Crashes** — a tiny separate workflow: Error Trigger → Build Error Run
+  ([`log-run-error.txt`](log-run-error.txt)), set as the main workflow's **Settings → Error
+  Workflow**. It POSTs `outcome:'error'` with the failing node, merged onto the run's doc by
+  execution id.
+
+**Document shape** (`ai_runs/{executionId}`):
+
+| Field | Notes |
+|---|---|
+| `outcome` | `skipped` \| `bowed_out` \| `replied` \| `error` — the field you filter on most |
+| `reason` | `skipReason` (skipped), Decide-Process `reason` (bowed_out), or `error.name` |
+| `phone` / `convId` / `name` | who |
+| `ts` | client event time (ms) — order runs by this. `loggedAt` = server write time |
+| `input` | `{ text, msgType, isMedia, mediaKind }` |
+| `decision` | Decide Process debug: `latestInbound`, `lastAi`, `lastHuman`, `ageMins`, `fetched`, `recentUserText` (IST) |
+| `products` | matched product titles from `qrProductLookup` |
+| `ai` | `{ replied, reply, guardsSummary, emptyReason, guards{} }` — `guards` holds only the guards that fired |
+| `error` | `{ message, node, workflow, url }` on crashes |
+| `expireAt` | TTL — auto-deletes after 60 days once the policy is enabled |
+
+**Typical queries** (Firebase console → Firestore, or a script):
+
+- everything for one customer: `ai_runs where phone == "+9198…" order by ts desc`
+- all failures: `ai_runs where outcome == "error" order by ts desc`
+- every time the bot backed off for a human: `ai_runs where reason == "human_active"`
+- one guard's firings: `ai_runs where guards.doseGuard != null`
+
+### The dashboard
+
+`ai-runs-dashboard.html` is a self-contained page (no build, no dependencies) that reads runs
+through **`qrRuns`** — a CORS-open read endpoint in `functions/index.js`. Open the file
+(double-click) or drop it on any host, then search by phone / outcome / reason and click a row
+for the full decision, guards, reply and error. `qrRuns` is index-free — one equality filter
+server-side, the rest in memory — so there is no Firestore index to create.
+
+**Auth:** `qrRuns` gates on `QR_RUNS_TOKEN` (falling back to `QR_CONTEXT_TOKEN`). Neither is set
+today, so like every other `qr*` endpoint it currently **fails open** — leave the dashboard's
+Token box empty and it works. Because this one returns PII (phone + message text), lock it by
+setting `QR_RUNS_TOKEN` in `functions/.env`, redeploying `qrRuns`, and pasting the same value in
+the dashboard. It is a dedicated token on purpose: it does **not** force auth onto the fail-open
+write/context endpoints, so the chatbot is unaffected.
+
+**One-time setup — none of it is live until the deploy + n8n wiring are done:**
+
+1. `firebase deploy --only functions:qrLogRun,functions:qrRuns`
+2. Firestore TTL (Google Cloud console → Firestore → **Time-to-live**, not the Firebase console)
+   → policy on collection group `ai_runs`, field `expireAt`, offset `0`. Optional; without it
+   old runs are never pruned. Nothing else depends on it.
+3. n8n: paste the two Code nodes, add the HTTP node, wire the three branches, create the Error
+   Workflow, and select it under the main workflow's Settings.
+4. Open `ai-runs-dashboard.html`, paste the token, Search.
+
+A `phone == X order by ts` (or `outcome == X order by ts`) query will make Firestore offer a
+composite index the first time — accept it.
+
+---
+
 ## Credentials and secrets
 
 | Node | Credential |
@@ -1478,7 +1576,7 @@ a real WhatsApp message.
 | `whatsapp-tools/chatbot-control` | Static control panel for `mode` / test / blocked numbers |
 | `whatsapp-tools/quickreply-tester` | Vercel app that replays and inspects `conversations/{convId}/messages` |
 | `whatsapp-tools/conversations-studio` | WhatsApp-style viewer/editor for the Quickreply sheet |
-| `data-cleaning/` | Training-data pipeline (`auto_clean.py`, `build_month_chunks.py`) → `training-data/*.jsonl` for the Gemini fine-tune |
+| `ananya-training/` | Training pipeline: `data-cleaning/` (`auto_clean.py`, `build_month_chunks.py`) → `raw/` → `reviewed/` → `final/` `*.jsonl`, then `fine-tuning/` for the Gemini fine-tune |
 | `n8n/n8n-chatbot-automation.json` | Retired original workflow, kept for reference |
 
 **Training-data warning.** While the AI is live, its replies and human agents' replies are
@@ -1631,7 +1729,7 @@ bot *feels*; the third is the one that stops the guard count from growing foreve
 |---|---|---|
 | 1 | **Answer voice notes and images** | `skipReason: media_*` means total silence on a voice note — the single biggest "this is a bot" tell, and voice is the primary input mode for a large share of Hindi-speaking WhatsApp. Gemini handles audio natively: transcribe, then run the existing text path unchanged so every guard still applies. Report/prescription photos must be **acknowledged and escalated, never interpreted**. |
 | 2 | **Escalation that reaches a person** | The dose guard promises a callback and creates no ticket. Write `needsHuman: {reason, at}` + `aiPausedUntil` on the conversation, badge it in the CRM inbox, ping a group for the urgent classes. Reuse for red flags, "baat karao", anger, refunds. |
-| 3 | **An eval set, before any further fine-tuning** | Five guards now exist — greeting, titles, dose, price, order-relevance — each because the model ignored an explicit instruction it was given. Every new capability will need its own. Build ~100 real conversation prefixes from `data-cleaning/`, score candidates offline on checkable properties (no dose, no title, right language, price matches catalog, greeting exactly once, ≤3 lines), and gate every prompt/model change on it. Without this you cannot tell whether a new checkpoint is better or worse. |
+| 3 | **An eval set, before any further fine-tuning** | Five guards now exist — greeting, titles, dose, price, order-relevance — each because the model ignored an explicit instruction it was given. Every new capability will need its own. Build ~100 real conversation prefixes from `ananya-training/data-cleaning/`, score candidates offline on checkable properties (no dose, no title, right language, price matches catalog, greeting exactly once, ≤3 lines), and gate every prompt/model change on it. Without this you cannot tell whether a new checkpoint is better or worse. |
 | 4 | **Red-flag medical guard** | Chest pain, breathlessness, heavy bleeding, fainting, suicidal ideation, pregnancy complications → fixed "see a doctor now" + escalate, never a product. Rule 3's safety gating is still prompt-only, and prompt-only has never held with this model. |
 | 4b | **Consultation booking (planned — designed 2026-07-31, not started)** | See [Booking system](#booking-system--planned) below. Retires the slot guard and promise guard by giving the bot real slots instead of asking it to reason about time. |
 | 5 | **Cart links instead of product pages** | `qrProductLookup` already returns `variantId`; `generateCartUrl()` already exists at `functions/index.js:54`. Passing `utm_source=whatsapp_ananya` gives attribution for every sale Ananya closes. |

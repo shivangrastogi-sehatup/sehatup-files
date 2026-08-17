@@ -1,0 +1,41 @@
+// Error flight-recorder. Runs in a SEPARATE tiny workflow set as this project's "Error
+// Workflow" (main workflow → Settings → Error Workflow → pick this workflow). n8n fires it
+// automatically whenever the MAIN workflow throws — including a crash that happens before any
+// terminal branch could log a run.
+//
+// Wire:  Error Trigger --> Build Error Run (this node). It POSTs to qrLogRun itself (below),
+// so no separate HTTP node is needed. Node Mode must be "Run Once for All Items".
+//
+// Keyed by the FAILED execution's id, so if a terminal branch already wrote a run doc, this
+// error record MERGES onto it (adds outcome:'error' + the error detail) instead of making a
+// second doc. Field names differ slightly between n8n versions, so every read is defensive.
+const j  = $input.first().json || {};
+const ex = j.execution || {};
+const wf = j.workflow || {};
+const err = ex.error || j.error || {};
+
+const run = {
+  executionId: String(ex.id || ''),
+  outcome: 'error',
+  reason: String(err.name || 'error'),
+  error: {
+    message:  String(err.message || err.description || 'unknown error').slice(0, 1000),
+    node:     String(ex.lastNodeExecuted || (err.node && err.node.name) || ''),
+    workflow: String(wf.name || ''),
+    url:      String(ex.url || ''),
+  },
+  ts: Date.now(),
+};
+
+try {
+  await this.helpers.httpRequest({
+    method: 'POST',
+    url: 'https://us-central1-sehatup-f96b5.cloudfunctions.net/qrLogRun',
+    body: run,
+    json: true,
+  });
+} catch (e) {
+  console.log('[Build Error Run] qrLogRun POST failed: ' + e.message);
+}
+
+return [{ json: run }];

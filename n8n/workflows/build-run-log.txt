@@ -1,0 +1,97 @@
+// Flight-recorder: build ONE record for this execution AND post it to qrLogRun (Firestore
+// `ai_runs`) directly from this node — there is NO separate HTTP node whose body field can be
+// misconfigured (that was the "every row is empty" bug). This turns "why didn't the bot reply
+// to X?" into a Firestore QUERY instead of opening executions one by one in the n8n UI.
+//
+// Wire this ONE Code node onto EVERY terminal branch of the main workflow (nothing after it):
+//   Log Skipped                       --> Build Run Log
+//   Process or Skip?  (FALSE output)  --> Build Run Log
+//   Log Success                       --> Build Run Log
+//
+// One body covers all three. The outcome is INFERRED from how far the message got, so there
+// is nothing to edit per branch. Every upstream read is guarded because each branch can see
+// a different subset of nodes — the skip branch runs BEFORE Decide Process, so that node has
+// not executed there, and Extract AI Response only exists on the reply branch.
+const pick = (name) => { try { return $(name).first().json || {}; } catch (e) { return {}; } };
+
+const src  = pick('Extract Message Details');   // present on all three branches
+const dec  = pick('Decide Process');            // absent on the skip branch
+const ai   = pick('Extract AI Response');       // present only when the AI actually replied
+const prod = pick('Fetch Product Matches');     // present on the reply branch
+
+// Infer outcome from how far this message travelled.
+let outcome = 'replied';
+if (src.skipAi === true) outcome = 'skipped';
+else if (dec.shouldProcess === false) outcome = 'bowed_out';
+
+const reason = outcome === 'skipped'   ? (src.skipReason || '')
+             : outcome === 'bowed_out' ? (dec.reason || '')
+             : (dec.reason || 'process');
+
+// n8n execution id — makes the Firestore doc idempotent and lets the Error Trigger's failure
+// record MERGE onto the same doc as the run it belongs to.
+let executionId = '';
+try { executionId = String($execution.id || ''); } catch (e) {}
+
+// Only the guards that actually FIRED, so the doc stays small and you can query a single one:
+//   ai_runs  where  guards.doseGuard != null
+const guards = {};
+for (const k of Object.keys(ai)) {
+  if (/Guard$/.test(k) && ai[k]) guards[k] = ai[k];
+}
+
+// Firestore rejects `undefined`, so every optional value falls back to null / '' / [].
+const run = {
+  executionId,
+  phone:  src.phone || dec.phone || '',
+  name:   src.name  || dec.name  || 'Customer',
+  convId: src.convId || '',
+  ts:     Number(src.msgTime) || Date.now(),
+  outcome,
+  reason,
+  input: {
+    text:      src.text || '',
+    msgType:   src.msgType || '',
+    isMedia:   !!src.isMedia,
+    mediaKind: src.mediaKind || '',
+  },
+  decision: {
+    shouldProcess:  dec.shouldProcess === undefined ? null : dec.shouldProcess,
+    latestInbound:  dec.latestInbound || null,      // human-readable IST from Decide Process
+    thisMessage:    dec.thisMessage || null,
+    lastAi:         dec.lastAi || null,
+    lastHuman:      dec.lastHuman || null,
+    ageMins:        dec.ageOfThisMessageMins === undefined ? null : dec.ageOfThisMessageMins,
+    fetched:        dec.fetched === undefined ? null : dec.fetched,
+    minsSinceHuman: dec.minsSinceHuman === undefined ? null : dec.minsSinceHuman,
+    recentUserText: dec.recentUserText || '',
+  },
+  products: Array.isArray(prod.matches)
+    ? prod.matches.map(p => (p && (p.title || p.name)) ? (p.title || p.name) : String(p)).slice(0, 10)
+    : [],
+  ai: {
+    replied:       outcome === 'replied',
+    reply:         ai.lastAiReply || '',
+    guardsSummary: ai.aiGuards || '',   // compact string, e.g. "price=ambiguous,dose"
+    emptyReason:   ai.emptyReason || '',
+    guards,                             // map of only-the-fired guards
+  },
+};
+
+// POST straight to qrLogRun from inside this node, so there is NO separate HTTP node whose
+// body field can be misconfigured. Requires this node's Mode = "Run Once for All Items" (the
+// default). Wrapped so a logging failure can never break the flow — the customer's reply
+// already went out upstream. If you keep this, DELETE the old "Log Run" HTTP node, or it will
+// keep writing empty rows next to these good ones.
+try {
+  await this.helpers.httpRequest({
+    method: 'POST',
+    url: 'https://us-central1-sehatup-f96b5.cloudfunctions.net/qrLogRun',
+    body: run,
+    json: true,
+  });
+} catch (e) {
+  console.log('[Build Run Log] qrLogRun POST failed: ' + e.message);
+}
+
+return [{ json: run }];
