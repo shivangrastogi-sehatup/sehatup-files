@@ -1,0 +1,1513 @@
+{%- comment -%}
+  ============================================================================
+  sehatup Lead Capture Popup
+  ============================================================================
+  Styling matches the approved Claude Design mockups 1a to 1e / 2a to 2d exactly
+  (dialog 920px, panel 350px). Palette comes from the theme index.json.
+
+  Writes to Firebase Firestore (project sehatup-f96b5). Config is hardcoded
+  in the script, NOT in the schema. The writer adapter reuses window.db when
+  the questionnaire pages have already booted the v9 compat SDK.
+
+  Install: Sections > add `lead-capture-popup.liquid`, add it from the theme
+  editor, and set the advisor photo in `popup_image`.
+  ============================================================================
+{%- endcomment -%}
+
+{%- assign show_here = false -%}
+{%- if section.settings.enable_popup -%}
+  {%- if section.settings.show_on_home and template == 'index' -%}
+    {%- assign show_here = true -%}
+  {%- endif -%}
+  {%- if section.settings.target_page != blank and page != blank and page.handle == section.settings.target_page.handle -%}
+    {%- assign show_here = true -%}
+  {%- endif -%}
+{%- endif -%}
+
+{%- if show_here -%}
+
+{%- liquid
+  # Packaged advisor photo. Transparent WebP already on the Shopify CDN, which
+  # negotiates format per browser: WebP (17KB, alpha intact) where supported,
+  # PNG otherwise. `popup_image` in the theme editor overrides it.
+  assign doctor_url = 'https://cdn.shopify.com/s/files/1/0924/5687/8383/files/doctor-440.webp?v=1787047522'
+
+  assign has_image = section.settings.show_photo
+
+  assign m_heading = section.settings.mobile_heading | default: section.settings.popup_heading
+  assign m_sub     = section.settings.mobile_subheading | default: section.settings.popup_subheading
+-%}
+
+<div
+  id="lead-popup-{{ section.id }}"
+  class="lead-popup"
+  data-lead-popup
+  data-delay="{{ section.settings.popup_delay | default: 12 }}"
+  data-scroll-percent="{{ section.settings.scroll_trigger_percent | default: 40 }}"
+  data-once="{{ section.settings.show_once_per_session }}"
+  data-session-key="lead_popup_seen_{{ section.id }}"
+  data-firestore-collection="{{ section.settings.firestore_collection | default: 'popup_leads' }}"
+  data-template="{{ template }}"
+  hidden
+>
+  <div class="lead-popup__overlay" data-lead-popup-close></div>
+
+  <div
+    class="lead-popup__dialog{% unless has_image %} lead-popup__dialog--no-image{% endunless %}"
+    role="dialog"
+    aria-modal="true"
+    aria-label="{{ section.settings.popup_heading | escape }}"
+  >
+    <button type="button" class="lead-popup__close" data-lead-popup-close aria-label="Close" title="Close">&#215;</button>
+
+    {%- comment -%}
+      Visual panel: desktop/tablet left column, mobile top band.
+      On mobile the heading moves INTO the band (mockup 2c), so the content
+      header is hidden there and this one takes over.
+    {%- endcomment -%}
+    <div class="lead-popup__visual">
+      {%- if has_image -%}
+        {%- if section.settings.popup_image != blank -%}
+          {%- comment -%} Theme-editor override, full srcset off the uploaded file. {%- endcomment -%}
+          <img
+            class="lead-popup__doctor"
+            src="{{ section.settings.popup_image | image_url: width: 700 }}"
+            srcset="{{ section.settings.popup_image | image_url: width: 400 }} 400w,
+                    {{ section.settings.popup_image | image_url: width: 700 }} 700w,
+                    {{ section.settings.popup_image | image_url: width: 1000 }} 1000w"
+            sizes="(max-width: 767px) 150px, 350px"
+            alt="{{ section.settings.popup_image.alt | default: 'sehatup health advisor' | escape }}"
+            loading="lazy"
+            decoding="async"
+            width="700"
+            height="1050"
+          >
+        {%- else -%}
+          {%- comment -%}
+            Packaged photo. The source is 440px wide, so the srcset stops at
+            440w, because Shopify's CDN does not upscale, and asking for 700w would
+            just re-serve the same pixels under a wider descriptor and mislead
+            the browser's selection.
+          {%- endcomment -%}
+          <img
+            class="lead-popup__doctor"
+            src="{{ doctor_url }}&width=440"
+            srcset="{{ doctor_url }}&width=220 220w,
+                    {{ doctor_url }}&width=330 330w,
+                    {{ doctor_url }}&width=440 440w"
+            sizes="(max-width: 767px) 150px, 350px"
+            alt="sehatup health advisor"
+            loading="lazy"
+            decoding="async"
+            width="440"
+            height="660"
+          >
+        {%- endif -%}
+      {%- endif -%}
+
+      <span class="lead-popup__handle" aria-hidden="true"></span>
+
+      {%- if section.settings.trust_1 != blank or section.settings.trust_2 != blank or section.settings.trust_3 != blank or section.settings.trust_4 != blank -%}
+        <div class="lead-popup__scrim" aria-hidden="true"></div>
+        <div class="lead-popup__trust">
+          {%- if section.settings.trust_1 != blank -%}<span>{{ section.settings.trust_1 }}</span>{%- endif -%}
+          {%- if section.settings.trust_2 != blank -%}<span>{{ section.settings.trust_2 }}</span>{%- endif -%}
+          {%- if section.settings.trust_3 != blank -%}<span>{{ section.settings.trust_3 }}</span>{%- endif -%}
+          {%- if section.settings.trust_4 != blank -%}<span>{{ section.settings.trust_4 }}</span>{%- endif -%}
+        </div>
+      {%- endif -%}
+
+      <div class="lead-popup__band-text">
+        <h2>{{ m_heading }}</h2>
+        {%- if m_sub != blank -%}<p>{{ m_sub }}</p>{%- endif -%}
+      </div>
+    </div>
+
+    <div class="lead-popup__content">
+      <div class="lead-popup__head" data-head>
+        {%- if section.settings.eyebrow != blank -%}
+          <span class="lead-popup__eyebrow">{{ section.settings.eyebrow }}</span>
+        {%- endif -%}
+        <h2 class="lead-popup__heading">{{ section.settings.popup_heading }}</h2>
+        {%- if section.settings.popup_subheading != blank -%}
+          <p class="lead-popup__subheading">{{ section.settings.popup_subheading }}</p>
+        {%- endif -%}
+      </div>
+
+      {%- comment -%}
+        Everything is required except the email address. Errors surface
+        per-field on submit. The button is never disabled as a validation gate.
+      {%- endcomment -%}
+      <form class="lead-popup__form" data-lead-popup-form novalidate>
+        <div class="lead-popup__fields">
+          <div class="lead-popup__field">
+            <label for="lead-name-{{ section.id }}">Full name<span class="lead-popup__req">*</span></label>
+            <input type="text" id="lead-name-{{ section.id }}" name="name" autocomplete="name" placeholder="Enter your full name" required>
+            <p class="lead-popup__error" data-error-for="name"></p>
+          </div>
+
+          <div class="lead-popup__grid lead-popup__grid--phone">
+            <div class="lead-popup__field">
+              <label for="lead-phone-{{ section.id }}">Mobile number<span class="lead-popup__req">*</span></label>
+              <div class="lead-popup__inputgroup" data-group-for="phone">
+                <span class="lead-popup__prefix">+91</span>
+                <input
+                  type="tel"
+                  id="lead-phone-{{ section.id }}"
+                  name="phone"
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  placeholder="10-digit mobile"
+                  required
+                >
+              </div>
+              <p class="lead-popup__error" data-error-for="phone"></p>
+            </div>
+
+            <div class="lead-popup__field">
+              <label for="lead-age-{{ section.id }}">Age<span class="lead-popup__req">*</span></label>
+              <input type="number" id="lead-age-{{ section.id }}" name="age" inputmode="numeric" min="18" max="100" placeholder="Your age" required>
+              <p class="lead-popup__error" data-error-for="age"></p>
+            </div>
+          </div>
+
+          {%- if section.settings.collect_email -%}
+            <div class="lead-popup__field">
+              <label for="lead-email-{{ section.id }}">
+                Email address<span class="lead-popup__optional">optional</span>
+              </label>
+              <input
+                type="email"
+                id="lead-email-{{ section.id }}"
+                name="email"
+                autocomplete="email"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="Enter your email address"
+              >
+              <p class="lead-popup__error" data-error-for="email"></p>
+            </div>
+          {%- endif -%}
+
+          {%- comment -%}
+            One free-text city field. Whatever the customer types is stored
+            verbatim as `city`, with no parsing, no splitting, no guessing.
+          {%- endcomment -%}
+          <div class="lead-popup__field">
+            <label for="lead-city-{{ section.id }}">City<span class="lead-popup__req">*</span></label>
+            <input
+              type="text"
+              id="lead-city-{{ section.id }}"
+              name="city"
+              autocomplete="address-level2"
+              placeholder="Enter your city"
+              required
+            >
+            <p class="lead-popup__error" data-error-for="city"></p>
+          </div>
+        </div>
+
+        <button type="submit" class="lead-popup__submit" data-submit>
+          <span class="lead-popup__spinner" aria-hidden="true"></span>
+          <span data-btn-label>{{ section.settings.button_text | default: 'Get free consultation' }}</span>
+        </button>
+
+        <p class="lead-popup__status" data-lead-popup-status role="status" aria-live="polite"></p>
+
+        {%- if section.settings.consent_text != blank -%}
+          <p class="lead-popup__consent">{{ section.settings.consent_text }}</p>
+        {%- endif -%}
+      </form>
+
+      {%- comment -%} Mockup 1e: the form is replaced, not just annotated. {%- endcomment -%}
+      <div class="lead-popup__success" data-success hidden>
+        <span class="lead-popup__tick" aria-hidden="true">&#10003;</span>
+        <h3>{{ section.settings.success_title | default: "Thanks, we'll call you soon" }}</h3>
+        <p>{{ section.settings.success_message | default: 'One of our doctors will call you on this number within 24 hours.' }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #lead-popup-{{ section.id }} {
+    /* Palette taken from the live theme's index.json so the popup sits in the
+       storefront rather than beside it:
+         #ee204a  accent, used as accent_color and button_primary_bg
+         #d01d42  the accent's own hover, already defined by the theme
+         #1d1d1d  the heading colour across every section
+         #555555  secondary text
+         #e5e5e5  the FAQ border colour                                    */
+    --lp-accent: {{ section.settings.accent_color | default: '#ee204a' }};
+    --lp-accent-hover: #d01d42;
+    --lp-text: #1d1d1d;
+    --lp-muted: #555555;
+    --lp-border: #e5e5e5;
+    --lp-required: #e11d48;
+    --lp-error: #ef4444;
+    --lp-success: #16a34a;
+    --lp-panel: linear-gradient(165deg, #3d0a1a 0%, #9c1233 48%, #ee204a 100%);
+    --lp-panel-mobile: linear-gradient(120deg, #3d0a1a 0%, #9c1233 55%, #ee204a 100%);
+
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Montserrat', sans-serif;
+  }
+  #lead-popup-{{ section.id }}[hidden] { display: none !important; }
+
+  #lead-popup-{{ section.id }} .lead-popup__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 24, 39, {{ section.settings.overlay_opacity | default: 55 | divided_by: 100.0 }});
+    animation: lp-veil-in-{{ section.id }} .24s ease both;
+  }
+
+  /* ---- Motion ----------------------------------------------------------
+     Calm and clinical, not bouncy: decelerating ease on the way in, a
+     shorter ease-in on the way out. `data-state="closing"` is set by the
+     script, which then waits for animationend before hiding the popup,
+     without that wait the element disappears and the exit never renders. */
+  @keyframes lp-veil-in-{{ section.id }}  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes lp-veil-out-{{ section.id }} { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes lp-in-{{ section.id }} {
+    from { opacity: 0; transform: translateY(14px) scale(.985); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes lp-out-{{ section.id }} {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 0; transform: translateY(10px) scale(.99); }
+  }
+
+  #lead-popup-{{ section.id }}[data-state="closing"] .lead-popup__overlay {
+    animation: lp-veil-out-{{ section.id }} .19s ease both;
+  }
+  #lead-popup-{{ section.id }}[data-state="closing"] .lead-popup__dialog {
+    animation: lp-out-{{ section.id }} .19s ease both;
+  }
+
+  /* ---- Dialog (mockup 1a / 2a) ---------------------------------------- */
+  #lead-popup-{{ section.id }} .lead-popup__dialog {
+    position: relative;
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    /* minmax(0,1fr), not auto: an auto row sizes to its content and overflows
+       max-height, which clipped the bottom of the photo panel (trust points)
+       instead of letting the form column scroll. */
+    grid-template-rows: minmax(0, 1fr);
+    width: min(920px, calc(100vw - 40px));
+    max-height: 90vh;
+    /* The mockup's 500px floor lives here, not on the panel: on the panel it
+       pushes the grid row past max-height and clips the trust points on short
+       windows. On the dialog the panel just stretches to fill. */
+    min-height: min(500px, 90vh);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .32);
+    animation: lp-in-{{ section.id }} .3s cubic-bezier(.16, 1, .3, 1) both;
+  }
+  /* Mockup 1b: no image, narrow single column. */
+  #lead-popup-{{ section.id }} .lead-popup__dialog--no-image {
+    grid-template-columns: 1fr;
+    width: min(560px, calc(100vw - 40px));
+  }
+  #lead-popup-{{ section.id }} .lead-popup__dialog--no-image .lead-popup__visual { display: none; }
+
+  #lead-popup-{{ section.id }} .lead-popup__close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 3;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid var(--lp-border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .14);
+    color: var(--lp-text);
+    font: 400 18px/1 sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__close:focus-visible {
+    outline: 2px solid var(--lp-accent);
+    outline-offset: 2px;
+  }
+
+  /* ---- Visual panel ---------------------------------------------------- */
+  #lead-popup-{{ section.id }} .lead-popup__visual {
+    position: relative;
+    min-height: 0;
+    background: var(--lp-panel);
+    overflow: hidden;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__doctor {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center bottom;
+    display: block;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__scrim {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 38%;
+    background: linear-gradient(to top, rgba(20, 4, 10, .82), rgba(20, 4, 10, 0));
+  }
+  #lead-popup-{{ section.id }} .lead-popup__trust {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__trust span {
+    font: 500 12px/1.35 sans-serif;
+    color: rgba(255, 255, 255, .94);
+  }
+
+  /* Mobile-only pieces, hidden at desktop/tablet. */
+  #lead-popup-{{ section.id }} .lead-popup__handle,
+  #lead-popup-{{ section.id }} .lead-popup__band-text { display: none; }
+
+  /* ---- Content column -------------------------------------------------- */
+  #lead-popup-{{ section.id }} .lead-popup__content {
+    padding: 44px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    overflow-y: auto;
+    /* Grid children default to min-height:auto, which refuses to shrink below
+       their content, so the dialog would clip at 90vh instead of scrolling. */
+    min-height: 0;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__eyebrow {
+    font: 600 11px/1 sans-serif;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--lp-accent);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__heading {
+    margin: 0;
+    font: 600 27px/1.25 sans-serif;
+    color: var(--lp-text);
+    text-wrap: pretty;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__dialog--no-image .lead-popup__heading { font-size: 26px; }
+  #lead-popup-{{ section.id }} .lead-popup__subheading {
+    margin: 0;
+    font: 400 14.5px/1.55 sans-serif;
+    color: var(--lp-muted);
+    text-wrap: pretty;
+  }
+
+  #lead-popup-{{ section.id }} .lead-popup__form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__grid--phone { grid-template-columns: 1.6fr 1fr; }
+
+  #lead-popup-{{ section.id }} .lead-popup__field label {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font: 600 12.5px sans-serif;
+    color: var(--lp-text);
+    margin-bottom: 6px;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__req { color: var(--lp-required); }
+  #lead-popup-{{ section.id }} .lead-popup__optional {
+    font: italic 400 11.5px sans-serif;
+    color: var(--lp-muted);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__field label:has(.lead-popup__optional) {
+    gap: 6px;
+    align-items: baseline;
+  }
+
+  #lead-popup-{{ section.id }} .lead-popup__field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid var(--lp-border);
+    border-radius: 8px;
+    font: 400 14px sans-serif;
+    color: var(--lp-text);
+    background: #fff;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__field input:focus {
+    outline: none;
+    border-color: var(--lp-accent);
+    box-shadow: 0 0 0 3px rgba(238, 32, 74, .16);
+  }
+  #lead-popup-{{ section.id }} input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  #lead-popup-{{ section.id }} input[type="number"]::-webkit-outer-spin-button,
+  #lead-popup-{{ section.id }} input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Phone group: static +91, so the field itself holds only the 10 digits. */
+  #lead-popup-{{ section.id }} .lead-popup__inputgroup {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--lp-border);
+    border-radius: 8px;
+    background: #fff;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__prefix {
+    padding: 11px 0 11px 12px;
+    font: 400 14px sans-serif;
+    color: var(--lp-muted);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__inputgroup input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    padding: 11px 12px;
+    background: transparent;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__inputgroup:focus-within {
+    border-color: var(--lp-accent);
+    box-shadow: 0 0 0 3px rgba(238, 32, 74, .16);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__inputgroup input:focus { box-shadow: none; }
+
+  /* Error state (mockup 1c) */
+  #lead-popup-{{ section.id }} .lead-popup__field input[aria-invalid="true"],
+  #lead-popup-{{ section.id }} .lead-popup__inputgroup[data-invalid="true"] {
+    border-color: var(--lp-error);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, .14);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__inputgroup[data-invalid="true"] input { box-shadow: none; }
+  #lead-popup-{{ section.id }} .lead-popup__error {
+    margin: 5px 0 0;
+    font: 400 11.5px/1.4 sans-serif;
+    color: var(--lp-error);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__error:empty { display: none; }
+
+  #lead-popup-{{ section.id }} .lead-popup__submit {
+    width: 100%;
+    padding: 14px 18px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--lp-accent);
+    color: #fff;
+    font: 600 15px sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__submit:hover:not(:disabled) {
+    background: var(--lp-accent-hover);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__submit:active:not(:disabled) { transform: translateY(1px); }
+  #lead-popup-{{ section.id }} .lead-popup__submit:focus-visible {
+    outline: 2px solid var(--lp-text);
+    outline-offset: 2px;
+  }
+  /* Disabled ONLY during the write, never as a validation gate. */
+  #lead-popup-{{ section.id }} .lead-popup__submit:disabled { opacity: .6; cursor: default; }
+
+  #lead-popup-{{ section.id }} .lead-popup__spinner { display: none; }
+  #lead-popup-{{ section.id }} .lead-popup__submit[data-loading="true"] .lead-popup__spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    animation: lp-spin-{{ section.id }} .7s linear infinite;
+  }
+  @keyframes lp-spin-{{ section.id }} { to { transform: rotate(360deg); } }
+
+  #lead-popup-{{ section.id }} .lead-popup__status {
+    margin: 0;
+    font: 500 12.5px/1.4 sans-serif;
+    color: var(--lp-error);
+    text-align: center;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__status:empty { display: none; }
+
+  #lead-popup-{{ section.id }} .lead-popup__consent {
+    margin: 0;
+    font: 400 11.5px/1.5 sans-serif;
+    color: var(--lp-muted);
+    text-align: center;
+    text-wrap: pretty;
+  }
+
+  /* ---- Success (mockup 1e) -------------------------------------------- */
+  #lead-popup-{{ section.id }} .lead-popup__success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding: 36px 24px;
+    /* Centres in the column once the form is gone, so the card does not sit
+       stranded at the top of a tall dialog. */
+    margin: auto 0;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__tick {
+    width: 52px;
+    height: 52px;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, .12);
+    color: var(--lp-success);
+    font: 600 24px/52px sans-serif;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__success h3 {
+    margin: 0;
+    font: 600 18px/1.3 sans-serif;
+    color: var(--lp-text);
+  }
+  #lead-popup-{{ section.id }} .lead-popup__success p {
+    margin: 0;
+    font: 400 13.5px/1.5 sans-serif;
+    color: var(--lp-muted);
+  }
+
+  /* ---- Laptop 1024-1365 ------------------------------------------------
+     A 1366×768 laptop has ~691px of usable height at 90vh. The full 920px
+     desktop dialog fits but reads cramped, so it steps down between the
+     desktop and tablet sizes rather than jumping straight from one to the
+     other. -------------------------------------------------------------- */
+  @media (min-width: 1024px) and (max-width: 1365px) {
+    #lead-popup-{{ section.id }} .lead-popup__dialog {
+      grid-template-columns: 310px 1fr;
+      width: min(820px, calc(100vw - 40px));
+    }
+    #lead-popup-{{ section.id }} .lead-popup__dialog--no-image {
+      grid-template-columns: 1fr;
+      width: min(520px, calc(100vw - 40px));
+    }
+    #lead-popup-{{ section.id }} .lead-popup__content { padding: 36px 40px; gap: 20px; }
+    #lead-popup-{{ section.id }} .lead-popup__heading { font-size: 24px; }
+    #lead-popup-{{ section.id }} .lead-popup__subheading { font-size: 14px; }
+  }
+
+  /* ---- Tablet 768-1023 (mockup 2b) ------------------------------------ */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    #lead-popup-{{ section.id }} .lead-popup__dialog {
+      grid-template-columns: 204px 1fr;
+      width: min(600px, calc(100vw - 40px));
+    }
+    #lead-popup-{{ section.id }} .lead-popup__dialog--no-image { grid-template-columns: 1fr; }
+    #lead-popup-{{ section.id }} .lead-popup__dialog { min-height: min(420px, 90vh); }
+    /* No room to read beside a 204px figure. */
+    #lead-popup-{{ section.id }} .lead-popup__trust,
+    #lead-popup-{{ section.id }} .lead-popup__scrim { display: none; }
+    #lead-popup-{{ section.id }} .lead-popup__content { padding: 32px 30px; gap: 18px; }
+    #lead-popup-{{ section.id }} .lead-popup__head { gap: 7px; }
+    #lead-popup-{{ section.id }} .lead-popup__eyebrow { font-size: 10.5px; }
+    #lead-popup-{{ section.id }} .lead-popup__heading { font: 600 22px/1.28 sans-serif; }
+    #lead-popup-{{ section.id }} .lead-popup__subheading { font: 400 13.5px/1.5 sans-serif; }
+    #lead-popup-{{ section.id }} .lead-popup__form { gap: 18px; }
+    #lead-popup-{{ section.id }} .lead-popup__submit { padding: 13px 18px; font-size: 14.5px; }
+    #lead-popup-{{ section.id }} .lead-popup__close { top: 14px; right: 14px; }
+  }
+
+  /* ---- Mobile < 768 (mockup 2c): bottom sheet, never fullscreen ------- */
+  @media (max-width: 767px) {
+    #lead-popup-{{ section.id }} { align-items: flex-end; }
+
+    #lead-popup-{{ section.id }} .lead-popup__dialog,
+    #lead-popup-{{ section.id }} .lead-popup__dialog--no-image {
+      grid-template-columns: 1fr;
+      /* Band is fixed; the form column takes the rest and scrolls. */
+      grid-template-rows: auto minmax(0, 1fr);
+      width: 100%;
+      max-width: none;
+      max-height: 85%;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -12px 40px rgba(0, 0, 0, .28);
+      animation-name: lp-sheet-{{ section.id }};
+    }
+
+    #lead-popup-{{ section.id }} .lead-popup__visual {
+      display: block;
+      min-height: 0;
+      height: 140px;
+      background: var(--lp-panel-mobile);
+    }
+    /* No-image mobile keeps the band: it carries the heading. */
+    #lead-popup-{{ section.id }} .lead-popup__dialog--no-image .lead-popup__visual { display: block; }
+
+    #lead-popup-{{ section.id }} .lead-popup__handle {
+      display: block;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .55);
+      z-index: 2;
+    }
+
+    /* Right-anchored and cut at the chest. A full-width strip with default
+       centring would crop to her torso and cut her head off. */
+    #lead-popup-{{ section.id }} .lead-popup__doctor {
+      inset: auto;
+      right: 8px;
+      bottom: 0;
+      width: 150px;
+      height: 170px;
+      object-position: center top;
+    }
+
+    #lead-popup-{{ section.id }} .lead-popup__band-text {
+      display: flex;
+      position: absolute;
+      left: 20px;
+      top: 0;
+      bottom: 0;
+      /* The mockup's flat 190px only clears the photo at exactly 390px wide.
+         At 375 (iPhone SE) and 360 (most budget Androids) the text ran under
+         her. Cap at the mockup value, shrink below it. */
+      width: min(190px, calc(100% - 190px));
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+    }
+    #lead-popup-{{ section.id }} .lead-popup__band-text h2 {
+      margin: 0;
+      font: 600 18px/1.25 sans-serif;
+      color: #fff;
+      text-wrap: pretty;
+    }
+    #lead-popup-{{ section.id }} .lead-popup__band-text p {
+      margin: 0;
+      font: 400 12.5px/1.4 sans-serif;
+      color: rgba(255, 255, 255, .85);
+    }
+
+    /* The band carries the heading on mobile. */
+    #lead-popup-{{ section.id }} .lead-popup__head,
+    #lead-popup-{{ section.id }} .lead-popup__trust,
+    #lead-popup-{{ section.id }} .lead-popup__scrim { display: none; }
+
+    #lead-popup-{{ section.id }} .lead-popup__content {
+      padding: 18px 20px calc(20px + env(safe-area-inset-bottom));
+      gap: 14px;
+      min-height: 0;
+    }
+    #lead-popup-{{ section.id }} .lead-popup__form { gap: 14px; }
+    #lead-popup-{{ section.id }} .lead-popup__fields { gap: 13px; }
+    #lead-popup-{{ section.id }} .lead-popup__grid { gap: 10px; }
+
+    /* Bigger touch targets than desktop. */
+    #lead-popup-{{ section.id }} .lead-popup__field input { padding: 13px 12px; font-size: 15px; }
+    #lead-popup-{{ section.id }} .lead-popup__prefix { padding: 13px 0 13px 12px; font-size: 15px; }
+    #lead-popup-{{ section.id }} .lead-popup__inputgroup input { padding: 13px 12px; }
+    #lead-popup-{{ section.id }} .lead-popup__submit { padding: 15px 18px; font-size: 15.5px; }
+    #lead-popup-{{ section.id }} .lead-popup__close { top: 12px; right: 12px; }
+  }
+
+  /* ---- Small phones ≤ 374 (iPhone SE, budget Androids) -----------------
+     The 170px image height above is bottom-anchored against a 140px band. As
+     soon as the band gets shorter the overhang grows and `overflow: hidden`
+     starts eating her head. Below 375 the image is tied to the band instead,
+     and framing is handled by object-position, which cannot decouple. */
+  @media (max-width: 374px) {
+    #lead-popup-{{ section.id }} .lead-popup__visual { height: 124px; }
+    #lead-popup-{{ section.id }} .lead-popup__doctor {
+      width: 118px;
+      right: 6px;
+      height: 100%;
+      object-position: 50% 12%;
+    }
+    #lead-popup-{{ section.id }} .lead-popup__band-text { left: 16px; }
+    #lead-popup-{{ section.id }} .lead-popup__band-text h2 { font-size: 16px; }
+    #lead-popup-{{ section.id }} .lead-popup__band-text p { font-size: 11.5px; }
+    #lead-popup-{{ section.id }} .lead-popup__content { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
+    /* Two inputs per row get too narrow to type in below 375px. */
+    #lead-popup-{{ section.id }} .lead-popup__grid,
+    #lead-popup-{{ section.id }} .lead-popup__grid--phone { grid-template-columns: 1fr; }
+  }
+
+  /* ---- Very narrow ≤ 300 (Galaxy Fold outer screen is 280) -------------
+     Past this the photo leaves the heading roughly 80px, which wraps "Talk to
+     a health advisor" onto three lines against her shoulder. The photo is
+     decorative and the heading is not, so the photo goes and the text takes
+     the full band, centred. Symmetric padding keeps it optically centred and
+     clear of the close button. */
+  @media (max-width: 300px) {
+    #lead-popup-{{ section.id }} .lead-popup__doctor { display: none; }
+    #lead-popup-{{ section.id }} .lead-popup__visual { height: 104px; }
+    #lead-popup-{{ section.id }} .lead-popup__band-text {
+      left: 0;
+      right: 0;
+      width: auto;
+      padding: 0 42px;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+    }
+    #lead-popup-{{ section.id }} .lead-popup__band-text h2 { font-size: 15px; }
+    #lead-popup-{{ section.id }} .lead-popup__band-text p { font-size: 11px; }
+    #lead-popup-{{ section.id }} .lead-popup__close { width: 30px; height: 30px; top: 10px; right: 10px; }
+  }
+
+  /* ---- Short viewports (landscape phones) ------------------------------
+     The band would eat most of the sheet and push the form off-screen, so
+     it goes entirely. The sheet must never become a fullscreen takeover. */
+  @media (max-width: 1023px) and (max-height: 480px) {
+    #lead-popup-{{ section.id }} .lead-popup__visual { display: none; }
+    #lead-popup-{{ section.id }} .lead-popup__dialog,
+    #lead-popup-{{ section.id }} .lead-popup__dialog--no-image {
+      grid-template-rows: minmax(0, 1fr);
+      min-height: 0;
+      max-height: 92%;
+    }
+    /* The band carried the heading on mobile; with it gone, restore it. */
+    #lead-popup-{{ section.id }} .lead-popup__head { display: flex; gap: 4px; }
+    #lead-popup-{{ section.id }} .lead-popup__heading { font-size: 18px; }
+    #lead-popup-{{ section.id }} .lead-popup__subheading { font-size: 13px; }
+  }
+
+  /* The sheet travels its own height rather than fading in place. On mobile
+     the gesture should read as "slid up from the edge". */
+  @keyframes lp-sheet-{{ section.id }} {
+    from { opacity: .4; transform: translateY(100%); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes lp-sheet-out-{{ section.id }} {
+    from { opacity: 1; transform: none; }
+    to   { opacity: .4; transform: translateY(100%); }
+  }
+  @media (max-width: 767px) {
+    #lead-popup-{{ section.id }}[data-state="closing"] .lead-popup__dialog {
+      animation: lp-sheet-out-{{ section.id }} .24s cubic-bezier(.5, 0, .75, 0) both;
+    }
+  }
+
+  /* ---- Form gives way to the confirmation ------------------------------
+     The form lifts and fades, then the card rises into the space it left.
+     Sequenced by the script, not by delays, so the swap cannot desync. */
+  @keyframes lp-leave-{{ section.id }} {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 0; transform: translateY(-8px); }
+  }
+  @keyframes lp-arrive-{{ section.id }} {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes lp-tick-{{ section.id }} {
+    from { opacity: 0; transform: scale(.6); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  #lead-popup-{{ section.id }} .lead-popup__head[data-leaving],
+  #lead-popup-{{ section.id }} .lead-popup__form[data-leaving] {
+    animation: lp-leave-{{ section.id }} .18s ease both;
+    pointer-events: none;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__success:not([hidden]) {
+    animation: lp-arrive-{{ section.id }} .34s cubic-bezier(.16, 1, .3, 1) both;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__success:not([hidden]) .lead-popup__tick {
+    animation: lp-tick-{{ section.id }} .42s cubic-bezier(.34, 1.56, .64, 1) .08s both;
+  }
+
+  /* The `hidden` attribute is only `display:none` at UA specificity, and the
+     class rules above set `display:flex` and beat it, which left the form on
+     screen with the thank-you stacked underneath. These win it back. */
+  #lead-popup-{{ section.id }} .lead-popup__head[hidden],
+  #lead-popup-{{ section.id }} .lead-popup__form[hidden],
+  #lead-popup-{{ section.id }} .lead-popup__success[hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #lead-popup-{{ section.id }} .lead-popup__overlay,
+    #lead-popup-{{ section.id }} .lead-popup__dialog,
+    #lead-popup-{{ section.id }} .lead-popup__head,
+    #lead-popup-{{ section.id }} .lead-popup__form,
+    #lead-popup-{{ section.id }} .lead-popup__success,
+    #lead-popup-{{ section.id }} .lead-popup__tick { animation: none !important; }
+  }
+</style>
+
+<script>
+  (function () {
+    var root = document.getElementById('lead-popup-{{ section.id }}');
+    if (!root || root.dataset.lpBooted === '1') return;
+    root.dataset.lpBooted = '1';
+
+    /* ------------------------------------------------------------------
+       Firebase, hardcoded, project sehatup-f96b5.
+       Same values as _shared/public/firebase-config.js. These are public
+       client keys (safe to ship); access is governed by Firestore rules.
+       ------------------------------------------------------------------ */
+    var FIREBASE_CONFIG = {
+      apiKey: 'AIzaSyBCuj9geUYV69Ievt59WO8PjJWQZ1cKDLw',
+      authDomain: 'sehatup-f96b5.firebaseapp.com',
+      projectId: 'sehatup-f96b5',
+      storageBucket: 'sehatup-f96b5.firebasestorage.app',
+      messagingSenderId: '886569695434',
+      appId: '1:886569695434:web:4932dca7625c98972a5c33',
+      measurementId: 'G-X2274KKWE4'
+    };
+    var SDK_VERSION = '10.13.0';
+
+    var collectionName = root.dataset.firestoreCollection || 'popup_leads';
+    var delay = parseFloat(root.dataset.delay || '12') * 1000;
+    var scrollPct = parseFloat(root.dataset.scrollPercent || '0');
+    var once = root.dataset.once === 'true';
+    var sessionKey = root.dataset.sessionKey;
+
+    function seen() {
+      try { return !!sessionStorage.getItem(sessionKey); } catch (e) { return false; }
+    }
+    function markSeen() {
+      try { sessionStorage.setItem(sessionKey, '1'); } catch (e) { /* private mode */ }
+    }
+
+    /* ------------------------------------------------------------------
+       Writer adapter.
+       The questionnaire pages load the v9 *compat* SDK and expose window.db.
+       The compat and modular APIs are not interchangeable, so we normalise
+       both behind { add, stamp } instead of assuming one of them.
+       ------------------------------------------------------------------ */
+    function compatWriter(db) {
+      return {
+        add: function (col, data) { return db.collection(col).add(data); },
+        stamp: function () { return window.firebase.firestore.FieldValue.serverTimestamp(); }
+      };
+    }
+
+    var writerPromise = null;
+    function getWriter() {
+      if (writerPromise) return writerPromise;
+
+      writerPromise = (async function () {
+        // 1. Reuse the instance the page already created.
+        if (window.db && typeof window.db.collection === 'function') {
+          return compatWriter(window.db);
+        }
+
+        // 2. Compat SDK on the page but no db yet, so init without double-registering.
+        if (window.firebase && typeof window.firebase.firestore === 'function') {
+          var app = (window.firebase.apps && window.firebase.apps.length)
+            ? window.firebase.app()
+            : window.firebase.initializeApp(FIREBASE_CONFIG);
+          var cdb = window.firebase.firestore(app);
+          if (!window.db) window.db = cdb;
+          return compatWriter(cdb);
+        }
+
+        // 3. No SDK at all, so lazy-load modular v10.
+        var appMod = await import('https://www.gstatic.com/firebasejs/' + SDK_VERSION + '/firebase-app.js');
+        var fsMod = await import('https://www.gstatic.com/firebasejs/' + SDK_VERSION + '/firebase-firestore.js');
+        var mApp = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(FIREBASE_CONFIG);
+        var mdb = fsMod.getFirestore(mApp);
+        return {
+          add: function (col, data) { return fsMod.addDoc(fsMod.collection(mdb, col), data); },
+          stamp: function () { return fsMod.serverTimestamp(); }
+        };
+      })();
+
+      // A failed load must not poison every later attempt.
+      writerPromise.catch(function () { writerPromise = null; });
+      return writerPromise;
+    }
+
+    /* ------------------------------------------------------------------
+       Open / close
+       ------------------------------------------------------------------ */
+    var lastFocused = null;
+
+    /* Scroll lock. Hiding the page scrollbar reclaims its width, so the layout
+       behind the popup reflows sideways on open and back on close. Padding the
+       body by the exact scrollbar width holds it still. The previous inline
+       values are restored verbatim rather than blanked, so a theme that set
+       its own body overflow or padding survives. */
+    var priorOverflow = '';
+    var priorPadRight = '';
+
+    function lockScroll() {
+      var gap = window.innerWidth - document.documentElement.clientWidth;
+      priorOverflow = document.body.style.overflow;
+      priorPadRight = document.body.style.paddingRight;
+      document.body.style.overflow = 'hidden';
+      if (gap > 0) {
+        var current = parseFloat(window.getComputedStyle(document.body).paddingRight) || 0;
+        document.body.style.paddingRight = (current + gap) + 'px';
+      }
+    }
+
+    function unlockScroll() {
+      document.body.style.overflow = priorOverflow;
+      document.body.style.paddingRight = priorPadRight;
+    }
+
+    function openPopup() {
+      if (once && seen()) return;
+      if (!root.hidden) return;
+
+      teardownTriggers();
+      lastFocused = document.activeElement;
+      root.hidden = false;
+      lockScroll();
+      if (once) markSeen();
+
+      var first = root.querySelector('input');
+      // Focusing on mobile yanks the keyboard open over the sheet; desktop only.
+      if (first && window.matchMedia('(min-width: 768px)').matches) {
+        first.focus({ preventScroll: true });
+      }
+    }
+
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function finishClose() {
+      root.hidden = true;
+      root.removeAttribute('data-state');
+      unlockScroll();
+      // preventScroll: restoring focus must not drag the page back to wherever
+      // the trigger element happened to sit.
+      if (lastFocused && typeof lastFocused.focus === 'function') {
+        lastFocused.focus({ preventScroll: true });
+      }
+    }
+
+    function closePopup() {
+      if (root.hidden || root.dataset.state === 'closing') return;
+      if (reduceMotion) { finishClose(); return; }
+
+      // Hiding the element immediately would skip the exit animation entirely,
+      // so mark the state, let CSS run it, and hide on animationend. The
+      // timeout is a backstop for when the animation never fires (element not
+      // rendered, background tab), otherwise the popup would stay stuck open.
+      root.dataset.state = 'closing';
+      var dialog = root.querySelector('.lead-popup__dialog');
+      var done = false;
+      function once() {
+        if (done) return;
+        done = true;
+        finishClose();
+      }
+      dialog.addEventListener('animationend', once, { once: true });
+      setTimeout(once, 400);
+    }
+
+    /* ------------------------------------------------------------------
+       Triggers: whichever fires first: a time delay, or a scroll depth.
+       Both are torn down on open so neither can fire twice or keep a
+       listener alive for the rest of the page's life.
+       ------------------------------------------------------------------ */
+    var timerId = null;
+    var scrollBound = false;
+    var ticking = false;
+
+    function scrollDepth() {
+      var doc = document.documentElement;
+      var scrollable = doc.scrollHeight - window.innerHeight;
+      if (scrollable <= 0) return 0;
+      return (window.pageYOffset || doc.scrollTop) / scrollable * 100;
+    }
+
+    function onScroll() {
+      // rAF-throttled: an unthrottled scroll handler janks mid-range Android.
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(function () {
+        ticking = false;
+        if (scrollDepth() >= scrollPct) openPopup();
+      });
+    }
+
+    function teardownTriggers() {
+      if (timerId) { clearTimeout(timerId); timerId = null; }
+      if (scrollBound) { window.removeEventListener('scroll', onScroll); scrollBound = false; }
+    }
+
+    if (!(once && seen())) {
+      if (delay >= 0) timerId = setTimeout(openPopup, delay);
+      if (scrollPct > 0) {
+        window.addEventListener('scroll', onScroll, { passive: true });
+        scrollBound = true;
+        onScroll(); // page may already be loaded past the threshold
+      }
+    }
+
+    root.querySelectorAll('[data-lead-popup-close]').forEach(function (el) {
+      el.addEventListener('click', closePopup);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (root.hidden) return;
+      if (e.key === 'Escape') { closePopup(); return; }
+
+      // Minimal focus trap so tabbing cannot wander behind the overlay.
+      if (e.key !== 'Tab') return;
+      var focusables = root.querySelectorAll('button, input, [href], select, textarea');
+      if (!focusables.length) return;
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+
+    /* ------------------------------------------------------------------
+       Submit
+       ------------------------------------------------------------------ */
+    var form = root.querySelector('[data-lead-popup-form]');
+    var statusEl = root.querySelector('[data-lead-popup-status]');
+    var submitBtn = form.querySelector('.lead-popup__submit');
+    var btnLabel = form.querySelector('[data-btn-label]');
+    var defaultLabel = btnLabel.textContent;
+    var headEl = root.querySelector('[data-head]');
+    var successEl = root.querySelector('[data-success]');
+
+    // Matches the questionnaire engine's rule: 10 digits, tolerant of +91 / 0
+    // prefixes and spacing that users paste in.
+    function normalisePhone(raw) {
+      var digits = (raw || '').replace(/\D/g, '');
+      if (digits.length === 12 && digits.indexOf('91') === 0) digits = digits.slice(2);
+      if (digits.length === 11 && digits.charAt(0) === '0') digits = digits.slice(1);
+      return digits;
+    }
+
+    /* ------------------------------------------------------------------
+       Field-level errors.
+
+       The submit button is never disabled. Pressing it is how the customer
+       finds out what is wrong. Every invalid field is flagged at once so they
+       fix the whole form in one pass instead of discovering problems one
+       submit at a time.
+       ------------------------------------------------------------------ */
+    function setError(fieldName, message) {
+      var input = form.querySelector('[name="' + fieldName + '"]');
+      var slot = form.querySelector('[data-error-for="' + fieldName + '"]');
+      var group = form.querySelector('[data-group-for="' + fieldName + '"]');
+      if (slot) slot.textContent = message || '';
+      if (group) {
+        // The bordered wrapper carries the error ring, not the bare input.
+        if (message) group.setAttribute('data-invalid', 'true');
+        else group.removeAttribute('data-invalid');
+      }
+      if (!input) return;
+      if (message) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    }
+
+    function clearErrors() {
+      form.querySelectorAll('[data-error-for]').forEach(function (el) { el.textContent = ''; });
+      form.querySelectorAll('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
+      form.querySelectorAll('[data-invalid]').forEach(function (el) { el.removeAttribute('data-invalid'); });
+      statusEl.textContent = '';
+    }
+
+    // Clear a field's error as soon as the customer starts fixing it.
+    form.addEventListener('input', function (e) {
+      var fieldName = e.target.name;
+      if (fieldName && e.target.hasAttribute('aria-invalid')) setError(fieldName, '');
+    });
+
+
+    /* Swap the form out for the confirmation card. The form is hidden only
+       after its exit animation finishes, so the two never overlap. */
+    function showSuccess() {
+      function swap() {
+        form.hidden = true;
+        if (headEl) headEl.hidden = true;
+        if (successEl) successEl.hidden = false;
+        // Move focus to the confirmation so screen readers announce it and a
+        // keyboard user is not left on a control that no longer exists.
+        if (successEl) {
+          successEl.setAttribute('tabindex', '-1');
+          // preventScroll: focus() scrolls its target into view by default,
+          // which yanked the page behind the popup, visible as the scrollbar
+          // jumping on submit and again when the popup closed and focus was
+          // restored. The popup is position:fixed and already on screen, so
+          // there is nothing to scroll to.
+          successEl.focus({ preventScroll: true });
+        }
+        setTimeout(closePopup, 3400);
+      }
+
+      if (reduceMotion) { swap(); return; }
+
+      form.setAttribute('data-leaving', 'true');
+      if (headEl) headEl.setAttribute('data-leaving', 'true');
+      var done = false;
+      function once() {
+        if (done) return;
+        done = true;
+        form.removeAttribute('data-leaving');
+        if (headEl) headEl.removeAttribute('data-leaving');
+        swap();
+      }
+      form.addEventListener('animationend', once, { once: true });
+      setTimeout(once, 320);
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      clearErrors();
+
+      var data = new FormData(form);
+      var name = (data.get('name') || '').toString().trim();
+      var phoneRaw = (data.get('phone') || '').toString().trim();
+      var phone = normalisePhone(phoneRaw);
+      var ageRaw = (data.get('age') || '').toString().trim();
+      var age = parseInt(ageRaw, 10);
+      var email = (data.get('email') || '').toString().trim(); // optional
+      var city = (data.get('city') || '').toString().trim();
+
+      // Collect every problem, then report them together (mockup 1c).
+      var errors = [];
+      function invalid(field, message) { errors.push(field); setError(field, message); }
+
+      if (!name) invalid('name', 'Name is required');
+
+      if (!phoneRaw) invalid('phone', 'Phone number is required');
+      else if (!/^\d{10}$/.test(phone)) invalid('phone', 'Enter a valid 10-digit mobile number');
+
+      if (!ageRaw) invalid('age', 'Age is required');
+      else if (isNaN(age) || age < 18 || age > 100) invalid('age', 'Enter an age between 18 and 100');
+
+      // Optional, only checked when something was actually typed. The pattern
+      // is deliberately loose (something@something.tld); strict RFC patterns
+      // reject valid addresses far more often than they catch typos.
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        invalid('email', 'Enter a valid email address');
+      }
+
+      if (!city) invalid('city', 'City is required');
+
+      if (errors.length) {
+        statusEl.textContent = errors.length === 1
+          ? 'Please fix the highlighted field'
+          : 'Please fix the ' + errors.length + ' highlighted fields';
+        var firstBad = form.querySelector('[name="' + errors[0] + '"]');
+        if (firstBad) {
+          // Same preventScroll guard, but the invalid field genuinely may be
+          // below the fold of the popup's own scroll area, so scroll it into
+          // view with `nearest`, which moves the popup column and not the page.
+          firstBad.focus({ preventScroll: true });
+          firstBad.scrollIntoView({ block: 'nearest' });
+        }
+        return;
+      }
+
+      var succeeded = false;
+      submitBtn.disabled = true;
+      submitBtn.setAttribute('data-loading', 'true');
+      btnLabel.textContent = 'Sending…';
+
+      try {
+        var fb = await getWriter();
+
+        await fb.add(collectionName, {
+          name: name,
+          phone: phone,
+          email: email,
+          age: age,
+          // Stored exactly as typed, with no parsing into city/state/pincode.
+          city: city,
+          status: 'new',
+          source: 'lead_popup',
+          sectionId: '{{ section.id }}',
+          pageTemplate: root.dataset.template || '',
+          pageUrl: window.location.href,
+          referrer: document.referrer || '',
+          // Mirrors the questionnaire engine: serverTimestamp for ordering,
+          // a client Date for immediate local reads.
+          timestamp: fb.stamp(),
+          createdAt: new Date()
+        });
+
+        // Mockup 1e: the form is REPLACED by the success card, not annotated
+        // underneath it. Let the form animate out first, then swap.
+        succeeded = true;
+        showSuccess();
+      } catch (err) {
+        console.error('[lead-popup] submit failed:', err);
+        statusEl.textContent = 'Could not send. Check your connection and try again.';
+      } finally {
+        // On success the form is mid-fade, so restoring the label there would
+        // flash "Request a callback" back over the spinner as it leaves.
+        if (!succeeded) {
+          submitBtn.disabled = false;
+          submitBtn.removeAttribute('data-loading');
+          btnLabel.textContent = defaultLabel;
+        }
+      }
+    });
+  })();
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Lead Capture Popup",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Where should it appear?"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_popup",
+      "label": "Enable popup",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_on_home",
+      "label": "Show on homepage",
+      "default": true
+    },
+    {
+      "type": "page",
+      "id": "target_page",
+      "label": "Also show on this custom page"
+    },
+    {
+      "type": "header",
+      "content": "When should it open?"
+    },
+    {
+      "type": "paragraph",
+      "content": "Opens on whichever happens first: the delay, or the scroll depth."
+    },
+    {
+      "type": "range",
+      "id": "popup_delay",
+      "label": "Delay before showing",
+      "min": 0,
+      "max": 30,
+      "step": 1,
+      "unit": "s",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "scroll_trigger_percent",
+      "label": "Or when scrolled past",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 40,
+      "info": "Set to 0 to disable the scroll trigger."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_once_per_session",
+      "label": "Only show once per browser session",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_photo",
+      "label": "Show the advisor photo",
+      "default": true,
+      "info": "Off = narrow single-column dialog, no photo panel."
+    },
+    {
+      "type": "image_picker",
+      "id": "popup_image",
+      "label": "Replace the advisor photo",
+      "info": "Optional. A packaged photo is built in, so leave this empty unless you want a different one. Use a transparent PNG/WebP, portrait 2:3, figure centred with headroom."
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "default": "Trusted by thousands of happy patients"
+    },
+    {
+      "type": "text",
+      "id": "popup_heading",
+      "label": "Heading",
+      "default": "Start your health journey today"
+    },
+    {
+      "type": "textarea",
+      "id": "popup_subheading",
+      "label": "Subheading",
+      "default": "Get personalized guidance from our expert doctors across Allopathy, Ayurveda and Homeopathy."
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button text",
+      "default": "Get free consultation"
+    },
+    {
+      "type": "textarea",
+      "id": "consent_text",
+      "label": "Consent / fine print",
+      "default": "Your details are safe with us. No spam. Only health guidance."
+    },
+    {
+      "type": "header",
+      "content": "Mobile band"
+    },
+    {
+      "type": "paragraph",
+      "content": "On mobile the heading sits inside the gradient band next to the photo, so it needs to be shorter."
+    },
+    {
+      "type": "text",
+      "id": "mobile_heading",
+      "label": "Mobile heading",
+      "default": "Start your health journey"
+    },
+    {
+      "type": "text",
+      "id": "mobile_subheading",
+      "label": "Mobile subheading",
+      "default": "Free guidance from expert doctors."
+    },
+    {
+      "type": "header",
+      "content": "Trust points"
+    },
+    {
+      "type": "paragraph",
+      "content": "Shown over the photo panel on desktop. Hidden on tablet and mobile."
+    },
+    {
+      "type": "text",
+      "id": "trust_1",
+      "label": "Point 1",
+      "default": "Experienced and verified doctors"
+    },
+    {
+      "type": "text",
+      "id": "trust_2",
+      "label": "Point 2",
+      "default": "Allopathy, Ayurveda and Homeopathy"
+    },
+    {
+      "type": "text",
+      "id": "trust_3",
+      "label": "Point 3",
+      "default": "Your privacy is always protected"
+    },
+    {
+      "type": "text",
+      "id": "trust_4",
+      "label": "Point 4",
+      "default": "Care tailored just for you"
+    },
+    {
+      "type": "header",
+      "content": "After submitting"
+    },
+    {
+      "type": "text",
+      "id": "success_title",
+      "label": "Success title",
+      "default": "Thanks, we'll call you soon"
+    },
+    {
+      "type": "textarea",
+      "id": "success_message",
+      "label": "Success message",
+      "default": "One of our doctors will call you on this number within 24 hours."
+    },
+    {
+      "type": "header",
+      "content": "City field"
+    },
+    {
+      "type": "paragraph",
+      "content": "Name, mobile, age and city are required. City is one free text field. Whatever the customer types is saved exactly as typed."
+    },
+    {
+      "type": "checkbox",
+      "id": "collect_email",
+      "label": "Ask for email address",
+      "default": true,
+      "info": "Always optional when shown. It is only checked if the customer fills it in."
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Button / accent",
+      "default": "#ee204a"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 90,
+      "step": 5,
+      "unit": "%",
+      "default": 55
+    },
+    {
+      "type": "header",
+      "content": "Data"
+    },
+    {
+      "type": "paragraph",
+      "content": "Firebase is hardcoded in this section (project sehatup-f96b5). No keys to enter."
+    },
+    {
+      "type": "text",
+      "id": "firestore_collection",
+      "label": "Firestore collection name",
+      "default": "popup_leads"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Lead Capture Popup"
+    }
+  ]
+}
+{% endschema %}

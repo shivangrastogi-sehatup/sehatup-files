@@ -238,6 +238,56 @@ The prototype ran on simulated counters. Every number here is real:
 | Source split | Leads from the two lead boards; orders + revenue from the orders board |
 | Ticker | The most recent real orders in the selected range |
 
+### Which metric comes from which sheet & column
+
+Every column name below is a **candidate list** — `field()` in
+`src/utils/dataProcessor.js` tries them in order and ignores casing/spacing
+drift, so the first one that exists in the tab wins. The single source of truth
+is `src/data/unify.js`; this table just mirrors it. The three sheet IDs / tabs
+are set in `.env` (`SHEET_ID_*` / `SHEET_TAB_*`, see `.env.example`).
+
+#### Healthscore 360 — leads board  (`SHEET_ID_HEALTH`, tab `auto:leads` → "<Month> <Year> LEADS")
+
+| Metric / field | Column(s) read (first match wins) |
+| --- | --- |
+| Lead date (drives Today / MTD windows) | `Date (Leads)` · `Date Leads` · `Date` |
+| Caller (leaderboard "leads by caller") | `Caller 1` · `Caller Name` · `Caller` |
+| Call-status funnel + conversion flag | `Call Status` · `Status` — bucketed to Converted / Connected / Ringing / Not Connected / Follow Up / Other |
+| Lead name / row validity | `Name`, plus `Mobile` · `Number` · `Phone` |
+| Category (this board's "work") | `Category` · `Sub Category` · `Segment` |
+| Product (fallback for work) | `Product name` · `Product` |
+
+#### Quick Reply Leads — leads board  (`SHEET_ID_QUICK`, tab `auto:month` → "<Month> <Year>")
+
+Same lead columns as Healthscore (date / `Caller 1` / `Call Status` / `Name` / `Mobile` / `Category` / `Product name`), plus:
+
+| Metric / field | Column(s) read (first match wins) |
+| --- | --- |
+| Conversion | `Call Status` · `Status` — "Order Placed" / "Order" / "Converted" → Converted |
+| Payment mode chip (Quick Reply only) | `Payment Mode` · `Payment` · `Mode of Payment` |
+
+> Leads never carry revenue — the lead boards only supply lead counts, the
+> caller, and the status funnel. All money/orders come from Men's Wellness below.
+
+#### Men's Wellness — ORDERS board  (`SHEET_ID_MENS`, tab `auto:month` → "<Month> <Year>")
+
+Every row is one order. Revenue basis = **`Partial & Prepaid Pay` + `COD Collectable`** (NOT "Product Value", which is list price before discounts).
+
+| Metric / field | Column(s) read (first match wins) |
+| --- | --- |
+| Order date (Today / MTD / weekly bars) | `Date` · `Order Date` · `Delivered Date` |
+| Revenue — prepaid portion | `Partial & Prepaid Pay` · `Partial and Prepaid Pay` · `Prepaid Pay` |
+| Revenue — COD portion | `COD Collectable` · `COD Collectible` · `COD Collection` |
+| **Revenue total** | prepaid + COD (sum of the two above) |
+| Product | `Pdt Name` · `Product Name` · `Product` |
+| Quantity | `Qty` · `Quantity` (defaults to 1) |
+| Agent (leaderboard "orders + revenue by agent") | `Agent Name` · `Caller` |
+| Source split (orders by channel) | `Lead Source` · `Source` — non-Healthscore folded into "Quick Reply & Meta" |
+| Payment mode donut | `Mode` · `Payment Mode` · `Mode of Payment` → COD / Prepaid / Partial |
+| Fulfillment donut | `Order Status` · `Delivery Status` · `Shipment Status` · `Status` → Delivered / In Transit / Undelivered / RTO / Cancelled / Processing |
+| Ticker region (falls back to lead source) | `State` · `Region` · `City` |
+| Customer name (ticker) | `Name` · `Customer Name` · `Customer` |
+
 ### Deliberate departures from the prototype
 
 - **KPI drill-in modals.** The prototype invented sub-reasons ("Answered on 1st

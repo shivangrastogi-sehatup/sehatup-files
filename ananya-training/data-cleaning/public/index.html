@@ -702,9 +702,10 @@ function renderRail(){
     const dots=Object.entries(reviewsMap[ex.idx]||{}).map(([name,color])=>`<span class="revdot" style="background:${color}" title="Reviewed by ${esc(name)}"></span>`).join('');
     const label = ex.synthetic ? `<span class="flag syn">synthetic</span>` : (phone||('#'+(ex.idx+1)));
     const editFlag = isEdited(ex.idx) ? `<span class="flag edit">edited</span>` : '';
+    const suggFlag = suggFor(ex.idx) ? `<span class="flag sugg" title="Improvement suggested">💡</span>` : '';
     const first = turns[0] ? turns[0].text.slice(0,58) : '(empty)';
     div.innerHTML =
-      `<div class="ex-top"><span class="ex-label">${label}</span><span class="ex-flags">${editFlag}${dots}</span></div>
+      `<div class="ex-top"><span class="ex-label">${label}</span><span class="ex-flags">${editFlag}${suggFlag}${dots}</span></div>
        <div class="ex-prev">${esc(first)}</div>
        <div class="ex-meta">${ex.date||''} · ${turns.length} turns · ${turns.filter(t=>t.role==='user').length}u/${turns.filter(t=>t.role==='model').length}a</div>`;
     div.onclick=()=>selectExample(ex.idx);
@@ -770,6 +771,7 @@ function renderStage(){
         cards += `<div class="card ${editState.role}">${editorHTML()}</div>`;
       } else {
         cards += cardHTML(working.turns[i], i);
+        if (working.turns[i].role==='model') cards += suggBubbleHTML(i);
       }
     }
   }
@@ -815,12 +817,68 @@ function renderStats(){
 }
 function render(){ if(D){ renderRail(); renderStage(); renderStats(); } }
 
+/* ---------- floating improvement suggestions ---------- */
+let SUGG = {};                 // { file: { idx: {action:'rewrite'|'exclude', turns?, note} } }
+const dismissedSugg = new Set();
+function initSuggestions(){
+  const st = document.createElement('style');
+  st.textContent = `
+    .sugg-bubble{margin:2px 0 12px auto;max-width:80%;background:rgba(83,189,235,.09);
+      border:1px dashed var(--verd-deep,#3fb8a0);border-radius:12px;padding:8px 12px}
+    .sugg-bubble .sb-head{font-size:11px;font-weight:600;color:var(--verd,#7ff0d8);margin-bottom:4px}
+    .sugg-bubble .sb-note{font-size:10.5px;color:var(--muted,#8a9a95);margin-bottom:5px}
+    .sugg-bubble .sb-text{white-space:pre-wrap;line-height:1.45;font-size:13px;color:var(--cream,#e9efe9)}
+    .sugg-bubble .sb-actions{display:flex;gap:6px;margin-top:8px}
+    .sugg-bubble button{border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px}
+    .sugg-bubble .sb-accept{background:var(--verd-deep,#2e8b74);color:#fff;border:none;font-weight:600}
+    .sugg-bubble .sb-dismiss{background:transparent;border:1px solid var(--muted,#556);color:var(--cream,#cdd)}
+    .flag.sugg{background:rgba(83,189,235,.18);color:#8fd;border-radius:4px;padding:0 4px;font-size:10px}
+  `;
+  document.head.appendChild(st);
+  loadSuggestions();
+}
+async function loadSuggestions(){
+  try { SUGG = await fetch('/training-data/suggestions.json').then(r=>r.ok?r.json():{}); }
+  catch { SUGG = {}; }
+  if (D) render();
+}
+function suggForConv(idx){ if(!D||idx==null) return null; const f=SUGG[D.file]; return f?(f[idx]||null):null; }
+function suggForTurn(idx, pos){
+  const s = suggForConv(idx); if(!s || !s.turnFixes) return null;
+  const txt = s.turnFixes[pos] ?? s.turnFixes[String(pos)];
+  if (txt==null) return null;
+  if (dismissedSugg.has(D.file+':'+idx+':'+pos)) return null;
+  return { text: txt, note: s.note };
+}
+/* conversation-level marker for the rail 💡 */
+function suggFor(idx){ const s=suggForConv(idx); return (s && s.turnFixes && Object.keys(s.turnFixes).length) ? s : null; }
+function suggBubbleHTML(pos){
+  const s = suggForTurn(activeIdx, pos); if(!s) return '';
+  return `<div class="sugg-bubble">
+    <div class="sb-head">💡 Suggested improvement</div>
+    ${s.note?`<div class="sb-note">${esc(s.note)}</div>`:''}
+    <div class="sb-text">${esc(s.text)}</div>
+    <div class="sb-actions">
+      <button class="sb-accept" onclick="acceptTurnSuggestion(${pos})">✓ Use this</button>
+      <button class="sb-dismiss" onclick="dismissTurnSuggestion(${pos})">Dismiss</button>
+    </div></div>`;
+}
+function acceptTurnSuggestion(pos){
+  const s = suggForTurn(activeIdx, pos); if(!s) return;
+  if(!ensureMe()) return;
+  working.turns[pos] = { role:'model', text:s.text };
+  dismissedSugg.add(D.file+':'+activeIdx+':'+pos);
+  saveEdit();
+}
+function dismissTurnSuggestion(pos){ if(D&&activeIdx!=null) dismissedSugg.add(D.file+':'+activeIdx+':'+pos); renderStage(); }
+
 document.getElementById('newer').onclick=()=>stepChunk(-1);
 document.getElementById('older').onclick=()=>stepChunk(1);
 renderIdentity();
 renderStandings();
 loadReviewers();
 refreshTally();
+initSuggestions();
 setInterval(loadReviewers, 20000);   // keep the shared colour list fresh
 setInterval(refreshTally, 20000);    // keep standings + chunk status fresh
 loadList().then(()=>{ const nums=LIST.map(m=>m.chunk); if(!nums.includes(chunkNo)) chunkNo=Math.min(...nums); loadChunk(chunkNo); });

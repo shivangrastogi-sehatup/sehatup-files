@@ -316,6 +316,41 @@ function exportShipmentsToExcel(rows) {
   saveAs(new Blob([buf], { type: 'application/octet-stream' }), `shipments_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
+// Leads captured by the Shopify storefront popup (shopify-elements/lead-capture-popup.liquid).
+// The popup writes a flat doc, so there is nothing to derive here.
+const POPUP_LEAD_HEADERS = ['Received', 'Name', 'Phone', 'Email', 'Age', 'City', 'Status', 'Page', 'Referrer'];
+
+function popupLeadReceivedAt(r) {
+  const raw = r.timestamp?.toDate ? r.timestamp.toDate()
+    : r.createdAt?.toDate ? r.createdAt.toDate()
+      : (r.createdAt ? new Date(r.createdAt) : null);
+  return raw && !isNaN(raw.getTime()) ? raw : null;
+}
+
+function exportPopupLeadsToExcel(rows) {
+  if (!rows || rows.length === 0) { alert('No leads to export for the current filter.'); return; }
+  const data = rows.map(r => {
+    const at = popupLeadReceivedAt(r);
+    return {
+      'Received': at ? at.toLocaleString('en-IN') : '',
+      'Name': r.name || '',
+      // Leading apostrophe keeps Excel from eating the leading zero / turning it into a number.
+      'Phone': r.phone ? `'${r.phone}` : '',
+      'Email': r.email || '',
+      'Age': typeof r.age === 'number' ? r.age : (r.age || ''),
+      'City': r.city || '',
+      'Status': r.status || '',
+      'Page': r.pageUrl || '',
+      'Referrer': r.referrer || '',
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(data, { header: POPUP_LEAD_HEADERS });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Popup leads');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `popup_leads_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
 // Derive age (from `dob`), gender and category (from the questionnaire / category
 // fields) for a raw submission doc. Submission docs store `dob` but no `age`, and
 // usually no `gender`, so these have to be computed. Mirrors the CRM derivation
@@ -12614,11 +12649,11 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 // role it is listed too, but filtered out below unless an admin grants the
 // can_access_cart_links permission — that's the dynamic opt-in.
 const NAV = {
-  admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "order_create", "shipments", "cart_links", "users", "focused_editor", "data_studio", "settings"],
+  admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "order_create", "shipments", "cart_links", "popup_leads", "users", "focused_editor", "data_studio", "settings"],
   doctor: ["doctor", "submissions", "customers", "prescriptions", "cart_links", "settings"],
   telesales: ["submissions", "prescriptions", "calculator", "cart_links", "settings"],
   operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "cart_links", "settings"],
-  marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "cart_links", "settings"],
+  marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "cart_links", "popup_leads", "settings"],
   website_developer: ["focused_editor", "data_studio", "cart_links", "settings"],
 };
 
@@ -12639,6 +12674,7 @@ const ITEMS = {
   order_create: { label: "Create order", icon: "plus", route: "order_create" },
   calculator: { label: "Price calculator", icon: "receipt", route: "calculator" },
   cart_links: { label: "Cart link generator", icon: "link", route: "cart_links" },
+  popup_leads: { label: "Popup leads", icon: "clipboard", route: "popup_leads" },
   shipments: { label: "Shipments", icon: "truck", route: "shipments" },
   users: { label: "Roles & users", icon: "shield", route: "admin" },
   focused_editor: { label: "Quick Editor", icon: "filter", route: "focused_editor" },
@@ -13948,6 +13984,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
     case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
     case "calculator": return <PriceCalculator me={me} canRx={canRx} />;
     case "cart_links": return <CartLinkGenerator />;
+    case "popup_leads": return <PopupLeadsScreen />;
     case "shipments": return <ShipmentsScreen ctx={route.ctx} />;
     // "marketing" was merged into the unified Analytics Dashboard ("home");
     // stale saved routes fall through to the default Dashboard render.
@@ -13957,6 +13994,130 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
     case "settings": return <SettingsScreen tweaks={tweaks} me={me} />;
     default: return <Dashboard tweaks={tweaks} openCustomer={openCustomer} openSubmission={openSubmission} setRoute={setRoute} />;
   }
+}
+
+/* Leads from the storefront popup. One collection, one table, one export.
+   The popup writes flat docs, so this reads `popup_leads` straight through with
+   no joins or enrichment. */
+function PopupLeadsScreen() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [search, setSearch] = useState('');
+  const [datePreset, setDatePreset] = useState('all');
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setErr('');
+        // createdAt is a client Date written on every doc, so it is never pending
+        // the way a serverTimestamp is for a moment after the write.
+        const snap = await getDocs(query(
+          collection(db, 'popup_leads'),
+          orderBy('createdAt', 'desc'),
+          limit(2000),
+        ));
+        if (!alive) return;
+        setRows(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        if (!alive) return;
+        console.error('[popup leads] load failed:', e);
+        setErr(e?.code === 'permission-denied'
+          ? 'Your account cannot read popup_leads. Ask an admin to grant access in the Firestore rules.'
+          : 'Could not load leads. Check your connection and try again.');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const [start, end] = resolveDateRange(datePreset, null);
+    const q = search.trim().toLowerCase();
+    return rows.filter(r => {
+      if (start || end) {
+        const at = popupLeadReceivedAt(r);
+        if (!at) return false;
+        if (start && at < start) return false;
+        if (end && at > end) return false;
+      }
+      if (!q) return true;
+      return [r.name, r.phone, r.email, r.city].some(v => String(v || '').toLowerCase().includes(q));
+    });
+  }, [rows, search, datePreset]);
+
+  return (
+    <div className="col" style={{ gap: 14 }}>
+      <div className="card">
+        <div className="toolbar">
+          <select className="select" value={datePreset} onChange={e => setDatePreset(e.target.value)} style={{ width: 'auto', height: 30, fontSize: 12, borderRadius: 6 }}>
+            {DATE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+          {(search.trim() || datePreset !== 'all') && (
+            <button className="btn sm" onClick={() => { setSearch(''); setDatePreset('all'); }} title="Reset the date range and search" style={{ fontSize: 11.5, gap: 4 }}>
+              <Icon name="x" size={12} /> Clear
+            </button>
+          )}
+          <span className="spacer" />
+          <div style={{ position: 'relative', width: 240 }}>
+            <input className="input" placeholder="Name, phone, email, city..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}><Icon name="search" size={13} /></span>
+          </div>
+          <button className="btn sm primary" onClick={() => exportPopupLeadsToExcel(filtered)} disabled={loading || filtered.length === 0} title="Download the currently filtered leads as an Excel file" style={{ fontSize: 11.5, gap: 4 }}>
+            <Icon name="download" size={12} /> Export
+          </button>
+        </div>
+
+        <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 560, maxWidth: '100%' }}>
+          <table className="tbl" style={{ minWidth: 940 }}>
+            <thead>
+              <tr>
+                <th style={{ whiteSpace: 'nowrap' }}>Received</th>
+                <th>Name</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Phone</th>
+                <th>Email</th>
+                <th style={{ textAlign: 'center' }}>Age</th>
+                <th>City</th>
+                <th>Page</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="7"><div className="empty"><Icon name="refresh" size={20} /><div>Loading leads…</div></div></td></tr>
+              ) : err ? (
+                <tr><td colSpan="7"><div className="empty"><Icon name="x" size={20} /><div>{err}</div></div></td></tr>
+              ) : filtered.map(r => {
+                const at = popupLeadReceivedAt(r);
+                return (
+                  <tr key={r.id}>
+                    <td className="num" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{at ? at.toLocaleString('en-IN') : ''}</td>
+                    <td style={{ fontWeight: 600 }}>{r.name || ''}</td>
+                    <td className="num" style={{ whiteSpace: 'nowrap' }}>{r.phone || ''}</td>
+                    <td className="muted" style={{ fontSize: 12 }}>{r.email || ''}</td>
+                    <td className="num" style={{ textAlign: 'center' }}>{r.age ?? ''}</td>
+                    <td>{r.city || ''}</td>
+                    <td className="muted" style={{ fontSize: 11.5, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.pageUrl || ''}>{r.pageUrl || ''}</td>
+                  </tr>
+                );
+              })}
+              {!loading && !err && filtered.length === 0 && (
+                <tr><td colSpan="7"><div className="empty"><Icon name="clipboard" size={20} /><div>{rows.length ? 'No leads match this filter' : 'No popup leads yet'}</div></div></td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)' }}>
+          <div className="hstack-8" style={{ fontSize: 12.5 }}>
+            <span className="muted num">{filtered.length} shown{filtered.length !== rows.length ? ` of ${rows.length}` : ''}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ShipmentTrackingScreen({ setRoute, openCustomer }) {

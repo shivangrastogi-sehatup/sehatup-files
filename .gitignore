@@ -52,3 +52,4 @@ secrets.json
 .env.production.local
 n8n/service-account-keys/
 .vercel
+.env*

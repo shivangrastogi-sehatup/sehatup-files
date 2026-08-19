@@ -452,35 +452,32 @@ export default class App extends React.Component {
     const wowBasis = `${shortDate(curStart)}–${shortDate(todayD)} (${elapsed + 1}d) vs `
       + `${shortDate(prevStart)}–${shortDate(addDays(prevStart, elapsed))} · ${inrK(wtd)} vs ${inrK(prevWtd)}`;
 
-    // ---- leaderboard: leads handled (Caller 1) + orders/revenue (Agent Name) ----
+    // ---- leaderboard: orders/revenue by Agent Name, Men's Wellness ONLY ----
+    // Names come solely from the orders sheet's `Agent Name` column — the lead
+    // sheets' `Caller 1` is deliberately NOT merged in here. Reason: the Men's
+    // board is the one with clean, consistently-spelled agent names, and the
+    // per-agent "leads handled" view was unused, so it was removed (2026-08-18).
     // Each agent carries BOTH today's numbers and the selected range's, so the
     // card never leaves you guessing which period a figure belongs to.
     const board = {};
     const slot = (name) => (board[name] ||= {
-      name, leads: 0, conn: 0, orders: 0, rev: 0,
-      leadsToday: 0, ordersToday: 0, revToday: 0,
+      name, orders: 0, rev: 0, ordersToday: 0, revToday: 0,
     });
     const named = (n) => n && n !== 'Unassigned';
-    leadsWin.forEach((r) => {
-      if (!named(r.caller)) return;
-      const b = slot(r.caller); b.leads++; if (r.norm === 'Connected') b.conn++;
-    });
     ordersWin.forEach((o) => {
       if (!named(o.agent)) return;
       const b = slot(o.agent); b.orders++; b.rev += o.value || 0;
     });
-    leadsToday.forEach((r) => { if (named(r.caller)) slot(r.caller).leadsToday++; });
     ordersToday.forEach((o) => {
       if (!named(o.agent)) return;
       const b = slot(o.agent); b.ordersToday++; b.revToday += o.value || 0;
     });
-    // Ranked by ORDERS, because that is what the board now shows. Ties break on
-    // revenue — two agents on three orders each are not equal if one sold twice
-    // the value — then on leads worked. Agents with no orders still appear: a
-    // sales board that hides who hasn't sold isn't a sales board.
+    // Ranked by ORDERS, ties broken on revenue — two agents on three orders each
+    // are not equal if one sold twice the value. Agents with no orders in the
+    // window simply don't appear now that leads no longer put them on the board.
     const team = Object.values(board)
-      .filter((b) => b.leads || b.orders || b.leadsToday || b.ordersToday)
-      .sort((a, b) => b.orders - a.orders || b.rev - a.rev || b.leads - a.leads)
+      .filter((b) => b.orders || b.ordersToday)
+      .sort((a, b) => b.orders - a.orders || b.rev - a.rev)
       .slice(0, 6);
 
     // ---- fulfillment: only real when the orders sheet carries a status column ----
@@ -494,13 +491,13 @@ export default class App extends React.Component {
       const k = o.fulfilment || 'Awaiting status';
       fulfilMap[k] = (fulfilMap[k] || 0) + 1;
     });
-    const fulfilOrder = ['Delivered', 'In Transit', 'Processing', 'Undelivered', 'RTO', 'Cancelled', 'Other', 'Awaiting status'];
-    // Processing and Undelivered used to share one amber, so two different
-    // states drew as one slice. They're separate hues now; the states that
-    // carry no judgement (Cancelled, Other, Awaiting) stay deliberately neutral.
+    const fulfilOrder = ['Delivered', 'In Transit', 'Pickup Pending', 'Undelivered', 'RTO', 'NDR', 'Other', 'Awaiting status'];
+    // Each live state gets its own hue; the ones that carry no judgement (NDR,
+    // Other, Awaiting) stay deliberately neutral. No Cancelled slice — the Men's
+    // Order Status dropdown has no cancel value.
     const fulfilColor = {
-      Delivered: T.leaf, 'In Transit': T.blue, Processing: T.orchid,
-      Undelivered: T.gold, RTO: T.rose, Cancelled: T.grey, Other: T.greyLt,
+      Delivered: T.leaf, 'In Transit': T.blue, 'Pickup Pending': T.orchid,
+      Undelivered: T.gold, RTO: T.rose, NDR: T.grey, Other: T.greyLt,
       'Awaiting status': T.greyLt,
     };
     const fulfil = fulfilOrder
@@ -763,7 +760,7 @@ export default class App extends React.Component {
       padding: '7px 10px', cursor: 'pointer',
     };
     const labelStyle = { fontSize: 12, color: T.label, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 };
-    const agents = s.meta ? s.meta.callers.slice().sort() : [];
+    const agents = s.meta ? (s.meta.agents || []).slice().sort() : [];
 
     return (
       <div style={{
@@ -969,7 +966,9 @@ export default class App extends React.Component {
       { label: 'Connected', today: c(M.leadsToday, 'Connected'), month: c(M.leadsAll, 'Connected'), yest: c(M.leadsYest, 'Connected'), dot: T.leaf, pick: 'Connected' },
       { label: 'Ringing', today: c(M.leadsToday, 'Ringing'), month: c(M.leadsAll, 'Ringing'), yest: c(M.leadsYest, 'Ringing'), dot: T.gold, pick: 'Ringing' },
       { label: 'Not Connected', today: c(M.leadsToday, 'Not Connected'), month: c(M.leadsAll, 'Not Connected'), yest: c(M.leadsYest, 'Not Connected'), dot: T.rose, pick: 'Not Connected' },
-      { label: 'Follow-Ups', today: c(M.leadsToday, 'Follow Up'), month: c(M.leadsAll, 'Follow Up'), yest: c(M.leadsYest, 'Follow Up'), dot: T.orchid, pick: 'Follow Up' },
+      // Converted = Healthscore "Call Status = Converted" + Quick Reply "Status = Order Placed",
+      // both folded into the 'Converted' bucket by normalizeStatus in unify.js.
+      { label: 'Converted', today: c(M.leadsToday, 'Converted'), month: c(M.leadsAll, 'Converted'), yest: c(M.leadsYest, 'Converted'), dot: T.leaf, pick: 'Converted' },
       { label: 'Orders', today: M.ordersToday.length, month: M.ordersAll.length, yest: M.ordersYest.length, dot: T.accent, isOrders: true },
     ];
 
@@ -1283,29 +1282,23 @@ export default class App extends React.Component {
     // measure pair up on sight — the label already says which period it is.
     const rows = [];
     // A closed window has no today worth reporting; a window that IS today would
-    // print the same three figures twice.
+    // print the same figures twice.
     if (cols !== 'totalOnly') rows.push(
-      { label: 'Leads today', value: num(p.leadsToday), color: T.blue },
       { label: 'Orders today', value: num(p.ordersToday), color: T.accent },
       { label: 'Revenue today', value: inrK(p.revToday), color: T.gold },
     );
     if (cols !== 'todayOnly') rows.push(
-      { label: `Leads ${period}`, value: num(p.leads), color: T.blue },
       { label: `Orders ${period}`, value: num(p.orders), color: T.accent },
       { label: `Revenue ${period}`, value: inrK(p.rev), color: T.gold },
-    );
-    rows.push(
-      { label: `Connected ${period}`, value: num(p.conn), color: T.leaf },
-      { label: `Conversion ${period}`, value: pctStr(p.orders, p.leads), color: T.orchid },
     );
     // The headline answers whatever the window is actually about.
     const live = cols !== 'totalOnly';
     this.openModal({
       kicker: `Agent · ${live ? 'Today' : this.rangeLabel()}`, title: p.name,
-      big: num(live ? p.leadsToday : p.leads),
-      bigLabel: live ? 'leads handled today' : `leads handled ${period}`,
+      big: num(live ? p.ordersToday : p.orders),
+      bigLabel: live ? 'orders today' : `orders ${period}`,
       rows,
-      note: `Rank #${i + 1} ${period} on the leaderboard, by leads handled.`,
+      note: `Rank #${i + 1} ${period} on the leaderboard, by orders.`,
     });
   }
 
@@ -1624,14 +1617,6 @@ export default class App extends React.Component {
                   fontFamily: NUM, fontWeight: 700, fontSize: 54, lineHeight: 1,
                   letterSpacing: '-.03em', color: T.accent,
                 }}>{inr(o.value)}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
-                  {o.qty > 1 ? (
-                    <>
-                      <span style={{ fontFamily: NUM, fontSize: 19, fontWeight: 700, color: T.label }}>{num(o.qty)}</span>
-                      {cap('units')}
-                    </>
-                  ) : cap('single unit')}
-                </div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
@@ -1651,19 +1636,19 @@ export default class App extends React.Component {
               paddingTop: 14, marginTop: 4, borderTop: `1px solid ${fresh ? T.accentMid : T.line}`,
             }}>
               <span style={{
-                width: 40, height: 40, borderRadius: '50%', flex: '0 0 auto',
+                width: 50, height: 50, borderRadius: '50%', flex: '0 0 auto',
                 background: fresh ? T.accent : T.track, color: fresh ? '#fff' : T.label,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: NUM, fontWeight: 700, fontSize: 15,
+                fontFamily: NUM, fontWeight: 700, fontSize: 19,
               }}>{initialsOf(o.agent)}</span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{
-                  fontSize: 19, fontWeight: 700, color: T.ink,
+                  fontSize: 26, fontWeight: 700, color: T.ink,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{o.agent}</div>
                 {o.customer && (
                   <div style={{
-                    fontSize: 14, color: T.label, fontWeight: 500, marginTop: 1,
+                    fontSize: 17, color: T.label, fontWeight: 500, marginTop: 2,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>for {o.customer}</div>
                 )}

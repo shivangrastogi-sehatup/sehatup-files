@@ -116,26 +116,37 @@ function unifyRow(r, source, idx, monthOffset = 0) {
 }
 
 /**
- * Fulfillment bucket from whatever delivery-status column the orders sheet has.
+ * Fulfillment bucket from the orders sheet's "Order Status" column.
  * Returns null when the sheet carries no such column — the Fulfillment panel
  * then says so rather than inventing a split.
+ *
+ * The Men's board's Order Status dropdown, and where each value lands:
+ *   Delivered                          -> Delivered
+ *   In-Transit / Dispatched /
+ *     Out for Delivery / Picked Up      -> In Transit
+ *   RTO In-Transit / RTO delivered      -> RTO   (checked FIRST, so the "transit"
+ *                                          and "deliver" words in them don't win)
+ *   Undelivered                         -> Undelivered
+ *   NDR                                 -> NDR   (its own slice: not delivered
+ *                                          today, but re-attempts are pending)
+ *   Pickup Pending                      -> Pickup Pending (awaiting courier pickup)
  */
 function normalizeFulfilment(raw) {
   const v = norm(raw);
   if (!v) return null;
-  // Order matters, most specific first — these all contain the word "deliver",
-  // so a bare includes('deliver') would swallow every one of them:
-  //   "RTO delivered"     -> came back, not delivered
-  //   "Undelivered"       -> failed, not delivered
-  //   "Out for Delivery"  -> the courier has it, the customer doesn't
-  // "Out for Delivery" was being counted as Delivered, which is why the board
-  // read 38 against the sheet's 37.
+  // Order matters, most specific first — several values contain the word
+  // "deliver" ("RTO delivered", "Undelivered", "Out for Delivery") so a bare
+  // includes('deliver') would swallow them; RTO is resolved before either.
   if (v.includes('rto') || v.includes('return') || v.includes('refus')) return 'RTO';
   if (v.includes('undeliver') || v.includes('not deliver')) return 'Undelivered';
-  if (v.includes('out for') || v.includes('transit') || v.includes('ship') || v.includes('dispatch')) return 'In Transit';
+  if (v.includes('ndr')) return 'NDR';
+  // "picked" (Picked Up) — the courier has the parcel, so it's in transit. Keyed on
+  // "picked", NOT "pick", so it does NOT swallow "Pickup Pending" (which contains
+  // "pickup", not "picked", and falls to the Pickup Pending line below — it hasn't
+  // been picked up yet).
+  if (v.includes('out for') || v.includes('transit') || v.includes('ship') || v.includes('dispatch') || v.includes('picked')) return 'In Transit';
   if (v.includes('deliver')) return 'Delivered';
-  if (v.includes('cancel')) return 'Cancelled';
-  if (v.includes('pend') || v.includes('process') || v.includes('confirm')) return 'Processing';
+  if (v.includes('pickup') || v.includes('pend')) return 'Pickup Pending';
   return 'Other';
 }
 
@@ -191,11 +202,15 @@ function unifyOrder(r, idx) {
   };
 }
 
-function buildMeta(rows) {
+function buildMeta(rows, orders) {
   const today = new Date();
   const uniq = (arr) => Array.from(new Set(arr)).filter(Boolean);
 
   const callers = uniq(rows.filter((r) => r.caller !== 'Unassigned').map((r) => r.caller));
+  // The interactive agent filter lists ONLY Men's Wellness agents (the "Agent Name"
+  // column), to match the leaderboard, which is orders-by-agent. Lead callers are
+  // deliberately not offered here — a name that never sold has nothing to filter.
+  const agents = uniq((orders || []).filter((o) => o.agent !== 'Unassigned').map((o) => o.agent));
   const categories = uniq(rows.filter((r) => r.source === 'healthscore').map((r) => r.work));
   const products = uniq(rows.filter((r) => r.source === 'quickreply').map((r) => r.work));
   const payments = uniq(rows.filter((r) => r.paymentMode && r.paymentMode !== '—').map((r) => r.paymentMode));
@@ -203,6 +218,7 @@ function buildMeta(rows) {
   return {
     today: toISO(today),
     callers,
+    agents,
     categories,
     products,
     payments,
@@ -290,7 +306,7 @@ export async function loadData() {
   return {
     rows, orders, ok, stale,
     prevRows: prevRowsAll, prevOrders: prevOrdersAll,
-    meta: buildMeta(rows),
+    meta: buildMeta(rows, orders),
     tabs: { health: health.tab, quick: quick.tab, mens: mens.tab },
     // Per-sheet outcome, so the UI can name the sheet that came back empty
     // instead of leaving the viewer to guess why a panel is blank. `fresh` and
