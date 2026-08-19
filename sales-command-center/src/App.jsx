@@ -491,13 +491,13 @@ export default class App extends React.Component {
       const k = o.fulfilment || 'Awaiting status';
       fulfilMap[k] = (fulfilMap[k] || 0) + 1;
     });
-    const fulfilOrder = ['Delivered', 'In Transit', 'Pickup Pending', 'Undelivered', 'RTO', 'NDR', 'Other', 'Awaiting status'];
+    const fulfilOrder = ['Delivered', 'In Transit', 'Pickup Pending', 'Hold', 'Undelivered', 'RTO', 'NDR', 'Other', 'Awaiting status'];
     // Each live state gets its own hue; the ones that carry no judgement (NDR,
     // Other, Awaiting) stay deliberately neutral. No Cancelled slice — the Men's
     // Order Status dropdown has no cancel value.
     const fulfilColor = {
       Delivered: T.leaf, 'In Transit': T.blue, 'Pickup Pending': T.orchid,
-      Undelivered: T.gold, RTO: T.rose, NDR: T.grey, Other: T.greyLt,
+      Hold: T.blueSoft, Undelivered: T.gold, RTO: T.rose, NDR: T.grey, Other: T.greyLt,
       'Awaiting status': T.greyLt,
     };
     const fulfil = fulfilOrder

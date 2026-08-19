@@ -130,6 +130,7 @@ function unifyRow(r, source, idx, monthOffset = 0) {
  *   NDR                                 -> NDR   (its own slice: not delivered
  *                                          today, but re-attempts are pending)
  *   Pickup Pending                      -> Pickup Pending (awaiting courier pickup)
+ *   Hold (Future Delivery)              -> Hold  (customer asked to receive later)
  */
 function normalizeFulfilment(raw) {
   const v = norm(raw);
@@ -140,6 +141,10 @@ function normalizeFulfilment(raw) {
   if (v.includes('rto') || v.includes('return') || v.includes('refus')) return 'RTO';
   if (v.includes('undeliver') || v.includes('not deliver')) return 'Undelivered';
   if (v.includes('ndr')) return 'NDR';
+  // "Hold (Future Delivery)" — customer asked to receive it later. Checked BEFORE
+  // the in-transit/deliver lines because the value contains "delivery", which would
+  // otherwise mis-bucket it as Delivered / In Transit.
+  if (v.includes('hold')) return 'Hold';
   // "picked" (Picked Up) — the courier has the parcel, so it's in transit. Keyed on
   // "picked", NOT "pick", so it does NOT swallow "Pickup Pending" (which contains
   // "pickup", not "picked", and falls to the Pickup Pending line below — it hasn't
