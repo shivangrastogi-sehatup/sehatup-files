@@ -1,0 +1,582 @@
+{%- comment -%}
+  ============================================================================
+  Collection showcase (REFERENCE COPY)
+  ============================================================================
+  This is the live theme block, saved here unmodified so the cart behaviour it
+  uses can be referenced and kept consistent across our other elements.
+
+  The parts worth reusing:
+    syncCartQuantities()  reads /cart.js on boot so the button reflects what is
+                          already in the cart instead of always saying "Add"
+    updateCartBadge()     re-reads /cart.js and updates .cart-count-bubble,
+                          #cart-icon-bubble and any [data-cart-count]
+    debounced /cart/update.js writes, so holding + or - fires one request
+    pendingRequests set   drops duplicate in-flight writes for the same qty
+
+  NOTE: this is a theme BLOCK (uses `block.settings`, not `section.settings`).
+  Do not paste it into Sections as-is.
+  ============================================================================
+{%- endcomment -%}
+
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+.ai-collection-showcase-{{ ai_gen_id }}{display:block;width:100%;padding:40px 20px;background:{{ block.settings.section_bg_color }};scroll-margin-top:{{ block.settings.scroll_offset }}px;}
+.ai-collection-showcase-container-{{ ai_gen_id }}{max-width:{{ settings.page_width }}px;margin:0 auto;}
+.ai-collection-showcase-header-{{ ai_gen_id }}{text-align:center;margin-bottom:40px;}
+.ai-collection-showcase-heading-{{ ai_gen_id }}{font-family:{{ settings.type_header_font.family }},{{ settings.type_header_font.fallback_families }};font-weight:700;font-size:clamp(24px,3.4vw,64px);margin:0 0 16px;color:{{ block.settings.heading_color }};}
+.ai-collection-showcase-description-{{ ai_gen_id }}{font-size:clamp(10px,1vw,20px);color:{{ block.settings.text_color }};margin:0;}
+
+.ai-collection-showcase-wrapper-{{ ai_gen_id }}{position:relative;display:flex;gap:32px;align-items:flex-start;}
+
+.ai-sticky-sidebar-{{ ai_gen_id }}{position:sticky;top:100px;flex-shrink:0;width:350px;will-change:width,opacity;transition:width .4s cubic-bezier(.4,0,.2,1),opacity .4s cubic-bezier(.4,0,.2,1),margin-right .4s cubic-bezier(.4,0,.2,1);z-index:2;overflow:hidden;opacity:1;pointer-events:auto;background:{{ block.settings.sidebar_bg_color }};border-radius:{{ settings.card_corner_radius }}px;}
+
+.ai-sticky-sidebar-{{ ai_gen_id }}.shrinking{width:0;opacity:0;margin-right:-32px;pointer-events:none;}
+
+.ai-sticky-sidebar-content-{{ ai_gen_id }}{padding:24px;white-space:nowrap;width:350px;}
+.ai-sticky-sidebar-title-{{ ai_gen_id }}{font-family:{{ settings.type_header_font.family }},{{ settings.type_header_font.fallback_families }};font-weight:600;font-size:clamp(14px,2.4vw,35px);margin:0 0 12px;line-height:1.3;white-space:normal;color:{{ block.settings.sidebar_title_color }};}
+.ai-sticky-sidebar-paragraph-{{ ai_gen_id }}{font-size:clamp(13px,1vw,22px);margin:0 0 20px;line-height:1.6;white-space:normal;color:{{ block.settings.sidebar_text_color }};}
+.ai-view-all-btn-{{ ai_gen_id }}{width:100%;padding:12px 24px;background:transparent;color:{{ block.settings.view_all_text_color }};border:2px solid {{ block.settings.view_all_border_color }};border-radius:50px;font-size:14px;font-weight:600;cursor:pointer;transition:.3s;text-decoration:none;display:inline-block;text-align:center;box-sizing:border-box;}
+.ai-view-all-btn-{{ ai_gen_id }}:hover{background:{{ block.settings.view_all_hover_bg }};color:{{ block.settings.view_all_hover_text }};border-color:{{ block.settings.view_all_hover_bg }};}
+.ai-products-section-{{ ai_gen_id }}{flex:1;min-width:0;position:relative;}
+.ai-collection-showcase-grid-{{ ai_gen_id }}{display:grid;grid-template-columns:repeat({{ block.settings.products_per_row }},1fr);gap:20px;}
+
+.ai-collection-showcase-scroll-{{ ai_gen_id }}{display:flex;gap:20px;overflow-x:auto;scroll-behavior:smooth;-ms-overflow-style:none;scrollbar-width:none;}
+.ai-collection-showcase-scroll-{{ ai_gen_id }}::-webkit-scrollbar{display:none;}
+
+.ai-collection-showcase-scroll-{{ ai_gen_id }} .ai-product-card-{{ ai_gen_id }}{flex:0 0 280px;min-width:280px;max-width:280px;}
+.ai-product-card-{{ ai_gen_id }}{position:relative;background:{{ block.settings.card_background }};border-radius:{{ settings.card_corner_radius }}px;overflow:hidden;transition:.3s;box-shadow:0 2px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;}
+.ai-product-card-{{ ai_gen_id }}:hover{transform:translateY(-4px);box-shadow:0 8px 16px rgba(0,0,0,.12);}
+.ai-product-card-link-{{ ai_gen_id }}{text-decoration:none;color:inherit;display:flex;flex-direction:column;flex-grow:1;}
+.ai-product-image-wrapper-{{ ai_gen_id }}{position:relative;width:100%;padding-top:100%;overflow:hidden;background:#f5f5f5;}
+.ai-product-image-{{ ai_gen_id }}{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;}
+.ai-product-placeholder-{{ ai_gen_id }}{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f5f5f5;color:#ccc;}
+.ai-product-placeholder-{{ ai_gen_id }} svg{width:60%;height:60%;}
+.ai-sale-badge-{{ ai_gen_id }}{position:absolute;top:12px;right:12px;background:{{ block.settings.badge_background }};color:{{ block.settings.badge_text_color }};padding:6px 12px;border-radius:{{ settings.badge_corner_radius }}px;font-size:12px;font-weight:600;z-index:2;}
+
+.ai-pinned-badge-{{ ai_gen_id }}{position:absolute;top:12px;left:12px;background:{{ block.settings.pinned_badge_background }};color:{{ block.settings.pinned_badge_text_color }};padding:6px 12px;border-radius:{{ settings.badge_corner_radius }}px;font-size:12px;font-weight:600;z-index:2;}
+
+.ai-product-info-{{ ai_gen_id }}{padding:16px;flex-grow:1;display:flex;flex-direction:column;}
+.ai-product-title-{{ ai_gen_id }}{font-size:clamp(14px,1.4vw,35px);font-weight:700;margin:0 0 8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.ai-product-price-{{ ai_gen_id }}{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.ai-price-regular-{{ ai_gen_id }}{font-size:16px;font-weight:600;color:{{ block.settings.price_color }};}
+.ai-price-sale-{{ ai_gen_id }}{font-size:16px;font-weight:600;color:{{ block.settings.sale_price_color }};}
+.ai-price-compare-{{ ai_gen_id }}{font-size:14px;color:#999;text-decoration:line-through;}
+.ai-product-actions-{{ ai_gen_id }}{margin-top:auto;padding:0 16px 16px;}
+.ai-add-to-cart-btn-{{ ai_gen_id }}{width:100%;padding:10px 20px;background:transparent;color:{{ block.settings.cart_btn_text_color }};border:2px solid {{ block.settings.cart_btn_border_color }};border-radius:50px;font-size:14px;font-weight:600;cursor:pointer;transition:.3s;}
+.ai-add-to-cart-btn-{{ ai_gen_id }}:hover{background:{{ block.settings.cart_btn_hover_bg }};color:{{ block.settings.cart_btn_hover_text }};border-color:{{ block.settings.cart_btn_hover_bg }};}
+.ai-add-to-cart-btn-{{ ai_gen_id }}:disabled{opacity:.6;cursor:not-allowed;}
+.ai-quantity-selector-{{ ai_gen_id }}{display:none;align-items:center;justify-content:center;gap:12px;border:2px solid {{ block.settings.cart_btn_border_color }};border-radius:50px;padding:6px 12px;}
+.ai-quantity-selector-{{ ai_gen_id }}.active{display:inline-flex;width:100%;justify-content:space-between;}
+.ai-quantity-btn-{{ ai_gen_id }}{background:none;border:none;font-size:18px;cursor:pointer;padding:0 4px;line-height:1;color:{{ block.settings.cart_btn_text_color }};}
+.ai-quantity-display-{{ ai_gen_id }}{font-size:15px;font-weight:600;min-width:20px;text-align:center;}
+.ai-nav-arrow-{{ ai_gen_id }}{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;background:#fff;border:1px solid #ddd;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;transition:.3s;box-shadow:0 2px 8px rgba(0,0,0,.1);}
+.ai-nav-arrow-{{ ai_gen_id }}:hover{background:{{ block.settings.button_background }};}
+.ai-nav-arrow-{{ ai_gen_id }}:disabled{opacity:.3;cursor:not-allowed;}
+.ai-nav-arrow-left-{{ ai_gen_id }}{left:-24px;}
+.ai-nav-arrow-right-{{ ai_gen_id }}{right:-24px;}
+.ai-empty-state-{{ ai_gen_id }}{text-align:center;padding:40px;color:#999;}
+
+@media(max-width:989px){
+  .ai-collection-showcase-grid-{{ ai_gen_id }}{grid-template-columns:repeat(2,1fr);}
+}
+
+@media(max-width:768px){
+  .ai-sticky-sidebar-{{ ai_gen_id }}{display:none;}
+  .ai-nav-arrow-left-{{ ai_gen_id }}{left:-12px;}
+  .ai-nav-arrow-right-{{ ai_gen_id }}{right:-12px;}
+}
+
+@media(max-width:480px){
+  .ai-collection-showcase-grid-{{ ai_gen_id }}{grid-template-columns:1fr;}
+}
+{% endstyle %}
+
+{%- assign scroll_anchor_id = block.settings.anchor_id | strip | downcase | replace: ' ', '-' -%}
+{%- if scroll_anchor_id == blank -%}
+  {%- assign scroll_anchor_id = ai_gen_id -%}
+{%- endif -%}
+
+<product-collection-showcase-{{ ai_gen_id }}
+  id="{{ scroll_anchor_id }}"
+  class="ai-collection-showcase-{{ ai_gen_id }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="ai-collection-showcase-container-{{ ai_gen_id }}">
+
+    {% if block.settings.heading != blank or block.settings.description != blank %}
+      <div class="ai-collection-showcase-header-{{ ai_gen_id }}">
+        {% if block.settings.heading != blank %}
+          <h2 class="ai-collection-showcase-heading-{{ ai_gen_id }}">{{ block.settings.heading }}</h2>
+        {% endif %}
+        {% if block.settings.description != blank %}
+          <p class="ai-collection-showcase-description-{{ ai_gen_id }}">{{ block.settings.description }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if block.settings.collection != blank %}
+      <div class="ai-collection-showcase-wrapper-{{ ai_gen_id }}" data-wrapper>
+
+        {% if block.settings.show_sidebar and block.settings.sidebar_title != blank %}
+          <div class="ai-sticky-sidebar-{{ ai_gen_id }}" data-sticky-sidebar>
+            <div class="ai-sticky-sidebar-content-{{ ai_gen_id }}">
+              <h3 class="ai-sticky-sidebar-title-{{ ai_gen_id }}">{{ block.settings.sidebar_title }}</h3>
+              {% if block.settings.sidebar_paragraph != blank %}
+                <p class="ai-sticky-sidebar-paragraph-{{ ai_gen_id }}">{{ block.settings.sidebar_paragraph }}</p>
+              {% endif %}
+              {% if block.settings.view_all_url != blank %}
+                <a href="{{ block.settings.view_all_url }}" class="ai-view-all-btn-{{ ai_gen_id }}">
+                  {{ block.settings.view_all_text }}
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="ai-products-section-{{ ai_gen_id }}">
+
+          {% if block.settings.layout_mode == 'scroll' %}
+            <button
+              type="button"
+              class="ai-nav-arrow-{{ ai_gen_id }} ai-nav-arrow-left-{{ ai_gen_id }}"
+              aria-label="Previous products"
+              data-direction="left"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+          {% endif %}
+
+          <div class="ai-collection-showcase-{{ block.settings.layout_mode }}-{{ ai_gen_id }}" data-products-container>
+
+            {% assign collection_products = block.settings.collection.all_products %}
+            {% assign ordered_products = collection_products %}
+
+            {% if block.settings.pinned_products.size > 0 %}
+              {% assign rest_products = collection_products %}
+              {% for pinned in block.settings.pinned_products %}
+                {% assign rest_products = rest_products | reject: 'handle', pinned.handle %}
+              {% endfor %}
+              {% assign ordered_products = block.settings.pinned_products | concat: rest_products %}
+            {% endif %}
+
+            {% assign products_to_show = block.settings.products_count | at_most: ordered_products.size %}
+
+            {% for product in ordered_products limit: products_to_show %}
+              {% assign is_pinned = false %}
+              {% if forloop.index0 < block.settings.pinned_products.size %}
+                {% assign is_pinned = true %}
+              {% endif %}
+
+              <div class="ai-product-card-{{ ai_gen_id }}" data-product-id="{{ product.id }}">
+                <a href="{{ product.url }}" class="ai-product-card-link-{{ ai_gen_id }}">
+                  <div class="ai-product-image-wrapper-{{ ai_gen_id }}">
+                    {% if product.featured_image %}
+                      <img
+                        src="{{ product.featured_image | image_url: width: 600 }}"
+                        srcset="{{ product.featured_image | image_url: width: 300 }} 300w, {{ product.featured_image | image_url: width: 600 }} 600w, {{ product.featured_image | image_url: width: 900 }} 900w"
+                        sizes="(max-width: 768px) 45vw, 280px"
+                        alt="{{ product.featured_image.alt | escape }}"
+                        loading="lazy"
+                        width="600"
+                        height="600"
+                        class="ai-product-image-{{ ai_gen_id }}"
+                      >
+                    {% else %}
+                      <div class="ai-product-placeholder-{{ ai_gen_id }}">
+                        {{ 'product-1' | placeholder_svg_tag }}
+                      </div>
+                    {% endif %}
+
+                    {% if is_pinned and block.settings.show_pinned_badge and block.settings.pinned_badge_text != blank %}
+                      <div class="ai-pinned-badge-{{ ai_gen_id }}">{{ block.settings.pinned_badge_text }}</div>
+                    {% endif %}
+
+                    {% if block.settings.show_sale_badge and product.compare_at_price > product.price %}
+                      {%- assign discount = product.compare_at_price | minus: product.price -%}
+                      <div class="ai-sale-badge-{{ ai_gen_id }}">
+                        {%- if block.settings.badge_format == 'percentage' -%}
+                          {%- assign discount_percent = discount | times: 100.0 | divided_by: product.compare_at_price | round -%}
+                          -{{ discount_percent }}%
+                        {%- else -%}
+                          -{{ discount | money }}
+                        {%- endif -%}
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  <div class="ai-product-info-{{ ai_gen_id }}">
+                    <h3 class="ai-product-title-{{ ai_gen_id }}">{{ product.title }}</h3>
+                    <div class="ai-product-price-{{ ai_gen_id }}">
+                      {% if product.compare_at_price > product.price %}
+                        <span class="ai-price-compare-{{ ai_gen_id }}">{{ product.compare_at_price | money }}</span>
+                        <span class="ai-price-sale-{{ ai_gen_id }}">{{ product.price | money }}</span>
+                      {% else %}
+                        <span class="ai-price-regular-{{ ai_gen_id }}">{{ product.price | money }}</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </a>
+
+                <div class="ai-product-actions-{{ ai_gen_id }}">
+                  <button
+                    type="button"
+                    class="ai-add-to-cart-btn-{{ ai_gen_id }}"
+                    data-variant-id="{{ product.variants.first.id }}"
+                    {% unless product.available %}disabled{% endunless %}
+                    data-product-card
+                  >
+                    {% if product.available %}{{ block.settings.button_text }}{% else %}Out of Stock{% endif %}
+                  </button>
+
+                  <div class="ai-quantity-selector-{{ ai_gen_id }}" data-quantity-selector>
+                    <button type="button" class="ai-quantity-btn-{{ ai_gen_id }}" data-quantity-decrease aria-label="Decrease quantity">&#8722;</button>
+                    <span class="ai-quantity-display-{{ ai_gen_id }}" data-quantity-display>1</span>
+                    <button type="button" class="ai-quantity-btn-{{ ai_gen_id }}" data-quantity-increase aria-label="Increase quantity">+</button>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          {% if block.settings.layout_mode == 'scroll' %}
+            <button
+              type="button"
+              class="ai-nav-arrow-{{ ai_gen_id }} ai-nav-arrow-right-{{ ai_gen_id }}"
+              aria-label="Next products"
+              data-direction="right"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          {% endif %}
+
+        </div>
+      </div>
+
+    {% else %}
+      <div class="ai-empty-state-{{ ai_gen_id }}">
+        <p>Please select a collection to display products.</p>
+      </div>
+    {% endif %}
+
+  </div>
+</product-collection-showcase-{{ ai_gen_id }}>
+
+<script>
+(function() {
+  class ProductCollectionShowcase{{ ai_gen_id }} extends HTMLElement {
+    constructor() {
+      super();
+      this.cartQuantities = {};
+      this.pendingRequests = new Set();
+      this.debounceTimers = {};
+      this.buttonTexts = new Map();
+      this._scrollTicking = false;
+    }
+
+    connectedCallback() {
+      this.container  = this.querySelector('[data-products-container]');
+      this.cards      = this.querySelectorAll('[data-product-card]');
+      this.leftArrow  = this.querySelector('[data-direction="left"]');
+      this.rightArrow = this.querySelector('[data-direction="right"]');
+      this.sidebar    = this.querySelector('[data-sticky-sidebar]');
+
+      this.cards.forEach(btn => {
+        this.buttonTexts.set(btn.dataset.variantId, btn.textContent.trim());
+      });
+
+      this.setupEventListeners();
+      this.syncCartQuantities();
+
+      if (this.leftArrow && this.rightArrow) {
+        this.updateArrowStates();
+      }
+
+      this.handleHashScroll();
+    }
+
+    handleHashScroll() {
+      if (window.location.hash && window.location.hash === '#' + this.id) {
+        setTimeout(() => {
+          this.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+
+    setupEventListeners() {
+      this.cards.forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleAddToCart(btn);
+        });
+      });
+
+      this.querySelectorAll('[data-quantity-increase]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleQuantityChange(btn, 1);
+        });
+      });
+
+      this.querySelectorAll('[data-quantity-decrease]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleQuantityChange(btn, -1);
+        });
+      });
+
+      if (this.leftArrow) {
+        this.leftArrow.addEventListener('click', () => this.scroll('left'));
+      }
+      if (this.rightArrow) {
+        this.rightArrow.addEventListener('click', () => this.scroll('right'));
+      }
+
+      if (this.container) {
+        const isScrollLayout = this.container.classList.contains('ai-collection-showcase-scroll-{{ ai_gen_id }}');
+        if (isScrollLayout) {
+          this.container.addEventListener('scroll', () => {
+            if (!this._scrollTicking) {
+              requestAnimationFrame(() => {
+                this.handleScroll();
+                this._scrollTicking = false;
+              });
+              this._scrollTicking = true;
+            }
+          }, { passive: true });
+
+          this.handleScroll();
+        }
+      }
+    }
+
+    handleScroll() {
+      if (!this.container) return;
+
+      const scrollLeft = this.container.scrollLeft;
+
+      if (this.sidebar) {
+        const sidebarWidth = this.sidebar.offsetWidth || 350;
+
+        if (scrollLeft <= 0) {
+          this.sidebar.classList.remove('shrinking');
+        } else if (scrollLeft >= sidebarWidth) {
+          this.sidebar.classList.add('shrinking');
+        } else {
+          this.sidebar.classList.remove('shrinking');
+        }
+      }
+
+      this.updateArrowStates();
+    }
+
+    async syncCartQuantities() {
+      try {
+        const response = await fetch('/cart.js');
+        const cart     = await response.json();
+        cart.items.forEach(item => {
+          this.cartQuantities[String(item.variant_id)] = item.quantity;
+        });
+        this.updateAllQuantityDisplays();
+      } catch (error) {
+        console.error('Error syncing cart:', error);
+      }
+    }
+
+    updateAllQuantityDisplays() {
+      this.cards.forEach(button => {
+        const variantId        = String(button.dataset.variantId);
+        const quantity         = this.cartQuantities[variantId] || 0;
+        const card             = button.closest('.ai-product-card-{{ ai_gen_id }}');
+        const quantitySelector = card.querySelector('[data-quantity-selector]');
+        const quantityDisplay  = card.querySelector('[data-quantity-display]');
+
+        if (quantity > 0) {
+          button.style.display = 'none';
+          quantitySelector.classList.add('active');
+          quantityDisplay.textContent = quantity;
+        } else {
+          button.style.display = 'block';
+          quantitySelector.classList.remove('active');
+          const originalText = this.buttonTexts.get(variantId);
+          if (originalText) button.textContent = originalText;
+        }
+      });
+    }
+
+    async handleAddToCart(button) {
+      if (button.disabled) return;
+
+      const variantId    = button.dataset.variantId;
+      const originalText = this.buttonTexts.get(variantId);
+
+      button.disabled    = true;
+      button.textContent = 'Adding...';
+
+      try {
+        const response = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: variantId, quantity: 1 })
+        });
+
+        if (!response.ok) throw new Error('Failed to add to cart');
+
+        this.cartQuantities[String(variantId)] = 1;
+
+        const card             = button.closest('.ai-product-card-{{ ai_gen_id }}');
+        const quantitySelector = card.querySelector('[data-quantity-selector]');
+        const quantityDisplay  = card.querySelector('[data-quantity-display]');
+
+        button.style.display = 'none';
+        quantitySelector.classList.add('active');
+        quantityDisplay.textContent = '1';
+
+        if (originalText) button.textContent = originalText;
+
+        this.updateCartBadge();
+
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        alert('Failed to add product to cart. Please try again.');
+        if (originalText) button.textContent = originalText;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    handleQuantityChange(btn, change) {
+      if (btn.disabled) return;
+
+      const card             = btn.closest('.ai-product-card-{{ ai_gen_id }}');
+      const addButton        = card.querySelector('[data-product-card]');
+      const variantId        = String(addButton.dataset.variantId);
+      const currentQuantity  = this.cartQuantities[variantId] || 0;
+      const newQuantity      = Math.max(0, currentQuantity + change);
+
+      const quantityDisplay  = card.querySelector('[data-quantity-display]');
+      quantityDisplay.textContent    = newQuantity;
+      this.cartQuantities[variantId] = newQuantity;
+
+      if (newQuantity === 0) {
+        const quantitySelector = card.querySelector('[data-quantity-selector]');
+        addButton.style.display = 'block';
+        quantitySelector.classList.remove('active');
+        const originalText = this.buttonTexts.get(variantId);
+        if (originalText) addButton.textContent = originalText;
+      }
+
+      if (this.debounceTimers[variantId]) {
+        clearTimeout(this.debounceTimers[variantId]);
+      }
+      this.debounceTimers[variantId] = setTimeout(() => {
+        this.updateCartQuantity(variantId, newQuantity, card);
+      }, 300);
+    }
+
+    async updateCartQuantity(variantId, quantity, card) {
+      const requestKey = `${variantId}-${quantity}`;
+      if (this.pendingRequests.has(requestKey)) return;
+
+      this.pendingRequests.add(requestKey);
+
+      try {
+        const response = await fetch('/cart/update.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ updates: { [variantId]: quantity } })
+        });
+
+        if (!response.ok) throw new Error('Failed to update cart');
+
+        this.cartQuantities[variantId] = quantity;
+        this.updateCartBadge();
+
+      } catch (error) {
+        console.error('Error updating cart:', error);
+        this.syncCartQuantities();
+      } finally {
+        this.pendingRequests.delete(requestKey);
+      }
+    }
+
+    async updateCartBadge() {
+      let totalItems = 0;
+
+      try {
+        const response = await fetch('/cart.js');
+        const cart     = await response.json();
+        totalItems     = cart.item_count;
+      } catch (error) {
+        console.error('Error reading cart count:', error);
+        totalItems = Object.values(this.cartQuantities).reduce((sum, qty) => sum + qty, 0);
+      }
+
+      const bubble = document.querySelector('.cart-count-bubble');
+      if (bubble) {
+        let countSpan = bubble.querySelector('span[aria-hidden="true"]') || bubble.querySelector('span');
+        if (!countSpan) {
+          countSpan = document.createElement('span');
+          countSpan.setAttribute('aria-hidden', 'true');
+          bubble.prepend(countSpan);
+        }
+        countSpan.textContent = totalItems;
+        bubble.classList.toggle('hidden', totalItems === 0);
+        bubble.style.display = totalItems === 0 ? 'none' : '';
+      }
+
+      const cartIcon = document.querySelector('#cart-icon-bubble');
+      if (cartIcon && !cartIcon.querySelector('.cart-count-bubble') && totalItems > 0) {
+        const newBubble = document.createElement('div');
+        newBubble.className = 'cart-count-bubble';
+        newBubble.innerHTML = '<span aria-hidden="true">' + totalItems + '</span>';
+        cartIcon.appendChild(newBubble);
+      }
+
+      document.querySelectorAll('[data-cart-count]').forEach(el => {
+        el.textContent = totalItems;
+      });
+
+      document.dispatchEvent(new CustomEvent('cart:updated', {
+        bubbles: true,
+        detail: { totalItems }
+      }));
+    }
+
+    scroll(direction) {
+      if (!this.container) return;
+
+      const scrollAmount  = this.container.offsetWidth * 0.8;
+      const currentScroll = this.container.scrollLeft;
+      const newScroll     = direction === 'left'
+        ? currentScroll - scrollAmount
+        : currentScroll + scrollAmount;
+
+      this.container.scrollTo({ left: newScroll, behavior: 'smooth' });
+      setTimeout(() => this.updateArrowStates(), 400);
+    }
+
+    updateArrowStates() {
+      if (!this.container || !this.leftArrow || !this.rightArrow) return;
+
+      const isAtStart = this.container.scrollLeft <= 10;
+      const isAtEnd   = this.container.scrollLeft + this.container.offsetWidth >= this.container.scrollWidth - 10;
+
+      this.leftArrow.disabled  = isAtStart;
+      this.rightArrow.disabled = isAtEnd;
+    }
+  }
+
+  customElements.define(
+    'product-collection-showcase-{{ ai_gen_id }}',
+    ProductCollectionShowcase{{ ai_gen_id }}
+  );
+})();
+</script>

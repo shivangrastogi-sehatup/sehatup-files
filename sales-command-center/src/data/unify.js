@@ -174,10 +174,12 @@ function unifyOrder(r, idx) {
   const product = String(field(r, 'Pdt Name', 'Product Name', 'Product') ?? '').trim();
   if (!iso || (!value && !product)) return null; // blank / header-ish row
 
-  // leadSource = the ACTUAL "Lead Source" value (dynamic — can be Quick Reply,
-  // Healthscore, or anything else). `source` is a coarse binary used only by the
-  // health-vs-quick source filter; the orders-by-source panel groups on leadSource.
-  const rawLs = String(field(r, 'Lead Source', 'Source') ?? '').trim();
+  // Source split reads the "Lead Category" column — a clean 2-value dropdown
+  // (HEALTHSCORE / Meta), NOT the free-text "Lead Source". HEALTHSCORE -> the
+  // healthscore bucket; everything else (Meta) -> the quickreply bucket, which is
+  // labelled "Meta" on the board. Falls back to the old "Lead Source" column so
+  // older monthly tabs that predate Lead Category still resolve.
+  const rawLs = String(field(r, 'Lead Category', 'Lead Source', 'Source') ?? '').trim();
   const source = rawLs.toLowerCase().includes('health') ? 'healthscore' : 'quickreply';
   // Payment mode from the Men's "Mode" column: COD | Prepaid | Partially Paid.
   const modeRaw = String(field(r, 'Mode', 'Payment Mode', 'Mode of Payment') ?? '').trim().toLowerCase();

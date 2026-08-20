@@ -40,6 +40,20 @@ if (blockedNumbers.includes(phone)) return _tag({ phone, name, shouldProcess: fa
 if (mode === 'off') return _tag({ phone, name, shouldProcess: false, reason: 'ai_paused_global' });
 if (mode === 'test' && !testNumbers.includes(phone)) return _tag({ phone, name, shouldProcess: false, reason: 'ai_test_mode_only' });
 
+// ---- OTHER AUTOMATIONS own certain templated messages. If THIS turn is one of their
+//      template texts, that automation handles it and Ananya must NOT answer - otherwise
+//      two bots reply to the same message and confuse the customer (fragmented "Han",
+//      "Boliye" replies etc). Add more exact texts to this list as needed. Matching is
+//      case- and whitespace-insensitive; switch to `.some(x => n.includes(x))` for partial.
+const OTHER_AUTOMATION_TEXTS = [
+  'hurray! my next product is on you? tell me more!',
+];
+const _norm = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+const _isOtherAutomation = t => { const n = _norm(t); return !!n && OTHER_AUTOMATION_TEXTS.includes(n); };
+if (_isOtherAutomation(src.text)) {
+  return _tag({ phone, name, shouldProcess: false, reason: 'other_automation_template', recentUserText: String(src.text || '').slice(0, 60) });
+}
+
 // ---- read messages from conversations/{convId}/messages ----
 //   customer      = direction 'in'
 //   AI reply      = out + senderKind 'AI'     (Save AI Message; legacy: messageBy 'AI')
@@ -78,7 +92,7 @@ for (const it of items) {
   const t = tval(m);
   if (m.direction === 'in') {
     latestInboundAt = Math.max(latestInboundAt, t);
-    if (m.text) inbound.push({ t, text: String(m.text) });
+    if (m.text && !_isOtherAutomation(m.text)) inbound.push({ t, text: String(m.text) });
     continue;
   }
   if (m.direction !== 'out') continue;

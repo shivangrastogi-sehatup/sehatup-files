@@ -36,16 +36,26 @@
 
   assign m_heading = section.settings.mobile_heading | default: section.settings.popup_heading
   assign m_sub     = section.settings.mobile_subheading | default: section.settings.popup_subheading
+
+  # How the "times shown" counter is scoped. Off, the allowance is spent across
+  # the whole visit, so a visitor who saw it twice on the home page sees nothing
+  # on the custom page. On, the URL joins the key, so every page carries its own
+  # allowance. request.path is the page itself ("/" or "/pages/health-score-360"),
+  # never the query string, so utm tags cannot hand out extra showings.
+  assign scope_key = ''
+  if section.settings.count_per_page
+    assign scope_key = request.path | default: '/'
+  endif
 -%}
 
 <div
   id="lead-popup-{{ section.id }}"
   class="lead-popup"
   data-lead-popup
-  data-delay="{{ section.settings.popup_delay | default: 12 }}"
-  data-scroll-percent="{{ section.settings.scroll_trigger_percent | default: 40 }}"
-  data-once="{{ section.settings.show_once_per_session }}"
-  data-session-key="lead_popup_seen_{{ section.id }}"
+  data-delay="{{ section.settings.popup_delay | default: 0.5 }}"
+  data-scroll-percent="{{ section.settings.scroll_trigger_percent | default: 60 }}"
+  data-max-shows="{{ section.settings.max_shows | default: 2 }}"
+  data-session-key="lead_popup_seen_{{ section.id }}{{ scope_key }}"
   data-firestore-collection="{{ section.settings.firestore_collection | default: 'popup_leads' }}"
   data-template="{{ template }}"
   hidden
@@ -335,7 +345,38 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* isolate makes the button its own stacking context, so the fill below can
+       sit at z-index -1: painted over the button's own white background, but
+       still behind the glyph. No wrapper element needed. */
+    isolation: isolate;
+    transition: color .18s ease, border-color .22s ease, box-shadow .22s ease, transform .1s ease;
   }
+
+  /* The fill itself. inset:-1px so it covers the 1px border rather than
+     leaving a pale ring around the filled circle. */
+  #lead-popup-{{ section.id }} .lead-popup__close::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--lp-accent);
+    transform: scale(0);
+    transition: transform .3s cubic-bezier(.16, 1, .3, 1);
+  }
+
+  /* Pointer devices only. On a touchscreen :hover sticks after a tap, which
+     would leave the button filled red until something else is touched. */
+  @media (hover: hover) and (pointer: fine) {
+    #lead-popup-{{ section.id }} .lead-popup__close:hover::before { transform: scale(1); }
+    #lead-popup-{{ section.id }} .lead-popup__close:hover {
+      color: #fff;
+      border-color: var(--lp-accent);
+      box-shadow: 0 4px 14px rgba(238, 32, 74, .35);
+    }
+  }
+
+  #lead-popup-{{ section.id }} .lead-popup__close:active { transform: scale(.93); }
   #lead-popup-{{ section.id }} .lead-popup__close:focus-visible {
     outline: 2px solid var(--lp-accent);
     outline-offset: 2px;
@@ -859,6 +900,9 @@
     #lead-popup-{{ section.id }} .lead-popup__form,
     #lead-popup-{{ section.id }} .lead-popup__success,
     #lead-popup-{{ section.id }} .lead-popup__tick { animation: none !important; }
+    /* The fill still happens, it just arrives instantly instead of growing. */
+    #lead-popup-{{ section.id }} .lead-popup__close,
+    #lead-popup-{{ section.id }} .lead-popup__close::before { transition: none !important; }
   }
 </style>
 
@@ -887,15 +931,39 @@
     var collectionName = root.dataset.firestoreCollection || 'popup_leads';
     var delay = parseFloat(root.dataset.delay || '12') * 1000;
     var scrollPct = parseFloat(root.dataset.scrollPercent || '0');
-    var once = root.dataset.once === 'true';
+    var maxShows = Math.max(1, parseInt(root.dataset.maxShows || '2', 10) || 1);
     var sessionKey = root.dataset.sessionKey;
 
-    function seen() {
-      try { return !!sessionStorage.getItem(sessionKey); } catch (e) { return false; }
+    /* Session state is a COUNT, not a flag, so the popup can appear more than
+       once: the delay opens it the first time, the scroll depth opens it the
+       second. `converted` is separate and permanent for the session, because
+       someone who already sent their details must never be asked again. */
+    function shownCount() {
+      try { return parseInt(sessionStorage.getItem(sessionKey) || '0', 10) || 0; }
+      catch (e) { return 0; }
     }
-    function markSeen() {
-      try { sessionStorage.setItem(sessionKey, '1'); } catch (e) { /* private mode */ }
+    function bumpShown() {
+      try { sessionStorage.setItem(sessionKey, String(shownCount() + 1)); }
+      catch (e) { /* private mode */ }
     }
+    /* localStorage, not sessionStorage, and deliberately not keyed to the
+       section id. "This person already gave us their number" is a fact about
+       the person, not about the tab they were in or which copy of the section
+       happened to show. sessionStorage dies with the tab, so a second tab or
+       a visit tomorrow would ask them all over again.
+       The value is a timestamp rather than '1' so a cooldown can be added
+       later without having to migrate anything. */
+    var CONVERTED_KEY = 'sehatup_lead_popup_done';
+
+    function converted() {
+      try { return !!localStorage.getItem(CONVERTED_KEY); }
+      catch (e) { return false; }
+    }
+    function markConverted() {
+      try { localStorage.setItem(CONVERTED_KEY, new Date().toISOString()); }
+      catch (e) { /* private mode, or storage full */ }
+    }
+    function exhausted() { return converted() || shownCount() >= maxShows; }
 
     /* ------------------------------------------------------------------
        Writer adapter.
@@ -975,15 +1043,19 @@
       document.body.style.paddingRight = priorPadRight;
     }
 
-    function openPopup() {
-      if (once && seen()) return;
+    function openPopup(reason) {
+      if (exhausted()) return;
       if (!root.hidden) return;
+      // A scroll re-open right after a close reads as the popup refusing to go
+      // away, so the scroll trigger stays quiet for a moment after a dismissal.
+      if (reason === 'scroll' && Date.now() - lastClosedAt < REARM_MS) return;
 
-      teardownTriggers();
       lastFocused = document.activeElement;
       root.hidden = false;
       lockScroll();
-      if (once) markSeen();
+      bumpShown();
+      // Only stop listening once there are no showings left to give.
+      if (exhausted()) teardownTriggers();
 
       var first = root.querySelector('input');
       // Focusing on mobile yanks the keyboard open over the sheet; desktop only.
@@ -998,6 +1070,7 @@
       root.hidden = true;
       root.removeAttribute('data-state');
       unlockScroll();
+      lastClosedAt = Date.now();
       // preventScroll: restoring focus must not drag the page back to wherever
       // the trigger element happened to sit.
       if (lastFocused && typeof lastFocused.focus === 'function') {
@@ -1026,13 +1099,17 @@
     }
 
     /* ------------------------------------------------------------------
-       Triggers: whichever fires first: a time delay, or a scroll depth.
-       Both are torn down on open so neither can fire twice or keep a
-       listener alive for the rest of the page's life.
+       Triggers, in order. The delay opens showing one. The scroll depth opens
+       showing two, and is gated on the first having already happened so the
+       order is deterministic rather than a race. The scroll listener stays
+       bound across the first dismissal, and is only removed once every
+       showing has been used or the visitor has converted.
        ------------------------------------------------------------------ */
     var timerId = null;
     var scrollBound = false;
     var ticking = false;
+    var lastClosedAt = 0;
+    var REARM_MS = 2000;
 
     function scrollDepth() {
       var doc = document.documentElement;
@@ -1047,7 +1124,8 @@
       ticking = true;
       window.requestAnimationFrame(function () {
         ticking = false;
-        if (scrollDepth() >= scrollPct) openPopup();
+        // shownCount() >= 1 keeps this as the SECOND showing, never the first.
+        if (shownCount() >= 1 && scrollDepth() >= scrollPct) openPopup('scroll');
       });
     }
 
@@ -1056,12 +1134,17 @@
       if (scrollBound) { window.removeEventListener('scroll', onScroll); scrollBound = false; }
     }
 
-    if (!(once && seen())) {
-      if (delay >= 0) timerId = setTimeout(openPopup, delay);
+    if (!exhausted()) {
+      // Showing one. Skipped if this session already had it, so a page change
+      // does not restart the sequence from the top.
+      if (delay >= 0 && shownCount() === 0) {
+        timerId = setTimeout(function () { openPopup('delay'); }, delay);
+      }
       if (scrollPct > 0) {
         window.addEventListener('scroll', onScroll, { passive: true });
         scrollBound = true;
-        onScroll(); // page may already be loaded past the threshold
+        // Deliberately not called here: on a page loaded already past the
+        // threshold this would fire showing two before showing one appeared.
       }
     }
 
@@ -1149,6 +1232,9 @@
        after its exit animation finishes, so the two never overlap. */
     function showSuccess() {
       function swap() {
+        // They sent their details. Never ask again on this browser.
+        markConverted();
+        teardownTriggers();
         form.hidden = true;
         if (headEl) headEl.hidden = true;
         if (successEl) successEl.hidden = false;
@@ -1310,34 +1396,45 @@
     },
     {
       "type": "paragraph",
-      "content": "Opens on whichever happens first: the delay, or the scroll depth."
+      "content": "The delay opens it the first time. The scroll depth opens it the second time, after the visitor has dismissed the first."
     },
     {
       "type": "range",
       "id": "popup_delay",
-      "label": "Delay before showing",
+      "label": "First showing after",
       "min": 0,
       "max": 30,
-      "step": 1,
+      "step": 0.5,
       "unit": "s",
-      "default": 12
+      "default": 0.5
     },
     {
       "type": "range",
       "id": "scroll_trigger_percent",
-      "label": "Or when scrolled past",
+      "label": "Second showing after scrolling past",
       "min": 0,
       "max": 100,
       "step": 5,
       "unit": "%",
-      "default": 40,
-      "info": "Set to 0 to disable the scroll trigger."
+      "default": 60,
+      "info": "Set to 0 to disable the second showing."
+    },
+    {
+      "type": "range",
+      "id": "max_shows",
+      "label": "Times to show per session",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 2,
+      "info": "Someone who submits the form is never shown it again, whatever this is set to."
     },
     {
       "type": "checkbox",
-      "id": "show_once_per_session",
-      "label": "Only show once per browser session",
-      "default": true
+      "id": "count_per_page",
+      "label": "Count those showings per page",
+      "default": false,
+      "info": "Off, the allowance is spent across the whole visit. On, the homepage and each custom page get their own allowance."
     },
     {
       "type": "header",

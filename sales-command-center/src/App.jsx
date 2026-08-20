@@ -527,7 +527,7 @@ export default class App extends React.Component {
     };
     const sources = [
       mkSource('healthscore', 'Healthscore', 'first-party', T.accent),
-      mkSource('quickreply', 'Quick Reply & Meta', 'paid / social', T.blue),
+      mkSource('quickreply', 'Meta', 'paid / social', T.blue),
     ];
     const totLeads = sources[0].leads + sources[1].leads;
     const totRev = sources[0].rev + sources[1].rev;
@@ -790,7 +790,7 @@ export default class App extends React.Component {
           <select style={selectStyle} value={s.source} onChange={(e) => this.setPref({ source: e.target.value, modal: null })}>
             <option value="all">All sources</option>
             <option value="healthscore">Healthscore</option>
-            <option value="quickreply">Quick Reply / Meta</option>
+            <option value="quickreply">Meta</option>
           </select>
         </label>
         <label style={labelStyle}>Agent

@@ -1,0 +1,1020 @@
+{%- comment -%}
+  ============================================================================
+  sehatup Floating product video
+  ============================================================================
+  Drop-in replacement for the existing floating-video snippet. Same guard, same
+  metafield (custom.floating_video), so it can be pasted straight over the old
+  one with nothing else to re-wire.
+
+  What it does:
+    Small looping thumbnail, bottom left. Tapping it opens a player.
+      mobile   fullscreen, story style
+      tablet   and laptop: sized 9:16 card on a blurred backdrop
+    Progress line across the top, above the controls, draggable to seek.
+    Close, play/pause and sound controls.
+    Product card with variant, quantity and add to cart against /cart/add.js.
+
+  Install: Online Store > Themes > Edit code > Sections > add
+  `floating-product-video.liquid`. Then Customize > pick a Product template >
+  Add section > Floating product video. It only offers itself on product
+  templates (enabled_on below), and only renders on products that actually
+  have a video in the metafield.
+  ============================================================================
+{%- endcomment -%}
+
+{%- liquid
+  assign fpv_accent      = section.settings.accent_color | default: '#ee204a'
+  assign fpv_accent_dark = fpv_accent | color_darken: 8
+  assign fpv_cta_label   = section.settings.cta_label | default: 'Add to cart'
+  assign fpv_side        = section.settings.dock_side | default: 'left'
+  assign fpv_bottom      = section.settings.dock_bottom | default: 96
+
+  # Resolve the video URL. A File metafield can hand back three different
+  # shapes depending on what Shopify decided the upload was, and picking the
+  # wrong one is a silent failure: the player opens on a black frame with no
+  # error anywhere. So try all three rather than assume.
+  #   Video       an mp4 Shopify transcoded, has a .sources list
+  #   GenericFile a plain file reference, has .url
+  #   legacy      the older shape the previous snippet used, needs file_url
+  assign fpv_show  = false
+  assign fpv_video = ''
+  assign fpv_meta  = product.metafields.custom.floating_video
+
+  if section.settings.enable_video and template.name == 'product' and fpv_meta != blank
+    if fpv_meta.value.sources != blank
+      assign fpv_video = fpv_meta.value.sources.first.url
+    elsif fpv_meta.value.url != blank
+      assign fpv_video = fpv_meta.value.url
+    else
+      assign fpv_video = fpv_meta | file_url
+    endif
+
+    if fpv_video != blank
+      assign fpv_show = true
+      # section.id, not product.id: two copies of the section on one template
+      # would otherwise share an element id and the second would be dead.
+      assign fpv_id = 'fpv-' | append: section.id
+    endif
+  endif
+-%}
+
+{%- if fpv_show -%}
+
+<div
+  class="fpv"
+  id="{{ fpv_id }}"
+  data-fpv
+  data-side="{{ fpv_side }}"
+  data-money-format="{{ shop.money_format | escape }}"
+>
+
+  {%- comment -%} The dock: the small looping teaser. {%- endcomment -%}
+  <div class="fpv__dock" data-fpv-dock>
+    <div class="fpv__dock-inner">
+      <button type="button" class="fpv__dock-open" data-fpv-open aria-label="Watch video about {{ product.title | escape }}">
+        <video class="fpv__dock-video" muted loop playsinline preload="auto" aria-hidden="true">
+          <source src="{{ fpv_video }}" type="video/mp4">
+        </video>
+      </button>
+      <button type="button" class="fpv__dock-dismiss" data-fpv-dismiss aria-label="Hide this video">&#215;</button>
+    </div>
+  </div>
+
+  {%- comment -%} The player. {%- endcomment -%}
+  <div class="fpv__overlay" data-fpv-overlay hidden>
+    <div class="fpv__backdrop" data-fpv-close></div>
+
+    <div class="fpv__stage" role="dialog" aria-modal="true" aria-label="{{ product.title | escape }} video">
+      <video class="fpv__video" data-fpv-video playsinline loop preload="auto">
+        <source src="{{ fpv_video }}" type="video/mp4">
+      </video>
+
+      {%- comment -%}
+        Progress line across the top, above the controls. It is a real
+        slider, not a readout: pointer events on the track seek the video.
+      {%- endcomment -%}
+      <div
+        class="fpv__progress"
+        data-fpv-progress
+        role="slider"
+        aria-label="Video progress"
+        aria-orientation="horizontal"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+        tabindex="0"
+      >
+        <span class="fpv__progress-fill" data-fpv-fill></span>
+        <span class="fpv__progress-knob" data-fpv-knob></span>
+      </div>
+
+      <div class="fpv__top">
+        <button type="button" class="fpv__icon" data-fpv-close aria-label="Close video">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+
+        <div class="fpv__top-right">
+          <button type="button" class="fpv__icon" data-fpv-sound aria-label="Unmute" aria-pressed="false">
+            <svg class="fpv__ico-muted" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M17 9l4 6M21 9l-4 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg class="fpv__ico-loud" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" class="fpv__icon" data-fpv-playpause aria-label="Pause">
+            <svg class="fpv__ico-pause" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            <svg class="fpv__ico-play" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      {%- comment -%} Product card, pinned to the bottom of the frame. {%- endcomment -%}
+      <div class="fpv__card">
+        <div class="fpv__card-head">
+          {%- if product.featured_image != blank -%}
+            <img class="fpv__thumb" src="{{ product.featured_image | image_url: width: 120 }}" alt="" width="60" height="60" loading="lazy">
+          {%- endif -%}
+          <div class="fpv__meta">
+            <span class="fpv__title">{{ product.title }}</span>
+            <span class="fpv__price" data-fpv-price>{{ product.selected_or_first_available_variant.price | money }}</span>
+          </div>
+        </div>
+
+        <div class="fpv__buy">
+          {%- if product.variants.size > 1 -%}
+            <select class="fpv__select" data-fpv-variant aria-label="Choose an option">
+              {%- for variant in product.variants -%}
+                <option value="{{ variant.id }}" {% unless variant.available %}disabled{% endunless %}>
+                  {{ variant.title }}{% unless variant.available %} (sold out){% endunless %}
+                </option>
+              {%- endfor -%}
+            </select>
+          {%- else -%}
+            <input type="hidden" data-fpv-variant value="{{ product.selected_or_first_available_variant.id }}">
+          {%- endif -%}
+
+          <div class="fpv__qty">
+            <button type="button" data-fpv-qty="-1" aria-label="Decrease quantity">&#8722;</button>
+            <input type="text" inputmode="numeric" value="1" data-fpv-qty-input aria-label="Quantity">
+            <button type="button" data-fpv-qty="1" aria-label="Increase quantity">&#43;</button>
+          </div>
+        </div>
+
+        <button type="button" class="fpv__atc" data-fpv-atc>
+          <span class="fpv__spinner" aria-hidden="true"></span>
+          <span data-fpv-atc-label>{{ fpv_cta_label }}</span>
+        </button>
+        <p class="fpv__status" data-fpv-status role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" data-fpv-variants>
+[
+  {%- for v in product.variants -%}
+    {"id": {{ v.id }}, "price": {{ v.price }}, "available": {{ v.available }}}{%- unless forloop.last -%},{%- endunless -%}
+  {%- endfor -%}
+]
+</script>
+
+<style>
+  #{{ fpv_id }} {
+    --fpv-accent: {{ fpv_accent }};
+    --fpv-accent-dark: {{ fpv_accent_dark }};
+    --fpv-ink: #1d1d1d;
+    --fpv-muted: #555555;
+    --fpv-line: #e5e5e5;
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  /* ---- Dock ------------------------------------------------------------ */
+  #{{ fpv_id }} .fpv__dock {
+    position: fixed;
+    bottom: {{ fpv_bottom }}px;
+    left: 16px;
+    z-index: 60;
+    width: 92px;
+    /* Arrives from off-screen after a beat, so the page settles first and the
+       movement is noticed. `both` fill keeps it parked off-screen during the
+       delay rather than sitting visible waiting to animate. */
+    animation: fpv-dock-in-{{ section.id }} .55s cubic-bezier(.18, .9, .28, 1.06) .9s both;
+  }
+  #{{ fpv_id }}[data-side="right"] .fpv__dock {
+    left: auto;
+    right: 16px;
+    animation-name: fpv-dock-in-right-{{ section.id }};
+  }
+  #{{ fpv_id }} .fpv__dock[hidden] { display: none; }
+
+  /* Re-entry after the player closes: same move, but immediate and quicker.
+     Waiting another 0.9s here would feel broken rather than considered. */
+  #{{ fpv_id }} .fpv__dock[data-return="true"] { animation-duration: .38s; animation-delay: 0s; }
+
+  /* Leaves the way it came. */
+  #{{ fpv_id }} .fpv__dock[data-leaving="true"] {
+    animation: fpv-dock-out-{{ section.id }} .34s cubic-bezier(.6, 0, .78, 0) both;
+  }
+  #{{ fpv_id }}[data-side="right"] .fpv__dock[data-leaving="true"] {
+    animation-name: fpv-dock-out-right-{{ section.id }};
+  }
+
+  /* -140% clears the element's own width plus the 16px inset, so it is fully
+     past the viewport edge before it fades. */
+  @keyframes fpv-dock-in-{{ section.id }} {
+    from { opacity: 0; transform: translateX(-140%) scale(.94); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  @keyframes fpv-dock-out-{{ section.id }} {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(-140%) scale(.94); }
+  }
+  @keyframes fpv-dock-in-right-{{ section.id }} {
+    from { opacity: 0; transform: translateX(140%) scale(.94); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  @keyframes fpv-dock-out-right-{{ section.id }} {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(140%) scale(.94); }
+  }
+
+  #{{ fpv_id }} .fpv__dock-inner {
+    position: relative;
+    transition: transform .22s cubic-bezier(.16, 1, .3, 1);
+  }
+
+  #{{ fpv_id }} .fpv__dock-open {
+    display: block;
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    cursor: pointer;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .28);
+    position: relative;
+    transition: box-shadow .22s ease;
+  }
+  #{{ fpv_id }} .fpv__dock-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  @media (hover: hover) and (pointer: fine) {
+    /* Hovering anywhere on the dock, including the close button, lifts the
+       whole group. Scaling only the video left the close button behind. */
+    #{{ fpv_id }} .fpv__dock:hover .fpv__dock-inner {
+      transform: translateY(-3px) scale(1.04);
+    }
+    #{{ fpv_id }} .fpv__dock:hover .fpv__dock-open {
+      box-shadow: 0 16px 34px rgba(0, 0, 0, .34);
+    }
+  }
+
+  #{{ fpv_id }} .fpv__dock-dismiss {
+    position: absolute;
+    top: -8px; right: -8px;
+    width: 24px; height: 24px;
+    border-radius: 999px;
+    border: 1px solid var(--fpv-line);
+    background: #fff;
+    color: var(--fpv-ink);
+    font: 400 14px/1 sans-serif;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .18);
+    display: grid; place-items: center;
+  }
+
+  /* ---- Overlay --------------------------------------------------------- */
+  #{{ fpv_id }} .fpv__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #{{ fpv_id }} .fpv__overlay[hidden] { display: none; }
+
+  #{{ fpv_id }} .fpv__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(12, 10, 11, .72);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    animation: fpv-fade .26s ease both;
+  }
+  @keyframes fpv-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Tablet and laptop: a sized 9:16 card that never outgrows the viewport. */
+  #{{ fpv_id }} .fpv__stage {
+    position: relative;
+    z-index: 1;
+    /* Height drives it and width follows from the ratio. Setting an explicit
+       width AND height would make the browser ignore aspect-ratio entirely,
+       which squared the card off on short laptop screens. The three terms are
+       the design cap, the viewport height, and what the viewport width can
+       actually accommodate at 9:16. */
+    aspect-ratio: 9 / 16;
+    height: min(747px, 86vh, calc((100vw - 48px) * 16 / 9));
+    width: auto;
+    max-width: calc(100vw - 48px);
+    border-radius: 18px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .5);
+    animation: fpv-rise .34s cubic-bezier(.16, 1, .3, 1) both;
+  }
+  @keyframes fpv-rise {
+    from { opacity: 0; transform: translateY(20px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  #{{ fpv_id }} .fpv__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+
+  /* ---- Controls -------------------------------------------------------- */
+  #{{ fpv_id }} .fpv__top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Top padding clears the progress line above it. */
+    padding: 26px 12px 28px;
+    /* Scrim so white icons stay readable over a bright frame. */
+    background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0));
+  }
+  #{{ fpv_id }} .fpv__top-right { display: flex; gap: 8px; }
+
+  #{{ fpv_id }} .fpv__icon {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .38);
+    color: #fff;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: background .18s ease, transform .12s ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #{{ fpv_id }} .fpv__icon:hover { background: var(--fpv-accent); }
+  }
+  #{{ fpv_id }} .fpv__icon:active { transform: scale(.92); }
+  #{{ fpv_id }} .fpv__icon:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  /* Icon pairs: only one half of each toggle is ever visible. */
+  #{{ fpv_id }} .fpv__ico-loud,
+  #{{ fpv_id }} .fpv__ico-play { display: none; }
+  #{{ fpv_id }} [data-fpv-sound][aria-pressed="true"] .fpv__ico-loud { display: block; }
+  #{{ fpv_id }} [data-fpv-sound][aria-pressed="true"] .fpv__ico-muted { display: none; }
+  #{{ fpv_id }} [data-fpv-playpause][data-paused="true"] .fpv__ico-play { display: block; }
+  #{{ fpv_id }} [data-fpv-playpause][data-paused="true"] .fpv__ico-pause { display: none; }
+
+  /* ---- Progress: a story-style line across the very top ----------------
+     It sits above the control row, so the close and pause buttons read as
+     sitting underneath it rather than beside it. */
+  #{{ fpv_id }} .fpv__progress {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    height: 3px;
+    z-index: 4;
+    border-radius: 999px;
+    /* Dark track, not a translucent white one: on a bright frame a white
+       track and a white fill are the same colour and the bar disappears. */
+    background: rgba(0, 0, 0, .42);
+    cursor: pointer;
+    /* Vertical padding widens the grab area to a comfortable ~19px without
+       thickening the visible 3px line. */
+    padding: 8px 0;
+    margin: -8px 0;
+    background-clip: content-box;
+    touch-action: none;
+  }
+  #{{ fpv_id }} .fpv__progress-fill {
+    position: absolute;
+    top: 8px; bottom: 8px; left: 0;
+    width: 0%;
+    border-radius: 999px;
+    background: #fff;
+    /* Keeps the white fill readable against a white frame. */
+    box-shadow: 0 0 4px rgba(0, 0, 0, .5);
+  }
+  #{{ fpv_id }} .fpv__progress-knob {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 11px; height: 11px;
+    margin-left: -5.5px;
+    margin-top: -5.5px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .45);
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  #{{ fpv_id }} .fpv__progress:hover .fpv__progress-knob,
+  #{{ fpv_id }} .fpv__progress:focus-visible .fpv__progress-knob,
+  #{{ fpv_id }} .fpv__progress[data-dragging="true"] .fpv__progress-knob { opacity: 1; }
+  #{{ fpv_id }} .fpv__progress:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+
+  /* ---- Product card ---------------------------------------------------- */
+  #{{ fpv_id }} .fpv__card {
+    position: absolute;
+    left: 10px; right: 10px; bottom: 10px;
+    z-index: 3;
+    padding: 10px;
+    border-radius: 14px;
+    /* Deliberately translucent. A solid card hides the bottom third of the
+       frame, which is usually where the product actually is. The heavy blur
+       plus saturation keeps dark text legible over whatever shows through. */
+    background: rgba(255, 255, 255, .72);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, .5);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .28);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #{{ fpv_id }} .fpv__card-head { display: flex; align-items: center; gap: 9px; }
+  #{{ fpv_id }} .fpv__thumb {
+    width: 40px; height: 40px;
+    flex: none;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #f2f2f2;
+  }
+  #{{ fpv_id }} .fpv__meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  #{{ fpv_id }} .fpv__title {
+    font-weight: 700; font-size: 11.5px; line-height: 1.25;
+    color: var(--fpv-ink);
+    /* Two lines then ellipsis, so a long title cannot push the button off.
+       line-clamp is the standard property; the -webkit- pair is what actually
+       ships today, so both are set. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    /* Trims the half-leading under the last line, which was most of the gap
+       the price appeared to have. */
+    margin-bottom: -1px;
+  }
+  #{{ fpv_id }} .fpv__price { font-weight: 700; font-size: 13px; line-height: 1; color: var(--fpv-accent); }
+
+  #{{ fpv_id }} .fpv__buy { display: flex; gap: 7px; }
+  #{{ fpv_id }} .fpv__select {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .9);
+    font-weight: 400; font-size: 12px; line-height: 1;
+    color: var(--fpv-ink);
+  }
+
+  #{{ fpv_id }} .fpv__qty {
+    flex: none;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .9);
+    overflow: hidden;
+  }
+  #{{ fpv_id }} .fpv__qty button {
+    width: 28px; height: 34px;
+    border: none;
+    background: transparent;
+    color: var(--fpv-ink);
+    font-weight: 400; font-size: 15px; line-height: 1;
+    cursor: pointer;
+  }
+  #{{ fpv_id }} .fpv__qty button:active { background: #f4f4f4; }
+  #{{ fpv_id }} .fpv__qty input {
+    width: 26px;
+    height: 34px;
+    border: none;
+    text-align: center;
+    font-weight: 600; font-size: 12px; line-height: 1;
+    color: var(--fpv-ink);
+    background: transparent;
+  }
+  #{{ fpv_id }} .fpv__qty input:focus { outline: none; }
+
+  #{{ fpv_id }} .fpv__atc {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 999px;
+    background: var(--fpv-accent);
+    color: #fff;
+    font-weight: 700; font-size: 13.5px; line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background .18s ease, transform .1s ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #{{ fpv_id }} .fpv__atc:hover { background: var(--fpv-accent-dark); }
+  }
+  #{{ fpv_id }} .fpv__atc:active { transform: translateY(1px); }
+  #{{ fpv_id }} .fpv__atc:disabled { opacity: .65; cursor: default; }
+
+  #{{ fpv_id }} .fpv__spinner { display: none; }
+  #{{ fpv_id }} .fpv__atc[data-loading="true"] .fpv__spinner {
+    display: block;
+    width: 14px; height: 14px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    animation: fpv-spin .7s linear infinite;
+  }
+  @keyframes fpv-spin { to { transform: rotate(360deg); } }
+
+  #{{ fpv_id }} .fpv__status {
+    margin: 0;
+    font-weight: 500; font-size: 11px; line-height: 1.35;
+    text-align: center;
+    color: var(--fpv-muted);
+  }
+  #{{ fpv_id }} .fpv__status:empty { display: none; }
+  #{{ fpv_id }} .fpv__status[data-state="error"] { color: #d01d42; }
+  #{{ fpv_id }} .fpv__status a { color: inherit; font-weight: 700; }
+
+  /* ---- Mobile: true fullscreen ----------------------------------------- */
+  @media (max-width: 767px) {
+    #{{ fpv_id }} .fpv__stage {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      aspect-ratio: auto;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    #{{ fpv_id }} .fpv__backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: #000; }
+    #{{ fpv_id }} .fpv__progress { top: calc(12px + env(safe-area-inset-top)); }
+    #{{ fpv_id }} .fpv__card {
+      left: 12px; right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+    #{{ fpv_id }} .fpv__top { padding-top: calc(26px + env(safe-area-inset-top)); }
+    #{{ fpv_id }} .fpv__dock { bottom: {{ fpv_bottom | minus: 12 }}px; left: 12px; width: 78px; }
+    #{{ fpv_id }}[data-side="right"] .fpv__dock { left: auto; right: 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #{{ fpv_id }} .fpv__dock,
+    #{{ fpv_id }} .fpv__stage,
+    #{{ fpv_id }} .fpv__backdrop { animation: none; }
+    #{{ fpv_id }} .fpv__dock-inner,
+    #{{ fpv_id }} .fpv__dock-open,
+    #{{ fpv_id }} .fpv__icon,
+    #{{ fpv_id }} .fpv__atc { transition: none; }
+  }
+</style>
+
+<script>
+  (function () {
+    var root = document.getElementById('{{ fpv_id }}');
+    if (!root || root.dataset.fpvBooted === '1') return;
+    root.dataset.fpvBooted = '1';
+
+    var $ = function (sel) { return root.querySelector(sel); };
+    var dock      = $('[data-fpv-dock]');
+    var overlay   = $('[data-fpv-overlay]');
+    var video     = $('[data-fpv-video]');
+    var progress  = $('[data-fpv-progress]');
+    var fill      = $('[data-fpv-fill]');
+    var knob      = $('[data-fpv-knob]');
+    var soundBtn  = $('[data-fpv-sound]');
+    var playBtn   = $('[data-fpv-playpause]');
+    var variantEl = $('[data-fpv-variant]');
+    var qtyInput  = $('[data-fpv-qty-input]');
+    var priceEl   = $('[data-fpv-price]');
+    var atc       = $('[data-fpv-atc]');
+    var atcLabel  = $('[data-fpv-atc-label]');
+    var statusEl  = $('[data-fpv-status]');
+
+    var variants = [];
+    try { variants = JSON.parse(root.parentNode.querySelector('[data-fpv-variants]').textContent); }
+    catch (e) { try { variants = JSON.parse(document.querySelector('[data-fpv-variants]').textContent); } catch (e2) { variants = []; } }
+
+    // Dismissing the dock is deliberately NOT remembered. It hides the video
+    // for the current page view only, so every fresh page load shows it again.
+    var dockDismissed = false;
+    var dockVideo = $('.fpv__dock-video');
+    var dockReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* The teaser holds still until it has finished sliding in, so the movement
+       and the motion in the clip do not compete. Guarded because animationend
+       does not fire under reduced motion, and a backstop timer covers a tab
+       that was backgrounded through the whole animation. */
+    var dockPlaying = false;
+    function playDock() {
+      if (dockPlaying || !dockVideo) return;
+      dockPlaying = true;
+      var p = dockVideo.play();
+      if (p && p.catch) p.catch(function () {});
+    }
+
+    dock.addEventListener('animationend', function (e) {
+      if (e.animationName.indexOf('fpv-dock-in') === 0) playDock();
+    });
+    if (dockReduceMotion) playDock();
+    setTimeout(playDock, 2200);
+
+    /* ------------------------------------------------------------------
+       Scroll lock. Hiding the scrollbar reclaims its width and shifts the
+       page sideways, so the body is padded by exactly that much. Previous
+       inline values are restored rather than blanked.
+       ------------------------------------------------------------------ */
+    var priorOverflow = '', priorPad = '';
+    function lockScroll() {
+      var gap = window.innerWidth - document.documentElement.clientWidth;
+      priorOverflow = document.body.style.overflow;
+      priorPad = document.body.style.paddingRight;
+      document.body.style.overflow = 'hidden';
+      if (gap > 0) {
+        var cur = parseFloat(getComputedStyle(document.body).paddingRight) || 0;
+        document.body.style.paddingRight = (cur + gap) + 'px';
+      }
+    }
+    function unlockScroll() {
+      document.body.style.overflow = priorOverflow;
+      document.body.style.paddingRight = priorPad;
+    }
+
+    /* ---- Open / close ------------------------------------------------- */
+    var lastFocused = null;
+
+    function openPlayer() {
+      if (!overlay.hidden) return;
+      lastFocused = document.activeElement;
+      overlay.hidden = false;
+      dock.hidden = true;
+      lockScroll();
+      setStatus('');
+      // Autoplay with sound is blocked, so it starts muted and the sound
+      // button is the visitor's way in.
+      video.muted = true;
+      syncSound();
+      var p = video.play();
+      if (p && p.catch) p.catch(function () { syncPlay(); });
+      syncPlay();
+      $('[data-fpv-close]').focus({ preventScroll: true });
+    }
+
+    function closePlayer() {
+      if (overlay.hidden) return;
+      video.pause();
+      // pause fires stopTracking, but close it out explicitly so a browser
+      // that swallows the event cannot leave the rAF loop running forever.
+      stopTracking();
+      overlay.hidden = true;
+      unlockScroll();
+      if (!dockDismissed) {
+        dock.removeAttribute('data-leaving');
+        dock.setAttribute('data-return', 'true');
+      }
+      dock.hidden = dockDismissed;
+      if (lastFocused && lastFocused.focus) lastFocused.focus({ preventScroll: true });
+    }
+
+    $('[data-fpv-open]').addEventListener('click', openPlayer);
+    root.querySelectorAll('[data-fpv-close]').forEach(function (el) {
+      el.addEventListener('click', closePlayer);
+    });
+
+    $('[data-fpv-dismiss]').addEventListener('click', function () {
+      dockDismissed = true;
+      if (dockReduceMotion) { dock.hidden = true; return; }
+      // Let it travel back off-screen, then take it out of the layout.
+      dock.setAttribute('data-leaving', 'true');
+      var gone = false;
+      function finish() {
+        if (gone) return;
+        gone = true;
+        dock.hidden = true;
+        dock.removeAttribute('data-leaving');
+      }
+      dock.addEventListener('animationend', finish, { once: true });
+      setTimeout(finish, 500);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (overlay.hidden) return;
+      if (e.key === 'Escape') { closePlayer(); return; }
+      if (e.key === ' ' && e.target === progress) { e.preventDefault(); togglePlay(); return; }
+      if (e.key !== 'Tab') return;
+      var f = overlay.querySelectorAll('button, select, input, [href], [tabindex="0"]');
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    /* ---- Play / pause / sound ----------------------------------------- */
+    function syncPlay() {
+      var paused = video.paused;
+      playBtn.setAttribute('data-paused', paused ? 'true' : 'false');
+      playBtn.setAttribute('aria-label', paused ? 'Play' : 'Pause');
+    }
+    function togglePlay() {
+      if (video.paused) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
+      else video.pause();
+      syncPlay();
+    }
+    function syncSound() {
+      soundBtn.setAttribute('aria-pressed', video.muted ? 'false' : 'true');
+      soundBtn.setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute');
+    }
+
+    playBtn.addEventListener('click', togglePlay);
+    soundBtn.addEventListener('click', function () { video.muted = !video.muted; syncSound(); });
+    video.addEventListener('play', syncPlay);
+    video.addEventListener('pause', syncPlay);
+    // Tapping the frame itself toggles playback, as it does in a story player.
+    video.addEventListener('click', togglePlay);
+
+    /* ---- Progress ------------------------------------------------------
+       Driven by requestAnimationFrame, not by `timeupdate`. Browsers fire
+       timeupdate roughly four times a second, so painting from it advances
+       the line in visible ~250ms steps: on an 8 second clip that is a jump of
+       about 3% of the width each time, which reads as stutter. rAF samples
+       currentTime once per frame instead, so the line moves as smoothly as
+       the video does.
+       ------------------------------------------------------------------ */
+    var rafId = null;
+    var lastAria = -1;
+
+    function paint(pct) {
+      fill.style.width = pct + '%';
+      knob.style.left = pct + '%';
+      // Only touch the attribute when the rounded value actually changes.
+      // Writing it 60 times a second spams assistive tech for no benefit.
+      var rounded = Math.round(pct);
+      if (rounded !== lastAria) {
+        lastAria = rounded;
+        progress.setAttribute('aria-valuenow', rounded);
+      }
+    }
+
+    function frame() {
+      if (video.duration && !isNaN(video.duration) && progress.dataset.dragging !== 'true') {
+        paint(video.currentTime / video.duration * 100);
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+    function startTracking() { if (rafId === null) rafId = requestAnimationFrame(frame); }
+    function stopTracking() {
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    video.addEventListener('playing', startTracking);
+    video.addEventListener('pause', stopTracking);
+    video.addEventListener('ended', stopTracking);
+    // A seek while paused still needs one repaint, and rAF is not running then.
+    video.addEventListener('seeked', function () {
+      if (video.paused && video.duration) paint(video.currentTime / video.duration * 100);
+    });
+    video.addEventListener('loadedmetadata', function () { paint(0); });
+
+    function seekTo(clientX) {
+      if (!video.duration || isNaN(video.duration)) return;
+      var r = progress.getBoundingClientRect();
+      var pct = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+      video.currentTime = pct * video.duration;
+      paint(pct * 100);
+    }
+
+    progress.addEventListener('pointerdown', function (e) {
+      progress.dataset.dragging = 'true';
+      progress.setPointerCapture(e.pointerId);
+      seekTo(e.clientX);
+    });
+    progress.addEventListener('pointermove', function (e) {
+      if (progress.dataset.dragging === 'true') seekTo(e.clientX);
+    });
+    ['pointerup', 'pointercancel'].forEach(function (evt) {
+      progress.addEventListener(evt, function () { progress.dataset.dragging = 'false'; });
+    });
+    progress.addEventListener('keydown', function (e) {
+      if (!video.duration) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); video.currentTime = Math.min(video.duration, video.currentTime + 5); }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 5); }
+    });
+
+    /* ---- Money ---------------------------------------------------------
+       Prices arrive as integer cents so quantity can multiply them. Rendering
+       is handed to the theme's own Shopify.formatMoney when it exists, so the
+       popup matches the rest of the storefront exactly (Indian grouping,
+       decimals or not). The fallback is Shopify's standard implementation for
+       themes that do not expose it.
+       ------------------------------------------------------------------ */
+    var MONEY_FORMAT = root.dataset.moneyFormat || '{% raw %}{{amount}}{% endraw %}';
+
+    function formatFallback(cents, format) {
+      var placeholder = /\{\{\s*(\w+)\s*\}\}/;
+      function group(num, precision, thousands, decimal) {
+        if (isNaN(num) || num === null) return '0';
+        var fixed = (num / 100.0).toFixed(precision);
+        var parts = fixed.split('.');
+        var whole = parts[0].replace(/(\d)(?=(\d\d\d)+(?!\d))/g, '$1' + thousands);
+        return whole + (parts[1] ? decimal + parts[1] : '');
+      }
+      var m = format.match(placeholder);
+      var out;
+      switch (m && m[1]) {
+        case 'amount_no_decimals': out = group(cents, 0, ',', '.'); break;
+        case 'amount_with_comma_separator': out = group(cents, 2, '.', ','); break;
+        case 'amount_no_decimals_with_comma_separator': out = group(cents, 0, '.', ','); break;
+        default: out = group(cents, 2, ',', '.');
+      }
+      return format.replace(placeholder, out);
+    }
+
+    function money(cents) {
+      if (window.Shopify && typeof window.Shopify.formatMoney === 'function') {
+        return window.Shopify.formatMoney(cents, MONEY_FORMAT);
+      }
+      return formatFallback(cents, MONEY_FORMAT);
+    }
+
+    function unitPrice() {
+      var id = variantEl ? String(variantEl.value) : null;
+      var v = variants.filter(function (x) { return String(x.id) === id; })[0];
+      return v ? v.price : (variants[0] ? variants[0].price : 0);
+    }
+
+    // Recomputed from BOTH inputs, so changing the variant and then the
+    // quantity compounds correctly instead of one overwriting the other.
+    function paintPrice() {
+      if (priceEl) priceEl.textContent = money(unitPrice() * currentQty());
+    }
+
+    /* ---- Buy ----------------------------------------------------------- */
+    function currentQty() {
+      var n = parseInt(String(qtyInput.value).replace(/\D/g, ''), 10);
+      return (!n || n < 1) ? 1 : Math.min(n, 99);
+    }
+    function setStatus(msg, state) {
+      statusEl.innerHTML = msg || '';
+      if (state) statusEl.setAttribute('data-state', state);
+      else statusEl.removeAttribute('data-state');
+    }
+
+    root.querySelectorAll('[data-fpv-qty]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        qtyInput.value = Math.max(1, currentQty() + parseInt(btn.dataset.fpvQty, 10));
+        paintPrice();
+      });
+    });
+    qtyInput.addEventListener('input', paintPrice);
+    qtyInput.addEventListener('blur', function () { qtyInput.value = currentQty(); paintPrice(); });
+
+    if (variantEl && variantEl.tagName === 'SELECT') {
+      variantEl.addEventListener('change', function () { paintPrice(); setStatus(''); });
+    }
+
+    // Paint once on boot so the figure matches the quantity box from the start.
+    paintPrice();
+
+    atc.addEventListener('click', async function () {
+      var id = variantEl ? variantEl.value : null;
+      if (!id) { setStatus('Choose an option first.', 'error'); return; }
+
+      atc.disabled = true;
+      atc.setAttribute('data-loading', 'true');
+      atcLabel.textContent = 'Adding…';
+      setStatus('');
+
+      try {
+        var res = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ items: [{ id: Number(id), quantity: currentQty() }] }),
+        });
+        if (!res.ok) {
+          var problem = await res.json().catch(function () { return {}; });
+          throw new Error(problem.description || problem.message || 'Add to cart failed');
+        }
+
+        // Themes listen for different things, so tell all the common ones and
+        // let whichever the theme uses refresh its drawer or bubble.
+        document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('cart:build', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('ajaxProduct:added', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('cart:updated', { bubbles: true }));
+
+        // Straight to the cart. The button is still in its 'Adding' state, so
+        // that is the feedback; a success message would only flash for an
+        // instant before the page changed anyway.
+        // The scroll lock is released first, otherwise a browser that restores
+        // the page from bfcache comes back with the body still locked.
+        unlockScroll();
+        window.location.href = '/cart';
+        return;
+      } catch (err) {
+        console.error('[floating video] add to cart failed:', err);
+        setStatus(err.message || 'Could not add to cart. Please try again.', 'error');
+      } finally {
+        atc.disabled = false;
+        atc.removeAttribute('data-loading');
+        atcLabel.textContent = {{ fpv_cta_label | json }};
+      }
+    });
+  })();
+</script>
+
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Floating product video",
+  "tag": "div",
+  "class": "fpv-section",
+  "enabled_on": {
+    "templates": [
+      "product"
+    ]
+  },
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows only on products that have a video set in the custom.floating_video metafield. Products without one render nothing."
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_video",
+      "label": "Enable the floating video",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Dock"
+    },
+    {
+      "type": "select",
+      "id": "dock_side",
+      "label": "Corner",
+      "options": [
+        {
+          "value": "left",
+          "label": "Bottom left"
+        },
+        {
+          "value": "right",
+          "label": "Bottom right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "range",
+      "id": "dock_bottom",
+      "label": "Distance from the bottom",
+      "min": 16,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 96,
+      "info": "Raise this if it sits under the WhatsApp button or a sticky bar."
+    },
+    {
+      "type": "header",
+      "content": "Buy button"
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "Button text",
+      "default": "Add to cart"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent",
+      "default": "#ee204a"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Floating product video"
+    }
+  ]
+}
+{% endschema %}
