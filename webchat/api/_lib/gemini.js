@@ -78,6 +78,12 @@ export async function streamReply(systemPrompt, history, onChunk) {
       // Replies are 1-3 short lines by design. A tight cap is a cost control and a
       // style control at once: the model cannot ramble into a paragraph.
       maxOutputTokens: Number(process.env.GEMINI_MAX_TOKENS || 400),
+      // 2.5 models think by default, and thinking tokens are billed AND counted against
+      // maxOutputTokens. With a 400 cap a chatty thinking pass can consume the whole
+      // budget and return an empty reply - which looks exactly like a transport bug.
+      // This bot follows a fixed rulebook and reads prices off a list; it does not need
+      // to reason first, and the latency saving is worth more on a storefront.
+      thinkingConfig: { thinkingBudget: Number(process.env.GEMINI_THINKING_BUDGET || 0) },
     },
     safetySettings: SAFETY,
   };
@@ -94,40 +100,54 @@ export async function streamReply(systemPrompt, history, onChunk) {
   let finishReason = '';
   let blocked = false;
 
+  const handleFrame = (frame) => {
+    for (const line of frame.split('\n')) {
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+
+      let json;
+      try { json = JSON.parse(payload); } catch (_) { continue; }
+
+      if (json.promptFeedback?.blockReason) {
+        blocked = true;
+        finishReason = json.promptFeedback.blockReason;
+      }
+
+      const candidate = json.candidates?.[0];
+      if (candidate?.finishReason) finishReason = candidate.finishReason;
+
+      for (const part of candidate?.content?.parts || []) {
+        // Skip the model's internal reasoning if thinking is ever turned back on -
+        // those parts are flagged `thought` and must never reach the visitor.
+        if (part.thought) continue;
+        if (typeof part.text !== 'string' || !part.text) continue;
+        text += part.text;
+        onChunk(part.text);
+      }
+    }
+  };
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    buffer += decoder.decode(value, { stream: true });
 
-    // SSE frames are separated by a blank line; a frame can carry several `data:` lines.
+    // Vertex terminates SSE frames with CRLF CRLF, the AI Studio endpoint with LF LF.
+    // Normalising first means one split works for both - splitting on '\n\n' alone
+    // silently matches nothing against Vertex, leaving every frame stuck in the buffer.
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+
+    // A frame can carry several `data:` lines; a blank line ends it.
     const frames = buffer.split('\n\n');
     buffer = frames.pop() || '';
-
-    for (const frame of frames) {
-      for (const line of frame.split('\n')) {
-        if (!line.startsWith('data:')) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === '[DONE]') continue;
-
-        let json;
-        try { json = JSON.parse(payload); } catch (_) { continue; }
-
-        if (json.promptFeedback?.blockReason) {
-          blocked = true;
-          finishReason = json.promptFeedback.blockReason;
-        }
-
-        const candidate = json.candidates?.[0];
-        if (candidate?.finishReason) finishReason = candidate.finishReason;
-
-        for (const part of candidate?.content?.parts || []) {
-          if (typeof part.text !== 'string' || !part.text) continue;
-          text += part.text;
-          onChunk(part.text);
-        }
-      }
-    }
+    frames.forEach(handleFrame);
   }
+
+  // The last frame usually arrives without a trailing blank line, so it is still sitting
+  // in the buffer when the stream closes. Dropping it loses the finishReason, and on a
+  // short reply that fits in one frame it loses the entire message.
+  buffer += decoder.decode();
+  if (buffer.trim()) handleFrame(buffer.replace(/\r\n/g, '\n'));
 
   if (finishReason === 'SAFETY' || finishReason === 'PROHIBITED_CONTENT') blocked = true;
   return { text, finishReason, blocked };
