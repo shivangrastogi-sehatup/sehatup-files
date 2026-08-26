@@ -16,7 +16,7 @@ import { logTurn, loggingEnabled } from './_lib/log.js';
 import { createMarkerFilter, resolveMarkers } from './_lib/markers.js';
 
 const WA_NUMBER = (process.env.WHATSAPP_NUMBER || '919355539355').replace(/\D/g, '');
-const MAX_HISTORY = 16;      // 8 exchanges is plenty of context and caps token spend
+const MAX_HISTORY = 24;      // 12 exchanges the model re-reads; see healthDisclosures()
 const MAX_MESSAGE_CHARS = 1000;
 
 const ALLOWED_ORIGINS = [
@@ -88,14 +88,18 @@ export default async function handler(req, res) {
   const sessionId = String(body.sessionId || '').slice(0, 64);
   const page = body.page || {};
 
+  const allMessages = (Array.isArray(body.messages) ? body.messages : [])
+    .filter((m) => m && typeof m.text === 'string' && m.text.trim())
+    .map((m) => ({
+      role: m.role === 'model' || m.role === 'assistant' ? 'model' : 'user',
+      text: m.text.slice(0, MAX_MESSAGE_CHARS),
+    }));
+
+  // The window caps what the model re-reads each turn; disclosures are scanned over the
+  // whole conversation so an early one cannot scroll out of view.
   const history = collapseRoles(
-    (Array.isArray(body.messages) ? body.messages : [])
-      .filter((m) => m && typeof m.text === 'string' && m.text.trim())
+    allMessages
       .slice(-MAX_HISTORY)
-      .map((m) => ({
-        role: m.role === 'model' || m.role === 'assistant' ? 'model' : 'user',
-        text: m.text.slice(0, MAX_MESSAGE_CHARS),
-      }))
   );
 
   if (!history.length || history[history.length - 1].role !== 'user') {
@@ -130,7 +134,7 @@ export default async function handler(req, res) {
   try {
     const products = await getCatalog();
     const cards = cardIndex(products);
-    const system = buildSystemPrompt(products, page);
+    const system = buildSystemPrompt(products, page, allMessages);
 
     const result = await streamReply(system, history, (chunk) => filter.push(chunk));
     const markers = filter.end();

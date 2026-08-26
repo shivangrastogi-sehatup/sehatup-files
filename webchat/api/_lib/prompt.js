@@ -34,12 +34,66 @@ function loadText(...relative) {
 const PERSONA = loadText('prompts', 'ananya-web.txt');
 const POLICIES = loadText('api', 'kb', 'policies.md');
 
+// Conditions and medicines that must gate a product recommendation. Kept deliberately
+// broad and in both scripts - a false positive costs one clarifying question, a false
+// negative means recommending a supplement to someone on thyroid medication.
+const HEALTH_FLAGS = [
+  'thyroid', 'thyroide', 'tsh',
+  'sugar', 'diabet', 'madhumeh', 'shugar',
+  'bp', 'blood pressure', 'hypertension',
+  'heart', 'dil ki', 'cardiac',
+  'kidney', 'liver', 'gurda',
+  'pregnan', 'pregnent', 'garbh', 'conceive', 'breastfeed', 'feeding',
+  'surgery', 'operation', 'operate',
+  'dawai', 'dawa', 'davai', 'medicine', 'tablet', 'medication',
+];
+
+/**
+ * Pull out the visitor's own words wherever they mentioned a condition or a medicine.
+ *
+ * This exists because the history window is not enough. A disclosure made at message one
+ * can still be inside the window at message seventeen and simply get buried - the model
+ * reads the recent turns and recommends a weight product to someone who told it about
+ * thyroid eight turns ago. Restating their exact words at the top of every prompt keeps
+ * the fact salient no matter how long the conversation runs.
+ *
+ * Their words, not a summary: "koi dawai nahi chal rahi" and "thyroid ki dawai chal rahi
+ * hai" both match the same keyword, and only the original sentence tells them apart.
+ */
+function healthDisclosures(allMessages) {
+  const hits = [];
+  for (const m of allMessages) {
+    if (m.role !== 'user') continue;
+    const text = String(m.text || '');
+    const low = text.toLowerCase();
+    if (HEALTH_FLAGS.some((f) => low.includes(f))) hits.push(text.slice(0, 200));
+  }
+  // Keep the earliest ones: the first disclosure is the one at risk of scrolling out.
+  return hits.slice(0, 4);
+}
+
 /**
  * @param {object[]} products  live catalog from getCatalog()
  * @param {object}   page      { url, title, productHandle } the visitor is looking at
+ * @param {object[]} allMessages  the FULL client history, before the window is applied
  */
-export function buildSystemPrompt(products, page = {}) {
+export function buildSystemPrompt(products, page = {}, allMessages = []) {
   const parts = [PERSONA];
+
+  const disclosures = healthDisclosures(allMessages);
+  if (disclosures.length) {
+    parts.push(
+      'WHAT THIS PERSON HAS ALREADY TOLD YOU ABOUT THEIR HEALTH - these are their own\n' +
+      'words, from earlier in this same conversation:\n' +
+      disclosures.map((d) => `  "${d}"`).join('\n') +
+      '\n\nRead them again before you recommend anything. If they have a condition or take\n' +
+      'a regular medicine, the safety rule applies for the WHOLE conversation, not just the\n' +
+      'message they said it in - steer to the free consultation instead of recommending a\n' +
+      'product, and say why in one line. If what they said means it does NOT apply (for\n' +
+      'example they told you nothing is going on), treat the safety question as already\n' +
+      'answered and do not ask it again.'
+    );
+  }
 
   parts.push(
     'POLICIES (the only policy facts you have. A line marked TODO is NOT a fact - for ' +
