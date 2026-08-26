@@ -167,19 +167,23 @@
 
       // A product with several variants (size, pack) cannot be added blind - guessing the
       // variant is how you generate a wrong-item return. Send those to the product page.
+      //
+      // And when that is the case, "View" would go to the same URL as "Choose option":
+      // two buttons, one destination, which just makes the reader stop and work out
+      // whether there is a difference. There isn't, so only one button is shown. The pair
+      // appears only when the two actions genuinely differ - buy it here, or go look first.
       var multi = p.variantCount > 1 || !p.variantId;
-      var primary = multi
+      var buttons = multi
         ? '<a class="btn primary" href="' + esc(p.url) + '">Choose option</a>'
-        : '<button class="btn primary add" type="button" data-variant="' + esc(p.variantId) + '">Add to cart</button>';
+        : '<button class="btn primary add" type="button" data-variant="' + esc(p.variantId) + '">Add to cart</button>' +
+          '<a class="btn ghost" href="' + esc(p.url) + '">View</a>';
 
       card.innerHTML =
         (p.image ? '<img src="' + esc(p.image) + '" alt="" loading="lazy">' : '<div class="noimg"></div>') +
         '<div class="cbody">' +
           '<div class="ctitle">' + esc(p.title) + '</div>' +
           '<div class="cprice">' + priceHtml + '</div>' +
-          '<div class="cbtns">' + primary +
-            '<a class="btn ghost" href="' + esc(p.url) + '">View</a>' +
-          '</div>' +
+          '<div class="cbtns">' + buttons + '</div>' +
         '</div>';
 
       // An image arriving after render grows the row, which leaves the card half below the
@@ -316,21 +320,26 @@
           try { payload = JSON.parse(data); } catch (e) { continue; }
 
           if (ev === 'delta' && payload.t) {
-            if (!target) { typing.remove(); target = bubbleEl('bot'); }
+            // Buffer only. Painting each fragment as it lands makes the reply assemble
+            // itself in front of the reader - words half-formed, the bubble jumping as it
+            // reflows - which reads as a machine thinking out loud. Holding the dots until
+            // the thought is complete, then showing it whole, is how a person types.
             acc += payload.t;
-            renderText(target.bubble, acc);
-            scrollDown();
           } else if (ev === 'done') {
             done = payload;
           }
         }
       }
 
-      if (!target) { typing.remove(); target = bubbleEl('bot'); }
-      if (!acc.trim()) {
-        acc = 'Sorry, main abhi reply nahi kar payi. Ek baar phir try kijiye.';
-        renderText(target.bubble, acc);
-      }
+      if (!acc.trim()) acc = 'Sorry, main abhi reply nahi kar payi. Ek baar phir try kijiye.';
+
+      // The reveal: dots out, whole message in, rising as one piece. Cards and the handoff
+      // button carry their own staggered delay in CSS so they follow the text rather than
+      // landing on top of it.
+      typing.remove();
+      target = bubbleEl('bot');
+      renderText(target.bubble, acc);
+      target.row.classList.add('in');
 
       var products = (done && done.products) || [];
       var handoff = (done && done.handoff) || null;
@@ -464,7 +473,6 @@
         '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
           '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' +
         '</svg>' +
-        '<span class="pulse"></span>' +
       '</button>' +
 
       '<section class="panel" role="dialog" aria-label="' + esc(CONFIG.title) + ' chat">' +
@@ -502,182 +510,199 @@
     return `
 :host { all: initial; }
 *, *::before, *::after { box-sizing: border-box; }
+
+/* Palette note: SehatUP's crimson is a storefront CTA colour. At full saturation across
+   every surface it reads as alarm, which is the wrong register for someone typing out an
+   embarrassing health problem. So the hue stays and the VALUE changes - a deep aubergine
+   carries the panel, and the bright brand colour is spent in exactly two places where it
+   earns its keep: the launcher, which has to be noticed, and the price, which is the
+   commercial moment. Consulting room, not emergency ward. */
 .wrap {
-  --a: ${accent};
-  /* Corner offsets. Set from data-bottom / data-right / data-bottom-mobile on the script
-     tag, so nudging the bubble away from a sticky add-to-cart bar or a cookie banner is a
-     theme edit, not a code change and redeploy. */
+  --brand: ${accent};
+  --deep: #45101f;
+  --deep-soft: #5c1b2b;
+  --ink: #241a1e;
+  --muted: #7c6f74;
+  --faint: #a49a9e;
+  --paper: #faf7f6;
+  --panel: #ffffff;
+  --rule: #ece3e5;
   --gap-bottom: ${CONFIG.bottom};
   --gap-right: ${CONFIG.right};
-  --a-dark: #d01d42;
-  --ink: #1c1420;
-  --muted: #6b6470;
-  --line: #ece7ea;
-  --surface: #ffffff;
-  --sunk: #faf7f8;
-  --radius: 18px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* launcher */
+/* launcher - the one place the bright brand colour belongs */
 .launcher {
   position: fixed; right: var(--gap-right); bottom: var(--gap-bottom); z-index: 2147483000;
-  width: 60px; height: 60px; border: 0; border-radius: 50%;
-  background: linear-gradient(145deg, var(--a), var(--a-dark));
-  color: #fff; cursor: pointer; display: grid; place-items: center;
-  box-shadow: 0 10px 30px rgba(238,32,74,.38), 0 2px 8px rgba(0,0,0,.12);
-  transition: transform .22s cubic-bezier(.2,.8,.3,1), opacity .18s, box-shadow .22s;
+  width: 58px; height: 58px; border: 0; border-radius: 50%;
+  background: var(--brand); color: #fff;
+  cursor: pointer; display: grid; place-items: center;
+  box-shadow: 0 6px 16px rgba(69,16,31,.16), 0 12px 40px rgba(69,16,31,.14);
+  transition: transform .24s cubic-bezier(.2,.8,.3,1), box-shadow .24s, opacity .18s;
 }
-.launcher:hover { transform: scale(1.06); box-shadow: 0 14px 38px rgba(238,32,74,.46); }
-.launcher:active { transform: scale(.97); }
-.launcher.hidden { opacity: 0; pointer-events: none; transform: scale(.6); }
-.launcher:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-.pulse {
-  position: absolute; inset: 0; border-radius: 50%;
-  border: 2px solid var(--a); animation: pulse 2.4s ease-out infinite;
-}
-@keyframes pulse {
-  0% { transform: scale(1); opacity: .55; }
-  70% { transform: scale(1.5); opacity: 0; }
-  100% { opacity: 0; }
-}
+.launcher:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(69,16,31,.2), 0 18px 50px rgba(69,16,31,.18); }
+.launcher:active { transform: translateY(0) scale(.97); }
+.launcher.hidden { opacity: 0; pointer-events: none; transform: scale(.7); }
+.launcher:focus-visible { outline: 2px solid var(--deep); outline-offset: 3px; }
 
 /* panel */
 .panel {
   position: fixed; right: var(--gap-right); bottom: var(--gap-bottom); z-index: 2147483000;
-  width: 384px; max-width: calc(100vw - 32px);
-  height: 620px; max-height: calc(100vh - 40px);
-  background: var(--surface); border-radius: var(--radius);
-  border: 1px solid var(--line);
-  box-shadow: 0 24px 70px rgba(28,20,32,.22), 0 4px 14px rgba(28,20,32,.08);
+  width: 380px; max-width: calc(100vw - 32px);
+  height: 600px; max-height: calc(100vh - 40px);
+  background: var(--panel); border-radius: 20px;
+  border: 1px solid var(--rule);
+  box-shadow: 0 2px 6px rgba(36,26,30,.04), 0 18px 60px rgba(36,26,30,.14);
   display: flex; flex-direction: column; overflow: hidden;
-  opacity: 0; transform: translateY(14px) scale(.98); pointer-events: none;
-  transition: opacity .2s ease, transform .24s cubic-bezier(.2,.8,.3,1);
+  opacity: 0; transform: translateY(12px) scale(.985); pointer-events: none;
+  transition: opacity .22s ease, transform .28s cubic-bezier(.2,.8,.3,1);
 }
 .panel.show { opacity: 1; transform: none; pointer-events: auto; }
 
+/* header - flat, not a gradient. A gradient here is decoration; flat colour is a decision. */
 .head {
-  display: flex; align-items: center; gap: 11px;
-  padding: 13px 14px; color: #fff;
-  background: linear-gradient(135deg, var(--a), var(--a-dark) 78%, #9c1233);
+  display: flex; align-items: center; gap: 12px;
+  padding: 15px 16px; color: #fff; background: var(--deep);
 }
-.av { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
-      border: 2px solid rgba(255,255,255,.5); }
-.av.fallback { display: grid; place-items: center; background: rgba(255,255,255,.2);
-      font-weight: 700; font-size: 17px; }
+.av { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+      background: var(--deep-soft); }
+.av.fallback { display: grid; place-items: center; background: var(--deep-soft);
+      font-weight: 600; font-size: 15px; letter-spacing: .02em; }
 .who { flex: 1; min-width: 0; }
-.who strong { display: block; font-size: 15px; font-weight: 650; letter-spacing: .1px; }
-.who span { display: flex; align-items: center; gap: 5px; font-size: 12px; opacity: .9; }
-.dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80;
-       box-shadow: 0 0 0 2px rgba(74,222,128,.3); }
-.close { background: rgba(255,255,255,.14); border: 0; color: #fff; cursor: pointer;
-         width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; }
-.close:hover { background: rgba(255,255,255,.26); }
+.who strong { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+/* status as a micro-label, not body text - it is metadata, and should read like it */
+.who span { display: flex; align-items: center; gap: 6px; margin-top: 2px;
+      font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+      color: rgba(255,255,255,.68); }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: #5fd08a; }
+.close { background: transparent; border: 0; color: rgba(255,255,255,.7); cursor: pointer;
+         width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+         transition: background .15s, color .15s; }
+.close:hover { background: rgba(255,255,255,.12); color: #fff; }
+.close:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 
 /* log */
 .log { flex: 1; overflow-y: auto; overscroll-behavior: contain;
-       padding: 16px 14px 6px; background: var(--sunk); scroll-behavior: smooth; }
-.log::-webkit-scrollbar { width: 6px; }
-.log::-webkit-scrollbar-thumb { background: #d9d2d6; border-radius: 3px; }
+       padding: 18px 16px 8px; background: var(--paper); }
+.log::-webkit-scrollbar { width: 5px; }
+.log::-webkit-scrollbar-thumb { background: #ded4d7; border-radius: 3px; }
+.log::-webkit-scrollbar-track { background: transparent; }
 
-.row { display: flex; flex-direction: column; margin-bottom: 12px; max-width: 88%; }
+.row { display: flex; flex-direction: column; margin-bottom: 14px; max-width: 86%; }
 .row.user { margin-left: auto; align-items: flex-end; }
-.row.in { animation: rise .26s cubic-bezier(.2,.8,.3,1); }
-@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
 
-.bubble { padding: 10px 13px; border-radius: 16px; font-size: 14.5px;
+/* The signature moment: a reply arrives as one whole thought, rising into place.
+   Never assembled in front of the reader a fragment at a time. */
+.row.in { animation: rise .34s cubic-bezier(.16,.84,.3,1) both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.bubble { padding: 11px 14px; border-radius: 16px; font-size: 14.5px; line-height: 1.55;
           word-wrap: break-word; overflow-wrap: anywhere; }
-.row.bot .bubble { background: var(--surface); border: 1px solid var(--line);
-                   border-bottom-left-radius: 5px; box-shadow: 0 1px 2px rgba(28,20,32,.04); }
-.row.user .bubble { background: linear-gradient(145deg, var(--a), var(--a-dark));
-                    color: #fff; border-bottom-right-radius: 5px; }
+.row.bot .bubble { background: var(--panel); border: 1px solid var(--rule);
+                   border-bottom-left-radius: 6px; color: var(--ink); }
+.row.user .bubble { background: var(--deep); color: #fff; border-bottom-right-radius: 6px; }
 
-.typing { display: flex; gap: 4px; align-items: center; padding: 13px; }
-.typing i { width: 6px; height: 6px; border-radius: 50%; background: #c3bcc2;
-            animation: blink 1.3s infinite; }
-.typing i:nth-child(2) { animation-delay: .18s; }
-.typing i:nth-child(3) { animation-delay: .36s; }
-@keyframes blink { 0%,60%,100% { opacity: .3; transform: translateY(0); }
-                   30% { opacity: 1; transform: translateY(-3px); } }
+/* one calm breath, not three bouncing balls */
+.typing { display: flex; gap: 5px; align-items: center; padding: 15px 16px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint);
+            animation: breathe 1.6s ease-in-out infinite; }
+.typing i:nth-child(2) { animation-delay: .22s; }
+.typing i:nth-child(3) { animation-delay: .44s; }
+@keyframes breathe {
+  0%, 60%, 100% { opacity: .28; }
+  30%           { opacity: .85; }
+}
 
-/* product cards */
-.cards { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; width: 100%; }
-.card { display: flex; gap: 10px; padding: 9px; background: var(--surface);
-        border: 1px solid var(--line); border-radius: 13px;
-        box-shadow: 0 1px 3px rgba(28,20,32,.05); }
-.card img, .noimg { width: 62px; height: 62px; border-radius: 9px; object-fit: cover;
-        flex: 0 0 auto; background: #f2eef0; }
+/* product cards - the commercial moment, so this is where the brand colour reappears */
+.cards { display: flex; flex-direction: column; gap: 9px; margin-top: 10px; width: 100%; }
+.card { display: flex; gap: 12px; padding: 11px; background: var(--panel);
+        border: 1px solid var(--rule); border-radius: 14px;
+        animation: rise .34s cubic-bezier(.16,.84,.3,1) both; }
+.card:nth-child(2) { animation-delay: .07s; }
+.card:nth-child(3) { animation-delay: .14s; }
+.card img, .noimg { width: 60px; height: 60px; border-radius: 10px; object-fit: cover;
+        flex: 0 0 auto; background: var(--paper); }
 .cbody { flex: 1; min-width: 0; }
-.ctitle { font-size: 13px; font-weight: 600; line-height: 1.32; margin-bottom: 3px;
+.ctitle { font-size: 13px; font-weight: 600; line-height: 1.35; letter-spacing: -.005em;
+          margin-bottom: 5px; color: var(--ink);
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
           overflow: hidden; }
-.cprice { font-size: 14px; font-weight: 700; color: var(--a); margin-bottom: 7px; }
-.cprice s { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 3px; }
-.cprice em { font-style: normal; font-size: 11px; font-weight: 600; color: #15803d;
-             background: #dcfce7; padding: 1px 5px; border-radius: 4px; margin-left: 3px; }
-.cbtns { display: flex; gap: 6px; }
-.btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px;
-       border-radius: 8px; cursor: pointer; border: 1px solid transparent;
-       text-decoration: none; display: inline-flex; align-items: center; }
-.btn.primary { background: var(--a); color: #fff; }
-.btn.primary:hover { background: var(--a-dark); }
-.btn.primary.done { background: #16a34a; }
-.btn.primary:disabled { opacity: .7; cursor: default; }
-.btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
-.btn.ghost:hover { color: var(--ink); border-color: #d4ccd0; }
+.cprice { font-size: 15px; font-weight: 700; color: var(--brand); margin-bottom: 9px;
+          letter-spacing: -.01em; }
+.cprice s { color: var(--faint); font-weight: 400; font-size: 12px; margin-left: 5px; }
+.cprice em { font-style: normal; font-size: 11px; font-weight: 600; color: #2f7d51;
+             margin-left: 5px; letter-spacing: 0; }
+.cbtns { display: flex; gap: 7px; }
+.btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 13px;
+       border-radius: 9px; cursor: pointer; border: 1px solid transparent;
+       text-decoration: none; display: inline-flex; align-items: center;
+       transition: background .15s, border-color .15s, color .15s; }
+.btn.primary { background: var(--deep); color: #fff; }
+.btn.primary:hover { background: var(--deep-soft); }
+.btn.primary.done { background: #2f7d51; }
+.btn.primary:disabled { opacity: .65; cursor: default; }
+.btn.ghost { background: transparent; color: var(--muted); border-color: var(--rule); }
+.btn.ghost:hover { color: var(--ink); border-color: #d9cdd1; }
+.btn:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
 
-/* whatsapp handoff */
-.wa { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px;
-      padding: 9px 14px; border-radius: 10px; background: #25D366; color: #fff;
+/* handoff */
+.wa { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
+      padding: 10px 15px; border-radius: 11px; background: #1faa54; color: #fff;
       font-size: 13.5px; font-weight: 600; text-decoration: none; align-self: flex-start;
-      box-shadow: 0 2px 8px rgba(37,211,102,.3); }
-.wa:hover { background: #1eb855; }
+      animation: rise .34s cubic-bezier(.16,.84,.3,1) both; animation-delay: .07s;
+      transition: background .15s; }
+.wa:hover { background: #18904c; }
+.wa:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
 
-/* chips */
-.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 14px 10px;
-         background: var(--sunk); }
+/* chips - neutral. Pink chips on a pink header was two shouts in one room. */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 16px 12px; background: var(--paper); }
 .chips[hidden] { display: none; }
-.chip { font: inherit; font-size: 12.5px; padding: 6px 11px; border-radius: 999px;
-        border: 1px solid #f0c9d3; background: #fff5f7; color: var(--a-dark);
-        cursor: pointer; }
-.chip:hover { background: #ffe9ee; border-color: #e8afbd; }
+.chip { font: inherit; font-size: 12.5px; padding: 7px 13px; border-radius: 999px;
+        border: 1px solid var(--rule); background: var(--panel); color: var(--muted);
+        cursor: pointer; transition: border-color .15s, color .15s; }
+.chip:hover { border-color: #d9cdd1; color: var(--ink); }
+.chip:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
 
 /* composer */
-.composer { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px 8px;
-            border-top: 1px solid var(--line); background: var(--surface); }
-.input { flex: 1; font: inherit; font-size: 14.5px; resize: none; border-radius: 12px;
-         border: 1px solid var(--line); background: var(--sunk); padding: 9px 12px;
-         max-height: 96px; color: var(--ink); }
-.input:focus { outline: none; border-color: var(--a); background: #fff;
-               box-shadow: 0 0 0 3px rgba(238,32,74,.1); }
-.input:disabled { opacity: .6; }
-.send { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 11px; border: 0;
-        background: linear-gradient(145deg, var(--a), var(--a-dark)); color: #fff;
-        cursor: pointer; display: grid; place-items: center; }
-.send:hover { filter: brightness(1.06); }
-.send:disabled { opacity: .45; cursor: default; }
+.composer { display: flex; gap: 9px; align-items: flex-end; padding: 12px 14px 9px;
+            border-top: 1px solid var(--rule); background: var(--panel); }
+.input { flex: 1; font: inherit; font-size: 14.5px; line-height: 1.5; resize: none;
+         border-radius: 12px; border: 1px solid var(--rule); background: var(--paper);
+         padding: 10px 13px; max-height: 96px; color: var(--ink); overflow-y: hidden;
+         transition: border-color .15s, background .15s; }
+.input::placeholder { color: var(--faint); }
+.input:focus { outline: none; border-color: var(--deep); background: var(--panel); }
+.input:disabled { opacity: .55; }
+.send { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; border: 0;
+        background: var(--deep); color: #fff; cursor: pointer;
+        display: grid; place-items: center; transition: background .15s, opacity .15s; }
+.send:hover { background: var(--deep-soft); }
+.send:disabled { opacity: .35; cursor: default; }
+.send:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
 
-.legal { margin: 0; padding: 0 14px 10px; font-size: 10.5px; line-height: 1.42;
-         color: #9a939c; background: var(--surface); text-align: center; }
+.legal { margin: 0; padding: 0 16px 12px; font-size: 10.5px; line-height: 1.45;
+         color: var(--faint); background: var(--panel); text-align: center; }
 
-/* mobile: full screen, and dodge the iOS keyboard */
 @media (max-width: 560px) {
+  .wrap { --gap-bottom: ${CONFIG.bottomMobile}; --gap-right: 16px; }
   .panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw;
            height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
-  /* Phones get their own offset: a sticky add-to-cart bar is a mobile-only problem. */
-  .wrap { --gap-bottom: ${CONFIG.bottomMobile}; --gap-right: 16px; }
-  .launcher { width: 56px; height: 56px; }
-  .row { max-width: 92%; }
+  .launcher { width: 54px; height: 54px; }
+  .row { max-width: 90%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse { animation: none; }
-  .row.in { animation: none; }
-  .panel, .launcher { transition: none; }
-  .log { scroll-behavior: auto; }
+  .row.in, .card, .wa { animation: none; }
+  .typing i { animation: none; opacity: .5; }
+  .panel, .launcher, .btn, .chip, .input, .send { transition: none; }
 }
 `;
   }
