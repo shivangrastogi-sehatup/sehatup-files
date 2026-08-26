@@ -1,0 +1,324 @@
+================================================================================
+ SEHATUP CRM — PRESCRIPTION DIET & LIFESTYLE TEMPLATES
+ OVERVIEW OF ALL 6 TEMPLATES
+================================================================================
+ Generated : 2026-08-21
+ Scope     : The "Prescription Template (Diet & Lifestyle)" dropdown shown while
+             creating a prescription in the Sehatup CRM.
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ 1. WHAT THIS IS
+--------------------------------------------------------------------------------
+
+When a doctor/agent creates a prescription in the CRM, the "Clinical Diagnosis"
+section has a dropdown called:
+
+        "Prescription Template (Diet & Lifestyle)"
+
+Picking one of the 6 options attaches a full, pre-written PCOD diet + lifestyle
+plan to the generated prescription PDF. It becomes PAGE 2 of the PDF, presented
+to the patient as:
+
+        "Your Complimentary Free Personalized Diet Plan (Worth Rs.1500)
+         is Ready!"
+        Prepared by: Dr. Somya Sharma (BHMS, Dietician)
+
+Choosing "N/A (No Diet Template)" produces a normal single-page prescription
+with no diet plan attached.
+
+All 6 templates are PCOD/PCOS variants. They differ by patient sub-type
+(lean vs overweight, fertility, thyroid+sugar, mental health, general).
+
+
+--------------------------------------------------------------------------------
+ 2. THE 6 TEMPLATES AT A GLANCE
+--------------------------------------------------------------------------------
+
+ #  KEY (stored in Firestore)      DROPDOWN LABEL                          FILE
+ -  ---------------------------    ------------------------------------    ----
+ 1  lean_to_weight_gain            PCOD - Lean Type (Weight Gain)          01
+ 2  weight_to_lean                 PCOD - Overweight Type (Weight Loss)    02
+ 3  infertility_pcod_pcos          PCOD - Infertility & Irregular Periods  03
+ 4  thyroid_diabetes_pcod          PCOD - Thyroid + Diabetes (Leucorrhea)  04
+ 5  pcod_mood_anxiety_insomnia     PCOD - Mood Swings, Anxiety & Insomnia  05
+ 6  general_pcod_pcos              PCOD - General (Irregular Periods)      06
+
+ WHEN TO PICK WHICH
+ ------------------
+ 1. lean_to_weight_gain
+       Underweight/lean PCOD patient. Complains of hairfall, weakness and
+       heavy periods. Goal = healthy WEIGHT GAIN + fixing deficiency.
+       This is the only template with NO calorie restriction on dinner.
+
+ 2. weight_to_lean
+       Overweight PCOD patient with acne, hairfall, irregular periods.
+       Goal = WEIGHT LOSS, insulin/metabolism control, skin + hair.
+
+ 3. infertility_pcod_pcos
+       Patient trying to conceive / has ovulation problems.
+       Goal = egg quality, ovulation support, reproductive health.
+
+ 4. thyroid_diabetes_pcod
+       PCOD co-existing with thyroid imbalance and/or sugar tendency,
+       plus leucorrhea (white discharge) and weakness.
+       Goal = blood-sugar control + thyroid support.
+
+ 5. pcod_mood_anxiety_insomnia
+       PCOD where the dominant complaint is psychological: mood swings,
+       anxiety, overthinking, poor sleep.
+       Goal = nervous-system support and sleep quality.
+
+ 6. general_pcod_pcos
+       Default / fallback when the patient does not fit a specific sub-type.
+       STRUCTURALLY DIFFERENT from the other 5 (see section 5 below): it is
+       written as an educational 6-8 week protocol with numbered dietician
+       tips and seed cycling, not as a food+benefit meal chart.
+
+
+--------------------------------------------------------------------------------
+ 3. WHERE THIS LIVES IN CODE  (important)
+--------------------------------------------------------------------------------
+
+There are THREE places that touch these templates. Only ONE of them holds the
+actual diet content.
+
+ A) THE DROPDOWN — labels only, NO content
+    ----------------------------------------
+    sehatup-analytics/src/NewUI.jsx : line 5201
+        const DIET_TEMPLATES = {
+          lean_to_weight_gain: { label: "...", advice: [] },
+          ...
+        };
+    NOTE: every `advice` array here is EMPTY. This object exists only to
+    render the <select> options. It is a dead placeholder for content.
+
+    sehatup-analytics/src/components/PrescriptionEditor.jsx : lines 1373-1378
+        The same 6 options, but HARD-CODED as <option> tags rather than
+        mapped from an object. If a 7th template is ever added, this file
+        must be edited separately or it will silently fall out of sync.
+        (PrescriptionEditor.jsx is the older editor; NewUI.jsx
+        PrescriptionComposer at line 5175 is the live one.)
+
+ B) THE ACTUAL DIET CONTENT — the single source of truth
+    ------------------------------------------------------
+    sehatup-firebase/functions/index.js : lines 135-493
+        const DIET_PLANS = { ...all 6 full plans... };
+
+    >>> TO CHANGE ANY DIET TEXT YOU MUST EDIT THIS FILE AND REDEPLOY THE
+    >>> CLOUD FUNCTIONS. It cannot be edited from the CRM UI, and it is NOT
+    >>> stored in Firestore.
+
+    Injection helper, index.js line 495:
+        const injectDietPlan = (data) => {
+          const selectedTemplate = data.prescriptionTemplate;
+          if (selectedTemplate && DIET_PLANS[selectedTemplate]) {
+            data.dietPlan  = DIET_PLANS[selectedTemplate];
+            data.hasDietPlan = true;
+          } else {
+            data.hasDietPlan = false;
+          }
+        };
+
+ C) THE PDF LAYOUT
+    ----------------
+    sehatup-firebase/functions/templates/prescriptionTemplateV3.html
+        lines ~815-965 render the diet plan page using Handlebars
+        ({{dietPlan.condition}}, {{#each dietPlan.meals}}, etc.).
+        The whole block is wrapped in {{#if hasDietPlan}}.
+
+    Active template version is v3 ("Standard Clinical Template
+    V3 - Blue/Charcoal"), shown read-only in
+    sehatup-analytics/src/components/PrescriptionConfigManager.jsx.
+
+ D) VERIFIED: NOWHERE ELSE
+    -------------------------
+    A grep for the six template keys across the WHOLE monorepo returns
+    only these live source files:
+
+        sehatup-analytics/src/NewUI.jsx                       (labels)
+        sehatup-analytics/src/components/PrescriptionEditor.jsx (labels)
+        sehatup-firebase/functions/index.js                   (content)
+
+    plus a compiled bundle (sehatup-analytics/build/static/js/main.*.js)
+    and a stale git worktree copy under .claude/worktrees/, neither of
+    which is a source of truth.
+
+    In particular sehatup-mobile does NOT reference these keys at all —
+    the diet plans exist only in the CRM dropdown and the generated PDF.
+    They are not surfaced anywhere in the patient-facing mobile app.
+
+
+--------------------------------------------------------------------------------
+ 4. DATA FLOW — FROM DROPDOWN TO PDF
+--------------------------------------------------------------------------------
+
+  1. Agent picks an option in the CRM.
+     -> React state `prescriptionTemplate` = the key string
+        (e.g. "thyroid_diabetes_pcod").
+
+  2. On save, the key is written onto the prescription document:
+        NewUI.jsx line 5509                 prescriptionTemplate: <key> || null
+        PrescriptionEditor.jsx line 1016    prescriptionTemplate: <key> || null
+     Firestore collection: prescriptions/{docId}
+
+  3. A Cloud Function picks it up. Three entry points all call injectDietPlan():
+        - CreatePrescriptionPDFOnTrigger   (index.js:1528)
+             Firestore onDocumentCreated "prescriptions/{docId}"
+             4GiB / 300s / us-central1
+        - generatePrescriptionPDF_HTTP     (index.js:1695)
+             HTTP, CORS-open, for manual/re-generation
+        - testDietPrescriptionPDF          (index.js:946)
+             Test-only endpoint, see section 6.
+
+  4. injectDietPlan() looks the key up in DIET_PLANS and sets
+     data.dietPlan + data.hasDietPlan.
+
+  5. prescriptionTemplateV3.html renders page 2 from data.dietPlan.
+
+  6. The chosen template is also echoed back in the CRM prescription detail
+     view as a "Template" row (NewUI.jsx line 13538); it shows "None" when
+     no template was selected.
+
+
+--------------------------------------------------------------------------------
+ 5. FIELD SCHEMA — WHAT A TEMPLATE OBJECT CAN CONTAIN
+--------------------------------------------------------------------------------
+
+ FIELD              TYPE      RENDERED AS (PDF card)
+ -----------------  --------  ------------------------------------------------
+ condition          string    Red pill badge: "Condition: ..."
+ subtitle           string    Italic grey line under the title
+ understandingItems string[]  "UNDERSTANDING YOUR CONDITION" bullet card
+ meals              object[]  2-column grid of meal cards. Each meal has:
+                                 time    (string, card heading)
+                                 food    (string)   -- style A
+                                 items   (string[]) -- style B
+                                 benefit (string, italic footer)
+ dailyAddons        {food,    Green-headed "DAILY ADD-ONS" card
+                     benefit}
+ specialFocus       {title,   Amber-headed "SPECIAL FOCUS — <title>" card,
+                     food,    sits beside Daily Add-ons
+                     benefit}
+ advancedTips       string[]  Purple-headed NUMBERED "ADVANCED DIETICIAN TIPS"
+ avoidFoods         string[]  "FOODS TO AVOID / LIMIT" card (left of Lifestyle)
+ lifestyle          string[]  Blue-headed "LIFESTYLE INSTRUCTIONS" card
+ hydration          string    Card with water-drop icon
+ followUp           string    Card with calendar icon
+ note               string    Italic "NOTE" card at the very bottom
+
+ Every field except `meals` and `lifestyle` is optional and wrapped in an
+ {{#if}}, so a template that omits it simply drops that card.
+
+
+ FIELD COVERAGE MATRIX
+ ---------------------
+ (Y = present, - = absent)
+
+                        lean  wt2   infert  thy   mood  general
+ condition               Y     Y      Y      Y     Y      Y
+ subtitle                Y     Y      Y      Y     Y      Y
+ understandingItems      -     -      -      -     -      Y
+ meals (food+benefit)    Y     Y      Y      Y     Y      -
+ meals (items[])         -     -      -      -     -      Y
+ dailyAddons             Y     Y      Y      Y     Y      -
+ specialFocus            Y     -      Y      Y     Y      -
+ advancedTips            -     -      -      -     -      Y
+ avoidFoods              Y     Y      Y      Y     Y      -
+ lifestyle               Y     Y      Y      Y     Y      Y
+ hydration               Y     Y      -      -     -      -
+ followUp                Y     Y      Y      Y     Y      -
+ note                    Y     Y      -      -     -      Y
+
+ Meal count is 6 for all six templates.
+
+
+ LAYOUT SIDE-EFFECTS WORTH KNOWING
+ ---------------------------------
+ * Only lean_to_weight_gain and weight_to_lean print a hydration card.
+   The other four give no water target on the PDF even though several of
+   them mention hydration inside their lifestyle bullets.
+
+ * general_pcod_pcos is the odd one out: no dailyAddons, no specialFocus,
+   no avoidFoods, no hydration, no followUp. In the PDF the
+   "Foods to Avoid / Limit" + "Lifestyle" row is a fixed 1fr 1fr grid, so
+   with avoidFoods missing the Lifestyle card renders in the left column and
+   the right half is blank. Similarly the hydration/follow-up row renders as
+   an empty container. Cosmetic only, but it is why the general plan's page 2
+   looks sparser than the others.
+
+ * general_pcod_pcos is also the only template whose meals use `items[]`
+   (bulleted sub-points) instead of a single `food` string, and the only
+   one with numbered advancedTips.
+
+
+--------------------------------------------------------------------------------
+ 6. TESTING A TEMPLATE WITHOUT CREATING A REAL PRESCRIPTION
+--------------------------------------------------------------------------------
+
+ index.js line 946 exposes a test endpoint that renders a full 2-page PDF
+ (page 1 = Rx, page 2 = diet plan):
+
+        GET /testDietPrescriptionPDF?template=<key>
+
+ Examples:
+        /testDietPrescriptionPDF?template=lean_to_weight_gain
+        /testDietPrescriptionPDF?template=general_pcod_pcos
+
+ * If ?template= is omitted it DEFAULTS to thyroid_diabetes_pcod.
+ * An unknown key returns HTTP 400 with the list of valid options.
+ * It generates a throwaway doc id of the form DIET-TEST-<timestamp>.
+ * Config: 2GiB memory, 300s timeout, region us-central1.
+
+
+--------------------------------------------------------------------------------
+ 7. KNOWN GOTCHAS / MAINTENANCE NOTES
+--------------------------------------------------------------------------------
+
+ 1. DIET_TEMPLATES.advice in NewUI.jsx is dead. Every entry is `advice: []`.
+    Do not expect to find diet content in the React app.
+
+ 2. The dropdown list exists in TWO places with two different mechanisms
+    (mapped object in NewUI.jsx, hard-coded <option>s in
+    PrescriptionEditor.jsx). Adding or renaming a template means editing
+    both, plus DIET_PLANS in functions/index.js.
+
+ 3. Dropdown order differs from the backend object order. The UI shows
+    "General" last; in DIET_PLANS `general_pcod_pcos` is declared 5th
+    (before pcod_mood_anxiety_insomnia). Harmless — lookup is by key — but
+    don't rely on index position anywhere.
+
+ 4. The dietician credit line "Dr. Somya Sharma (BHMS, Dietician)" is
+    HARD-CODED into prescriptionTemplateV3.html, not driven by the doctor
+    who actually signed the prescription.
+
+ 5. The "Worth Rs.1500" banner is also hard-coded in the HTML template.
+
+ 6. The template key is stored as `null` (not "") when N/A is chosen.
+
+ 7. Every plan says "Review after 15 days" except general_pcod_pcos, which
+    instead says "Follow consistently for 6-8 weeks".
+
+ 8. Several plans include curd; only general_pcod_pcos carries the
+    "skip if white discharge" caveat, while thyroid_diabetes_pcod
+    (the leucorrhea template) actively recommends daytime curd.
+
+
+--------------------------------------------------------------------------------
+ 8. FILES IN THIS FOLDER
+--------------------------------------------------------------------------------
+
+ 00-OVERVIEW-ALL-TEMPLATES.txt        <- this file
+ 01-lean_to_weight_gain.txt           PCOD - Lean Type (Weight Gain)
+ 02-weight_to_lean.txt                PCOD - Overweight Type (Weight Loss)
+ 03-infertility_pcod_pcos.txt         PCOD - Infertility & Irregular Periods
+ 04-thyroid_diabetes_pcod.txt         PCOD - Thyroid + Diabetes (Leucorrhea)
+ 05-pcod_mood_anxiety_insomnia.txt    PCOD - Mood Swings, Anxiety & Insomnia
+ 06-general_pcod_pcos.txt             PCOD - General (Irregular Periods)
+
+ Each per-template file opens with a summary block (what it is, who it is
+ for, how it is structured) followed by the complete verbatim content of the
+ plan exactly as it appears in functions/index.js.
+
+================================================================================

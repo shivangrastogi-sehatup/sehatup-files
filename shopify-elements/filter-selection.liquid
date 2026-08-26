@@ -1,0 +1,611 @@
+<div class="ai-filter-section-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-filter-section__container-{{ ai_gen_id }}">
+    {% if block.settings.heading != blank %}
+      <h2 class="ai-filter-heading-{{ ai_gen_id }}">{{ block.settings.heading }}</h2>
+    {% endif %}
+
+    {% if block.settings.subheading != blank %}
+      <p class="ai-filter-subheading-{{ ai_gen_id }}">{{ block.settings.subheading }}</p>
+    {% endif %}
+
+    <ul class="ai-pills-container-{{ ai_gen_id }}" role="list">
+      {% for i in (1..12) %}
+        {% assign pill_enabled_key = 'pill_' | append: i | append: '_enabled' %}
+        {% assign pill_text_key = 'pill_' | append: i | append: '_text' %}
+
+        {% assign pill_enabled = block.settings[pill_enabled_key] %}
+        {% assign pill_text = block.settings[pill_text_key] %}
+
+        {% if pill_enabled and pill_text != blank %}
+          <li class="ai-pill-{{ ai_gen_id }}">{{ pill_text }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+{% style %}
+  .ai-filter-section-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    background-color: {{ block.settings.section_bg_color }};
+    padding: {{ block.settings.section_padding_top }}px 20px {{ block.settings.section_padding_bottom }}px;
+  }
+
+  .ai-filter-section__container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.content_max_width }}px;
+    margin: 0 auto;
+  }
+
+  .ai-filter-heading-{{ ai_gen_id }} {
+    font-size: clamp(24px,3.4vw,64px);
+    font-weight: {{ block.settings.heading_weight }};
+    color: {{ block.settings.heading_color }};
+    text-align: {{ block.settings.heading_alignment }};
+    margin: 0 0 {{ block.settings.heading_to_subheading_spacing }}px;
+    line-height: 1.2;
+  }
+
+  .ai-filter-subheading-{{ ai_gen_id }} {
+    font-size: clamp(14px, 1.5vw, 34px);
+    font-weight: {{ block.settings.subheading_weight }};
+    color: {{ block.settings.subheading_color }};
+    text-align: {{ block.settings.subheading_alignment }};
+    margin: 0 0 {{ block.settings.subheading_to_pills_spacing }}px;
+    line-height: 1.4;
+  }
+
+  .ai-pills-container-{{ ai_gen_id }} {
+    display: flex;
+    flex-wrap: wrap;
+    gap: {{ block.settings.pills_gap }}px;
+    justify-content: {{ block.settings.pills_alignment }};
+    margin: 0 0 {{ block.settings.pills_bottom_spacing }}px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ai-pill-{{ ai_gen_id }} {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: {{ block.settings.pill_padding_vertical }}px {{ block.settings.pill_padding_horizontal }}px;
+    background-color: {{ block.settings.pill_bg_color }};
+    color: {{ block.settings.pill_text_color }};
+    border: {{ block.settings.pill_border_thickness }}px solid {{ block.settings.pill_border_color }};
+    border-radius: {{ block.settings.pill_radius }}px;
+    font-size: clamp(10px, 1vw, 20px);
+    font-weight: {{ block.settings.pill_font_weight }};
+    letter-spacing: {{ block.settings.pill_letter_spacing }}px;
+    white-space: nowrap;
+    cursor: default;
+    user-select: none;
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-filter-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size | times: 0.8 }}px;
+    }
+
+    .ai-filter-subheading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.subheading_size | times: 0.85 }}px;
+    }
+
+    {% if block.settings.mobile_pills_layout == 'scroll' %}
+      .ai-pills-container-{{ ai_gen_id }} {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+    {% endif %}
+
+    .ai-pill-{{ ai_gen_id }} {
+      font-size: {{ block.settings.pill_font_size | times: 0.9 }}px;
+      padding: {{ block.settings.pill_padding_vertical | times: 0.9 }}px {{ block.settings.pill_padding_horizontal | times: 0.9 }}px;
+    }
+  }
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Symptom pills",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section"
+    },
+    {
+      "type": "color",
+      "id": "section_bg_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "content_max_width",
+      "label": "Content max width",
+      "min": 600,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Padding top",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 50
+    },
+    {
+      "type": "header",
+      "content": "Heading"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading text",
+      "default": "What Do You Need Help With?"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Font size",
+      "min": 20,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "info": "Desktop size is fluid; this value applies below 750px.",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "heading_weight",
+      "label": "Font weight",
+      "min": 400,
+      "max": 700,
+      "step": 100,
+      "default": 600
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Text color",
+      "default": "#262626"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "heading_to_subheading_spacing",
+      "label": "Spacing to subheading",
+      "min": 5,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "header",
+      "content": "Subheading"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading text",
+      "default": "The Power Of Three Medical Systems Working Together"
+    },
+    {
+      "type": "range",
+      "id": "subheading_size",
+      "label": "Font size",
+      "min": 12,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "info": "Desktop size is fluid; this value applies below 750px.",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "subheading_weight",
+      "label": "Font weight",
+      "min": 400,
+      "max": 700,
+      "step": 100,
+      "default": 400
+    },
+    {
+      "type": "color",
+      "id": "subheading_color",
+      "label": "Text color",
+      "default": "#666666"
+    },
+    {
+      "type": "select",
+      "id": "subheading_alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "subheading_to_pills_spacing",
+      "label": "Spacing to pills",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Pills"
+    },
+    {
+      "type": "paragraph",
+      "content": "Display-only labels. Not clickable, no hover or selected state. A pill appears only if it is enabled AND has Text."
+    },
+    {
+      "type": "select",
+      "id": "pills_alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "flex-start", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "flex-end", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "pills_gap",
+      "label": "Gap between pills",
+      "min": 5,
+      "max": 30,
+      "step": 5,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "pills_bottom_spacing",
+      "label": "Spacing below pills",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Pill style"
+    },
+    {
+      "type": "range",
+      "id": "pill_padding_vertical",
+      "label": "Vertical padding",
+      "min": 5,
+      "max": 25,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "pill_padding_horizontal",
+      "label": "Horizontal padding",
+      "min": 10,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "color",
+      "id": "pill_bg_color",
+      "label": "Background color",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "pill_text_color",
+      "label": "Text color",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "pill_border_color",
+      "label": "Border color",
+      "default": "#d1d1d1"
+    },
+    {
+      "type": "range",
+      "id": "pill_border_thickness",
+      "label": "Border thickness",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "pill_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "pill_font_size",
+      "label": "Font size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "info": "Desktop size is fluid; this value applies below 750px.",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "pill_font_weight",
+      "label": "Font weight",
+      "min": 400,
+      "max": 700,
+      "step": 100,
+      "default": 500
+    },
+    {
+      "type": "range",
+      "id": "pill_letter_spacing",
+      "label": "Letter spacing",
+      "min": 0,
+      "max": 2,
+      "step": 0.1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Pill 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_1_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_1_text",
+      "label": "Text",
+      "default": "Irregular periods"
+    },
+    {
+      "type": "header",
+      "content": "Pill 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_2_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_2_text",
+      "label": "Text",
+      "default": "Painful cramps & PMS"
+    },
+    {
+      "type": "header",
+      "content": "Pill 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_3_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_3_text",
+      "label": "Text",
+      "default": "Heavy or missed periods"
+    },
+    {
+      "type": "header",
+      "content": "Pill 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_4_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_4_text",
+      "label": "Text",
+      "default": "Period bloating"
+    },
+    {
+      "type": "header",
+      "content": "Pill 5"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_5_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_5_text",
+      "label": "Text",
+      "default": "PCOS / PCOD"
+    },
+    {
+      "type": "header",
+      "content": "Pill 6"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_6_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_6_text",
+      "label": "Text",
+      "default": "PCOS acne"
+    },
+    {
+      "type": "header",
+      "content": "Pill 7"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_7_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_7_text",
+      "label": "Text",
+      "default": "Unwanted facial hair"
+    },
+    {
+      "type": "header",
+      "content": "Pill 8"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_8_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_8_text",
+      "label": "Text",
+      "default": "Mood swings & irritability"
+    },
+    {
+      "type": "header",
+      "content": "Pill 9"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_9_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_9_text",
+      "label": "Text",
+      "default": "Hair fall & thinning"
+    },
+    {
+      "type": "header",
+      "content": "Pill 10"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_10_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_10_text",
+      "label": "Text",
+      "default": "Trouble losing weight"
+    },
+    {
+      "type": "header",
+      "content": "Pill 11"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_11_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_11_text",
+      "label": "Text",
+      "default": "Stubborn belly fat"
+    },
+    {
+      "type": "header",
+      "content": "Pill 12"
+    },
+    {
+      "type": "checkbox",
+      "id": "pill_12_enabled",
+      "label": "Enable",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "pill_12_text",
+      "label": "Text",
+      "default": "Sugar & carb cravings"
+    },
+    {
+      "type": "header",
+      "content": "Mobile settings"
+    },
+    {
+      "type": "select",
+      "id": "mobile_pills_layout",
+      "label": "Pills layout",
+      "options": [
+        { "value": "wrap", "label": "Wrap" },
+        { "value": "scroll", "label": "Horizontal scroll" }
+      ],
+      "default": "wrap"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Symptom pills"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,278 @@
+{%- comment -%}
+  ============================================================================
+  main-product.liquid — SCHEMA PATCH  (2 edits)
+  ============================================================================
+
+  EDIT 1 of 2 — replace the JSON-LD block
+  ---------------------------------------
+  In sections/main-product.liquid, Ctrl+F for:   structured_data
+  You will find this, near the bottom, just above  </div></product-info> :
+
+      {%- liquid
+        if product.selected_or_first_available_variant.featured_media
+          assign seo_media = product.selected_or_first_available_variant.featured_media
+        else
+          assign seo_media = product.featured_media
+        endif
+      -%}
+
+      <script type="application/ld+json">
+        {{ product | structured_data }}
+      </script>
+
+  Select ALL of that (from `{%- liquid` down to `</script>`) and replace it
+  with everything between the ===EDIT 1 START=== and ===EDIT 1 END=== markers
+  below.
+
+
+  EDIT 2 of 2 — add the settings
+  ------------------------------
+  In the same file, Ctrl+F for:   section_padding_heading
+  You will find, inside the top-level "settings" array:
+
+      {
+        "type": "header",
+        "content": "t:sections.all.padding.section_padding_heading"
+      },
+
+  Paste the block between ===EDIT 2 START=== and ===EDIT 2 END=== immediately
+  BEFORE that opening `{`, so the new settings sit above the padding group.
+  ============================================================================
+{%- endcomment -%}
+
+
+{%- comment -%} ===EDIT 1 START=== {%- endcomment -%}
+
+    {%- liquid
+      assign seo_media = product.selected_or_first_available_variant.featured_media | default: product.featured_media
+
+      assign v = product.selected_or_first_available_variant
+      assign cur = cart.currency.iso_code
+      assign site = request.origin
+      assign product_url = product.url | prepend: site
+
+      assign desc = product.description
+      assign desc = desc | replace: '</p>', ' ' | replace: '</li>', ' ' | replace: '</div>', ' '
+      assign desc = desc | replace: '<br>', ' ' | replace: '<br/>', ' ' | replace: '<br />', ' '
+      assign desc = desc | strip_html
+      assign desc = desc | replace: '[description]', ' ' | replace: '[benefits]', ' '
+      assign desc = desc | replace: '[ingredients]', ' ' | replace: '[how_to_use]', ' '
+      assign desc = desc | replace: '[safety]', ' ' | replace: '[details]', ' '
+      assign desc = desc | strip_newlines | replace: '  ', ' ' | replace: '  ', ' ' | strip | truncate: 500
+
+      assign rating = product.metafields.reviews.rating
+      assign rating_count = product.metafields.reviews.rating_count
+      assign has_rating = false
+      if rating_count != blank and rating_count.value > 0 and rating != blank and rating.value.rating != blank
+        assign has_rating = true
+      endif
+
+      assign bc = collection
+      if bc == blank or bc.handle == 'all' or bc.handle == 'frontpage'
+        assign bc = nil
+        for c in product.collections
+          unless c.handle == 'all' or c.handle == 'frontpage'
+            assign bc = c
+            break
+          endunless
+        endfor
+      endif
+    -%}
+
+    {%- if section.settings.enable_product_schema -%}
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "@id": {{ product_url | append: '#product' | json }},
+          "name": {{ product.title | json }},
+          {%- if desc != blank %}
+          "description": {{ desc | json }},
+          {%- endif %}
+          "url": {{ product_url | json }},
+          {%- if v.sku != blank %}
+          "sku": {{ v.sku | json }},
+          {%- endif %}
+          {%- if v.barcode != blank %}
+          "gtin": {{ v.barcode | json }},
+          {%- endif %}
+          "brand": {
+            "@type": "Brand",
+            "name": {{ product.vendor | default: shop.name | json }}
+          },
+          {%- if product.type != blank %}
+          "category": {{ product.type | json }},
+          {%- endif %}
+          "image": [
+            {%- if product.images.size > 0 -%}
+              {%- for img in product.images limit: 5 -%}
+                {%- unless forloop.first %},{% endunless -%}
+                {{ img | image_url: width: 1600 | prepend: 'https:' | json }}
+              {%- endfor -%}
+            {%- elsif seo_media -%}
+              {{ seo_media | image_url: width: 1600 | prepend: 'https:' | json }}
+            {%- endif -%}
+          ],
+          {%- if has_rating %}
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": {{ rating.value.rating }},
+            "bestRating": {{ rating.value.scale_max | default: 5 }},
+            "worstRating": {{ rating.value.scale_min | default: 1 }},
+            "reviewCount": {{ rating_count.value }}
+          },
+          {%- endif %}
+          "offers": {
+            {%- if product.variants.size > 1 %}
+            "@type": "AggregateOffer",
+            "offerCount": {{ product.variants.size }},
+            "lowPrice": {{ product.price_min | divided_by: 100.0 }},
+            "highPrice": {{ product.price_max | divided_by: 100.0 }},
+            {%- else %}
+            "@type": "Offer",
+            "price": {{ v.price | divided_by: 100.0 }},
+            "priceValidUntil": {{ 'now' | date: '%Y' | plus: 1 | append: '-12-31' | json }},
+            {%- endif %}
+            "priceCurrency": {{ cur | json }},
+            "availability": {% if product.available %}"https://schema.org/InStock"{% else %}"https://schema.org/OutOfStock"{% endif %},
+            "itemCondition": "https://schema.org/NewCondition",
+            "url": {{ product_url | json }},
+            "seller": { "@id": {{ site | append: '/#organization' | json }} },
+            "shippingDetails": {
+              "@type": "OfferShippingDetails",
+              "shippingRate": {
+                "@type": "MonetaryAmount",
+                "value": {{ section.settings.schema_ship_cost | default: 0 }},
+                "currency": {{ cur | json }}
+              },
+              "shippingDestination": {
+                "@type": "DefinedRegion",
+                "addressCountry": "IN"
+              },
+              "deliveryTime": {
+                "@type": "ShippingDeliveryTime",
+                "handlingTime": {
+                  "@type": "QuantitativeValue",
+                  "minValue": 0,
+                  "maxValue": 1,
+                  "unitCode": "DAY"
+                },
+                "transitTime": {
+                  "@type": "QuantitativeValue",
+                  "minValue": {{ section.settings.schema_ship_min_days | default: 2 }},
+                  "maxValue": {{ section.settings.schema_ship_max_days | default: 7 }},
+                  "unitCode": "DAY"
+                }
+              }
+            },
+            "hasMerchantReturnPolicy": {
+              "@type": "MerchantReturnPolicy",
+              "applicableCountry": "IN",
+              "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+              "merchantReturnDays": {{ section.settings.schema_return_days | default: 7 }},
+              "returnMethod": "https://schema.org/ReturnByMail",
+              "returnFees": "https://schema.org/FreeReturn"
+            }
+          }
+        }
+      </script>
+
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": {{ site | json }}
+            }
+            {%- if bc != blank -%}
+            ,{
+              "@type": "ListItem",
+              "position": 2,
+              "name": {{ bc.title | json }},
+              "item": {{ bc.url | prepend: site | json }}
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": {{ product.title | json }}
+            }
+            {%- else -%}
+            ,{
+              "@type": "ListItem",
+              "position": 2,
+              "name": {{ product.title | json }}
+            }
+            {%- endif -%}
+          ]
+        }
+      </script>
+    {%- endif -%}
+
+{%- comment -%} ===EDIT 1 END=== {%- endcomment -%}
+
+
+{%- comment -%}
+  ===EDIT 2 START===
+  Paste the JSON below (including the trailing comma) immediately BEFORE the
+  `{ "type": "header", "content": "t:sections.all.padding.section_padding_heading" }`
+  entry in the top-level "settings" array.
+{%- endcomment -%}
+
+    {
+      "type": "header",
+      "content": "Search engine listing (schema)"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_product_schema",
+      "label": "Output Product schema (JSON-LD)",
+      "info": "Turn OFF only if a SEO app is already outputting Product schema on product pages. Two Product blocks on one page is invalid.",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "schema_ship_min_days",
+      "min": 0,
+      "max": 14,
+      "step": 1,
+      "unit": "d",
+      "label": "Delivery: fastest (days)",
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "schema_ship_max_days",
+      "min": 1,
+      "max": 30,
+      "step": 1,
+      "unit": "d",
+      "label": "Delivery: slowest (days)",
+      "default": 7
+    },
+    {
+      "type": "range",
+      "id": "schema_ship_cost",
+      "min": 0,
+      "max": 500,
+      "step": 10,
+      "unit": "Rs",
+      "label": "Shipping cost shown to Google",
+      "info": "0 means free shipping.",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "schema_return_days",
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "unit": "d",
+      "label": "Return window (days)",
+      "default": 7
+    },
+
+{%- comment -%} ===EDIT 2 END=== {%- endcomment -%}

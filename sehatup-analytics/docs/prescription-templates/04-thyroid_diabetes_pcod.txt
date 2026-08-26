@@ -1,0 +1,143 @@
+================================================================================
+ TEMPLATE 4 OF 6 — PCOD + THYROID + DIABETES (LEUCORRHEA)
+================================================================================
+ Key           : thyroid_diabetes_pcod
+ Dropdown label: "PCOD – Thyroid + Diabetes (Leucorrhea)"
+ Defined in    : sehatup-firebase/functions/index.js, DIET_PLANS (line 306)
+ Rendered by   : functions/templates/prescriptionTemplateV3.html (page 2)
+ Test URL      : /testDietPrescriptionPDF?template=thyroid_diabetes_pcod
+                 (this is ALSO the DEFAULT when ?template= is omitted)
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ ABOUT THIS TEMPLATE
+--------------------------------------------------------------------------------
+
+ WHO IT IS FOR
+   The most co-morbid of the six: PCOD occurring together with a thyroid
+   imbalance AND a sugar tendency (pre-diabetic / diabetic), plus leucorrhea
+   (white discharge) and weakness.
+
+ CLINICAL GOAL
+   Blood-sugar control and thyroid support at the same time, without letting
+   the patient get weaker. Methi seeds open the day specifically for glucose
+   control, and every snack is chosen to be low-sugar but anti-fatigue.
+
+ HOW IT DIFFERS FROM THE OTHERS
+   * IT IS THE DEFAULT TEMPLATE OF THE TEST ENDPOINT. If someone hits
+     /testDietPrescriptionPDF with no ?template= parameter, this plan is
+     what renders. Useful to know when a test PDF "looks wrong" — it may
+     simply be this plan rather than the one you expected.
+   * The only plan that addresses leucorrhea. Its Special Focus card
+     recommends daytime curd, coconut water and green vegetables.
+   * NOTE THE CONTRADICTION with template 06: general_pcod_pcos says
+     "1 bowl curd (skip if white discharge)", whereas this plan — the
+     leucorrhea plan — actively prescribes curd during the day. If a
+     dietician ever revises these, this is the inconsistency to resolve.
+   * Adds black raisins to the daily seed mix (only this plan and template
+     01 use black raisins).
+   * NO hydration card and NO note card.
+
+ STRUCTURE
+   Short-form layout, same shape as templates 03 and 05: 6 meal cards
+   (time / food / benefit), Daily Add-ons, Special Focus, Foods to Avoid,
+   Lifestyle, Follow-Up.
+
+ FIELDS PRESENT
+   condition, subtitle, meals(6), dailyAddons, specialFocus, avoidFoods,
+   lifestyle, followUp
+ FIELDS ABSENT
+   hydration, note, understandingItems, advancedTips
+
+
+--------------------------------------------------------------------------------
+ FULL TEMPLATE CONTENT (verbatim from source)
+--------------------------------------------------------------------------------
+
+ CONDITION
+   PCOD with Thyroid Imbalance, Sugar Tendency, Leucorrhea & Weakness
+
+ SUBTITLE
+   Diet planned considering hormonal imbalance, metabolism disturbance &
+   nutritional deficiency
+
+
+ ── MEAL PLAN (6 meals) ────────────────────────────────────────────────────
+
+ [1] EARLY MORNING (7:00–8:00 AM)
+     Food    : Lukewarm water + 1 tsp soaked methi seeds
+     Benefit : Helps control sugar levels & supports hormonal balance
+
+ [2] BREAKFAST (HIGH PROTEIN)
+     Food    : Besan chilla + curd  /  Eggs + toast  /
+               Vegetable oats + seeds
+     Benefit : Supports thyroid, reduces hairfall & controls cravings
+
+ [3] MID-MORNING
+     Food    : 1 fruit (apple/guava/papaya)
+     Benefit : Maintains steady energy levels
+
+ [4] LUNCH
+     Food    : 2 roti + sabzi + dal/paneer + salad
+     Benefit : Improves digestion & supports hormones
+
+ [5] EVENING SNACK
+     Food    : Tea (no sugar) + roasted chana/makhana
+     Benefit : Prevents weakness & cravings
+
+ [6] DINNER
+     Food    : 1–2 roti + sabzi OR soup + paneer
+     Benefit : Light dinner improves metabolism & reduces bloating
+
+
+ ── DAILY ADD-ONS ──────────────────────────────────────────────────────────
+     Food    : Flax seeds, pumpkin seeds, walnuts, black raisins
+     Benefit : Helps in hairfall, weakness & hormonal balance
+
+
+ ── SPECIAL FOCUS — Leucorrhea & Overall Health ────────────────────────────
+     Food    : Curd (daytime), coconut water, green vegetables
+     Benefit : Supports leucorrhea & overall health
+
+
+ ── FOODS TO AVOID / LIMIT ─────────────────────────────────────────────────
+     • Sugar, junk food, packaged food
+     • Limit tea/coffee
+
+
+ ── LIFESTYLE INSTRUCTIONS ─────────────────────────────────────────────────
+     • Daily walk
+     • Proper sleep
+     • Stress management
+
+
+ ── FOLLOW-UP ──────────────────────────────────────────────────────────────
+     Review after 15 days
+
+
+ ── HYDRATION ──────────────────────────────────────────────────────────────
+     (not defined — no hydration card is printed for this template)
+
+
+ ── NOTE ───────────────────────────────────────────────────────────────────
+     (not defined — no closing note card is printed for this template)
+
+
+--------------------------------------------------------------------------------
+ NOTES FOR WHOEVER MAINTAINS THIS
+--------------------------------------------------------------------------------
+ * This plan has the terse-est lifestyle list of all six (three two-word
+   bullets). Considering it is the most co-morbid patient profile, it is
+   arguably the one that most deserves detail — worth flagging to the
+   dietician if these are ever revised.
+ * A diabetic-tendency patient is still being given "1 fruit" and roti
+   without any portion guidance. Sugar control here rests entirely on the
+   methi water and on avoiding added sugar.
+ * The Special Focus benefit line ("Supports leucorrhea & overall health")
+   reads oddly — it supports RECOVERY from leucorrhea, not the leucorrhea.
+   Verbatim from source; left unchanged here on purpose.
+ * Changing any text above requires editing functions/index.js and
+   redeploying the Cloud Functions — it is not editable from the CRM.
+
+================================================================================

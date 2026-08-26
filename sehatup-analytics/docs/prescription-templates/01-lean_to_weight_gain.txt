@@ -1,0 +1,146 @@
+================================================================================
+ TEMPLATE 1 OF 6 — PCOD, LEAN TYPE (WEIGHT GAIN)
+================================================================================
+ Key           : lean_to_weight_gain
+ Dropdown label: "PCOD – Lean Type (Weight Gain)"
+ Defined in    : sehatup-firebase/functions/index.js, DIET_PLANS (line 136)
+ Rendered by   : functions/templates/prescriptionTemplateV3.html (page 2)
+ Test URL      : /testDietPrescriptionPDF?template=lean_to_weight_gain
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ ABOUT THIS TEMPLATE
+--------------------------------------------------------------------------------
+
+ WHO IT IS FOR
+   An underweight / lean-build PCOD patient. The presenting complaints this
+   plan is written around are hairfall, general weakness, and heavy menstrual
+   bleeding. It assumes the patient is nutritionally depleted rather than
+   insulin-resistant and overweight.
+
+ CLINICAL GOAL
+   Gradual healthy WEIGHT GAIN + correcting nutritional deficiency +
+   restoring hormonal balance. Improving blood levels (iron/haemoglobin)
+   after heavy periods is an explicit secondary goal.
+
+ HOW IT DIFFERS FROM THE OTHERS
+   * This is the ONLY plan that tells the patient to eat MORE. Dinner
+     explicitly carries "No restriction on dinner quantity".
+   * It is the only plan that recommends ghee (1-2 tsp daily) and
+     seasonal high-sugar fruit (banana / chikoo / mango) as a positive.
+     Note that template 02 (weight_to_lean) explicitly restricts those
+     same fruits — the two plans are deliberate mirror images.
+   * Its Special Focus card targets heavy periods and low blood levels
+     (beetroot, spinach, black raisins).
+   * It is one of only two plans (with 02) that prints a HYDRATION card.
+
+ STRUCTURE
+   Standard 5-card layout: 6 meal cards (time / food / benefit),
+   Daily Add-ons, Special Focus, Foods to Avoid, Lifestyle,
+   Hydration, Follow-Up, Note.
+
+ FIELDS PRESENT
+   condition, subtitle, meals(6), dailyAddons, specialFocus, avoidFoods,
+   hydration, lifestyle, followUp, note
+ FIELDS ABSENT
+   understandingItems, advancedTips
+
+
+--------------------------------------------------------------------------------
+ FULL TEMPLATE CONTENT (verbatim from source)
+--------------------------------------------------------------------------------
+
+ CONDITION
+   PCOD (Lean Type) with Hairfall, Weakness, Heavy Periods
+
+ SUBTITLE
+   Diet planned considering hormonal imbalance, nutritional deficiency &
+   low body weight
+
+
+ ── MEAL PLAN (6 meals) ────────────────────────────────────────────────────
+
+ [1] EARLY MORNING (7:00–8:00 AM)
+     Food    : 1 glass lukewarm water + 5 soaked almonds + 2 walnuts +
+               5–6 soaked black raisins
+     Benefit : Helps improve energy levels, supports hair growth & reduces
+               weakness caused by heavy periods
+
+ [2] BREAKFAST (8:30–9:30 AM)
+     Food    : Option 1: Paneer sandwich (multigrain bread)
+               Option 2: 2 eggs + 1 toast
+               Option 3: Vegetable poha with peanuts
+     Benefit : High protein + healthy fats help in weight gain, reduce
+               hairfall & support hormonal balance
+
+ [3] MID-MORNING (11:00–12:00 PM)
+     Food    : 1 banana / chikoo / mango (seasonal)
+     Benefit : Supports healthy weight gain & maintains energy throughout
+               the day
+
+ [4] LUNCH (1:30–2:30 PM)
+     Food    : 2 multigrain roti + 1 bowl sabzi + 1 bowl dal/paneer +
+               1 bowl curd  |  Small portion salad before meal
+     Benefit : Balanced nutrition improves digestion, supports hormones &
+               reduces weakness
+
+ [5] EVENING SNACK (5:00–6:00 PM)
+     Food    : Tea (light) + peanut chaat / roasted chana
+               OR coconut water + handful makhana
+     Benefit : Maintains energy levels & reduces muscle fatigue
+
+ [6] DINNER (7:30–8:30 PM)
+     Food    : 2 roti + sabzi + paneer/dal
+     Benefit : No restriction on dinner quantity – focus on nourishment
+               & recovery
+
+
+ ── DAILY ADD-ONS ──────────────────────────────────────────────────────────
+     Food    : 1 tsp seeds mix (flax + pumpkin) + 1–2 tsp ghee daily
+     Benefit : Improves hormonal balance, hair health & supports weight gain
+
+
+ ── SPECIAL FOCUS — Heavy Periods & Weakness ───────────────────────────────
+     Food    : Include beetroot, spinach, black raisins regularly
+     Benefit : Helps improve blood levels & reduces fatigue
+
+
+ ── FOODS TO AVOID / LIMIT ─────────────────────────────────────────────────
+     • Avoid junk, packaged food, excess sugar
+     • Limit tea/coffee (max 1–2 cups)
+     • Prevents further hormonal imbalance
+
+
+ ── LIFESTYLE INSTRUCTIONS ─────────────────────────────────────────────────
+     • 30 minutes light exercise or walk
+     • Proper sleep (7–8 hours)
+     • Avoid stress & late night eating
+
+
+ ── HYDRATION ──────────────────────────────────────────────────────────────
+     2.5–3 litres water daily
+
+
+ ── FOLLOW-UP ──────────────────────────────────────────────────────────────
+     Review after 15 days for weight and symptom improvement
+
+
+ ── NOTE ───────────────────────────────────────────────────────────────────
+     This diet is specifically designed for lean PCOD patients with weakness
+     and heavy menstrual flow. Focus is on improving nutritional status,
+     hormonal balance & gradual healthy weight gain.
+
+
+--------------------------------------------------------------------------------
+ NOTES FOR WHOEVER MAINTAINS THIS
+--------------------------------------------------------------------------------
+ * The third avoidFoods bullet ("Prevents further hormonal imbalance") is a
+   rationale, not a food. It renders as a bullet in the "Foods to Avoid"
+   card alongside the two real restrictions.
+ * The Follow-Up string here is longer and more specific than the plain
+   "Review after 15 days" used by templates 02-05.
+ * Changing any text above requires editing functions/index.js and
+   redeploying the Cloud Functions — it is not editable from the CRM.
+
+================================================================================

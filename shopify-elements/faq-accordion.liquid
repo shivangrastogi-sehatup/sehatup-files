@@ -1,0 +1,603 @@
+{% assign sid = section.id | replace: '_', '' | downcase %}
+
+{% liquid
+  assign mode = 'blocks'
+  assign faq_items = blank
+  assign fb_q = blank
+  assign fb_a = blank
+
+  if template.name == 'product' and product.metafields.custom.product_faqs != blank
+    assign mode = 'dynamic'
+    assign faq_items = product.metafields.custom.product_faqs.value
+
+  elsif template.name == 'page' and page.metafields.custom.dynamic_faq != blank
+    assign mode = 'dynamic'
+    assign faq_items = page.metafields.custom.dynamic_faq.value
+
+  elsif template.name == 'collection' and collection.metafields.custom.dynamic_faq != blank
+    assign mode = 'dynamic'
+    assign faq_items = collection.metafields.custom.dynamic_faq.value
+
+  elsif template.name == 'article' and article.metafields.custom.faqs != blank
+    assign mode = 'dynamic'
+    assign faq_items = article.metafields.custom.faqs.value
+
+  else
+    assign handle = ''
+    if template.name == 'page'
+      assign handle = page.handle
+    elsif template.name == 'collection'
+      assign handle = collection.handle
+    endif
+
+    if handle contains 'him'
+      assign mode = 'fallback'
+      assign fb_q = section.settings.him_q1 | append: '~~~' | append: section.settings.him_q2 | append: '~~~' | append: section.settings.him_q3 | split: '~~~'
+      assign fb_a = section.settings.him_a1 | append: '~~~' | append: section.settings.him_a2 | append: '~~~' | append: section.settings.him_a3 | split: '~~~'
+    elsif handle contains 'her'
+      assign mode = 'fallback'
+      assign fb_q = section.settings.her_q1 | append: '~~~' | append: section.settings.her_q2 | append: '~~~' | append: section.settings.her_q3 | split: '~~~'
+      assign fb_a = section.settings.her_a1 | append: '~~~' | append: section.settings.her_a2 | append: '~~~' | append: section.settings.her_a3 | split: '~~~'
+    endif
+  endif
+
+  # Count what will actually render, so the section can disappear entirely
+  # rather than showing an empty list or placeholder blocks.
+  assign faq_total = 0
+  case mode
+    when 'dynamic'
+      for faq in faq_items
+        if faq.question != blank
+          assign faq_total = faq_total | plus: 1
+        endif
+      endfor
+    when 'fallback'
+      for q in fb_q
+        if q != blank
+          assign faq_total = faq_total | plus: 1
+        endif
+      endfor
+    else
+      for block in section.blocks
+        if block.settings.question != blank
+          assign faq_total = faq_total | plus: 1
+        endif
+      endfor
+  endcase
+%}
+
+{%- if faq_total > 0 -%}
+
+{% style %}
+  .faq-{{ sid }} {
+    --faq-pad: {{ section.settings.item_padding }}px;
+    --faq-q: {{ section.settings.question_size }}px;
+    --faq-a: {{ section.settings.answer_size }}px;
+    --faq-h: {{ section.settings.heading_size }}px;
+    --faq-icon: 20px;
+    --faq-gap: 16px;
+    --faq-radius: {{ section.settings.border_radius }}px;
+    --faq-pt: {{ section.settings.padding_top }}px;
+    --faq-pb: {{ section.settings.padding_bottom }}px;
+    --faq-side: 20px;
+    --faq-head-mb: 40px;
+    --faq-dur: 340ms;
+    --faq-ease: cubic-bezier(.32, .72, 0, 1);
+
+    padding: var(--faq-pt) var(--faq-side) var(--faq-pb);
+    background: {{ section.settings.background_color }};
+    interpolate-size: allow-keywords;
+  }
+
+  .faq-{{ sid }}__inner {
+    max-width: {{ section.settings.max_width }}px;
+    margin: 0 auto;
+  }
+
+  .faq-{{ sid }}__heading {
+    text-align: center;
+    font-size: var(--faq-h);
+    font-weight: 600;
+    color: {{ section.settings.heading_color }};
+    margin: 0 0 var(--faq-head-mb);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .faq-{{ sid }}__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--faq-gap);
+  }
+
+  .faq-{{ sid }}__item {
+    border: 1px solid {{ section.settings.border_color }};
+    border-radius: var(--faq-radius);
+    background: {{ section.settings.item_background }};
+    overflow: hidden;
+    transition: border-color var(--faq-dur) var(--faq-ease);
+  }
+
+  .faq-{{ sid }}__item[open] {
+    border-color: {{ section.settings.question_color }}33;
+  }
+
+  .faq-{{ sid }}__summary {
+    display: block;
+    list-style: none;
+    cursor: pointer;
+    padding: var(--faq-pad);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .faq-{{ sid }}__summary::-webkit-details-marker { display: none; }
+  .faq-{{ sid }}__summary::marker { content: ''; }
+
+  .faq-{{ sid }}__summary:focus { outline: none; }
+
+  .faq-{{ sid }}__summary:focus-visible {
+    outline: 2px solid {{ section.settings.question_color }};
+    outline-offset: -3px;
+    border-radius: var(--faq-radius);
+  }
+
+  @media (hover: hover) {
+    .faq-{{ sid }}__summary:hover { opacity: .78; }
+  }
+
+  .faq-{{ sid }}__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .faq-{{ sid }}__q {
+    margin: 0;
+    font: inherit;
+    font-size: var(--faq-q);
+    font-weight: 600;
+    color: {{ section.settings.question_color }};
+    line-height: 1.4;
+  }
+
+  .faq-{{ sid }}__icon {
+    width: var(--faq-icon);
+    height: var(--faq-icon);
+    flex: 0 0 auto;
+    margin-top: .15em;
+    color: {{ section.settings.question_color }};
+    transform: rotate(0deg);
+    transition: transform var(--faq-dur) var(--faq-ease);
+  }
+
+  .faq-{{ sid }}__item[open] .faq-{{ sid }}__icon { transform: rotate(180deg); }
+
+  .faq-{{ sid }}__icon svg { display: block; width: 100%; height: 100%; }
+
+  .faq-{{ sid }}__panel { overflow: hidden; }
+
+  .faq-{{ sid }}__a {
+    padding: 0 var(--faq-pad) var(--faq-pad);
+    font-size: var(--faq-a);
+    color: {{ section.settings.answer_color }};
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  .faq-{{ sid }}__a > :first-child { margin-top: 0; }
+  .faq-{{ sid }}__a > :last-child { margin-bottom: 0; }
+  .faq-{{ sid }}__a p { margin: 0 0 .75em; }
+  .faq-{{ sid }}__a a { color: inherit; }
+
+  @supports selector(::details-content) {
+    .faq-{{ sid }}--css .faq-{{ sid }}__item::details-content {
+      block-size: 0;
+      overflow: hidden;
+      transition:
+        block-size var(--faq-dur) var(--faq-ease),
+        content-visibility var(--faq-dur) allow-discrete;
+    }
+    .faq-{{ sid }}--css .faq-{{ sid }}__item[open]::details-content {
+      block-size: auto;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .faq-{{ sid }} {
+      --faq-pad: calc({{ section.settings.item_padding }}px * .85);
+      --faq-q: calc({{ section.settings.question_size }}px * .9);
+      --faq-a: calc({{ section.settings.answer_size }}px * .9);
+      --faq-h: calc({{ section.settings.heading_size }}px * .85);
+      --faq-icon: 18px;
+      --faq-pt: calc({{ section.settings.padding_top }}px * .8);
+      --faq-pb: calc({{ section.settings.padding_bottom }}px * .8);
+      --faq-side: 16px;
+      --faq-head-mb: 32px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .faq-{{ sid }} {
+      --faq-pad: calc({{ section.settings.item_padding }}px * .8);
+      --faq-q: calc({{ section.settings.question_size }}px * .88);
+      --faq-a: calc({{ section.settings.answer_size }}px * .88);
+      --faq-h: calc({{ section.settings.heading_size }}px * .72);
+      --faq-icon: 17px;
+      --faq-gap: 12px;
+      --faq-radius: calc({{ section.settings.border_radius }}px * .75);
+      --faq-pt: calc({{ section.settings.padding_top }}px * .6);
+      --faq-pb: calc({{ section.settings.padding_bottom }}px * .6);
+      --faq-side: 12px;
+      --faq-head-mb: 24px;
+      --faq-dur: 300ms;
+    }
+    .faq-{{ sid }}__row { gap: 12px; }
+    .faq-{{ sid }}__summary { min-height: 48px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .faq-{{ sid }} { --faq-dur: 1ms; }
+    .faq-{{ sid }}__icon { transition: none; }
+  }
+{% endstyle %}
+
+<section
+  class="faq-{{ sid }}"
+  data-faq-root="{{ sid }}"
+  data-faq-single="{{ section.settings.single_open }}"
+  data-faq-reserve="{{ section.settings.reserve_space }}"
+>
+  <div class="faq-{{ sid }}__inner">
+    {% if section.settings.heading != blank %}
+      <h2 class="faq-{{ sid }}__heading">{{ section.settings.heading }}</h2>
+    {% endif %}
+
+    <div class="faq-{{ sid }}__list" data-faq-list>
+      {%- case mode -%}
+
+        {%- when 'dynamic' -%}
+          {%- for faq in faq_items -%}
+            {%- if faq.question == blank -%}{%- continue -%}{%- endif -%}
+            {%- capture faq_answer -%}{{ faq.answer }}{%- endcapture -%}
+            {%- assign faq_answer = faq_answer | strip -%}
+            <details class="faq-{{ sid }}__item" data-faq-item>
+              <summary class="faq-{{ sid }}__summary">
+                <span class="faq-{{ sid }}__row">
+                  <h3 class="faq-{{ sid }}__q">{{ faq.question }}</h3>
+                  <span class="faq-{{ sid }}__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M6 9l6 6 6-6"/></svg>
+                  </span>
+                </span>
+              </summary>
+              <div class="faq-{{ sid }}__panel" data-faq-panel>
+                <div class="faq-{{ sid }}__a" data-faq-measure>
+                  {%- if faq_answer contains '<p' or faq_answer contains '<ul' or faq_answer contains '<ol' or faq_answer contains '<div' -%}
+                    {{ faq_answer }}
+                  {%- else -%}
+                    <p>{{ faq_answer | newline_to_br }}</p>
+                  {%- endif -%}
+                </div>
+              </div>
+            </details>
+          {%- endfor -%}
+
+        {%- when 'fallback' -%}
+          {%- for q in fb_q -%}
+            {%- if q == blank -%}{%- continue -%}{%- endif -%}
+            {%- assign i = forloop.index0 -%}
+            <details class="faq-{{ sid }}__item" data-faq-item>
+              <summary class="faq-{{ sid }}__summary">
+                <span class="faq-{{ sid }}__row">
+                  <h3 class="faq-{{ sid }}__q">{{ q }}</h3>
+                  <span class="faq-{{ sid }}__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M6 9l6 6 6-6"/></svg>
+                  </span>
+                </span>
+              </summary>
+              <div class="faq-{{ sid }}__panel" data-faq-panel>
+                <div class="faq-{{ sid }}__a" data-faq-measure>{{ fb_a[i] }}</div>
+              </div>
+            </details>
+          {%- endfor -%}
+
+        {%- else -%}
+          {%- for block in section.blocks -%}
+            {%- if block.settings.question == blank -%}{%- continue -%}{%- endif -%}
+            <details class="faq-{{ sid }}__item" data-faq-item {{ block.shopify_attributes }}>
+              <summary class="faq-{{ sid }}__summary">
+                <span class="faq-{{ sid }}__row">
+                  <h3 class="faq-{{ sid }}__q">{{ block.settings.question }}</h3>
+                  <span class="faq-{{ sid }}__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M6 9l6 6 6-6"/></svg>
+                  </span>
+                </span>
+              </summary>
+              <div class="faq-{{ sid }}__panel" data-faq-panel>
+                <div class="faq-{{ sid }}__a" data-faq-measure>{{ block.settings.answer }}</div>
+              </div>
+            </details>
+          {%- endfor -%}
+
+      {%- endcase -%}
+    </div>
+  </div>
+</section>
+
+{%- if section.settings.enable_schema -%}
+  {%- assign faq_n = 0 -%}
+  {%- capture faq_schema -%}
+    {%- case mode -%}
+      {%- when 'dynamic' -%}
+        {%- for faq in faq_items -%}
+          {%- if faq.question == blank or faq.answer == blank -%}{%- continue -%}{%- endif -%}
+          {%- capture faq_answer -%}{{ faq.answer }}{%- endcapture -%}
+          {%- assign faq_answer = faq_answer | replace: '</p>', ' ' | replace: '</li>', ' ' | replace: '<br>', ' ' | replace: '<br/>', ' ' | replace: '<br />', ' ' -%}
+          {%- assign faq_answer = faq_answer | strip_html | strip_newlines | replace: '  ', ' ' | strip -%}
+          {%- if faq_answer == blank -%}{%- continue -%}{%- endif -%}
+          {%- if faq_n > 0 %},{% endif -%}
+          {"@type":"Question","name":{{ faq.question | strip_html | strip_newlines | json }},"acceptedAnswer":{"@type":"Answer","text":{{ faq_answer | json }}}}
+          {%- assign faq_n = faq_n | plus: 1 -%}
+        {%- endfor -%}
+      {%- when 'fallback' -%}
+        {%- for q in fb_q -%}
+          {%- if q == blank -%}{%- continue -%}{%- endif -%}
+          {%- assign i = forloop.index0 -%}
+          {%- assign fb_ans = fb_a[i] | strip_html | strip_newlines | strip -%}
+          {%- if fb_ans == blank -%}{%- continue -%}{%- endif -%}
+          {%- if faq_n > 0 %},{% endif -%}
+          {"@type":"Question","name":{{ q | strip_html | strip_newlines | json }},"acceptedAnswer":{"@type":"Answer","text":{{ fb_ans | json }}}}
+          {%- assign faq_n = faq_n | plus: 1 -%}
+        {%- endfor -%}
+      {%- else -%}
+        {%- for block in section.blocks -%}
+          {%- if block.settings.question == blank or block.settings.answer == blank -%}{%- continue -%}{%- endif -%}
+          {%- assign blk_ans = block.settings.answer | strip_html | strip_newlines | strip -%}
+          {%- if blk_ans == blank -%}{%- continue -%}{%- endif -%}
+          {%- if faq_n > 0 %},{% endif -%}
+          {"@type":"Question","name":{{ block.settings.question | strip_html | strip_newlines | json }},"acceptedAnswer":{"@type":"Answer","text":{{ blk_ans | json }}}}
+          {%- assign faq_n = faq_n | plus: 1 -%}
+        {%- endfor -%}
+    {%- endcase -%}
+  {%- endcapture -%}
+  {%- assign faq_schema = faq_schema | strip -%}
+  {%- if faq_schema != blank -%}
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{{ faq_schema }}]}
+    </script>
+  {%- endif -%}
+{%- endif -%}
+
+<script>
+  (function () {
+    var SID = '{{ sid }}';
+    var root = document.querySelector('[data-faq-root="' + SID + '"]');
+    if (!root) return;
+
+    var list = root.querySelector('[data-faq-list]');
+    if (!list) return;
+
+    var singleOpen = root.getAttribute('data-faq-single') !== 'false';
+    var reserve = root.getAttribute('data-faq-reserve') === 'true';
+
+    function items() {
+      return Array.prototype.slice.call(list.querySelectorAll('[data-faq-item]'));
+    }
+    function panelOf(d) { return d.querySelector('[data-faq-panel]'); }
+
+    function reduced() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+    function duration() {
+      var v = getComputedStyle(root).getPropertyValue('--faq-dur').trim();
+      if (v.indexOf('ms') > -1) return parseFloat(v) || 340;
+      if (v.indexOf('s') > -1) return (parseFloat(v) || 0.34) * 1000;
+      return 340;
+    }
+
+    var cssNative =
+      CSS &&
+      CSS.supports &&
+      CSS.supports('selector(::details-content)') &&
+      CSS.supports('interpolate-size', 'allow-keywords');
+
+    function reserveSpace() {
+      if (!reserve) return;
+      list.style.minHeight = '';
+      var tallest = 0;
+      items().forEach(function (d) {
+        var m = d.querySelector('[data-faq-measure]');
+        if (m) tallest = Math.max(tallest, m.getBoundingClientRect().height);
+      });
+      var closed = 0;
+      items().forEach(function (d) {
+        var s = d.querySelector('summary');
+        if (s) closed += s.getBoundingClientRect().height;
+      });
+      var gaps = parseFloat(getComputedStyle(list).rowGap) || 0;
+      var borders = items().length * 2;
+      list.style.minHeight =
+        Math.ceil(closed + tallest + gaps * Math.max(0, items().length - 1) + borders) + 'px';
+    }
+
+    if (cssNative) {
+      root.classList.add('faq-' + SID + '--css');
+      if (singleOpen) {
+        items().forEach(function (d) { d.setAttribute('name', 'faq-' + SID); });
+      }
+      reserveSpace();
+      window.addEventListener('resize', debounce(reserveSpace, 200));
+      wireEditor();
+      return;
+    }
+
+    function animatePanel(d, opening, done) {
+      var panel = panelOf(d);
+      var measure = d.querySelector('[data-faq-measure]');
+      if (!panel || !measure) {
+        d.open = opening;
+        if (done) done();
+        return;
+      }
+
+      if (panel._faqAnim) {
+        panel._faqAnim.cancel();
+        panel._faqAnim = null;
+      }
+
+      if (reduced()) {
+        d.open = opening;
+        panel.style.height = '';
+        if (done) done();
+        return;
+      }
+
+      var from = panel.getBoundingClientRect().height;
+      if (opening) d.open = true;
+      var to = opening ? measure.getBoundingClientRect().height : 0;
+
+      if (from === to) {
+        if (!opening) d.open = false;
+        if (done) done();
+        return;
+      }
+
+      panel.style.height = from + 'px';
+      var anim = panel.animate(
+        { height: [from + 'px', to + 'px'] },
+        { duration: duration(), easing: 'cubic-bezier(.32,.72,0,1)' }
+      );
+      panel._faqAnim = anim;
+
+      anim.onfinish = function () {
+        panel._faqAnim = null;
+        panel.style.height = '';
+        if (!opening) d.open = false;
+        if (done) done();
+      };
+      anim.oncancel = function () {
+        panel._faqAnim = null;
+      };
+    }
+
+    list.addEventListener('click', function (e) {
+      var summary = e.target.closest && e.target.closest('summary');
+      if (!summary || !list.contains(summary)) return;
+
+      var d = summary.parentElement;
+      if (!d || !d.hasAttribute('data-faq-item')) return;
+
+      e.preventDefault();
+
+      var opening = !d.open;
+
+      if (opening && singleOpen) {
+        items().forEach(function (other) {
+          if (other !== d && other.open) animatePanel(other, false);
+        });
+      }
+
+      animatePanel(d, opening);
+    });
+
+    list.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      var summary = e.target.closest && e.target.closest('summary');
+      if (summary && list.contains(summary)) {
+        e.preventDefault();
+        summary.click();
+      }
+    });
+
+    items().forEach(function (d) {
+      var panel = panelOf(d);
+      if (panel) panel.style.height = '';
+    });
+
+    reserveSpace();
+    window.addEventListener('resize', debounce(reserveSpace, 200));
+    wireEditor();
+
+    function wireEditor() {
+      if (!(window.Shopify && Shopify.designMode)) return;
+      document.addEventListener('shopify:block:select', function (e) {
+        if (!list.contains(e.target)) return;
+        var d = e.target.closest('[data-faq-item]');
+        if (!d || d.open) return;
+        if (singleOpen) {
+          items().forEach(function (other) {
+            if (other !== d && other.open) other.open = false;
+          });
+        }
+        d.open = true;
+      });
+      document.addEventListener('shopify:block:deselect', function (e) {
+        if (!list.contains(e.target)) return;
+        var d = e.target.closest('[data-faq-item]');
+        if (d) d.open = false;
+      });
+    }
+
+    function debounce(fn, ms) {
+      var t;
+      return function () {
+        clearTimeout(t);
+        t = setTimeout(fn, ms);
+      };
+    }
+  })();
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "FAQ accordion",
+  "tag": "section",
+  "settings": [
+    { "type": "inline_richtext", "id": "heading", "label": "Heading", "default": "Frequently Asked Questions" },
+    { "type": "checkbox", "id": "single_open", "label": "Only one answer open at a time", "default": true },
+    { "type": "checkbox", "id": "reserve_space", "label": "Reserve space for the tallest answer", "info": "Stops the page height changing when you open or close an answer, which removes the jump on the last few questions. Costs some empty space below the list when everything is closed.", "default": false },
+    { "type": "checkbox", "id": "enable_schema", "label": "Output FAQ schema (JSON-LD)", "info": "Turn OFF if another section or app already outputs FAQ schema on this page. Only one FAQPage block per page is valid.", "default": true },
+    { "type": "range", "id": "heading_size", "label": "Heading size", "min": 20, "max": 48, "step": 2, "unit": "px", "default": 32 },
+    { "type": "range", "id": "max_width", "label": "Max width", "min": 600, "max": 1200, "step": 50, "unit": "px", "default": 900 },
+    { "type": "range", "id": "padding_top", "label": "Top padding", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 60 },
+    { "type": "range", "id": "padding_bottom", "label": "Bottom padding", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 60 },
+    { "type": "range", "id": "item_padding", "label": "Item padding", "min": 12, "max": 32, "step": 2, "unit": "px", "default": 18 },
+    { "type": "range", "id": "border_radius", "label": "Border radius", "min": 4, "max": 16, "step": 2, "unit": "px", "default": 8 },
+    { "type": "range", "id": "question_size", "label": "Question size", "min": 14, "max": 22, "step": 1, "unit": "px", "default": 17 },
+    { "type": "range", "id": "answer_size", "label": "Answer size", "min": 13, "max": 18, "step": 1, "unit": "px", "default": 15 },
+    { "type": "color", "id": "background_color", "label": "Background", "default": "#ffffff" },
+    { "type": "color", "id": "item_background", "label": "Item background", "default": "#ffffff" },
+    { "type": "color", "id": "border_color", "label": "Border", "default": "#e5e5e5" },
+    { "type": "color", "id": "heading_color", "label": "Heading color", "default": "#1d1d1d" },
+    { "type": "color", "id": "question_color", "label": "Question color", "default": "#1d1d1d" },
+    { "type": "color", "id": "answer_color", "label": "Answer color", "default": "#666666" },
+    { "type": "header", "content": "For Him FAQs (fallback)" },
+    { "type": "text", "id": "him_q1", "label": "Him Q1", "default": "Who is the For Him range designed for?" },
+    { "type": "richtext", "id": "him_a1", "label": "Him A1", "default": "<p>Designed for men looking to support testosterone, energy, and performance naturally.</p>" },
+    { "type": "text", "id": "him_q2", "label": "Him Q2", "default": "Are these products safe for daily use?" },
+    { "type": "richtext", "id": "him_a2", "label": "Him A2", "default": "<p>Yes, all products are clinically formulated and safe for daily use as directed.</p>" },
+    { "type": "text", "id": "him_q3", "label": "Him Q3", "default": "How soon will I see results?" },
+    { "type": "richtext", "id": "him_a3", "label": "Him A3", "default": "<p>Most users notice improvements within 4–6 weeks of consistent use.</p>" },
+    { "type": "header", "content": "For Her FAQs (fallback)" },
+    { "type": "text", "id": "her_q1", "label": "Her Q1", "default": "Who is the For Her range designed for?" },
+    { "type": "richtext", "id": "her_a1", "label": "Her A1", "default": "<p>Designed for women seeking hormonal balance, skin health, and sustained energy.</p>" },
+    { "type": "text", "id": "her_q2", "label": "Her Q2", "default": "Are these safe during pregnancy?" },
+    { "type": "richtext", "id": "her_a2", "label": "Her A2", "default": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>" },
+    { "type": "text", "id": "her_q3", "label": "Her Q3", "default": "Can I take these with other supplements?" },
+    { "type": "richtext", "id": "her_a3", "label": "Her A3", "default": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>" }
+  ],
+  "blocks": [
+    {
+      "type": "faq",
+      "name": "FAQ item",
+      "settings": [
+        { "type": "text", "id": "question", "label": "Question", "default": "What makes this product different?" },
+        { "type": "richtext", "id": "answer", "label": "Answer", "default": "<p>This product is formulated with clinically backed ingredients and guided by medical expertise.</p>" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "FAQ accordion", "blocks": [{ "type": "faq" }, { "type": "faq" }, { "type": "faq" }] }]
+}
+{% endschema %}

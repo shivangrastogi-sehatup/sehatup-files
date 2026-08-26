@@ -1,16 +1,21 @@
 {%- comment -%}
   ============================================================================
-  sehatup Lead Capture Popup
+  sehatup Lead Capture Popup, minimisable
   ============================================================================
-  Styling matches the approved Claude Design mockups 1a to 1e / 2a to 2d exactly
-  (dialog 920px, panel 350px). Palette comes from the theme index.json.
+  Same popup and same Firebase write as `lead-capture-popup.liquid`, with one
+  addition: closing it does not throw it away. The dialog is sucked down into a
+  small tab in the corner, and tapping that tab pulls it back out.
+
+  The two swap by handover, not by travel: whichever one is leaving fades out
+  first, and only once it has gone does the other fade in. Sequenced rather
+  than overlapped, so there is never a frame with half a popup and half a tab
+  on screen, and nothing crosses the middle of the page on the way.
 
   Writes to Firebase Firestore (project sehatup-f96b5). Config is hardcoded
-  in the script, NOT in the schema. The writer adapter reuses window.db when
-  the questionnaire pages have already booted the v9 compat SDK.
+  in the script, NOT in the schema.
 
-  Install: Sections > add `lead-capture-popup.liquid`, add it from the theme
-  editor, and set the advisor photo in `popup_image`.
+  Install: Sections > add `lead-capture-popup-minimizable.liquid`, add it from
+  the theme editor. Use this OR the plain popup on a page, not both.
   ============================================================================
 {%- endcomment -%}
 
@@ -46,7 +51,111 @@
   if section.settings.count_per_page
     assign scope_key = request.path | default: '/'
   endif
+
+  # ---- The minimised tab ------------------------------------------------
+  assign mini_pos   = section.settings.mini_position | default: 'bottom-right'
+  assign mini_theme = section.settings.mini_theme | default: 'light'
+  assign mini_style = section.settings.mini_style | default: 'pill'
+  assign mini_size  = section.settings.mini_size | default: 'medium'
+  assign mini_attention = section.settings.mini_attention | default: 'nudge'
+  assign mini_title = section.settings.mini_title | default: section.settings.popup_heading
+  assign mini_sub   = section.settings.mini_sub
+
+  # 'compact' is the photo on its own, 'text' is the words on their own.
+  assign mini_show_img = true
+  assign mini_show_text = true
+  if mini_style == 'text'
+    assign mini_show_img = false
+  endif
+  if mini_style == 'compact'
+    assign mini_show_text = false
+  endif
+
+  # The tab's own picture falls back to the popup's advisor photo, so a
+  # merchant who has already replaced that one does not have to do it twice.
+  assign mini_img_source = section.settings.mini_image
+  if mini_img_source == blank
+    assign mini_img_source = section.settings.popup_image
+  endif
 -%}
+
+{%- if section.settings.enable_minimise -%}
+  {%- comment -%}
+    The tab lives OUTSIDE the popup root, not inside it. The root is a
+    full-viewport fixed overlay that gets `hidden` on close, so anything
+    nested in it would be hidden along with it.
+
+    `lead-popup-mini__wrap` is the element the fade animates. The dismiss
+    cross is absolutely positioned inside it so it fades along with the pill
+    rather than hanging in the air on its own.
+  {%- endcomment -%}
+  <div
+    id="lead-popup-mini-{{ section.id }}"
+    class="lead-popup-mini lead-popup-mini--{{ mini_pos }} lead-popup-mini--{{ mini_theme }} lead-popup-mini--{{ mini_size }}"
+    data-attention="{{ mini_attention }}"
+    hidden
+  >
+    <div class="lead-popup-mini__wrap" data-lead-popup-mini-wrap>
+      <button
+        type="button"
+        class="lead-popup-mini__btn"
+        data-lead-popup-restore
+        aria-label="Reopen {{ mini_title | escape }}"
+      >
+        {%- if mini_show_img -%}
+          <span class="lead-popup-mini__avatar" aria-hidden="true">
+            {%- if mini_img_source != blank -%}
+              <img
+                class="lead-popup-mini__img"
+                src="{{ mini_img_source | image_url: width: 160 }}"
+                srcset="{{ mini_img_source | image_url: width: 160 }} 160w,
+                        {{ mini_img_source | image_url: width: 240 }} 240w"
+                sizes="80px"
+                alt=""
+                width="160"
+                height="240"
+                loading="lazy"
+                decoding="async"
+              >
+            {%- else -%}
+              <img
+                class="lead-popup-mini__img"
+                src="{{ doctor_url }}&width=160"
+                srcset="{{ doctor_url }}&width=160 160w,
+                        {{ doctor_url }}&width=240 240w"
+                sizes="80px"
+                alt=""
+                width="160"
+                height="240"
+                loading="lazy"
+                decoding="async"
+              >
+            {%- endif -%}
+          </span>
+        {%- endif -%}
+
+        {%- if mini_show_text -%}
+          <span class="lead-popup-mini__text">
+            <span class="lead-popup-mini__title">{{ mini_title }}</span>
+            {%- if mini_sub != blank -%}
+              <span class="lead-popup-mini__sub">{{ mini_sub }}</span>
+            {%- endif -%}
+          </span>
+        {%- endif -%}
+      </button>
+
+      {%- if section.settings.mini_dismissible -%}
+        <button
+          type="button"
+          class="lead-popup-mini__x"
+          data-lead-popup-mini-dismiss
+          aria-label="Hide this for now"
+          title="Hide"
+        >&#215;</button>
+      {%- endif -%}
+    </div>
+  </div>
+{%- endif -%}
 
 <div
   id="lead-popup-{{ section.id }}"
@@ -58,6 +167,9 @@
   data-session-key="lead_popup_seen_{{ section.id }}{{ scope_key }}"
   data-firestore-collection="{{ section.settings.firestore_collection | default: 'popup_leads' }}"
   data-template="{{ template }}"
+  data-minimise="{% if section.settings.enable_minimise %}true{% else %}false{% endif %}"
+  data-mini-persist="{% if section.settings.mini_persist %}true{% else %}false{% endif %}"
+  data-mini-speed="{{ section.settings.minimise_speed | default: 520 }}"
   hidden
 >
   <div class="lead-popup__overlay" data-lead-popup-close></div>
@@ -176,7 +288,7 @@
 
             <div class="lead-popup__field">
               <label for="lead-age-{{ section.id }}">Age<span class="lead-popup__req">*</span></label>
-              <input type="number" id="lead-age-{{ section.id }}" name="age" inputmode="numeric" placeholder="Your age" required>
+              <input type="number" id="lead-age-{{ section.id }}" name="age" inputmode="numeric" min="18" max="100" placeholder="Your age" required>
               <p class="lead-popup__error" data-error-for="age"></p>
             </div>
           </div>
@@ -904,6 +1016,334 @@
     #lead-popup-{{ section.id }} .lead-popup__close,
     #lead-popup-{{ section.id }} .lead-popup__close::before { transition: none !important; }
   }
+
+  /* ======================================================================
+     Minimised tab
+     ====================================================================== */
+
+  /* States driven by the minimise script. `animation: none` matters here:
+     the dialog and the veil carry CSS entrance animations with fill `both`,
+     which would restart the moment the state attribute is removed and play a
+     second time on top of the fade. `open` is a resting state that keeps
+     them switched off after a restore, and is replaced by `closing` when the
+     popup is dismissed for real, which is when the exit animation should run. */
+  #lead-popup-{{ section.id }}[data-state="minimising"] .lead-popup__dialog,
+  #lead-popup-{{ section.id }}[data-state="restoring"] .lead-popup__dialog,
+  #lead-popup-{{ section.id }}[data-state="open"] .lead-popup__dialog,
+  #lead-popup-{{ section.id }}[data-state="minimising"] .lead-popup__overlay,
+  #lead-popup-{{ section.id }}[data-state="restoring"] .lead-popup__overlay,
+  #lead-popup-{{ section.id }}[data-state="open"] .lead-popup__overlay {
+    animation: none;
+  }
+  /* Mid-flight the dialog is a moving picture, not a form. */
+  #lead-popup-{{ section.id }}[data-state="minimising"] .lead-popup__dialog,
+  #lead-popup-{{ section.id }}[data-state="restoring"] .lead-popup__dialog {
+    pointer-events: none;
+  }
+
+  #lead-popup-mini-{{ section.id }} {
+    --lpm-side: {{ section.settings.mini_offset_side | default: 24 }}px;
+    --lpm-bottom: {{ section.settings.mini_offset_bottom | default: 24 }}px;
+    --lpm-accent: {{ section.settings.accent_color | default: '#ee204a' }};
+    --lpm-panel: linear-gradient(140deg, #3d0a1a 0%, #9c1233 52%, #ee204a 100%);
+
+    position: fixed;
+    z-index: 9998;
+    font-family: 'Montserrat', sans-serif;
+    /* The middle-* variants stretch the full viewport height to centre without
+       a transform, because a transform on this element would be overwritten by
+       the pop-in animation and the tab would jump. Only the pill takes clicks. */
+    pointer-events: none;
+  }
+  #lead-popup-mini-{{ section.id }}[hidden] { display: none !important; }
+
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--bottom-right { right: var(--lpm-side); bottom: var(--lpm-bottom); }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--bottom-left  { left:  var(--lpm-side); bottom: var(--lpm-bottom); }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--middle-right,
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--middle-left {
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+  }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--middle-right { right: var(--lpm-side); }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--middle-left  { left:  var(--lpm-side); }
+
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__wrap {
+    position: relative;
+    pointer-events: auto;
+  }
+  /* The pill grows out of the corner it is parked in, so the pop reads as the
+     tab arriving rather than as a box inflating in mid air. */
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--bottom-right .lead-popup-mini__wrap { transform-origin: 100% 100%; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--bottom-left  .lead-popup-mini__wrap { transform-origin: 0% 100%; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--middle-right .lead-popup-mini__wrap { transform-origin: 100% 50%; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--middle-left  .lead-popup-mini__wrap { transform-origin: 0% 50%; }
+
+  #lead-popup-mini-{{ section.id }}[data-state="staged"] .lead-popup-mini__wrap {
+    /* In the layout so its animation can be attached and held, but not yet
+       visible. The popup is still on screen at this point. */
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    max-width: min(300px, calc(100vw - 32px));
+    margin: 0;
+    border: 1px solid rgba(0, 0, 0, .07);
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .17), 0 2px 6px rgba(0, 0, 0, .08);
+    cursor: pointer;
+    text-align: left;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: box-shadow .22s ease, transform .16s cubic-bezier(.16, 1, .3, 1);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, .22), 0 3px 8px rgba(0, 0, 0, .1);
+    }
+  }
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn:active { transform: scale(.97); }
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn:focus-visible {
+    outline: 2px solid var(--lpm-accent);
+    outline-offset: 3px;
+  }
+
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__avatar {
+    position: relative;
+    flex: 0 0 auto;
+    display: block;
+    border-radius: 999px;
+    overflow: hidden;
+    /* The packaged advisor photo is a transparent cut-out, so the gradient
+       behind it is what fills the circle. */
+    background: var(--lpm-panel);
+  }
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    /* 14% down the frame lands on the face of a full-length portrait, rather
+       than on the middle of the coat. */
+    object-position: center 14%;
+  }
+
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__title {
+    display: block;
+    color: #1d1d1d;
+    font-weight: 700;
+    line-height: 1.25;
+    /* Two lines, then an ellipsis. A long popup heading reused here would
+       otherwise stretch the pill across half the screen. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__sub {
+    display: block;
+    color: #555;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- Sizes ----------------------------------------------------------- */
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--small .lead-popup-mini__btn   { padding: 6px 15px 6px 6px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--small .lead-popup-mini__avatar{ width: 40px; height: 40px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--small .lead-popup-mini__title { font-size: 12px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--small .lead-popup-mini__sub   { font-size: 10.5px; }
+
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--medium .lead-popup-mini__btn   { padding: 7px 18px 7px 7px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--medium .lead-popup-mini__avatar{ width: 52px; height: 52px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--medium .lead-popup-mini__title { font-size: 13px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--medium .lead-popup-mini__sub   { font-size: 11.5px; }
+
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--large .lead-popup-mini__btn   { padding: 8px 22px 8px 8px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--large .lead-popup-mini__avatar{ width: 62px; height: 62px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--large .lead-popup-mini__title { font-size: 14.5px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--large .lead-popup-mini__sub   { font-size: 12.5px; }
+
+  /* Photo on its own: a circle, so the padding has to be even all round. */
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn:not(:has(.lead-popup-mini__text)) { gap: 0; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--small  .lead-popup-mini__btn:not(:has(.lead-popup-mini__text)) { padding: 6px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--medium .lead-popup-mini__btn:not(:has(.lead-popup-mini__text)) { padding: 7px; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--large  .lead-popup-mini__btn:not(:has(.lead-popup-mini__text)) { padding: 8px; }
+  /* Words on their own: nothing to sit beside, so the left padding matches. */
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn:not(:has(.lead-popup-mini__avatar)) { padding-left: 20px; }
+
+  /* ---- Themes ---------------------------------------------------------- */
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--brand .lead-popup-mini__btn {
+    background: var(--lpm-panel);
+    border-color: rgba(255, 255, 255, .18);
+    box-shadow: 0 12px 32px rgba(156, 18, 51, .38), 0 2px 6px rgba(0, 0, 0, .16);
+  }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--brand .lead-popup-mini__title { color: #fff; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--brand .lead-popup-mini__sub   { color: rgba(255, 255, 255, .82); }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--brand .lead-popup-mini__avatar { background: rgba(255, 255, 255, .16); }
+
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--dark .lead-popup-mini__btn {
+    background: #17070d;
+    border-color: rgba(255, 255, 255, .12);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .42), 0 2px 6px rgba(0, 0, 0, .2);
+  }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--dark .lead-popup-mini__title { color: #fff; }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--dark .lead-popup-mini__sub   { color: rgba(255, 255, 255, .72); }
+
+  /* ---- Dismiss --------------------------------------------------------- */
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__x {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 0, 0, .08);
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+    color: #555;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, transform .12s ease;
+  }
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--bottom-left .lead-popup-mini__x,
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--middle-left .lead-popup-mini__x {
+    right: auto;
+    left: -7px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__x:hover {
+      background: var(--lpm-accent);
+      border-color: var(--lpm-accent);
+      color: #fff;
+    }
+  }
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__x:active { transform: scale(.9); }
+  #lead-popup-mini-{{ section.id }} .lead-popup-mini__x:focus-visible {
+    outline: 2px solid var(--lpm-accent);
+    outline-offset: 2px;
+  }
+
+  /* ---- Attention -------------------------------------------------------
+     A ring expanding out of the pill swept a large area of the screen for
+     something meant to sit quietly in a corner, and pulled the eye off the
+     page. All three options below stay inside the tab's own footprint. */
+
+  /* Dot. The notification idiom, and the quietest thing that still registers.
+     Parked on the corner opposite the dismiss cross so the two never meet. */
+  @keyframes lpm-dot-{{ section.id }} {
+    0%, 76%, 100% { transform: scale(1); }
+    84%           { transform: scale(1.3); }
+    92%           { transform: scale(1); }
+  }
+  #lead-popup-mini-{{ section.id }}[data-attention="dot"] .lead-popup-mini__wrap::after {
+    content: "";
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 11px;
+    height: 11px;
+    border-radius: 999px;
+    background: var(--lpm-accent);
+    /* White collar, so it separates from a brand or dark pill as well as a
+       white one. */
+    box-shadow: 0 0 0 2px #fff, 0 1px 3px rgba(0, 0, 0, .3);
+    animation: lpm-dot-{{ section.id }} 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Nudge. Movement is what the eye actually catches, so this spends its
+     attention there instead of on area: 5px, over in a fraction of a second,
+     once every six. It rides on the wrap rather than the button, because the
+     button's own transform belongs to the hover lift. */
+  @keyframes lpm-nudge-{{ section.id }} {
+    0%, 86%, 100% { transform: translateY(0); }
+    89%           { transform: translateY(-5px); }
+    92%           { transform: translateY(0); }
+    95%           { transform: translateY(-2px); }
+    98%           { transform: translateY(0); }
+  }
+  #lead-popup-mini-{{ section.id }}[data-attention="nudge"] .lead-popup-mini__wrap {
+    animation: lpm-nudge-{{ section.id }} 6s ease-in-out infinite;
+  }
+
+  /* Sheen. A light sweep across the pill, adding nothing to its outline. */
+  @keyframes lpm-sheen-{{ section.id }} {
+    0%        { transform: translateX(-160%); }
+    55%, 100% { transform: translateX(320%); }
+  }
+  #lead-popup-mini-{{ section.id }}[data-attention="sheen"] .lead-popup-mini__btn { overflow: hidden; }
+  #lead-popup-mini-{{ section.id }}[data-attention="sheen"] .lead-popup-mini__btn::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 34%;
+    background: linear-gradient(100deg, transparent, rgba(0, 0, 0, .07), transparent);
+    animation: lpm-sheen-{{ section.id }} 4.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  /* On a dark or brand pill the sweep has to be light, not dark. */
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--brand[data-attention="sheen"] .lead-popup-mini__btn::after,
+  #lead-popup-mini-{{ section.id }}.lead-popup-mini--dark[data-attention="sheen"] .lead-popup-mini__btn::after {
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .28), transparent);
+  }
+
+  /* ---- Arriving on a later page ---------------------------------------
+     No dialog to fly from here, so the tab just slides up into place. */
+  @keyframes lpm-enter-{{ section.id }} {
+    from { opacity: 0; transform: translateY(18px) scale(.9); }
+    to   { opacity: 1; transform: none; }
+  }
+  #lead-popup-mini-{{ section.id }}[data-state="entering"] .lead-popup-mini__wrap {
+    animation: lpm-enter-{{ section.id }} .42s cubic-bezier(.16, 1, .3, 1) both;
+  }
+
+  /* ---- Phones ----------------------------------------------------------
+     Sticky add-to-cart bars and the iOS home indicator both live along the
+     bottom edge, so the tab gets its own offset there. */
+  @media (max-width: 767px) {
+    #lead-popup-mini-{{ section.id }} {
+      --lpm-bottom: calc({{ section.settings.mini_offset_bottom_mobile | default: 16 }}px + env(safe-area-inset-bottom));
+      --lpm-side: {{ section.settings.mini_offset_side_mobile | default: 12 }}px;
+    }
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn {
+      max-width: calc(100vw - 24px);
+    }
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__sub { display: none; }
+  }
+
+  /* The dot stays, it just stops beating. Reduced motion asks for less
+     movement, not for the indicator itself to be taken away. */
+  @media (prefers-reduced-motion: reduce) {
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__wrap,
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__wrap::after,
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn::after { animation: none; }
+    #lead-popup-mini-{{ section.id }}[data-attention="sheen"] .lead-popup-mini__btn::after { opacity: 0; }
+    #lead-popup-mini-{{ section.id }} .lead-popup-mini__btn { transition: none; }
+  }
 </style>
 
 <script>
@@ -911,6 +1351,19 @@
     var root = document.getElementById('lead-popup-{{ section.id }}');
     if (!root || root.dataset.lpBooted === '1') return;
     root.dataset.lpBooted = '1';
+
+    /* The minimised tab. Absent when the merchant switched minimising off,
+       in which case every path below falls back to the plain close. */
+    var bubble = document.getElementById('lead-popup-mini-{{ section.id }}');
+    var wrap   = bubble ? bubble.querySelector('[data-lead-popup-mini-wrap]') : null;
+    var miniOn = root.dataset.minimise === 'true' && !!bubble && !!wrap;
+    var miniPersist = root.dataset.miniPersist === 'true';
+    var DUR = Math.max(160, parseInt(root.dataset.miniSpeed || '520', 10) || 520);
+
+    /* Dismissing the tab is a "not now", not a "never": sessionStorage, so it
+       comes back on the next visit. Conversion writes the same key, and the
+       permanent CONVERTED_KEY below is what actually keeps it away for good. */
+    var TAB_OFF_KEY = 'lead_popup_tab_off_{{ section.id }}';
 
     /* ------------------------------------------------------------------
        Firebase, hardcoded, project sehatup-f96b5.
@@ -1015,9 +1468,17 @@
     }
 
     /* ------------------------------------------------------------------
-       Open / close
+       Open / close / minimise
        ------------------------------------------------------------------ */
     var lastFocused = null;
+    var dialog  = root.querySelector('.lead-popup__dialog');
+    var overlay = root.querySelector('.lead-popup__overlay');
+    var docked  = false;   // the tab is on screen holding the popup's place
+    var busy    = false;   // an open or close animation is mid-flight
+
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var canAnimate = typeof Element !== 'undefined' &&
+                     typeof Element.prototype.animate === 'function';
 
     /* Scroll lock. Hiding the page scrollbar reclaims its width, so the layout
        behind the popup reflows sideways on open and back on close. Padding the
@@ -1043,14 +1504,238 @@
       document.body.style.paddingRight = priorPadRight;
     }
 
+    /* ------------------------------------------------------------------
+       The tab
+       ------------------------------------------------------------------ */
+    function clearAnims(el) {
+      if (!el || typeof el.getAnimations !== 'function') return;
+      el.getAnimations().forEach(function (a) { a.cancel(); });
+    }
+
+    function tabRetired() {
+      try { return sessionStorage.getItem(TAB_OFF_KEY) === '1'; }
+      catch (e) { return false; }
+    }
+    function retireTab() {
+      try { sessionStorage.setItem(TAB_OFF_KEY, '1'); } catch (e) { /* private mode */ }
+      hideTab();
+    }
+    function hideTab() {
+      if (!bubble) return;
+      bubble.hidden = true;
+      bubble.removeAttribute('data-state');
+      clearAnims(wrap);
+      docked = false;
+    }
+    /* quiet: laid out so it can be measured, but not yet visible. */
+    function showTab(quiet) {
+      if (!bubble) return;
+      bubble.hidden = false;
+      if (quiet) bubble.dataset.state = 'staged';
+      else bubble.removeAttribute('data-state');
+    }
+    function canDock() {
+      return miniOn && !converted() && !tabRetired();
+    }
+
+    /* ------------------------------------------------------------------
+       Handover between the popup and the tab.
+
+       One of the two is always leaving and the other always arriving, and
+       they take strict turns: the leaver fades out completely, and only then
+       does the arriver fade in. No travel between the two positions, so
+       nothing sweeps across the middle of the page, and no overlap, so there
+       is never a frame showing half a popup and half a tab.
+
+       The split is 40/60 of the configured duration on the way down and 35/65
+       on the way up, because an arrival wants a little more room than a
+       departure. Transform and opacity only, so it stays on the compositor.
+       ------------------------------------------------------------------ */
+
+    /* Everything the popup gives up when it leaves the screen, shared by the
+       minimise path and the plain close. */
+    function stashPopup() {
+      clearAnims(dialog);
+      clearAnims(overlay);
+      dialog.style.opacity = '';
+      dialog.style.transform = '';
+      overlay.style.opacity = '';
+      root.hidden = true;
+      root.removeAttribute('data-state');
+      unlockScroll();
+      lastClosedAt = Date.now();
+    }
+
+    /* ---- minimise ---------------------------------------------------- */
+    function finishMinimise() {
+      stashPopup();
+      showTab(false);
+      clearAnims(wrap);
+      docked = true;
+      busy = false;
+      // The tab is where the popup went, so it is where focus should follow.
+      var btn = bubble.querySelector('[data-lead-popup-restore]');
+      if (btn) btn.focus({ preventScroll: true });
+    }
+
+    function minimise() {
+      busy = true;
+      showTab(true);   // staged in the layout, still invisible
+
+      if (reduceMotion || !canAnimate) { finishMinimise(); return; }
+
+      root.dataset.state = 'minimising';
+      var outMs = Math.max(90, Math.round(DUR * 0.4));
+      var inMs  = Math.max(140, DUR - outMs);
+
+      var leaving = dialog.animate(
+        [{ opacity: 1, transform: 'scale(1)' },
+         { opacity: 0, transform: 'scale(.985)' }],
+        { duration: outMs, easing: 'ease-in', fill: 'forwards' }
+      );
+      overlay.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: outMs, easing: 'ease-in', fill: 'forwards' });
+
+      var gone = false;
+      function popupGone() {
+        if (gone) return;
+        gone = true;
+        stashPopup();
+        // Clickable from here. The tab's own fade is still inside its delay
+        // and holds it at zero opacity, so this does not flash it in early.
+        showTab(false);
+      }
+      leaving.addEventListener('finish', popupGone);
+      // Backstop for a background tab, where animations may never fire.
+      setTimeout(popupGone, outMs + 250);
+
+      var arriving = wrap.animate(
+        [{ opacity: 0, transform: 'scale(.92)' },
+         { opacity: 1, transform: 'scale(1)' }],
+        {
+          duration: inMs,
+          delay: outMs,
+          easing: 'cubic-bezier(.16, 1, .3, 1)',
+          fill: 'both'
+        }
+      );
+
+      var settled = false;
+      function settle() {
+        if (settled) return;
+        settled = true;
+        popupGone();
+        clearAnims(wrap);
+        docked = true;
+        busy = false;
+        var btn = bubble.querySelector('[data-lead-popup-restore]');
+        if (btn) btn.focus({ preventScroll: true });
+      }
+      arriving.addEventListener('finish', settle);
+      setTimeout(settle, outMs + inMs + 300);
+    }
+
+    /* ---- restore ----------------------------------------------------- */
+    function raisePopup(countIt) {
+      root.dataset.state = 'restoring';
+      // Covers the single frame between being laid out and the animation
+      // taking over. The animation outranks inline style, so it wins from
+      // there, and finishRestore clears this again.
+      dialog.style.opacity = '0';
+      root.hidden = false;
+      lockScroll();
+      if (countIt) {
+        bumpShown();
+        if (exhausted()) teardownTriggers();
+      }
+    }
+
+    function finishRestore() {
+      clearAnims(dialog);
+      clearAnims(overlay);
+      dialog.style.opacity = '';
+      dialog.style.transform = '';
+      overlay.style.opacity = '';
+
+      // 'open', not nothing: clearing the attribute would switch the CSS
+      // entrance animation back on and replay it on top of the fade that
+      // has just run.
+      root.dataset.state = 'open';
+      hideTab();
+      busy = false;
+
+      var first = root.querySelector('input');
+      if (first && window.matchMedia('(min-width: 768px)').matches) {
+        first.focus({ preventScroll: true });
+      }
+    }
+
+    function restore(countIt) {
+      if (busy) return;
+      if (converted()) { retireTab(); return; }
+      busy = true;
+      lastFocused = document.activeElement;
+
+      if (reduceMotion || !canAnimate) {
+        hideTab();
+        raisePopup(countIt);
+        finishRestore();
+        return;
+      }
+
+      var outMs = Math.max(80, Math.round(DUR * 0.35));
+      var inMs  = Math.max(150, DUR - outMs);
+
+      // 1. the tab goes first, on its own
+      var leaving = wrap.animate(
+        [{ opacity: 1, transform: 'scale(1)' },
+         { opacity: 0, transform: 'scale(.92)' }],
+        { duration: outMs, easing: 'ease-in', fill: 'forwards' }
+      );
+
+      // 2. only once it has gone does the popup come up
+      var started = false;
+      function bringUp() {
+        if (started) return;
+        started = true;
+        hideTab();
+        raisePopup(countIt);
+
+        var arriving = dialog.animate(
+          [{ opacity: 0, transform: 'scale(.97)' },
+           { opacity: 1, transform: 'scale(1)' }],
+          { duration: inMs, easing: 'cubic-bezier(.16, 1, .3, 1)', fill: 'forwards' }
+        );
+        overlay.animate([{ opacity: 0 }, { opacity: 1 }],
+          { duration: inMs, easing: 'ease', fill: 'forwards' });
+
+        var done = false;
+        function end() { if (done) return; done = true; finishRestore(); }
+        arriving.addEventListener('finish', end);
+        setTimeout(end, inMs + 300);
+      }
+      leaving.addEventListener('finish', bringUp);
+      setTimeout(bringUp, outMs + 250);
+    }
+
+    /* ---- open / close ------------------------------------------------ */
     function openPopup(reason) {
       if (exhausted()) return;
-      if (!root.hidden) return;
+      if (busy) return;
       // A scroll re-open right after a close reads as the popup refusing to go
       // away, so the scroll trigger stays quiet for a moment after a dismissal.
       if (reason === 'scroll' && Date.now() - lastClosedAt < REARM_MS) return;
 
+      // Parked in the tab, so this showing grows back out of it instead of
+      // fading in over the top of it.
+      if (docked && miniOn && bubble && !bubble.hidden) {
+        restore(true);
+        return;
+      }
+      if (!root.hidden) return;
+
       lastFocused = document.activeElement;
+      root.removeAttribute('data-state');   // lets the CSS entrance run
       root.hidden = false;
       lockScroll();
       bumpShown();
@@ -1064,13 +1749,12 @@
       }
     }
 
-    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
     function finishClose() {
       root.hidden = true;
       root.removeAttribute('data-state');
       unlockScroll();
       lastClosedAt = Date.now();
+      docked = false;
       // preventScroll: restoring focus must not drag the page back to wherever
       // the trigger element happened to sit.
       if (lastFocused && typeof lastFocused.focus === 'function') {
@@ -1078,8 +1762,15 @@
       }
     }
 
-    function closePopup() {
-      if (root.hidden || root.dataset.state === 'closing') return;
+    /* allowDock false is the close that follows a successful submit. That one
+       really is the end of it, so it must not leave a tab behind inviting the
+       customer to fill the same form again. */
+    function closePopup(allowDock) {
+      if (root.hidden || busy) return;
+      if (root.dataset.state === 'closing') return;
+
+      if (allowDock !== false && canDock()) { minimise(); return; }
+
       if (reduceMotion) { finishClose(); return; }
 
       // Hiding the element immediately would skip the exit animation entirely,
@@ -1087,7 +1778,6 @@
       // timeout is a backstop for when the animation never fires (element not
       // rendered, background tab), otherwise the popup would stay stuck open.
       root.dataset.state = 'closing';
-      var dialog = root.querySelector('.lead-popup__dialog');
       var done = false;
       function once() {
         if (done) return;
@@ -1148,9 +1838,42 @@
       }
     }
 
+    /* Wrapped rather than passed straight through: the handler receives the
+       click event as its first argument, and closePopup reads that argument
+       as the "may this dock" flag. */
     root.querySelectorAll('[data-lead-popup-close]').forEach(function (el) {
-      el.addEventListener('click', closePopup);
+      el.addEventListener('click', function () { closePopup(true); });
     });
+
+    if (miniOn) {
+      var restoreBtn = bubble.querySelector('[data-lead-popup-restore]');
+      if (restoreBtn) {
+        // A deliberate tap is not a showing. The session allowance exists to
+        // limit how often the popup interrupts, and this one was asked for.
+        restoreBtn.addEventListener('click', function () { restore(false); });
+      }
+
+      var dismissBtn = bubble.querySelector('[data-lead-popup-mini-dismiss]');
+      if (dismissBtn) {
+        dismissBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          retireTab();
+        });
+      }
+
+      /* Carried across pages. The section only renders on the pages the
+         merchant switched it on for, so the tab follows the popup and appears
+         nowhere else. Nothing is handing over on a fresh page load, so it
+         slides up into place rather than fading in. */
+      if (miniPersist && !converted() && !tabRetired() && shownCount() >= 1) {
+        bubble.hidden = false;
+        bubble.dataset.state = 'entering';
+        docked = true;
+        wrap.addEventListener('animationend', function () {
+          bubble.removeAttribute('data-state');
+        }, { once: true });
+      }
+    }
 
     document.addEventListener('keydown', function (e) {
       if (root.hidden) return;
@@ -1235,6 +1958,8 @@
         // They sent their details. Never ask again on this browser.
         markConverted();
         teardownTriggers();
+        // They sent their details, so the tab has nothing left to reopen.
+        if (miniOn) retireTab();
         form.hidden = true;
         if (headEl) headEl.hidden = true;
         if (successEl) successEl.hidden = false;
@@ -1249,7 +1974,8 @@
           // there is nothing to scroll to.
           successEl.focus({ preventScroll: true });
         }
-        setTimeout(closePopup, 3400);
+        // false: no docking. This close is final.
+        setTimeout(function () { closePopup(false); }, 3400);
       }
 
       if (reduceMotion) { swap(); return; }
@@ -1290,10 +2016,8 @@
       if (!phoneRaw) invalid('phone', 'Phone number is required');
       else if (!/^\d{10}$/.test(phone)) invalid('phone', 'Enter a valid 10-digit mobile number');
 
-      // No upper or lower bound: whatever age the customer types is accepted.
-      // The isNaN guard only catches a non-numeric entry, not an out-of-range one.
       if (!ageRaw) invalid('age', 'Age is required');
-      else if (isNaN(age)) invalid('age', 'Enter your age in numbers');
+      else if (isNaN(age) || age < 18 || age > 100) invalid('age', 'Enter an age between 18 and 100');
 
       // Optional, only checked when something was actually typed. The pattern
       // is deliberately loose (something@something.tld); strict RFC patterns
@@ -1369,7 +2093,7 @@
 
 {% schema %}
 {
-  "name": "Lead Capture Popup",
+  "name": "Lead Popup (minimisable)",
   "settings": [
     {
       "type": "header",
@@ -1437,6 +2161,214 @@
       "label": "Count those showings per page",
       "default": false,
       "info": "Off, the allowance is spent across the whole visit. On, the homepage and each custom page get their own allowance."
+    },
+    {
+      "type": "header",
+      "content": "Minimised tab"
+    },
+    {
+      "type": "paragraph",
+      "content": "Closing the popup shrinks it into a small tab in the corner instead of throwing it away. Tapping the tab pulls the popup back out along the same path."
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_minimise",
+      "label": "Minimise into a tab on close",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "mini_position",
+      "label": "Position",
+      "options": [
+        {
+          "value": "bottom-right",
+          "label": "Bottom right"
+        },
+        {
+          "value": "bottom-left",
+          "label": "Bottom left"
+        },
+        {
+          "value": "middle-right",
+          "label": "Middle right"
+        },
+        {
+          "value": "middle-left",
+          "label": "Middle left"
+        }
+      ],
+      "default": "bottom-right"
+    },
+    {
+      "type": "range",
+      "id": "mini_offset_bottom",
+      "label": "Space from the bottom",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 24,
+      "info": "Used by the two bottom positions. Raise it to clear a sticky bar or a chat widget."
+    },
+    {
+      "type": "range",
+      "id": "mini_offset_side",
+      "label": "Space from the side",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "mini_offset_bottom_mobile",
+      "label": "Space from the bottom on mobile",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "default": 16,
+      "info": "The iPhone home indicator is already accounted for on top of this."
+    },
+    {
+      "type": "range",
+      "id": "mini_offset_side_mobile",
+      "label": "Space from the side on mobile",
+      "min": 0,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "select",
+      "id": "mini_style",
+      "label": "What the tab shows",
+      "options": [
+        {
+          "value": "pill",
+          "label": "Photo and text"
+        },
+        {
+          "value": "compact",
+          "label": "Photo only"
+        },
+        {
+          "value": "text",
+          "label": "Text only"
+        }
+      ],
+      "default": "pill"
+    },
+    {
+      "type": "select",
+      "id": "mini_size",
+      "label": "Size",
+      "options": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "select",
+      "id": "mini_theme",
+      "label": "Colour",
+      "options": [
+        {
+          "value": "light",
+          "label": "White"
+        },
+        {
+          "value": "brand",
+          "label": "Brand gradient"
+        },
+        {
+          "value": "dark",
+          "label": "Dark"
+        }
+      ],
+      "default": "light"
+    },
+    {
+      "type": "text",
+      "id": "mini_title",
+      "label": "Tab title",
+      "info": "Falls back to the popup heading. Clamped to two lines."
+    },
+    {
+      "type": "text",
+      "id": "mini_sub",
+      "label": "Tab subtitle",
+      "default": "Tap to reopen",
+      "info": "Hidden on phones, where there is no room for it."
+    },
+    {
+      "type": "image_picker",
+      "id": "mini_image",
+      "label": "Tab photo",
+      "info": "Falls back to the advisor photo the popup is already using."
+    },
+    {
+      "type": "checkbox",
+      "id": "mini_dismissible",
+      "label": "Let the visitor hide the tab",
+      "default": true,
+      "info": "Adds a small cross. Hiding it lasts for the rest of the visit only."
+    },
+    {
+      "type": "select",
+      "id": "mini_attention",
+      "label": "How the tab draws attention",
+      "options": [
+        {
+          "value": "nudge",
+          "label": "Nudge (a short bob every few seconds)"
+        },
+        {
+          "value": "dot",
+          "label": "Dot (a small unread marker)"
+        },
+        {
+          "value": "sheen",
+          "label": "Sheen (a light sweep across it)"
+        },
+        {
+          "value": "none",
+          "label": "Nothing"
+        }
+      ],
+      "default": "nudge",
+      "info": "All of these stay inside the tab itself rather than expanding out over the page."
+    },
+    {
+      "type": "checkbox",
+      "id": "mini_persist",
+      "label": "Keep the tab on later pages",
+      "default": true,
+      "info": "Once the popup has been seen, the tab reappears on every page this section is switched on for."
+    },
+    {
+      "type": "range",
+      "id": "minimise_speed",
+      "label": "Animation duration",
+      "min": 240,
+      "max": 900,
+      "step": 20,
+      "unit": "ms",
+      "default": 520
     },
     {
       "type": "header",
@@ -1605,7 +2537,7 @@
   ],
   "presets": [
     {
-      "name": "Lead Capture Popup"
+      "name": "Lead Popup (minimisable)"
     }
   ]
 }

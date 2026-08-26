@@ -1,0 +1,1325 @@
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-shop-category-{{ ai_gen_id }} {
+    display: block;
+    padding: {{ block.settings.section_padding_top }}px 0 {{ block.settings.section_padding_bottom }}px;
+    background-color: {{ block.settings.section_background_color }};
+    width: 100%;
+  }
+
+  .ai-shop-category-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.content_max_width }}px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .ai-shop-category-heading-{{ ai_gen_id }} {
+    font-size: clamp(24px,3.4vw,64px);
+    font-weight: {{ block.settings.heading_weight }};
+    text-align: {{ block.settings.heading_alignment }};
+    margin: 0 0 {{ block.settings.heading_spacing }}px;
+  }
+
+  .ai-shop-category-grid-wrapper-{{ ai_gen_id }} {
+    display: flex;
+    {% if block.settings.card_alignment == 'center' %}
+      justify-content: center;
+    {% elsif block.settings.card_alignment == 'start' %}
+      justify-content: flex-start;
+    {% elsif block.settings.card_alignment == 'end' %}
+      justify-content: flex-end;
+    {% endif %}
+  }
+
+  .ai-shop-category-grid-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: repeat({{ block.settings.cards_per_row_desktop }}, auto);
+    gap: {{ block.settings.card_gap }}px;
+    width: max-content;
+  }
+
+  {% if block.settings.mobile_scroll_behavior == 'scroll' %}
+    @media screen and (max-width: 749px) {
+      .ai-shop-category-grid-{{ ai_gen_id }} {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        gap: {{ block.settings.card_gap | times: 0.8 }}px;
+        padding-bottom: 10px;
+      }
+
+      .ai-shop-category-grid-{{ ai_gen_id }}::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .ai-shop-category-grid-{{ ai_gen_id }}::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+      }
+
+      .ai-shop-category-grid-{{ ai_gen_id }}::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 3px;
+      }
+
+      .ai-shop-category-card-{{ ai_gen_id }} {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        width: {{ block.settings.mobile_image_size | times: 1.2 }}px;
+      }
+    }
+  {% endif %}
+
+  .ai-shop-category-card-{{ ai_gen_id }} {
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ai-shop-category-card-{{ ai_gen_id }}:hover {
+    {% if block.settings.hover_effect == 'zoom' %}
+      transform: scale(1.05);
+    {% elsif block.settings.hover_effect == 'lift' %}
+      transform: translateY(-8px);
+    {% endif %}
+  }
+
+  .ai-shop-category-image-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    width: {{ block.settings.image_size }}px;
+    height: {{ block.settings.image_size }}px;
+    margin: 0 0 {{ block.settings.text_spacing }}px;
+    transition: box-shadow 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .ai-shop-category-card-{{ ai_gen_id }}:hover .ai-shop-category-image-wrapper-{{ ai_gen_id }} {
+    {% if block.settings.hover_effect == 'shadow' %}
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    {% endif %}
+  }
+
+  .ai-shop-category-image-bg-{{ ai_gen_id }} {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    z-index: 1;
+  }
+
+  .ai-shop-category-image-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    z-index: 2;
+    border-style: solid;
+  }
+
+  .ai-shop-category-image-placeholder-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 2;
+  }
+
+  .ai-shop-category-image-placeholder-{{ ai_gen_id }} svg {
+    width: 60%;
+    height: 60%;
+    opacity: 0.3;
+  }
+
+  .ai-shop-category-title-{{ ai_gen_id }} {
+    font-size: clamp(16px,1.55vw,34px);
+    font-weight: {{ block.settings.title_weight }};
+    margin: 0 0 {{ block.settings.description_spacing }}px;
+    text-align: {{ block.settings.text_alignment }};
+  }
+
+  .ai-shop-category-description-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1vw, 20px);
+    line-height: {{ block.settings.description_line_height }};
+    margin: 0;
+    text-align: {{ block.settings.text_alignment }};
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-shop-category-grid-{{ ai_gen_id }} {
+      {% if block.settings.mobile_scroll_behavior == 'grid' %}
+        grid-template-columns: repeat({{ block.settings.cards_per_row_tablet }}, minmax(0, 1fr));
+      {% endif %}
+    }
+
+    .ai-shop-category-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size | times: 0.9 }}px;
+    }
+
+    .ai-shop-category-image-wrapper-{{ ai_gen_id }} {
+      width: {{ block.settings.image_size | times: 0.85 }}px;
+      height: {{ block.settings.image_size | times: 0.85 }}px;
+    }
+
+    .ai-shop-category-title-{{ ai_gen_id }} {
+      font-size: {{ block.settings.title_size | times: 0.9 }}px;
+    }
+
+    .ai-shop-category-description-{{ ai_gen_id }} {
+      font-size: {{ block.settings.description_size | times: 0.9 }}px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-shop-category-grid-{{ ai_gen_id }} {
+      {% if block.settings.mobile_scroll_behavior == 'grid' %}
+        grid-template-columns: repeat({{ block.settings.cards_per_row_mobile }}, minmax(0, 1fr));
+      {% endif %}
+    }
+
+    .ai-shop-category-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.mobile_heading_size }}px;
+    }
+
+    .ai-shop-category-image-wrapper-{{ ai_gen_id }} {
+      width: {{ block.settings.mobile_image_size }}px;
+      height: {{ block.settings.mobile_image_size }}px;
+    }
+
+    .ai-shop-category-title-{{ ai_gen_id }} {
+      font-size: {{ block.settings.mobile_title_size }}px;
+    }
+
+    .ai-shop-category-description-{{ ai_gen_id }} {
+      font-size: {{ block.settings.mobile_description_size }}px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-shop-category-card-{{ ai_gen_id }},
+    .ai-shop-category-image-wrapper-{{ ai_gen_id }} {
+      transition: none;
+    }
+  }
+{% endstyle %}
+
+<shop-by-category-{{ ai_gen_id }}
+  class="ai-shop-category-{{ ai_gen_id }}"
+  data-scroll-offset="{{ block.settings.scroll_offset }}"
+  data-scroll-duration="{{ block.settings.scroll_duration }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="ai-shop-category-container-{{ ai_gen_id }}">
+    {% if block.settings.section_heading != blank %}
+      <h2 class="ai-shop-category-heading-{{ ai_gen_id }}">{{ block.settings.section_heading }}</h2>
+    {% endif %}
+
+    <div class="ai-shop-category-grid-wrapper-{{ ai_gen_id }}">
+      <div class="ai-shop-category-grid-{{ ai_gen_id }}">
+        {% for i in (1..8) %}
+          {% liquid
+            assign card_enabled_key = 'card_' | append: i | append: '_enabled'
+            assign card_image_key = 'card_' | append: i | append: '_image'
+            assign card_bg_color_key = 'card_' | append: i | append: '_bg_color'
+            assign card_border_color_key = 'card_' | append: i | append: '_border_color'
+            assign card_border_width_key = 'card_' | append: i | append: '_border_width'
+            assign card_title_key = 'card_' | append: i | append: '_title'
+            assign card_description_key = 'card_' | append: i | append: '_description'
+            assign card_link_key = 'card_' | append: i | append: '_link'
+            assign card_section_id_key = 'card_' | append: i | append: '_section_id'
+            assign card_scroll_behavior_key = 'card_' | append: i | append: '_scroll_behavior'
+
+            assign card_enabled = block.settings[card_enabled_key]
+            assign card_image = block.settings[card_image_key]
+            assign card_bg_color = block.settings[card_bg_color_key]
+            assign card_border_color = block.settings[card_border_color_key]
+            assign card_border_width = block.settings[card_border_width_key]
+            assign card_title = block.settings[card_title_key]
+            assign card_description = block.settings[card_description_key]
+            assign card_link = block.settings[card_link_key]
+            assign card_section_id = block.settings[card_section_id_key]
+            assign card_scroll_behavior = block.settings[card_scroll_behavior_key]
+          %}
+
+          {% if card_enabled %}
+            <div
+              class="ai-shop-category-card-{{ ai_gen_id }}"
+              data-card-index="{{ i }}"
+              {% if card_scroll_behavior == 'scroll' and card_section_id != blank %}
+                data-scroll-target="{{ card_section_id }}"
+              {% elsif card_link != blank %}
+                data-link-url="{{ card_link }}"
+              {% endif %}
+            >
+              <div class="ai-shop-category-image-wrapper-{{ ai_gen_id }}">
+                <div
+                  class="ai-shop-category-image-bg-{{ ai_gen_id }}"
+                  style="background-color: {{ card_bg_color }};"
+                ></div>
+                {% if card_image %}
+                  <img
+                    src="{{ card_image | image_url: width: 600 }}"
+                    alt="{{ card_title | escape }}"
+                    class="ai-shop-category-image-{{ ai_gen_id }}"
+                    style="border-color: {{ card_border_color }}; border-width: {{ card_border_width }}px;"
+                    loading="lazy"
+                    width="600"
+                    height="600"
+                  >
+                {% else %}
+                  <div
+                    class="ai-shop-category-image-placeholder-{{ ai_gen_id }}"
+                    style="border: {{ card_border_width }}px solid {{ card_border_color }};"
+                  >
+                    {{ 'image' | placeholder_svg_tag }}
+                  </div>
+                {% endif %}
+              </div>
+
+              {% if card_title != blank %}
+                <h3 class="ai-shop-category-title-{{ ai_gen_id }}">{{ card_title }}</h3>
+              {% endif %}
+
+              {% if card_description != blank %}
+                <p class="ai-shop-category-description-{{ ai_gen_id }}">{{ card_description }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</shop-by-category-{{ ai_gen_id }}>
+
+<script>
+  (function () {
+    class ShopByCategory{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.scrollOffset = parseInt(this.dataset.scrollOffset) || 0;
+        this.scrollDuration = parseInt(this.dataset.scrollDuration) || 800;
+      }
+
+      connectedCallback() {
+        this.cards = this.querySelectorAll('.ai-shop-category-card-{{ ai_gen_id }}');
+        this.setupEventListeners();
+      }
+
+      setupEventListeners() {
+        this.cards.forEach((card) => {
+          card.addEventListener('click', () => {
+            const scrollTarget = card.dataset.scrollTarget;
+            const linkUrl = card.dataset.linkUrl;
+
+            if (scrollTarget) {
+              this.scrollToSection(scrollTarget);
+            } else if (linkUrl) {
+              window.location.href = linkUrl;
+            }
+          });
+
+          card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+              e.preventDefault();
+              card.click();
+            }
+          });
+
+          card.setAttribute('tabindex', '0');
+          card.setAttribute('role', 'button');
+        });
+      }
+
+      prefersReducedMotion() {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      }
+
+      scrollToSection(sectionId) {
+        const target = document.getElementById(sectionId);
+
+        if (!target) {
+          console.warn('[shop-by-category] target section not found:', sectionId);
+          return;
+        }
+
+        target.style.scrollMarginTop = this.scrollOffset + 'px';
+
+        if (this.prefersReducedMotion()) {
+          target.scrollIntoView({ block: 'start', behavior: 'auto' });
+          return;
+        }
+
+        if ('scrollBehavior' in document.documentElement.style) {
+          target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          return;
+        }
+
+        this.animateScrollTo(target);
+      }
+
+      animateScrollTo(target) {
+        const startPosition = window.pageYOffset;
+        const targetPosition = target.getBoundingClientRect().top + startPosition - this.scrollOffset;
+        const distance = targetPosition - startPosition;
+        const duration = this.scrollDuration;
+        const root = document.documentElement;
+        const previousBehavior = root.style.scrollBehavior;
+
+        root.style.scrollBehavior = 'auto';
+
+        let startTime = null;
+
+        const step = (currentTime) => {
+          if (startTime === null) startTime = currentTime;
+
+          const progress = Math.min((currentTime - startTime) / duration, 1);
+          const ease =
+            progress < 0.5
+              ? 4 * progress * progress * progress
+              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+          const y = startPosition + distance * ease;
+
+          try {
+            window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+          } catch (err) {
+            window.scrollTo(0, y);
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          } else {
+            root.style.scrollBehavior = previousBehavior;
+          }
+        };
+
+        requestAnimationFrame(step);
+      }
+    }
+
+    customElements.define('shop-by-category-{{ ai_gen_id }}', ShopByCategory{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Shop by category",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section settings"
+    },
+    {
+      "type": "text",
+      "id": "section_heading",
+      "label": "Section heading",
+      "default": "Shop by Category"
+    },
+    {
+      "type": "color",
+      "id": "section_background_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "content_max_width",
+      "min": 800,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "label": "Content max width",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 60
+    },
+    {
+      "type": "header",
+      "content": "Heading style"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 20,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "label": "Font size",
+      "default": 36
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "Font weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Color",
+      "default": "#000000"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "heading_spacing",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Bottom spacing",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "cards_per_row_desktop",
+      "label": "Cards per row (desktop)",
+      "options": [
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" },
+        { "value": "4", "label": "4" },
+        { "value": "5", "label": "5" }
+      ],
+      "default": "4"
+    },
+    {
+      "type": "select",
+      "id": "cards_per_row_tablet",
+      "label": "Cards per row (tablet)",
+      "options": [
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "select",
+      "id": "cards_per_row_mobile",
+      "label": "Cards per row (mobile)",
+      "options": [
+        { "value": "1", "label": "1" },
+        { "value": "2", "label": "2" }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Card spacing",
+      "default": 30
+    },
+    {
+      "type": "select",
+      "id": "card_alignment",
+      "label": "Card alignment",
+      "options": [
+        { "value": "start", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "end", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "mobile_scroll_behavior",
+      "label": "Mobile layout",
+      "options": [
+        { "value": "grid", "label": "Grid" },
+        { "value": "scroll", "label": "Horizontal scroll" }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "header",
+      "content": "Card image style"
+    },
+    {
+      "type": "range",
+      "id": "image_size",
+      "min": 100,
+      "max": 300,
+      "step": 10,
+      "unit": "px",
+      "label": "Image size (desktop)",
+      "default": 200
+    },
+    {
+      "type": "range",
+      "id": "mobile_image_size",
+      "min": 80,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "label": "Image size (mobile)",
+      "default": 140
+    },
+    {
+      "type": "select",
+      "id": "hover_effect",
+      "label": "Hover effect",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "zoom", "label": "Zoom" },
+        { "value": "lift", "label": "Lift" },
+        { "value": "shadow", "label": "Shadow" }
+      ],
+      "default": "lift"
+    },
+    {
+      "type": "header",
+      "content": "Card text style"
+    },
+    {
+      "type": "range",
+      "id": "text_spacing",
+      "min": 10,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Image to text spacing",
+      "default": 20
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "Text alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "title_size",
+      "min": 14,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "label": "Title size (desktop)",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "mobile_title_size",
+      "min": 12,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "label": "Title size (mobile)",
+      "default": 16
+    },
+    {
+      "type": "select",
+      "id": "title_weight",
+      "label": "Title weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Title color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "description_spacing",
+      "min": 5,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Title to description spacing",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "description_size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Description size (desktop)",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "mobile_description_size",
+      "min": 11,
+      "max": 16,
+      "step": 1,
+      "unit": "px",
+      "label": "Description size (mobile)",
+      "default": 13
+    },
+    {
+      "type": "color",
+      "id": "description_color",
+      "label": "Description color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "description_line_height",
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "label": "Description line height",
+      "default": 1.5
+    },
+    {
+      "type": "range",
+      "id": "mobile_heading_size",
+      "min": 18,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Heading size (mobile)",
+      "default": 28
+    },
+    {
+      "type": "header",
+      "content": "Scroll settings"
+    },
+    {
+      "type": "range",
+      "id": "scroll_offset",
+      "min": 0,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "label": "Scroll offset",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "scroll_duration",
+      "min": 300,
+      "max": 1500,
+      "step": 100,
+      "unit": "ms",
+      "label": "Scroll duration",
+      "info": "Only applies on browsers without native smooth scrolling. Modern browsers choose their own duration.",
+      "default": 800
+    },
+    {
+      "type": "header",
+      "content": "Card 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_1_enabled",
+      "label": "Enable card 1",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "card_1_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_1_bg_color",
+      "label": "Background color",
+      "default": "#FFB6C1"
+    },
+    {
+      "type": "color",
+      "id": "card_1_border_color",
+      "label": "Border color",
+      "default": "#FFB6C1"
+    },
+    {
+      "type": "range",
+      "id": "card_1_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_1_title",
+      "label": "Title",
+      "default": "Period Care"
+    },
+    {
+      "type": "textarea",
+      "id": "card_1_description",
+      "label": "Description",
+      "default": "Support for cramps, flow balance, PCOS symptoms and hormonal discomfort"
+    },
+    {
+      "type": "select",
+      "id": "card_1_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_1_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_1_link",
+      "label": "Link URL (for navigate)"
+    },
+    {
+      "type": "header",
+      "content": "Card 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_2_enabled",
+      "label": "Enable card 2",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "card_2_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_2_bg_color",
+      "label": "Background color",
+      "default": "#2C3E50"
+    },
+    {
+      "type": "color",
+      "id": "card_2_border_color",
+      "label": "Border color",
+      "default": "#2C3E50"
+    },
+    {
+      "type": "range",
+      "id": "card_2_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_2_title",
+      "label": "Title",
+      "default": "Weight Management"
+    },
+    {
+      "type": "textarea",
+      "id": "card_2_description",
+      "label": "Description",
+      "default": "Support for metabolism, appetite control and healthy fat-burning"
+    },
+    {
+      "type": "select",
+      "id": "card_2_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_2_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_2_link",
+      "label": "Link URL (for navigate)"
+    },
+    {
+      "type": "header",
+      "content": "Card 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_3_enabled",
+      "label": "Enable card 3",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "card_3_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_3_bg_color",
+      "label": "Background color",
+      "default": "#87CEEB"
+    },
+    {
+      "type": "color",
+      "id": "card_3_border_color",
+      "label": "Border color",
+      "default": "#87CEEB"
+    },
+    {
+      "type": "range",
+      "id": "card_3_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_3_title",
+      "label": "Title",
+      "default": "Wellness"
+    },
+    {
+      "type": "textarea",
+      "id": "card_3_description",
+      "label": "Description",
+      "default": "Support for overall health and vitality"
+    },
+    {
+      "type": "select",
+      "id": "card_3_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_3_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_3_link",
+      "label": "Link URL (for navigate)"
+    },
+    {
+      "type": "header",
+      "content": "Card 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_4_enabled",
+      "label": "Enable card 4",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "card_4_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_4_bg_color",
+      "label": "Background color",
+      "default": "#98D8C8"
+    },
+    {
+      "type": "color",
+      "id": "card_4_border_color",
+      "label": "Border color",
+      "default": "#98D8C8"
+    },
+    {
+      "type": "range",
+      "id": "card_4_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_4_title",
+      "label": "Title",
+      "default": "Nutrition"
+    },
+    {
+      "type": "textarea",
+      "id": "card_4_description",
+      "label": "Description",
+      "default": "Essential vitamins and minerals for daily health"
+    },
+    {
+      "type": "select",
+      "id": "card_4_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_4_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_4_link",
+      "label": "Link URL (for navigate)"
+    },
+    {
+      "type": "header",
+      "content": "Card 5"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_5_enabled",
+      "label": "Enable card 5",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "card_5_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_5_bg_color",
+      "label": "Background color",
+      "default": "#F6AD55"
+    },
+    {
+      "type": "color",
+      "id": "card_5_border_color",
+      "label": "Border color",
+      "default": "#F6AD55"
+    },
+    {
+      "type": "range",
+      "id": "card_5_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_5_title",
+      "label": "Title",
+      "default": "Energy"
+    },
+    {
+      "type": "textarea",
+      "id": "card_5_description",
+      "label": "Description",
+      "default": "Natural energy boosters for active lifestyles"
+    },
+    {
+      "type": "select",
+      "id": "card_5_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_5_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_5_link",
+      "label": "Link URL (for navigate)"
+    },
+    {
+      "type": "header",
+      "content": "Card 6"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_6_enabled",
+      "label": "Enable card 6",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "card_6_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_6_bg_color",
+      "label": "Background color",
+      "default": "#B794F4"
+    },
+    {
+      "type": "color",
+      "id": "card_6_border_color",
+      "label": "Border color",
+      "default": "#B794F4"
+    },
+    {
+      "type": "range",
+      "id": "card_6_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_6_title",
+      "label": "Title",
+      "default": "Sleep"
+    },
+    {
+      "type": "textarea",
+      "id": "card_6_description",
+      "label": "Description",
+      "default": "Natural sleep support for restful nights"
+    },
+    {
+      "type": "select",
+      "id": "card_6_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_6_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_6_link",
+      "label": "Link URL (for navigate)"
+    },
+    {
+      "type": "header",
+      "content": "Card 7"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_7_enabled",
+      "label": "Enable card 7",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "card_7_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_7_bg_color",
+      "label": "Background color",
+      "default": "#FC8181"
+    },
+    {
+      "type": "color",
+      "id": "card_7_border_color",
+      "label": "Border color",
+      "default": "#FC8181"
+    },
+    {
+      "type": "range",
+      "id": "card_7_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_7_title",
+      "label": "Title",
+      "default": "Immunity"
+    },
+    {
+      "type": "textarea",
+      "id": "card_7_description",
+      "label": "Description",
+      "default": "Strengthen your natural defenses"
+    },
+    {
+      "type": "select",
+      "id": "card_7_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_7_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_7_link",
+      "label": "Link URL (for navigate)"
+    },
+    {
+      "type": "header",
+      "content": "Card 8"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_8_enabled",
+      "label": "Enable card 8",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "card_8_image",
+      "label": "Image"
+    },
+    {
+      "type": "color",
+      "id": "card_8_bg_color",
+      "label": "Background color",
+      "default": "#68D391"
+    },
+    {
+      "type": "color",
+      "id": "card_8_border_color",
+      "label": "Border color",
+      "default": "#68D391"
+    },
+    {
+      "type": "range",
+      "id": "card_8_border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "card_8_title",
+      "label": "Title",
+      "default": "Digestion"
+    },
+    {
+      "type": "textarea",
+      "id": "card_8_description",
+      "label": "Description",
+      "default": "Support for healthy gut and digestive wellness"
+    },
+    {
+      "type": "select",
+      "id": "card_8_scroll_behavior",
+      "label": "Click behavior",
+      "options": [
+        { "value": "scroll", "label": "Smooth scroll to section" },
+        { "value": "navigate", "label": "Navigate to URL" }
+      ],
+      "default": "navigate"
+    },
+    {
+      "type": "text",
+      "id": "card_8_section_id",
+      "label": "Section ID (for scroll)"
+    },
+    {
+      "type": "url",
+      "id": "card_8_link",
+      "label": "Link URL (for navigate)"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Shop by category"
+    }
+  ]
+}
+{% endschema %}

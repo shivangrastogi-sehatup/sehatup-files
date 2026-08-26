@@ -1,0 +1,171 @@
+================================================================================
+ TEMPLATE 6 OF 6 — PCOD, GENERAL (IRREGULAR PERIODS)
+================================================================================
+ Key           : general_pcod_pcos
+ Dropdown label: "PCOD – General (Irregular Periods)"
+ Defined in    : sehatup-firebase/functions/index.js, DIET_PLANS (line 362)
+ Rendered by   : functions/templates/prescriptionTemplateV3.html (page 2)
+ Test URL      : /testDietPrescriptionPDF?template=general_pcod_pcos
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ ABOUT THIS TEMPLATE
+--------------------------------------------------------------------------------
+
+ WHO IT IS FOR
+   The catch-all. Use it when the patient has PCOD with irregular periods but
+   does not clearly fall into lean, overweight, fertility-seeking, thyroid/
+   sugar or anxiety-dominant. This is the safe default of the six.
+
+ CLINICAL GOAL
+   Regulate hormones, improve ovulation and stabilise insulin. Framed as an
+   EDUCATIONAL PROTOCOL to be followed for 6–8 weeks rather than a two-week
+   corrective diet.
+
+ *** THIS TEMPLATE IS STRUCTURALLY DIFFERENT FROM THE OTHER FIVE ***
+   Read this before editing it. Templates 01–05 share one shape; this one
+   uses a different half of the same schema.
+
+   1. MEALS USE `items[]`, NOT `food` + `benefit`.
+      Every other template gives each meal one food string plus an italic
+      benefit line. Here each meal is a BULLETED LIST of 3–4 sub-points, and
+      there is no per-meal benefit line at all. The Handlebars template
+      supports both shapes ({{#if this.food}} vs {{#if this.items}}), so
+      both render correctly — but they look noticeably different on the PDF.
+
+   2. IT IS THE ONLY TEMPLATE WITH `understandingItems`.
+      This produces the "UNDERSTANDING YOUR CONDITION" card at the top,
+      which none of the other five print.
+
+   3. IT IS THE ONLY TEMPLATE WITH `advancedTips`.
+      This produces the purple NUMBERED "ADVANCED DIETICIAN TIPS" card,
+      including the seed-cycling protocol — advice that appears nowhere
+      else in the system.
+
+   4. IT DROPS FOUR CARDS THE OTHERS HAVE.
+      No dailyAddons, no specialFocus, no avoidFoods, no hydration,
+      no followUp.
+
+   5. LAYOUT CONSEQUENCE (cosmetic bug worth knowing):
+      The PDF's "Foods to Avoid | Lifestyle" row is a fixed two-column grid.
+      With avoidFoods missing, the Lifestyle card renders in the LEFT column
+      and the right half of that row is blank. Likewise the
+      hydration/follow-up row renders as an empty container because both
+      fields are absent. This is why the general plan's page 2 looks
+      emptier than the other five even though it carries more advice.
+
+   6. Its meal slots have EVOCATIVE NAMES rather than clock times —
+      "Morning Hormone Reset Routine", "Evening Cortisol Control Snack".
+      No other template does this.
+
+   7. It is the only plan that does NOT say "Review after 15 days".
+      Its note says follow consistently for 6–8 weeks instead.
+
+ FIELDS PRESENT
+   condition, subtitle, understandingItems, meals(6, items-style),
+   advancedTips, lifestyle, note
+ FIELDS ABSENT
+   dailyAddons, specialFocus, avoidFoods, hydration, followUp
+
+
+--------------------------------------------------------------------------------
+ FULL TEMPLATE CONTENT (verbatim from source)
+--------------------------------------------------------------------------------
+
+ CONDITION
+   PCOD with Irregular Periods (General Type)
+
+ SUBTITLE
+   Plan focuses on regulating hormones, improving ovulation and stabilizing
+   insulin levels
+
+
+ ── UNDERSTANDING YOUR CONDITION ───────────────────────────────────────────
+     • Irregular periods are mainly due to hormonal imbalance.
+     • This plan focuses on regulating hormones, improving ovulation and
+       stabilizing insulin levels.
+
+
+ ── MEAL PLAN (6 slots, bulleted style) ────────────────────────────────────
+
+ [1] MORNING HORMONE RESET ROUTINE
+     • Warm water with soaked methi seeds (4–5 seeds, 4 times/week)
+     • 2 soaked walnuts + 5 almonds
+     • 10–15 min sunlight exposure for Vitamin D
+     • Light stretching or breathing exercises
+
+ [2] BREAKFAST (HIGH PROTEIN – MUST)
+     • Paneer bhurji / Eggs / Moong dal chilla
+     • Add 1 tsp flaxseed powder (estrogen balance)
+     • Avoid bread, biscuits, sugary cereals
+     • Tea/coffee without excess sugar
+
+ [3] MID-MORNING HORMONE SNACK
+     • Low GI fruit: Apple / Guava / Papaya
+     • 1 tsp pumpkin seeds (zinc for hormone support)
+     • Avoid fruit juices
+
+ [4] LUNCH (BALANCED PLATE)
+     • 1–2 roti (multigrain) + sabzi + dal
+     • Include leafy greens (spinach, methi)
+     • 1 bowl curd (skip if white discharge)
+     • Avoid fried/oily food
+
+ [5] EVENING CORTISOL CONTROL SNACK
+     • Herbal tea (cinnamon + tulsi)
+     • Roasted chana / makhana
+     • Avoid biscuits, namkeen
+
+ [6] DINNER (LIGHT & EARLY)
+     • Dal + sabzi + 1 roti
+     • 1 tsp sesame seeds (cycle regulation)
+     • Finish dinner before 8:30 PM
+     • Avoid heavy carbs at night
+
+
+ ── ADVANCED DIETICIAN TIPS (numbered on the PDF) ──────────────────────────
+     1. Seed Cycling: flax + pumpkin (first half cycle),
+        sesame + sunflower (second half)
+     2. Protein in every meal improves ovulation
+     3. Avoid cold foods during periods
+     4. Sleep before 11 PM (melatonin-hormone link)
+     5. Daily 20–30 min walk
+
+
+ ── LIFESTYLE INSTRUCTIONS ─────────────────────────────────────────────────
+     • Manage stress (yoga, breathing, journaling)
+     • Avoid late nights
+     • Stay hydrated (2–3 litres water)
+     • Consistency is key for results
+
+
+ ── NOTE ───────────────────────────────────────────────────────────────────
+     This is a general plan. Follow consistently for 6–8 weeks for visible
+     results.
+
+
+ ── DAILY ADD-ONS / SPECIAL FOCUS / FOODS TO AVOID / HYDRATION / FOLLOW-UP ─
+     (none defined — these five cards are not printed for this template)
+
+
+--------------------------------------------------------------------------------
+ NOTES FOR WHOEVER MAINTAINS THIS
+--------------------------------------------------------------------------------
+ * Hydration guidance exists here, but as a LIFESTYLE bullet ("Stay hydrated
+   2–3 litres water") rather than as a `hydration` field, so it does not get
+   the water-drop card. Templates 01 and 02 do it the other way round. If
+   you want visual consistency, promote it to a `hydration` field.
+ * The curd caveat "skip if white discharge" appears ONLY here. Template 04
+   — the actual leucorrhea template — recommends daytime curd instead. Worth
+   resolving with the dietician.
+ * Seed cycling is unique to this plan. If it is genuinely good advice for
+   all PCOD patients, it belongs in the other five too.
+ * In functions/index.js this object is declared FIFTH in DIET_PLANS, before
+   pcod_mood_anxiety_insomnia, even though the CRM dropdown lists it SIXTH
+   (last). Lookup is by key so this is harmless — just don't rely on
+   positional order anywhere.
+ * Changing any text above requires editing functions/index.js and
+   redeploying the Cloud Functions — it is not editable from the CRM.
+
+================================================================================

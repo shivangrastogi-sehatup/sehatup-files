@@ -1,0 +1,141 @@
+================================================================================
+ TEMPLATE 5 OF 6 — PCOD WITH MOOD SWINGS, ANXIETY & INSOMNIA
+================================================================================
+ Key           : pcod_mood_anxiety_insomnia
+ Dropdown label: "PCOD – Mood Swings, Anxiety & Insomnia"
+ Defined in    : sehatup-firebase/functions/index.js, DIET_PLANS (line 439)
+ Rendered by   : functions/templates/prescriptionTemplateV3.html (page 2)
+ Test URL      : /testDietPrescriptionPDF?template=pcod_mood_anxiety_insomnia
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ ABOUT THIS TEMPLATE
+--------------------------------------------------------------------------------
+
+ WHO IT IS FOR
+   A PCOD patient whose dominant complaint is psychological rather than
+   physical: mood swings, anxiety, overthinking and disturbed sleep. The
+   metabolic side of PCOD is assumed to be secondary here.
+
+ CLINICAL GOAL
+   Nervous-system and brain support, blood-sugar stability across the day so
+   mood does not crash, and restoring a sleep routine. Note the benefit lines
+   are written in mood language ("prevents irritability", "prevents anxiety
+   spikes in evening", "improves sleep quality") rather than weight language.
+
+ HOW IT DIFFERS FROM THE OTHERS
+   * The ONLY plan whose Special Focus card is a ROUTINE rather than a food
+     group — "Sleep Support Routine". Its `benefit` field is used unusually:
+     instead of stating a benefit it carries a second instruction ("Avoid
+     phone 30–45 mins before sleep"). On the PDF that renders in the small
+     italic benefit line under the warm-milk recommendation.
+   * The only plan that permits banana in the mid-morning fruit list besides
+     template 01 (the weight-gain plan) — here for its mood/tryptophan value,
+     not for calories.
+   * The only plan whose avoid-list names LATE NIGHT EATING as a headline
+     item, because it is framed as a sleep problem rather than a weight one.
+   * Shortest lifestyle list of any template (2 bullets), one of which is
+     again a statement of principle.
+   * NO hydration card and NO note card.
+
+ STRUCTURE
+   Short-form layout, same shape as templates 03 and 04: 6 meal cards
+   (time / food / benefit), Daily Add-ons, Special Focus, Foods to Avoid,
+   Lifestyle, Follow-Up.
+
+ FIELDS PRESENT
+   condition, subtitle, meals(6), dailyAddons, specialFocus, avoidFoods,
+   lifestyle, followUp
+ FIELDS ABSENT
+   hydration, note, understandingItems, advancedTips
+
+
+--------------------------------------------------------------------------------
+ FULL TEMPLATE CONTENT (verbatim from source)
+--------------------------------------------------------------------------------
+
+ CONDITION
+   PCOD with Mood Swings, Anxiety, Overthinking & Insomnia
+
+ SUBTITLE
+   Diet planned considering hormonal imbalance, stress factors &
+   nervous system support
+
+
+ ── MEAL PLAN (6 meals) ────────────────────────────────────────────────────
+
+ [1] EARLY MORNING (7:00–8:00 AM)
+     Food    : Lukewarm water + 2 walnuts + 4 soaked almonds
+     Benefit : Supports brain health & reduces anxiety
+
+ [2] BREAKFAST (HIGH PROTEIN + BRAIN SUPPORT)
+     Food    : Besan chilla + curd / Eggs + toast / Oats + seeds
+     Benefit : Stabilizes mood & reduces cravings
+
+ [3] MID-MORNING
+     Food    : 1 fruit (banana/apple/papaya)
+     Benefit : Maintains energy & prevents irritability
+
+ [4] LUNCH
+     Food    : 2 roti + sabzi + dal/paneer + salad
+     Benefit : Balanced meal supports hormones & mental stability
+
+ [5] EVENING SNACK
+     Food    : Herbal tea / normal tea (no sugar) + makhana/chana
+     Benefit : Prevents anxiety spikes in evening
+
+ [6] DINNER (LIGHT & EARLY)
+     Food    : 1–2 roti + sabzi OR soup + paneer
+     Benefit : Light dinner improves sleep quality
+
+
+ ── DAILY ADD-ONS ──────────────────────────────────────────────────────────
+     Food    : Flax seeds, pumpkin seeds, walnuts
+     Benefit : Supports hormonal balance & brain function
+
+
+ ── SPECIAL FOCUS — Sleep Support Routine ──────────────────────────────────
+     Food    : 1 glass warm milk at night (if suits) or chamomile tea
+     Benefit : Avoid phone 30–45 mins before sleep
+               (NB: this field carries an instruction, not a benefit —
+                verbatim from source)
+
+
+ ── FOODS TO AVOID / LIMIT ─────────────────────────────────────────────────
+     • Caffeine excess, sugar, late night eating, junk food
+     • These worsen anxiety & sleep disturbance
+
+
+ ── LIFESTYLE INSTRUCTIONS ─────────────────────────────────────────────────
+     • 30 min walk, deep breathing, proper sleep routine
+     • Stress management is essential for recovery
+
+
+ ── FOLLOW-UP ──────────────────────────────────────────────────────────────
+     Review after 15 days
+
+
+ ── HYDRATION ──────────────────────────────────────────────────────────────
+     (not defined — no hydration card is printed for this template)
+
+
+ ── NOTE ───────────────────────────────────────────────────────────────────
+     (not defined — no closing note card is printed for this template)
+
+
+--------------------------------------------------------------------------------
+ NOTES FOR WHOEVER MAINTAINS THIS
+--------------------------------------------------------------------------------
+ * The specialFocus.benefit misuse described above is the one place in all
+   six templates where a field is used for something other than its purpose.
+   If you ever restyle that card, this string will read wrong.
+ * The lifestyle bullets pack multiple instructions into one line
+   ("30 min walk, deep breathing, proper sleep routine"). Splitting them
+   into separate array entries would render better on the PDF.
+ * Both this plan and template 06 mention avoiding late nights / screens,
+   but only this one puts it in the Special Focus card.
+ * Changing any text above requires editing functions/index.js and
+   redeploying the Cloud Functions — it is not editable from the CRM.
+
+================================================================================

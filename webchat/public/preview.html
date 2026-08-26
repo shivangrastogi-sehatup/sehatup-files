@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SehatUP chat panel - preview</title>
+<style>
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         color:#1c1420; background:#fbf8f9; }
+  .bar { background:linear-gradient(135deg,#ee204a,#9c1233); color:#fff; padding:14px 22px; font-weight:600; }
+  main { max-width:760px; margin:0 auto; padding:36px 22px 140px; }
+  h1 { font-size:26px; margin:0 0 6px; letter-spacing:-.4px; }
+  p.sub { color:#6b6470; margin:0 0 28px; }
+  .note { background:#fff; border:1px solid #ece7ea; border-left:3px solid #ee204a;
+          border-radius:10px; padding:14px 16px; margin:0 0 18px; font-size:14.5px; line-height:1.6; }
+  .note b { display:block; margin-bottom:4px; }
+  button.demo { font:inherit; font-size:14px; font-weight:600; padding:9px 15px; margin:0 8px 8px 0;
+          border-radius:9px; border:1px solid #f0c9d3; background:#fff5f7; color:#9c1233; cursor:pointer; }
+  button.demo:hover { background:#ffe9ee; }
+  code { background:#f3eff1; padding:1px 5px; border-radius:4px; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="bar">SehatUP &mdash; widget preview (mock data)</div>
+<main>
+  <h1>Chat panel preview</h1>
+  <p class="sub">This page fakes the API so you can judge the look, the streaming and the product cards without any Gemini credentials. The product data below is real, pulled from your live store.</p>
+
+  <div class="note">
+    <b>This is a mock.</b>
+    Replies here are canned scripts, not the model. To test the real bot, run
+    <code>vercel dev</code> and open <code>http://localhost:3000/preview.html?live=1</code>.
+  </div>
+
+  <div class="note">
+    <b>Add to cart will not work here.</b>
+    <code>/cart/add.js</code> only exists on the Shopify storefront, so that button fails on this page by design. It works once the widget is loaded from your theme.
+  </div>
+
+  <p><strong>Try a scripted exchange:</strong></p>
+  <button class="demo" data-say="shiljit price kya hai">Fuzzy product name</button>
+  <button class="demo" data-say="endless tablet ka price batao">Prescription product</button>
+  <button class="demo" data-say="mera order kaha hai">Order question</button>
+  <button class="demo" data-say="return policy kya hai">Policy question</button>
+  <button class="demo" data-say="thyroid hai, weight loss kit le sakti hu?">Safety gate</button>
+</main>
+
+<script>
+// ---- mock transport ---------------------------------------------------------
+// Replaces fetch() for /api/chat only, and replays a scripted SSE stream character by
+// character. Streaming one char at a time is deliberate: it is the worst case for the
+// marker filter, so if a marker ever leaks on screen you will see it here first.
+const LIVE = new URLSearchParams(location.search).has('live');
+
+const CARDS = {
+  'vaji-bati': {"handle":"vaji-bati","title":"Vaji Bati","url":"https://sehatup.com/products/vaji-bati","image":"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati.webp?v=1773727366","price":849,"mrp":1385,"discountPct":39,"variantId":"51170218901807","inStock":true,"variantCount":1},
+  'pure-himalayan-shilajit-resin-20g': {"handle":"pure-himalayan-shilajit-resin-20g","title":"Pure Himalayan Shilajit Resin - 20g | SehatUP","url":"https://sehatup.com/products/pure-himalayan-shilajit-resin-20g","image":"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/pure-himalayan-shilajit-resin.webp?v=1773727203","price":1349,"mrp":2309,"discountPct":42,"variantId":"50972820996399","inStock":true,"variantCount":2},
+  'sehatup-shilajit-honey-sticks': {"handle":"sehatup-shilajit-honey-sticks","title":"Shilajit Honey Sticks","url":"https://sehatup.com/products/sehatup-shilajit-honey-sticks","image":"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Honey-Stick_01_1.webp?v=1782984858","price":899,"mrp":1399,"discountPct":36,"variantId":"58125327597871","inStock":true,"variantCount":2},
+  'harmen': {"handle":"harmen","title":"Her Menses (For Rhythmic Relief & Hormonal Harmony)","url":"https://sehatup.com/products/harmen","image":"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_1_04c45726-86c9-440e-89f2-1d9e153d3a74.webp?v=1770037146","price":499,"mrp":738,"discountPct":32,"variantId":"51598440235311","inStock":true,"variantCount":1}
+};
+
+const SCRIPTS = [
+  [/shilajit|shiljit|shilajeet/i,
+   'Do options hain - Resin zyada strong hai, Honey Sticks daily lene me easy hain. Resin Rs1349 ka hai aur Honey Sticks Rs899 ke. Kaunsa dekhna chahenge?\n[[product:pure-himalayan-shilajit-resin-20g]]\n[[product:sehatup-shilajit-honey-sticks]]'],
+  [/endless|tadalafil|dapox|orlistat|boombatti/i,
+   'Endless me allopathic medicine hoti hai, isliye iska price ya link main share nahi kar sakti - doctor ki salah zaroori hai. Performance ke liye ek ayurvedic option Vaji Bati hai, wo Rs849 ka hai.\n[[product:vaji-bati]]'],
+  [/order|delivery|track|kaha hai|cancel/i,
+   'Website se main order details nahi dekh pati. Hamari team abhi check kar ke bata degi.\n[[whatsapp]]'],
+  [/return|refund|policy|replace|paisa wapas/i,
+   'Delivered order par return ya refund nahi hota ji. Sirf agar product damaged, defective ya galat aaya ho to hum use replace kar dete hain - 24 ghante ke andar bata dena hota hai.'],
+  [/thyroid|sugar|diabetes|bp|pregnan/i,
+   'Thyroid me koi bhi kit bina doctor ke lena ulta nuksan kar sakta hai. Free consultation me doctor aapke thyroid ke hisab se plan banayenge, consultation aur diet plan dono free hain. Main team se connect kara deti hu.\n[[whatsapp]]'],
+  [/period|pcod|pcos|cramp/i,
+   'Periods ki problem manage ho sakti hai, aap pareshaan mat hoiye. Kab se ho raha hai? Her Menses hormonal balance me help karta hai.\n[[product:harmen]]'],
+];
+
+function reply(text) {
+  for (const [re, out] of SCRIPTS) if (re.test(text)) return out;
+  return 'Main SehatUP ke products, prices aur policies me help kar sakti hu. Aap apni problem bata dijiye, main sahi option suggest karungi.';
+}
+
+if (!LIVE) {
+  const realFetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    if (typeof url !== 'string' || !url.includes('/api/chat')) return realFetch(url, opts);
+
+    const body = JSON.parse(opts.body);
+    const last = body.messages[body.messages.length - 1].text;
+    const script = reply(last);
+
+    // The real endpoint strips markers before streaming and reports them in the `done`
+    // frame. Emulate that here, otherwise the preview shows raw markers on screen and
+    // misrepresents what a customer would actually see.
+    const handles = [...script.matchAll(/\[\[product:([a-z0-9-]+)\]\]/g)].map(m => m[1]);
+    const wantsHandoff = /\[\[whatsapp\]\]/.test(script);
+    const full = script
+      .replace(/\[\[(?:product:[a-z0-9-]+|whatsapp)\]\]/g, '')
+      .replace(/\n{2,}/g, '\n')
+      .trim();
+
+    const stream = new ReadableStream({
+      async start(ctrl) {
+        const enc = new TextEncoder();
+        const frame = (ev, data) => ctrl.enqueue(enc.encode('event: ' + ev + '\ndata: ' + JSON.stringify(data) + '\n\n'));
+
+        await new Promise(r => setTimeout(r, 550));   // pretend to think
+
+        // 3 chars a tick: fast enough to watch, and small enough that markers still get
+        // split across frames, which is the case the filter has to survive.
+        for (let i = 0; i < full.length; i += 3) {
+          frame('delta', { t: full.slice(i, i + 3) });
+          await new Promise(r => setTimeout(r, 16));
+        }
+
+        frame('done', {
+          products: handles.map(h => CARDS[h]).filter(Boolean),
+          handoff: wantsHandoff
+            ? { url: 'https://wa.me/919355539355?text=' + encodeURIComponent('Hi SehatUP team, I was chatting on your website.'), label: 'Chat with our team' }
+            : null,
+        });
+        ctrl.close();
+      }
+    });
+
+    return Promise.resolve(new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }));
+  };
+}
+
+document.querySelectorAll('button.demo').forEach(b => {
+  b.addEventListener('click', () => window.SehatUpChat.ask(b.dataset.say));
+});
+</script>
+
+<script
+  src="./widget.js"
+  data-api=""
+  data-title="Ananya"
+  data-subtitle="SehatUP health advisor"
+  data-greeting="Hello! Main Ananya hu SehatUP se. Product, price ya health concern - kuch bhi puchiye."></script>
+
+<script>
+// data-api is empty above so the widget resolves /api/chat against this origin, which is
+// what both the mock and `vercel dev` need.
+</script>
+</body>
+</html>

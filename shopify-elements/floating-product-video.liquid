@@ -29,24 +29,64 @@
   assign fpv_side        = section.settings.dock_side | default: 'left'
   assign fpv_bottom      = section.settings.dock_bottom | default: 96
 
-  # Resolve the video URL. A File metafield can hand back three different
-  # shapes depending on what Shopify decided the upload was, and picking the
-  # wrong one is a silent failure: the player opens on a black frame with no
-  # error anywhere. So try all three rather than assume.
-  #   Video       an mp4 Shopify transcoded, has a .sources list
-  #   GenericFile a plain file reference, has .url
-  #   legacy      the older shape the previous snippet used, needs file_url
-  assign fpv_show  = false
-  assign fpv_video = ''
-  assign fpv_meta  = product.metafields.custom.floating_video
+  # Two ways to supply the video.
+  #   product  the page's own product metafield, with the buy card
+  #   link     a pasted CDN url, video only, works on any page
+  # fpv_has_card is what separates them: everything product-shaped hangs off
+  # it, so link mode never touches the `product` object, which is nil on a
+  # page template and would otherwise render an empty card.
+  assign fpv_show     = false
+  assign fpv_video    = ''
+  assign fpv_has_card = false
+  assign fpv_label    = 'Watch video'
 
-  if section.settings.enable_video and template.name == 'product' and fpv_meta != blank
-    if fpv_meta.value.sources != blank
-      assign fpv_video = fpv_meta.value.sources.first.url
-    elsif fpv_meta.value.url != blank
-      assign fpv_video = fpv_meta.value.url
+  if section.settings.enable_video
+    if section.settings.video_source == 'link'
+      assign fpv_link = section.settings.video_url | strip
+      assign fpv_probe = fpv_link | downcase
+
+      # These are page addresses, not files. Instagram, Facebook, TikTok,
+      # YouTube and Vimeo all serve a player page that a <video> tag cannot
+      # read, and their real media urls are signed and expire. Refusing here
+      # is better than a silent black frame on a live page.
+      assign fpv_is_page = false
+      if fpv_probe contains 'instagram.com'
+        assign fpv_is_page = true
+      elsif fpv_probe contains 'facebook.com' or fpv_probe contains 'fb.watch'
+        assign fpv_is_page = true
+      elsif fpv_probe contains 'youtube.com' or fpv_probe contains 'youtu.be'
+        assign fpv_is_page = true
+      elsif fpv_probe contains 'tiktok.com'
+        assign fpv_is_page = true
+      elsif fpv_probe contains 'vimeo.com'
+        assign fpv_is_page = true
+      endif
+
+      unless fpv_is_page
+        assign fpv_video = fpv_link
+      endunless
     else
-      assign fpv_video = fpv_meta | file_url
+      # A File metafield can hand back three different shapes depending on
+      # what Shopify decided the upload was, and picking the wrong one is a
+      # silent failure: the player opens on a black frame with no error
+      # anywhere. So try all three rather than assume.
+      #   Video       an mp4 Shopify transcoded, has a .sources list
+      #   GenericFile a plain file reference, has .url
+      #   legacy      the older shape the previous snippet used, needs file_url
+      assign fpv_meta = product.metafields.custom.floating_video
+      if template.name == 'product' and fpv_meta != blank
+        if fpv_meta.value.sources != blank
+          assign fpv_video = fpv_meta.value.sources.first.url
+        elsif fpv_meta.value.url != blank
+          assign fpv_video = fpv_meta.value.url
+        else
+          assign fpv_video = fpv_meta | file_url
+        endif
+        if fpv_video != blank
+          assign fpv_has_card = true
+          assign fpv_label = 'Watch video about ' | append: product.title
+        endif
+      endif
     endif
 
     if fpv_video != blank
@@ -71,7 +111,7 @@
   {%- comment -%} The dock: the small looping teaser. {%- endcomment -%}
   <div class="fpv__dock" data-fpv-dock>
     <div class="fpv__dock-inner">
-      <button type="button" class="fpv__dock-open" data-fpv-open aria-label="Watch video about {{ product.title | escape }}">
+      <button type="button" class="fpv__dock-open" data-fpv-open aria-label="{{ fpv_label | escape }}">
         <video class="fpv__dock-video" muted loop playsinline preload="auto" aria-hidden="true">
           <source src="{{ fpv_video }}" type="video/mp4">
         </video>
@@ -84,7 +124,7 @@
   <div class="fpv__overlay" data-fpv-overlay hidden>
     <div class="fpv__backdrop" data-fpv-close></div>
 
-    <div class="fpv__stage" role="dialog" aria-modal="true" aria-label="{{ product.title | escape }} video">
+    <div class="fpv__stage" role="dialog" aria-modal="true" aria-label="{{ fpv_label | escape }}">
       <video class="fpv__video" data-fpv-video playsinline loop preload="auto">
         <source src="{{ fpv_video }}" type="video/mp4">
       </video>
@@ -125,7 +165,8 @@
         </div>
       </div>
 
-      {%- comment -%} Product card, pinned to the bottom of the frame. {%- endcomment -%}
+      {%- comment -%} Product card, pinned to the bottom of the frame. Product mode only. {%- endcomment -%}
+      {%- if fpv_has_card -%}
       <div class="fpv__card">
         <div class="fpv__card-head">
           {%- if product.featured_image != blank -%}
@@ -163,10 +204,12 @@
         </button>
         <p class="fpv__status" data-fpv-status role="status" aria-live="polite"></p>
       </div>
+      {%- endif -%}
     </div>
   </div>
 </div>
 
+{%- if fpv_has_card -%}
 <script type="application/json" data-fpv-variants>
 [
   {%- for v in product.variants -%}
@@ -174,6 +217,7 @@
   {%- endfor -%}
 ]
 </script>
+{%- endif -%}
 
 <style>
   #{{ fpv_id }} {
@@ -379,28 +423,43 @@
   /* ---- Progress: a story-style line across the very top ----------------
      It sits above the control row, so the close and pause buttons read as
      sitting underneath it rather than beside it. */
+  /* The element itself is a transparent 20px grab area; the visible 3px line
+     is drawn by ::before. The previous version used height:3px with vertical
+     padding and background-clip:content-box, which silently collapses to a
+     zero-height content box under the `box-sizing: border-box` that nearly
+     every Shopify theme sets globally. Track and fill vanished and only the
+     fixed-size knob survived. Nothing here depends on box-sizing. */
   #{{ fpv_id }} .fpv__progress {
     position: absolute;
     top: 12px;
     left: 12px;
     right: 12px;
-    height: 3px;
+    height: 20px;
     z-index: 4;
-    border-radius: 999px;
-    /* Dark track, not a translucent white one: on a bright frame a white
-       track and a white fill are the same colour and the bar disappears. */
-    background: rgba(0, 0, 0, .42);
+    background: none;
     cursor: pointer;
-    /* Vertical padding widens the grab area to a comfortable ~19px without
-       thickening the visible 3px line. */
-    padding: 8px 0;
-    margin: -8px 0;
-    background-clip: content-box;
     touch-action: none;
+  }
+  /* The scrim on .fpv__top already darkens this band on every frame, so a
+     translucent white track reads on bright and dark video alike. A dark
+     track would vanish into a dark frame and hide the unplayed remainder. */
+  #{{ fpv_id }} .fpv__progress::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 3px;
+    margin-top: -1.5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .34);
   }
   #{{ fpv_id }} .fpv__progress-fill {
     position: absolute;
-    top: 8px; bottom: 8px; left: 0;
+    left: 0;
+    top: 50%;
+    height: 3px;
+    margin-top: -1.5px;
     width: 0%;
     border-radius: 999px;
     background: #fff;
@@ -866,34 +925,43 @@
       if (priceEl) priceEl.textContent = money(unitPrice() * currentQty());
     }
 
-    /* ---- Buy ----------------------------------------------------------- */
+    /* ---- Buy ------------------------------------------------------------
+       In link mode there is no card at all, so none of these elements exist.
+       hasCard gates the whole section rather than null-checking each line.
+       -------------------------------------------------------------------- */
+    var hasCard = !!atc;
+
     function currentQty() {
+      if (!qtyInput) return 1;
       var n = parseInt(String(qtyInput.value).replace(/\D/g, ''), 10);
       return (!n || n < 1) ? 1 : Math.min(n, 99);
     }
     function setStatus(msg, state) {
+      if (!statusEl) return;
       statusEl.innerHTML = msg || '';
       if (state) statusEl.setAttribute('data-state', state);
       else statusEl.removeAttribute('data-state');
     }
 
-    root.querySelectorAll('[data-fpv-qty]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        qtyInput.value = Math.max(1, currentQty() + parseInt(btn.dataset.fpvQty, 10));
-        paintPrice();
+    if (hasCard) {
+      root.querySelectorAll('[data-fpv-qty]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          qtyInput.value = Math.max(1, currentQty() + parseInt(btn.dataset.fpvQty, 10));
+          paintPrice();
+        });
       });
-    });
-    qtyInput.addEventListener('input', paintPrice);
-    qtyInput.addEventListener('blur', function () { qtyInput.value = currentQty(); paintPrice(); });
+      qtyInput.addEventListener('input', paintPrice);
+      qtyInput.addEventListener('blur', function () { qtyInput.value = currentQty(); paintPrice(); });
 
-    if (variantEl && variantEl.tagName === 'SELECT') {
-      variantEl.addEventListener('change', function () { paintPrice(); setStatus(''); });
+      if (variantEl && variantEl.tagName === 'SELECT') {
+        variantEl.addEventListener('change', function () { paintPrice(); setStatus(''); });
+      }
+
+      // Paint once on boot so the figure matches the quantity box from the start.
+      paintPrice();
     }
 
-    // Paint once on boot so the figure matches the quantity box from the start.
-    paintPrice();
-
-    atc.addEventListener('click', async function () {
+    if (hasCard) atc.addEventListener('click', async function () {
       var id = variantEl ? variantEl.value : null;
       if (!id) { setStatus('Choose an option first.', 'error'); return; }
 
@@ -944,24 +1012,49 @@
 
 {% schema %}
 {
-  "name": "Floating product video",
+  "name": "Floating video",
   "tag": "div",
   "class": "fpv-section",
-  "enabled_on": {
-    "templates": [
-      "product"
-    ]
-  },
   "settings": [
     {
       "type": "paragraph",
-      "content": "Shows only on products that have a video set in the custom.floating_video metafield. Products without one render nothing."
+      "content": "Floats a short video in the corner. Tapping it opens a full player."
     },
     {
       "type": "checkbox",
       "id": "enable_video",
       "label": "Enable the floating video",
       "default": true
+    },
+    {
+      "type": "header",
+      "content": "Video"
+    },
+    {
+      "type": "select",
+      "id": "video_source",
+      "label": "Where the video comes from",
+      "options": [
+        {
+          "value": "product",
+          "label": "This product's video (metafield)"
+        },
+        {
+          "value": "link",
+          "label": "Paste a video link (any page)"
+        }
+      ],
+      "default": "product"
+    },
+    {
+      "type": "text",
+      "id": "video_url",
+      "label": "Video link",
+      "info": "Must be a direct video file. Upload the mp4 under Content > Files and copy that URL. Links to Instagram, Facebook, TikTok, YouTube or Vimeo pages will not play and are ignored."
+    },
+    {
+      "type": "paragraph",
+      "content": "Product mode shows the buy card (price, variant, quantity, add to cart) and only works on a product template. Link mode shows the video on its own and works on any page."
     },
     {
       "type": "header",
@@ -1013,7 +1106,7 @@
   ],
   "presets": [
     {
-      "name": "Floating product video"
+      "name": "Floating video"
     }
   ]
 }

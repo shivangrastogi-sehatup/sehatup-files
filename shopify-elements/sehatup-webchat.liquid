@@ -1,0 +1,45 @@
+{% comment %}
+  SehatUP on-site chat panel (Ananya)
+  ----------------------------------------------------------------------------
+  Replaces the tap-out-to-WhatsApp floating button with a real chat panel that
+  answers product, price and policy questions using live Shopify prices.
+
+  INSTALL
+  1. Online Store -> Themes -> ... -> Edit code
+  2. Snippets -> Add a new snippet -> name it  sehatup-webchat
+  3. Paste this whole file in and Save
+  4. Open Layout -> theme.liquid, and just above the closing </body> tag add:
+       {% raw %}{% render 'sehatup-webchat' %}{% endraw %}
+  5. Save.
+
+  THEN TURN OFF THE OLD BUTTON
+  The current floating WhatsApp icon comes from a Shopify app, not from the theme
+  (there is no wa.me link anywhere in the theme files). Apps -> find the WhatsApp
+  chat app -> disable its floating button, or uninstall the app. If you skip this
+  you get two buttons stacked in the same corner.
+
+  The widget itself is served from Vercel, so its behaviour, styling and the
+  Ananya rules can be updated without ever touching the theme again.
+{% endcomment %}
+
+{%- liquid
+  assign chat_api = 'https://sehatup-webchat.vercel.app'
+  assign chat_accent = '#ee204a'
+-%}
+
+<script
+  src="{{ chat_api }}/widget.js"
+  data-api="{{ chat_api }}"
+  data-title="Ananya"
+  data-subtitle="SehatUP health advisor"
+  data-accent="{{ chat_accent }}"
+  data-greeting="Hello! Main Ananya hu SehatUP se. Product, price ya health concern - kuch bhi puchiye."
+  data-chips="Weight loss ke liye kya lu?|Periods ki problem hai|Free consultation kaise hoti hai?|Delivery kitne din me?"
+  {%- comment -%}
+    Upload Ananya's photo in Content -> Files, then paste its URL here. A real face
+    lifts engagement noticeably over an initial in a circle. Leave empty to use the
+    initial instead.
+    Example: data-avatar="{{ 'ananya.jpg' | file_url }}"
+  {%- endcomment -%}
+  data-avatar=""
+  defer></script>

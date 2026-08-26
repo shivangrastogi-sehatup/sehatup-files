@@ -1,0 +1,137 @@
+================================================================================
+ TEMPLATE 3 OF 6 — PCOD, INFERTILITY & IRREGULAR PERIODS
+================================================================================
+ Key           : infertility_pcod_pcos
+ Dropdown label: "PCOD – Infertility & Irregular Periods"
+ Defined in    : sehatup-firebase/functions/index.js, DIET_PLANS (line 249)
+ Rendered by   : functions/templates/prescriptionTemplateV3.html (page 2)
+ Test URL      : /testDietPrescriptionPDF?template=infertility_pcod_pcos
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ ABOUT THIS TEMPLATE
+--------------------------------------------------------------------------------
+
+ WHO IT IS FOR
+   A PCOD patient who is trying to conceive, or who has been told she has
+   ovulation / egg-quality problems, alongside irregular cycles.
+
+ CLINICAL GOAL
+   Support OVULATION and reproductive health. Every benefit line is written
+   around egg quality, hormone stability and blood flow to the reproductive
+   system rather than around weight.
+
+ HOW IT DIFFERS FROM THE OTHERS
+   * Its meal timings are DELIBERATELY VAGUE. Unlike templates 01, 02 and
+     others, the meal `time` labels here carry no clock ranges — they read
+     "Breakfast (High Protein)", "Mid-Morning", "Lunch", "Dinner (Light &
+     Early)". This is the first of the four "short-form" plans (03, 04, 05
+     follow the same compressed style).
+   * Special Focus targets Reproductive Health (leafy greens, beetroot,
+     nuts, seeds) with blood flow as the stated mechanism.
+   * It has the LONGEST lifestyle list of the food+benefit plans (4 items),
+     and it is the only one whose lifestyle card ends with a statement of
+     principle rather than an instruction ("Regular cycle support is
+     essential").
+   * NO hydration card and NO note card.
+
+ STRUCTURE
+   6 meal cards (time / food / benefit), Daily Add-ons, Special Focus,
+   Foods to Avoid, Lifestyle, Follow-Up. No hydration, no closing note.
+
+ FIELDS PRESENT
+   condition, subtitle, meals(6), dailyAddons, specialFocus, avoidFoods,
+   lifestyle, followUp
+ FIELDS ABSENT
+   hydration, note, understandingItems, advancedTips
+
+
+--------------------------------------------------------------------------------
+ FULL TEMPLATE CONTENT (verbatim from source)
+--------------------------------------------------------------------------------
+
+ CONDITION
+   PCOD with Irregular Periods & Infertility Concerns
+
+ SUBTITLE
+   Diet planned considering hormonal imbalance, ovulation support &
+   reproductive health
+
+
+ ── MEAL PLAN (6 meals) ────────────────────────────────────────────────────
+
+ [1] EARLY MORNING (7:00–8:00 AM)
+     Food    : Lukewarm water + 1 tsp soaked methi seeds OR 2 walnuts
+     Benefit : Supports hormonal balance & ovulation function
+
+ [2] BREAKFAST (HIGH PROTEIN)
+     Food    : Besan chilla + curd  /  Eggs + toast  /  Oats + seeds
+     Benefit : Improves egg quality & stabilizes hormones
+
+ [3] MID-MORNING
+     Food    : 1 fruit (apple/guava/papaya)
+     Benefit : Maintains energy & prevents hormonal fluctuations
+
+ [4] LUNCH
+     Food    : 2 roti + sabzi + dal/paneer + salad
+     Benefit : Balanced nutrition supports reproductive system
+
+ [5] EVENING SNACK
+     Food    : Green tea / normal tea (no sugar) + roasted chana/makhana
+     Benefit : Controls cravings & supports metabolism
+
+ [6] DINNER (LIGHT & EARLY)
+     Food    : 1–2 roti + sabzi OR soup + paneer
+     Benefit : Improves digestion & supports hormonal recovery
+
+
+ ── DAILY ADD-ONS ──────────────────────────────────────────────────────────
+     Food    : Flax seeds, pumpkin seeds, walnuts
+     Benefit : Supports ovulation, hormone balance & fertility
+
+
+ ── SPECIAL FOCUS — Reproductive Health ────────────────────────────────────
+     Food    : Include leafy greens, beetroot, nuts, seeds regularly
+     Benefit : Improves blood flow & reproductive health
+
+
+ ── FOODS TO AVOID / LIMIT ─────────────────────────────────────────────────
+     • Sugar, junk food, packaged food, excess caffeine
+     • Prevents hormonal imbalance
+
+
+ ── LIFESTYLE INSTRUCTIONS ─────────────────────────────────────────────────
+     • 30–40 min walk daily
+     • Stress management
+     • Proper sleep
+     • Regular cycle support is essential
+
+
+ ── FOLLOW-UP ──────────────────────────────────────────────────────────────
+     Review after 15 days
+
+
+ ── HYDRATION ──────────────────────────────────────────────────────────────
+     (not defined — no hydration card is printed for this template)
+
+
+ ── NOTE ───────────────────────────────────────────────────────────────────
+     (not defined — no closing note card is printed for this template)
+
+
+--------------------------------------------------------------------------------
+ NOTES FOR WHOEVER MAINTAINS THIS
+--------------------------------------------------------------------------------
+ * Because `hydration` is missing, the hydration/follow-up row collapses to
+   a single full-width Follow-Up card. If you want a water target on this
+   plan's PDF you must add a `hydration` string to the object — adding it to
+   the lifestyle bullets will render, but in the wrong card.
+ * The second avoidFoods bullet is a rationale, not a food, and renders as
+   a bullet next to the real restriction.
+ * Only the first meal keeps an explicit clock range; the rest are named
+   slots. Keep the style consistent if you edit.
+ * Changing any text above requires editing functions/index.js and
+   redeploying the Cloud Functions — it is not editable from the CRM.
+
+================================================================================

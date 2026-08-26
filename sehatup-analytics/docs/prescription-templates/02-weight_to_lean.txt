@@ -1,0 +1,137 @@
+================================================================================
+ TEMPLATE 2 OF 6 — PCOD, OVERWEIGHT TYPE (WEIGHT LOSS)
+================================================================================
+ Key           : weight_to_lean
+ Dropdown label: "PCOD – Overweight Type (Weight Loss)"
+ Defined in    : sehatup-firebase/functions/index.js, DIET_PLANS (line 195)
+ Rendered by   : functions/templates/prescriptionTemplateV3.html (page 2)
+ Test URL      : /testDietPrescriptionPDF?template=weight_to_lean
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ ABOUT THIS TEMPLATE
+--------------------------------------------------------------------------------
+
+ WHO IT IS FOR
+   The classic overweight PCOD presentation: weight gain, acne, hairfall and
+   irregular periods, usually with insulin resistance and sluggish digestion
+   in the background.
+
+ CLINICAL GOAL
+   WEIGHT REDUCTION through metabolism and insulin support, plus visible
+   improvement in skin (acne) and hair. Bloating and digestion are treated
+   as first-order problems, which is why the day starts with methi water and
+   ends with a deliberately light dinner.
+
+ HOW IT DIFFERS FROM THE OTHERS
+   * It is the direct mirror image of template 01 (lean_to_weight_gain).
+     Where 01 adds ghee, banana, mango and unrestricted dinner, this plan
+     restricts exactly those items. Never confuse the two — picking the
+     wrong one gives the patient the opposite advice.
+   * The ONLY plan whose early-morning drink is lemon water + methi.
+   * The ONLY plan that names "green tea" as the first evening option.
+   * Has NO specialFocus card — it is one of two plans without one
+     (the other is template 06).
+   * One of only two plans (with 01) that prints a HYDRATION card.
+
+ STRUCTURE
+   Standard layout minus Special Focus: 6 meal cards (time / food / benefit),
+   Daily Add-ons, Foods to Avoid, Lifestyle, Hydration, Follow-Up, Note.
+   Because specialFocus is absent, the Daily Add-ons card renders full width
+   instead of half width.
+
+ FIELDS PRESENT
+   condition, subtitle, meals(6), dailyAddons, avoidFoods, hydration,
+   lifestyle, followUp, note
+ FIELDS ABSENT
+   specialFocus, understandingItems, advancedTips
+
+
+--------------------------------------------------------------------------------
+ FULL TEMPLATE CONTENT (verbatim from source)
+--------------------------------------------------------------------------------
+
+ CONDITION
+   PCOD with Weight Gain, Acne, Hairfall & Irregular Periods
+
+ SUBTITLE
+   Diet planned considering hormonal imbalance, metabolism disturbance &
+   digestive issues
+
+
+ ── MEAL PLAN (6 meals) ────────────────────────────────────────────────────
+
+ [1] EARLY MORNING (7:00–8:00 AM)
+     Food    : 1 glass lukewarm water + lemon (without sugar) +
+               1 tsp soaked methi seeds
+     Benefit : Helps improve digestion, reduce bloating & support fat
+               metabolism
+
+ [2] BREAKFAST (8:30–9:30 AM)
+     Food    : Option 1: 2 besan chilla + curd
+               Option 2: Vegetable oats + seeds mix
+               Option 3: 2 eggs + 1 multigrain toast
+     Benefit : High protein breakfast helps reduce acne, hairfall &
+               controls cravings
+
+ [3] MID-MORNING (11:00–12:00 PM)
+     Food    : 1 fruit (apple/guava/papaya)
+     Benefit : Maintains energy levels & prevents overeating
+
+ [4] LUNCH (1:30–2:30 PM)
+     Food    : 2 multigrain roti + 1 bowl sabzi + 1 bowl dal/paneer +
+               salad before meal
+     Benefit : Balanced meal supports hormonal balance & weight control
+
+ [5] EVENING SNACK (5:00–6:00 PM)
+     Food    : Green tea / normal tea (without sugar) +
+               roasted chana / makhana
+     Benefit : Controls cravings & supports metabolism
+
+ [6] DINNER (7:30–8:30 PM)
+     Food    : 1–2 roti + sabzi OR vegetable soup + paneer
+     Benefit : Light dinner helps reduce bloating & supports fat loss
+
+
+ ── DAILY ADD-ONS ──────────────────────────────────────────────────────────
+     Food    : Flax seeds – 1 tsp, Pumpkin seeds – 1 tsp, 2 walnuts
+     Benefit : Supports hormonal balance, reduces acne & hairfall
+
+
+ ── FOODS TO AVOID / LIMIT ─────────────────────────────────────────────────
+     • Avoid sugar, bakery, fried & packaged food
+     • Limit rice, potato, banana, mango
+     • Reduce excess tea/coffee
+
+
+ ── LIFESTYLE INSTRUCTIONS ─────────────────────────────────────────────────
+     • 30–40 min daily walk/exercise
+     • Proper sleep (7–8 hrs)
+     • Avoid late night eating
+
+
+ ── HYDRATION ──────────────────────────────────────────────────────────────
+     2.5–3 litres water daily
+
+
+ ── FOLLOW-UP ──────────────────────────────────────────────────────────────
+     Review after 15 days
+
+
+ ── NOTE ───────────────────────────────────────────────────────────────────
+     This diet focuses on hormonal balance, weight reduction & improvement
+     in skin and hair health.
+
+
+--------------------------------------------------------------------------------
+ NOTES FOR WHOEVER MAINTAINS THIS
+--------------------------------------------------------------------------------
+ * Salad is prescribed BEFORE the meal (deliberate — blunts the glycaemic
+   spike). Template 01 words it the same way; keep it if you rewrite.
+ * The avoidFoods list here is purely restrictions, with no trailing
+   rationale bullet (unlike template 01).
+ * Changing any text above requires editing functions/index.js and
+   redeploying the Cloud Functions — it is not editable from the CRM.
+
+================================================================================

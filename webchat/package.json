@@ -1,0 +1,16 @@
+{
+  "name": "sehatup-webchat",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "On-site chat panel for sehatup.com - live Shopify prices, product cards, policy answers, WhatsApp handoff.",
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "node scripts/markers.test.mjs && node scripts/smoke-test.mjs",
+    "test:unit": "node scripts/markers.test.mjs",
+    "test:live": "node scripts/smoke-test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
