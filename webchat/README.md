@@ -121,8 +121,18 @@ look, the streaming and the cards without any Gemini credentials.
 - **Policy answers**: `api/kb/policies.md`. Plain markdown.
 - **What is prescription-only**: `RX_MARKERS` in `api/_lib/catalog.js`.
 - **Look and feel**: `public/widget.js` (the `css()` function at the bottom).
-- **Greeting, suggestion chips, avatar**: `data-*` attributes on the script tag in the
-  liquid snippet - no redeploy needed.
+- **Greeting, suggestion chips, avatar, accent colour, corner position**: `data-*`
+  attributes on the script tag in the liquid snippet - theme edit only, no redeploy.
+
+  | Attribute | Default | What |
+  | --- | --- | --- |
+  | `data-bottom` | `40px` | Gap from the bottom edge, desktop |
+  | `data-right` | `20px` | Gap from the right edge |
+  | `data-bottom-mobile` | `16px` | Gap from the bottom on phones (≤560px) |
+  | `data-accent` | `#ee204a` | Brand colour for the bubble, header and buttons |
+
+  The widget renders in a shadow root, so theme CSS cannot reach `.launcher` - these
+  attributes are the supported way to move it.
 
 ## Notes
 

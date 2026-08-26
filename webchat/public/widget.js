@@ -27,6 +27,11 @@
       'Hello! Main Ananya hu SehatUP se. Product, price ya health concern - kuch bhi puchiye.',
     accent: (script && script.dataset.accent) || '#ee204a',
     avatar: (script && script.dataset.avatar) || '',
+    // Corner offsets, any CSS length. Phones get their own bottom value because a sticky
+    // add-to-cart bar is a mobile-only obstacle.
+    bottom: (script && script.dataset.bottom) || '40px',
+    right: (script && script.dataset.right) || '20px',
+    bottomMobile: (script && script.dataset.bottomMobile) || '16px',
     chips: ((script && script.dataset.chips) ||
       'Weight loss ke liye kya lu?|Periods ki problem hai|Free consultation kaise hoti hai?|Delivery kitne din me?')
       .split('|').filter(Boolean),
@@ -499,6 +504,11 @@
 *, *::before, *::after { box-sizing: border-box; }
 .wrap {
   --a: ${accent};
+  /* Corner offsets. Set from data-bottom / data-right / data-bottom-mobile on the script
+     tag, so nudging the bubble away from a sticky add-to-cart bar or a cookie banner is a
+     theme edit, not a code change and redeploy. */
+  --gap-bottom: ${CONFIG.bottom};
+  --gap-right: ${CONFIG.right};
   --a-dark: #d01d42;
   --ink: #1c1420;
   --muted: #6b6470;
@@ -514,7 +524,7 @@
 
 /* launcher */
 .launcher {
-  position: fixed; right: 20px; bottom: 20px; z-index: 2147483000;
+  position: fixed; right: var(--gap-right); bottom: var(--gap-bottom); z-index: 2147483000;
   width: 60px; height: 60px; border: 0; border-radius: 50%;
   background: linear-gradient(145deg, var(--a), var(--a-dark));
   color: #fff; cursor: pointer; display: grid; place-items: center;
@@ -537,7 +547,7 @@
 
 /* panel */
 .panel {
-  position: fixed; right: 20px; bottom: 20px; z-index: 2147483000;
+  position: fixed; right: var(--gap-right); bottom: var(--gap-bottom); z-index: 2147483000;
   width: 384px; max-width: calc(100vw - 32px);
   height: 620px; max-height: calc(100vh - 40px);
   background: var(--surface); border-radius: var(--radius);
@@ -657,7 +667,9 @@
 @media (max-width: 560px) {
   .panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw;
            height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
-  .launcher { right: 16px; bottom: 16px; width: 56px; height: 56px; }
+  /* Phones get their own offset: a sticky add-to-cart bar is a mobile-only problem. */
+  .wrap { --gap-bottom: ${CONFIG.bottomMobile}; --gap-right: 16px; }
+  .launcher { width: 56px; height: 56px; }
   .row { max-width: 92%; }
 }
 
