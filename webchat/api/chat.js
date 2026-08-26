@@ -12,11 +12,12 @@ import { getCatalog, cardIndex } from './_lib/catalog.js';
 import { buildSystemPrompt } from './_lib/prompt.js';
 import { streamReply, isConfigured, transportName } from './_lib/gemini.js';
 import { checkLimit, clientIp } from './_lib/ratelimit.js';
-import { logTurn, loggingEnabled } from './_lib/log.js';
+import { logTurn, probeLogging } from './_lib/log.js';
 import { createMarkerFilter, resolveMarkers } from './_lib/markers.js';
 
 const WA_NUMBER = (process.env.WHATSAPP_NUMBER || '919355539355').replace(/\D/g, '');
 const MAX_HISTORY = 24;      // 12 exchanges the model re-reads; see healthDisclosures()
+const MAX_TRANSCRIPT = 200;  // hard cap on what a client may send at all
 const MAX_MESSAGE_CHARS = 1000;
 
 const ALLOWED_ORIGINS = [
@@ -75,7 +76,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: isConfigured(),
       model: transportName(),
-      transcriptLogging: loggingEnabled(),
+      transcriptLogging: await probeLogging(),
       whatsappNumber: WA_NUMBER,
       catalogReachable: await getCatalog().then((p) => p.length).catch((e) => `error: ${e.message}`),
     });
@@ -88,7 +89,13 @@ export default async function handler(req, res) {
   const sessionId = String(body.sessionId || '').slice(0, 64);
   const page = body.page || {};
 
+  // Capped before anything reads it. The client is the only source of history on a public
+  // endpoint, so "however many messages you send me" is an unbounded input: without this,
+  // a scripted POST of 50,000 turns is scanned in full by healthDisclosures() and held in
+  // memory. MAX_TRANSCRIPT is far past any real conversation - the widget's own session
+  // cap is lower - so a legitimate visitor never reaches it.
   const allMessages = (Array.isArray(body.messages) ? body.messages : [])
+    .slice(-MAX_TRANSCRIPT)
     .filter((m) => m && typeof m.text === 'string' && m.text.trim())
     .map((m) => ({
       role: m.role === 'model' || m.role === 'assistant' ? 'model' : 'user',

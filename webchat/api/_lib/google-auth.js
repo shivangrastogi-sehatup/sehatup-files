@@ -5,15 +5,16 @@
 // needs it) and that GCP_SERVICE_ACCOUNT is accepted as an env name alongside the
 // Firebase one, because this project talks to Vertex first and Firestore second.
 //
-// Setup (one time):
-//   GCP console -> IAM -> Service accounts -> the sehatup-f96b5 account used by n8n
-//   -> Keys -> Add key -> JSON, then paste the whole file into the Vercel env var
-//   GCP_SERVICE_ACCOUNT. The account needs roles/aiplatform.user (and
-//   roles/datastore.user if you want transcript logging).
+// Which key is used depends on which service is being called - see loadCredentials():
 //
-// Accepted env formats:
-//   GCP_SERVICE_ACCOUNT / FIREBASE_SERVICE_ACCOUNT  - the full JSON (raw or base64)
-//   FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY    - the two fields separately
+//   GCP_SERVICE_ACCOUNT        Vertex AI. Needs roles/aiplatform.user.
+//                              On sehatup-f96b5 that is n8n-vertexai@.
+//   FIRESTORE_SERVICE_ACCOUNT  Transcript logging. Needs roles/datastore.user.
+//                              On sehatup-f96b5 that is firebase-adminsdk-fbsvc@.
+//
+// Set only GCP_SERVICE_ACCOUNT and both fall back to it, which is right when one account
+// holds both roles. Values may be raw JSON or base64. FIREBASE_CLIENT_EMAIL plus
+// FIREBASE_PRIVATE_KEY is also accepted as a two-field alternative.
 
 import crypto from 'node:crypto';
 
@@ -23,12 +24,24 @@ const DEFAULT_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 // Keyed by scope: Vertex and Firestore hold different tokens at the same time.
 const cache = new Map();
 
-function loadCredentials() {
-  const raw =
-    process.env.GCP_SERVICE_ACCOUNT ||
-    process.env.FIREBASE_SERVICE_ACCOUNT ||
-    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
-    '';
+// This project talks to two Google services, and on sehatup-f96b5 the two service accounts
+// that exist have complementary, non-overlapping permissions:
+//
+//   firebase-adminsdk-fbsvc  Firestore yes, Vertex no
+//   n8n-vertexai             Vertex yes, Firestore no
+//
+// So one key cannot serve both. Rather than widening either account's roles - n8n's
+// production WhatsApp bot depends on one of them - each service picks its own key, and
+// falls back to the shared one when only a single key is configured.
+function loadCredentials(scope) {
+  const wantsFirestore = String(scope || '').includes('datastore');
+
+  const raw = (wantsFirestore
+    ? process.env.FIRESTORE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT ||
+      process.env.GCP_SERVICE_ACCOUNT
+    : process.env.GCP_SERVICE_ACCOUNT || process.env.VERTEX_SERVICE_ACCOUNT ||
+      process.env.FIREBASE_SERVICE_ACCOUNT
+  ) || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '';
 
   if (raw.trim()) {
     let parsed = null;
@@ -45,7 +58,7 @@ function loadCredentials() {
         projectId: parsed.project_id || '',
       };
     }
-    throw new Error('GCP_SERVICE_ACCOUNT is set but is not valid service-account JSON');
+    throw new Error('A service-account env var is set but is not valid JSON');
   }
 
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -58,17 +71,17 @@ function loadCredentials() {
 
 // Env vars flatten real newlines into the two characters \ and n - PEM parsing fails
 // unless they are restored.
-const normalizeKey = (k) => String(k).replace(/\n/g, '\n').trim();
+const normalizeKey = (k) => String(k).split('\\n').join('\n').trim();
 
 const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
 
-export function hasServiceAccount() {
-  try { return Boolean(loadCredentials()); } catch (_) { return false; }
+export function hasServiceAccount(scope) {
+  try { return Boolean(loadCredentials(scope)); } catch (_) { return false; }
 }
 
 /** project_id straight off the key file, so the deploy only needs one env var. */
-export function serviceAccountProjectId() {
-  try { return loadCredentials()?.projectId || ''; } catch (_) { return ''; }
+export function serviceAccountProjectId(scope) {
+  try { return loadCredentials(scope)?.projectId || ''; } catch (_) { return ''; }
 }
 
 /** OAuth2 access token for `scope`, cached until ~2 minutes before it expires. */
@@ -76,7 +89,7 @@ export async function getAccessToken(scope = DEFAULT_SCOPE) {
   const hit = cache.get(scope);
   if (hit && Date.now() < hit.expiresAt) return hit.token;
 
-  const creds = loadCredentials();
+  const creds = loadCredentials(scope);
   if (!creds) {
     throw new Error(
       'No service account configured - set GCP_SERVICE_ACCOUNT to the JSON key of a ' +

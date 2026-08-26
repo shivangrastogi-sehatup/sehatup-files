@@ -9,7 +9,7 @@ same model.
 
 ```
 visitor types
-   -> widget.js (shadow DOM, on the Shopify theme)
+   -> widget.js (shadow DOM, loaded by a one-line snippet in the theme)
    -> POST /api/chat on Vercel
         -> Shopify Admin API      live prices + stock, cached 5 min
         -> prompts/ananya-web.txt persona and rules
@@ -41,7 +41,8 @@ enforced in code, so a jailbreak cannot reach them:
 | Prescription products have no price, URL or handle in the context window at all | `api/_lib/catalog.js` redacts before the prompt is built |
 | A hallucinated, sold-out or Rx handle never becomes a product card | `api/_lib/markers.js` `resolveMarkers` validates against the live catalog |
 | Prices are never remembered from an earlier chat | the whole catalog is re-read per request; no price appears anywhere in the prompt text |
-| Markers never appear on screen mid-stream | `createMarkerFilter` holds back partial markers; `widget.js` strips them again as a backstop |
+| An early health disclosure cannot scroll out of context | `healthDisclosures()` re-pins the visitor's own words into every prompt |
+| Markers never appear on screen mid-stream | `createMarkerFilter` holds back partial markers; the section strips them again as a backstop |
 
 `node scripts/smoke-test.mjs` asserts all of these against the live store.
 
@@ -62,7 +63,8 @@ Set these in the Vercel project (Settings -> Environment Variables):
 | Variable | Required | What |
 | --- | --- | --- |
 | `SHOPIFY_ACCESS_TOKEN` | yes | Admin API token with `read_products`. The one in `fetch-product-table.js` works. |
-| `GCP_SERVICE_ACCOUNT` | yes* | Full JSON key for a service account with `roles/aiplatform.user` on `sehatup-f96b5`. Same project the WhatsApp bot bills to. |
+| `GCP_SERVICE_ACCOUNT` | yes* | Vertex AI key - needs `roles/aiplatform.user`. On `sehatup-f96b5` that is **n8n-vertexai@**, the account the WhatsApp bot already uses. |
+| `FIRESTORE_SERVICE_ACCOUNT` | no | Transcript logging key - needs `roles/datastore.user`. On `sehatup-f96b5` that is **firebase-adminsdk-fbsvc@**. Only needed because the two accounts have complementary roles: adminsdk cannot call Vertex, n8n-vertexai cannot reach Firestore. Omit it if one account ever holds both. |
 | `GEMINI_API_KEY` | yes* | Alternative to the above: an AI Studio key. Simpler for local testing, and it takes priority if both are set. |
 | `WHATSAPP_NUMBER` | no | Handoff number, digits only. Defaults to `919355539355` **- confirm this is the right number before launch.** |
 | `GEMINI_MODEL` | no | Defaults to `gemini-2.5-flash`. |
@@ -79,9 +81,15 @@ whether logging is on, and how many products it can see.
 
 ### 3. Install on the theme
 
-`shopify-elements/sehatup-webchat.liquid` has the full instructions in its header
-comment. Short version: add it as a snippet named `sehatup-webchat`, render it just above
-`</body>` in `theme.liquid`, and **point `chat_api` at your deployment URL**.
+`shopify-elements/sehatup-webchat.liquid` is a **snippet** - one script tag that loads
+`widget.js` from Vercel. Full instructions are in its header comment. Short version: add it
+under **Snippets** named `sehatup-webchat`, render it just above `</body>` in
+`theme.liquid`, and point `chat_api` at your deployment URL.
+
+The UI lives on Vercel on purpose. It shares a wire protocol with `/api/chat` - the SSE
+event names, the `done` payload, the card fields - so shipping both from one deploy means
+they can never disagree. It also keeps the theme edit to a single line, keeps ~28 KB off
+every page of HTML, and lets the browser cache the widget across page loads.
 
 ### 4. Turn off the old WhatsApp button
 
@@ -111,7 +119,8 @@ vercel dev                                     # real bot at localhost:3000/prev
 ```
 
 `public/preview.html` with no query string mocks the API entirely, so you can judge the
-look, the streaming and the cards without any Gemini credentials.
+look, the streaming and the cards without any Gemini credentials. It loads the same
+`public/widget.js` the storefront does, so what you see there is what ships.
 
 ## Editing the bot's behaviour
 
@@ -120,15 +129,16 @@ look, the streaming and the cards without any Gemini credentials.
   to quote stale prices.
 - **Policy answers**: `api/kb/policies.md`. Plain markdown.
 - **What is prescription-only**: `RX_MARKERS` in `api/_lib/catalog.js`.
-- **Look and feel**: `public/widget.js` (the `css()` function at the bottom).
-- **Greeting, suggestion chips, avatar, accent colour, corner position**: `data-*`
-  attributes on the script tag in the liquid snippet - theme edit only, no redeploy.
+- **Look and feel**: `public/widget.js` (the `css()` function at the bottom). Redeploy to
+  apply, and hard-refresh once - `widget.js` has a 5 minute CDN cache.
+- **Greeting, chips, avatar, accent colour, corner position**: `data-*` attributes on the
+  script tag in the snippet. Theme edit only, no redeploy.
 
   | Attribute | Default | What |
   | --- | --- | --- |
-  | `data-bottom` | `40px` | Gap from the bottom edge, desktop |
+  | `data-bottom` | `20px` | Gap from the bottom edge, desktop |
   | `data-right` | `20px` | Gap from the right edge |
-  | `data-bottom-mobile` | `16px` | Gap from the bottom on phones (≤560px) |
+  | `data-bottom-mobile` | `16px` | Gap from the bottom on phones (<=560px) |
   | `data-accent` | `#ee204a` | Brand colour for the bubble, header and buttons |
 
   The widget renders in a shadow root, so theme CSS cannot reach `.launcher` - these

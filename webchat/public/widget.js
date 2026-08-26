@@ -29,7 +29,7 @@
     avatar: (script && script.dataset.avatar) || '',
     // Corner offsets, any CSS length. Phones get their own bottom value because a sticky
     // add-to-cart bar is a mobile-only obstacle.
-    bottom: (script && script.dataset.bottom) || '40px',
+    bottom: (script && script.dataset.bottom) || '20px',
     right: (script && script.dataset.right) || '20px',
     bottomMobile: (script && script.dataset.bottomMobile) || '16px',
     chips: ((script && script.dataset.chips) ||
