@@ -288,7 +288,15 @@
           sessionId: state.sessionId,
           sessionStartedAt: state.startedAt,
           page: pageContext(),
-          messages: state.messages.map(function (m) { return { role: m.role === 'user' ? 'user' : 'model', text: m.text }; }),
+          messages: state.messages.map(function (m) {
+            return {
+              role: m.role === 'user' ? 'user' : 'model',
+              text: m.text,
+              // Which cards this reply already showed, so the server can avoid
+              // re-attaching a product that is still on screen a message above.
+              products: (m.products || []).map(function (p) { return p.handle; }),
+            };
+          }),
         }),
       });
 

@@ -160,7 +160,16 @@ export default async function handler(req, res) {
     // resolveMarkers validates every handle against the live catalog, so a hallucinated
     // product, a prescription handle or a sold-out item never becomes a card. The prompt
     // asks for that; this is what guarantees it.
-    const { products: shown, handoff: wantsHandoff } = resolveMarkers(markers, cards);
+    // Handles carded in the last two assistant turns. Anything still visible that close
+    // above does not need showing again.
+    const recentlyShown = (Array.isArray(body.messages) ? body.messages : [])
+      .filter((m) => m && (m.role === 'model' || m.role === 'assistant'))
+      .slice(-2)
+      .flatMap((m) => (Array.isArray(m.products) ? m.products : []))
+      .filter((h) => typeof h === 'string');
+
+    const { products: shown, handoff: wantsHandoff } =
+      resolveMarkers(markers, cards, 3, recentlyShown);
     let handoff = wantsHandoff;
 
     if (result.blocked && !replyText.trim()) {

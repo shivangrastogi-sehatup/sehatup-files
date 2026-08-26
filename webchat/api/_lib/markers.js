@@ -90,16 +90,21 @@ export function createMarkerFilter(emit) {
  * a hallucinated handle, a prescription handle or an out-of-stock handle simply never
  * becomes a card, whatever the model wrote.
  */
-export function resolveMarkers(markers, cards, maxCards = 3) {
+export function resolveMarkers(markers, cards, maxCards = 3, recentlyShown = []) {
   var products = [];
   var seen = new Set();
   var handoff = false;
+  // Cards shown in the last couple of replies. The model will happily re-attach the same
+  // product to every message once it has recommended it - one real transcript had the
+  // same Vaji Bati card on five consecutive replies, which reads as nagging. The card is
+  // still on screen just above; showing it again adds nothing.
+  var recent = new Set(recentlyShown);
 
   for (var marker of markers) {
     if (marker === 'whatsapp') { handoff = true; continue; }
     var handle = marker.replace(/^product:/, '');
     var card = cards[handle];
-    if (!card || !card.inStock || seen.has(handle)) continue;
+    if (!card || !card.inStock || seen.has(handle) || recent.has(handle)) continue;
     seen.add(handle);
     if (products.length < maxCards) products.push(card);
   }
