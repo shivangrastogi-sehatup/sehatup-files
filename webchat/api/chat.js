@@ -27,15 +27,26 @@ const ALLOWED_ORIGINS = [
   ...(process.env.EXTRA_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 ];
 
+// Shopify serves the storefront from several hostnames depending on how you are looking
+// at it: the live domain, the .myshopify.com admin domain, and a throwaway
+// *.shopifypreview.com host for an unpublished theme. A theme is always tested on that
+// last one before going live, so leaving it out blocks the only safe way to try changes.
+const ORIGIN_PATTERNS = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https:\/\/[a-z0-9-]+\.myshopify\.com$/,
+  /^https:\/\/[a-z0-9-]+\.shopifypreview\.com$/,
+];
+
 function applyCors(req, res) {
   const origin = req.headers.origin || '';
   const allowed =
     ALLOWED_ORIGINS.includes(origin) ||
-    /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
-    /\.myshopify\.com$/.test(origin);
+    ORIGIN_PATTERNS.some((re) => re.test(origin));
 
-  // The Shopify theme editor renders the storefront inside its own origin, so falling
-  // back to the canonical store URL keeps preview working instead of silently CORS-ing.
+  // Echoing the requested origin is the only thing a browser accepts; answering with a
+  // different allowed origin reads as "blocked by CORS policy" and sends you hunting for
+  // a server fault that is not there. Unknown origins get the canonical store URL, which
+  // fails closed - deliberately, and visibly.
   res.setHeader('Access-Control-Allow-Origin', allowed ? origin : 'https://sehatup.com');
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
