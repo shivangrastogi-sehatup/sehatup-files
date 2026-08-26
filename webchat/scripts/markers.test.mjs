@@ -26,7 +26,9 @@ function run(text, chunkSize) {
 }
 
 const SAMPLE = 'Vaji Bati stamina ke liye hai.\n[[product:vaji-bati]]\nAur koi sawaal?';
-const EXPECT_TEXT = 'Vaji Bati stamina ke liye hai.\n\nAur koi sawaal?';
+// The newline in front of the marker is swallowed with it, so one line break survives -
+// the one that separates the marker line from the sentence after it.
+const EXPECT_TEXT = 'Vaji Bati stamina ke liye hai.\nAur koi sawaal?';
 
 // Every chunk size from 1 (worst case: marker split at every character) upward.
 for (const size of [1, 2, 3, 5, 7, 11, 23, 1000]) {
@@ -46,7 +48,9 @@ check('literal bracket survives', run('Price [approx] Rs499 hai.', 3).text, 'Pri
 check('literal bracket yields no markers', run('Price [approx] Rs499 hai.', 3).markers, []);
 
 // Truncated output (maxOutputTokens hit mid-marker) must not leak the fragment.
-check('half-written marker is dropped', run('Ye dekhiye.\n[[product:vaji-', 4).text, 'Ye dekhiye.\n');
+// The trailing newline goes with the half-written marker - it was only there to put the
+// marker on its own line, so leaving it would end the reply on a blank line.
+check('half-written marker is dropped', run('Ye dekhiye.\n[[product:vaji-', 4).text, 'Ye dekhiye.');
 check('half-written marker yields nothing', run('Ye dekhiye.\n[[product:vaji-', 4).markers, []);
 
 // Markdown the model was told not to emit.

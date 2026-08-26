@@ -15,7 +15,8 @@ export function cleanText(s) {
     .replace(/(^|\n)[ \t]*[*+][ \t]+/g, '$1')
     .replace(/(^|\n)#{1,6}[ \t]+/g, '$1')
     .replace(/[—–]/g, '-')   // em/en dash -> plain hyphen, house style
-    .replace(/`/g, '');
+    .replace(/`/g, '')
+    .replace(/\n{3,}/g, '\n\n');
 }
 
 /**
@@ -24,7 +25,10 @@ export function cleanText(s) {
 export function createMarkerFilter(emit) {
   var pending = '';
   var markers = [];
-  var MARKER = /\[\[(product:[a-z0-9][a-z0-9-]*|whatsapp)\]\]/gi;
+  // The leading \s* matters: the model puts markers on their own line, so removing only
+  // the brackets leaves behind the newline that introduced them. Two markers in a row then
+  // read as a blank gap in the middle of the reply where the cards should be.
+  var MARKER = /\s*\[\[(product:[a-z0-9][a-z0-9-]*|whatsapp)\]\]/gi;
 
   function extract() {
     var m;
@@ -48,7 +52,12 @@ export function createMarkerFilter(emit) {
     // chunk the buffer sits at "[[product:vaji-bati]" for a tick, with the second closing
     // bracket still in flight. Without it that tick looks like settled text and the whole
     // marker is emitted to the visitor verbatim.
-    var m = pending.match(/\[\[?[a-z0-9:-]*\]?$/i);
+    // Two things get held back: a possible partial marker, and ANY trailing whitespace.
+    // The whitespace case is not cosmetic - one character per frame, the newline before a
+    // marker arrives in its own frame, so by the time the "[" shows up the newline has
+    // already been emitted and can no longer be swallowed with the marker. Holding all
+    // trailing whitespace costs nothing: it ships with the next frame, or at end().
+    var m = pending.match(/(?:\s*\[\[?[a-z0-9:-]*\]?|\s+)$/i);
     var safeUpto = m ? m.index : pending.length;
     if (safeUpto <= 0) return;
     var out = pending.slice(0, safeUpto);
@@ -66,7 +75,9 @@ export function createMarkerFilter(emit) {
       extract();
       // Whatever is still held back was a false alarm (a real "[" in the prose), except
       // a marker the model never finished writing - drop that half-written tail.
-      var out = pending.replace(/\[\[[^\]]*$/, '');
+      // Also drop trailing whitespace: a reply whose last line was a marker otherwise
+      // ends with the newline that introduced it.
+      var out = pending.replace(/\[\[[^\]]*$/, '').replace(/\s+$/, '');
       pending = '';
       if (out) emit(cleanText(out));
       return markers;
