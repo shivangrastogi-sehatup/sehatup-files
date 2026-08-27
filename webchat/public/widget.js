@@ -29,6 +29,9 @@
     avatar: (script && script.dataset.avatar) || '',
     // Corner offsets, any CSS length. Phones get their own bottom value because a sticky
     // add-to-cart bar is a mobile-only obstacle.
+    // How many times the attention ring pulses after the page settles. Finite on purpose:
+    // an infinite pulse is what made the launcher feel like it was nagging. 0 turns it off.
+    pulse: Math.max(0, Math.min(10, parseInt((script && script.dataset.pulse) || '3', 10) || 0)),
     bottom: (script && script.dataset.bottom) || '20px',
     right: (script && script.dataset.right) || '20px',
     bottomMobile: (script && script.dataset.bottomMobile) || '16px',
@@ -85,7 +88,20 @@
       var m = location.pathname.match(/\/products\/([^/?#]+)/);
       if (m) handle = m[1];
     }
-    return { url: location.href, title: document.title, productHandle: handle };
+    // Attribution comes from the sehatup-attribution snippet, which captured it on the
+    // visitor's FIRST page view. Reading the current URL here would lose it for anyone
+    // who browsed before opening the chat, which is most people.
+    var attribution = null;
+    try {
+      if (window.SehatUpAttribution) attribution = window.SehatUpAttribution.fields();
+    } catch (e) { /* never let attribution break a chat */ }
+
+    return {
+      url: location.href,
+      title: document.title,
+      productHandle: handle,
+      attribution: attribution,
+    };
   }
 
   /* ----------------------------------------------------------------- dom */
@@ -481,6 +497,7 @@
         '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
           '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' +
         '</svg>' +
+        (CONFIG.pulse > 0 ? '<span class="pulse"></span>' : '') +
       '</button>' +
 
       '<section class="panel" role="dialog" aria-label="' + esc(CONFIG.title) + ' chat">' +
@@ -557,6 +574,21 @@
 .launcher:active { transform: translateY(0) scale(.97); }
 .launcher.hidden { opacity: 0; pointer-events: none; transform: scale(.7); }
 .launcher:focus-visible { outline: 2px solid var(--deep); outline-offset: 3px; }
+
+/* Attention ring. It runs a FIXED number of times and then stops for good - an infinite
+   pulse is what made this feel like it was tugging at the reader's sleeve. Two seconds of
+   delay lets the page settle first, so it reads as the widget arriving rather than as
+   part of the page load. The "both" fill mode holds the final, transparent frame. */
+.pulse {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid var(--brand); opacity: 0;
+  animation: pulse 2.2s cubic-bezier(.2,.6,.3,1) 2s ${CONFIG.pulse} both;
+}
+@keyframes pulse {
+  0%   { transform: scale(1);    opacity: .5; }
+  70%  { transform: scale(1.45); opacity: 0; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
 
 /* panel */
 .panel {
@@ -708,6 +740,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pulse { animation: none; }
   .row.in, .card, .wa { animation: none; }
   .typing i { animation: none; opacity: .5; }
   .panel, .launcher, .btn, .chip, .input, .send { transition: none; }
