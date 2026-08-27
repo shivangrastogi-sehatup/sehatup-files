@@ -16,8 +16,18 @@ import { buildSystemPrompt, promptStats } from '../api/_lib/prompt.js';
 const MUST_BE_RX = [
   'boombatti', 'control tantra', 'fourplay', 'hard yatra', 'max drive', 'rocket ras',
   'lovelinga', 'thrill drill', 'thrustrx', 'dapoxetine', 'tadalafil', 'orlistat',
-  'confidence & performance booster',
+  // Boldup is sildenafil citrate. It shipped classified as ordinary OTC, with its price
+  // and link exposed, because its title names no molecule and its handle is a leftover
+  // copy of a period-care combo. Nothing about the name gave it away - only the product
+  // description did. This row is here so it can never quietly happen again.
+  'boldup',
 ];
+
+// Deliberately NOT prescription. The Confidence & Performance Booster Kit was inherited as
+// Rx from the WhatsApp bot's list, but the store's own description says homeopathic and
+// ayurvedic and names no scheduled molecule. It is SehatUP's ED + PE kit and is meant to
+// be sold, so treating it as Rx was suppressing the right answer for that concern.
+const MUST_BE_OTC = ['confidence & performance booster'];
 
 let failures = 0;
 const check = (label, ok, detail) => {
@@ -42,6 +52,24 @@ for (const needle of MUST_BE_RX) {
   check(`"${needle}" classified prescription-only`, matches.every((p) => p.rx),
     matches.map((p) => `${p.title}=${p.rx ? 'rx' : 'OTC'}`).join(', '));
 }
+
+for (const needle of MUST_BE_OTC) {
+  const matches = products.filter((p) => `${p.title} ${p.handle}`.toLowerCase().includes(needle));
+  if (!matches.length) { console.log(`SKIP  no live product matches "${needle}"`); continue; }
+  check(`"${needle}" is sellable, not gated as prescription`, matches.every((p) => !p.rx),
+    matches.map((p) => `${p.title}=${p.rx ? 'rx' : 'OTC'}`).join(', '));
+}
+
+// Anything whose own description names a scheduled molecule must be Rx however it is
+// titled - this is the rule that would have caught Boldup without anyone noticing it.
+const describedAsScheduled = products.filter((p) =>
+  /\b(sildenafil|tadalafil|dapoxetine|vardenafil|orlistat)\b/i.test(p.about));
+check('every product describing a scheduled molecule is Rx',
+  describedAsScheduled.every((p) => p.rx),
+  describedAsScheduled.map((p) => `${p.title}=${p.rx ? 'rx' : 'OTC'}`).join(', ') || 'none found');
+
+// System SKUs are never customer-facing.
+check('free-sample system SKU is hidden', !products.some((p) => /^__system/.test(p.handle)));
 
 // --- containment: nothing about an Rx product may leak into the prompt -------
 const block = catalogBlock(products);

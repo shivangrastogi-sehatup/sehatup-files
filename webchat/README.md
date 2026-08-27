@@ -118,9 +118,16 @@ SHOPIFY_ACCESS_TOKEN=... node scripts/smoke-test.mjs   # live catalog + Rx conta
 vercel dev                                     # real bot at localhost:3000/preview.html?live=1
 ```
 
-`public/preview.html` with no query string mocks the API entirely, so you can judge the
-look, the streaming and the cards without any Gemini credentials. It loads the same
-`public/widget.js` the storefront does, so what you see there is what ships.
+Two pages under `public/`:
+
+- **`test.html`** - the response tester. Plain transcript view, a **Clear history** button,
+  preset questions grouped by safety / combos / language / policy, and per-reply tags
+  showing latency, which cards resolved, whether it handed off, and a loud warning if a
+  `[[marker]]` ever reaches the screen. History IS sent, so follow-ups work; clearing
+  starts a new session. Point it anywhere with `?api=https://sehatup-webchat.vercel.app`,
+  which is how you compare a local change against what is live.
+- **`preview.html`** - mocks the API entirely, for judging the widget's look and streaming
+  with no credentials at all. It loads the same `public/widget.js` the storefront does.
 
 ## Editing the bot's behaviour
 
@@ -128,7 +135,14 @@ look, the streaming and the cards without any Gemini credentials. It loads the s
   put a real price in an example here - a stale number in the prompt is how a model learns
   to quote stale prices.
 - **Policy answers**: `api/kb/policies.md`. Plain markdown.
-- **What is prescription-only**: `RX_MARKERS` in `api/_lib/catalog.js`.
+- **Which product is for what**: `api/kb/products.md`. This is what decides whether a
+  timing complaint gets Kern Drops or Vaji Bati. Store descriptions are marketing copy and
+  are often vague, so this file overrides them on purpose.
+- **What is in each kit, and the saving**: `COMBOS` in `api/_lib/catalog.js`. Members are
+  handles; the saving is computed from live prices each request, so it can never go stale.
+  A kit whose contents you cannot verify gets no savings line rather than a guessed one.
+- **What is prescription-only**: `RX_MARKERS` in `api/_lib/catalog.js`, plus an automatic
+  rule that gates anything whose description names a scheduled molecule.
 - **Look and feel**: `public/widget.js` (the `css()` function at the bottom). Redeploy to
   apply, and hard-refresh once - `widget.js` has a 5 minute CDN cache.
 - **Greeting, chips, avatar, accent colour, corner position**: `data-*` attributes on the

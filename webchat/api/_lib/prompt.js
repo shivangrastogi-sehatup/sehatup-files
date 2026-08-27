@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { catalogBlock } from './catalog.js';
+import { catalogBlock, comboBlock } from './catalog.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -33,6 +33,7 @@ function loadText(...relative) {
 
 const PERSONA = loadText('prompts', 'ananya-web.txt');
 const POLICIES = loadText('api', 'kb', 'policies.md');
+const PRODUCT_GUIDE = loadText('api', 'kb', 'products.md');
 
 // Conditions and medicines that must gate a product recommendation. Kept deliberately
 // broad and in both scripts - a false positive costs one clarifying question, a false
@@ -198,6 +199,18 @@ export function buildSystemPrompt(products, page = {}, allMessages = []) {
   );
 
   parts.push(catalogBlock(products));
+
+  // Kits before the guide. The kit is usually the right answer, so it should be the thing
+  // read first rather than something found at the bottom of a list of singles.
+  const combos = comboBlock(products);
+  if (combos) parts.push(combos);
+
+  parts.push(
+    "WHICH PRODUCT IS FOR WHAT (the team's own briefing). This block decides WHICH " +
+    'product you recommend. The live catalog above decides the price. Where a product ' +
+    "description on the store and this block disagree about purpose, this block is right:\n" +
+    PRODUCT_GUIDE
+  );
 
   // Page context is what makes "iska price kya hai" answerable without the visitor
   // naming the product. Without it the bot has to ask, which on a product page feels

@@ -144,14 +144,19 @@ export default async function handler(req, res) {
   };
 
   let replyText = '';
-  const filter = createMarkerFilter((t) => {
-    replyText += t;
-    send('delta', { t });
-  });
+  let cards = {};
+  const filter = createMarkerFilter(
+    (t) => {
+      replyText += t;
+      send('delta', { t });
+    },
+    // Inline markers become the product's name rather than a hole in the sentence.
+    (handle) => cards[handle]?.title || ''
+  );
 
   try {
     const products = await getCatalog();
-    const cards = cardIndex(products);
+    cards = cardIndex(products);
     const system = buildSystemPrompt(products, page, allMessages);
 
     const result = await streamReply(system, history, (chunk) => filter.push(chunk));

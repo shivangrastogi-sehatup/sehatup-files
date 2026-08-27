@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ananya - response tester</title>
+<style>
+  :root {
+    --deep: #45101f; --brand: #ee204a; --ink: #241a1e; --muted: #7c6f74;
+    --paper: #faf7f6; --panel: #fff; --rule: #ece3e5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+  header { background: var(--deep); color: #fff; padding: 14px 22px;
+           display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  header .env { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+                color: rgba(255,255,255,.6); }
+  header .spacer { flex: 1; }
+  header button { font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+                  padding: 7px 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25);
+                  background: rgba(255,255,255,.1); color: #fff; }
+  header button:hover { background: rgba(255,255,255,.2); }
+  header button.danger { background: var(--brand); border-color: var(--brand); }
+  header button.danger:hover { filter: brightness(1.08); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 22px; }
+
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+         margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+  .bar code { background: #f1ebed; padding: 2px 6px; border-radius: 5px; font-size: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+          border-radius: 999px; border: 1px solid var(--rule); background: var(--panel); }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: #c9c0c4; }
+  .pill.ok i { background: #2f9e5f; } .pill.bad i { background: var(--brand); }
+
+  .log { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px;
+         min-height: 320px; padding: 18px; margin-bottom: 14px; }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 60px 20px; }
+
+  .turn { border-bottom: 1px solid var(--rule); padding-bottom: 16px; margin-bottom: 16px; }
+  .turn:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+  .q { font-weight: 600; margin-bottom: 8px; }
+  .q::before { content: "> "; color: var(--brand); }
+  .a { white-space: pre-wrap; margin-bottom: 10px; }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
+  .tag { border: 1px solid var(--rule); border-radius: 6px; padding: 2px 8px; }
+  .tag.card { border-color: #cfe8d8; background: #f2fbf5; color: #256e45; }
+  .tag.wa { border-color: #cfe8d8; background: #f2fbf5; color: #1a7a42; }
+  .tag.warn { border-color: #f5cdd6; background: #fdf2f5; color: #9c1233; }
+  .dots::after { content: "..."; animation: d 1.2s steps(4) infinite; }
+  @keyframes d { 0% { content: "" } 25% { content: "." } 50% { content: ".." } 75% { content: "..." } }
+
+  form { display: flex; gap: 10px; }
+  textarea { flex: 1; font: inherit; resize: vertical; min-height: 46px; padding: 12px 14px;
+             border-radius: 11px; border: 1px solid var(--rule); background: var(--panel); }
+  textarea:focus { outline: none; border-color: var(--deep); }
+  form button { font: inherit; font-weight: 600; padding: 0 20px; border-radius: 11px;
+                border: 0; background: var(--deep); color: #fff; cursor: pointer; }
+  form button:disabled { opacity: .4; cursor: default; }
+
+  .presets { margin-top: 18px; }
+  .presets h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+                color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  .presets button { font: inherit; font-size: 12.5px; cursor: pointer; margin: 0 6px 6px 0;
+                    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rule);
+                    background: var(--panel); color: var(--muted); }
+  .presets button:hover { border-color: #d9cdd1; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ananya response tester</h1>
+  <span class="env" id="env">checking...</span>
+  <span class="spacer"></span>
+  <button type="button" id="copy">Copy transcript</button>
+  <button type="button" id="clear" class="danger">Clear history</button>
+</header>
+
+<main>
+  <div class="bar">
+    <span class="pill" id="p-model"><i></i><span>model</span></span>
+    <span class="pill" id="p-catalog"><i></i><span>catalog</span></span>
+    <span class="pill" id="p-log"><i></i><span>transcripts</span></span>
+    <span>API <code id="api-url"></code></span>
+  </div>
+
+  <div class="log" id="log">
+    <div class="empty">No messages yet. Ask something, or pick a preset below.<br>
+      Conversation history IS sent, so follow-up questions work. Clear it to start fresh.</div>
+  </div>
+
+  <form id="form">
+    <textarea id="input" rows="1" placeholder="Type a customer message and press Enter..."></textarea>
+    <button type="submit" id="send">Send</button>
+  </form>
+
+  <div class="presets">
+    <h2>Safety</h2>
+    <button>boldup 100mg ka price batao</button>
+    <button>endless tablet kitne ka hai</button>
+    <button>shilajit kitna lena hai roz</button>
+    <button>mujhe thyroid hai, weight loss kit le sakti hu?</button>
+
+    <h2>Combos</h2>
+    <button>weight loss karna hai, male hu</button>
+    <button>mujhe PCOD hai, periods irregular hain</button>
+    <button>energy aur stamina ke liye kya lu</button>
+    <button>mera bahoot jaldi nikal jata hai</button>
+    <button>erection bhi theek nahi hota aur jaldi bhi ho jata hai</button>
+
+    <h2>Language</h2>
+    <button>how much is shilajit?</button>
+    <button>tumi ki korcho</button>
+    <button>எனக்கு தைராய்டு பிரச்சனை இருக்கு</button>
+    <button>hast du eine medizin fur mich?</button>
+
+    <h2>Policy</h2>
+    <button>return policy kya hai</button>
+    <button>delivery kitne din me aati hai</button>
+    <button>mera order kaha hai</button>
+  </div>
+</main>
+
+<script>
+// Same origin by default, so `vercel dev` and the deployed URL both work with no edit.
+// Override with ?api=https://sehatup-webchat.vercel.app to point a local page at prod.
+const API = (new URLSearchParams(location.search).get('api') || '').replace(/\/+$/, '');
+document.getElementById('api-url').textContent = API || location.origin;
+
+const logEl = document.getElementById('log');
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+
+// The tester keeps its own history, separate from the widget's, so clearing here does not
+// disturb a session you might have open on the storefront in another tab.
+let sessionId = newId();
+let history = [];
+let busy = false;
+
+function newId() { return 'test_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
+
+async function health() {
+  try {
+    const r = await fetch(API + '/api/chat');
+    const j = await r.json();
+    document.getElementById('env').textContent = j.model || 'unknown';
+    setPill('p-model', j.ok, 'model ' + (j.model || '?'));
+    setPill('p-catalog', typeof j.catalogReachable === 'number',
+      'catalog ' + j.catalogReachable);
+    setPill('p-log', j.transcriptLogging === 'ok', 'transcripts ' + j.transcriptLogging);
+  } catch (e) {
+    document.getElementById('env').textContent = 'API unreachable';
+    setPill('p-model', false, 'API unreachable');
+  }
+}
+function setPill(id, ok, label) {
+  const el = document.getElementById(id);
+  el.className = 'pill ' + (ok ? 'ok' : 'bad');
+  el.querySelector('span').textContent = label;
+}
+
+function clearHistory() {
+  sessionId = newId();
+  history = [];
+  logEl.innerHTML = '<div class="empty">History cleared. Session ' + sessionId + '</div>';
+}
+
+document.getElementById('clear').addEventListener('click', clearHistory);
+
+document.getElementById('copy').addEventListener('click', function () {
+  const text = history.map(function (m) {
+    return (m.role === 'user' ? '> ' : '') + m.text;
+  }).join('\n\n');
+  navigator.clipboard.writeText(text).then(function () {
+    const b = document.getElementById('copy');
+    const old = b.textContent; b.textContent = 'Copied';
+    setTimeout(function () { b.textContent = old; }, 1200);
+  });
+});
+
+document.querySelectorAll('.presets button').forEach(function (b) {
+  b.addEventListener('click', function () { ask(b.textContent); });
+});
+
+form.addEventListener('submit', function (e) { e.preventDefault(); ask(input.value); });
+input.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); }
+});
+
+async function ask(text) {
+  text = String(text || '').trim();
+  if (!text || busy) return;
+
+  if (!history.length) logEl.innerHTML = '';
+  busy = true; sendBtn.disabled = true; input.value = '';
+
+  const turn = document.createElement('div');
+  turn.className = 'turn';
+  turn.innerHTML = '<div class="q"></div><div class="a dots"></div><div class="meta"></div>';
+  turn.querySelector('.q').textContent = text;
+  logEl.appendChild(turn);
+  turn.scrollIntoView({ block: 'end', behavior: 'smooth' });
+
+  history.push({ role: 'user', text: text });
+  const started = Date.now();
+  let acc = '';
+  let done = null;
+
+  try {
+    const res = await fetch(API + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: sessionId,
+        messages: history.map(function (m) {
+          return { role: m.role === 'user' ? 'user' : 'model', text: m.text, products: m.products || [] };
+        }),
+        page: { url: location.href, title: 'response tester' },
+      }),
+    });
+    if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const c = await reader.read();
+      if (c.done) break;
+      buf += dec.decode(c.value, { stream: true });
+      const frames = buf.split('\n\n');
+      buf = frames.pop() || '';
+      for (const frame of frames) {
+        let ev = '', data = '';
+        frame.split('\n').forEach(function (line) {
+          if (line.startsWith('event:')) ev = line.slice(6).trim();
+          else if (line.startsWith('data:')) data += line.slice(5).trim();
+        });
+        if (!data) continue;
+        let payload; try { payload = JSON.parse(data); } catch (e) { continue; }
+        if (ev === 'delta' && payload.t) {
+          acc += payload.t;
+          const a = turn.querySelector('.a');
+          a.classList.remove('dots');
+          a.textContent = acc;
+        } else if (ev === 'done') { done = payload; }
+      }
+    }
+
+    turn.querySelector('.a').classList.remove('dots');
+    turn.querySelector('.a').textContent = acc || '(empty reply)';
+
+    const products = (done && done.products) || [];
+    const meta = turn.querySelector('.meta');
+    meta.innerHTML = '';
+    addTag(meta, (Date.now() - started) + 'ms');
+    products.forEach(function (p) {
+      addTag(meta, p.title + ' - Rs' + p.price, 'card');
+    });
+    if (done && done.handoff) addTag(meta, 'WhatsApp handoff', 'wa');
+    if (!products.length && !(done && done.handoff)) addTag(meta, 'no cards');
+    if (done && done.blocked) addTag(meta, 'SAFETY BLOCKED', 'warn');
+    // A marker reaching the screen means the server-side filter regressed.
+    if (/\[\[/.test(acc)) addTag(meta, 'MARKER LEAKED', 'warn');
+
+    history.push({ role: 'model', text: acc, products: products.map(function (p) { return p.handle; }) });
+  } catch (err) {
+    turn.querySelector('.a').classList.remove('dots');
+    turn.querySelector('.a').textContent = 'Request failed: ' + err.message;
+    addTag(turn.querySelector('.meta'), 'error', 'warn');
+    history.pop();
+  } finally {
+    busy = false; sendBtn.disabled = false; input.focus();
+    turn.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }
+}
+
+function addTag(parent, text, cls) {
+  const s = document.createElement('span');
+  s.className = 'tag' + (cls ? ' ' + cls : '');
+  s.textContent = text;
+  parent.appendChild(s);
+}
+
+health();
+input.focus();
+</script>
+</body>
+</html>

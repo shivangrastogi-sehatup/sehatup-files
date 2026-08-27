@@ -20,23 +20,41 @@ export function cleanText(s) {
 }
 
 /**
- * @param {(text: string) => void} emit  called with each safe, cleaned fragment
+ * @param {(text: string) => void} emit         called with each safe, cleaned fragment
+ * @param {(handle: string) => string} [titleOf] handle -> product name, for inline markers
  */
-export function createMarkerFilter(emit) {
+export function createMarkerFilter(emit, titleOf) {
   var pending = '';
   var markers = [];
-  // The leading \s* matters: the model puts markers on their own line, so removing only
-  // the brackets leaves behind the newline that introduced them. Two markers in a row then
-  // read as a blank gap in the middle of the reply where the cards should be.
-  var MARKER = /\s*\[\[(product:[a-z0-9][a-z0-9-]*|whatsapp)\]\]/gi;
+  var everEmitted = false;
+  // The leading (\s*) is captured, not just skipped, because it decides what replaces the
+  // marker. A marker on its own line is a card: delete it and the newline that introduced
+  // it, or two in a row leave a blank gap. A marker INSIDE a sentence is the model using
+  // it as the product's name - "hamare paas [[product:kern-drops]] hain" - and deleting
+  // that produces "hamare paas hain", a sentence with a hole in it. Real transcripts do
+  // both, so the substitution has to depend on where the marker sits.
+  var MARKER = /(\s*)\[\[(product:[a-z0-9][a-z0-9-]*|whatsapp)\]\]/gi;
 
   function extract() {
     var m;
     MARKER.lastIndex = 0;
     while ((m = MARKER.exec(pending))) {
-      markers.push(m[1].toLowerCase());
-      pending = pending.slice(0, m.index) + pending.slice(m.index + m[0].length);
-      MARKER.lastIndex = m.index;
+      var lead = m[1];
+      var marker = m[2].toLowerCase();
+      markers.push(marker);
+
+      // `m.index === 0` alone is not "start of the reply" - mid-stream the buffer usually
+      // starts AT the marker, because everything before it has already been emitted. Only
+      // a marker at index 0 before anything has been emitted is genuinely leading.
+      var ownLine = lead.indexOf('\n') !== -1 || (m.index === 0 && !everEmitted);
+      var replacement = '';
+      if (!ownLine && marker !== 'whatsapp' && typeof titleOf === 'function') {
+        var title = titleOf(marker.replace(/^product:/, ''));
+        if (title) replacement = lead + title;
+      }
+
+      pending = pending.slice(0, m.index) + replacement + pending.slice(m.index + m[0].length);
+      MARKER.lastIndex = m.index + replacement.length;
     }
   }
 
@@ -62,7 +80,10 @@ export function createMarkerFilter(emit) {
     if (safeUpto <= 0) return;
     var out = pending.slice(0, safeUpto);
     pending = pending.slice(safeUpto);
-    if (out) emit(cleanText(out));
+    // A reply that opens with a card marker leaves the newline that followed it, which
+    // renders as an empty first line. Nothing legitimate starts with whitespace.
+    if (!everEmitted) out = out.replace(/^\s+/, '');
+    if (out) { everEmitted = true; emit(cleanText(out)); }
   }
 
   return {

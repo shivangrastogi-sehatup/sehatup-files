@@ -19,12 +19,25 @@ const TTL_MS = Number(process.env.CATALOG_TTL_MS || 5 * 60 * 1000);
 // substrings rather than exact titles because Shopify titles carry marketing tails
 // ("Boombatti- Stay up late, dominate fate") that change without warning.
 const RX_MARKERS = [
-  'tadalafil', 'dapoxetine', 'tadala', 'orlistat',
+  // Scheduled molecules. Sildenafil was missing and that was a live leak: "Boldup - 100 mg"
+  // is sildenafil citrate, a PDE5 inhibitor, and it was being served as an ordinary OTC
+  // product with its price and link. Its handle is a leftover copy of a period-care combo,
+  // so nothing about the URL hinted at it either.
+  'tadalafil', 'dapoxetine', 'sildenafil', 'vardenafil', 'tadala', 'orlistat',
+  'boldup', 'bold up',
   'boombatti', 'control tantra', 'fourplay', 'hard yatra', 'max drive',
   'rocket ras', 'lovelinga', 'thrill drill', 'thrustrx', 'thrust rx',
   'endless', 'mighty', 'hard 5', 'hard 10',
-  'confidence & performance booster', 'confidence and performance booster',
 ];
+
+// Belt and braces: a product whose own description names a scheduled molecule is
+// prescription-only regardless of what it is called. This is what would have caught
+// Boldup on day one, and it catches the next renamed product automatically.
+const RX_IN_DESCRIPTION = /\b(sildenafil|tadalafil|dapoxetine|vardenafil|orlistat)\b/i;
+
+// Never shown to a customer. The free-sample entry is a system SKU - its own description
+// says "Not for individual sale" - and quoting its Rs399 as a price would be wrong.
+const HIDDEN_HANDLES = new Set(['__system_free_sample_do_not_access']);
 
 let cache = { at: 0, products: null, error: null };
 
@@ -42,7 +55,13 @@ const stripHtml = (html) =>
 
 export function isPrescription(product) {
   const hay = `${product.title || ''} ${product.handle || ''}`.toLowerCase();
-  return RX_MARKERS.some((m) => hay.includes(m));
+  if (RX_MARKERS.some((m) => hay.includes(m))) return true;
+  return RX_IN_DESCRIPTION.test(String(product.body_html || ''));
+}
+
+export function isHidden(product) {
+  return HIDDEN_HANDLES.has(product.handle) ||
+    /^__system/i.test(String(product.handle || ''));
 }
 
 async function fetchAllProducts() {
@@ -117,7 +136,7 @@ function shape(p) {
 export async function getCatalog() {
   if (cache.products && Date.now() - cache.at < TTL_MS) return cache.products;
   try {
-    const products = (await fetchAllProducts()).map(shape);
+    const products = (await fetchAllProducts()).filter((p) => !isHidden(p)).map(shape);
     cache = { at: Date.now(), products, error: null };
     return products;
   } catch (e) {
@@ -127,6 +146,70 @@ export async function getCatalog() {
     if (cache.products) return cache.products;
     throw e;
   }
+}
+
+// Kits, and what each one is made of. Members are taken from the store's own product
+// descriptions, not guessed, so the saving quoted below is real. A kit whose contents
+// cannot be verified is still listed - it just gets no savings line rather than a made-up
+// one. Keys and members are handles.
+const COMBOS = {
+  'her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness': {
+    members: ['harmen', 'tea-for-period-cramps'],
+    who: 'women with PCOD, PCOS, irregular or painful periods',
+  },
+  'shaktisurge': {
+    members: ['pure-himalayan-shilajit-resin-20g', 'ashwagandha-tablets'],
+    who: 'anyone wanting daily energy, strength, better sleep and less stress',
+  },
+  'daily-energy-stamina-support-kit-copy': {
+    members: ['sehatup-shilajit-honey-sticks', 'ashwagandha-tablets'],
+    who: 'the same need as the resin kit, in an easier daily format',
+  },
+  'macho-metabolism': {
+    members: ['garcenia-cambogia-drops', 'slimtox-energy-tea'],
+    who: 'women on a weight-loss plan',
+  },
+  'calm-curve-control': {
+    members: ['garcenia-cambogia-drops', 'leanroutine'],
+    who: 'men on a weight-loss plan',
+  },
+  'p-e-e-d-integrated-kit': {
+    members: [],   // description names Kern Drops but not the full contents - do not guess
+    who: 'men dealing with both premature ejaculation and erection trouble',
+  },
+};
+
+/**
+ * Kits priced against the sum of their parts, using today's live prices.
+ * Returns only kits that are in stock and actually cheaper.
+ */
+export function comboBlock(products) {
+  const byHandle = Object.fromEntries(products.map((p) => [p.handle, p]));
+  const lines = [];
+
+  for (const [handle, meta] of Object.entries(COMBOS)) {
+    const kit = byHandle[handle];
+    if (!kit || kit.rx || !kit.inStock) continue;
+
+    const parts = meta.members.map((h) => byHandle[h]).filter(Boolean);
+    const separate = parts.reduce((sum, p) => sum + p.price, 0);
+    const saving = separate - kit.price;
+
+    let line = `- ${kit.title} - Rs${kit.price}. For ${meta.who}. card: [[product:${kit.handle}]]`;
+    if (parts.length === meta.members.length && meta.members.length && saving > 0) {
+      line += `\n  contains: ${parts.map((p) => p.title).join(' + ')}` +
+              `\n  bought separately that is Rs${separate}, so the kit saves Rs${saving}.`;
+    } else if (parts.length === meta.members.length && meta.members.length) {
+      line += `\n  contains: ${parts.map((p) => p.title).join(' + ')}`;
+    }
+    lines.push(line);
+  }
+
+  if (!lines.length) return '';
+  return (
+    'KITS AND COMBOS (prefer these - see the COMBO RULE in your instructions):\n' +
+    lines.join('\n')
+  );
 }
 
 /** The block that goes into the system prompt. Rx rows carry no price and no link. */
