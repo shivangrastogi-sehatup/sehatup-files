@@ -46,6 +46,12 @@
     tipText: (script && script.dataset.tipText) || 'Ask me anything about health or products',
     tipDelay: Math.max(0, parseInt((script && script.dataset.tipDelay) || '2800', 10) || 0),
     tipHold: Math.max(2000, parseInt((script && script.dataset.tipHold) || '7000', 10) || 7000),
+    // How often the greeting is allowed to appear:
+    //   session  once per visit (default). A store is many page loads in one visit,
+    //            and a welcome that reintroduces itself on page four is nagging.
+    //   page     every page load. Maximum reach, at the cost of that.
+    //   day      once per browser per calendar day.
+    tipScope: (script && script.dataset.tipScope) || 'session',
     bottom: (script && script.dataset.bottom) || '32px',
     right: (script && script.dataset.right) || '20px',
     bottomMobile: (script && script.dataset.bottomMobile) || '16px',
@@ -278,16 +284,33 @@
     if (el.tip) el.tip.classList.remove('show');
   }
 
+  // Returns true when this browser has already had the greeting for the current
+  // scope, and claims the slot when it has not. Storage failing (private mode,
+  // quota, cookies off) always resolves to "show it" - a greeting nobody
+  // remembers is a smaller failure than a greeting nobody ever sees.
+  function tipAlreadyShown() {
+    if (CONFIG.tipScope === 'page') return false;
+    try {
+      if (CONFIG.tipScope === 'day') {
+        var today = new Date().toISOString().slice(0, 10);
+        if (localStorage.getItem(TIP_KEY) === today) return true;
+        localStorage.setItem(TIP_KEY, today);
+        return false;
+      }
+      if (sessionStorage.getItem(TIP_KEY)) return true;
+      sessionStorage.setItem(TIP_KEY, '1');
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function showTip() {
     if (!el.tip) return;
-    // Never to somebody already in a conversation, and never twice in a visit.
-    // A greeting that reintroduces itself on every page is an interruption, not
-    // a welcome.
+    // Never to somebody already in a conversation. That guard holds in every
+    // scope: interrupting a live chat is worse than missing a greeting.
     if (state.opened || state.messages.length) return;
-    try {
-      if (sessionStorage.getItem(TIP_KEY)) return;
-      sessionStorage.setItem(TIP_KEY, '1');
-    } catch (e) { /* private mode: show it, just do not remember */ }
+    if (tipAlreadyShown()) return;
     el.tip.classList.add('show');
     tipTimer = window.setTimeout(hideTip, CONFIG.tipHold);
   }
@@ -516,7 +539,32 @@
 
   renderAll();
   autosize();
-  if (state.opened && state.messages.length) open();
+
+  // Reopening the panel across page loads is what lets a conversation survive a
+  // storefront navigation: tap a product mid-chat and you keep your place. A
+  // reload is not that. Nobody refreshes a page expecting a panel to spring open
+  // over it, so a reload is treated as a fresh arrival - and state.opened is
+  // cleared with it, so the next navigation does not resurrect the panel either.
+  // An unknown navigation type falls back to leaving it shut: a wrong "open"
+  // interrupts, a wrong "closed" costs one tap.
+  function wasReload() {
+    try {
+      var nav = performance.getEntriesByType('navigation')[0];
+      if (nav) return nav.type === 'reload';
+      return !!(performance.navigation && performance.navigation.type === 1);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  if (state.opened && state.messages.length) {
+    if (wasReload()) {
+      state.opened = false;
+      saveState();
+    } else {
+      open();
+    }
+  }
 
   window.SehatUpChat = {
     open: open,
@@ -726,7 +774,27 @@
 .panel {
   position: fixed; right: var(--gap-right); bottom: var(--gap-bottom); z-index: 2147483000;
   width: 380px; max-width: calc(100vw - 32px);
-  height: 600px; max-height: calc(100vh - 40px);
+  /* Height adapts to the window instead of being a fixed 600 that gets trimmed.
+
+     The panel hangs off the bottom corner, so its ceiling is the viewport minus
+     the corner gap it stands on, minus a real top margin. The old flat 40px was
+     not that sum: against a 32px bottom gap it left exactly 8px of headroom, so
+     the panel touched the top edge the moment the window was anything short of
+     tall, and read as clipped.
+
+     dvh, not vh: on phones vh is measured with the browser UI hidden, so a panel
+     anchored to the bottom is precisely the thing that gets cut off at the top
+     while the URL bar is showing. Each vh line below is the fallback for engines
+     that do not know dvh - the later declaration wins where it is understood and
+     is discarded as invalid where it is not, which is the whole trick.
+
+     clamp, so the panel earns extra height on a tall screen rather than leaving
+     it empty, and gives it up on a short one before max-height has to intervene. */
+  --panel-gap-top: 24px;
+  height: clamp(380px, 74vh, 680px);
+  height: clamp(380px, 74dvh, 680px);
+  max-height: calc(100vh - var(--gap-bottom) - var(--panel-gap-top));
+  max-height: calc(100dvh - var(--gap-bottom) - var(--panel-gap-top));
   background: var(--panel); border-radius: 20px;
   border: 1px solid var(--rule);
   box-shadow: 0 2px 8px rgba(69,16,31,.06), 0 24px 70px -14px rgba(120,12,40,.34);

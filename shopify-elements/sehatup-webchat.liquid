@@ -46,6 +46,17 @@
     higher number if the bubble is getting missed on busy pages.
   {%- endcomment -%}
   data-pulse="3"
+  {%- comment -%}
+    How often the greeting pill unfurls out of the launcher.
+      session  once per visit (recommended). A visitor browsing eight pages sees it
+               once, and a visitor who comes back tomorrow sees it again.
+      page     every page load. Catches everyone, including on a refresh, but it
+               reintroduces itself on every product page.
+      day      once per browser per calendar day.
+    Note that a refresh is NOT a new visit, so on "session" you will not see it
+    again by refreshing - close the tab and open a new one to test.
+  {%- endcomment -%}
+  data-tip-scope="session"
   data-greeting="Hello! Main sehatUP Mitra hu. Product, price ya health concern - kuch bhi puchiye."
   data-chips="Weight loss ke liye kya lu?|Periods ki problem hai|Free consultation kaise hoti hai?|Delivery kitne din me?"
   {%- comment -%}
