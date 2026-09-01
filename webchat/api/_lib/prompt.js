@@ -121,22 +121,48 @@ const ENGLISH_MARKERS = /\b(the|is|are|am|was|were|you|your|yours|can|could|do|d
  * English. Tested before this existed, "how much is shilajit?" came back in Devanagari
  * every single time. Stating the answer as a fact, computed from the message, wins.
  */
-export function languageDirective(lastUserText) {
+/**
+ * Languages where a verb, adjective or participle agrees with the person you are
+ * ADDRESSING, so writing a sentence to a stranger forces a guess about their gender.
+ * Dravidian languages and English are absent because they do not force that choice.
+ */
+const GENDERED_ADDRESS = new Set([
+  'Hindi (Devanagari)', 'Gujarati', 'Punjabi (Gurmukhi)', 'Urdu', 'Hinglish',
+]);
+
+// The persona is 20k characters of female-voiced Hinglish, and it drags the second person
+// along with it: the model writes "main kar sakti hu" and then, agreeing with itself
+// rather than with the visitor, "aap chahti hain". A rule at the top of the persona is
+// too far from the generation point to win that - which is the same reason the language
+// directive exists at all. So it is restated here, per turn, only for the languages where
+// the choice is actually forced.
+const GENDER_NOTE =
+  ' The visitor\'s gender is UNKNOWN unless they have said so themselves. Your own verbs ' +
+  'stay female ("main kar sakti hu"); theirs must not follow. Use forms that carry no ' +
+  'gender for them - "Main book kar du?", "Aapko kya chahiye?", "Bataiye", ' +
+  '"Consultation book karni hai?" - rather than "Kya aap chahti hain". If a sentence ' +
+  'truly cannot avoid marking them, use the masculine form, never the feminine.';
+
+export function languageDirective(lastUserText, genderKnown = false) {
   const text = String(lastUserText || '');
   if (!text.trim()) return '';
+  // Once genderDirective is stating the gender as a fact, this note would be arguing
+  // with it two sentences later. Only one of them gets to be in the prompt.
+  const note = genderKnown ? '' : GENDER_NOTE;
 
   for (const [name, re] of SCRIPTS) {
     if (re.test(text)) {
       return `THE VISITOR'S LAST MESSAGE IS IN ${name.toUpperCase()}. Write your entire ` +
         `reply in ${name}, in that same script. Do not reply in Hinglish or English. ` +
         `Product names stay in Latin script exactly as the catalog spells them, prices ` +
-        `stay as digits, and the [[...]] markers are copied exactly.`;
+        `stay as digits, and the [[...]] markers are copied exactly.` +
+        (GENDERED_ADDRESS.has(name) ? note : '');
     }
   }
 
   if (HINGLISH_MARKERS.test(text)) {
     return "THE VISITOR'S LAST MESSAGE IS IN HINGLISH (Hindi in Roman letters). Write your " +
-      'reply in Hinglish, in Roman letters. Do not use Devanagari.';
+      'reply in Hinglish, in Roman letters. Do not use Devanagari.' + note;
   }
 
   // Two independent English function words before claiming English. One is not enough:
@@ -169,14 +195,32 @@ export function languageDirective(lastUserText) {
  * @param {object}   page      { url, title, productHandle } the visitor is looking at
  * @param {object[]} allMessages  the FULL client history, before the window is applied
  */
-export function buildSystemPrompt(products, page = {}, allMessages = []) {
+/**
+ * Once they have told us, their gender stops being a guess and becomes a fact, so it is
+ * stated as one right next to the language fact - the two problems are the same problem.
+ * Unknown returns '' and the neutral-forms note inside languageDirective keeps standing.
+ */
+export function genderDirective(gender) {
+  if (gender !== 'male' && gender !== 'female') return '';
+  const forms = gender === 'male'
+    ? '"aap chahte hain", "aapne kiya", "aap soch rahe hain"'
+    : '"aap chahti hain", "aapne kiya", "aap soch rahi hain"';
+  return `THE VISITOR IS ${gender.toUpperCase()}. They told you themselves, so use it: ` +
+    `address them with ${gender} forms - ${forms}. Your own verbs are unchanged and stay ` +
+    `female. Never ask their gender again, and never make a remark about it - just use it. ` +
+    `It also tells you which products fit; it does not tell you what they came to ask.`;
+}
+
+export function buildSystemPrompt(products, page = {}, allMessages = [], gender = null) {
   const lastUser = [...allMessages].reverse().find((m) => m.role === 'user')?.text || '';
-  const language = languageDirective(lastUser);
+  const genderFact = genderDirective(gender);
+  const language = languageDirective(lastUser, !!genderFact);
 
   // Language goes FIRST, ahead of the persona, and is repeated last. Both ends of a long
   // prompt are attended to more reliably than the middle, and this instruction has to beat
   // a whole document written in another language.
-  const parts = language ? [language, PERSONA] : [PERSONA];
+  const head = [language, genderFact].filter(Boolean);
+  const parts = head.length ? [...head, PERSONA] : [PERSONA];
 
   const disclosures = healthDisclosures(allMessages);
   if (disclosures.length) {

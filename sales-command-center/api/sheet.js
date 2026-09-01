@@ -55,33 +55,46 @@ function getAuth() {
 const quoteTitle = (t) => `'${String(t).replace(/'/g, "''")}'`;
 
 /**
- * Resolve the current "<Month> <Year><suffix>" tab (e.g. suffix " After Consultation"),
- * falling back to the latest such tab not in the future, else the latest overall.
+ * Every spelling of a month we accept in a tab title: the full name, the three
+ * letter form, and "Sept". The sheets genuinely use all of them - "Sep 2026" on
+ * the Quick Reply board sits alongside "September 2026" on Men's Wellness - and
+ * matching only the full name is what made the Quick board keep reading August
+ * after September began.
+ */
+function monthAliases(idx) {
+  const full = MONTH_NAMES[idx];
+  const out = [full, full.slice(0, 3)];
+  if (idx === 8) out.push('Sept');
+  return [...new Set(out.map((n) => n.toLowerCase()))];
+}
+
+/**
+ * Resolve the "<Month> <Year><suffix>" tab for the reference month.
+ *
+ * There is deliberately NO fallback to an older month. It used to fall back to
+ * "the newest matching tab not in the future", which sounds safe and is not: on
+ * the 1st of a month, before anyone has created the new tab, every board silently
+ * served last month's rows as this month's. Current and previous then resolved to
+ * the SAME tab, so the wall showed a finished month as month-to-date and every
+ * month-over-month delta compared August against August.
+ *
+ * A missing tab is a real state and the board is made to say so. Wrong numbers on
+ * a wall nobody thinks to question cost far more than an obviously empty panel.
  */
 function resolveMonthlyTab(tabs, suffix = '', monthOffset = 0) {
   // Reference month = current month shifted by monthOffset (0 = current, -1 = previous).
   const base = new Date();
   const ref = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
-  // Match ENTIRELY case-insensitively (tabs vary: "may 2026 leads", "June 2026 LEADS", "July 2026").
-  const wanted = `${MONTH_NAMES[ref.getMonth()]} ${ref.getFullYear()}${suffix}`.trim().toLowerCase();
-  const exact = tabs.find((p) => p.title.trim().toLowerCase() === wanted);
-  if (exact) return exact.title;
-  const suf = suffix.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`^([A-Za-z]+)\\s+(\\d{4})${suf ? `\\s+${suf}` : ''}\\s*$`, 'i');
-  // Fallback: newest matching tab not after the reference month's end.
-  const refEnd = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getTime();
-  const dated = tabs
-    .map((p) => {
-      const m = p.title.trim().match(re);
-      if (!m) return null;
-      const idx = MONTH_NAMES.findIndex((n) => n.toLowerCase() === m[1].toLowerCase());
-      return idx < 0 ? null : { title: p.title, t: new Date(Number(m[2]), idx, 1).getTime() };
-    })
-    .filter(Boolean);
-  const past = dated.filter((x) => x.t <= refEnd).sort((a, b) => b.t - a.t);
-  if (past.length) return past[0].title;
-  if (dated.length) return dated.sort((a, b) => b.t - a.t)[0].title;
-  return null;
+  const suf = suffix.trim().toLowerCase();
+  const year = String(ref.getFullYear());
+  // Match ENTIRELY case-insensitively, and collapse runs of whitespace: real tab
+  // titles include "June 2026 LEADS " and "May 2026 After Consultation   ".
+  const wanted = new Set(
+    monthAliases(ref.getMonth()).map((n) => `${n} ${year}${suf ? ` ${suf}` : ''}`)
+  );
+  const norm = (t) => t.trim().replace(/\s+/g, ' ').toLowerCase();
+  const hit = tabs.find((p) => wanted.has(norm(p.title)));
+  return hit ? hit.title : null;
 }
 
 /**
@@ -145,6 +158,20 @@ export default async function handler(req, res) {
     } else {
       title = await resolveTabTitle(sheets, cfg.id, cfg.tab, monthOffset);
       tabCache[cacheKey] = { title, ts: Date.now() };
+    }
+    // A null title from an auto: spec means that month's tab does not exist yet.
+    // Falling through to 'A:Z' here would read the FIRST tab in the spreadsheet -
+    // "Summary" on two of the three boards - and serve it as the month's rows.
+    // Return an empty month and name what is missing, so the board can say so.
+    if (!title && String(cfg.tab || '').startsWith('auto:')) {
+      const ref = new Date();
+      ref.setDate(1);
+      ref.setMonth(ref.getMonth() + monthOffset);
+      const missing = `${MONTH_NAMES[ref.getMonth()]} ${ref.getFullYear()}`;
+      // Short cache: this flips the moment somebody adds the tab, and the board
+      // should pick that up in a minute, not in ten.
+      res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60');
+      return res.status(200).json({ values: [], tab: null, missingMonth: missing });
     }
     const range = title ? quoteTitle(title) : 'A:Z';
     const { data } = await sheets.spreadsheets.values.get({

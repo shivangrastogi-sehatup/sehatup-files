@@ -178,7 +178,13 @@ async function fetchSheetLegacy(which, month) {
     const params = { which };
     if (month) params.month = month;
     const { data } = await axios.get('/api/sheet', { params, timeout: REQUEST_TIMEOUT_MS });
-    return { rows: rowsToObjects(data?.values), tab: data?.tab || null, ok: true };
+    // missingMonth is set when the month's tab does not exist in the spreadsheet.
+    // It is the difference between "nobody sold anything" and "nobody made the tab",
+    // and the board must not present the second as the first.
+    return {
+      rows: rowsToObjects(data?.values), tab: data?.tab || null, ok: true,
+      missingMonth: data?.missingMonth || null,
+    };
   } catch (err) {
     // ok:false lets the UI tell a transient failure (quota/network) apart from a
     // genuinely empty sheet, so it can keep showing the last-good numbers.

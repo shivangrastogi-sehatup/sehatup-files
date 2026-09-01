@@ -319,9 +319,9 @@ export async function loadData() {
     // instead of leaving the viewer to guess why a panel is blank. `fresh` and
     // `ageMs` are what stop a held board from passing itself off as live.
     status: {
-      health: { ok: health.ok, tab: health.tab, rows: health.rows.length, fresh: health.fresh, ageMs: health.ageMs },
-      quick: { ok: quick.ok, tab: quick.tab, rows: quick.rows.length, fresh: quick.fresh, ageMs: quick.ageMs },
-      mens: { ok: mens.ok, tab: mens.tab, rows: mens.rows.length, fresh: mens.fresh, ageMs: mens.ageMs },
+      health: { ok: health.ok, tab: health.tab, rows: health.rows.length, fresh: health.fresh, ageMs: health.ageMs, missingMonth: health.missingMonth || null },
+      quick: { ok: quick.ok, tab: quick.tab, rows: quick.rows.length, fresh: quick.fresh, ageMs: quick.ageMs, missingMonth: quick.missingMonth || null },
+      mens: { ok: mens.ok, tab: mens.tab, rows: mens.rows.length, fresh: mens.fresh, ageMs: mens.ageMs, missingMonth: mens.missingMonth || null },
     },
   };
 }

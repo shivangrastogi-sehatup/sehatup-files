@@ -99,6 +99,9 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
   const sessionId = String(body.sessionId || '').slice(0, 64);
   const page = body.page || {};
+  // Whitelisted, never trusted as free text: this string is interpolated into the system
+  // prompt, so anything but these two values is treated as not knowing.
+  const gender = (body.gender === 'male' || body.gender === 'female') ? body.gender : null;
 
   // Capped before anything reads it. The client is the only source of history on a public
   // endpoint, so "however many messages you send me" is an unbounded input: without this,
@@ -157,7 +160,7 @@ export default async function handler(req, res) {
   try {
     const products = await getCatalog();
     cards = cardIndex(products);
-    const system = buildSystemPrompt(products, page, allMessages);
+    const system = buildSystemPrompt(products, page, allMessages, gender);
 
     const result = await streamReply(system, history, (chunk) => filter.push(chunk));
     const markers = filter.end();
@@ -173,8 +176,15 @@ export default async function handler(req, res) {
       .flatMap((m) => (Array.isArray(m.products) ? m.products : []))
       .filter((h) => typeof h === 'string');
 
-    const { products: shown, handoff: wantsHandoff, consult: wantsConsult } =
+    const { products: shown, handoff: wantsHandoff, consult: wantsConsult, askGender } =
       resolveMarkers(markers, cards, 3, recentlyShown);
+
+    // Asked at most once, and never once we already know. The prompt says so too, but a
+    // model that re-asks something the visitor already answered reads as not listening -
+    // which is the exact complaint that started this - so it is enforced here.
+    const genderAlreadyAsked = (Array.isArray(body.messages) ? body.messages : [])
+      .some((m) => m && (m.role === 'model' || m.role === 'assistant') && m.askGender);
+    const wantGender = askGender && !gender && !genderAlreadyAsked;
     let handoff = wantsHandoff;
 
     // The consultation offer is once per conversation, not once per reply. The model
@@ -197,6 +207,7 @@ export default async function handler(req, res) {
       products: shown,
       handoff: handoff ? { url: waLink(history, page), label: 'Chat with our team' } : null,
       consult: consult,
+      askGender: wantGender,
       blocked: result.blocked,
     });
 
@@ -210,6 +221,7 @@ export default async function handler(req, res) {
       products: shown.map((p) => p.handle),
       handedOff: handoff,
       consultOffered: consult,
+      gender: gender || 'unknown',
       page,
       model: transportName(),
       latencyMs: Date.now() - started,
@@ -228,6 +240,7 @@ export default async function handler(req, res) {
       products: [],
       handoff: { url: waLink(history, page), label: 'Chat with our team' },
       consult: false,
+      askGender: false,
       error: true,
     });
     res.end();

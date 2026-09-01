@@ -200,35 +200,40 @@ function resolveTabTitle(ss, tabSpec, monthOffset) {
 
 // Matching is case-insensitive and tolerates stray whitespace: the real tabs
 // vary a lot ("MAY 2026 LEADS ", "June 2026 LEADS ", "July 2026 Leads", "july 2026").
+//
+// Abbreviations count too. The Quick Reply board names its tab "Sep 2026" while
+// Men's Wellness uses "September 2026", and accepting only the full name is what
+// made the Quick board keep serving August after September started.
+function monthAliases(idx) {
+  var full = MONTH_NAMES[idx];
+  var out = [full.toLowerCase(), full.slice(0, 3).toLowerCase()];
+  if (idx === 8) out.push('sept');
+  return out;
+}
+
+// There is deliberately NO fallback to an older month. Falling back to "the newest
+// tab not in the future" meant that on the 1st, before anyone had made the new tab,
+// current and previous resolved to the SAME tab: last month's finished numbers were
+// served as month-to-date, and every month-over-month delta compared a month with
+// itself. A missing tab is a real state and the board is made to report it.
+// Keep this in step with resolveMonthlyTab in api/sheet.js.
 function resolveMonthlyTab(titles, suffix, monthOffset) {
   var base = new Date();
   var ref = new Date(base.getFullYear(), base.getMonth() + (monthOffset || 0), 1);
-  var wanted = (MONTH_NAMES[ref.getMonth()] + ' ' + ref.getFullYear() + suffix).trim().toLowerCase();
+  var suf = String(suffix || '').trim().toLowerCase();
+  var year = String(ref.getFullYear());
+  var aliases = monthAliases(ref.getMonth());
 
-  var exact = titles.filter(function (t) { return t.title.trim().toLowerCase() === wanted; })[0];
-  if (exact) return exact.title;
-
-  var suf = String(suffix).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  var re = new RegExp('^([A-Za-z]+)\\s+(\\d{4})' + (suf ? '\\s+' + suf : '') + '\\s*$', 'i');
-  var refEnd = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getTime();
-
-  var dated = [];
-  titles.forEach(function (t) {
-    var m = t.title.trim().match(re);
-    if (!m) return;
-    var idx = -1;
-    for (var i = 0; i < MONTH_NAMES.length; i++) {
-      if (MONTH_NAMES[i].toLowerCase() === m[1].toLowerCase()) { idx = i; break; }
-    }
-    if (idx < 0) return;
-    dated.push({ title: t.title, t: new Date(Number(m[2]), idx, 1).getTime() });
+  var wanted = aliases.map(function (n) {
+    return (n + ' ' + year + (suf ? ' ' + suf : ''));
   });
 
-  var past = dated.filter(function (x) { return x.t <= refEnd; })
-    .sort(function (a, b) { return b.t - a.t; });
-  if (past.length) return past[0].title;
-  if (dated.length) return dated.sort(function (a, b) { return b.t - a.t; })[0].title;
-  return null;
+  var hit = titles.filter(function (t) {
+    var norm = t.title.trim().replace(/\s+/g, ' ').toLowerCase();
+    return wanted.indexOf(norm) !== -1;
+  })[0];
+
+  return hit ? hit.title : null;
 }
 
 // CacheService caps one value at 100KB and these payloads run to megabytes, so

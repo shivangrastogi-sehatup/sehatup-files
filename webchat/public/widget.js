@@ -103,7 +103,12 @@
         if (parsed && Array.isArray(parsed.messages)) return parsed;
       }
     } catch (e) { /* private mode, quota, corrupt JSON - all mean "start fresh" */ }
-    return { sessionId: newSessionId(), startedAt: Date.now(), messages: [], opened: false };
+    return {
+      sessionId: newSessionId(), startedAt: Date.now(), messages: [], opened: false,
+      // 'male' | 'female' | null. Set by one tap, then it rides along on every request
+      // so the model stops having to guess at a second-person verb ending.
+      gender: null,
+    };
   }
 
   function saveState() {
@@ -194,7 +199,7 @@
     // rather than "[[product:vaji-bati]]" printed in the middle of a sentence. Costs one
     // regex per frame.
     var clean = String(text)
-      .replace(/\[\[(?:product:[a-z0-9-]+|whatsapp|consult)\]\]/gi, '')
+      .replace(/\[\[(?:product:[a-z0-9-]+|whatsapp|consult|gender)\]\]/gi, '')
       .replace(/\n{3,}/g, '\n\n');
     node.innerHTML = esc(clean).replace(/\n/g, '<br>');
   }
@@ -272,6 +277,37 @@
     return (api && typeof api.open === 'function') ? api : null;
   }
 
+  // Two taps' worth of UI for the one fact that decides how every later sentence is
+  // conjugated. It is asked alongside a real answer, never instead of one - a health
+  // site that demands your gender before it will speak to you is a form, not a chat.
+  function renderGenderAsk(row, msg) {
+    if (!msg.askGender || state.gender) return;
+
+    var wrap = document.createElement('div');
+    wrap.className = 'gpick';
+
+    [['male', 'Male'], ['female', 'Female']].forEach(function (pair) {
+      var b = document.createElement('button');
+      b.className = 'gpick__b';
+      b.type = 'button';
+      b.textContent = pair[1];
+      b.addEventListener('click', function () {
+        state.gender = pair[0];
+        // The question is answered for good, so retire it from the transcript rather
+        // than leaving a dead control that re-appears on every restore.
+        msg.askGender = false;
+        saveState();
+        wrap.remove();
+        // Sent as a normal message so the transcript stays honest and the model gets to
+        // acknowledge it in their language, rather than silently changing register.
+        send(pair[1]);
+      });
+      wrap.appendChild(b);
+    });
+
+    row.appendChild(wrap);
+  }
+
   function renderConsult(row, consult) {
     if (!consult) return;
     if (!consultPopup() && !CONFIG.consultUrl) return;
@@ -294,6 +330,7 @@
     var b = bubbleEl(msg.role === 'user' ? 'user' : 'bot');
     renderText(b.bubble, msg.text);
     renderCards(b.row, msg.products);
+    renderGenderAsk(b.row, msg);
     renderConsult(b.row, msg.consult);
     renderHandoff(b.row, msg.handoff);
     if (animate) b.row.classList.add('in');
@@ -413,6 +450,7 @@
           sessionId: state.sessionId,
           sessionStartedAt: state.startedAt,
           page: pageContext(),
+          gender: state.gender || null,
           messages: state.messages.map(function (m) {
             return {
               role: m.role === 'user' ? 'user' : 'model',
@@ -423,6 +461,9 @@
               // Whether this reply already carried the consultation offer. The
               // server uses it to keep the offer to once per conversation.
               consult: !!m.consult,
+              // ...and whether it already asked the gender question, so it is never
+              // asked twice even if the answer never came.
+              askGender: !!m.askGender,
             };
           }),
         }),
@@ -480,13 +521,17 @@
       var products = (done && done.products) || [];
       var handoff = (done && done.handoff) || null;
       var consult = !!(done && done.consult);
+      var askGender = !!(done && done.askGender);
+      var botMsg = {
+        role: 'bot', text: acc, products: products, handoff: handoff,
+        consult: consult, askGender: askGender,
+      };
       renderCards(target.row, products);
+      renderGenderAsk(target.row, botMsg);
       renderConsult(target.row, consult);
       renderHandoff(target.row, handoff);
 
-      state.messages.push({
-        role: 'bot', text: acc, products: products, handoff: handoff, consult: consult,
-      });
+      state.messages.push(botMsg);
       saveState();
       scrollDown();
     } catch (err) {
@@ -953,6 +998,21 @@
 .btn.ghost:hover { color: var(--ink); border-color: #d9cdd1; }
 .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
+/* The gender question. Deliberately quieter than the consultation button: it is a
+   housekeeping question, not an offer, and it should not compete with the answer it
+   arrives next to. */
+.gpick { display: flex; gap: 7px; margin-top: 10px; align-self: flex-start;
+         animation: rise .34s cubic-bezier(.16,.84,.3,1) both; animation-delay: .07s; }
+.gpick__b {
+  font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 16px;
+  border-radius: 999px; cursor: pointer;
+  color: var(--brand-deep); background: var(--panel);
+  border: 1px solid var(--brand-ring);
+  transition: background .15s, border-color .15s;
+}
+.gpick__b:hover { background: var(--brand-tint); border-color: var(--brand); }
+.gpick__b:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
 /* The consultation offer. It follows a product card, so it must not compete with
    "Add to cart" sitting just above it - crimson on crimson would make the visitor
    choose between two red buttons. Outlined in the brand instead: clearly an offer,
@@ -1027,7 +1087,7 @@
   /* Still appears and still leaves, it just does not perform the unfurl. */
   .tip { transition: opacity .2s ease; }
   .tip__in { transition: none; transform: none; opacity: 1; }
-  .row.in, .card, .wa, .consult { animation: none; }
+  .row.in, .card, .wa, .consult, .gpick { animation: none; }
   .typing i { animation: none; opacity: .5; }
   .panel, .launcher, .btn, .chip, .input, .send { transition: none; }
 }

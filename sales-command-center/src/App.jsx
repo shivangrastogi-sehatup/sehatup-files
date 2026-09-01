@@ -689,9 +689,13 @@ export default class App extends React.Component {
     const failed = bad.filter((k) => !st[k].ok);
     const reason = (k) => {
       if (!st[k].ok) return 'fetch failed';
+      // Checked before staleness: "no tab" is an answer, and a precise one. It tells
+      // whoever is looking at the wall exactly what to go and do about it.
+      if (st[k].missingMonth) return `no "${st[k].missingMonth}" tab in the spreadsheet yet`;
       if (st[k].fresh === false) return `not updating — showing data from ${agoLabel(st[k].ageMs)}`;
       return 'loaded, 0 rows';
     };
+    const missing = bad.filter((k) => st[k].missingMonth);
     return (
       <div
         title={bad.map((k) => `${names[k]}: ${reason(k)}`).join('\n')}
@@ -705,7 +709,11 @@ export default class App extends React.Component {
           <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" />
         </svg>
         {bad.map((k) => names[k]).join(' · ')}{' '}
-        {failed.length ? 'unavailable' : (bad.some((k) => st[k].fresh === false) ? 'not updating' : 'empty')}
+        {failed.length
+          ? 'unavailable'
+          : missing.length === bad.length
+            ? `— no ${st[missing[0]].missingMonth} tab`
+            : (bad.some((k) => st[k].fresh === false) ? 'not updating' : 'empty')}
       </div>
     );
   }
