@@ -31,7 +31,7 @@ function loadText(...relative) {
   throw new Error(`Could not find ${relative.join('/')} - looked in: ${candidates.join(', ')}`);
 }
 
-const PERSONA = loadText('prompts', 'ananya-web.txt');
+const PERSONA = loadText('prompts', 'sehatup-mitra-web.txt');
 const POLICIES = loadText('api', 'kb', 'policies.md');
 const PRODUCT_GUIDE = loadText('api', 'kb', 'products.md');
 

@@ -76,7 +76,8 @@ export async function logTurn(sessionId, turn) {
     // it is rewritten every turn rather than only created once.
     await fetch(
       `${base}/${COLLECTION}/${encodeURIComponent(sessionId)}?` +
-      ['lastMessageAt', 'turnCount', 'lastPage', 'handedOff', 'firstSeenAt']
+      ['lastMessageAt', 'turnCount', 'lastPage', 'handedOff', 'firstSeenAt',
+       'trafficSource', 'utmCampaign', 'landingPage']
         .map((f) => `updateMask.fieldPaths=${f}`).join('&'),
       {
         method: 'PATCH',
@@ -86,6 +87,11 @@ export async function logTurn(sessionId, turn) {
             lastMessageAt: { timestampValue: new Date().toISOString() },
             turnCount: val(turn.turnIndex + 1),
             lastPage: val(turn.page?.url || ''),
+            // Written on the parent doc, not per turn: a session has one origin, and
+            // reporting "chats by traffic source" should not mean unpacking a subcollection.
+            trafficSource: val(turn.page?.attribution?.traffic_source || ''),
+            utmCampaign: val(turn.page?.attribution?.utm_campaign || ''),
+            landingPage: val(turn.page?.attribution?.landing_page || ''),
             handedOff: val(Boolean(turn.handedOff)),
             firstSeenAt: { timestampValue: new Date(turn.sessionStartedAt || Date.now()).toISOString() },
           },

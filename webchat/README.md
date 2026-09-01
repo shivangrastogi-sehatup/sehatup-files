@@ -4,15 +4,15 @@ Replaces the tap-out-to-WhatsApp floating button on sehatup.com with a chat pane
 answers product, price and policy questions itself, using **live Shopify prices**, and
 hands over to WhatsApp only when it genuinely cannot help.
 
-Same persona as the WhatsApp bot (Ananya), same safety rules, deliberately **not** the
-same model.
+On-site the bot is branded **sehatUP Mitra**. Same persona as the WhatsApp bot (which
+still goes by Ananya), same safety rules, deliberately **not** the same model.
 
 ```
 visitor types
    -> widget.js (shadow DOM, loaded by a one-line snippet in the theme)
    -> POST /api/chat on Vercel
         -> Shopify Admin API      live prices + stock, cached 5 min
-        -> prompts/ananya-web.txt persona and rules
+        -> prompts/sehatup-mitra-web.txt  persona and rules
         -> api/kb/policies.md     shipping, returns, consultation
         -> Gemini on Vertex AI    one call, no tool round trips
    <- SSE: text deltas, then product cards + handoff
@@ -27,7 +27,7 @@ The WhatsApp bot calls a tuned Vertex endpoint. This one does not, on purpose:
 - It over-steers toward booking a consultation. On the site that is friction in front of a
   visitor who was about to add to cart.
 - The rules that matter (no dosing, prescription gating, safety gate, price discipline)
-  live in `prompts/ananya-web.txt`, so they are shared without inheriting the bias.
+  live in `prompts/sehatup-mitra-web.txt`, so they are shared without inheriting the bias.
 
 Set `GEMINI_MODEL` to the tuned endpoint id if you ever want to A/B it.
 
@@ -131,7 +131,7 @@ Two pages under `public/`:
 
 ## Editing the bot's behaviour
 
-- **What Ananya says and refuses**: `prompts/ananya-web.txt`. Plain text, no code. Never
+- **What sehatUP Mitra says and refuses**: `prompts/sehatup-mitra-web.txt`. Plain text, no code. Never
   put a real price in an example here - a stale number in the prompt is how a model learns
   to quote stale prices.
 - **Policy answers**: `api/kb/policies.md`. Plain markdown.
@@ -150,7 +150,7 @@ Two pages under `public/`:
 
   | Attribute | Default | What |
   | --- | --- | --- |
-  | `data-bottom` | `20px` | Gap from the bottom edge, desktop |
+  | `data-bottom` | `32px` | Gap from the bottom edge, desktop |
   | `data-right` | `20px` | Gap from the right edge |
   | `data-bottom-mobile` | `16px` | Gap from the bottom on phones (<=560px) |
   | `data-accent` | `#ee204a` | Brand colour for the bubble, header and buttons |

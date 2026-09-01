@@ -1327,7 +1327,21 @@
       try {
         var fb = await getWriter();
 
-        await fb.add(collectionName, {
+        // Where this visitor originally came from, captured on their FIRST page view by
+        // the sehatup-attribution snippet rather than read off the URL here. That
+        // distinction is the whole point: someone clicks a UTM-tagged ad, lands on a
+        // product page, browses to another page, and only then opens this popup - by
+        // which time window.location has no UTM left on it. Reading it at submit time
+        // was losing almost every ad-driven lead.
+        //
+        // Optional by design: if the snippet is not installed, this object is empty and
+        // the write below behaves exactly as it always did.
+        var attribution = {};
+        try {
+          if (window.SehatUpAttribution) attribution = window.SehatUpAttribution.fields();
+        } catch (e) { /* attribution must never block a lead from being saved */ }
+
+        await fb.add(collectionName, Object.assign({
           name: name,
           phone: phone,
           email: email,
@@ -1344,7 +1358,7 @@
           // a client Date for immediate local reads.
           timestamp: fb.stamp(),
           createdAt: new Date()
-        });
+        }, attribution));
 
         // Mockup 1e: the form is REPLACED by the success card, not annotated
         // underneath it. Let the form animate out first, then swap.

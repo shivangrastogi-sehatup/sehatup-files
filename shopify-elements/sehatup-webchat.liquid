@@ -1,5 +1,5 @@
 {% comment %}
-  SehatUP on-site chat panel (Ananya)
+  SehatUP on-site chat panel (sehatUP Mitra)
   ----------------------------------------------------------------------------
   Replaces the tap-out-to-WhatsApp floating button with a real chat panel that
   answers product, price and policy questions using live Shopify prices.
@@ -19,7 +19,7 @@
   you get two buttons stacked in the same corner.
 
   The widget itself is served from Vercel, so its behaviour, styling and the
-  Ananya rules can be updated without ever touching the theme again.
+  sehatUP Mitra rules can be updated without ever touching the theme again.
 {% endcomment %}
 
 {%- liquid
@@ -30,14 +30,14 @@
 <script
   src="{{ chat_api }}/widget.js"
   data-api="{{ chat_api }}"
-  data-title="Ananya"
+  data-title="sehatUP Mitra"
   data-subtitle="SehatUP health advisor"
   data-accent="{{ chat_accent }}"
   {%- comment -%}
     Where the bubble sits in the corner. Any CSS length. Raise data-bottom-mobile if a
     sticky add-to-cart bar on product pages covers the bubble on phones.
   {%- endcomment -%}
-  data-bottom="20px"
+  data-bottom="32px"
   data-right="20px"
   data-bottom-mobile="16px"
   {%- comment -%}
@@ -46,13 +46,21 @@
     higher number if the bubble is getting missed on busy pages.
   {%- endcomment -%}
   data-pulse="3"
-  data-greeting="Hello! Main Ananya hu SehatUP se. Product, price ya health concern - kuch bhi puchiye."
+  data-greeting="Hello! Main sehatUP Mitra hu. Product, price ya health concern - kuch bhi puchiye."
   data-chips="Weight loss ke liye kya lu?|Periods ki problem hai|Free consultation kaise hoti hai?|Delivery kitne din me?"
   {%- comment -%}
-    Upload Ananya's photo in Content -> Files, then paste its URL here. A real face
-    lifts engagement noticeably over an initial in a circle. Leave empty to use the
-    initial instead.
-    Example: data-avatar="{{ 'ananya.jpg' | file_url }}"
+    ARTWORK. One file does both jobs, so the thing you tapped is the thing that
+    greets you: data-icon is the floating launcher, data-avatar is the 38px mark in
+    the open panel's header. Both are served next to the widget, so they ship with it.
+
+    Leave data-icon blank to fall back to the built-in speech-bubble SVG.
+    data-icon-full="1" says the artwork is its own circle, so the button drops its
+    crimson fill - leave it off for a white glyph meant to sit on that fill.
+
+    To swap either from Shopify without a deploy, upload the file in Content -> Files
+    and use  data-icon="{{ 'chatbot-icon.png' | file_url }}"  instead.
   {%- endcomment -%}
-  data-avatar=""
+  data-icon="{{ chat_api }}/chatbot-icon.png"
+  data-icon-full="1"
+  data-avatar="{{ chat_api }}/chatbot-icon.png"
   defer></script>

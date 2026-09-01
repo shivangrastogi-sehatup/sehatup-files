@@ -1,0 +1,1693 @@
+{%- comment -%}
+  ============================================================================
+  SehatUP article template - redesign
+  ============================================================================
+  Replaces sections/main-article.liquid. Keep the old file as main-article.bak
+  so a bad deploy is one rename away from a rollback.
+
+  WHAT THIS SECTION OWNS
+    hero, title, article body typography, the formulation panel, the
+    consultation rail, the Latest blogs list, the back link.
+
+  ONE CARD, ONE TITLE
+    The article is a bordered card. The featured image sits flush inside the
+    top of it, the <h1> sits directly under the image, then the byline row.
+    Nothing is duplicated and there is no separate hero band: the banner is the
+    picture, the h1 is the title, read in that order. The image is always full
+    card width at its own aspect ratio, which is what caps its height - a 16:9
+    banner in a 920px column is 517px tall whatever the viewport does.
+
+  WHY SO LITTLE COPY IS IN THE SETTINGS
+    Section settings belong to the template, so anything typed there shows on
+    every post in the blog. Per-post content comes from the article itself or
+    from a metafield:
+      article.metafields.custom.faqs       the FAQ (written in the body, see below)
+      article.metafields.custom.formulation the ingredient panel, JSON
+      article.metafields.custom.reviewed_by the byline reviewer, single line text
+
+  WHAT IT DEPENDS ON
+    snippets/sehatup-attribution     for utm capture (optional, degrades fine)
+    blog-lead-sheet.gs               the Apps Script that writes the sheet row
+
+  THE FAQ IS NOT OURS
+    The FAQs live inside article.content as <div class="faq-section"> with
+    native <details>, written by hand in the Shopify editor. This section
+    renders no FAQ of its own and emits no FAQPage JSON-LD. It only styles
+    what is already there.
+
+  INSTALL
+    1. Themes -> Edit code -> Sections -> main-article.liquid
+       Copy the current contents into a new file main-article-old.liquid first.
+    2. Paste this file over main-article.liquid.
+    3. Customize -> Blog posts -> if the standalone "FAQ accordion" section is
+       still on the article template, remove it. article.metafields.custom.faqs
+       is empty on these posts, so it falls through to its preset placeholder
+       blocks and prints three FAQs nobody wrote.
+    4. Set up the sheet: follow the INSTALL block in blog-lead-sheet.gs, then
+       paste the Apps Script /exec URL into "Lead endpoint URL" and the same
+       token into "Shared token". Until the URL is set the form validates and
+       shows its success state but posts nothing, and logs a console warning
+       saying so.
+
+  DESIGN NOTES
+    Red is reserved for actions. Nothing decorative is red, so the one red
+    button on screen is always the thing to press. Wine carries structure and
+    the formulation panel. Green appears only on affirmative list markers.
+{%- endcomment -%}
+
+{%- liquid
+  assign words = article.content | strip_html | split: ' ' | size
+  assign read_min = words | divided_by: 220 | plus: 1
+
+  assign byline = section.settings.byline
+  if byline == blank
+    assign byline = article.author
+  endif
+
+  # Formulation panel. Per post via metafield; the section blocks are only a
+  # fallback, and are off by default so a men's formula never lands on a
+  # women's post.
+  assign fm = article.metafields.custom.formulation.value
+  assign herbs = fm.herbs
+  if herbs == blank
+    assign herbs = fm
+  endif
+  assign panel_from = ''
+  if herbs.size > 0
+    assign panel_from = 'metafield'
+  elsif section.settings.panel_fallback and section.blocks.size > 0
+    assign panel_from = 'blocks'
+  endif
+-%}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap"
+>
+
+<div
+  class="su-post"
+  id="su-post-{{ section.id }}"
+  data-su-post
+  data-endpoint="{{ section.settings.lead_endpoint | escape }}"
+  data-collection="{{ section.settings.lead_collection | default: 'Blog leads' }}"
+  data-token="{{ section.settings.lead_token | escape }}"
+  data-article-handle="{{ article.handle }}"
+  data-article-title="{{ article.title | escape }}"
+  data-bar-at="{{ section.settings.bar_trigger | default: 22 }}"
+  data-show-bar="{{ section.settings.show_mobile_bar }}"
+  data-progress="{{ section.settings.show_progress }}"
+  style="
+    --su-brand: {{ section.settings.color_brand }};
+    --su-brand-deep: {{ section.settings.color_brand_deep }};
+    --su-wine: {{ section.settings.color_wine }};
+    --su-sticky-top: {{ section.settings.sticky_top | default: 20 }}px;
+  "
+>
+  {%- if section.settings.show_progress -%}
+    <div class="su-progress" aria-hidden="true"><i data-su-progress-fill></i></div>
+  {%- endif -%}
+
+  {%- comment -%} ------------------------------------------------- article {%- endcomment -%}
+  <div class="su-shell">
+    <article class="su-card">
+      {%- if article.image -%}
+        <figure
+          class="su-card__art su-card__art--{{ section.settings.banner_fit | default: 'fit' }}"
+          style="
+            --su-banner-ratio: {{ article.image.aspect_ratio }};
+            --su-banner-h: {{ section.settings.banner_height | default: 320 }}px;
+            --su-banner-y: {{ section.settings.banner_focus | default: 0 }}%;
+          "
+        >
+          <img
+            src="{{ article.image | image_url: width: 1200 }}"
+            srcset="
+              {% if article.image.width >= 600 %}{{ article.image | image_url: width: 600 }} 600w,{% endif %}
+              {% if article.image.width >= 900 %}{{ article.image | image_url: width: 900 }} 900w,{% endif %}
+              {% if article.image.width >= 1200 %}{{ article.image | image_url: width: 1200 }} 1200w,{% endif %}
+              {% if article.image.width >= 1600 %}{{ article.image | image_url: width: 1600 }} 1600w{% endif %}
+            "
+            sizes="(min-width: 990px) 920px, calc(100vw - 40px)"
+            width="{{ article.image.width }}"
+            height="{{ article.image.height }}"
+            alt="{{ article.image.alt | escape }}"
+            loading="eager"
+            fetchpriority="high"
+          >
+        </figure>
+      {%- endif -%}
+
+      <div class="su-card__body su-main">
+        <header class="su-card__head">
+          <h1 class="su-card__title">{{ article.title | escape }}</h1>
+          <p class="su-meta">
+            <time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">
+              {{- article.published_at | date: '%d %B %Y' -}}
+            </time>
+            <span class="su-meta__dot" aria-hidden="true"></span>
+            <span>{{ read_min }} min read</span>
+            {%- if byline != blank -%}
+              <span class="su-meta__dot" aria-hidden="true"></span>
+              <span>By {{ byline | escape }}</span>
+            {%- endif -%}
+            {%- if reviewer != blank -%}
+              <span class="su-meta__dot" aria-hidden="true"></span>
+              <span class="su-meta__review">Reviewed by {{ reviewer | escape }}</span>
+            {%- endif -%}
+          </p>
+        </header>
+
+        <div class="su-rte su-rte--lead" data-su-rte>
+          {{ article.content }}
+        </div>
+
+      {%- comment -%} ---------------------------- signature: formulation panel {%- endcomment -%}
+      {%- if panel_from != blank -%}
+        {%- liquid
+          assign p_title = fm.title | default: section.settings.panel_title
+          assign p_note  = fm.note  | default: section.settings.panel_note
+          assign p_url   = fm.url   | default: section.settings.panel_link
+        -%}
+        <aside class="su-formula" data-su-formula aria-labelledby="su-formula-{{ section.id }}">
+          <div class="su-formula__head">
+            <p class="su-eyebrow su-formula__kicker">{{ section.settings.panel_kicker | escape }}</p>
+            <h2 class="su-formula__title" id="su-formula-{{ section.id }}">{{ p_title | escape }}</h2>
+          </div>
+
+          <ul class="su-formula__list">
+            {%- if panel_from == 'metafield' -%}
+              {%- for h in herbs -%}
+                <li class="su-herb">
+                  <div class="su-herb__id">
+                    <span class="su-herb__name">{{ h.name | escape }}</span>
+                    {%- if h.botanical != blank -%}
+                      <span class="su-herb__botanical">{{ h.botanical | escape }}</span>
+                    {%- endif -%}
+                  </div>
+                  {%- if h.use != blank -%}
+                    <p class="su-herb__use">{{ h.use | escape }}</p>
+                  {%- endif -%}
+                </li>
+              {%- endfor -%}
+            {%- else -%}
+              {%- for block in section.blocks -%}
+                <li class="su-herb" {{ block.shopify_attributes }}>
+                  <div class="su-herb__id">
+                    <span class="su-herb__name">{{ block.settings.name | escape }}</span>
+                    {%- if block.settings.botanical != blank -%}
+                      <span class="su-herb__botanical">{{ block.settings.botanical | escape }}</span>
+                    {%- endif -%}
+                  </div>
+                  {%- if block.settings.use != blank -%}
+                    <p class="su-herb__use">{{ block.settings.use | escape }}</p>
+                  {%- endif -%}
+                </li>
+              {%- endfor -%}
+            {%- endif -%}
+          </ul>
+
+          <div class="su-formula__foot">
+            {%- if p_note != blank -%}
+              <p class="su-formula__note">{{ p_note | escape }}</p>
+            {%- endif -%}
+            {%- if p_url != blank -%}
+              <a class="su-formula__cta" href="{{ p_url }}">
+                {{ section.settings.panel_link_label | escape }}
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg>
+              </a>
+            {%- endif -%}
+          </div>
+        </aside>
+      {%- endif -%}
+
+        <p class="su-back">
+        <a href="{{ blog.url }}">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 8H4M7.5 4.5 4 8l3.5 3.5"/></svg>
+          All {{ blog.title | downcase | escape }}
+        </a>
+        </p>
+      </div>
+    </article>
+
+    {%- comment -%} --------------------------------------------------- rail {%- endcomment -%}
+    <aside class="su-rail" data-su-rail>
+      {%- if section.settings.show_cta -%}
+        <div class="su-rail__stick">
+        <div class="su-consult" data-su-consult>
+          <div class="su-consult__body" data-su-consult-body>
+            {%- if section.settings.cta_status != blank -%}
+              <p class="su-consult__status"><span aria-hidden="true"></span>{{ section.settings.cta_status | escape }}</p>
+            {%- endif -%}
+            <h2 class="su-consult__title">{{ section.settings.cta_title | escape }}</h2>
+            <p class="su-consult__dek">{{ section.settings.cta_dek | escape }}</p>
+
+            <form class="su-form" data-su-form novalidate>
+              <div class="su-field">
+                <label class="su-label" for="su-name-{{ section.id }}">Your name</label>
+                <input
+                  class="su-input"
+                  id="su-name-{{ section.id }}"
+                  name="name"
+                  type="text"
+                  autocomplete="name"
+                  maxlength="60"
+                  placeholder="Full name"
+                  aria-describedby="su-name-err-{{ section.id }}"
+                  required
+                >
+                <p class="su-err" id="su-name-err-{{ section.id }}" data-su-err="name"></p>
+              </div>
+
+              <div class="su-field">
+                <label class="su-label" for="su-phone-{{ section.id }}">Mobile number</label>
+                <div class="su-phone">
+                  <span class="su-phone__cc" aria-hidden="true">+91</span>
+                  <input
+                    class="su-input su-input--phone"
+                    id="su-phone-{{ section.id }}"
+                    name="phone"
+                    type="tel"
+                    inputmode="numeric"
+                    autocomplete="tel-national"
+                    placeholder="10 digit number"
+                    aria-describedby="su-phone-err-{{ section.id }}"
+                    required
+                  >
+                </div>
+                <p class="su-err" id="su-phone-err-{{ section.id }}" data-su-err="phone"></p>
+              </div>
+
+              {%- if section.settings.show_topic -%}
+                <div class="su-field">
+                  <label class="su-label" for="su-topic-{{ section.id }}">What should the doctor know?</label>
+                  <select class="su-input su-select" id="su-topic-{{ section.id }}" name="topic">
+                    <option value="">Pick one</option>
+                    {%- assign topics = section.settings.topics | split: ',' -%}
+                    {%- for t in topics -%}
+                      <option value="{{ t | strip | escape }}">{{ t | strip | escape }}</option>
+                    {%- endfor -%}
+                  </select>
+                </div>
+              {%- endif -%}
+
+              <div class="su-hp" aria-hidden="true">
+                <label for="su-city-{{ section.id }}">City</label>
+                <input id="su-city-{{ section.id }}" name="city_confirm" type="text" tabindex="-1" autocomplete="off">
+              </div>
+
+              <button class="su-btn" type="submit" data-su-submit>
+                <span data-su-btn-label>{{ section.settings.cta_button | escape }}</span>
+                <i class="su-spin" aria-hidden="true"></i>
+              </button>
+
+              <p class="su-consent">
+                {{ section.settings.cta_consent | escape }}
+                {%- if section.settings.privacy_url != blank %}
+                  <a href="{{ section.settings.privacy_url }}">Privacy policy</a>.
+                {%- endif -%}
+              </p>
+            </form>
+          </div>
+
+          <div class="su-done" data-su-done hidden>
+            <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12.5 5 5L20 7"/></svg>
+            <h2 class="su-done__title">{{ section.settings.done_title | escape }}</h2>
+            <p class="su-done__dek">{{ section.settings.done_dek | escape }}</p>
+          </div>
+
+          <p class="su-live" role="status" aria-live="polite" data-su-live></p>
+
+          <div class="su-consult__foot">
+          <ul class="su-trust">
+            {%- if section.settings.trust_1 != blank -%}<li>{{ section.settings.trust_1 | escape }}</li>{%- endif -%}
+            {%- if section.settings.trust_2 != blank -%}<li>{{ section.settings.trust_2 | escape }}</li>{%- endif -%}
+            {%- if section.settings.trust_3 != blank -%}<li>{{ section.settings.trust_3 | escape }}</li>{%- endif -%}
+          </ul>
+
+          {%- if section.settings.whatsapp_url != blank -%}
+            <a class="su-wa" href="{{ section.settings.whatsapp_url }}" rel="noopener">
+              <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor"><path d="M8 0a8 8 0 0 0-6.8 12.2L0 16l3.9-1.2A8 8 0 1 0 8 0Zm4.6 11.3c-.2.5-1.1 1-1.5 1-.4.1-.9.1-1.4-.1a12 12 0 0 1-4.6-4c-.3-.5-.6-1.2-.6-1.8 0-.7.4-1.1.6-1.3a.7.7 0 0 1 .5-.2h.4c.1 0 .3 0 .5.4l.6 1.4c0 .1.1.3 0 .4l-.3.4-.2.3c-.1.1-.2.2 0 .4a8 8 0 0 0 3.2 2.5c.2.1.3.1.4 0l.7-.9c.1-.2.2-.1.4-.1l1.4.7c.2.1.3.2.4.3v.6Z"/></svg>
+            {{ section.settings.whatsapp_label | escape }}
+          </a>
+          {%- endif -%}
+          </div>
+        </div>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%} ------------------------------------------ latest blogs {%- endcomment -%}
+      {%- assign shown = 0 -%}
+      {%- assign limit = section.settings.latest_count | default: 4 -%}
+      {%- if blog.articles.size > 1 -%}
+        <nav class="su-latest" aria-labelledby="su-latest-{{ section.id }}">
+          <p class="su-latest__label" id="su-latest-{{ section.id }}">
+            {{ section.settings.latest_title | escape }}
+          </p>
+
+          <ul class="su-latest__list">
+            {%- for a in blog.articles -%}
+              {%- if a.id == article.id -%}{%- continue -%}{%- endif -%}
+              {%- if shown >= limit -%}{%- break -%}{%- endif -%}
+              {%- assign shown = shown | plus: 1 -%}
+              {%- assign a_words = a.content | strip_html | split: ' ' | size -%}
+              {%- assign a_min = a_words | divided_by: 220 | plus: 1 -%}
+              <li class="su-latest__item">
+                <a href="{{ a.url }}">
+                  {%- if a.image -%}
+                    <span class="su-latest__thumb">
+                      <img
+                        src="{{ a.image | image_url: width: 200 }}"
+                        srcset="{{ a.image | image_url: width: 200 }} 200w, {{ a.image | image_url: width: 320 }} 320w"
+                        sizes="88px"
+                        width="{{ a.image.width }}"
+                        height="{{ a.image.height }}"
+                        alt=""
+                        loading="lazy"
+                      >
+                    </span>
+                  {%- else -%}
+                    {%- comment -%}
+                      No featured image. A tinted tile with the first letter beats a
+                      broken box and beats a gap, and it keeps every row the same
+                      height so the list still scans as a column.
+                    {%- endcomment -%}
+                    <span class="su-latest__thumb su-latest__thumb--empty" aria-hidden="true">
+                      {{- a.title | strip | truncate: 1, '' | upcase -}}
+                    </span>
+                  {%- endif -%}
+
+                  <span class="su-latest__text">
+                    <span class="su-latest__title">{{ a.title | escape }}</span>
+                    <span class="su-latest__meta">
+                      {{ a.published_at | date: '%d %b %Y' }}
+                      <span class="su-latest__dot" aria-hidden="true"></span>
+                      {{ a_min }} min read
+                    </span>
+                  </span>
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
+
+          <a class="su-latest__all" href="{{ blog.url }}">
+            All {{ blog.title | downcase | escape }}
+            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg>
+          </a>
+        </nav>
+      {%- endif -%}
+    </aside>
+  </div>
+
+  {%- comment -%} -------------------------------------------- mobile cta bar {%- endcomment -%}
+  {%- if section.settings.show_cta and section.settings.show_mobile_bar -%}
+    <div class="su-bar" data-su-bar hidden>
+      <p class="su-bar__text">{{ section.settings.bar_text | escape }}</p>
+      <button class="su-bar__btn" type="button" data-su-bar-btn>
+        {{ section.settings.bar_button | escape }}
+      </button>
+    </div>
+  {%- endif -%}
+</div>
+
+{% stylesheet %}
+.su-post {
+  /* Neutral, not warm. The old ink and body carried violet, the lines and
+     surfaces carried pink, and together with wine headings the whole page read
+     purple even where nothing was purple. Wine survives only as a surface. */
+  --su-ink: #111111;
+  --su-body: #3a3a3a;
+  --su-muted: #6e6e6e;
+  --su-wine: #55123a;
+  --su-wine-2: #7a1a4b;
+  --su-brand: #ee204a;
+  --su-brand-deep: #c8143a;
+  --su-brand-tint: rgba(238, 32, 74, 0.09);
+  --su-leaf: #2f6b4f;
+  --su-paper: #ffffff;
+  --su-surface: #f7f7f8;
+  --su-line: #e6e6e6;
+  --su-sticky-top: 20px;
+
+  /* One family. Hierarchy is carried by weight, size and tracking rather
+     than by a second face, so headings run heavier and tighter than they
+     would if a display serif were doing that work. */
+  --su-display: Inter, sans-serif;
+  --su-sans: Inter, sans-serif;
+
+  background: var(--su-paper);
+  color: var(--su-body);
+  font-family: var(--su-sans);
+  font-size: 17.5px;
+  line-height: 1.72;
+  -webkit-font-smoothing: antialiased;
+}
+
+.su-post *:focus-visible {
+  outline: 2px solid var(--su-brand);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.su-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- progress */
+.su-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 40;
+  background: transparent;
+  pointer-events: none;
+}
+.su-progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--su-brand);
+  transition: width 90ms linear;
+}
+
+/* ------------------------------------------------------------- article card
+   The article is an object on the page now, not a column of text bleeding into
+   the background. The banner sits flush inside the top of the card, the title
+   sits directly under it, and the byline follows. Nothing is duplicated: the
+   banner is picture, the h1 is the title, and they are read in that order.
+
+   The image is full card width at its own aspect ratio. That is what fixed the
+   height problem for good - a 16:9 banner in a 920px column is 517px tall
+   whatever the viewport does, so there is nothing left to cap. */
+.su-card {
+  min-width: 0;
+  background: var(--su-paper);
+  border: 1px solid var(--su-line);
+  border-radius: 18px;
+  overflow: hidden;
+}
+/* The banner is capped in height, and the whole picture is kept.
+
+   Height cannot come down without either cropping or leaving space at the
+   sides. Cropping lost the bottom of the artwork, so the space wins: the
+   picture is mounted on a tinted panel and sits whole inside it, the way a
+   photograph sits on a board. The panel is a deliberate surface rather than
+   an accidental gap, which is the difference between framing and letterboxing.
+
+   Fill mode is there for banners drawn to bleed. It crops from the top down,
+   because that is where these banners put their title.
+
+   width:100% is not optional in either mode. With width auto, a max-height
+   that bites makes the height definite and the browser derives the width back
+   from the ratio, so the frame shrinks sideways instead. */
+.su-card__art {
+  box-sizing: border-box;
+  margin: 0;
+  width: 100%;
+  aspect-ratio: var(--su-banner-ratio, 1.78);
+  max-height: var(--su-banner-h, 320px);
+  overflow: hidden;
+}
+
+.su-card__art--fit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(14px, 2.2vw, 24px);
+  background: var(--su-surface);
+  border-bottom: 1px solid var(--su-line);
+}
+.su-card__art--fit img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+}
+
+.su-card__art--fill {
+  background: var(--su-surface);
+}
+.su-card__art--fill img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% var(--su-banner-y, 0%);
+}
+
+.su-card__body { padding: clamp(22px, 3vw, 40px); }
+
+.su-card__head {
+  padding-bottom: 22px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--su-line);
+}
+.su-card__title {
+  margin: 0;
+  font-family: var(--su-display);
+  font-weight: 800;
+  font-size: clamp(25px, 3vw, 36px);
+  line-height: 1.16;
+  letter-spacing: -0.032em;
+  color: var(--su-ink);
+  text-wrap: balance;
+}
+.su-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--su-muted);
+}
+.su-meta__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #c9c9c9;
+}
+.su-meta__review { color: var(--su-leaf); font-weight: 600; }
+
+/* ---------------------------------------------------------------- shell */
+.su-shell {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: clamp(20px, 3vw, 34px) clamp(16px, 4vw, 32px) 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.su-main { min-width: 0; }
+
+/* ------------------------------------------------------- article body
+   Descendant selectors, not child selectors: the FAQ ships inside
+   article.content wrapped in a .faq-section div, so anything scoped to
+   direct children would skip it entirely.
+
+   Every rule is prefixed with .su-post so it outranks the inline <style>
+   that travels with that FAQ markup. At equal specificity that <style>
+   would win on source order, because it sits in the body and this sits in
+   the head.
+
+   Nothing of ours is ever nested inside .su-rte. The consultation card and
+   the formulation panel are placed BETWEEN two .su-rte containers, which is
+   what the split in the script below is for. */
+.su-post .su-rte { max-width: 72ch; }
+.su-post .su-rte > *:first-child { margin-top: 0; }
+.su-post .su-rte--tail { margin-top: 52px; }
+
+.su-post .su-rte p { margin: 0 0 20px; }
+.su-post .su-rte--lead > p:first-of-type {
+  font-size: 19px;
+  line-height: 1.62;
+  color: var(--su-ink);
+}
+
+.su-post .su-rte h2 {
+  font-family: var(--su-display);
+  font-weight: 700;
+  font-size: clamp(23px, 2.3vw, 29px);
+  line-height: 1.22;
+  letter-spacing: -0.024em;
+  color: var(--su-ink);
+  margin: 0 0 18px;
+  padding-top: 26px;
+  border-top: 1px solid var(--su-line);
+  text-wrap: balance;
+}
+.su-post .su-rte h2:not(:first-child) { margin-top: 52px; }
+
+.su-post .su-rte h3 {
+  font-family: var(--su-sans);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--su-ink);
+  margin: 34px 0 10px;
+  letter-spacing: -0.005em;
+}
+.su-post .su-rte h4 { font-size: 16px; font-weight: 700; color: var(--su-ink); margin: 26px 0 8px; }
+
+.su-post .su-rte ul,
+.su-post .su-rte ol { margin: 0 0 22px; padding-left: 0; list-style: none; }
+.su-post .su-rte ul > li,
+.su-post .su-rte ol > li { position: relative; padding-left: 26px; margin-bottom: 10px; }
+.su-post .su-rte ul > li::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0.72em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--su-brand);
+}
+.su-post .su-rte ol { counter-reset: su-ol; }
+.su-post .su-rte ol > li { counter-increment: su-ol; }
+.su-post .su-rte ol > li::before {
+  content: counter(su-ol);
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--su-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.su-post .su-rte a {
+  color: var(--su-brand);
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 140ms ease;
+}
+.su-post .su-rte a:hover { border-bottom-color: var(--su-brand); }
+.su-post .su-rte strong { color: var(--su-ink); font-weight: 700; }
+.su-post .su-rte em { font-style: italic; }
+/* A <strong> inside a link declares its own colour, which beats the brand
+   colour the link would otherwise pass down by inheritance. Re-assert it. */
+.su-post .su-rte a strong,
+.su-post .su-rte a em,
+.su-post .su-rte strong a { color: var(--su-brand); }
+.su-post .su-rte img { max-width: 100%; height: auto; border-radius: 12px; }
+.su-post .su-rte blockquote {
+  margin: 28px 0;
+  padding: 4px 0 4px 22px;
+  border-left: 2px solid var(--su-brand);
+  font-family: var(--su-display);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.55;
+  letter-spacing: -0.015em;
+  color: var(--su-ink);
+}
+
+/* ------------------------------ FAQ, written by hand in article.content
+   Matches any <details> in the body, so a post that skips the
+   .faq-section wrapper still gets the accordion. */
+.su-post .su-rte .faq-section { width: auto; margin: 52px 0 0; }
+.su-post .su-rte .faq-section h2 { margin-bottom: 4px; }
+
+.su-post .su-rte details {
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--su-line);
+}
+.su-post .su-rte summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 14px 4px;
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--su-sans);
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--su-ink);
+  transition: color 130ms ease;
+}
+.su-post .su-rte summary::-webkit-details-marker { display: none; }
+.su-post .su-rte summary:hover { color: var(--su-brand); }
+.su-post .su-rte summary::after {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin: -4px 8px 0 0;
+  border-right: 1.7px solid var(--su-muted);
+  border-bottom: 1.7px solid var(--su-muted);
+  transform: rotate(45deg);
+  transition: transform 200ms ease;
+}
+.su-post .su-rte details[open] summary::after { margin-top: 4px; transform: rotate(-135deg); }
+.su-post .su-rte details p {
+  margin: 0;
+  padding: 0 4px 20px;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--su-body);
+}
+.su-post .su-rte details[open] > *:not(summary) { animation: su-reveal 220ms ease both; }
+@keyframes su-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* -------------------------------------------- signature: formulation */
+.su-formula {
+  margin: 56px 0 0;
+  max-width: 72ch;
+  border-radius: 16px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.86);
+  background: linear-gradient(155deg, var(--su-wine) 0%, #380b26 100%);
+}
+.su-formula__head {
+  padding: 26px 28px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.su-formula__kicker { color: rgba(255, 255, 255, 0.5); }
+.su-formula__title {
+  margin: 10px 0 0;
+  font-family: var(--su-display);
+  font-weight: 700;
+  font-size: 25px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+.su-formula__list { list-style: none; margin: 0; padding: 0; }
+.su-herb {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 18px 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.su-herb__name {
+  display: block;
+  font-family: var(--su-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+  color: #fff;
+}
+.su-herb__botanical {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.48);
+}
+.su-herb__use { margin: 0; font-size: 14.5px; line-height: 1.55; }
+.su-formula__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px 28px 24px;
+}
+.su-formula__note {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+.su-formula__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  padding-bottom: 2px;
+}
+.su-formula__cta:hover { border-bottom-color: #fff; }
+
+.su-back { margin: 44px 0 0; }
+.su-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--su-ink);
+  text-decoration: none;
+}
+.su-back a:hover { color: var(--su-brand); }
+
+/* ----------------------------------------------------------------- rail */
+.su-rail { min-width: 0; }
+/* The rail stretches to the full grid row on purpose. align-self:start would
+   collapse it to its content height and the sticky card would scroll away
+   halfway down the article, which is the one thing it must not do. */
+
+/* ------------------------------------------------------- consultation
+   No accent stripe. The card is split into two zones instead: a white ask,
+   and a tinted band underneath that answers the question the ask provokes.
+   Structure does the work a decorative edge was doing, and the red button
+   stays the only loud thing on the page.
+
+   Figure and ground are inverted from the first pass too. The card is white
+   and the fields carry the tint, so the thing you type into is the recessed
+   thing rather than the raised one. */
+.su-consult {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--su-line);
+  border-radius: 16px;
+  background: var(--su-paper);
+  box-shadow:
+    0 1px 2px rgba(26, 18, 32, 0.05),
+    0 14px 30px -16px rgba(26, 18, 32, 0.22);
+}
+.su-consult__body { padding: 20px 18px 18px; }
+
+.su-consult__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--su-leaf);
+}
+.su-consult__status span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--su-leaf);
+  box-shadow: 0 0 0 3px rgba(47, 107, 79, 0.16);
+}
+
+.su-consult__title {
+  margin: 0;
+  font-family: var(--su-display);
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--su-ink);
+}
+.su-consult__dek {
+  margin: 6px 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--su-muted);
+}
+
+.su-field { margin-bottom: 11px; }
+.su-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.002em;
+  color: var(--su-muted);
+}
+.su-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 13px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--su-ink);
+  background: var(--su-surface);
+  border: 1px solid var(--su-line);
+  border-radius: 9px;
+  transition: border-color 130ms ease, box-shadow 130ms ease, background 130ms ease;
+}
+.su-input::placeholder { color: #a79fad; font-weight: 400; }
+.su-input:focus {
+  outline: none;
+  background: var(--su-paper);
+  border-color: var(--su-brand);
+  box-shadow: 0 0 0 3px var(--su-brand-tint);
+}
+.su-select { appearance: none; padding-right: 34px; cursor: pointer; }
+.su-phone { position: relative; display: flex; align-items: center; }
+.su-phone__cc {
+  position: absolute;
+  left: 13px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--su-muted);
+  pointer-events: none;
+}
+.su-input--phone { padding-left: 47px; letter-spacing: 0.02em; }
+
+.su-err { margin: 6px 0 0; font-size: 12px; color: var(--su-brand-deep); display: none; }
+.su-field.is-bad .su-input { border-color: var(--su-brand-deep); background: var(--su-paper); }
+.su-field.is-bad .su-err { display: block; }
+
+.su-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.su-btn {
+  position: relative;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--su-brand);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  box-shadow: 0 6px 14px -8px rgba(238, 32, 74, 0.7);
+}
+.su-btn:hover { background: var(--su-brand-deep); box-shadow: 0 8px 18px -8px rgba(200, 20, 58, 0.75); }
+.su-btn:active { transform: translateY(1px); box-shadow: none; }
+.su-btn[disabled] { opacity: 0.72; cursor: default; box-shadow: none; }
+.su-spin {
+  display: none;
+  width: 14px;
+  height: 14px;
+  margin-left: 9px;
+  vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: su-spin 620ms linear infinite;
+}
+.su-form.is-busy .su-spin { display: inline-block; }
+@keyframes su-spin { to { transform: rotate(360deg); } }
+
+.su-consent { margin: 11px 0 0; font-size: 11px; line-height: 1.55; color: var(--su-muted); }
+.su-consent a { color: var(--su-muted); text-decoration: underline; }
+
+.su-done { text-align: center; padding: 34px 22px 30px; color: var(--su-leaf); }
+.su-done__title {
+  margin: 12px 0 0;
+  font-family: var(--su-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+  color: var(--su-ink);
+}
+.su-done__dek { margin: 8px 0 0; font-size: 14px; line-height: 1.55; color: var(--su-muted); }
+
+.su-live { position: absolute; left: -9999px; }
+
+/* The reassurance band. Same tint as the fields, so the card reads as one
+   material with two jobs rather than two stacked cards. */
+.su-consult__foot {
+  padding: 12px 14px 13px;
+  background: var(--su-surface);
+  border-top: 1px solid var(--su-line);
+}
+/* One line, three claims.
+
+   Three separate markers cost 42px of indent and made the row wrap. One tick
+   at the head now covers all three - they are a single guarantee, not three
+   badges - and thin dots separate them. That is what buys the line, more than
+   the smaller type does.
+
+   nowrap is deliberate: these labels are settings, and if someone types a long
+   one the row should truncate visibly rather than quietly go back to two lines. */
+.su-trust {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 15px;
+  position: relative;
+  min-width: 0;
+}
+.su-trust::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 4px;
+  margin-top: -3px;
+  border-left: 1.6px solid var(--su-leaf);
+  border-bottom: 1.6px solid var(--su-leaf);
+  transform: rotate(-45deg);
+}
+.su-trust li {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.002em;
+  line-height: 1.4;
+  color: var(--su-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.su-trust li + li::before {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  margin: 0 6px;
+  vertical-align: 2px;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.su-wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid var(--su-line);
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--su-leaf);
+  text-decoration: none;
+}
+.su-wa:hover { text-decoration: underline; }
+
+/* -------------------------------------------------------- latest blogs
+   A thumbnail, a two-line title, then the date and read time. The clamp is
+   what makes the list scan: every row is the same height whether the headline
+   is four words or fourteen, so the eye runs down the thumbnails instead of a
+   ragged left edge. */
+.su-latest {
+  margin-top: 20px;
+  background: var(--su-paper);
+  border: 1px solid var(--su-line);
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+}
+.su-latest__label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--su-ink);
+}
+.su-latest__list { list-style: none; margin: 0; padding: 0; }
+.su-latest__item { border-top: 1px solid var(--su-line); }
+.su-latest__item a {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+  text-decoration: none;
+}
+
+.su-latest__thumb {
+  flex: none;
+  width: 76px;
+  height: 58px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--su-surface);
+}
+.su-latest__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.su-latest__thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: #b9b9bd;
+}
+
+.su-latest__text { min-width: 0; }
+.su-latest__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-family: var(--su-display);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: -0.014em;
+  color: var(--su-ink);
+  transition: color 130ms ease;
+}
+.su-latest__item a:hover .su-latest__title { color: var(--su-brand); }
+.su-latest__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--su-muted);
+  font-variant-numeric: tabular-nums;
+}
+.su-latest__dot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.su-latest__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--su-line);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--su-ink);
+  text-decoration: none;
+}
+.su-latest__all:hover { color: var(--su-brand); }
+
+/* ------------------------------------------------------------ mobile bar */
+.su-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 84px 11px 18px;
+  padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px));
+  background: var(--su-wine);
+  transform: translateY(100%);
+  transition: transform 240ms ease;
+}
+.su-bar.is-up { transform: translateY(0); }
+.su-bar__text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.85);
+}
+.su-bar__btn {
+  flex: none;
+  min-height: 42px;
+  padding: 0 16px;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 9px;
+  background: var(--su-brand);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.su-bar__btn:hover { background: var(--su-brand-deep); }
+
+/* --------------------------------------------------------- breakpoints */
+@media (min-width: 750px) {
+  .su-herb { grid-template-columns: 190px minmax(0, 1fr); gap: 20px; align-items: baseline; }
+}
+
+@media (min-width: 990px) {
+  .su-shell { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
+  /* Flex column so the Latest list can sit at the foot of the rail: the CTA
+     travels with the reader, the list waits at the finish line. */
+  .su-rail { display: flex; flex-direction: column; }
+  /* The sticky card lives in a growing box, so it stops travelling exactly
+     where the Latest list begins instead of sliding over it. */
+  .su-rail__stick { flex: 1 1 auto; min-width: 0; }
+  .su-latest { flex: none; }
+  .su-consult { position: sticky; top: var(--su-sticky-top); }
+  .su-bar { display: none; }
+}
+
+@media (min-width: 1200px) {
+  .su-shell { gap: 28px; grid-template-columns: minmax(0, 1fr) 308px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .su-post *,
+  .su-post *::before,
+  .su-post *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+{% endstylesheet %}
+
+{% javascript %}
+(function () {
+  'use strict';
+
+  var roots = document.querySelectorAll('[data-su-post]');
+  if (!roots.length) return;
+
+  Array.prototype.forEach.call(roots, function (root) {
+    if (root.dataset.suReady) return;
+    root.dataset.suReady = '1';
+
+    var form = root.querySelector('[data-su-form]');
+    var consult = root.querySelector('[data-su-consult]');
+    var body = root.querySelector('[data-su-consult-body]');
+    var done = root.querySelector('[data-su-done]');
+    var live = root.querySelector('[data-su-live]');
+    var bar = root.querySelector('[data-su-bar]');
+    var fill = root.querySelector('[data-su-progress-fill]');
+    var rte = root.querySelector('[data-su-rte]');
+    /* Progress and the mobile bar measure the whole column, not just the
+       first chunk of body copy: the split below shortens [data-su-rte]. */
+    var track = root.querySelector('.su-card') || rte;
+    var rail = root.querySelector('[data-su-rail]');
+    var handle = root.dataset.articleHandle || '';
+    var doneKey = 'su_lead_' + handle;
+
+    /* ---------------------------------------------------- sticky offset
+
+       The offset exists for one reason: to clear a header that stays on screen.
+       A header that scrolls away needs no clearance, so measuring its height
+       unconditionally was wrong - it left a 96px default in place, and because
+       a sticky element clamps to its top offset even at scroll 0, the CTA
+       started 62px below the top of the article card and the two columns did
+       not line up. Position, then height. */
+    function measureHeader() {
+      var header = document.querySelector('.section-header, header.header-wrapper, #shopify-section-header, body > header');
+      var pinned = false;
+      var h = 0;
+      if (header) {
+        var pos = window.getComputedStyle(header).position;
+        pinned = pos === 'fixed' || pos === 'sticky';
+        h = header.getBoundingClientRect().height;
+      }
+      var top = (pinned && h > 0 && h < 220) ? Math.round(h + 20) : 20;
+      root.style.setProperty('--su-sticky-top', top + 'px');
+    }
+    measureHeader();
+    window.addEventListener('resize', measureHeader, { passive: true });
+
+    /* ------------------------------------------------------ progress bar */
+    if (fill) {
+      var tick = function () {
+        var box = track ? track.getBoundingClientRect() : null;
+        if (!box) return;
+        var total = box.height - window.innerHeight;
+        var seen = -box.top;
+        var pct = total > 0 ? Math.min(1, Math.max(0, seen / total)) : 0;
+        fill.style.width = (pct * 100).toFixed(2) + '%';
+      };
+      window.addEventListener('scroll', tick, { passive: true });
+      window.addEventListener('resize', tick, { passive: true });
+      tick();
+    }
+
+    /* ------------------------------------------ placing things mid-article
+       The article body is one blob of merchant HTML, and the FAQ lives
+       inside it. We never nest our own components in .su-rte, because the
+       body type rules would repaint them. Instead we cut the blob and drop
+       the component into the seam. */
+    function splitFrom(host, anchor) {
+      var tail = document.createElement('div');
+      tail.className = 'su-rte su-rte--tail';
+      var node = anchor;
+      while (node) {
+        var next = node.nextSibling;
+        tail.appendChild(node);
+        node = next;
+      }
+      host.parentNode.insertBefore(tail, host.nextSibling);
+      return tail;
+    }
+
+    function directChildren(host, sel) {
+      return Array.prototype.filter.call(host.children, function (el) {
+        return el.matches(sel);
+      });
+    }
+
+    /* The formulation panel belongs with the herbs, not after the FAQ.
+       Cut at the FAQ and slot the panel into the gap. */
+    var formula = root.querySelector('[data-su-formula]');
+    if (formula && rte) {
+      var faqAt = directChildren(rte, '.faq-section')[0];
+      if (!faqAt) {
+        faqAt = directChildren(rte, 'h2').filter(function (h) {
+          return /frequently asked|^faqs?\b/i.test(h.textContent.trim());
+        })[0];
+      }
+      if (faqAt) {
+        var faqTail = splitFrom(rte, faqAt);
+        rte.parentNode.insertBefore(formula, faqTail);
+      }
+    }
+
+    /* The card is NOT moved into the article on mobile.
+
+       In one column the rail already follows the article, so the consultation
+       card lands at the end on its own - which is where it belongs. Injecting
+       a form into the middle of someone's reading interrupts it, and the
+       sticky bar below is the thing that keeps the offer available until they
+       get there. The bar hides itself once the card is actually on screen, so
+       the two never ask at the same time. */
+
+    /* ------------------------------------------------------- mobile bar */
+    if (bar && consult) {
+      var barBtn = root.querySelector('[data-su-bar-btn]');
+      var at = parseInt(root.dataset.barAt || '22', 10) / 100;
+
+      var toggleBar = function () {
+        if (sessionStorage.getItem(doneKey)) { bar.classList.remove('is-up'); return; }
+        var box = track ? track.getBoundingClientRect() : null;
+        if (!box) return;
+        var passed = -box.top > box.height * at;
+        var cardBox = consult.getBoundingClientRect();
+        var cardVisible = cardBox.top < window.innerHeight - 80 && cardBox.bottom > 80;
+        if (passed && !cardVisible) {
+          bar.hidden = false;
+          bar.classList.add('is-up');
+        } else {
+          bar.classList.remove('is-up');
+        }
+      };
+      window.addEventListener('scroll', toggleBar, { passive: true });
+      window.addEventListener('resize', toggleBar, { passive: true });
+      toggleBar();
+
+      if (barBtn) {
+        barBtn.addEventListener('click', function () {
+          consult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          var first = consult.querySelector('input[name="name"]');
+          if (first) window.setTimeout(function () { first.focus({ preventScroll: true }); }, 420);
+        });
+      }
+    }
+
+    /* ------------------------------------------------------------- form */
+    if (!form) return;
+
+    /* Already submitted this visit: show the receipt, not the ask. */
+    try {
+      if (sessionStorage.getItem(doneKey)) showDone();
+    } catch (e) { /* private mode */ }
+
+    var nameEl = form.querySelector('input[name="name"]');
+    var phoneEl = form.querySelector('input[name="phone"]');
+    var topicEl = form.querySelector('[name="topic"]');
+    var hpEl = form.querySelector('input[name="city_confirm"]');
+    var btn = form.querySelector('[data-su-submit]');
+    var btnLabel = form.querySelector('[data-su-btn-label]');
+    var sending = false;
+
+    /* Normalise as they type, so every way a person actually writes a mobile
+       number arrives as the same ten digits: spaces and dashes, a leading zero,
+       a pasted +91.
+
+       The country-code strip is the important one. maxlength="10" used to
+       truncate a pasted "919876543210" to ten raw characters BEFORE the digits
+       were pulled out, leaving 9198765432 - ten digits, starts with 9, passes
+       every check, and is the wrong number. A wrong number that validates is
+       far worse than one that gets rejected. */
+    function tenDigits(raw) {
+      var v = String(raw).replace(/\D/g, '').replace(/^0+/, '');
+      if (v.length > 10 && v.indexOf('91') === 0) v = v.slice(2);
+      return v.slice(0, 10);
+    }
+
+    phoneEl.addEventListener('input', function () {
+      var before = phoneEl.value;
+      var after = tenDigits(before);
+      if (after === before) return;
+      var caret = phoneEl.selectionStart;
+      phoneEl.value = after;
+      // Keep the caret where the typist expects it after characters vanish.
+      var moved = Math.max(0, caret - (before.length - after.length));
+      try { phoneEl.setSelectionRange(moved, moved); } catch (e) {}
+    });
+
+    function fieldOf(el) { return el.closest('.su-field'); }
+
+    function setErr(el, message) {
+      var wrap = fieldOf(el);
+      var slot = wrap.querySelector('[data-su-err]');
+      if (message) {
+        wrap.classList.add('is-bad');
+        el.setAttribute('aria-invalid', 'true');
+        slot.textContent = message;
+      } else {
+        wrap.classList.remove('is-bad');
+        el.removeAttribute('aria-invalid');
+        slot.textContent = '';
+      }
+      return !message;
+    }
+
+    function checkName() {
+      var v = nameEl.value.trim();
+      return setErr(nameEl, v.length < 2 ? 'Enter your name' : '');
+    }
+    function checkPhone() {
+      var v = tenDigits(phoneEl.value);
+      if (v.length < 10) return setErr(phoneEl, 'Enter all 10 digits');
+      if (!/^[6-9]/.test(v)) return setErr(phoneEl, 'Indian mobile numbers start with 6, 7, 8 or 9');
+      return setErr(phoneEl, '');
+    }
+
+    nameEl.addEventListener('blur', checkName);
+    phoneEl.addEventListener('blur', checkPhone);
+
+    /* Flat, one level deep, because the far end is a spreadsheet row. The
+       attribution snippet already publishes a flat field set; fall back to
+       reading its storage directly if the snippet has not booted. */
+    function attribution() {
+      try {
+        if (window.SehatUpAttribution && window.SehatUpAttribution.fields) {
+          return window.SehatUpAttribution.fields();
+        }
+        var f = JSON.parse(localStorage.getItem('sehatup_attr_first') || 'null') || {};
+        var l = JSON.parse(localStorage.getItem('sehatup_attr_last') || 'null') || f;
+        return {
+          traffic_source: f.source || 'direct',
+          utm_source: f.utm_source || '',
+          utm_medium: f.utm_medium || '',
+          utm_campaign: f.utm_campaign || '',
+          utm_content: f.utm_content || '',
+          utm_term: f.utm_term || '',
+          landing_page: f.landing_page || '',
+          referrer: f.referrer || '',
+          gclid: f.gclid || '',
+          fbclid: f.fbclid || '',
+          first_seen_at: f.at || '',
+          last_traffic_source: l.source || '',
+          last_utm_campaign: l.utm_campaign || ''
+        };
+      } catch (e) { return {}; }
+    }
+
+    /* One place the transport lives.
+
+       Content-Type is text/plain on purpose. An Apps Script Web App cannot
+       answer a CORS preflight, and application/json triggers one. text/plain
+       keeps this a simple request, so the POST goes straight through and the
+       script still reads the JSON from e.postData.contents. Any other endpoint
+       parses the body the same way. */
+    function submitLead(payload) {
+      var url = root.dataset.endpoint;
+      if (!url) {
+        // No endpoint set yet. The card still shows its success state so the theme
+        // editor is usable, but say so loudly - a silent success would look like
+        // working lead capture while every lead is dropped.
+        if (window.console) console.warn('[su-lead] no endpoint configured, lead not sent', payload);
+        return Promise.resolve({ skipped: true });
+      }
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+        redirect: 'follow'
+      }).then(function (r) {
+        if (!r.ok) throw new Error('lead endpoint returned ' + r.status);
+        return r.json().catch(function () { return {}; });
+      }).then(function (data) {
+        // Apps Script answers 200 even when it refused the row, so the body,
+        // not the status, is what says whether the lead was actually written.
+        if (data && data.ok === false) throw new Error(data.error || 'endpoint refused the lead');
+        return data;
+      });
+    }
+
+    function showDone() {
+      if (body) body.hidden = true;
+      if (done) done.hidden = false;
+      if (bar) bar.classList.remove('is-up');
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (sending) return;
+
+      if (hpEl && hpEl.value) { showDone(); return; }
+
+      var ok = checkName();
+      ok = checkPhone() && ok;
+      if (!ok) {
+        var bad = form.querySelector('.is-bad .su-input');
+        if (bad) bad.focus();
+        return;
+      }
+
+      sending = true;
+      form.classList.add('is-busy');
+      form.setAttribute('aria-busy', 'true');
+      btn.disabled = true;
+      if (btnLabel) btnLabel.textContent = 'Sending';
+      if (live) live.textContent = 'Sending your request';
+
+      var payload = {
+        token: root.dataset.token || '',
+        name: nameEl.value.trim(),
+        phone: '+91' + tenDigits(phoneEl.value),
+        topic: topicEl ? topicEl.value : '',
+        source: 'blog_article',
+        sheet: root.dataset.collection,
+        article_handle: handle,
+        article_title: root.dataset.articleTitle,
+        page_url: location.href,
+        page_referrer: document.referrer,
+        submitted_at: new Date().toISOString()
+      };
+      var attr = attribution();
+      for (var k in attr) { if (!(k in payload)) payload[k] = attr[k]; }
+
+      submitLead(payload).then(function () {
+        try { sessionStorage.setItem(doneKey, '1'); } catch (e2) {}
+        if (live) live.textContent = 'Request received. A doctor will call you back.';
+        showDone();
+      }).catch(function (err) {
+        sending = false;
+        form.classList.remove('is-busy');
+        form.removeAttribute('aria-busy');
+        btn.disabled = false;
+        if (btnLabel) btnLabel.textContent = 'Try again';
+        if (live) live.textContent = 'That did not send. Check your connection and try again.';
+        if (window.console) console.warn('[su-lead]', err);
+      });
+    });
+  });
+})();
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Article",
+  "tag": "section",
+  "class": "su-post-section",
+  "settings": [
+    { "type": "header", "content": "Banner" },
+    {
+      "type": "select",
+      "id": "banner_fit",
+      "label": "Banner",
+      "options": [
+        { "value": "fit", "label": "Show the whole image" },
+        { "value": "fill", "label": "Fill the frame and crop" }
+      ],
+      "default": "fit",
+      "info": "Showing the whole image leaves space at the sides of taller banners. Filling crops them."
+    },
+    { "type": "range", "id": "banner_height", "label": "Banner height", "min": 200, "max": 560, "step": 20, "unit": "px", "default": 320, "info": "The most vertical space the banner may take." },
+    { "type": "range", "id": "banner_focus", "label": "Banner focal point", "min": 0, "max": 100, "step": 5, "unit": "%", "default": 0, "info": "Only used when the banner fills the frame. 0 keeps the top, where these banners put their title." },
+
+    { "type": "header", "content": "Byline" },
+    {
+      "type": "paragraph",
+      "content": "The banner image, title, date and read time are read off the post itself. The banner sits at the top of the article card and the title sits under it, so nothing is typed twice."
+    },
+    { "type": "text", "id": "byline", "label": "Written by", "default": "SehatUP", "info": "Blank falls back to the post's Shopify author." },
+    { "type": "text", "id": "reviewer", "label": "Reviewed by", "info": "Fallback only. Set article.metafields.custom.reviewed_by per post. Blank hides the line." },
+
+    { "type": "header", "content": "Consultation card" },
+    { "type": "checkbox", "id": "show_cta", "label": "Show the consultation card", "default": true },
+    { "type": "text", "id": "cta_status", "label": "Availability line", "default": "Doctors available today", "info": "Sits above the heading with a live dot. The heading and consent line already say the call is free, so say something the reader does not know yet. Blank hides it." },
+    { "type": "text", "id": "cta_title", "label": "Heading", "default": "Talk to an Ayurvedic doctor" },
+    { "type": "textarea", "id": "cta_dek", "label": "Sub-line", "default": "Leave your number. A doctor calls you back today, free." },
+    { "type": "text", "id": "cta_button", "label": "Button", "default": "Request a call back" },
+    { "type": "textarea", "id": "cta_consent", "label": "Consent line", "default": "We call 10 am to 8 pm. Your number stays private." },
+    { "type": "url", "id": "privacy_url", "label": "Privacy policy link" },
+    { "type": "checkbox", "id": "show_topic", "label": "Ask what they need help with", "default": false },
+    { "type": "text", "id": "topics", "label": "Topic options", "default": "Stamina and performance, Low energy, Stress and sleep, Something else" },
+    { "type": "text", "id": "trust_1", "label": "Trust point 1", "default": "AYUSH certified" },
+    { "type": "text", "id": "trust_2", "label": "Trust point 2", "default": "Verified doctors" },
+    { "type": "text", "id": "trust_3", "label": "Trust point 3", "default": "Private", "info": "The three trust points share one line and never wrap, so keep them very short - the rail is 300px wide." },
+    { "type": "url", "id": "whatsapp_url", "label": "WhatsApp link" },
+    { "type": "text", "id": "whatsapp_label", "label": "WhatsApp label", "default": "Chat on WhatsApp" },
+    { "type": "text", "id": "done_title", "label": "Success heading", "default": "We have your number" },
+    { "type": "textarea", "id": "done_dek", "label": "Success sub-line", "default": "A doctor calls you back today, 10 am to 8 pm." },
+    { "type": "text", "id": "lead_endpoint", "label": "Lead endpoint URL", "info": "The Apps Script Web App /exec URL. The deployment must be set to Anyone, not Anyone with Google Account. Blank means the form validates but sends nothing.", "default": "https://script.google.com/macros/s/AKfycbx7NDoB9rbbvvJGSh9J5HCNjg4WAOri1AX8gVRlrMiYClr6J04I4JpJ55B2ceETCJeI/exec" },
+    { "type": "text", "id": "lead_token", "label": "Shared token", "info": "Must match SHARED_TOKEN in blog-lead-sheet.gs exactly. Filters drive-by bots; it travels in the page source, so it is not a secret.", "default": "sehatup-blog-J7d3qHngA8KDmBBuUNl3FCYK" },
+    { "type": "text", "id": "lead_collection", "label": "Sheet tab name", "default": "Blog leads" },
+    { "type": "range", "id": "sticky_top", "label": "Sticky offset", "min": 0, "max": 180, "step": 4, "unit": "px", "default": 20, "info": "Clearance under a header that stays on screen. Measured from the live header on load, so this is only the value used before the script runs." },
+
+    { "type": "header", "content": "Mobile bar" },
+    { "type": "checkbox", "id": "show_mobile_bar", "label": "Show the sticky bar on mobile", "default": true },
+    { "type": "text", "id": "bar_button", "label": "Bar button", "default": "Book call" },
+    { "type": "text", "id": "bar_text", "label": "Bar text", "default": "Free doctor consultation", "info": "One short line. It shares a narrow bar with the button and the WhatsApp bubble." },
+    { "type": "range", "id": "bar_trigger", "label": "Show after", "min": 10, "max": 60, "step": 2, "unit": "%", "default": 22 },
+
+    { "type": "header", "content": "Formulation panel" },
+    { "type": "paragraph", "content": "Per post. Set article.metafields.custom.formulation (JSON) on each article. Without it the panel does not render, so a men's formula never lands on a women's post." },
+    { "type": "checkbox", "id": "panel_fallback", "label": "Fall back to the Ingredient blocks below", "default": false, "info": "Off is right for a mixed blog. On puts the same ingredient list on every post that has no metafield." },
+    { "type": "text", "id": "panel_kicker", "label": "Kicker", "default": "What is inside" },
+    { "type": "text", "id": "panel_title", "label": "Title", "default": "Vaji Bati" },
+    { "type": "text", "id": "panel_note", "label": "Footnote", "default": "AYUSH certified. No added hormones." },
+    { "type": "url", "id": "panel_link", "label": "Product link" },
+    { "type": "text", "id": "panel_link_label", "label": "Product link label", "default": "See the product" },
+
+    { "type": "header", "content": "Latest blogs" },
+    { "type": "text", "id": "latest_title", "label": "List label", "default": "Latest blogs" },
+    { "type": "range", "id": "latest_count", "label": "How many", "min": 2, "max": 6, "step": 1, "default": 4 },
+
+    { "type": "header", "content": "Reading" },
+    { "type": "checkbox", "id": "show_progress", "label": "Show the reading progress line", "default": true },
+
+    { "type": "header", "content": "Colour" },
+    { "type": "color", "id": "color_brand", "label": "Action", "default": "#ee204a" },
+    { "type": "color", "id": "color_brand_deep", "label": "Action pressed", "default": "#c8143a" },
+    { "type": "color", "id": "color_wine", "label": "Structure", "default": "#55123a" }
+  ],
+  "blocks": [
+    {
+      "type": "herb",
+      "name": "Ingredient",
+      "settings": [
+        { "type": "text", "id": "name", "label": "Name", "default": "Ashwagandha" },
+        { "type": "text", "id": "botanical", "label": "Botanical name", "default": "Withania somnifera" },
+        { "type": "text", "id": "use", "label": "Traditional use", "default": "Traditionally used to help the body manage stress." }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Article",
+      "blocks": [
+        { "type": "herb" },
+        { "type": "herb", "settings": { "name": "Shilajit", "botanical": "Asphaltum punjabianum", "use": "A mineral rich resin from the Himalayas, traditionally used for stamina." } },
+        { "type": "herb", "settings": { "name": "Safed Musli", "botanical": "Chlorophytum borivilianum", "use": "Traditionally associated with libido and reproductive wellness." } },
+        { "type": "herb", "settings": { "name": "Kaunch Beej", "botanical": "Mucuna pruriens", "use": "Traditionally used to support hormonal balance and vitality." } },
+        { "type": "herb", "settings": { "name": "Gokshura", "botanical": "Tribulus terrestris", "use": "Traditionally used to support stamina and performance." } }
+      ]
+    }
+  ]
+}
+{% endschema %}

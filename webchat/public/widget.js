@@ -21,18 +21,32 @@
 
   var CONFIG = {
     api: (script && script.dataset.api) || '',
-    title: (script && script.dataset.title) || 'Ananya',
+    title: (script && script.dataset.title) || 'sehatUP Mitra',
     subtitle: (script && script.dataset.subtitle) || 'SehatUP health advisor',
     greeting: (script && script.dataset.greeting) ||
-      'Hello! Main Ananya hu SehatUP se. Product, price ya health concern - kuch bhi puchiye.',
+      'Hello! Main sehatUP Mitra hu. Product, price ya health concern - kuch bhi puchiye.',
     accent: (script && script.dataset.accent) || '#ee204a',
     avatar: (script && script.dataset.avatar) || '',
+    // The launcher artwork. Empty keeps the built-in speech-bubble SVG, which stays
+    // sharp at any density and costs no request. A URL swaps in a raster mark from
+    // the theme instead, so trying a new icon is a Shopify edit, not a deploy.
+    // data-icon-full="1" says the artwork IS the circle: the button drops its own
+    // crimson fill rather than ringing the image with it.
+    icon: (script && script.dataset.icon) || '',
+    iconFull: (script && script.dataset.iconFull) === '1',
     // Corner offsets, any CSS length. Phones get their own bottom value because a sticky
     // add-to-cart bar is a mobile-only obstacle.
     // How many times the attention ring pulses after the page settles. Finite on purpose:
     // an infinite pulse is what made the launcher feel like it was nagging. 0 turns it off.
     pulse: Math.max(0, Math.min(10, parseInt((script && script.dataset.pulse) || '3', 10) || 0)),
-    bottom: (script && script.dataset.bottom) || '20px',
+    // The greeting that unfurls out of the launcher on a first visit. It REPLACES
+    // the pulse rather than joining it - see the guard below.
+    tip: (script && script.dataset.tip) !== '0',
+    tipTitle: (script && script.dataset.tipTitle) || 'sehatUP Mitra',
+    tipText: (script && script.dataset.tipText) || 'Ask me anything about health or products',
+    tipDelay: Math.max(0, parseInt((script && script.dataset.tipDelay) || '2800', 10) || 0),
+    tipHold: Math.max(2000, parseInt((script && script.dataset.tipHold) || '7000', 10) || 7000),
+    bottom: (script && script.dataset.bottom) || '32px',
     right: (script && script.dataset.right) || '20px',
     bottomMobile: (script && script.dataset.bottomMobile) || '16px',
     chips: ((script && script.dataset.chips) ||
@@ -48,6 +62,11 @@
     return;
   }
   CONFIG.api = CONFIG.api.replace(/\/+$/, '');
+
+  // One attention grab, not two. A ring pulsing around a launcher that is also
+  // unfurling a greeting reads as a widget shouting over itself, so the greeting
+  // wins and the pulse stands down. Set data-tip="0" to go back to the ring.
+  if (CONFIG.tip) CONFIG.pulse = 0;
 
   var STORAGE_KEY = 'sehatup_chat_v1';
   var state = loadState();
@@ -124,6 +143,7 @@
 
   var el = {
     launcher: root.querySelector('.launcher'),
+    tip: root.querySelector('.tip'),
     panel: root.querySelector('.panel'),
     close: root.querySelector('.close'),
     log: root.querySelector('.log'),
@@ -248,7 +268,32 @@
 
   /* --------------------------------------------------------------- chat */
 
+  /* ------------------------------------------------------------ greeting */
+
+  var TIP_KEY = 'sehatup_chat_tip_v1';
+  var tipTimer = null;
+
+  function hideTip() {
+    window.clearTimeout(tipTimer);
+    if (el.tip) el.tip.classList.remove('show');
+  }
+
+  function showTip() {
+    if (!el.tip) return;
+    // Never to somebody already in a conversation, and never twice in a visit.
+    // A greeting that reintroduces itself on every page is an interruption, not
+    // a welcome.
+    if (state.opened || state.messages.length) return;
+    try {
+      if (sessionStorage.getItem(TIP_KEY)) return;
+      sessionStorage.setItem(TIP_KEY, '1');
+    } catch (e) { /* private mode: show it, just do not remember */ }
+    el.tip.classList.add('show');
+    tipTimer = window.setTimeout(hideTip, CONFIG.tipHold);
+  }
+
   function open() {
+    hideTip();
     el.panel.classList.add('show');
     el.launcher.classList.add('hidden');
     el.launcher.setAttribute('aria-expanded', 'true');
@@ -422,6 +467,10 @@
   /* ------------------------------------------------------------- events */
 
   el.launcher.addEventListener('click', open);
+  if (el.tip) {
+    el.tip.addEventListener('click', open);
+    window.setTimeout(showTip, CONFIG.tipDelay);
+  }
   el.close.addEventListener('click', close);
 
   el.form.addEventListener('submit', function (e) {
@@ -488,15 +537,31 @@
   }
 
   function template() {
+    var icon = CONFIG.icon
+      ? '<img class="ico" src="' + esc(CONFIG.icon) + '" alt="">'
+      : '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' +
+        '</svg>';
+
     var avatar = CONFIG.avatar
       ? '<img class="av" src="' + esc(CONFIG.avatar) + '" alt="">'
       : '<div class="av fallback">' + esc(CONFIG.title.charAt(0).toUpperCase()) + '</div>';
 
+    var tip = CONFIG.tip
+      // aria-hidden on purpose: it repeats what the launcher's own label already
+      // says, and a screen reader should not hear the same offer twice.
+      ? '<div class="tip" aria-hidden="true">' +
+          '<span class="tip__in">' +
+            '<strong>' + esc(CONFIG.tipTitle) + '</strong>' +
+            '<span>' + esc(CONFIG.tipText) + '</span>' +
+          '</span>' +
+        '</div>'
+      : '';
+
     return '' +
-      '<button class="launcher" type="button" aria-expanded="false" aria-label="Chat with ' + esc(CONFIG.title) + '">' +
-        '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-          '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>' +
-        '</svg>' +
+      tip +
+      '<button class="launcher' + (CONFIG.icon && CONFIG.iconFull ? ' launcher--art' : '') + '" type="button" aria-expanded="false" aria-label="Chat with ' + esc(CONFIG.title) + '">' +
+        icon +
         (CONFIG.pulse > 0 ? '<span class="pulse"></span>' : '') +
       '</button>' +
 
@@ -527,7 +592,7 @@
           '</button>' +
         '</form>' +
 
-        '<p class="legal">Ananya health information deti hain, medical diagnosis nahi. Dose aur medicine doctor decide karte hain.</p>' +
+        '<p class="legal">sehatUP Mitra health information deti hain, medical diagnosis nahi. Dose aur medicine doctor decide karte hain.</p>' +
       '</section>';
   }
 
@@ -544,6 +609,13 @@
    commercial moment. Consulting room, not emergency ward. */
 .wrap {
   --brand: ${accent};
+  /* Everything below is derived from --brand with color-mix, so changing
+     data-accent still recolours the whole panel in one move. */
+  --brand-deep: color-mix(in srgb, var(--brand) 84%, #000);
+  --brand-sink: color-mix(in srgb, var(--brand) 60%, #45101f);
+  --brand-tint: color-mix(in srgb, var(--brand) 9%, #fff);
+  --brand-wash: color-mix(in srgb, var(--brand) 4%, #fff);
+  --brand-ring: color-mix(in srgb, var(--brand) 26%, transparent);
   --deep: #45101f;
   --deep-soft: #5c1b2b;
   --ink: #241a1e;
@@ -575,6 +647,66 @@
 .launcher.hidden { opacity: 0; pointer-events: none; transform: scale(.7); }
 .launcher:focus-visible { outline: 2px solid var(--deep); outline-offset: 3px; }
 
+/* Raster launcher art, in the two shapes it can take. A small glyph sits on the
+   crimson button like the built-in SVG does. A full-bleed mark IS the button, so
+   the fill comes off - otherwise the button's circle rings the artwork's own one -
+   and the radius moves onto the image, because a border-radius on the button does
+   not clip its children. */
+.ico { width: 26px; height: 26px; object-fit: contain; }
+/* padding:0 is load-bearing: a <button> carries a UA default padding of 1px 6px,
+   which the 26px glyph never noticed because it was centred anyway. A full-bleed
+   image does notice - it lays out in the content box, so the circle arrives as a
+   46x56 oval. */
+.launcher--art { background: none; padding: 0; }
+.launcher--art .ico { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+/* The greeting unfurls OUT OF the launcher rather than appearing beside it.
+
+   The pill is right-anchored and its collapsed width is exactly the launcher's,
+   so at rest it is hidden underneath the circle; growing max-width pushes its
+   left edge outward while the circle stays put as the right end cap. The reader
+   sees one object stretching, not a second object arriving, which is the whole
+   idea: the icon is speaking.
+
+   The text fades in a beat late so nobody watches it slide. That is the only
+   orchestration here - one moment, once a visit, then a quiet circle forever. */
+.tip {
+  position: fixed; right: var(--gap-right); bottom: var(--gap-bottom);
+  z-index: 2147482999;
+  display: flex; align-items: center;
+  box-sizing: border-box;
+  height: 58px;
+  padding-right: 58px;
+  max-width: 58px;
+  overflow: hidden;
+  border-radius: 29px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  box-shadow: 0 4px 14px rgba(69,16,31,.10), 0 14px 44px rgba(69,16,31,.12);
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: none;
+  transition: max-width .46s cubic-bezier(.2,.9,.25,1), opacity .22s ease;
+}
+.tip.show { max-width: min(340px, calc(100vw - 32px)); opacity: 1; pointer-events: auto; }
+.tip__in {
+  padding: 0 14px 0 20px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity .26s ease .14s, transform .34s cubic-bezier(.2,.9,.25,1) .14s;
+}
+.tip.show .tip__in { opacity: 1; transform: none; }
+.tip__in strong {
+  display: block;
+  font-size: 13.5px; font-weight: 600; letter-spacing: -.012em;
+  color: var(--ink);
+}
+.tip__in span {
+  display: block; margin-top: 1px;
+  font-size: 11.5px; line-height: 1.35; color: var(--muted);
+}
+
 /* Attention ring. It runs a FIXED number of times and then stops for good - an infinite
    pulse is what made this feel like it was tugging at the reader's sleeve. Two seconds of
    delay lets the page settle first, so it reads as the widget arriving rather than as
@@ -597,29 +729,38 @@
   height: 600px; max-height: calc(100vh - 40px);
   background: var(--panel); border-radius: 20px;
   border: 1px solid var(--rule);
-  box-shadow: 0 2px 6px rgba(36,26,30,.04), 0 18px 60px rgba(36,26,30,.14);
+  box-shadow: 0 2px 8px rgba(69,16,31,.06), 0 24px 70px -14px rgba(120,12,40,.34);
   display: flex; flex-direction: column; overflow: hidden;
   opacity: 0; transform: translateY(12px) scale(.985); pointer-events: none;
   transition: opacity .22s ease, transform .28s cubic-bezier(.2,.8,.3,1);
 }
 .panel.show { opacity: 1; transform: none; pointer-events: auto; }
 
-/* header - flat, not a gradient. A gradient here is decoration; flat colour is a decision. */
+/* header - the brand band. The old flat wine was the right call when the panel was
+   the only thing on screen, but next to a storefront running bright red CTAs it read
+   as muddy rather than calm. Crimson ties the panel to the page it opens over. The
+   gradient is two stops of one hue, so it reads as depth rather than decoration. */
 .head {
   display: flex; align-items: center; gap: 12px;
-  padding: 15px 16px; color: #fff; background: var(--deep);
+  padding: 15px 16px; color: #fff;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-sink) 100%);
 }
-.av { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
-      background: var(--deep-soft); }
-.av.fallback { display: grid; place-items: center; background: var(--deep-soft);
-      font-weight: 600; font-size: 15px; letter-spacing: .02em; }
+/* The avatar is itself a crimson mark, so on a crimson header it needs its own white
+   ground or it dissolves into the band. contain + padding + border-box gives it one. */
+.av { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; flex: 0 0 auto;
+      background: #fff; padding: 2px; box-sizing: border-box;
+      box-shadow: 0 2px 6px rgba(69,16,31,.24); }
+.av.fallback { display: grid; place-items: center; padding: 0;
+      background: rgba(255,255,255,.18); color: #fff;
+      font-weight: 700; font-size: 15px; letter-spacing: .02em; }
 .who { flex: 1; min-width: 0; }
-.who strong { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.who strong { display: block; font-size: 16px; font-weight: 700; letter-spacing: -.015em; }
 /* status as a micro-label, not body text - it is metadata, and should read like it */
 .who span { display: flex; align-items: center; gap: 6px; margin-top: 2px;
       font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
-      color: rgba(255,255,255,.68); }
-.dot { width: 5px; height: 5px; border-radius: 50%; background: #5fd08a; }
+      color: rgba(255,255,255,.82); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80;
+       box-shadow: 0 0 0 3px rgba(74,222,128,.3); }
 .close { background: transparent; border: 0; color: rgba(255,255,255,.7); cursor: pointer;
          width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
          transition: background .15s, color .15s; }
@@ -628,9 +769,9 @@
 
 /* log */
 .log { flex: 1; overflow-y: auto; overscroll-behavior: contain;
-       padding: 18px 16px 8px; background: var(--paper); }
+       padding: 18px 16px 8px; background: var(--brand-wash); }
 .log::-webkit-scrollbar { width: 5px; }
-.log::-webkit-scrollbar-thumb { background: #ded4d7; border-radius: 3px; }
+.log::-webkit-scrollbar-thumb { background: var(--brand-ring); border-radius: 3px; }
 .log::-webkit-scrollbar-track { background: transparent; }
 
 .row { display: flex; flex-direction: column; margin-bottom: 14px; max-width: 86%; }
@@ -647,8 +788,10 @@
 .bubble { padding: 11px 14px; border-radius: 16px; font-size: 14.5px; line-height: 1.55;
           word-wrap: break-word; overflow-wrap: anywhere; }
 .row.bot .bubble { background: var(--panel); border: 1px solid var(--rule);
-                   border-bottom-left-radius: 6px; color: var(--ink); }
-.row.user .bubble { background: var(--deep); color: #fff; border-bottom-right-radius: 6px; }
+                   border-bottom-left-radius: 6px; color: var(--ink);
+                   box-shadow: 0 1px 2px rgba(69,16,31,.05); }
+.row.user .bubble { background: var(--brand); color: #fff; border-bottom-right-radius: 6px;
+                    box-shadow: 0 2px 8px -2px var(--brand-ring); }
 
 /* one calm breath, not three bouncing balls */
 .typing { display: flex; gap: 5px; align-items: center; padding: 15px 16px; }
@@ -685,13 +828,14 @@
        border-radius: 9px; cursor: pointer; border: 1px solid transparent;
        text-decoration: none; display: inline-flex; align-items: center;
        transition: background .15s, border-color .15s, color .15s; }
-.btn.primary { background: var(--deep); color: #fff; }
-.btn.primary:hover { background: var(--deep-soft); }
+.btn.primary { background: var(--brand); color: #fff;
+               box-shadow: 0 4px 10px -4px var(--brand-ring); }
+.btn.primary:hover { background: var(--brand-deep); }
 .btn.primary.done { background: #2f7d51; }
 .btn.primary:disabled { opacity: .65; cursor: default; }
 .btn.ghost { background: transparent; color: var(--muted); border-color: var(--rule); }
 .btn.ghost:hover { color: var(--ink); border-color: #d9cdd1; }
-.btn:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
+.btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 /* handoff */
 .wa { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
@@ -700,16 +844,18 @@
       animation: rise .34s cubic-bezier(.16,.84,.3,1) both; animation-delay: .07s;
       transition: background .15s; }
 .wa:hover { background: #18904c; }
-.wa:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
+.wa:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
-/* chips - neutral. Pink chips on a pink header was two shouts in one room. */
-.chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 16px 12px; background: var(--paper); }
+/* chips - these are the opening questions, so they have to look answerable. Grey on
+   white read as disabled. They stay white against the blush log rather than filling
+   with tint, which would put a second field of pink under a pink header. */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 16px 12px; background: var(--brand-wash); }
 .chips[hidden] { display: none; }
-.chip { font: inherit; font-size: 12.5px; padding: 7px 13px; border-radius: 999px;
-        border: 1px solid var(--rule); background: var(--panel); color: var(--muted);
-        cursor: pointer; transition: border-color .15s, color .15s; }
-.chip:hover { border-color: #d9cdd1; color: var(--ink); }
-.chip:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
+.chip { font: inherit; font-size: 12.5px; font-weight: 500; padding: 7px 13px; border-radius: 999px;
+        border: 1px solid var(--brand-ring); background: var(--panel); color: var(--brand-deep);
+        cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.chip:hover { background: var(--brand-tint); border-color: var(--brand); }
+.chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 /* composer */
 .composer { display: flex; gap: 9px; align-items: flex-end; padding: 12px 14px 9px;
@@ -719,28 +865,36 @@
          padding: 10px 13px; max-height: 96px; color: var(--ink); overflow-y: hidden;
          transition: border-color .15s, background .15s; }
 .input::placeholder { color: var(--faint); }
-.input:focus { outline: none; border-color: var(--deep); background: var(--panel); }
+.input:focus { outline: none; border-color: var(--brand); background: var(--panel);
+               box-shadow: 0 0 0 3px var(--brand-ring); }
 .input:disabled { opacity: .55; }
 .send { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; border: 0;
-        background: var(--deep); color: #fff; cursor: pointer;
-        display: grid; place-items: center; transition: background .15s, opacity .15s; }
-.send:hover { background: var(--deep-soft); }
+        background: var(--brand); color: #fff; cursor: pointer;
+        display: grid; place-items: center; transition: background .15s, opacity .15s;
+        box-shadow: 0 4px 12px -4px var(--brand-ring); }
+.send:hover { background: var(--brand-deep); }
 .send:disabled { opacity: .35; cursor: default; }
-.send:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
+.send:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 .legal { margin: 0; padding: 0 16px 12px; font-size: 10.5px; line-height: 1.45;
-         color: var(--faint); background: var(--panel); text-align: center; }
+         color: var(--muted); background: var(--panel); text-align: center; }
 
 @media (max-width: 560px) {
   .wrap { --gap-bottom: ${CONFIG.bottomMobile}; --gap-right: 16px; }
   .panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw;
            height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
   .launcher { width: 54px; height: 54px; }
+  .tip { height: 54px; padding-right: 54px; max-width: 54px; border-radius: 27px; }
+  .tip.show { max-width: calc(100vw - 32px); }
+  .tip__in { padding-left: 18px; }
   .row { max-width: 90%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pulse { animation: none; }
+  /* Still appears and still leaves, it just does not perform the unfurl. */
+  .tip { transition: opacity .2s ease; }
+  .tip__in { transition: none; transform: none; opacity: 1; }
   .row.in, .card, .wa { animation: none; }
   .typing i { animation: none; opacity: .5; }
   .panel, .launcher, .btn, .chip, .input, .send { transition: none; }
