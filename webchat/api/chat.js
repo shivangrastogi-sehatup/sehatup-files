@@ -173,9 +173,17 @@ export default async function handler(req, res) {
       .flatMap((m) => (Array.isArray(m.products) ? m.products : []))
       .filter((h) => typeof h === 'string');
 
-    const { products: shown, handoff: wantsHandoff } =
+    const { products: shown, handoff: wantsHandoff, consult: wantsConsult } =
       resolveMarkers(markers, cards, 3, recentlyShown);
     let handoff = wantsHandoff;
+
+    // The consultation offer is once per conversation, not once per reply. The model
+    // is told this too, but a prompt is a request and this is the guarantee - the same
+    // reason recentlyShown exists for cards. An offer repeated every turn stops being
+    // an offer and becomes nagging.
+    const consultAlreadyOffered = (Array.isArray(body.messages) ? body.messages : [])
+      .some((m) => m && (m.role === 'model' || m.role === 'assistant') && m.consult);
+    const consult = wantsConsult && !consultAlreadyOffered;
 
     if (result.blocked && !replyText.trim()) {
       const fallback = 'Ye sawaal main theek se samajh nahi payi. Aap thoda aur bata dijiye, ' +
@@ -188,6 +196,7 @@ export default async function handler(req, res) {
     send('done', {
       products: shown,
       handoff: handoff ? { url: waLink(history, page), label: 'Chat with our team' } : null,
+      consult: consult,
       blocked: result.blocked,
     });
 
@@ -200,6 +209,7 @@ export default async function handler(req, res) {
       reply: replyText,
       products: shown.map((p) => p.handle),
       handedOff: handoff,
+      consultOffered: consult,
       page,
       model: transportName(),
       latencyMs: Date.now() - started,
@@ -217,6 +227,7 @@ export default async function handler(req, res) {
     send('done', {
       products: [],
       handoff: { url: waLink(history, page), label: 'Chat with our team' },
+      consult: false,
       error: true,
     });
     res.end();

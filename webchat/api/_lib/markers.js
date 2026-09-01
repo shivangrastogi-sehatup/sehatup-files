@@ -33,7 +33,7 @@ export function createMarkerFilter(emit, titleOf) {
   // it as the product's name - "hamare paas [[product:kern-drops]] hain" - and deleting
   // that produces "hamare paas hain", a sentence with a hole in it. Real transcripts do
   // both, so the substitution has to depend on where the marker sits.
-  var MARKER = /(\s*)\[\[(product:[a-z0-9][a-z0-9-]*|whatsapp)\]\]/gi;
+  var MARKER = /(\s*)\[\[(product:[a-z0-9][a-z0-9-]*|whatsapp|consult)\]\]/gi;
 
   function extract() {
     var m;
@@ -48,7 +48,10 @@ export function createMarkerFilter(emit, titleOf) {
       // a marker at index 0 before anything has been emitted is genuinely leading.
       var ownLine = lead.indexOf('\n') !== -1 || (m.index === 0 && !everEmitted);
       var replacement = '';
-      if (!ownLine && marker !== 'whatsapp' && typeof titleOf === 'function') {
+      // whatsapp and consult are actions, not things with names, so there is
+      // nothing to substitute them with - they always just come out.
+      var isAction = marker === 'whatsapp' || marker === 'consult';
+      if (!ownLine && !isAction && typeof titleOf === 'function') {
         var title = titleOf(marker.replace(/^product:/, ''));
         if (title) replacement = lead + title;
       }
@@ -115,6 +118,7 @@ export function resolveMarkers(markers, cards, maxCards = 3, recentlyShown = [])
   var products = [];
   var seen = new Set();
   var handoff = false;
+  var consult = false;
   // Cards shown in the last couple of replies. The model will happily re-attach the same
   // product to every message once it has recommended it - one real transcript had the
   // same Vaji Bati card on five consecutive replies, which reads as nagging. The card is
@@ -123,6 +127,7 @@ export function resolveMarkers(markers, cards, maxCards = 3, recentlyShown = [])
 
   for (var marker of markers) {
     if (marker === 'whatsapp') { handoff = true; continue; }
+    if (marker === 'consult') { consult = true; continue; }
     var handle = marker.replace(/^product:/, '');
     var card = cards[handle];
     if (!card || !card.inStock || seen.has(handle) || recent.has(handle)) continue;
@@ -130,5 +135,5 @@ export function resolveMarkers(markers, cards, maxCards = 3, recentlyShown = [])
     if (products.length < maxCards) products.push(card);
   }
 
-  return { products, handoff };
+  return { products, handoff, consult };
 }

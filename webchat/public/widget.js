@@ -52,6 +52,13 @@
     //   page     every page load. Maximum reach, at the cost of that.
     //   day      once per browser per calendar day.
     tipScope: (script && script.dataset.tipScope) || 'session',
+    // Where the consultation button goes when the lead-capture popup is not on the
+    // page. The popup is the good path - it opens over the panel with no navigation
+    // and no lost conversation - but it only renders on the templates the section is
+    // enabled for, so a plain URL is the fallback. Blank means the button is simply
+    // not drawn on those pages, which is better than a link to nowhere.
+    consultUrl: (script && script.dataset.consultUrl) || '',
+    consultLabel: (script && script.dataset.consultLabel) || 'Book a free consultation',
     bottom: (script && script.dataset.bottom) || '32px',
     right: (script && script.dataset.right) || '20px',
     bottomMobile: (script && script.dataset.bottomMobile) || '16px',
@@ -187,7 +194,7 @@
     // rather than "[[product:vaji-bati]]" printed in the middle of a sentence. Costs one
     // regex per frame.
     var clean = String(text)
-      .replace(/\[\[(?:product:[a-z0-9-]+|whatsapp)\]\]/gi, '')
+      .replace(/\[\[(?:product:[a-z0-9-]+|whatsapp|consult)\]\]/gi, '')
       .replace(/\n{3,}/g, '\n\n');
     node.innerHTML = esc(clean).replace(/\n/g, '<br>');
   }
@@ -239,6 +246,12 @@
     row.appendChild(box);
   }
 
+  function calendarIcon() {
+    return '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>';
+  }
+
   function renderHandoff(row, handoff) {
     if (!handoff) return;
     var a = document.createElement('a');
@@ -250,10 +263,38 @@
     row.appendChild(a);
   }
 
+  // The lead-capture popup is a Shopify section that may or may not be on this
+  // template, and it boots independently of us. Resolve it at click time, never at
+  // load time: the section's script can register itself after the widget has already
+  // drawn a message.
+  function consultPopup() {
+    var api = window.SehatUpLeadPopup;
+    return (api && typeof api.open === 'function') ? api : null;
+  }
+
+  function renderConsult(row, consult) {
+    if (!consult) return;
+    if (!consultPopup() && !CONFIG.consultUrl) return;
+
+    var btn = document.createElement('button');
+    btn.className = 'consult';
+    btn.type = 'button';
+    btn.innerHTML = calendarIcon() + '<span>' + esc(CONFIG.consultLabel) + '</span>';
+    btn.addEventListener('click', function () {
+      var api = consultPopup();
+      // The popup opens over the panel rather than replacing it, so the conversation
+      // is still there behind the form and still there after they close it.
+      if (api && api.open('webchat')) return;
+      if (CONFIG.consultUrl) window.open(CONFIG.consultUrl, '_blank', 'noopener');
+    });
+    row.appendChild(btn);
+  }
+
   function addMessage(msg, animate) {
     var b = bubbleEl(msg.role === 'user' ? 'user' : 'bot');
     renderText(b.bubble, msg.text);
     renderCards(b.row, msg.products);
+    renderConsult(b.row, msg.consult);
     renderHandoff(b.row, msg.handoff);
     if (animate) b.row.classList.add('in');
     scrollDown();
@@ -379,6 +420,9 @@
               // Which cards this reply already showed, so the server can avoid
               // re-attaching a product that is still on screen a message above.
               products: (m.products || []).map(function (p) { return p.handle; }),
+              // Whether this reply already carried the consultation offer. The
+              // server uses it to keep the offer to once per conversation.
+              consult: !!m.consult,
             };
           }),
         }),
@@ -435,10 +479,14 @@
 
       var products = (done && done.products) || [];
       var handoff = (done && done.handoff) || null;
+      var consult = !!(done && done.consult);
       renderCards(target.row, products);
+      renderConsult(target.row, consult);
       renderHandoff(target.row, handoff);
 
-      state.messages.push({ role: 'bot', text: acc, products: products, handoff: handoff });
+      state.messages.push({
+        role: 'bot', text: acc, products: products, handoff: handoff, consult: consult,
+      });
       saveState();
       scrollDown();
     } catch (err) {
@@ -905,6 +953,22 @@
 .btn.ghost:hover { color: var(--ink); border-color: #d9cdd1; }
 .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
+/* The consultation offer. It follows a product card, so it must not compete with
+   "Add to cart" sitting just above it - crimson on crimson would make the visitor
+   choose between two red buttons. Outlined in the brand instead: clearly an offer,
+   clearly secondary to the sale, and still obviously tappable. */
+.consult {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
+  padding: 9px 14px; border-radius: 11px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600; letter-spacing: -.005em;
+  color: var(--brand-deep); background: var(--panel);
+  border: 1px solid var(--brand-ring); align-self: flex-start;
+  animation: rise .34s cubic-bezier(.16,.84,.3,1) both; animation-delay: .07s;
+  transition: background .15s, border-color .15s;
+}
+.consult:hover { background: var(--brand-tint); border-color: var(--brand); }
+.consult:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
 /* handoff */
 .wa { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
       padding: 10px 15px; border-radius: 11px; background: #1faa54; color: #fff;
@@ -963,7 +1027,7 @@
   /* Still appears and still leaves, it just does not perform the unfurl. */
   .tip { transition: opacity .2s ease; }
   .tip__in { transition: none; transform: none; opacity: 1; }
-  .row.in, .card, .wa { animation: none; }
+  .row.in, .card, .wa, .consult { animation: none; }
   .typing i { animation: none; opacity: .5; }
   .panel, .launcher, .btn, .chip, .input, .send { transition: none; }
 }

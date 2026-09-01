@@ -261,7 +261,12 @@
 
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    /* Above the chat widget, which parks itself at 2147483000 so no theme can bury
+       it. At 9999 this overlay opened UNDER the open chat panel, which is the one
+       thing a modal must never do - and the chat is now one of the things that
+       opens it. Still short of the 2147483647 ceiling, so anything that genuinely
+       has to sit on top later still can. */
+    z-index: 2147483600;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1043,12 +1048,16 @@
       document.body.style.paddingRight = priorPadRight;
     }
 
-    function openPopup(reason) {
-      if (exhausted()) return;
-      if (!root.hidden) return;
+    // force is for an open the VISITOR asked for - today, the consultation button in
+    // the chat panel. The show allowance and the re-arm delay both exist to stop us
+    // interrupting them; neither should apply when they did the asking. Returns
+    // whether the popup actually opened, so a caller can fall back to a link.
+    function openPopup(reason, force) {
+      if (!force && exhausted()) return false;
+      if (!root.hidden) return false;
       // A scroll re-open right after a close reads as the popup refusing to go
       // away, so the scroll trigger stays quiet for a moment after a dismissal.
-      if (reason === 'scroll' && Date.now() - lastClosedAt < REARM_MS) return;
+      if (!force && reason === 'scroll' && Date.now() - lastClosedAt < REARM_MS) return false;
 
       lastFocused = document.activeElement;
       root.hidden = false;
@@ -1062,7 +1071,21 @@
       if (first && window.matchMedia('(min-width: 768px)').matches) {
         first.focus({ preventScroll: true });
       }
+      return true;
     }
+
+    /* Opened by something other than our own triggers - today the chat panel's
+       consultation button.
+
+       open() returns false when it could not open (it is already showing), which is
+       the caller's cue to fall back to a link rather than leave a dead button.
+       closePopup is a hoisted declaration further down, so calling it from here is
+       safe - the reference resolves when the caller fires, not now. */
+    window.SehatUpLeadPopup = {
+      open: function (reason) { return openPopup(reason || 'api', true); },
+      close: function () { closePopup(); },
+      isOpen: function () { return !root.hidden; }
+    };
 
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
