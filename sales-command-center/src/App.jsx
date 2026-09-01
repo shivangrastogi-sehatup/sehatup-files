@@ -232,7 +232,10 @@ export default class App extends React.Component {
         rows: d.rows, orders: d.orders || [], prevRows: d.prevRows || [],
         prevOrders: d.prevOrders || [],
         status: d.status || null, stale: d.stale || [],
-        meta: d.rows.length ? d.meta : null,
+        // Orders count as data. Gating the whole board on lead rows alone blanked
+        // the revenue panels on any day that had sales but no leads logged yet -
+        // which is every 1st of the month, exactly when someone is looking.
+        meta: (d.rows.length || (d.orders || []).length) ? d.meta : null,
         loaded: true, error: !d.rows.length && !(d.orders || []).length,
         lastSync: new Date(),
       });
@@ -589,16 +592,41 @@ export default class App extends React.Component {
     );
   }
 
-  /** Loading / empty state, filling the space the panels would occupy. */
+  /**
+   * Loading / empty state, filling the space the panels would occupy.
+   *
+   * The message used to be a flat "check the sheet IDs and tab names in .env",
+   * which sent people to look for a configuration bug on the 1st of the month
+   * when the real answer was that nobody had logged a lead yet. Three different
+   * situations, three different things to go and do.
+   */
   placeholder() {
-    const msg = !this.state.loaded ? 'Loading live sheet data…'
-      : 'No rows came back from the sheets. Check the sheet IDs and tab names in .env.';
+    const s = this.state;
+    const st = s.status || {};
+    const keys = Object.keys(st);
+    const names = { health: 'Healthscore', quick: 'Quick Reply', mens: 'Orders' };
+    const failed = keys.filter((k) => !st[k].ok);
+    const missing = keys.filter((k) => st[k].missingMonth);
+    const month = s.now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+    let msg;
+    if (!s.loaded) {
+      msg = 'Loading live sheet data…';
+    } else if (keys.length && failed.length === keys.length) {
+      // Every board failed: that really is wiring, and worth saying so.
+      msg = 'Could not read any sheet. Check the sheet IDs and credentials.';
+    } else if (missing.length) {
+      msg = `No "${st[missing[0]].missingMonth}" tab in ${missing.map((k) => names[k]).join(' and ')}. ` +
+        'Create it in the spreadsheet - the board picks it up on its own.';
+    } else {
+      msg = `No leads or orders recorded for ${month} yet.`;
+    }
     return (
       <div style={{
         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radius,
         boxShadow: T.shadow, fontSize: 22, fontWeight: 600,
-        color: this.state.error ? T.neg : T.label,
+        color: (this.state.error && (failed.length || missing.length)) ? T.neg : T.label,
       }}>{msg}</div>
     );
   }
