@@ -1,0 +1,14 @@
+{
+  "type": "module",
+  "dependencies": {
+    "express": "^5.1.0",
+    "liquidjs": "^10.24.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "i18n": "node ../_shared/public/i18n/extract.mjs",
+    "todo": "node ../_shared/public/i18n/todo.mjs",
+    "verify": "node ../_shared/public/i18n/verify.mjs",
+    "pretest": "npm run verify"
+  }
+}

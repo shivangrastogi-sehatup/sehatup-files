@@ -1,4 +1,4 @@
-{% comment %} womens-weight.liquid {% endcomment %}
+{% comment %}mens-wellness.liquid {% endcomment %}
 <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
@@ -11,7 +11,7 @@
 <script>
   (function() {
     // Fast-hide loader on home page for new users before the main engine even loads
-    const quizId = 'womens-weight';
+    const quizId = 'mens-wellness';
     const hasSession = localStorage.getItem('active_session_state_' + quizId) || localStorage.getItem('partialDocId_' + quizId);
     if (!hasSession) {
       const loader = document.getElementById('loader');
@@ -24,8 +24,8 @@
 <div id="questionnaire">
   <div class="container">
     <div class="header">
-      <title data-i18n="main-title">Women's Weight Management Score</title>
-      <h1 data-i18n="main-title">Women's Weight Management Score</h1>
+      <title data-i18n="main-title">Men's Sexual Wellness Score</title>
+      <h1 data-i18n="main-title">Men's Sexual Wellness Score</h1>
     </div>
 
     <div id="desktop-steps" class="desktop-steps-container"></div>
@@ -34,12 +34,12 @@
       <div class="mobile-indicator-card">
         <div class="mobile-info-wrapper">
           <div class="mobile-step-circle-wrapper">
-            <p class="mobile-step-label">STEP</p>
+            <p class="mobile-step-label" data-i18n="label-step">STEP</p>
             <div id="mobile-step-number-container" class="mobile-step-circle">1</div>
           </div>
           <div class="mobile-details-wrapper">
             <p id="mobile-question-counter" class="mobile-question-counter">Q1 / 1</p>
-            <p id="mobile-step-name" class="mobile-step-name">About You & Metrics</p>
+            <p id="mobile-step-name" class="mobile-step-name" data-i18n="about-you">About You</p>
             <div id="mobile-step-progress-bar">
               <div id="mobile-step-progress-fill" style="width: 0%;"></div>
             </div>
@@ -49,7 +49,7 @@
     </div>
 
     <div id="step-1" class="step active">
-      <h2 data-i18n="welcome-title">Welcome to the Women’s Weight & Metabolic Quiz!</h2>
+      <h2 data-i18n="welcome-title">Welcome to the Men's Sexual Health Quiz!</h2>
       <div class="welcome-content-flex">
         <ul>
           <li data-i18n="welcome-point-1">Takes just a few minutes</li>
@@ -63,81 +63,69 @@
       </div>
     </div>
 
-    <!-- STEP 2: ABOUT YOU & METRICS (Single UI Step with two sequential forms) -->
     <div id="step-2" class="step about-you-container">
-      
-      <!-- 2a: PERSONAL INFO FORM -->
-      <div id="user-info-section">
-        <h2 data-i18n="personal-info-title">Tell us a bit about yourself to personalize your experience.</h2>
-        <form id="about-you-form">
-          <div class="form-row">
-            <label for="name" data-i18n="label-name">Enter Your Full Name:</label>
-            <input type="text" id="name" placeholder="Your name" required data-i18n="placeholder-name">
-            <span id="name-error" class="error-message"></span>
-          </div>
-          <div class="form-row">
-            <label for="dob" data-i18n="label-dob">Enter Your Date of Birth:</label>
-            <input type="date" id="dob" required>
-            <span id="age-error" class="error-message"></span>
-          </div>
-          <div class="form-row">
-            <label for="phone" data-i18n="label-phone">Enter Your Phone Number:</label>
-            <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required data-i18n="placeholder-phone">
-            <span id="phone-error" class="error-message"></span>
-          </div>
-
-          <div class="navigation">
-            <button
-              type="button"
-              class="prev-btn"
-              data-action="prev"
-              data-step="1"
-             data-i18n="btn-prev">
-              Previous
-            </button>
-            <button type="button" class="next-btn" data-action="validate-user-info" data-i18n="btn-next">Next</button> 
-          </div>
-        </form>
-      </div>
-
-      <!-- 2b: HEALTH METRICS FORM (Initially hidden) -->
-      <div id="metrics-section" style="display: none;">
-        <h2 data-i18n="step-3-title">Enter your body measurements for personalized health metrics.</h2>
-        <form id="health-metrics-form">
-          <div class="form-row">
-            <label for="height" data-i18n="label-height">Height (in cm):</label>
-            <input type="number" id="height" placeholder="e.g. 165" min="100" max="250" required>
-            <span id="height-error" class="error-message"></span>
-          </div>
-          <div class="form-row">
-            <label for="currentWeight" data-i18n="label-current-weight">Current Weight (in kg):</label>
-            <input type="number" id="currentWeight" placeholder="e.g. 75" min="20" max="300" required>
-            <span id="weight-error" class="error-message"></span>
-          </div>
-          <div class="form-row">
-            <label for="targetWeight" data-i18n="label-target-weight">Target Weight (in kg):</label>
-            <input type="number" id="targetWeight" placeholder="e.g. 60" min="20" max="300" required>
-            <span id="targetWeight-error" class="error-message"></span>
-          </div>
-
-          <div class="navigation">
-            <button
-              type="button"
-              class="prev-btn"
-              data-action="prev-to-user-info"
-             data-i18n="btn-prev">
-              Previous
-            </button>
-            <!-- Moves to the first question group (Internal Step 3) -->
-            <button type="button" class="next-btn" data-action="validate-metrics" data-i18n="btn-next">Next</button>
-          </div>
-
-        </form>
-      </div>
-      
+      <h2 data-i18n="personal-info-title">Tell us a bit about yourself to personalize your experience.</h2>
+      <form id="about-you-form">
+        <div class="form-row">
+          <label for="name" data-i18n="label-name">Enter Your Full Name:</label>
+          <input type="text" id="name" placeholder="Your name" required data-i18n="placeholder-name">
+          <span id="name-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="dob" data-i18n="label-dob">Enter Your Date of Birth:</label>
+          <input type="date" id="dob" required>
+          <span id="age-error" class="error-message"></span>
+        </div>
+        <div class="form-row">
+          <label for="phone" data-i18n="label-phone">Enter Your Phone Number:</label>
+          <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required data-i18n="placeholder-phone">
+          <span id="phone-error" class="error-message"></span>
+        </div>
+        <div class="navigation">
+          <button
+            type="button"
+            class="prev-btn"
+            data-action="prev"
+            data-step="1"
+           data-i18n="btn-prev">
+            Previous
+          </button>
+          <button type="button" class="next-btn" data-action="validate-user-info" data-i18n="btn-next">Next</button>
+        </div>
+      </form>
     </div>
-    
-    <!-- STEP 3-6: QUESTIONS (Starts at internal step 3) -->
+
+    <div id="step-3" class="step">
+
+      <div id="concern-selection-content">
+
+        <h2 data-i18n="step-3-title">Select the challenge you’re facing - we’re here to help</h2>
+
+        <div class="options">
+
+          <button class="option-button" data-action="select-concern" data-concern-key="ed" data-step-id="3" data-i18n="btn-ed">
+            Erectile Dysfunction (ED)
+          </button>
+
+          <button class="option-button" data-action="select-concern" data-concern-key="pe" data-step-id="3" data-i18n="btn-pe">
+            Premature Ejaculation (PE)
+          </button>
+
+          <button class="option-button" data-action="select-concern" data-concern-key="both" data-step-id="3" data-i18n="btn-both">
+            Both
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="navigation" id="concern-navigation">
+        <button type="button" class="prev-btn" data-action="prev" data-step="2" data-i18n="btn-prev">
+          Previous
+        </button>
+      </div>
+    </div>
+
     <div id="step-question" class="step">
       <div id="question-content"></div>
       <div id="faq-container" class="faq-container" style="display: none"></div>
@@ -153,7 +141,6 @@
       </div>
     </div>
 
-    <!-- STEP 7: RESULTS (Internal Step 7 - last question group (6) + 1) -->
     <div id="result-page" class="step">
       <div class="result-navigation">
         <button class="back-arrow-btn" data-action="go-back-from-results">
@@ -167,11 +154,11 @@
               <h3 class="assessment-header">
                   <div style="display: flex; align-items: center;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; color: #2563eb;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    Assessment Report
+                    <span data-i18n="report-title">Assessment Report</span>
                   </div>
                   <div class="report-header-date">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                      Date: <span id="report-date" class="report-date-val"></span>
+                      <span data-i18n="label-report-date">Date:</span> <span id="report-date" class="report-date-val"></span>
                   </div>
               </h3>
 
@@ -179,11 +166,11 @@
                   <div class="header-info-stack">
                       <div class="details-grid-compact">
                           <div class="detail-item">
-                              <span class="detail-label">Name</span>
+                              <span class="detail-label" data-i18n="label-patient-name">Name</span>
                               <span id="user-name" class="detail-value"></span>
                           </div>
                           <div class="detail-item">
-                              <span class="detail-label">Age</span>
+                              <span class="detail-label" data-i18n="label-age">Age</span>
                               <span id="user-age" class="detail-value"></span>
                           </div>
                           <div class="detail-item">
@@ -191,7 +178,7 @@
                               <span id="user-category" class="detail-value"></span>
                           </div>
                           <div class="detail-item report-date-row">
-                              <span class="detail-label">Report Date</span>
+                              <span class="detail-label" data-i18n="label-report-date-row">Report Date</span>
                               <span class="detail-value report-date-val"></span>
                           </div>
                       </div>
@@ -221,7 +208,7 @@
               <div class="future-risk-section">
                   <div class="risk-intelligence-header">
                       <h2 data-i18n="risks-title">Potential Health Risks If Ignored</h2>
-                      <p class="risk-intelligence-description">If left untreated, these conditions may gradually impact your health and wellbeing.</p>
+                      <p class="risk-intelligence-description" data-i18n="risk-intro">If left untreated, these conditions may gradually impact your health and wellbeing.</p>
                   </div>
 
                   <div id="future-risk-tags" class="risk-cards-grid">
@@ -231,32 +218,32 @@
 
                   <div class="reassurance-medical-box">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      <span>Early treatment can significantly improve outcomes through lifestyle correction, medication, and guided therapy.</span>
+                      <span data-i18n="early-treatment">Early treatment can significantly improve outcomes through lifestyle correction, medication, and guided therapy.</span>
                   </div>
               </div>
 
               <!-- NEW PREMIUM CTA SECTION -->
               <div class="premium-cta-section">
                   <h3 data-i18n="detailed-report-title">Get Your Detailed HealthScore 360 Report</h3>
-                  <p>Receive your comprehensive 360° health analysis and personalized recovery roadmap directly on WhatsApp.</p>
+                  <p data-i18n="cta-360-desc">Receive your comprehensive 360° health analysis and personalized recovery roadmap directly on WhatsApp.</p>
                   
                   <button class="whatsapp-sticky-btn" data-action="open-otp">
                       <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" style="width: 24px; height: 24px;">
-                      Get My Report on WhatsApp
+                      <span data-i18n="btn-whatsapp-report">Get My Report on WhatsApp</span>
                   </button>
                   
                   <div class="cta-trust-indicators">
                       <div class="trust-item">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                          Private & Confidential
+                          <span data-i18n="trust-private">Private &amp; Confidential</span>
                       </div>
                       <div class="trust-item">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                          Reviewed by Experts
+                          <span data-i18n="trust-experts">Reviewed by Experts</span>
                       </div>
                       <div class="trust-item">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                          Takes &lt; 2 mins
+                          <span data-i18n="trust-time">Takes &lt; 2 mins</span>
                       </div>
                   </div>
               </div>
@@ -278,25 +265,25 @@
             </div>
           </a>
           <div class="treatment-plan">
-              <h4>Your Treatment Inclusions</h4>
+              <h4 data-i18n="treatment-inclusions-title">Your Treatment Inclusions</h4>
               <div class="treatment-grid">
                   <div class="treatment-item">
                       <div class="treatment-icon doctor-icon">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
                       </div>
-                      <span class="treatment-text">Expert Doctor Consultation</span>
+                      <span class="treatment-text" data-i18n="incl-doctor">Expert Doctor Consultation</span>
                   </div>
                   <div class="treatment-item">
                       <div class="treatment-icon medicine-icon">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
                       </div>
-                      <span class="treatment-text">Personalized Integrated Kit</span>
+                      <span class="treatment-text" data-i18n="incl-kit">Personalized Integrated Kit</span>
                   </div>
                   <div class="treatment-item">
                       <div class="treatment-icon plan-icon">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                       </div>
-                      <span class="treatment-text">Custom Diet & Lifestyle Plan</span>
+                      <span class="treatment-text" data-i18n="incl-diet">Custom Diet &amp; Lifestyle Plan</span>
                   </div>
               </div>
           </div>
@@ -308,18 +295,18 @@
             <div class="checkout-section">
               <div class="cart-summary">
                 <div class="summary-item">
-                    <span>Subtotal (MRP):</span>
+                    <span data-i18n="label-subtotal">Subtotal (MRP):</span>
                     <span id="total-mrp">0</span>
                 </div>
                 <div class="summary-item discount">
-                    <span>Product Discount:</span>
+                    <span data-i18n="label-product-discount">Product Discount:</span>
                     <span id="product-discount-val">0</span>
                 </div>
-                <div class="coupon-text-note">
+                <div class="coupon-text-note" data-i18n="coupon-note">
                     Use coupon <strong style="color: #4f46e5;">SEHAT10</strong> and get <strong>10% extra off</strong> on your first order
                 </div>
                 <div class="summary-total">
-                    <span>Total Payable:</span>
+                    <span data-i18n="label-total-amount">Total Payable:</span>
                     <span id="total-amount">0</span>
                 </div>
               </div>
@@ -387,9 +374,6 @@
   </div>
 </div>
 
-{% comment %}
-  These are your main JS files.
-{% endcomment %}
 <script>
   // 1. Initialize a global object to hold live Shopify data
   window.shopifyLiveProducts = {};
@@ -426,6 +410,5 @@
 </script>
 <script defer="defer" src="{{ 'firebase-config.js' | asset_url }}"></script>
 <script defer="defer" src="{{ 'product-database-common.js' | asset_url }}"></script>
-<script defer="defer" src="{{ 'config-womens-weight.js' | asset_url }}"></script>
-<script defer="defer" src="/i18n/hi.js"></script>
+<script defer="defer" src="{{ 'config-mens-health.js' | asset_url }}"></script>
 <script defer="defer" src="{{ 'questionnaire-engine.js' | asset_url }}"></script>

@@ -1,4 +1,3 @@
-// config-mens-health.js
 const questionBank = {
     ed: [{
         question: "Is getting or staying hard ever a challenge? How often?",
@@ -43,7 +42,7 @@ const questionBank = {
             score: 3
         }]
     }, {
-        question: "Currently taking any medicine for current problem or lifestyle modification",
+        question: "Currently taking any medicine for current problem or lifestyle modification?",
         options: [{
             text: "Medicine",
             score: 0
@@ -58,7 +57,7 @@ const questionBank = {
             score: 0
         }]
     }, {
-        question: "For how long have you has this condition?",
+        question: "For how long have you had this condition?",
         options: [{
             text: "Less than a month",
             score: 1
@@ -83,7 +82,7 @@ const questionBank = {
             score: 6
         }, {
             text: "Rarely",
-            score: 10
+            score: 3
         }]
     }, {
         question: "What do you believe is causing you to finish early?",
@@ -116,7 +115,7 @@ const questionBank = {
             score: 3
         }]
     }, {
-        question: "Currently taking any med. for current problem or lifestyle modification",
+        question: "Currently taking any medicine for current problem or lifestyle modification?",
         options: [{
             text: "Medicine",
             score: 0
@@ -156,7 +155,7 @@ const questionBank = {
             score: 6
         }, {
             text: "Rarely",
-            score: 10
+            score: 3
         }]
     }, {
         question: "How long can you keep up with your erection?",
@@ -248,6 +247,39 @@ const questionBank = {
     },],
 };
 const lifestyleQuestions = [{
+    question: "How many cigarettes (or similar substances) do you use daily?",
+    options: [{
+        text: "Never",
+        score: 0
+    }, {
+        text: "1-5",
+        score: 5
+    }, {
+        text: "6-10",
+        score: 8
+    }, {
+        text: "More than 10",
+        score: 10
+    },],
+}, {
+    question: "How often do you consume alcohol?",
+    options: [{
+        text: "Never",
+        score: 0
+    }, {
+        text: "Rarely",
+        score: 3
+    }, {
+        text: "Occasionally",
+        score: 5
+    }, {
+        text: "2-3 times a week",
+        score: 8
+    }, {
+        text: "Daily",
+        score: 10
+    },],
+}, {
     question: "How frequently do you consume cigarettes, alcohol, or similar substances on a daily basis?",
     options: [{
         text: "Very Frequently",
@@ -263,6 +295,37 @@ const lifestyleQuestions = [{
         score: 3
     }, {
         text: "Never",
+        score: 0
+    },],
+}, {
+    question: "Do you have any of the following health issues?",
+    multiple: true,
+    options: [{
+        text: "Heart Problem",
+        score: 0
+    }, {
+        text: "Blood Pressure",
+        score: 0
+    }, {
+        text: "Diabetes",
+        score: 0
+    }, {
+        text: "Kidney",
+        score: 0
+    }, {
+        text: "Liver",
+        score: 0
+    }, {
+        text: "TB",
+        score: 0
+    }, {
+        text: "Bronchial Asthma",
+        score: 0
+    }, {
+        text: "HIV+",
+        score: 0
+    }, {
+        text: "None",
         score: 0
     },],
 }, {
@@ -322,8 +385,6 @@ const timelineData = {
 };
 const lifestyleTips = {
     "GENERAL": ["Eat foods that boost energy and hormones like almonds, pumpkin seeds, dates, and dark chocolate ", "Sleep 7–8 hours regularly and avoid stress, as it affects performance", "Stay active—30 minutes of walking or light exercise can help improve stamina", "Avoid smoking, alcohol, and junk food—they affect blood flow and energy", "Include zinc and magnesium-rich foods like seeds, leafy greens, and dry fruits", "Maintain daily physical activity",],
-    // Keys are lowercase because saveSubmission lowercases the condition before
-    // lookup, and resultRules stores lifestyleConditions lowercase to match.
     "heart problem": ["Eat home-cooked meals with less oil, salt, and sugar", "Add heart-healthy foods like walnuts, oats, garlic, and fruits", "Avoid fried and packaged items", "Walk daily for 30 minutes and avoid sitting for long hours",],
     "blood pressure": ["Limit salt—avoid salty snacks, papads, and pickles", "Eat potassium-rich foods like bananas, tomatoes, and spinach", "Reduce tea/coffee to 1–2 cups a day", "Manage stress through deep breathing, meditation, or evening walks", "Drink enough water",],
     "diabetes": ["Avoid sugar, sweets, and white rice or maida", "Eat small, regular meals with plenty of vegetables, dal, and whole grains like jowar or brown rice", "Avoid fruit juices—eat whole fruits instead", "Walk after meals and monitor blood sugar regularly",],
@@ -349,9 +410,8 @@ const causeMapping = {
     },
     "What do you believe is causing you to finish early?": {
         "High Sensitivity": "Over sensitive penis, hormonal imbalance, infection, genetic predisposition",
-        "Anxiety": "Performance anxiety",
-        "Both": "Over sensitive penis, hormonal imbalance, infection, genetic predisposition",
-        "I do not know": "Performance anxiety, stress & depression",
+        "Anxiety": "Performance anxiety, stress & depression",
+        "Both": "Over sensitive penis, hormonal imbalance, infection, genetic predisposition, performance anxiety, stress & depression",
     },
     "How quickly do you typically finish during intercourse?": {
         "Less than 1 minute": "Rushing sex, performance anxiety, stress & depression, guilt & shame",
@@ -362,7 +422,7 @@ const causeMapping = {
         "Less than a month": "Psychological triggers, lifestyle factors, hormonal fluctuation, relationship dynamics",
         "Less than 6 months": "Psychological triggers, poor sleep, substance use, hormonal imbalances, relationship issues",
         "6 months - 1 year": "Stress & depression, chronic medical or neurological conditions, erectile dysfunction",
-        "1 year +": "Stress & depression, chronic medical or neurological conditions, erectile dysfunction, infrequent sex, substance use",
+        "1 year+": "Stress & depression, chronic medical or neurological conditions, erectile dysfunction, infrequent sex, substance use",
     },
     "How long can you keep up with your erection?": {
         "Less than 1 minute": "Severe erectile dysfunction, likely vascular or neurological",
@@ -377,31 +437,25 @@ const causeMapping = {
     "What according to you is causing you to finish quickly?": {
         "High Sensitivity": "Over sensitive penis, hormonal imbalance, infection, genetic predisposition",
         "Anxiety": "Performance anxiety, stress & depression",
-        "Both": "Performance anxiety, stress & depression, hormonal imbalance",
-        "I don't know": "Performance anxiety, stress & depression"
+        "Both": "Over sensitive penis, hormonal imbalance, infection, genetic predisposition, performance anxiety, stress & depression"
     },
     "What is your ejaculation timing while performing the intercourse?": {
         "Less than 1 minute": "Rushed sex, infrequent sex, hormonal disturbance, chronic metabolic condition",
         "1-5 minutes": "Rushed sex, infrequent sex, hormonal disturbance, stress",
-        "5-10 minutes": "Psychological triggers"
-    },
-    "For how long have you has this condition?": {
-        "Less than a month": "Psychological triggers, lifestyle factors, hormonal fluctuation, relationship dynamics",
-        "Less than 6 months": "Psychological triggers, poor sleep, substance use, hormonal imbalances, relationship issues",
-        "6 months - 1 year": "Stress & depression, chronic medical or neurological conditions, erectile dysfunction",
-        "1 year +": "Stress & depression, chronic medical or neurological conditions, erectile dysfunction, infrequent sex, substance use"
+        "5-10 minutes": "Psychological triggers",
+        "More than 10 minutes": "Psychological triggers"
     },
     "How frequently do you consume cigarettes, alcohol, or similar substances on a daily basis?": {
         "Very Frequently": "Substance abuse is a contributing factor",
         "Frequently": "Substance abuse is a contributing factor",
         "Sometimes": "Chronic substance use may worsen the existing condition"
     },
-    "Do you have any of the following health issues?": {
+    "Do you have any of the following health issues? If yes, tick those apply.": {
         "Heart Problem": "Vascular issues due to heart problems",
         "Blood Pressure": "Vascular issues due to blood pressure problems",
         "Diabetes": "Nerve damage or poor blood flow from diabetes",
-        "High cholesterol": "Vascular or neurological distress due to high cholesterol",
-        "Thyroid issues": "Hormonal imbalance due to thyroid issues"
+        "High Cholesterol": "Vascular or neurological distress due to high cholesterol",
+        "Thyroid Issues": "Hormonal imbalance due to thyroid issues"
     }
 };
 const detailedFutureRisks = {
@@ -410,9 +464,6 @@ const detailedFutureRisks = {
     both: ['Escalation to complete sexual dysfunction', 'Long-term hormonal dysregulation', 'Risk of psychosomatic disorders (chronic fatigue, insomnia, substance abuse)', 'Isolation, social withdrawal, and reduced quality of life', 'Chronic depression', 'Relationship conflicts']
 };
 const questionnaireConfig = {
-
-    // This quiz's own wording, in both languages. Merged over the shared table in
-    // questionnaire-engine.js, which holds only what all four quizzes share.
     uiStrings: {
         en: {
             "main-title": "Men's Sexual Wellness Score",
@@ -487,21 +538,42 @@ const questionnaireConfig = {
         return "Low Risk";
     },
     calculateScore: (allAnswers, userInfo, config) => {
+        const catalogue = {};
+        const addQ = (q) => { if (q && q.question && !catalogue[q.question]) catalogue[q.question] = q; };
+        (config.questionGroups || []).forEach(g => (g.questions || []).forEach(addQ));
+        Object.keys(config.questionBank || {}).forEach(k => (config.questionBank[k] || []).forEach(addQ));
+
+        const maxOf = (q) => {
+            const opts = q.options || [];
+            if (!opts.length) return 0;
+            if (q.multiple) {
+                return opts
+                    .filter(o => String(o.text).trim().toLowerCase() !== 'none')
+                    .reduce((t, o) => t + (o.score || 0), 0);
+            }
+            return Math.max(...opts.map(o => o.score || 0));
+        };
+
         let totalRisk = 0;
-        (allAnswers.sexual_health || []).forEach(a => {
-            totalRisk += a.score || 0;
+        let maxRisk = 0;
+        ['sexual_health', 'lifestyle'].forEach((key) => {
+            (allAnswers[key] || []).forEach((a) => {
+                totalRisk += a.score || 0;
+                const def = catalogue[a.question];
+                if (def) maxRisk += maxOf(def);
+            });
         });
-        (allAnswers.lifestyle || []).forEach(a => {
-            totalRisk += a.score || 0;
-        });
-        const MAX_POSSIBLE_RISK = 80;
-        const healthScore = 100 * (1 - (totalRisk / MAX_POSSIBLE_RISK));
-        return Math.max(0, Math.min(100, Math.round(healthScore)));
+
+        if (!maxRisk) return 0;
+
+        const healthScore = 100 * (1 - (totalRisk / maxRisk));
+
+        const MAX_DISPLAY_SCORE = 95;
+        return Math.max(0, Math.min(MAX_DISPLAY_SCORE, Math.round(healthScore)));
     },
     productRules: (score, allAnswers, productDatabase, userInfo, config) => {
         const concernText = allAnswers.concern?.[0]?.text?.toLowerCase() || 'ed';
 
-        // Use the Stable Internal IDs from PRODUCT_REGISTRY
         let baseProductKeys = ['ASHWAGANDHA', 'SHILAJIT'];
 
         if (concernText.includes('ed') || concernText.includes('both')) {
@@ -538,11 +610,8 @@ const questionnaireConfig = {
         }
         const generalTimeline = timelineData[concernKey] || timelineData.ed;
 
-        // Reported comorbidities, pulled from the multi-select medical-history
-        // question in the 'lifestyle' group. Stored lowercase to match the keys
-        // in lifestyleTips and the convention used by the other questionnaires.
         const medicalAnswer = (allAnswers.lifestyle || []).find(a =>
-            String(a.question || '').toLowerCase().includes('health issues')
+            String(a.question || '').toLowerCase().includes('tick those apply')
         );
         const selected = medicalAnswer
             ? (Array.isArray(medicalAnswer.text) ? medicalAnswer.text : [medicalAnswer.text])
@@ -551,11 +620,24 @@ const questionnaireConfig = {
             .map(t => String(t).trim().toLowerCase())
             .filter(t => t && t !== 'none');
 
+        const possibleCauses = [];
+        for (const groupKey in allAnswers) {
+            (allAnswers[groupKey] || []).forEach((answer) => {
+                const qCauses = config.causeMapping[answer.question];
+                if (!qCauses) return;
+                const texts = Array.isArray(answer.text) ? answer.text : [answer.text];
+                texts.forEach((text) => {
+                    const cause = qCauses[text];
+                    if (cause && !possibleCauses.includes(cause)) possibleCauses.push(cause);
+                });
+            });
+        }
+
         return {
             issueTitle: issueTitle,
             conditionTextHTML: `<p>${baseText}</p>`,
             futureRisks: detailedFutureRisks[concernKey] || detailedFutureRisks.ed,
-            possibleCauses: ['Psychological triggers', 'Vascular deficiency', 'Hormonal imbalance'],
+            possibleCauses: possibleCauses,
             timelineData: {
                 general: generalTimeline,
                 extras: []

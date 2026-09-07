@@ -1,60 +1,3 @@
-{%- comment -%}
-  ============================================================================
-  SehatUP article template - redesign
-  ============================================================================
-  Replaces sections/main-article.liquid. Keep the old file as main-article.bak
-  so a bad deploy is one rename away from a rollback.
-
-  WHAT THIS SECTION OWNS
-    hero, title, article body typography, the formulation panel, the
-    consultation rail, the Latest blogs list, the back link.
-
-  ONE CARD, ONE TITLE
-    The article is a bordered card. The featured image sits flush inside the
-    top of it, the <h1> sits directly under the image, then the byline row.
-    Nothing is duplicated and there is no separate hero band: the banner is the
-    picture, the h1 is the title, read in that order. The image is always full
-    card width at its own aspect ratio, which is what caps its height - a 16:9
-    banner in a 920px column is 517px tall whatever the viewport does.
-
-  WHY SO LITTLE COPY IS IN THE SETTINGS
-    Section settings belong to the template, so anything typed there shows on
-    every post in the blog. Per-post content comes from the article itself or
-    from a metafield:
-      article.metafields.custom.faqs       the FAQ (written in the body, see below)
-      article.metafields.custom.formulation the ingredient panel, JSON
-      article.metafields.custom.reviewed_by the byline reviewer, single line text
-
-  WHAT IT DEPENDS ON
-    snippets/sehatup-attribution     for utm capture (optional, degrades fine)
-    blog-lead-sheet.gs               the Apps Script that writes the sheet row
-
-  THE FAQ IS NOT OURS
-    The FAQs live inside article.content as <div class="faq-section"> with
-    native <details>, written by hand in the Shopify editor. This section
-    renders no FAQ of its own and emits no FAQPage JSON-LD. It only styles
-    what is already there.
-
-  INSTALL
-    1. Themes -> Edit code -> Sections -> main-article.liquid
-       Copy the current contents into a new file main-article-old.liquid first.
-    2. Paste this file over main-article.liquid.
-    3. Customize -> Blog posts -> if the standalone "FAQ accordion" section is
-       still on the article template, remove it. article.metafields.custom.faqs
-       is empty on these posts, so it falls through to its preset placeholder
-       blocks and prints three FAQs nobody wrote.
-    4. Set up the sheet: follow the INSTALL block in blog-lead-sheet.gs, then
-       paste the Apps Script /exec URL into "Lead endpoint URL" and the same
-       token into "Shared token". Until the URL is set the form validates and
-       shows its success state but posts nothing, and logs a console warning
-       saying so.
-
-  DESIGN NOTES
-    Red is reserved for actions. Nothing decorative is red, so the one red
-    button on screen is always the thing to press. Wine carries structure and
-    the formulation panel. Green appears only on affirmative list markers.
-{%- endcomment -%}
-
 {%- liquid
   assign words = article.content | strip_html | split: ' ' | size
   assign read_min = words | divided_by: 220 | plus: 1
@@ -114,11 +57,40 @@
   <div class="su-shell">
     <article class="su-card">
       {%- if article.image -%}
+        {%- liquid
+          assign banner_h = section.settings.banner_height | default: 560
+          assign banner_mode = section.settings.banner_fit | default: 'auto'
+
+          # AUTO decides per article, from the image's own shape.
+          #
+          # The banner is width:100% with aspect-ratio from the image and a max-height
+          # of banner_h. So the height only gets clamped - and object-fit:cover only
+          # crops - when the image is TALLER than the frame at its widest. The frame
+          # tops out at 983px (measured: a 1384px shell, minus the 308px rail and the
+          # 28px gap), so the break-even shape is 983 / banner_h.
+          #
+          # At or above that ratio the image fills the frame edge to edge and keeps
+          # doing so at every width down to mobile, because the height scales with it
+          # and never reaches the cap. Below it, filling would cut the picture, so the
+          # whole image is shown instead and the frame letterboxes it.
+          #
+          # The point of deciding here rather than in a setting: banners can be replaced
+          # one post at a time, and each one starts filling the frame the day its own
+          # image is the right shape. No flag day, no per-article switch.
+          if banner_mode == 'auto'
+            assign fill_from = 983.0 | divided_by: banner_h
+            if article.image.aspect_ratio >= fill_from
+              assign banner_mode = 'fill'
+            else
+              assign banner_mode = 'fit'
+            endif
+          endif
+        -%}
         <figure
-          class="su-card__art su-card__art--{{ section.settings.banner_fit | default: 'fit' }}"
+          class="su-card__art su-card__art--{{ banner_mode }}"
           style="
             --su-banner-ratio: {{ article.image.aspect_ratio }};
-            --su-banner-h: {{ section.settings.banner_height | default: 320 }}px;
+            --su-banner-h: {{ banner_h }}px;
             --su-banner-y: {{ section.settings.banner_focus | default: 0 }}%;
           "
         >
@@ -151,7 +123,7 @@
             <span>{{ read_min }} min read</span>
             {%- if byline != blank -%}
               <span class="su-meta__dot" aria-hidden="true"></span>
-              <span>By {{ byline | escape }}</span>
+              <span>By <a class="su-meta__author" href="{{ routes.root_url }}">{{ byline | escape }}</a></span>
             {%- endif -%}
             {%- if reviewer != blank -%}
               <span class="su-meta__dot" aria-hidden="true"></span>
@@ -234,19 +206,22 @@
 
     {%- comment -%} --------------------------------------------------- rail {%- endcomment -%}
     <aside class="su-rail" data-su-rail>
+      {%- comment -%}
+        CTA and Latest share ONE sticky box. Previously the CTA was sticky on its
+        own inside a growing flex child, so it travelled and the list sat at the
+        foot of the column. Now the whole rail scrolls with the article until its
+        bottom meets the viewport, then pins - so a reader who scrolls past the
+        form still has the list, and the article keeps going underneath.
+      {%- endcomment -%}
+      <div class="su-rail__inner" data-su-rail-inner>
       {%- if section.settings.show_cta -%}
-        <div class="su-rail__stick">
         <div class="su-consult" data-su-consult>
           <div class="su-consult__body" data-su-consult-body>
-            {%- if section.settings.cta_status != blank -%}
-              <p class="su-consult__status"><span aria-hidden="true"></span>{{ section.settings.cta_status | escape }}</p>
-            {%- endif -%}
             <h2 class="su-consult__title">{{ section.settings.cta_title | escape }}</h2>
-            <p class="su-consult__dek">{{ section.settings.cta_dek | escape }}</p>
 
             <form class="su-form" data-su-form novalidate>
               <div class="su-field">
-                <label class="su-label" for="su-name-{{ section.id }}">Your name</label>
+                <label class="su-label su-sr" for="su-name-{{ section.id }}">Your name</label>
                 <input
                   class="su-input"
                   id="su-name-{{ section.id }}"
@@ -262,7 +237,7 @@
               </div>
 
               <div class="su-field">
-                <label class="su-label" for="su-phone-{{ section.id }}">Mobile number</label>
+                <label class="su-label su-sr" for="su-phone-{{ section.id }}">Mobile number</label>
                 <div class="su-phone">
                   <span class="su-phone__cc" aria-hidden="true">+91</span>
                   <input
@@ -320,22 +295,6 @@
 
           <p class="su-live" role="status" aria-live="polite" data-su-live></p>
 
-          <div class="su-consult__foot">
-          <ul class="su-trust">
-            {%- if section.settings.trust_1 != blank -%}<li>{{ section.settings.trust_1 | escape }}</li>{%- endif -%}
-            {%- if section.settings.trust_2 != blank -%}<li>{{ section.settings.trust_2 | escape }}</li>{%- endif -%}
-            {%- if section.settings.trust_3 != blank -%}<li>{{ section.settings.trust_3 | escape }}</li>{%- endif -%}
-          </ul>
-
-          {%- if section.settings.whatsapp_url != blank -%}
-            <a class="su-wa" href="{{ section.settings.whatsapp_url }}" rel="noopener">
-              <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor"><path d="M8 0a8 8 0 0 0-6.8 12.2L0 16l3.9-1.2A8 8 0 1 0 8 0Zm4.6 11.3c-.2.5-1.1 1-1.5 1-.4.1-.9.1-1.4-.1a12 12 0 0 1-4.6-4c-.3-.5-.6-1.2-.6-1.8 0-.7.4-1.1.6-1.3a.7.7 0 0 1 .5-.2h.4c.1 0 .3 0 .5.4l.6 1.4c0 .1.1.3 0 .4l-.3.4-.2.3c-.1.1-.2.2 0 .4a8 8 0 0 0 3.2 2.5c.2.1.3.1.4 0l.7-.9c.1-.2.2-.1.4-.1l1.4.7c.2.1.3.2.4.3v.6Z"/></svg>
-            {{ section.settings.whatsapp_label | escape }}
-          </a>
-          {%- endif -%}
-          </div>
-        </div>
-        </div>
       {%- endif -%}
 
       {%- comment -%} ------------------------------------------ latest blogs {%- endcomment -%}
@@ -398,6 +357,7 @@
           </a>
         </nav>
       {%- endif -%}
+      </div>
     </aside>
   </div>
 
@@ -427,6 +387,12 @@
   --su-brand-tint: rgba(238, 32, 74, 0.09);
   --su-leaf: #2f6b4f;
   --su-paper: #ffffff;
+  /* Both rail cards share one shadow. They used to carry a 1px outline as well,
+     which read as a doubled edge where the two cards met. The shadow alone gives
+     them their lift and keeps them clearly separate. */
+  --su-rail-card-shadow:
+    0 1px 2px rgba(26, 18, 32, 0.05),
+    0 14px 30px -16px rgba(26, 18, 32, 0.22);
   --su-surface: #f7f7f8;
   --su-line: #e6e6e6;
   --su-sticky-top: 20px;
@@ -543,19 +509,19 @@
   object-position: 50% var(--su-banner-y, 0%);
 }
 
-.su-card__body { padding: clamp(22px, 3vw, 40px); }
+.su-card__body { padding: clamp(18px, 2.2vw, 30px); }
 
 .su-card__head {
-  padding-bottom: 22px;
-  margin-bottom: 26px;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
   border-bottom: 1px solid var(--su-line);
 }
 .su-card__title {
   margin: 0;
   font-family: var(--su-display);
   font-weight: 800;
-  font-size: clamp(25px, 3vw, 36px);
-  line-height: 1.16;
+  font-size: clamp(22px, 2.3vw, 29px);
+  line-height: 1.18;
   letter-spacing: -0.032em;
   color: var(--su-ink);
   text-wrap: balance;
@@ -564,9 +530,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 9px;
-  margin: 14px 0 0;
-  font-size: 13px;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 12.5px;
   color: var(--su-muted);
 }
 .su-meta__dot {
@@ -576,12 +542,25 @@
   background: #c9c9c9;
 }
 .su-meta__review { color: var(--su-leaf); font-weight: 600; }
+/* Matches the in-article link treatment: brand colour at rest, with the
+   underline only showing up on hover and focus. */
+.su-meta__author {
+  color: var(--su-brand);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 140ms ease;
+}
+.su-meta__author:hover,
+.su-meta__author:focus-visible {
+  border-bottom-color: var(--su-brand);
+}
 
 /* ---------------------------------------------------------------- shell */
 .su-shell {
   max-width: 1320px;
   margin: 0 auto;
-  padding: clamp(20px, 3vw, 34px) clamp(16px, 4vw, 32px) 72px;
+  padding: clamp(14px, 2vw, 24px) clamp(14px, 3.2vw, 26px) 56px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 24px;
@@ -603,39 +582,39 @@
    what the split in the script below is for. */
 .su-post .su-rte { max-width: 72ch; }
 .su-post .su-rte > *:first-child { margin-top: 0; }
-.su-post .su-rte--tail { margin-top: 52px; }
+.su-post .su-rte--tail { margin-top: 34px; }
 
-.su-post .su-rte p { margin: 0 0 20px; }
+.su-post .su-rte p { margin: 0 0 15px; }
 .su-post .su-rte--lead > p:first-of-type {
-  font-size: 19px;
-  line-height: 1.62;
+  font-size: 17px;
+  line-height: 1.58;
   color: var(--su-ink);
 }
 
 .su-post .su-rte h2 {
   font-family: var(--su-display);
   font-weight: 700;
-  font-size: clamp(23px, 2.3vw, 29px);
-  line-height: 1.22;
-  letter-spacing: -0.024em;
+  font-size: clamp(19px, 1.8vw, 23px);
+  line-height: 1.26;
+  letter-spacing: -0.02em;
   color: var(--su-ink);
-  margin: 0 0 18px;
-  padding-top: 26px;
+  margin: 0 0 13px;
+  padding-top: 19px;
   border-top: 1px solid var(--su-line);
   text-wrap: balance;
 }
-.su-post .su-rte h2:not(:first-child) { margin-top: 52px; }
+.su-post .su-rte h2:not(:first-child) { margin-top: 34px; }
 
 .su-post .su-rte h3 {
   font-family: var(--su-sans);
   font-weight: 700;
-  font-size: 18px;
-  line-height: 1.4;
+  font-size: 16.5px;
+  line-height: 1.42;
   color: var(--su-ink);
-  margin: 34px 0 10px;
+  margin: 24px 0 8px;
   letter-spacing: -0.005em;
 }
-.su-post .su-rte h4 { font-size: 16px; font-weight: 700; color: var(--su-ink); margin: 26px 0 8px; }
+.su-post .su-rte h4 { font-size: 15px; font-weight: 700; color: var(--su-ink); margin: 19px 0 6px; }
 
 .su-post .su-rte ul,
 .su-post .su-rte ol { margin: 0 0 22px; padding-left: 0; list-style: none; }
@@ -838,6 +817,17 @@
 
 /* ----------------------------------------------------------------- rail */
 .su-rail { min-width: 0; }
+/* One sticky box holding the CTA and the Latest list. The top offset is set
+   from script: a rail shorter than the viewport pins at --su-sticky-top, a
+   taller one gets a NEGATIVE top so it scrolls with the article and pins only
+   once its own bottom is on screen. */
+.su-rail__inner { display: flex; flex-direction: column; gap: 16px; }
+
+/* Labels stay for screen readers; the placeholder carries them visually. */
+.su-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 /* The rail stretches to the full grid row on purpose. align-self:start would
    collapse it to its content height and the sticky card would scroll away
    halfway down the article, which is the one thing it must not do. */
@@ -854,12 +844,9 @@
 .su-consult {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--su-line);
   border-radius: 16px;
   background: var(--su-paper);
-  box-shadow:
-    0 1px 2px rgba(26, 18, 32, 0.05),
-    0 14px 30px -16px rgba(26, 18, 32, 0.22);
+  box-shadow: var(--su-rail-card-shadow);
 }
 .su-consult__body { padding: 20px 18px 18px; }
 
@@ -1078,12 +1065,16 @@
    what makes the list scan: every row is the same height whether the headline
    is four words or fourteen, so the eye runs down the thumbnails instead of a
    ragged left edge. */
+/* No outer border. The rail is a flex column with its own gap, so the card
+   border sat a hair away from the consultation card above it and the two read as
+   one doubled edge. The tinted ground and the row rules separate it well enough.
+   margin-top is gone too: the flex gap already owns that space, and having both
+   made the spacing above the list different from every other gap in the rail. */
 .su-latest {
-  margin-top: 20px;
   background: var(--su-paper);
-  border: 1px solid var(--su-line);
   border-radius: 16px;
-  padding: 18px 18px 16px;
+  padding: 16px 18px 14px;
+  box-shadow: var(--su-rail-card-shadow);
 }
 .su-latest__label {
   margin: 0 0 4px;
@@ -1224,14 +1215,8 @@
 
 @media (min-width: 990px) {
   .su-shell { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
-  /* Flex column so the Latest list can sit at the foot of the rail: the CTA
-     travels with the reader, the list waits at the finish line. */
-  .su-rail { display: flex; flex-direction: column; }
-  /* The sticky card lives in a growing box, so it stops travelling exactly
-     where the Latest list begins instead of sliding over it. */
-  .su-rail__stick { flex: 1 1 auto; min-width: 0; }
-  .su-latest { flex: none; }
-  .su-consult { position: sticky; top: var(--su-sticky-top); }
+  /* The whole rail is the sticky unit now, not the card inside it. */
+  .su-rail__inner { position: sticky; top: var(--su-rail-top, var(--su-sticky-top)); }
   .su-bar { display: none; }
 }
 
@@ -1297,6 +1282,63 @@
     }
     measureHeader();
     window.addEventListener('resize', measureHeader, { passive: true });
+
+    /* -------------------------------------------------- rail scroll-then-stick
+
+       A sticky element pins at its top offset, so a rail TALLER than the viewport
+       pins straight away and its lower half - the Latest list - can never be
+       reached by scrolling. The fix is a NEGATIVE top: park the rail so its own
+       bottom lines up with the bottom of the viewport. It then travels with the
+       article until that point and pins there, while the article keeps going.
+       A rail shorter than the viewport keeps the ordinary positive offset.
+
+       Measured, not assumed: the height depends on how many Latest items the blog
+       has and whether the CTA is switched on at all. */
+    var railInner = root.querySelector('[data-su-rail-inner]');
+    function measureRail() {
+      if (!railInner) return;
+      // Under 990px the rail is not sticky - drop any stale value from a resize.
+      if (window.innerWidth < 990) { root.style.removeProperty('--su-rail-top'); return; }
+      var stickyTop = parseInt(window.getComputedStyle(root).getPropertyValue('--su-sticky-top'), 10) || 20;
+      var railH = railInner.getBoundingClientRect().height;
+      var room = window.innerHeight - stickyTop - 16;
+      var top = railH <= room ? stickyTop : Math.round(window.innerHeight - railH - 16);
+      root.style.setProperty('--su-rail-top', top + 'px');
+    }
+    /* ------------------------------------------ keep sticky alive in the theme
+
+       position: sticky stops working, silently, if ANY ancestor is a scroll
+       container - and `overflow: hidden` makes one. Themes put overflow-x: hidden
+       on a page wrapper all the time to kill a horizontal scrollbar, which is
+       exactly why this rail can scroll away on a live store while behaving
+       perfectly on its own.
+
+       `overflow: clip` crops identically but does NOT create a scroll container,
+       so switching those ancestors over restores sticky and changes nothing about
+       how the page looks. Only ancestors already computed as hidden are touched. */
+    function unblockSticky() {
+      if (!railInner) return;
+      if (!window.CSS || !CSS.supports || !CSS.supports('overflow', 'clip')) return;
+      var node = railInner.parentNode;
+      var fixed = [];
+      while (node && node.nodeType === 1 && node !== document.documentElement) {
+        var cs = window.getComputedStyle(node);
+        var hit = false;
+        if (cs.overflowX === 'hidden') { node.style.overflowX = 'clip'; hit = true; }
+        if (cs.overflowY === 'hidden') { node.style.overflowY = 'clip'; hit = true; }
+        if (hit) fixed.push(node.tagName.toLowerCase() + (node.id ? '#' + node.id : '') + (node.className && typeof node.className === 'string' ? '.' + node.className.trim().split(/s+/).join('.') : ''));
+        node = node.parentNode;
+      }
+      if (fixed.length) console.info('[su-article] sticky rail: switched overflow hidden to clip on', fixed.join(', '));
+    }
+    unblockSticky();
+
+    measureRail();
+    window.addEventListener('resize', measureRail, { passive: true });
+    // The rail grows as the Latest thumbnails load, and the offset is wrong until
+    // they have.
+    window.addEventListener('load', measureRail);
+    if (window.ResizeObserver && railInner) new ResizeObserver(measureRail).observe(railInner);
 
     /* ------------------------------------------------------ progress bar */
     if (fill) {
@@ -1600,13 +1642,14 @@
       "id": "banner_fit",
       "label": "Banner",
       "options": [
-        { "value": "fit", "label": "Show the whole image" },
-        { "value": "fill", "label": "Fill the frame and crop" }
+        { "value": "auto", "label": "Automatic - fill if it fits, else show whole" },
+        { "value": "fit", "label": "Always show the whole image" },
+        { "value": "fill", "label": "Always fill the frame and crop" }
       ],
-      "default": "fit",
-      "info": "Showing the whole image leaves space at the sides of taller banners. Filling crops them."
+      "default": "auto",
+      "info": "Automatic reads each post's own image: wide enough to fill the frame without losing anything and it fills edge to edge, otherwise the whole image is shown with space around it. At a 560px height that means any 16:9 banner fills. Force one mode with the other two options."
     },
-    { "type": "range", "id": "banner_height", "label": "Banner height", "min": 200, "max": 560, "step": 20, "unit": "px", "default": 320, "info": "The most vertical space the banner may take." },
+    { "type": "range", "id": "banner_height", "label": "Banner height", "min": 200, "max": 560, "step": 20, "unit": "px", "default": 560, "info": "The most vertical space the banner may take. It also sets the shape a banner needs to fill the frame: 983 divided by this number. At 560 that is 1.76, so ordinary 16:9 images fill it exactly." },
     { "type": "range", "id": "banner_focus", "label": "Banner focal point", "min": 0, "max": 100, "step": 5, "unit": "%", "default": 0, "info": "Only used when the banner fills the frame. 0 keeps the top, where these banners put their title." },
 
     { "type": "header", "content": "Byline" },

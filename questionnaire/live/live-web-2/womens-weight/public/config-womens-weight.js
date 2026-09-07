@@ -1,9 +1,3 @@
-/**
- * Internal Helper Functions
- * These are helper utilities for the main logic functions.
- */
-
-// Calculates age from a 'YYYY-MM-DD' date string
 const _calculateAge = (dobString) => {
     if (!dobString) return 0;
     const dob = new Date(dobString);
@@ -12,14 +6,12 @@ const _calculateAge = (dobString) => {
     return Math.abs(ageDt.getUTCFullYear() - 1970);
 };
 
-// Calculates BMI
 const _calculateBmi = (height, weight) => {
     if (!height || !weight || height === 0 || weight === 0) return 0;
     const heightInMeters = parseFloat(height) / 100;
     return parseFloat(weight) / (heightInMeters * heightInMeters);
 };
 
-// Gets BMI classification string
 const _getBmiClass = (bmi) => {
     if (bmi < 18.5) return "Underweight";
     if (bmi <= 24.9) return "Normal weight";
@@ -29,7 +21,6 @@ const _getBmiClass = (bmi) => {
     return "Obese Class III";
 };
 
-// Helper to check for answers (single and multi-select)
 const _hasAnswer = (allAnswers, groupKey, answerText) => {
     const group = allAnswers[groupKey];
     if (!group) return false;
@@ -37,22 +28,14 @@ const _hasAnswer = (allAnswers, groupKey, answerText) => {
 
     return group.some(answer => {
         if (Array.isArray(answer.text)) {
-            // Multi-select
             return answer.text.some(text => String(text).toLowerCase().includes(lowerAnswerText));
         } else {
-            // Single-select
             return String(answer.text).toLowerCase().includes(lowerAnswerText);
         }
     });
 };
 
-/**
- * Main Questionnaire Configuration Object
- */
 const questionnaireConfig = {
-
-    // This quiz's own wording, in both languages. Merged over the shared table in
-    // questionnaire-engine.js, which holds only what all four quizzes share.
     uiStrings: {
         en: {
             "main-title": "Women's Weight Management Score",
@@ -74,11 +57,6 @@ const questionnaireConfig = {
         },
     },
     id: 'womens-weight',
-
-    /**
-     * QUESTION GROUPS
-     * This section defines all questions for each step.
-     */
     questionGroups: [
         {
             step: 3,
@@ -122,7 +100,7 @@ const questionnaireConfig = {
                 {
                     question: "During the past 6 months my weight has increased by.",
                     options: [
-                        { text: "1-3Kg", score: 0 },
+                        { text: "1-3Kg", score: 1 },
                         { text: "3-6Kg", score: 3 },
                         { text: "6-10Kg", score: 6 },
                         { text: "More than 10kg", score: 10 },
@@ -132,7 +110,7 @@ const questionnaireConfig = {
                     question: "Which body type do you identify with?",
                     options: [
                         { text: "Normal weight", score: 1 },
-                        { text: "Over weight", score: 3 },
+                        { text: "Overweight", score: 3 },
                         { text: "Obese class 1", score: 6 },
                         { text: "Obese class 2", score: 8 },
                         { text: "Obese class 3", score: 15 },
@@ -141,10 +119,10 @@ const questionnaireConfig = {
                 {
                     question: "How many hours do you sleep daily?",
                     options: [
-                        { text: "Less than 5 hours", score: 6 },
-                        { text: "5-6 hours", score: 3 },
+                        { text: "Less than 5 hours", score: 10 },
+                        { text: "5-6 hours", score: 6 },
                         { text: "7-8 hours", score: 1 },
-                        { text: "More than 8 hours", score: 10 },
+                        { text: "More than 8 hours", score: 3 },
                     ],
                 },
                 {
@@ -160,9 +138,9 @@ const questionnaireConfig = {
                     question: "How often do you smoke or consume alcohol?",
                     options: [
                         { text: "Never", score: 1 },
-                        { text: "rarely", score: 5 },
-                        { text: "Occasionally ", score: 6 },
-                        { text: "Frequently ", score: 10 },
+                        { text: "Rarely", score: 3 },
+                        { text: "Occasionally", score: 6 },
+                        { text: "Frequently", score: 10 },
                     ],
                 },
             ]
@@ -211,8 +189,8 @@ const questionnaireConfig = {
                 {
                     question: "Do you have any history of pregnancy complications or significant weight gain during pregnancy?",
                     options: [
-                        { text: "No", score: 5 },
-                        { text: "Yes", score: 1 },
+                        { text: "No", score: 1 },
+                        { text: "Yes", score: 5 },
                     ],
                 },
                 {
@@ -278,12 +256,7 @@ const questionnaireConfig = {
             ]
         },
     ],
-
-    /**
-     * DATA MAPPINGS
-     */
     productDatabase: window.productDatabase,
-
     causeMapping: {
         "How active are you daily?": {
             "Sedentary (little or no exercise)": "Sedentary lifestyle & lack of movement reduces calorie expenditure and leads to fat accumulation.",
@@ -324,7 +297,6 @@ const questionnaireConfig = {
             "Yes": "Hormonal therapies can influence fat distribution and appetite.",
         },
     },
-
     futureRisksMapping: {
         "How active are you daily?": {
             "Sedentary (little or no exercise)": "Increased risk of obesity, diabetes, cardiovascular diseases",
@@ -365,7 +337,6 @@ const questionnaireConfig = {
             "Often": "Increased risk of obesity and metabolic syndrome.",
         },
     },
-
     lifestyleTips: {
         "general": [
             "Prioritize protein in the first meal — skipping breakfast worsens insulin resistance.",
@@ -418,7 +389,6 @@ const questionnaireConfig = {
             "Add seeds and healthy fats like ghee.",
         ],
     },
-
     conditionTimelineData: {
         '<25': {
             "pcos/pcod": [
@@ -549,10 +519,6 @@ const questionnaireConfig = {
             ]
         }
     },
-
-    /**
-     * LOGIC & RULES
-     */
     getRiskType: (healthScore) => {
         if (healthScore <= 30) return "Critical Risk";
         if (healthScore > 30 && healthScore <= 60) return "High Risk";
@@ -575,7 +541,6 @@ const questionnaireConfig = {
 
         return Math.max(0, baseScore - deductions);
     },
-
     productRules: (score, allAnswers, productDatabase) => {
         const selectedKeys = [];
         const hasPCOS = _hasAnswer(allAnswers, 'medical', 'PCOS/PCOD');
@@ -601,7 +566,6 @@ const questionnaireConfig = {
             .map(key => productDatabase[key])
             .filter(Boolean);
     },
-
     resultRules: (score, allAnswers, config, userInfo) => {
         const bmi = _calculateBmi(userInfo.height, userInfo.currentWeight);
         const bmiClass = _getBmiClass(bmi);
@@ -632,7 +596,6 @@ const questionnaireConfig = {
         let possibleCauses = [];
         for (const groupKey in allAnswers) {
             allAnswers[groupKey].forEach(answer => {
-                // Future Risks
                 const qRisks = config.futureRisksMapping[answer.question];
                 if (qRisks) {
                     const texts = Array.isArray(answer.text) ? answer.text : [answer.text];
@@ -641,7 +604,7 @@ const questionnaireConfig = {
                         if (risk && !futureRisks.includes(risk)) futureRisks.push(risk);
                     });
                 }
-                // Possible Causes
+
                 const qCauses = config.causeMapping[answer.question];
                 if (qCauses) {
                     const texts = Array.isArray(answer.text) ? answer.text : [answer.text];
@@ -655,24 +618,28 @@ const questionnaireConfig = {
 
         const scoreBracket = score < 25 ? '<25' : score <= 60 ? '25-60' : score <= 80 ? '61-80' : '81+';
         const timelineData = config.conditionTimelineData;
-        let timelineDescMap = { "Month 1": "", "Month 3": "", "Month 6": "" };
+        const timelinePartsMap = { "Month 1": [], "Month 3": [], "Month 6": [] };
 
         const baseTimeline = (timelineData[scoreBracket] && timelineData[scoreBracket]["obesity"]) || [];
-        baseTimeline.forEach(item => { if (timelineDescMap[item.month] !== undefined) timelineDescMap[item.month] = item.timelineDesc; });
+        baseTimeline.forEach(item => { if (timelinePartsMap[item.month]) timelinePartsMap[item.month].push(item.timelineDesc); });
 
         medicalAnswersText.forEach(conditionKey => {
             const conditionTimeline = (timelineData[scoreBracket] && timelineData[scoreBracket][conditionKey.toLowerCase()]);
             if (conditionTimeline) {
                 conditionTimeline.forEach(item => {
-                    if (timelineDescMap[item.month] !== undefined) {
-                        const existing = timelineDescMap[item.month];
-                        timelineDescMap[item.month] = existing ? `${existing}, ${item.timelineDesc.toLowerCase()}` : item.timelineDesc;
-                    }
+                    if (timelinePartsMap[item.month]) timelinePartsMap[item.month].push(item.timelineDesc);
                 });
             }
         });
 
-        const finalTimeline = Object.entries(timelineDescMap).map(([month, timelineDesc]) => ({ month, timelineDesc }));
+        const finalTimeline = Object.entries(timelinePartsMap).map(([month, parts]) => {
+            const clean = parts.map(p => String(p).trim().replace(/\.$/, '')).filter(Boolean);
+            return {
+                month,
+                timelineParts: clean,
+                timelineDesc: clean.length ? clean.join('. ') + '.' : '',
+            };
+        });
 
         let lifestyleConditions = [];
         (allAnswers.medical || []).forEach(answer => {
@@ -692,7 +659,6 @@ const questionnaireConfig = {
             lifestyleConditions: [...new Set(lifestyleConditions)]
         };
     },
-
     saveSubmission: async (state, db, config) => {
         const userInfo = state.userInfo;
         const computedHealthScore = state.healthScore || 0;

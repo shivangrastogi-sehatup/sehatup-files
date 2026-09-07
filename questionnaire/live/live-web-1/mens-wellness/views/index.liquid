@@ -24,8 +24,8 @@
 <div id="questionnaire">
   <div class="container">
     <div class="header">
-      <title>Men's Sexual Wellness Score</title>
-      <h1>Men's Sexual Wellness Score</h1>
+      <title data-i18n="main-title">Men's Sexual Wellness Score</title>
+      <h1 data-i18n="main-title">Men's Sexual Wellness Score</h1>
     </div>
 
     <div id="desktop-steps" class="desktop-steps-container"></div>
@@ -39,7 +39,7 @@
           </div>
           <div class="mobile-details-wrapper">
             <p id="mobile-question-counter" class="mobile-question-counter">Q1 / 1</p>
-            <p id="mobile-step-name" class="mobile-step-name">About You</p>
+            <p id="mobile-step-name" class="mobile-step-name" data-i18n="about-you">About You</p>
             <div id="mobile-step-progress-bar">
               <div id="mobile-step-progress-fill" style="width: 0%;"></div>
             </div>
@@ -49,36 +49,36 @@
     </div>
 
     <div id="step-1" class="step active">
-      <h2>Welcome to the Men's Sexual Health Quiz!</h2>
+      <h2 data-i18n="welcome-title">Welcome to the Men's Sexual Health Quiz!</h2>
       <div class="welcome-content-flex">
         <ul>
-          <li>Takes just a few minutes</li>
-          <li>100% private and secure</li>
-          <li>You must be 18 or older to participate</li>
+          <li data-i18n="welcome-point-1">Takes just a few minutes</li>
+          <li data-i18n="welcome-point-2">100% private and secure</li>
+          <li data-i18n="welcome-point-3">You must be 18 or older to participate</li>
         </ul>
         <div class="welcome-navigation">
-          <button data-action="start" class="btn-primary">Start Questionnaire</button>
-          <button id="show-previous-btn" data-action="show-previous" class="btn-secondary" style="display: none;">Show Previous Report</button>
+          <button data-action="start" class="btn-primary" data-i18n="btn-start">Start Questionnaire</button>
+          <button id="show-previous-btn" data-action="show-previous" class="btn-secondary" style="display: none;" data-i18n="btn-prev-report">Show Previous Report</button>
         </div>
       </div>
     </div>
 
     <div id="step-2" class="step about-you-container">
-      <h2>Tell us a bit about yourself to personalize your experience.</h2>
+      <h2 data-i18n="personal-info-title">Tell us a bit about yourself to personalize your experience.</h2>
       <form id="about-you-form">
         <div class="form-row">
-          <label for="name">Enter Your Full Name:</label>
-          <input type="text" id="name" placeholder="Your name" required>
+          <label for="name" data-i18n="label-name">Enter Your Full Name:</label>
+          <input type="text" id="name" placeholder="Your name" required data-i18n="placeholder-name">
           <span id="name-error" class="error-message"></span>
         </div>
         <div class="form-row">
-          <label for="dob">Enter Your Date of Birth:</label>
+          <label for="dob" data-i18n="label-dob">Enter Your Date of Birth:</label>
           <input type="date" id="dob" required>
           <span id="age-error" class="error-message"></span>
         </div>
         <div class="form-row">
-          <label for="phone">Enter Your Phone Number:</label>
-          <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required>
+          <label for="phone" data-i18n="label-phone">Enter Your Phone Number:</label>
+          <input type="tel" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}" required data-i18n="placeholder-phone">
           <span id="phone-error" class="error-message"></span>
         </div>
         <div class="navigation">
@@ -87,10 +87,10 @@
             class="prev-btn"
             data-action="prev"
             data-step="1"
-          >
+           data-i18n="btn-prev">
             Previous
           </button>
-          <button type="button" class="next-btn" data-action="validate-user-info">Next</button>
+          <button type="button" class="next-btn" data-action="validate-user-info" data-i18n="btn-next">Next</button>
         </div>
       </form>
     </div>
@@ -99,19 +99,19 @@
 
       <div id="concern-selection-content">
 
-        <h2>Select the challenge you’re facing - we’re here to help</h2>
+        <h2 data-i18n="step-3-title">Select the challenge you’re facing - we’re here to help</h2>
 
         <div class="options">
 
-          <button class="option-button" data-action="select-concern" data-concern-key="ed" data-step-id="3">
+          <button class="option-button" data-action="select-concern" data-concern-key="ed" data-step-id="3" data-i18n="btn-ed">
             Erectile Dysfunction (ED)
           </button>
 
-          <button class="option-button" data-action="select-concern" data-concern-key="pe" data-step-id="3">
+          <button class="option-button" data-action="select-concern" data-concern-key="pe" data-step-id="3" data-i18n="btn-pe">
             Premature Ejaculation (PE)
           </button>
 
-          <button class="option-button" data-action="select-concern" data-concern-key="both" data-step-id="3">
+          <button class="option-button" data-action="select-concern" data-concern-key="both" data-step-id="3" data-i18n="btn-both">
             Both
           </button>
 
@@ -120,7 +120,7 @@
       </div>
 
       <div class="navigation" id="concern-navigation">
-        <button type="button" class="prev-btn" data-action="prev" data-step="2">
+        <button type="button" class="prev-btn" data-action="prev" data-step="2" data-i18n="btn-prev">
           Previous
         </button>
       </div>
@@ -134,7 +134,7 @@
           type="button"
           class="prev-btn"
           data-action="prev-question"
-        >
+         data-i18n="btn-prev">
           Previous
         </button>
         <div id="next-button-container"></div>
@@ -145,7 +145,7 @@
       <div class="result-navigation">
         <button class="back-arrow-btn" data-action="go-back-from-results">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-          <span>Back to Questionnaire</span>
+          <span data-i18n="btn-back-to-quiz">Back to Questionnaire</span>
         </button>
       </div>
       <div class="final-layout">
@@ -174,7 +174,7 @@
                               <span id="user-age" class="detail-value"></span>
                           </div>
                           <div class="detail-item">
-                              <span class="detail-label">Category</span>
+                              <span class="detail-label" data-i18n="label-category">Category</span>
                               <span id="user-category" class="detail-value"></span>
                           </div>
                           <div class="detail-item report-date-row">
@@ -207,7 +207,7 @@
               <!-- NEW PREMIUM RISK INTELLIGENCE SECTION -->
               <div class="future-risk-section">
                   <div class="risk-intelligence-header">
-                      <h2>Potential Health Risks If Ignored</h2>
+                      <h2 data-i18n="risks-title">Potential Health Risks If Ignored</h2>
                       <p class="risk-intelligence-description">If left untreated, these conditions may gradually impact your health and wellbeing.</p>
                   </div>
 
@@ -224,7 +224,7 @@
 
               <!-- NEW PREMIUM CTA SECTION -->
               <div class="premium-cta-section">
-                  <h3>Get Your Detailed HealthScore 360 Report</h3>
+                  <h3 data-i18n="detailed-report-title">Get Your Detailed HealthScore 360 Report</h3>
                   <p>Receive your comprehensive 360° health analysis and personalized recovery roadmap directly on WhatsApp.</p>
                   
                   <button class="whatsapp-sticky-btn" data-action="open-otp">
@@ -249,7 +249,7 @@
               </div>
           </div>
           <div class="results-timeline centered-header">
-            <h3>Start Seeing Results In 6 Months</h3>
+            <h3 data-i18n="results-6-months">Start Seeing Results In 6 Months</h3>
             <div id="condition-timeline-container"></div>
           </div>
           <a
@@ -290,7 +290,7 @@
         </div>
         <div class="right-column">
           <div class="recommended-treatment">
-            <h3>Recommended Treatment</h3>
+            <h3 data-i18n="recommended-treatment">Recommended Treatment</h3>
             <div class="product-list" id="product-list"></div>
             <div class="checkout-section">
               <div class="cart-summary">
@@ -310,12 +310,12 @@
                     <span id="total-amount">0</span>
                 </div>
               </div>
-              <small class="gst-note">(GST included)</small>
+              <small class="gst-note" data-i18n="label-gst-included">(GST included)</small>
               <div class="buy-button-container">
                 <button
                   class="buy-button"
                   data-action="buy-now"
-                >
+                 data-i18n="btn-buy-now">
                   Buy Now
                 </button>
               </div>
@@ -325,7 +325,7 @@
       </div>
       <!-- PREMIUM CUSTOMER REVIEWS SECTION -->
       <div id="ugc-section" class="ugc-content-wrapper">
-          <h3 class="centered-header">Customer Reviews</h3>
+          <h3 class="centered-header" data-i18n="reviews-title">Customer Reviews</h3>
           <div class="ugc-slider-container">
               <button class="ugc-nav prev" onclick="document.getElementById('ugc-content').scrollBy({left: -300, behavior: 'smooth'})">
                   <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -359,7 +359,7 @@
   <div class="modal-content">
     <span class="close-btn" data-action="close-modal">×</span>
     <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Popup_Image.jpg?v=1745412444" alt="Special Offer">
-    <h2>Get Extra Off Your Order!</h2>
+    <h2 data-i18n="extra-off-title">Get Extra Off Your Order!</h2>
     <p>Use the coupon code below to avail an extra discount:</p>
     <div class="coupon-container">
       <input
@@ -368,7 +368,7 @@
         value="SPECIAL5"
         readonly
       >
-      <button class="copy-btn" data-action="copy-coupon">Copy</button>
+      <button class="copy-btn" data-action="copy-coupon" data-i18n="btn-copy">Copy</button>
     </div>
     <p id="copy-feedback" style="display: none; color: green; font-weight: bold">Copied!</p>
   </div>
@@ -411,4 +411,5 @@
 <script defer="defer" src="{{ 'firebase-config.js' | asset_url }}"></script>
 <script defer="defer" src="{{ 'product-database-common.js' | asset_url }}"></script>
 <script defer="defer" src="{{ 'config-mens-health.js' | asset_url }}"></script>
+<script defer="defer" src="/i18n/hi.js"></script>
 <script defer="defer" src="{{ 'questionnaire-engine.js' | asset_url }}"></script>

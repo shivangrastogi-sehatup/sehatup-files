@@ -1,8 +1,4 @@
-// assets/config-womens-health.js
 const questionnaireConfig = {
-
-    // This quiz's own wording, in both languages. Merged over the shared table in
-    // questionnaire-engine.js, which holds only what all four quizzes share.
     uiStrings: {
         en: {
             "main-title": "Women's Wellness Health Score",
@@ -16,8 +12,7 @@ const questionnaireConfig = {
         },
     },
   id: 'womens-wellness',
-  staticSteps: 2, // 1. Welcome, 2. About You. Questions start at step 3.
-
+  staticSteps: 2,
   questionGroups: [
     {
       step: 3,
@@ -76,7 +71,7 @@ const questionnaireConfig = {
     },
     {
       step: 4,
-      key: 'lifestyle', // Your old 'lifestyleQuestions'
+      key: 'lifestyle',
       questions: [
         {
           question: 'How often do you consume a balanced diet with fruits, vegetables, and calcium or Vitamin D-rich foods?',
@@ -130,7 +125,7 @@ const questionnaireConfig = {
     },
     {
       step: 5,
-      key: 'hygiene', // Your old 'hygieneQuestions'
+      key: 'hygiene',
       questions: [
         {
           question: 'Do you experience itching, irritation, or discomfort in the intimate area?',
@@ -154,7 +149,7 @@ const questionnaireConfig = {
     },
     {
       step: 6,
-      key: 'hormonal', // Your old 'hormonalQuestions'
+      key: 'hormonal',
       questions: [
         {
           question: 'Do you experience hormonal imbalance symptoms such as acne, mood swings, facial hair or weight changes?',
@@ -177,12 +172,7 @@ const questionnaireConfig = {
       ],
     },
   ],
-
-  /**
-   * ALL DATA MAPPINGS (PRODUCTS, TIMELINES, CAUSES)
-   */
   productDatabase: window.productDatabase,
-
   causeMapping: {
     'How regular is your menstrual cycle?': {
       'Very regular (28–30 days)': 'Balanced hormones, healthy lifestyle, no major reproductive issues.',
@@ -216,7 +206,6 @@ const questionnaireConfig = {
       'Always': 'Severe hormonal imbalance, often PCOS or thyroid-related.',
     },
   },
-
   futureRisksMapping: {
     'How regular is your menstrual cycle?': {
       'Very regular (28–30 days)': 'Minimal risk. Keep maintaining healthy habits.',
@@ -250,7 +239,6 @@ const questionnaireConfig = {
       'Always': 'Risk of infertility, diabetes, obesity, and mood disorders if left untreated.',
     },
   },
-
   femaleGeneralTimeline: {
     '<25': [
       { month: 'Month 1', timelineDesc: 'Cycle begins to respond' },
@@ -381,9 +369,7 @@ const questionnaireConfig = {
       { month: 'Month 6', timelineDesc: 'No PCOS risk or relapse' },
     ],
   },
-
   productWhyPoints: {
-    // *** FIXED KEYS to match product names from database ***
     'Zencal D3K2': [
       'Boosts metabolism and supports fat breakdown.',
       'Helps D3 work better and keeps calcium in bones, not in fat cells.',
@@ -406,14 +392,14 @@ const questionnaireConfig = {
       'Support hormonal balance and menstrual flow.',
       'Boost iron and energy during periods.',
     ],
-    'Aloezy Wash': [ // Fixed key from 'Aloezy'
+    'Aloezy Wash': [
       'Soothe and calm the skin.',
       'Give a fresh, cooling feel.',
       'Maintains healthy pH balance.',
       'Protects against germs.',
       'Gentle and safe for daily use.',
     ],
-    'Thyrostatin 3X': [ // Fixed key from 'Thyroidinum 3x'
+    'Thyrostatin 3X': [
       'Helps if you have a slow (underactive) thyroid, which can cause weight gain',
       'Supports fat burning and energy use.',
       'Helps fight tiredness that makes you less active.',
@@ -451,10 +437,6 @@ const questionnaireConfig = {
       'Add seeds and healthy fats like ghee or nuts',
     ],
   },
-
-  /**
-   * ALL LOGIC & RULES
-   */
   getRiskType: (healthScore) => {
     if (healthScore <= 30) return "Critical Risk";
     if (healthScore > 30 && healthScore <= 60) return "High Risk";
@@ -468,10 +450,9 @@ const questionnaireConfig = {
         totalScore += answer.score || 0;
       });
     }
-    // Wellness quiz doesn't use BMI, so no extra deductions.
+
     return Math.max(0, 100 - totalScore);
   },
-
   productRules: (score, allAnswers, productDatabase, userInfo, config) => {
     const answers = allAnswers;
     const hasAnswer = (group, text) => {
@@ -527,7 +508,6 @@ const questionnaireConfig = {
     const allKeys = [...new Set([...baseProductKeys, ...extraProductKeys])];
     return allKeys.map((key) => productDatabase[key]).filter(Boolean);
   },
-
   resultRules: (score, allAnswers, config, userInfo) => {
     const getScoreBracket = (s) => {
       if (s < 25) return '<25';
@@ -553,9 +533,8 @@ const questionnaireConfig = {
     else if (score <= 80) baseIssue = 'Mild Hormonal Disturbance';
     else baseIssue = 'Good Hormonal Health';
 
-    // Get answers from Lifestyle, Q5 ('Do you have any of the mentioned health problems?')
     let lifestyleConditions = getAnswerArray('lifestyle', 4);
-    // Get answers from Hygiene, Q2 ('Do you experience any bad odor...')
+
     const hygieneAnswer = getAnswerText('hygiene', 1);
 
     let extraIssues = [];
@@ -585,7 +564,7 @@ const questionnaireConfig = {
     let conditionTextHTML = `<p>${baseText}</p>`;
 
     let futureRisks = [];
-    let possibleCauses = []; // Added for full report
+    let possibleCauses = [];
 
     for (const groupKey in allAnswers) {
       allAnswers[groupKey].forEach((answer) => {
@@ -613,7 +592,6 @@ const questionnaireConfig = {
     const general = config.femaleGeneralTimeline[bracket] || [];
     const extras = [];
 
-    // --- Logic for conditional timelines ---
     const symptomTexts = (allAnswers['health']?.[4]?.text || []).map(s =>
       String(s).toLowerCase()
     );
@@ -623,7 +601,7 @@ const questionnaireConfig = {
     const hygieneAnswersText = (allAnswers['hygiene'] || []).map(a =>
       String(a.text).toLowerCase()
     );
-    const healthAnswerText_Q2 = getAnswerText('health', 1).toLowerCase(); // Cramps question
+    const healthAnswerText_Q2 = getAnswerText('health', 1).toLowerCase();
 
     const hasHormonal =
       symptomTexts.some(s =>
@@ -677,7 +655,7 @@ const questionnaireConfig = {
     }
 
     lifestyleConditions = getAnswerArray('lifestyle', 4).map(c => c.toLowerCase().trim());
-    const cycleAnswer = getAnswerText('health', 0).toLowerCase(); // Menstrual cycle Q (index 0)
+    const cycleAnswer = getAnswerText('health', 0).toLowerCase();
 
     let allConditions = [...lifestyleConditions];
 
@@ -701,10 +679,9 @@ const questionnaireConfig = {
       futureRisks,
       possibleCauses,
       timelineData: { general, extras },
-      lifestyleConditions: [...new Set(finalLifestyleKeys)], // Pass the mapped keys
+      lifestyleConditions: [...new Set(finalLifestyleKeys)],
     };
   },
-
   async saveSubmission(state, db, config) {
     const userInfo = state.userInfo;
     const computedHealthScore = state.healthScore || 0;
@@ -712,7 +689,6 @@ const questionnaireConfig = {
     const allAnswers = state.allAnswers;
     const activeProducts = state.recommendedProducts.filter(p => p.active);
 
-    // 1. Prepare answers array for Firestore
     const answers = [];
     for (const groupKey in allAnswers) {
       allAnswers[groupKey].forEach((answer) => {
@@ -724,7 +700,6 @@ const questionnaireConfig = {
       });
     }
 
-    // 2. Prepare lifestyle changes (tips)
     const lifestyleTipsArray = (results.lifestyleConditions || []).flatMap((condition) => {
       const tips = config.lifestyleTips[condition] || [];
       return tips.map((text) => ({ text }));
@@ -736,7 +711,6 @@ const questionnaireConfig = {
       });
     }
 
-    // 3. Prepare timelines (Merged by Month)
     const timelineMap = {
       'Month 1': [],
       'Month 2': [],
@@ -761,7 +735,6 @@ const questionnaireConfig = {
       }))
       .filter((item) => item.timelineDesc);
 
-    // 4. Prepare Recommended Products
     const finalRecommendedProducts = activeProducts.map((p) => {
       return {
         name: p.name,
@@ -777,7 +750,6 @@ const questionnaireConfig = {
       text: cause
     }));
 
-    // 5. Build final data object
     const initialRiskType = config.getRiskType(computedHealthScore);
     const data = {
       reportDate: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
@@ -805,7 +777,7 @@ const questionnaireConfig = {
 
     try {
       const docRef = await db.collection('questionnaire_submissions').add(data);
-      // console.log('Submission successful');
+
       return docRef.id;
     } catch (e) {
       console.error('Error saving to Firebase:', e);

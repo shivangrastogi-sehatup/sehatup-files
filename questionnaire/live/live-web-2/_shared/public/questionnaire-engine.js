@@ -40,23 +40,29 @@ class QuestionnaireEngine {
             });
         }
 
-        const offset = initialProgressConfig.length - 1;
         this.progressConfig = [
             ...initialProgressConfig,
             ...this.config.questionGroups.map((g, index) => {
-                const displayStep = g.step - offset;
-                const label = g.label || (g.key.charAt(0).toUpperCase() + g.key.slice(1).replace(/_/g, ' '));
+                // Underscores AND camelCase: womens-weight uses weightLoss where
+                // mens-weight uses weight_loss, and only the latter used to read right.
+                const label = g.label || (g.key.charAt(0).toUpperCase() + g.key.slice(1))
+                    .replace(/_/g, ' ')
+                    .replace(/([a-z])([A-Z])/g, '$1 $2');
                 return {
                     id: g.key,
                     label: label,
                     sourceLabel: label,
                     step: g.step,
-                    displayStep: displayStep,
                     key: g.key,
                     totalQuestions: g.questions.length || 0,
                 };
             })
         ];
+
+        // Numbered by position, not derived from the internal `step` value. The old
+        // "g.step - offset" produced 1, 3, 4, 5, 6 for a five-step quiz: it skipped 2
+        // and finished on a number larger than the number of steps.
+        this.progressConfig.forEach((p, i) => { p.displayStep = i + 1; });
 
         this.state = {
             currentStep: 1,
@@ -150,7 +156,27 @@ class QuestionnaireEngine {
                 'otp-resend-link': "Resend Code",
                 'otp-btn-verify': "Verify & Access Report",
                 'phone-warning': "Phone number must be exactly 10 digits.",
-                'verifying': "Verifying..."
+                'verifying': "Verifying...",
+                'label-age': "Age",
+                'label-report-date-row': "Report Date",
+                'label-step': "STEP",
+                'risk-intro': "If left untreated, these conditions may gradually impact your health and wellbeing.",
+                'early-treatment': "Early treatment can significantly improve outcomes through lifestyle correction, medication, and guided therapy.",
+                'cta-360-desc': "Receive your comprehensive 360° health analysis and personalized recovery roadmap directly on WhatsApp.",
+                'trust-private': "Private &amp; Confidential",
+                'trust-experts': "Reviewed by Experts",
+                'trust-time': "Takes &lt; 2 mins",
+                'treatment-inclusions-title': "Your Treatment Inclusions",
+                'incl-doctor': "Expert Doctor Consultation",
+                'incl-kit': "Personalized Integrated Kit",
+                'incl-diet': "Custom Diet &amp; Lifestyle Plan",
+                'label-subtotal': "Subtotal (MRP):",
+                'label-product-discount': "Product Discount:",
+                'coupon-note': 'Use coupon <strong style="color: #4f46e5;">SEHAT10</strong> and get <strong>10% extra off</strong> on your first order',
+                'ugc-verified': "Verified",
+                'ugc-alt': "Customer Review",
+                'off-label': "OFF",
+                'step-of': "Step"
             },
 'hi': {
                 'risks-title': "अनदेखा करने पर संभावित स्वास्थ्य जोखिम",
@@ -214,7 +240,27 @@ class QuestionnaireEngine {
                 'otp-resend-link': "कोड पुन: भेजें",
                 'otp-btn-verify': "सत्यापित करें और रिपोर्ट देखें",
                 'phone-warning': "फोन नंबर बिल्कुल 10 अंकों का होना चाहिए।",
-                'verifying': "सत्यापित किया जा रहा है..."
+                'verifying': "सत्यापित किया जा रहा है...",
+                'label-age': "आयु",
+                'label-report-date-row': "रिपोर्ट दिनांक",
+                'label-step': "चरण",
+                'risk-intro': "अगर ध्यान न दिया जाए, तो ये स्थितियाँ धीरे-धीरे आपकी सेहत और रोज़मर्रा की ज़िंदगी पर असर डाल सकती हैं।",
+                'early-treatment': "समय रहते इलाज शुरू करने से नतीजे काफ़ी बेहतर होते हैं - जीवनशैली में सुधार, दवा और डॉक्टर की देखरेख से।",
+                'cta-360-desc': "अपना पूरा 360° स्वास्थ्य विश्लेषण और व्यक्तिगत रिकवरी प्लान सीधे व्हाट्सएप पर पाएं।",
+                'trust-private': "निजी और गोपनीय",
+                'trust-experts': "विशेषज्ञों द्वारा जाँचा गया",
+                'trust-time': "2 मिनट से कम",
+                'treatment-inclusions-title': "आपके इलाज में क्या शामिल है",
+                'incl-doctor': "विशेषज्ञ डॉक्टर परामर्श",
+                'incl-kit': "आपके लिए तैयार किया गया किट",
+                'incl-diet': "आपके अनुसार डाइट और जीवनशैली प्लान",
+                'label-subtotal': "उप-योग (MRP):",
+                'label-product-discount': "प्रोडक्ट छूट:",
+                'coupon-note': 'कूपन <strong style="color: #4f46e5;">SEHAT10</strong> लगाएं और पहले ऑर्डर पर <strong>10% अतिरिक्त छूट</strong> पाएं',
+                'ugc-verified': "सत्यापित",
+                'ugc-alt': "ग्राहक समीक्षा",
+                'off-label': "छूट",
+                'step-of': "चरण"
             }
         };
 
@@ -231,8 +277,12 @@ class QuestionnaireEngine {
             this.uiTranslations[lang] = Object.assign({}, this.uiTranslations[lang], ownStrings[lang] || {});
         });
 
-        this.setupLanguageUI();
-        this.init();
+        // Sequenced, not fired in parallel. setupLanguageUI() fetches the Hindi
+        // catalogue; init() paints the step tabs. Run together, init() wins the race
+        // and the tabs bake in whatever t() returns before hi.js lands - which is
+        // English for every label not in the engine's own table. The visible symptom
+        // was a half-translated tab row: "आपके बारे में  Health  जीवनशैली  Medical".
+        this.setupLanguageUI().then(() => this.init(), () => this.init());
 
         // Fix for "Redirecting..." being stuck on back navigation
         window.addEventListener('pageshow', (event) => {
@@ -464,6 +514,15 @@ class QuestionnaireEngine {
         const direct = dict[text];
         if (direct) return direct;
 
+        // Config copy and catalogue keys disagree about trailing full stops in a few
+        // places, and fragments get their punctuation stripped before being rejoined.
+        // Try both forms rather than silently falling back to English over one dot.
+        const bare = text.replace(/[.\s]+$/, '');
+        if (bare !== text) {
+            if (dict[bare]) return dict[bare];
+        }
+        if (dict[bare + '.']) return dict[bare + '.'];
+
         // calculateScore() hands back its sentences already wrapped in a <p>, while
         // the catalogue holds the bare sentence. Unwrap, translate, rewrap.
         const wrapped = text.match(/^\s*<p>([\s\S]*?)<\/p>\s*$/i);
@@ -472,9 +531,44 @@ class QuestionnaireEngine {
         return text;
     }
 
-    /** Translate every string in an array, keeping order and length. */
-    tAll(list) {
-        return Array.isArray(list) ? list.map((x) => this.t(x)) : list;
+    /**
+     * Translate a string that was built by joining fragments with " + ".
+     * Used for issueTitle, the only user-facing string this codebase concatenates.
+     */
+    /**
+     * Render one timeline month. Its sentence is assembled at runtime from a base
+     * fragment plus any condition-specific extras, so the joined string can never be
+     * a catalogue key - translate each fragment, then join with the sentence
+     * punctuation the language actually uses (Devanagari ends clauses with a danda).
+     */
+    joinTimelineParts(data) {
+        const parts = (data && data.parts && data.parts.length) ? data.parts : null;
+        if (!parts) return this.t((data && data.general) || '');
+        const hi = this.currentLanguage === 'hi';
+        const sep = hi ? '। ' : '. ';
+        const end = hi ? '।' : '.';
+        const done = parts
+            .map((fragment) => this.t(fragment))
+            .map((fragment) => String(fragment).replace(/[.।\s]+$/, ''))
+            .filter(Boolean);
+        return done.length ? done.join(sep) + end : '';
+    }
+
+    tJoined(text) {
+        if (typeof text !== 'string' || !text) return text;
+        if (this.currentLanguage === 'en') return text;
+        const whole = this.t(text);
+        if (whole !== text) return whole;                 // exact match wins
+        // Titles are assembled with " + " on the weight quizzes and ", " on women's
+        // wellness. Translate the pieces and rejoin with the separator that was used,
+        // so a title never renders half in each language.
+        for (const sep of [' + ', ', ']) {
+            if (!text.includes(sep)) continue;
+            const parts = text.split(sep).map((p) => p.trim());
+            const hit = parts.map((p) => this.t(p));
+            if (hit.some((v, i) => v !== parts[i])) return hit.join(sep);
+        }
+        return text;
     }
 
     injectLanguageStyles() {
@@ -482,12 +576,18 @@ class QuestionnaireEngine {
         const st = document.createElement('style');
         st.id = 'su-lang-style';
         st.textContent = [
-            '.su-lang-toggle{position:fixed;top:14px;right:14px;z-index:9000;display:flex;',
+            // Anchored to the card's own top-right corner, not the viewport. Fixed
+            // positioning left it floating over whatever happened to be underneath -
+            // on the report it sat on top of a product title.
+            '.su-lang-toggle{position:absolute;top:10px;right:14px;z-index:30;display:flex;',
             'border:1px solid #e5e7eb;border-radius:999px;background:#fff;overflow:hidden;',
-            'box-shadow:0 1px 2px rgba(17,24,39,.06),0 8px 20px -10px rgba(17,24,39,.25);',
+            'box-shadow:0 1px 2px rgba(17,24,39,.06),0 6px 16px -10px rgba(17,24,39,.25);',
             'font-family:"Roboto",system-ui,sans-serif}',
+            // Fallback: if the toggle could not be mounted inside the card it stays on
+            // <body>, where absolute would resolve against the page. Pin it instead.
+            'body>.su-lang-toggle{position:fixed;top:14px;right:14px;z-index:9000}',
             '.su-lang-toggle .lang-btn{border:0;background:transparent;cursor:pointer;',
-            'padding:7px 15px;font-size:13px;font-weight:700;color:#6b7280;line-height:1.2;',
+            'padding:6px 14px;font-size:12.5px;font-weight:700;color:#6b7280;line-height:1.2;',
             'transition:background .15s,color .15s}',
             '.su-lang-toggle .lang-btn+.lang-btn{border-left:1px solid #e5e7eb}',
             '.su-lang-toggle .lang-btn.active{background:#ee204a;color:#fff}',
@@ -506,8 +606,8 @@ class QuestionnaireEngine {
             '.su-lang-opts button:focus-visible{outline:2px solid #ee204a;outline-offset:2px}',
             '.su-lang-opts .big{display:block;font-size:19px;font-weight:700;color:#111827;margin-bottom:2px}',
             '.su-lang-opts .small{display:block;font-size:12px;color:#6b7280}',
-            '@media (max-width:560px){.su-lang-toggle{top:10px;right:10px}',
-            '.su-lang-toggle .lang-btn{padding:6px 12px;font-size:12px}}',
+            '@media (max-width:560px){.su-lang-toggle{top:8px;right:10px}',
+            '.su-lang-toggle .lang-btn{padding:5px 11px;font-size:12px}}',
             '@media (prefers-reduced-motion:reduce){.su-lang-toggle .lang-btn,.su-lang-opts button{transition:none}}'
         ].join('');
         document.head.appendChild(st);
@@ -523,7 +623,10 @@ class QuestionnaireEngine {
         wrap.innerHTML =
             '<button type="button" class="lang-btn" data-action="change-lang" data-lang="en" lang="en">EN</button>' +
             '<button type="button" class="lang-btn" data-action="change-lang" data-lang="hi" lang="hi">हिं</button>';
-        document.body.appendChild(wrap);
+        // Mounted inside the card so it rides the card's top-right corner. .container
+        // is already position:relative, so no layout change is needed to host it.
+        const host = document.querySelector('#questionnaire .container') || document.body;
+        host.appendChild(wrap);
         this.updateLanguageToggle();
     }
 
@@ -533,10 +636,15 @@ class QuestionnaireEngine {
     }
 
     hasChosenLanguage() {
+        // In-memory flag first: when localStorage throws (private mode, cookies off)
+        // the stored answer can never be read back, and the picker would reappear on
+        // every page of the questionnaire. Remembering it for the session is enough.
+        if (this._langChosen) return true;
         try { return !!localStorage.getItem(this.langChosenKey()); } catch (e) { return false; }
     }
 
     markLanguageChosen() {
+        this._langChosen = true;
         try { localStorage.setItem(this.langChosenKey(), '1'); } catch (e) { /* private mode */ }
     }
 
@@ -582,8 +690,14 @@ class QuestionnaireEngine {
         if (first) first.focus();
     }
 
-    setupLanguageUI() {
+    async setupLanguageUI() {
         this.injectLanguageStyles();
+        // A returning Hindi visitor has the language stored but no catalogue in the
+        // page - fetch it before the first paint so nothing flashes English.
+        if (this.currentLanguage !== 'en') {
+            await this.loadCatalogue(this.currentLanguage);
+            this.updateStaticUI();
+        }
         if (this.hasChosenLanguage()) {
             this.renderLanguageToggle();
         } else {
@@ -607,8 +721,37 @@ class QuestionnaireEngine {
         }
     }
 
-    changeLanguage(lang) {
+    /**
+     * Fetch a language catalogue on demand.
+     *
+     * The Hindi file is ~110KB of Devanagari. Loading it in the page head made every
+     * English visitor pay for a language they never selected, so it is fetched the
+     * first time that language is actually chosen and cached on window from then on.
+     */
+    async loadCatalogue(lang) {
+        if (lang === 'en') return true;
+        if (window.SU_I18N && window.SU_I18N[lang]) return true;
+        if (this._catalogueLoading) return this._catalogueLoading;
+        this._catalogueLoading = new Promise((resolve) => {
+            let settled = false;
+            const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+            const el = document.createElement('script');
+            el.src = '/i18n/' + lang + '.js';
+            // A failed fetch must not strand the visitor: resolve either way and let
+            // t() fall back to English rather than showing a half-translated page.
+            el.onload = () => done(true);
+            el.onerror = () => { console.warn('[i18n] could not load', lang); done(false); };
+            // Startup now waits on this before painting, so a request that neither
+            // loads nor errors (dead network, captive portal) must not hang the page.
+            setTimeout(() => { if (!settled) console.warn('[i18n] timed out loading', lang); done(false); }, 6000);
+            document.head.appendChild(el);
+        });
+        return this._catalogueLoading;
+    }
+
+    async changeLanguage(lang) {
         if (this.currentLanguage === lang) return;
+        await this.loadCatalogue(lang);
         this.currentLanguage = lang;
         try {
             const id = (this.config && this.config.id) || 'default';
@@ -636,6 +779,11 @@ class QuestionnaireEngine {
     updateStaticUI(scope = document) {
         const langData = this.uiTranslations[this.currentLanguage];
         if (!langData) return;
+
+        // Was only set inside changeLanguage(), so a returning Hindi visitor got a page
+        // with no lang at all. It drives the Devanagari typography rules in the
+        // stylesheet, and tells screen readers and browser translation what this is.
+        try { document.documentElement.lang = this.currentLanguage; } catch (e) { /* no-op */ }
 
         scope.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.dataset.i18n;
@@ -849,90 +997,112 @@ class QuestionnaireEngine {
         this.showStep(4);
     }
 
+    /**
+     * A DOM-safe token for a group key. Keys are authored freely across the four
+     * configs - 'Weight Loss' and 'Health' sit beside 'lifestyle' and 'weightLoss' -
+     * and interpolating one straight into an id produced id="...-Weight Loss", which
+     * is invalid HTML and unreachable from any CSS or querySelector.
+     */
+    stepDomId(key) {
+        return String(key).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+
     updateStepIndicators() {
-        const currentGroupConfig = this.progressConfig.find(g => g.step === this.state.currentStep);
-        if (!currentGroupConfig) return;
-
-        const totalQuestionsAnsweredInStep = this.state.allAnswers[currentGroupConfig.key]?.length || 0;
-        const totalQuestionsInStep = currentGroupConfig.totalQuestions || 1;
-
-        const mobileNumberContainer = document.getElementById('mobile-step-number-container');
-        const mobileCounter = document.getElementById('mobile-question-counter');
-        const mobileStepName = document.getElementById('mobile-step-name');
-        const mobileProgressFill = document.getElementById('mobile-step-progress-fill');
-
-        if (mobileNumberContainer) mobileNumberContainer.textContent = currentGroupConfig.displayStep;
-        if (mobileStepName) mobileStepName.textContent = currentGroupConfig.label;
-
-        let mobileProgressPercentage = 0;
-        if (currentGroupConfig.type === 'form') {
-            mobileCounter.textContent = `Q1 / 1`;
-            mobileProgressPercentage = 0;
-        } else {
-            mobileCounter.textContent = `Q${totalQuestionsAnsweredInStep + 1} / ${totalQuestionsInStep}`;
-            mobileProgressPercentage = (totalQuestionsAnsweredInStep / totalQuestionsInStep) * 100;
-        }
-
-        if (mobileProgressFill) {
-            mobileProgressFill.style.width = `${mobileProgressPercentage}%`;
-        }
+        const steps = this.progressConfig;
+        const currentIndex = steps.findIndex(g => g.step === this.state.currentStep);
+        const currentGroupConfig = currentIndex >= 0 ? steps[currentIndex] : null;
 
         const desktopContainer = document.getElementById('desktop-steps');
+
+        // The mobile readout only means something on a real step. The desktop row is
+        // still rebuilt below, so a language switch on the welcome screen reaches the
+        // tabs instead of returning early and leaving them in the previous language.
+        if (currentGroupConfig) {
+            const answered = this.state.allAnswers[currentGroupConfig.key]?.length || 0;
+            const totalInStep = currentGroupConfig.totalQuestions || 1;
+            const isForm = currentGroupConfig.type === 'form';
+
+            const mobileNumber = document.getElementById('mobile-step-number-container');
+            const mobileCounter = document.getElementById('mobile-question-counter');
+            const mobileStepName = document.getElementById('mobile-step-name');
+            const mobileProgressFill = document.getElementById('mobile-step-progress-fill');
+
+            if (mobileNumber) mobileNumber.textContent = currentGroupConfig.displayStep;
+            if (mobileStepName) mobileStepName.textContent = currentGroupConfig.label;
+
+            // Guarded like its siblings. Unguarded, a missing element threw here and
+            // aborted the whole function before the desktop row was ever touched.
+            if (mobileCounter) {
+                const ui = this.uiTranslations[this.currentLanguage] || {};
+                const stepWord = ui['step-of'] || 'Step';
+                mobileCounter.textContent = isForm
+                    // "About You" is a three-field form, not one question. Show position
+                    // in the flow instead of a made-up "Q1 / 1".
+                    ? `${stepWord} ${currentGroupConfig.displayStep} / ${steps.length}`
+                    : `Q${Math.min(answered + 1, totalInStep)} / ${totalInStep}`;
+            }
+            if (mobileProgressFill) {
+                mobileProgressFill.style.width = `${isForm ? 0 : (answered / totalInStep) * 100}%`;
+            }
+        }
+
         if (!desktopContainer) return;
 
-        const totalProgressSteps = this.config.questionGroups.length + 1;
-        const stepsToShow = this.progressConfig.slice(0, totalProgressSteps);
-        const isInitialRender = desktopContainer.children.length === 0;
+        // Driven by progressConfig itself. The old "questionGroups.length + 1" hardcoded
+        // the assumption of exactly one static step, so a second progressSteps entry
+        // would have silently dropped the last group's tab.
+        const signature = steps.map(g => this.stepDomId(g.id)).join('|');
+        if (desktopContainer.dataset.stepSignature !== signature) {
+            desktopContainer.innerHTML = steps.map((group) => {
+                const domId = this.stepDomId(group.id);
+                return `
+                    <div class="step-container" data-step-id="${domId}" role="listitem">
+                      <div class="step-title"></div>
+                      <div class="progress-bar-segment" role="progressbar"
+                           aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                          <div id="desktop-progress-fill-${domId}" class="progress-bar-fill"></div>
+                      </div>
+                    </div>`;
+            }).join('');
+            desktopContainer.dataset.stepSignature = signature;
+            desktopContainer.setAttribute('role', 'list');
+            desktopContainer.setAttribute('aria-label', 'Progress');
+        }
 
-        stepsToShow.forEach((group) => {
-            const stepId = group.id;
+        steps.forEach((group) => {
+            const domId = this.stepDomId(group.id);
             const isCurrent = group.step === this.state.currentStep;
             const isCompleted = group.step < this.state.currentStep;
-
-            let progress = 0;
-            const groupAnswers = this.state.allAnswers[group.key] || [];
+            const answers = this.state.allAnswers[group.key] || [];
             const qCount = group.totalQuestions || 1;
 
-            if (isCompleted) {
-                progress = 100;
-            } else if (isCurrent) {
-                progress = group.type === 'form' ? 0 : (groupAnswers.length / qCount) * 100;
-            }
+            let progress = 0;
+            if (isCompleted) progress = 100;
+            else if (isCurrent) progress = group.type === 'form' ? 0 : (answers.length / qCount) * 100;
 
-            const fillColor = '#4c51bf';
-            const titleClass = isCurrent ? 'text-primary-blue' : isCompleted ? 'text-gray-900' : 'text-gray-500';
+            const container = desktopContainer.querySelector(`[data-step-id="${domId}"]`);
+            if (!container) return;
 
-            if (isInitialRender) {
-                const stepHtml = `
-                    <div class="step-container" data-step-id="${stepId}">
-                      <div class="step-title ${titleClass}">
-                          ${group.label}
-                      </div>
-                      <div class="progress-bar-segment">
-                          <div id="desktop-progress-fill-${stepId}" class="progress-bar-fill" 
-                                 style="width: 0%; background-color: ${fillColor};"></div>
-                      </div>
-                    </div>
-                `;
-                desktopContainer.insertAdjacentHTML('beforeend', stepHtml);
-            }
+            const fillElement = container.querySelector('.progress-bar-fill');
+            const segment = container.querySelector('.progress-bar-segment');
+            const titleElement = container.querySelector('.step-title');
 
-            const fillElement = document.getElementById(`desktop-progress-fill-${stepId}`);
-            const titleElement = desktopContainer.querySelector(`[data-step-id="${stepId}"] .step-title`);
-            if (fillElement) {
-                fillElement.style.width = `${progress}%`;
-                fillElement.style.backgroundColor = fillColor;
+            if (fillElement) fillElement.style.width = `${progress}%`;
+            if (segment) {
+                segment.setAttribute('aria-valuenow', String(Math.round(progress)));
+                segment.setAttribute('aria-label', String(group.label));
             }
             if (titleElement) {
-                titleElement.className = `step-title ${titleClass}`;
-                // The label is written into the DOM only on the initial render, so a
-                // language switch mid-questionnaire used to update progressConfig and
-                // leave the tabs in the old language until a refresh. Keep the text in
-                // step with the model on every call, not just the first.
+                // Keep the label in step with the model on every call, not just the
+                // first, so switching language mid-questionnaire updates the tabs.
                 if (titleElement.textContent.trim() !== String(group.label)) {
                     titleElement.textContent = group.label;
                 }
             }
+            container.classList.toggle('is-current', isCurrent);
+            container.classList.toggle('is-complete', isCompleted);
+            if (isCurrent) container.setAttribute('aria-current', 'step');
+            else container.removeAttribute('aria-current');
         });
     }
 
@@ -1398,23 +1568,39 @@ class QuestionnaireEngine {
         }
         
         if (userCategoryEl) {
-            const categoryMap = {
-                'mens-wellness': "Men's Sexual Wellness",
-                'womens-wellness': "Women's Wellness",
-                'mens-weight': "Men's Weight Management",
-                'womens-weight': "Women's Weight Management"
-            };
-            userCategoryEl.innerText = categoryMap[this.config.id] || this.config.title || "Health Assessment";
+            // Was a hardcoded English map keyed by config.id, which silently overrode
+            // the per-quiz 'category' string and left the report's Category field in
+            // English however the rest of the page was rendered.
+            const langData = this.uiTranslations[this.currentLanguage] || {};
+            userCategoryEl.innerText = langData.category || this.config.title || 'Health Assessment';
         }
         
         // Dynamic labels from results
-        const displayIssueTitle = this.state.results.issueTitle;
+        // issueTitle is assembled by concatenation inside calculateScore -
+        // "Obese class 1 + Metabolic Dysfunction + Hypertension" - so it exists nowhere
+        // in any config and can never be a catalogue key on its own. Translate the
+        // pieces and rejoin; anything missing falls back to English by itself.
+        const displayIssueTitle = this.tJoined(this.state.results.issueTitle);
         const displayConditionHTML = this.state.results.conditionTextHTML;
 
         if (userConcernEl) userConcernEl.innerText = displayIssueTitle;
         if (issueHeaderEl) issueHeaderEl.innerText = displayIssueTitle;
-        if (conditionTextEl) conditionTextEl.innerHTML = this.parseMarkdown(this.t(displayConditionHTML));
-        if (conditionDetailsEl) conditionDetailsEl.innerHTML = this.parseMarkdown(this.t(displayConditionHTML));
+        // The diagnosis sentence carries {bmi}-style placeholders so the sentence
+        // itself stays a fixed, translatable string; the numbers are substituted after
+        // translation. Interpolating first would make every BMI its own unique string
+        // and no catalogue key could ever match.
+        const fillConditionVars = (html) => {
+            const vars = this.state.results.conditionVars;
+            if (!vars) return html;
+            return String(html).replace(/\{(\w+)\}/g, (whole, key) => {
+                if (!(key in vars)) return whole;
+                const value = vars[key];
+                return (typeof value === 'string' && /[A-Za-z]/.test(value)) ? this.t(value) : value;
+            });
+        };
+        const conditionHTML = this.parseMarkdown(fillConditionVars(this.t(displayConditionHTML)));
+        if (conditionTextEl) conditionTextEl.innerHTML = conditionHTML;
+        if (conditionDetailsEl) conditionDetailsEl.innerHTML = conditionHTML;
 
         const date = this.state.reportDate || new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
         console.log("Syncing Report Date:", date);
@@ -1429,8 +1615,11 @@ class QuestionnaireEngine {
         console.log("riskLevelEl found:", !!riskLevelEl);
         if (riskLevelEl && typeof this.config.getRiskType === 'function') {
             const riskKey = this.config.getRiskType(this.state.healthScore);
-            console.log("Risk Key calculated:", riskKey);
-            const riskTypeLabel = langData[riskKey] || riskKey;
+            // getRiskType returns "High Risk"; the table is keyed 'high-risk'. Without
+            // this slugify the lookup always missed and the badge fell back to the raw
+            // English key on every quiz, in every language.
+            const riskSlug = String(riskKey).trim().toLowerCase().replace(/\s+/g, '-');
+            const riskTypeLabel = langData[riskSlug] || langData[riskKey] || riskKey;
             riskLevelEl.innerText = riskTypeLabel;
             riskLevelEl.style.color = this.getScoreColor(this.state.healthScore);
         }
@@ -1484,9 +1673,13 @@ class QuestionnaireEngine {
                 const mergedTimeline = {};
                 timelineData.general.forEach((item) => {
                     if (!mergedTimeline[item.month]) {
-                        mergedTimeline[item.month] = { month: item.month, general: '', extras: [] };
+                        mergedTimeline[item.month] = { month: item.month, general: '', parts: null, extras: [] };
                     }
                     mergedTimeline[item.month].general = item.timelineDesc;
+                    // Some quizzes assemble a month out of several fragments. Translate
+                    // each fragment and join, since the joined sentence is built at
+                    // runtime and can never be a catalogue key on its own.
+                    mergedTimeline[item.month].parts = Array.isArray(item.timelineParts) ? item.timelineParts : null;
                 });
 
                 let timelineHTML = '<div class="timeline-months">';
@@ -1506,7 +1699,7 @@ class QuestionnaireEngine {
                                 <img src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/timeline.webp?v=1774248748" alt="${displayMonth}" />
                             </div>
                             <h4>${displayMonth}</h4>
-                            <p class="general-desc">${this.t(data.general)}</p>
+                            <p class="general-desc">${this.joinTimelineParts(data)}</p>
                             ${extrasHTML}
                         </div>
                     `;
@@ -1533,7 +1726,7 @@ class QuestionnaireEngine {
             const productDiscount = hasDiscount ? Math.round(((product.regularPrice - product.salePrice) / product.regularPrice) * 100) : 0;
             const currencySymbol = langData['currency-symbol'] || 'Rs.';
             const oldPriceHTML = hasDiscount ? `<span class="old-price">${currencySymbol}${product.regularPrice}</span>` : '';
-            const discountBadgeHTML = hasDiscount ? `<div class="prod-discount-tag">${productDiscount}% OFF</div>` : '';
+            const discountBadgeHTML = hasDiscount ? `<div class="prod-discount-tag">${productDiscount}% ${langData["off-label"] || "OFF"}</div>` : '';
             
             productList.innerHTML += `
                 <div class="product-card" data-action="open-product-modal" 
@@ -1765,6 +1958,9 @@ class QuestionnaireEngine {
             'https://cdn.shopify.com/videos/c/o/v/f851c6047a4d499e925d4b5a867163d9.mp4',
             'https://cdn.shopify.com/videos/c/o/v/28bcf5d173d54cf49d5dd4cc5592aece.mp4'
         ];
+        const ui = this.uiTranslations[this.currentLanguage] || {};
+        const ugcVerified = ui['ugc-verified'] || "Verified";
+        const ugcAlt = ui['ugc-alt'] || "Customer Review";
         const slidesHTML = VIDEO_SOURCES.map(src => {
             const isMp4 = src.includes('.mp4');
             const dataSrc = isMp4 ? src : `https://www.youtube.com/embed/${src}`;
@@ -1776,7 +1972,7 @@ class QuestionnaireEngine {
                 ${isMp4 ? 
                     `<video class="ugc-thumbnail lazy-video" data-src="${src}#t=0.1" preload="none" muted playsinline style="object-fit: cover; width: 100%; height: 100%; background: #222;"></video>` 
                     : 
-                    `<img class="ugc-thumbnail" src="${thumbSrc}" onerror="this.src='${thumbFallback}'" alt="Customer Review" loading="lazy">`
+                    `<img class="ugc-thumbnail" src="${thumbSrc}" onerror="this.src='${thumbFallback}'" alt="${ugcAlt}" loading="lazy">`
                 }
                 <div class="ugc-slide-gradient"></div>
                 <div class="play-button">
@@ -1784,7 +1980,7 @@ class QuestionnaireEngine {
                 </div>
                 <div class="ugc-verified-badge">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    Verified
+                    ${ugcVerified}
                 </div>
             </div>
             `;

@@ -1,8 +1,4 @@
-// config-mens-weight.js
 const questionnaireConfig = {
-
-    // This quiz's own wording, in both languages. Merged over the shared table in
-    // questionnaire-engine.js, which holds only what all four quizzes share.
     uiStrings: {
         en: {
             "main-title": "Men's Weight Management Score",
@@ -190,7 +186,7 @@ const questionnaireConfig = {
         text: "Hypertension",
         score: 2
       }, {
-        text: "Diabetes ",
+        text: "Diabetes",
         score: 2
       }, {
         text: "Family history of obesity or metabolic disorders",
@@ -202,7 +198,7 @@ const questionnaireConfig = {
         text: "High Cholesterol",
         score: 2
       }, {
-        text: "None ",
+        text: "None",
         score: 0
       },],
     }, {
@@ -211,10 +207,10 @@ const questionnaireConfig = {
         text: "Rarely",
         score: 1
       }, {
-        text: "Sometimes ",
+        text: "Sometimes",
         score: 3
       }, {
-        text: "Often ",
+        text: "Often",
         score: 6
       }, {
         text: "Always",
@@ -344,20 +340,20 @@ const questionnaireConfig = {
       "Daily": "Daily consumption disrupts metabolism and promotes fat storage",
     },
     "Do you experience any of the following? (Select all that apply)": {
-      "Erectile dysfunction": "Hormonal imbalance, poor circulation, metabolic syndrome",
-      "thyroid disorder": "Hypothyroidism slows metabolism, fatigue, weight gain",
+      "Erectile Dysfunction": "Hormonal imbalance, poor circulation, metabolic syndrome",
+      "Thyroid Disorder": "Hypothyroidism slows metabolism, fatigue, weight gain",
       "Hypertension": "Common with obesity, poor vascular elasticity, stress",
       "Diabetes": "Insulin resistance, excessive sugar intake, inflammation",
       "Family history of obesity or metabolic disorders": "Genetic predisposition to weight gain and insulin issues",
-      "Digestive issues (IBS, Acidity, Constipation)": "Poor digestion, bloating, disrupted gut flora",
-      "high cholesterol": "Poor fat metabolism, processed food intake, inactivity",
+      "Digestive Issues (IBS, Acidity, Constipation)": "Poor digestion, bloating, disrupted gut flora",
+      "High Cholesterol": "Poor fat metabolism, processed food intake, inactivity",
       "None": "Indicates lifestyle or emotional causes",
     },
     "How often do you feel stressed?": {
       "Rarely": "Healthy emotional regulation",
       "Sometimes": "Intermittent stress may affect food choices and sleep quality",
       "Often": "Chronic stress triggers cortisol, which increases fat accumulation, especially in the abdomen",
-      "Always ": "Chronic stress triggers cortisol, which increases fat accumulation, especially in the abdomen",
+      "Always": "Chronic stress triggers cortisol, which increases fat accumulation, especially in the abdomen",
     },
     "Do you experience emotional eating ?": {
       "Never": "Emotional stability; eating not driven by feelings",
@@ -387,20 +383,20 @@ const questionnaireConfig = {
       "Daily": "High risk of obesity, metabolic syndrome, fatty liver, and hormonal imbalance",
     },
     "Do you experience any of the following? (Select all that apply)": {
-      "Erectile dysfunction": "Indicates systemic dysfunction, affects quality of life, emotional health",
-      "thyroid disorder": "Chronic fatigue, infertility, severe weight gain, depression",
+      "Erectile Dysfunction": "Indicates systemic dysfunction, affects quality of life, emotional health",
+      "Thyroid Disorder": "Chronic fatigue, infertility, severe weight gain, depression",
       "Hypertension": "Heart disease, kidney failure, stroke",
       "Diabetes": "Neuropathy, kidney damage, vision loss, obesity complications",
       "Family history of obesity or metabolic disorders": "Earlier onset of lifestyle diseases, weight gain despite effort",
-      "Digestive issues (IBS, Acidity, Constipation)": "Nutritional deficiencies, chronic inflammation, fatigue",
-      "high cholesterol": "Atherosclerosis, heart attacks, non-alcoholic fatty liver",
+      "Digestive Issues (IBS, Acidity, Constipation)": "Nutritional deficiencies, chronic inflammation, fatigue",
+      "High Cholesterol": "Atherosclerosis, heart attacks, non-alcoholic fatty liver",
       "None": "Risk depends on habits; early prevention is key",
     },
     "How often do you feel stressed?": {
       "Rarely": "Minimal risk if overall lifestyle is balanced",
       "Sometimes": "Can progress into chronic stress or binge-eating patterns if unmanaged",
       "Often": "Long-term stress may cause emotional eating, hormonal imbalance, and fat gain",
-      "Always ": "Long-term stress may cause emotional eating, hormonal imbalance, and fat gain",
+      "Always": "Long-term stress may cause emotional eating, hormonal imbalance, and fat gain",
     },
     "Do you experience emotional eating ?": {
       "Never": "No risk from emotional eating, though other causes may exist",
@@ -711,14 +707,9 @@ const questionnaireConfig = {
     return Math.max(0, Math.min(100, Math.round(healthScore)));
   },
   productRules: (score, allAnswers, productDatabase, userInfo, config) => {
-
     const answers = allAnswers;
     const productNames = new Set();
     const bmi = userInfo?.bmi || 22;
-
-    /* -----------------------
-       Helper Functions
-    ------------------------ */
 
     const getAnswerTexts = (groupKey, questionText) => {
       const answerObj = answers[groupKey]?.find(a =>
@@ -739,10 +730,6 @@ const questionnaireConfig = {
           String(a.text).toLowerCase().includes(searchText.toLowerCase())
       ) || false;
     };
-
-    /* -----------------------
-       Flags
-    ------------------------ */
 
     const medicalConditions = getAnswerTexts(
       'medical',
@@ -781,11 +768,6 @@ const questionnaireConfig = {
 
     const hasBellyFatRisk = isHighBMI || isObeseLifestyle;
 
-    /* =======================================================
-       SCORE LOGIC
-    ======================================================== */
-
-    // 🔴 SCORE < 25
     if (score < 25) {
       productNames.add('ORLISTAT');
       productNames.add('IGNITE');
@@ -818,10 +800,6 @@ const questionnaireConfig = {
       }
     }
 
-    /* =======================================================
-       FILTER ACTIVE SHOPIFY PRODUCTS
-    ======================================================== */
-
     return [...productNames]
       .map(key => {
         const product = productDatabase[key];
@@ -853,10 +831,15 @@ const questionnaireConfig = {
     else if (score <= 80) baseIssue = 'Moderate Lifestyle Risk (Diet & Activity)';
     else baseIssue = 'Good Metabolic Health';
     let baseText = '';
-    if (score < 25) baseText = `Your BMI (${bmi.toFixed(1)}) indicates **${bmi >= 30 ? 'Obesity' : 'Overweight'}**, combined with severe metabolic and hormonal issues. Urgent intervention is needed to achieve your ${weightGoal.toFixed(1)} kg goal.`;
-    else if (score <= 60) baseText = `Your BMI (${bmi.toFixed(1)}) suggests **Overweight** status. The weight gain is likely driven by underlying hormonal issues (PCOD/Thyroid) and stress.`;
-    else if (score <= 80) baseText = `You have moderate risk for lifestyle-related weight gain (BMI ${bmi.toFixed(1)}). Focus is needed on exercise, sleep, and managing dietary indiscretions.`;
-    else baseText = `Your metabolic health is good (BMI ${bmi.toFixed(1)}). Minor weight correction can be achieved through small lifestyle improvements.`;
+    if (score < 25) baseText = 'Your BMI ({bmi}) indicates **{bmiClass}**, combined with severe metabolic and hormonal issues. Urgent intervention is needed to achieve your {goal} kg goal.';
+    else if (score <= 60) baseText = 'Your BMI ({bmi}) suggests **Overweight** status. The weight gain is likely driven by underlying hormonal and thyroid issues and stress.';
+    else if (score <= 80) baseText = 'You have moderate risk for lifestyle-related weight gain (BMI {bmi}). Focus is needed on exercise, sleep, and managing dietary indiscretions.';
+    else baseText = 'Your metabolic health is good (BMI {bmi}). Minor weight correction can be achieved through small lifestyle improvements.';
+    const conditionVars = {
+      bmi: bmi.toFixed(1),
+      bmiClass: bmi >= 30 ? 'Obesity' : 'Overweight',
+      goal: weightGoal.toFixed(1),
+    };
     let conditionTextHTML = `<p>${baseText}</p>`;
     let futureRisks = [];
     let possibleCauses = [];
@@ -898,6 +881,7 @@ const questionnaireConfig = {
     return {
       issueTitle: baseIssue,
       conditionTextHTML,
+      conditionVars,
       futureRisks: [...new Set(futureRisks)],
       possibleCauses: [...new Set(possibleCauses)],
       timelineData: {
@@ -999,7 +983,7 @@ const questionnaireConfig = {
     };
     try {
       const docRef = await db.collection('questionnaire_submissions').add(data);
-      // console.log('Submission successful');
+
       return docRef.id;
     } catch (e) {
       console.error('Error saving to Firebase:', e);
