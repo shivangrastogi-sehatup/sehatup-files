@@ -101,6 +101,36 @@ function money(n) {
   return '₹' + parseFloat(n).toFixed(2);
 }
 
+// --- Stock + flagged-ingredient detection -------------------------------
+// Molecules worth calling out on the sheet. Substring match, case-insensitive.
+const FLAGGED_INGREDIENTS = ['tadalafil', 'dapoxetine'];
+
+// Shopify only actually blocks a sale when it is TRACKING inventory and the
+// policy is to deny overselling. A variant with no inventory_management is
+// untracked and always sellable, however its quantity reads.
+function variantAvailable(v) {
+  if (!v.inventory_management) return true;
+  if (v.inventory_policy === 'continue') return true;
+  return Number(v.inventory_quantity == null ? 0 : v.inventory_quantity) > 0;
+}
+
+// Out of stock only when every variant is unsellable.
+function isOutOfStock(p) {
+  const vs = p.variants || [];
+  if (!vs.length) return false;
+  return !vs.some(variantAvailable);
+}
+
+// Looks at title, variant names, tags, type and the description body, since
+// the molecule is usually named in the ingredients block rather than the title.
+function flaggedIn(p) {
+  const hay = [
+    p.title, p.body_html, p.tags, p.product_type, p.vendor,
+    ...(p.variants || []).map((v) => v.title),
+  ].join(' ').toLowerCase();
+  return FLAGGED_INGREDIENTS.filter((w) => hay.includes(w));
+}
+
 // --- Strip Shopify section delimiters like [description], [benefits],
 //     [how_to_use], [/ingredients], [details] etc., and remove the empty
 //     paragraphs/spans they leave behind. ---
@@ -129,9 +159,23 @@ function cardHtml(p, index) {
   const discounted = sellingPrice != null ? sellingPrice * 0.9 : null;
 
   const img = imageFor(p);
-  const imgTag = img
-    ? `<img class="product-img" src="${escapeHtml(img)}" alt="${escapeHtml(p.title)}" loading="lazy" />`
+  // Ask Shopify's CDN for a small rendition rather than shrinking the full-size
+  // file in the browser: the catalog can run to hundreds of products.
+  const thumbSrc = img ? img.replace(/(\.[a-z]+)(\?|$)/i, '_240x$1$2') : null;
+  const imgTag = thumbSrc
+    ? `<img class="product-img" src="${escapeHtml(thumbSrc)}" alt="${escapeHtml(p.title)}" loading="lazy" />`
     : `<div class="product-img no-img">No image</div>`;
+
+  const oos = isOutOfStock(p);
+  const flags = flaggedIn(p);
+  const badges = [
+    oos ? '<span class="badge badge-oos">Out of stock</span>' : '',
+    ...flags.map((f) => `<span class="badge badge-rx">${escapeHtml(f[0].toUpperCase() + f.slice(1))}</span>`),
+  ].filter(Boolean).join('');
+
+  // Data attributes drive the card highlight in CSS: a flagged molecule that is
+  // also unavailable is the combination worth spotting first.
+  const state = [oos ? 'oos' : '', flags.length ? 'rx' : ''].filter(Boolean).join(' ');
 
   // body_html is real HTML from Shopify — clean out the [section] delimiters,
   // then render (fallback to a placeholder).
@@ -143,11 +187,12 @@ function cardHtml(p, index) {
   const showMrp = mrp != null && sellingPrice != null && mrp > sellingPrice;
 
   return `
-  <article class="card">
-    <div class="card-media">${imgTag}</div>
+  <article class="card"${state ? ` data-state="${state}"` : ''}>
     <div class="card-body">
+      <div class="card-thumb">${imgTag}</div>
       <div class="card-index">#${index + 1}</div>
       <h2 class="product-title">${escapeHtml(p.title)}</h2>
+      ${badges ? `<div class="badges">${badges}</div>` : ''}
       <div class="price-row">
         ${sellingPrice != null ? `<span class="price">${money(sellingPrice)}</span>` : ''}
         ${showMrp ? `<span class="mrp">${money(mrp)}</span>` : ''}
@@ -159,9 +204,11 @@ function cardHtml(p, index) {
 }
 
 // --- Assemble the full HTML document ---
-function buildHtml(products) {
+function buildHtml(products, droppedCount = 0) {
   const generatedAt = new Date().toLocaleString('en-IN');
   const cards = products.map((p, i) => cardHtml(p, i)).join('\n');
+  const oosCount = products.filter(isOutOfStock).length;
+  const rxCount = products.filter((p) => flaggedIn(p).length).length;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -177,6 +224,8 @@ function buildHtml(products) {
     --brand: #1f7a53;
     --brand-soft: #eaf5ef;
     --off: #b8461f;
+    --oos: #c2410c;
+    --rx: #6d28d9;
   }
   * { box-sizing: border-box; }
   body {
@@ -193,6 +242,12 @@ function buildHtml(products) {
   }
   .page-header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: .3px; }
   .page-header p { margin: 0; opacity: .85; font-size: 13px; }
+  .page-summary { margin-top: 10px !important; display: flex; gap: 8px; flex-wrap: wrap; opacity: 1 !important; }
+  .k {
+    font-size: 11.5px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
+  }
   .catalog {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -209,31 +264,55 @@ function buildHtml(products) {
     display: flex;
     flex-direction: column;
   }
-  .card-media {
+  /* Floated, not a flex column: a flex row would reserve the image's full
+     height beside a one-line title and leave a gap under it. Floating lets the
+     title sit alongside and the copy reclaim the full width once it clears. */
+  .card-thumb {
+    float: right;
+    margin: 0 0 10px 14px;
+    width: 96px; height: 96px;
+    display: flex; align-items: center; justify-content: center;
     background: var(--brand-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    min-height: 220px;
+    border-radius: 8px;
+    padding: 6px;
+    overflow: hidden;
   }
   .product-img {
     max-width: 100%;
-    max-height: 260px;
+    max-height: 100%;
     object-fit: contain;
+    display: block;
   }
   .no-img {
-    width: 100%;
-    min-height: 200px;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 10px;
   }
-  .card-body { padding: 16px 18px 20px; position: relative; }
-  .card-index {
-    position: absolute; top: 14px; right: 16px;
-    font-size: 11px; color: var(--muted); font-weight: 600;
+  .card-body { padding: 16px 18px 20px; }
+  /* Contain the floated thumbnail so a short product still gets a full-height card. */
+  .card-body::after { content: ''; display: block; clear: both; }
+  .card-index { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .product-title { margin: 0; font-size: 17px; line-height: 1.3; }
+
+  /* Highlights. A flagged molecule that is also unavailable gets both the
+     stripe and the tinted head, so it reads first on a dense page. */
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .badge {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
   }
-  .product-title { margin: 0 40px 8px 0; font-size: 17px; line-height: 1.3; }
+  .badge-oos { background: #fdeceb; color: var(--oos); border: 1px solid #f6c9c4; }
+  .badge-rx  { background: #f1ecfd; color: var(--rx);  border: 1px solid #d9cbf8; }
+
+  .card[data-state~="oos"] { border-color: #f3c8c1; border-left: 4px solid var(--oos); }
+  .card[data-state~="rx"]  { border-left: 4px solid var(--rx); }
+  .card[data-state~="rx"][data-state~="oos"] {
+    border-left: 4px solid var(--oos);
+    background: #fffaf9;
+  }
+  .card[data-state~="oos"] .product-title { color: var(--oos); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .chip {
     font-size: 11px; padding: 2px 8px; border-radius: 999px;
@@ -248,29 +327,66 @@ function buildHtml(products) {
   .description p:first-child { margin-top: 0; }
   .muted { color: var(--muted); }
 
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+
   @media print {
-    body { background: #fff; }
+    body { background: #fff; font-size: 10.5pt; }
+
+    /* Was a full page on its own; now a compact banner at the top of page 1. */
     .page-header {
       background: var(--brand) !important;
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
-      page-break-after: always; break-after: page;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 8mm;
+      /* Its own sheet, so every product starts at the top of a clean page. */
+      break-after: page; page-break-after: always;
     }
-    /* One product per page */
+    .page-header h1 { font-size: 17pt; }
+    .page-header p { font-size: 8.5pt; }
+
+    /* One product per sheet. */
     .catalog {
-      grid-template-columns: 1fr;
-      gap: 0; padding: 0; max-width: none;
+      display: block;
+      padding: 0; max-width: none;
     }
     .card {
       break-inside: avoid; page-break-inside: avoid;
-      page-break-after: always; break-after: page;
-      border: none; border-radius: 0;
+      break-after: page; page-break-after: always;
+      border: none;
+      border-radius: 0;
       box-shadow: none;
+      margin: 0;
     }
-    .card:last-child { page-break-after: auto; break-after: auto; }
-    .card-media { min-height: 0; padding: 16px; }
-    .product-img { max-height: 300px; max-width: 55%; }
-    .card-body { padding: 20px 40px 30px; }
-    .chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* Without this the forced break after the final card emits a blank sheet. */
+    .card:last-child { break-after: auto; page-break-after: auto; }
+    .card-body { padding: 8px 12px 10px; }
+    .card-thumb { width: 26mm; height: 26mm; margin-left: 8px; }
+    .product-title { font-size: 12.5pt; }
+    .price { font-size: 13pt; }
+    .price-row { margin-bottom: 8px; }
+    /* Tightened so the longest description still lands inside one sheet. */
+    .description { font-size: 9pt; line-height: 1.45; }
+    .description p { margin: 0 0 5px; }
+    .description ul, .description ol { margin: 5px 0; padding-left: 18px; }
+    .description li { margin-bottom: 2px; }
+    .description h1, .description h2, .description h3, .description h4 {
+      font-size: 10pt; margin: 8px 0 4px;
+    }
+    /* Keep a heading with the text under it rather than stranded at a page foot. */
+    .product-title, .badges, .price-row { break-after: avoid; page-break-after: avoid; }
+    .description h1, .description h2, .description h3,
+    .description h4, .description strong {
+      break-after: avoid; page-break-after: avoid;
+    }
+    .description p, .description li { orphans: 3; widows: 3; }
+
+    /* The highlights are the point of the sheet, so force them to ink. On a
+       mono printer the badge wording and the border still carry the meaning. */
+    .chip, .badge, .card[data-state], .k {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .card[data-state~="oos"] { border-left-width: 4px; }
   }
 </style>
 </head>
@@ -278,6 +394,11 @@ function buildHtml(products) {
   <header class="page-header">
     <h1>SehatUP Product Catalog</h1>
     <p>${products.length} products &middot; Generated ${escapeHtml(generatedAt)} &middot; To save as PDF: press Ctrl+P and choose "Save as PDF"</p>
+    <p class="page-summary">
+      <span class="k">${droppedCount} excluded &mdash; out of stock &amp; ${escapeHtml(FLAGGED_INGREDIENTS.join('/'))}</span>
+      ${oosCount ? `<span class="k k-oos">${oosCount} still out of stock</span>` : ''}
+      ${rxCount ? `<span class="k k-rx">${rxCount} with ${escapeHtml(FLAGGED_INGREDIENTS.join(' / '))}</span>` : ''}
+    </p>
   </header>
   <main class="catalog">
     ${cards}
@@ -288,6 +409,13 @@ function buildHtml(products) {
 
 // Product titles to exclude from the catalog (case-insensitive substring match).
 const EXCLUDE_TITLES = ['free sample'];
+
+// Also drop anything that is BOTH unavailable and built on one of the flagged
+// molecules — there is no point printing a sheet for something that cannot be
+// sold. Either condition on its own is kept, and still gets badged.
+function isDroppedLine(p) {
+  return isOutOfStock(p) && flaggedIn(p).length > 0;
+}
 
 async function start() {
   try {
@@ -302,7 +430,15 @@ async function start() {
     if (products.length < before) {
       console.log(`🚫 Excluded ${before - products.length} product(s) (matched: ${EXCLUDE_TITLES.join(', ')}).`);
     }
-    const html = buildHtml(products);
+
+    const dropped = products.filter(isDroppedLine);
+    products = products.filter((p) => !isDroppedLine(p));
+    if (dropped.length) {
+      console.log(`🚫 Excluded ${dropped.length} out-of-stock ${FLAGGED_INGREDIENTS.join('/')} product(s):`);
+      dropped.forEach((p) => console.log(`     - ${p.title}`));
+    }
+
+    const html = buildHtml(products, dropped.length);
     fs.writeFileSync(OUTPUT_HTML, html);
     console.log(`✅ ${OUTPUT_HTML} created.`);
     console.log('👉 Open it in your browser, then Ctrl+P → "Save as PDF".');

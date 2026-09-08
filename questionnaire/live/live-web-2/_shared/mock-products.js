@@ -282,7 +282,7 @@ export const mockShopifyProducts = {
     }
   },
   "pure-himalayan-shilajit-resin-20g": {
-    "title": "Pure Himalayan Shilajit Resin – 20g | SehatUP",
+    "title": "Pure Himalayan Shilajit Resin – 20g | sehatUP",
     "featuredImage": "https://cdn.shopify.com/s/files/1/0924/5687/8383/files/pure-himalayan-shilajit-resin.webp?v=1773727203",
     "url": "/products/pure-himalayan-shilajit-resin-20g",
     "variants": {

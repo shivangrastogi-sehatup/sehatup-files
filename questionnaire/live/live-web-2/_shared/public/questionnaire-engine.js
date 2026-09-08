@@ -1,5 +1,9 @@
 // questionnaire-engine.js
 class QuestionnaireEngine {
+    // One full loop of the loader GIF, summed from its 150 frame delays.
+    // Re-measure if the GIF in loader-overlay.liquid is ever swapped.
+    static GIF_LOOP_MS = 5010;
+
     constructor(config) {
         this.config = config;
         this.version = "3.7.0"; // Loader-stuck fixes: finishQuestionnaire watchdog, persistData await, modal-await, switchForm lang fix
@@ -111,6 +115,7 @@ class QuestionnaireEngine {
                 'label-phone': "Enter Your Phone Number:",
                 'btn-prev': "Previous",
                 'btn-next': "Next",
+                'btn-submit': "Submit",
                 'about-you': "About You",
                 'challenge': "Challenge",
                 'questions': "Questions",
@@ -130,6 +135,7 @@ class QuestionnaireEngine {
                 'timeline-title': "Condition-Based Progress Timeline",
                 'included-plan-title': "What's included in your Plan",
                 'expert-doctor-support': "Expert Doctor Support",
+                'doctor-support-banner': "24x7 Expert Doctor Support",
                 'ayurvedic-medicine': "Ayurvedic Medicine",
                 'custom-diet-exercise': "Custom Diet & Exercise",
                 'recommended-treatment': "Recommended Treatment",
@@ -195,6 +201,7 @@ class QuestionnaireEngine {
                 'label-phone': "अपना फोन नंबर दर्ज करें:",
                 'btn-prev': "पिछला",
                 'btn-next': "अगला",
+                'btn-submit': "सबमिट करें",
                 'about-you': "आपके बारे में",
                 'challenge': "चुनौती",
                 'questions': "प्रश्न",
@@ -214,6 +221,7 @@ class QuestionnaireEngine {
                 'timeline-title': "स्थिति-आधारित प्रगति समयरेखा",
                 'included-plan-title': "आपके प्लान में क्या शामिल है",
                 'expert-doctor-support': "विशेषज्ञ डॉक्टर सहायता",
+                'doctor-support-banner': "24x7 विशेषज्ञ डॉक्टर सहायता",
                 'ayurvedic-medicine': "आयुर्वेदिक दवा",
                 'custom-diet-exercise': "कस्टम डाइट और व्यायाम",
                 'recommended-treatment': "अनुशंसित उपचार",
@@ -353,38 +361,10 @@ class QuestionnaireEngine {
     }
 
     async init() {
-        const startTime = Date.now();
         const savedState = localStorage.getItem(`active_session_state_${this.config.id}`);
-        const partialDocId = localStorage.getItem(`partialDocId_${this.config.id}`);
-        let initialStep = 1;
 
-        if (savedState) {
-            try {
-                const parsed = JSON.parse(savedState);
-                if (parsed && parsed.currentStep) initialStep = parsed.currentStep;
-            } catch (e) { console.error("Error parsing initial local state:", e); }
-        }
-
-        // If we are at the very beginning (Step 1) and no remote session to load, hide loader immediately.
-        // This avoids the "Calculating report..." flicker on the home page.
-        if (initialStep === 1 && !partialDocId) {
-            this.hideLoader(true); // Instant hide
-        }
-
-        const isReturningToResults = initialStep === 99;
-        const minDuration = isReturningToResults ? 1000 : 2000; 
-
-        // Tracks whether the page-load fast-hide already removed the loader so we
-        // don't double-hide it (cheap, but avoids an unnecessary fade animation).
-        let loaderAlreadyHidden = (initialStep === 1 && !partialDocId);
-
-        const hideWithDelay = () => {
-            if (loaderAlreadyHidden) return;
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, minDuration - elapsed);
-            setTimeout(() => this.hideLoader(), remaining);
-            loaderAlreadyHidden = true;
-        };
+        // The loader starts hidden (loader-overlay.liquid) and is only ever raised by
+        // finishQuestionnaire / handleShowPreviousReport, so init() has nothing to hide.
 
         console.log(`Initializing questionnaire: ${this.config.id}`);
         this.updateStaticUI();
@@ -405,12 +385,12 @@ class QuestionnaireEngine {
                 const parsed = JSON.parse(savedState);
                 if (parsed && parsed.currentStep > 1) {
                     this.state = { ...this.state, ...parsed };
+                    this.rehydrateDynamicGroups();
                     console.log(`Resuming local session at step ${this.state.currentStep}`);
                     try {
                         console.log("Calling showStep for resume...");
                         this.showStep(this.state.currentStep);
                     } catch (e) { console.error("Error showing resumed step:", e); }
-                    hideWithDelay();
                     return;
                 }
             } catch (e) { console.error("Error parsing local state:", e); }
@@ -419,14 +399,10 @@ class QuestionnaireEngine {
         console.log("No active session or starting from step 1. Loading state...");
         try {
             await this.loadState();
+            this.rehydrateDynamicGroups();
             console.log("State loaded. Current step:", this.state.currentStep);
             this.showStep(this.state.currentStep);
         } catch (e) { console.error("Error loading state:", e); }
-
-        // Always release the loader after init resolves. If we landed back on step 1
-        // (e.g. user picked "Restart" in the resume modal), the original code skipped
-        // hideWithDelay() and the loader stayed up forever when partialDocId existed.
-        hideWithDelay();
     }
 
 
@@ -594,9 +570,18 @@ class QuestionnaireEngine {
             '.su-lang-toggle .lang-btn:focus-visible{outline:2px solid #ee204a;outline-offset:-2px}',
             '.su-lang-modal{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;',
             'justify-content:center;padding:20px;background:rgba(17,24,39,.55);',
-            'font-family:"Roboto",system-ui,sans-serif}',
+            'font-family:"Roboto",system-ui,sans-serif;',
+            'animation:su-lang-fade .28s ease forwards}',
+            // Dismissal is driven by .su-lang-modal--out so the card can animate out
+            // before the element is removed from the DOM.
+            '.su-lang-modal--out{animation:su-lang-fade .22s ease reverse forwards;pointer-events:none}',
             '.su-lang-card{background:#fff;border-radius:16px;padding:30px 28px 26px;max-width:390px;',
-            'width:100%;text-align:center;box-shadow:0 24px 60px -20px rgba(17,24,39,.5)}',
+            'width:100%;text-align:center;box-shadow:0 24px 60px -20px rgba(17,24,39,.5);',
+            'animation:su-lang-pop .34s cubic-bezier(.16,.84,.44,1) forwards}',
+            '.su-lang-modal--out .su-lang-card{animation:su-lang-pop .22s ease reverse forwards}',
+            '@keyframes su-lang-fade{from{opacity:0}to{opacity:1}}',
+            '@keyframes su-lang-pop{from{opacity:0;transform:translateY(12px) scale(.96)}',
+            'to{opacity:1;transform:none}}',
             '.su-lang-card h2{margin:0 0 6px;font-size:20px;font-weight:700;color:#111827}',
             '.su-lang-card p{margin:0 0 22px;font-size:14px;color:#6b7280;line-height:1.5}',
             '.su-lang-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}',
@@ -608,7 +593,8 @@ class QuestionnaireEngine {
             '.su-lang-opts .small{display:block;font-size:12px;color:#6b7280}',
             '@media (max-width:560px){.su-lang-toggle{top:8px;right:10px}',
             '.su-lang-toggle .lang-btn{padding:5px 11px;font-size:12px}}',
-            '@media (prefers-reduced-motion:reduce){.su-lang-toggle .lang-btn,.su-lang-opts button{transition:none}}'
+            '@media (prefers-reduced-motion:reduce){.su-lang-toggle .lang-btn,.su-lang-opts button{transition:none}',
+            '.su-lang-modal,.su-lang-card,.su-lang-modal--out,.su-lang-modal--out .su-lang-card{animation:none}}'
         ].join('');
         document.head.appendChild(st);
     }
@@ -673,7 +659,11 @@ class QuestionnaireEngine {
             if (!btn) return;
             const lang = btn.dataset.pick;
             this.markLanguageChosen();
-            modal.remove();
+            // Let the exit animation finish, but never leave the overlay behind if
+            // animationend does not fire (reduced motion, background tab).
+            modal.classList.add('su-lang-modal--out');
+            modal.addEventListener('animationend', () => modal.remove(), { once: true });
+            setTimeout(() => modal.remove(), 400);
             // changeLanguage returns early when the language already matches, so English
             // has to be applied by hand or picking it would leave nothing marked active.
             if (lang === this.currentLanguage) {
@@ -736,7 +726,12 @@ class QuestionnaireEngine {
             let settled = false;
             const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
             const el = document.createElement('script');
-            el.src = '/i18n/' + lang + '.js';
+            // Shopify serves theme files from its asset CDN - there is no /i18n/ route
+            // there, so a hardcoded path 404s and the whole catalogue silently fails to
+            // load (uiTranslations still work, so only t()-driven copy stays English).
+            // The template publishes the real URL via asset_url; the path is the
+            // fallback for any host that serves the folder directly.
+            el.src = (window.SU_I18N_URL && window.SU_I18N_URL[lang]) || ('/i18n/' + lang + '.js');
             // A failed fetch must not strand the visitor: resolve either way and let
             // t() fall back to English rather than showing a half-translated page.
             el.onload = () => done(true);
@@ -791,6 +786,11 @@ class QuestionnaireEngine {
             if (translation) {
                 if (el.tagName === 'INPUT') {
                     el.placeholder = translation;
+                } else if (el.tagName === 'IMG') {
+                    // An image has no text content - writing innerHTML would do nothing
+                    // and its accessible name would stay English for screen readers and
+                    // whenever the image fails to load.
+                    el.alt = translation;
                 } else {
                     el.innerHTML = translation;
                 }
@@ -970,6 +970,28 @@ class QuestionnaireEngine {
         this.persistData();
     }
 
+    /**
+     * A dynamic group's questions live only in memory: the config is re-parsed with
+     * `questions: []` on every load, while its answers come back from localStorage.
+     * That mismatch made renderQuestionGroup see 0 questions / N answers, treat the
+     * group as finished and skip forward - which is why Previous did nothing at the
+     * next group's first question, and why stepping back into the last group
+     * re-fired finishQuestionnaire (and its loader) instead of showing a question.
+     */
+    rehydrateDynamicGroups() {
+        const bank = this.config.questionBank;
+        const concern = (this.state.allAnswers && this.state.allAnswers.concern || [])[0];
+        if (!bank || !concern) return;
+        const key = String(concern.text || '').toLowerCase();
+        for (const g of this.config.questionGroups) {
+            if (g.isDynamic && !(g.questions || []).length && bank[key]) {
+                g.questions = bank[key];
+                this.progressConfig = this.progressConfig.map((p) =>
+                    p.key === g.key ? { ...p, totalQuestions: g.questions.length } : p);
+            }
+        }
+    }
+
     handleConcernSelection(concernKey) {
         const config = this.config;
         if (config.id !== 'mens-wellness') return;
@@ -1106,6 +1128,13 @@ class QuestionnaireEngine {
         });
     }
 
+    /** True when qIndex is the last question of the last group - i.e. answering it submits. */
+    isFinalQuestion(group, qIndex) {
+        const groups = this.config.questionGroups || [];
+        const lastGroup = groups[groups.length - 1];
+        return group === lastGroup && qIndex === (group.questions || []).length - 1;
+    }
+
     renderQuestionGroup(group) {
         const container = document.getElementById('question-content');
         const navContainer = document.getElementById('next-button-container');
@@ -1137,7 +1166,11 @@ class QuestionnaireEngine {
                 `;
             }).join('');
             optionsHTML = `<div class="multi-select-container">${optionsHTML}</div>`;
-            navContainer.innerHTML = `<button type="button" class="next-btn" data-action="submit-multi-select" data-i18n="btn-next">${this.uiTranslations[this.currentLanguage]['btn-next']}</button>`;
+            // The very last question of the very last group ends the questionnaire, so
+            // the button says Submit rather than Next. data-i18n carries the chosen key
+            // so the label still swaps correctly when the language is toggled.
+            const key = this.isFinalQuestion(group, qIndex) ? 'btn-submit' : 'btn-next';
+            navContainer.innerHTML = `<button type="button" class="next-btn" data-action="submit-multi-select" data-i18n="${key}">${this.uiTranslations[this.currentLanguage][key]}</button>`;
         } else {
             optionsHTML = q.options.map((opt) => {
                 const optText = this.t(opt.text);
@@ -1339,8 +1372,27 @@ class QuestionnaireEngine {
             totalScore = 0;
         }
 
+        // Take the question from the CONFIG, never from the rendered <h2>.
+        //
+        // The heading on screen is translated, so a Hindi visitor was storing the
+        // Devanagari question into allAnswers - and from there into Firestore, the
+        // CRM and the PDF. It also silently broke scoring: causeMapping and
+        // futureRisksMapping are keyed by the English question, so those lookups
+        // missed and the report came back with fewer causes and risks than the
+        // same answers produce in English.
+        //
+        // Single-select already does this correctly via data-question; this is the
+        // same index renderQuestionGroup uses to pick the question it drew.
+        const qIndex = this.state.allAnswers[group.key].length;
+        const askedQuestion = (group.questions || [])[qIndex];
+
+        // No DOM fallback on purpose: the heading is the translated string, so
+        // falling back to it would reintroduce exactly the bug this avoids. The
+        // index always resolves (renderQuestionGroup drew from it), and if it
+        // somehow does not, an obviously synthetic English label is still far
+        // better in the backend than Devanagari.
         this.state.allAnswers[group.key].push({
-            question: container.querySelector('h2').innerText,
+            question: askedQuestion ? askedQuestion.question : `${group.key} question ${qIndex + 1}`,
             text: selectedTexts,
             score: totalScore,
         });
@@ -1359,7 +1411,13 @@ class QuestionnaireEngine {
             const lastQuestionGroup = this.config.questionGroups[this.config.questionGroups.length - 1];
             const resultsStep = lastQuestionGroup ? lastQuestionGroup.step + 1 : 2;
 
-            if (this.state.currentStep === resultsStep) {
+            if (this.state.currentStep === resultsStep || this.state.currentStep === 99) {
+                // Same rule as stepping back into any earlier group: pop the last
+                // answer so a question is actually shown. Without the pop the group
+                // reads as complete and renderQuestionGroup skips straight forward
+                // again - which re-ran finishQuestionnaire and its loader.
+                const last = this.state.allAnswers[lastQuestionGroup.key];
+                if (last && last.length) last.pop();
                 this.showStep(lastQuestionGroup.step);
             } else if (this.state.currentStep > 1) {
                 this.showStep(this.state.currentStep - 1);
@@ -1395,14 +1453,15 @@ class QuestionnaireEngine {
     }
 
     async finishQuestionnaire() {
-        this.showLoader();
+        // One full run of the loader GIF (150 frames, measured from its frame delays).
+        this.showLoader(QuestionnaireEngine.GIF_LOOP_MS);
 
         // Failsafe watchdog: if anything below stalls (slow network, throw in setTimeout
         // chain, hung Firestore retry), the loader is force-hidden after 25s with a
         // visible message instead of trapping the user on the spinner forever.
         const watchdog = setTimeout(() => {
             console.error('finishQuestionnaire: watchdog fired (25s)');
-            this.hideLoader();
+            this.hideLoader(true);
             this.showNonBlockingMessage('Network seems slow. Please check your connection and try again.');
         }, 25000);
 
@@ -1489,7 +1548,7 @@ class QuestionnaireEngine {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (e) {
             console.error('finishQuestionnaire failed:', e);
-            this.hideLoader();
+            this.hideLoader(true);
             const msg = e && e.message === 'save_timeout'
                 ? 'Could not reach our servers. Please check your connection and try again.'
                 : 'Could not generate report. Please try again in a moment.';
@@ -1513,7 +1572,7 @@ class QuestionnaireEngine {
                 this.showStep(99); // Magic number for results
             } catch (e) {
                 console.error("Error loading previous report:", e);
-                this.hideLoader();
+                this.hideLoader(true);
                 this.showNonBlockingMessage("Could not load previous report.");
             }
         }, 1500); // Reduced from 2500ms for better UX
@@ -1900,9 +1959,16 @@ class QuestionnaireEngine {
         }
     }
 
-    showLoader() {
+    /**
+     * @param {number} minMs Keep the overlay up at least this long, so the GIF is
+     *   never cut off mid-loop when the work finishes fast. A slower fetch simply
+     *   takes longer - the minimum is a floor, not a delay added on top.
+     */
+    showLoader(minMs = 0) {
         const loader = document.getElementById('loader');
         if (!loader) return;
+        this.loaderShownAt = Date.now();
+        this.loaderMinMs = minMs;
         loader.classList.remove('fade-out');
         loader.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -1911,10 +1977,22 @@ class QuestionnaireEngine {
     hideLoader(instant = false) {
         const loader = document.getElementById('loader');
         if (!loader) return;
-        
+
+        // Honour the minimum set by showLoader. Errors and the watchdog pass
+        // instant:true so a failure is never held behind a 5s animation.
+        if (!instant && this.loaderMinMs) {
+            const remaining = this.loaderMinMs - (Date.now() - this.loaderShownAt);
+            if (remaining > 0) {
+                this.loaderMinMs = 0;
+                setTimeout(() => this.hideLoader(), remaining);
+                return;
+            }
+        }
+        this.loaderMinMs = 0;
+
         // Ensure the page is at the top when revealing content
         window.scrollTo(0, 0);
-        
+
         if (instant) {
             loader.style.display = 'none';
             loader.classList.add('fade-out');

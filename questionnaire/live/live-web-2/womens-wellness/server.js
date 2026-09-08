@@ -31,6 +31,9 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(sharedPath, "public")));
 // The Hindi catalogue, served at /i18n/hi.js for every questionnaire.
 app.use("/i18n", express.static(path.join(sharedPath, "public", "i18n")));
+// Also at the root, so {{ 'hi.js' | asset_url }} -> /hi.js resolves here the same
+// way it resolves from Shopify's asset CDN. Same URL shape in both places.
+app.use(express.static(path.join(sharedPath, "public", "i18n")));
 
 // --- Liquid Filters ---
 engine.registerFilter("asset_url", (filename) => "/" + filename);

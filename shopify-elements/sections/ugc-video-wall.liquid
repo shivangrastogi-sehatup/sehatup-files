@@ -1,0 +1,653 @@
+{% comment %}
+  sections/ugc-video-wall.liquid
+  ------------------------------------------------------------------
+  A continuously scrolling wall of customer videos picked from the
+  Shopify Files library.
+
+  Videos autoplay muted while the strip scrolls. Tapping one unmutes it
+  and stops the marquee so it can actually be watched; muting resumes.
+  Each video has a seek bar pinned to its bottom edge.
+
+  Motion is a CSS keyframe on a track that holds the blocks twice over,
+  translated by exactly -50%. That is why it can never stall or hitch at
+  the wrap: there is no "end" to reach and no JS driving each step. Speed
+  is authored in pixels per second, separately for mobile, tablet, laptop
+  and desktop, and converted to an animation duration once the real track
+  width is known - so the strip moves at the same visual pace on every
+  screen regardless of how wide the cards are.
+
+  No third-party carousel library: the marquee is ~20 lines of CSS, and
+  the libraries that do this are also the ones that stall at the seam.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign ratio = '9 / 16'
+  if s.aspect == 'portrait_4_5'
+    assign ratio = '4 / 5'
+  elsif s.aspect == 'square'
+    assign ratio = '1 / 1'
+  endif
+-%}
+
+<style>
+  #shopify-section-{{ section.id }} {
+    --ugc-accent: {{ s.accent }};
+    --ugc-ink: #1D1D1D;
+    --ugc-muted: rgba(43, 56, 69, .72);
+    --ugc-card-radius: 14px;
+    --ugc-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+    --ugc-shadow-lift: 0 14px 34px rgba(0, 0, 0, .16);
+    --ugc-gap: 16px;
+    --ugc-card-w: 210px;
+    --ugc-ratio: {{ ratio }};
+    background: {{ s.bg }};
+    padding: {{ s.pad_top }}px 0 {{ s.pad_bottom }}px;
+  }
+
+  .ugc__head {
+    max-width: 640px;
+    margin: 0 auto 28px;
+    padding: 0 20px;
+    text-align: center;
+  }
+  .ugc__title {
+    margin: 0;
+    font-family: var(--font-heading-family, Montserrat, sans-serif);
+    font-weight: 700;
+    font-size: clamp(26px, 5.2vw, 46px);
+    line-height: 1.15;
+    letter-spacing: .02em;
+    text-wrap: balance;
+    color: var(--ugc-ink);
+  }
+  .ugc__sub {
+    margin: 12px auto 0;
+    max-width: 52ch;
+    font-size: 15px;
+    line-height: 1.65;
+    text-wrap: balance;
+    color: var(--ugc-muted);
+  }
+
+  /* Masked at both edges so the strip reads as continuous rather than as a
+     grid that happens to be cut off. */
+  .ugc__strip {
+    position: relative;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+  .ugc__viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 0 10px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ugc__viewport::-webkit-scrollbar { display: none; }
+
+  /* The track carries the cards twice. Shifting it by half its own width
+     lands the copy exactly where the original started, so the loop is
+     seamless and there is no seam to get stuck at. */
+  .ugc__track {
+    display: flex;
+    gap: var(--ugc-gap);
+    width: max-content;
+    animation: ugc-marquee var(--ugc-duration, 40s) linear infinite;
+    animation-direction: var(--ugc-direction, normal);
+  }
+  @keyframes ugc-marquee {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(calc(-50% - (var(--ugc-gap) / 2)), 0, 0); }
+  }
+  /* Paused, never cancelled: the playhead is kept so it resumes in place. */
+  .ugc__strip[data-paused="true"] .ugc__track { animation-play-state: paused; }
+  .ugc[data-autoscroll="false"] .ugc__track { animation: none; }
+
+  .ugc__item { flex: 0 0 var(--ugc-card-w); width: var(--ugc-card-w); }
+
+  /* Deliberately a quiet frame. The videos are the colour in this section;
+     tinting the cards as well just competes with the faces. */
+  .ugc-card {
+    position: relative;
+    display: block;
+    width: 100%;
+    border: 1px solid rgba(29, 29, 29, .07);
+    background: #fff;
+    border-radius: var(--ugc-card-radius);
+    box-shadow: var(--ugc-shadow);
+    overflow: hidden;
+    transition: box-shadow .25s ease;
+  }
+  .ugc-card:hover,
+  .ugc-card:focus-within,
+  .ugc-card[data-live="true"] { box-shadow: var(--ugc-shadow-lift); }
+
+  /* Sound toggle: covers the video, sits under the seek bar. */
+  .ugc-card__hit {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  .ugc-card__hit:focus-visible {
+    outline: 3px solid var(--ugc-accent);
+    outline-offset: -3px;
+    border-radius: var(--ugc-card-radius);
+  }
+
+  .ugc-card__media {
+    display: block;
+    position: relative;
+    aspect-ratio: var(--ugc-ratio);
+    background: #E8ECEF;
+  }
+  .ugc-card__media video,
+  .ugc-card__media img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .ugc-card__sound {
+    position: absolute;
+    right: 10px;
+    bottom: 26px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(17, 17, 17, .55);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    pointer-events: none;
+    transition: background .2s ease;
+  }
+  .ugc-card[data-live="true"] .ugc-card__sound { background: var(--ugc-accent); }
+  .ugc-card__sound svg { width: 15px; height: 15px; display: block; }
+  .ugc-card__sound .on { display: none; }
+  .ugc-card[data-live="true"] .ugc-card__sound .on { display: block; }
+  .ugc-card[data-live="true"] .ugc-card__sound .off { display: none; }
+
+  /* Seek bar, pinned to the bottom of the video.
+     The visible line IS the input's own track, so there is no second element
+     to keep aligned - the browser centres the thumb on that exact box. */
+  .ugc-card__seek {
+    --ugc-bar-h: 4px;
+    --ugc-thumb: 12px;
+    position: absolute;
+    left: 8px; right: 8px; bottom: 0;
+    z-index: 2;
+    height: 18px;
+  }
+  .ugc-card__range {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+  .ugc-card__range::-webkit-slider-runnable-track {
+    height: var(--ugc-bar-h);
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--ugc-accent) 0 calc(var(--ugc-progress, 0) * 100%),
+      rgba(255, 255, 255, .4) calc(var(--ugc-progress, 0) * 100%) 100%);
+  }
+  /* (track height - thumb height) / 2 centres the thumb on the line. */
+  .ugc-card__range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--ugc-thumb);
+    height: var(--ugc-thumb);
+    margin-top: calc((var(--ugc-bar-h) - var(--ugc-thumb)) / 2);
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--ugc-accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  }
+  /* Firefox centres its thumb automatically and paints the played portion. */
+  .ugc-card__range::-moz-range-track {
+    height: var(--ugc-bar-h);
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .4);
+  }
+  .ugc-card__range::-moz-range-progress {
+    height: var(--ugc-bar-h);
+    border-radius: 999px;
+    background: var(--ugc-accent);
+  }
+  .ugc-card__range::-moz-range-thumb {
+    width: var(--ugc-thumb);
+    height: var(--ugc-thumb);
+    border: 2px solid var(--ugc-accent);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  }
+  .ugc-card__range:focus-visible { outline: 3px solid var(--ugc-accent); outline-offset: -3px; }
+
+  .ugc-card__foot { display: block; padding: 11px 13px 13px; }
+  .ugc-card__name {
+    display: block;
+    font-weight: 600;
+    font-size: 13.5px;
+    line-height: 1.3;
+    color: var(--ugc-ink);
+  }
+  /* Not decoration: says which problem this person had and how long it took. */
+  .ugc-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: var(--ugc-muted);
+  }
+  .ugc-card__check { flex: none; color: var(--ugc-accent); }
+  .ugc-card__check svg { width: 12px; height: 12px; display: block; }
+
+  .ugc__cta { margin: 30px auto 0; text-align: center; }
+  .ugc__cta a {
+    display: inline-block;
+    padding: 13px 30px;
+    border-radius: 50px;
+    background: var(--ugc-accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: filter .2s ease;
+  }
+  .ugc__cta a:hover { filter: brightness(1.07); }
+  .ugc__cta a:focus-visible { outline: 3px solid var(--ugc-ink); outline-offset: 3px; }
+
+  .ugc__empty {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 34px 20px;
+    text-align: center;
+    color: var(--ugc-muted);
+    font-size: 14px;
+  }
+
+  /* Breakpoints: mobile / tablet / laptop / desktop.
+     Card width drives how many are visible; speed is handled in JS. */
+  @media (min-width: 750px)  { #shopify-section-{{ section.id }} { --ugc-card-w: 228px; --ugc-gap: 18px; } }
+  @media (min-width: 990px)  { #shopify-section-{{ section.id }} { --ugc-card-w: 248px; --ugc-gap: 20px; } }
+  @media (min-width: 1400px) { #shopify-section-{{ section.id }} { --ugc-card-w: 272px; --ugc-gap: 22px; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ugc__track { animation: none; }
+    .ugc-card { transition: none; }
+  }
+</style>
+
+<div
+  class="ugc"
+  data-ugc-wall
+  data-autoscroll="{{ s.autoscroll }}"
+  data-speed-mobile="{{ s.speed_mobile }}"
+  data-speed-tablet="{{ s.speed_tablet }}"
+  data-speed-laptop="{{ s.speed_laptop }}"
+  data-speed-desktop="{{ s.speed_desktop }}"
+  data-direction="{{ s.direction }}"
+>
+  {%- if s.title != blank or s.subtitle != blank -%}
+    <div class="ugc__head">
+      {%- if s.title != blank -%}<h2 class="ugc__title">{{ s.title }}</h2>{%- endif -%}
+      {%- if s.subtitle != blank -%}<p class="ugc__sub">{{ s.subtitle }}</p>{%- endif -%}
+    </div>
+  {%- endif -%}
+
+  {%- if section.blocks.size > 0 -%}
+    <div class="ugc__strip" data-ugc-strip data-paused="false">
+      <div class="ugc__viewport" data-ugc-viewport>
+        <div class="ugc__track" data-ugc-track>
+          {%- comment -%}
+            Rendered twice. The second pass is the loop: it is inert and hidden
+            from assistive tech so the same eight stories are not announced or
+            tabbed through twice.
+          {%- endcomment -%}
+          {%- for pass in (1..2) -%}
+            {%- for block in section.blocks -%}
+              {%- liquid
+                assign v = block.settings.video
+                assign who = block.settings.name | default: 'Customer story'
+              -%}
+              <div
+                class="ugc__item"
+                {% if pass == 1 %}{{ block.shopify_attributes }}{% else %}aria-hidden="true" inert{% endif %}
+              >
+                <div class="ugc-card" data-ugc-card data-live="false">
+                  <div class="ugc-card__media">
+                    {%- if v -%}
+                      <video
+                        data-ugc-video
+                        muted loop playsinline preload="metadata"
+                        poster="{{ v.preview_image | image_url: width: 640 }}"
+                      >
+                        {%- for src in v.sources -%}
+                          {%- if src.format == 'mp4' -%}
+                            <source src="{{ src.url }}" type="{{ src.mime_type }}">
+                          {%- endif -%}
+                        {%- endfor -%}
+                      </video>
+                    {%- elsif block.settings.poster -%}
+                      <img src="{{ block.settings.poster | image_url: width: 640 }}" alt="" loading="lazy" width="640" height="1138">
+                    {%- endif -%}
+
+                    <button
+                      type="button"
+                      class="ugc-card__hit"
+                      data-ugc-toggle
+                      aria-pressed="false"
+                      aria-label="{{ 'Play sound for ' | append: who | escape }}"
+                    >
+                      <span class="ugc-card__sound" aria-hidden="true">
+                        <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6"/><path d="m17 9 6 6"/>
+                        </svg>
+                        <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/>
+                        </svg>
+                      </span>
+                    </button>
+
+                    {%- if v -%}
+                      <div class="ugc-card__seek">
+                        <input
+                          type="range"
+                          class="ugc-card__range"
+                          data-ugc-range
+                          min="0" max="1000" value="0" step="1"
+                          aria-label="{{ 'Seek video from ' | append: who | escape }}"
+                        >
+                      </div>
+                    {%- endif -%}
+                  </div>
+
+                  {%- if block.settings.name != blank or block.settings.meta != blank -%}
+                    <div class="ugc-card__foot">
+                      {%- if block.settings.name != blank -%}
+                        <span class="ugc-card__name">{{ block.settings.name }}</span>
+                      {%- endif -%}
+                      {%- if block.settings.meta != blank -%}
+                        <span class="ugc-card__meta">
+                          <span class="ugc-card__check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>
+                          </span>
+                          {{ block.settings.meta }}
+                        </span>
+                      {%- endif -%}
+                    </div>
+                  {%- endif -%}
+                </div>
+              </div>
+            {%- endfor -%}
+          {%- endfor -%}
+        </div>
+      </div>
+    </div>
+
+    {%- if s.cta_label != blank and s.cta_link != blank -%}
+      <div class="ugc__cta"><a href="{{ s.cta_link }}">{{ s.cta_label }}</a></div>
+    {%- endif -%}
+  {%- else -%}
+    <p class="ugc__empty">Add a video block to start the wall.</p>
+  {%- endif -%}
+</div>
+
+<script>
+(function () {
+  function init(root) {
+    var strip = root.querySelector('[data-ugc-strip]');
+    var track = root.querySelector('[data-ugc-track]');
+    if (!strip || !track) return;
+
+    var cards = Array.prototype.slice.call(root.querySelectorAll('[data-ugc-card]'));
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var wantsAuto = root.dataset.autoscroll === 'true' && !reduced;
+
+    track.style.setProperty('--ugc-direction', root.dataset.direction === 'rtl' ? 'reverse' : 'normal');
+
+    // Speed is authored in px/sec. One full cycle covers half the track (the
+    // original set), so duration = that distance / speed.
+    function applySpeed() {
+      var w = window.innerWidth;
+      var key = w < 750 ? 'speedMobile' : w < 990 ? 'speedTablet' : w < 1400 ? 'speedLaptop' : 'speedDesktop';
+      var pps = parseInt(root.dataset[key], 10) || 40;
+      var distance = track.scrollWidth / 2;
+      if (!distance) return;
+      track.style.setProperty('--ugc-duration', (distance / pps).toFixed(2) + 's');
+    }
+    applySpeed();
+    window.addEventListener('resize', applySpeed, { passive: true });
+    if ('ResizeObserver' in window) {
+      var ro = new ResizeObserver(applySpeed);
+      ro.observe(track);
+      root.__ugcRO = ro;
+    }
+
+    function pause(on) { strip.dataset.paused = on ? 'true' : 'false'; }
+
+    if (wantsAuto) {
+      strip.addEventListener('pointerenter', function () { pause(true); });
+      strip.addEventListener('pointerleave', function () {
+        if (!root.querySelector('[data-ugc-card][data-live="true"]')) pause(false);
+      });
+    }
+
+    // Only let videos decode while the section is on screen.
+    var videos = Array.prototype.slice.call(root.querySelectorAll('[data-ugc-video]'));
+    var play = function (v) { var p = v.play(); if (p && p.catch) p.catch(function () {}); };
+    // Remember what is on screen. A play() issued while the tab is hidden is
+    // rejected and never retried on its own, so the strip comes back from a
+    // background tab as a wall of frozen posters unless we ask again.
+    var onScreen = new Set();
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { onScreen.add(e.target); play(e.target); }
+          else { onScreen.delete(e.target); e.target.pause(); }
+        });
+      }, { rootMargin: '200px' });
+      videos.forEach(function (v) { io.observe(v); });
+      root.__ugcIO = io;
+    } else {
+      videos.forEach(function (v) { onScreen.add(v); play(v); });
+    }
+
+    // Recovery works off geometry, not off the observer's record: a hidden tab
+    // reports nothing as intersecting, so by the time we are visible again the
+    // observer's set can be empty even though half the strip is on screen.
+    root.__ugcVis = function () {
+      if (document.hidden) return;
+      videos.forEach(function (v) {
+        if (!v.paused) return;
+        var r = v.getBoundingClientRect();
+        var visible = r.bottom > -200 && r.top < (window.innerHeight || 0) + 200;
+        if (visible) { onScreen.add(v); play(v); }
+      });
+    };
+    document.addEventListener('visibilitychange', root.__ugcVis);
+
+    function clock(sec) {
+      if (!isFinite(sec)) return '0:00';
+      var m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function setLive(card, live) {
+      var v = card.querySelector('[data-ugc-video]');
+      var btn = card.querySelector('[data-ugc-toggle]');
+      card.dataset.live = live ? 'true' : 'false';
+      if (btn) {
+        btn.setAttribute('aria-pressed', live ? 'true' : 'false');
+        var who = (card.querySelector('.ugc-card__name') || {}).textContent || 'this video';
+        btn.setAttribute('aria-label', (live ? 'Mute ' : 'Play sound for ') + who.trim());
+      }
+      if (!v) return;
+      v.muted = !live;
+      if (live) play(v);
+    }
+
+    cards.forEach(function (card) {
+      var btn = card.querySelector('[data-ugc-toggle]');
+      var range = card.querySelector('[data-ugc-range]');
+      var v = card.querySelector('[data-ugc-video]');
+
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var live = card.dataset.live === 'true';
+          cards.forEach(function (c) { if (c !== card) setLive(c, false); });
+          setLive(card, !live);
+          if (wantsAuto) pause(!live);
+        });
+      }
+
+      if (!v || !range) return;
+
+      var scrubbing = false;
+
+      // timeupdate fires ~4x a second, which is plenty for a 4px bar and far
+      // cheaper than a rAF loop running on every card in the strip.
+      v.addEventListener('timeupdate', function () {
+        if (scrubbing || !v.duration) return;
+        var ratio = v.currentTime / v.duration;
+        range.style.setProperty('--ugc-progress', ratio.toFixed(4));
+        range.value = String(Math.round(ratio * 1000));
+        range.setAttribute('aria-valuetext', clock(v.currentTime) + ' of ' + clock(v.duration));
+      });
+
+      function seek() {
+        if (!v.duration) return;
+        var ratio = Number(range.value) / 1000;
+        v.currentTime = ratio * v.duration;
+        range.style.setProperty('--ugc-progress', ratio.toFixed(4));
+      }
+
+      range.addEventListener('input', function () { scrubbing = true; seek(); });
+      range.addEventListener('change', function () { scrubbing = false; seek(); });
+
+      // Hold the strip still while dragging, then let it go unless the card
+      // was left unmuted.
+      range.addEventListener('pointerdown', function () { scrubbing = true; pause(true); });
+      range.addEventListener('focus', function () { pause(true); });
+      function release() {
+        scrubbing = false;
+        if (wantsAuto && !root.querySelector('[data-ugc-card][data-live="true"]')) pause(false);
+      }
+      range.addEventListener('pointerup', release);
+      range.addEventListener('pointercancel', release);
+      range.addEventListener('blur', release);
+    });
+  }
+
+  function teardown(root) {
+    if (root.__ugcIO) { root.__ugcIO.disconnect(); root.__ugcIO = null; }
+    if (root.__ugcRO) { root.__ugcRO.disconnect(); root.__ugcRO = null; }
+    if (root.__ugcVis) { document.removeEventListener('visibilitychange', root.__ugcVis); root.__ugcVis = null; }
+  }
+
+  function boot(scope) {
+    (scope || document).querySelectorAll('[data-ugc-wall]').forEach(function (r) {
+      teardown(r);
+      init(r);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { boot(); });
+  } else {
+    boot();
+  }
+
+  document.addEventListener('shopify:section:load', function (e) { boot(e.target); });
+  document.addEventListener('shopify:section:unload', function (e) {
+    var r = e.target.querySelector('[data-ugc-wall]');
+    if (r) teardown(r);
+  });
+  document.addEventListener('shopify:block:select', function (e) {
+    var s = e.target.closest('[data-ugc-strip]');
+    if (s) s.dataset.paused = 'true';
+  });
+  document.addEventListener('shopify:block:deselect', function (e) {
+    var s = e.target.closest('[data-ugc-strip]');
+    if (s) s.dataset.paused = 'false';
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "UGC video wall",
+  "tag": "section",
+  "class": "ugc-video-wall",
+  "max_blocks": 30,
+  "settings": [
+    { "type": "text", "id": "title", "label": "Heading", "default": "Real people. Real results." },
+    { "type": "textarea", "id": "subtitle", "label": "Supporting text", "default": "Patients who started with a 60-second assessment, in their own words." },
+
+    { "type": "header", "content": "Scrolling" },
+    { "type": "checkbox", "id": "autoscroll", "label": "Scroll automatically", "default": true },
+    { "type": "select", "id": "direction", "label": "Direction", "default": "ltr",
+      "options": [ { "value": "ltr", "label": "Right to left" }, { "value": "rtl", "label": "Left to right" } ] },
+    { "type": "paragraph", "content": "Speed is in pixels per second, so the strip moves at the same visual pace on every screen size." },
+    { "type": "range", "id": "speed_mobile",  "label": "Speed — mobile",  "min": 10, "max": 160, "step": 5, "unit": "px", "default": 35 },
+    { "type": "range", "id": "speed_tablet",  "label": "Speed — tablet",  "min": 10, "max": 160, "step": 5, "unit": "px", "default": 45 },
+    { "type": "range", "id": "speed_laptop",  "label": "Speed — laptop",  "min": 10, "max": 160, "step": 5, "unit": "px", "default": 55 },
+    { "type": "range", "id": "speed_desktop", "label": "Speed — desktop", "min": 10, "max": 160, "step": 5, "unit": "px", "default": 65 },
+
+    { "type": "header", "content": "Appearance" },
+    { "type": "select", "id": "aspect", "label": "Video shape", "default": "portrait_9_16",
+      "options": [
+        { "value": "portrait_9_16", "label": "Portrait 9:16" },
+        { "value": "portrait_4_5", "label": "Portrait 4:5" },
+        { "value": "square", "label": "Square 1:1" }
+      ] },
+    { "type": "color", "id": "bg", "label": "Background", "default": "#FFFFFF" },
+    { "type": "color", "id": "accent", "label": "Accent", "default": "#FF4757" },
+    { "type": "range", "id": "pad_top", "label": "Padding top", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "pad_bottom", "label": "Padding bottom", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 64 },
+
+    { "type": "header", "content": "Button" },
+    { "type": "text", "id": "cta_label", "label": "Button text" },
+    { "type": "url", "id": "cta_link", "label": "Button link" }
+  ],
+  "blocks": [
+    {
+      "type": "video",
+      "name": "Video",
+      "settings": [
+        { "type": "video", "id": "video", "label": "Video" },
+        { "type": "image_picker", "id": "poster", "label": "Fallback image", "info": "Shown if no video is selected." },
+        { "type": "text", "id": "name", "label": "Name", "default": "Rahul, 34" },
+        { "type": "text", "id": "meta", "label": "Result", "default": "Weight · 4 months", "info": "What they came for and how long it took." }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "UGC video wall", "blocks": [ { "type": "video" }, { "type": "video" }, { "type": "video" }, { "type": "video" }, { "type": "video" } ] }
+  ]
+}
+{% endschema %}

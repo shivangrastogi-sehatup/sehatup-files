@@ -583,7 +583,7 @@ const questionnaireConfig = {
 
         let conditionTextHTML = "";
         if (score < 25) {
-            conditionTextHTML = "<p>Your health metrics indicate a need for major lifestyle changes and a SEHAT UP doctor-guided program.</p>";
+            conditionTextHTML = "<p>Your health metrics indicate a need for major lifestyle changes and a sehatUP doctor-guided program.</p>";
         } else if (score <= 60) {
             conditionTextHTML = "<p>You need focused lifestyle correction, balanced meals, and targeted support for your conditions.</p>";
         } else if (score <= 80) {

@@ -7,7 +7,8 @@
         width: 100%;
         height: 100%;
         background: #ffffff;
-        display: flex;
+        /* Hidden until showLoader() sets display:flex. Never visible on page load. */
+        display: none;
         justify-content: center;
         align-items: center;
         z-index: 10000;
@@ -61,25 +62,9 @@
   </div>
 </div>
 
-<!-- Background Overlay -->
-<div class="bg-overlay"></div>
-
-<script>
-    function showLoader() {
-        const loader = document.getElementById("loader");
-        loader.style.display = "flex";
-        document.body.style.overflow = "hidden";
-        setTimeout(hideLoader, 15000);
-    }
-
-    function hideLoader() {
-        const loader = document.getElementById("loader");
-        if (!loader) return;
-        window.scrollTo(0, 0);
-        loader.classList.add('fade-out');
-        setTimeout(() => {
-            loader.style.display = "none";
-            document.body.style.overflow = "auto";
-        }, 800);
-    }
-</script>
+{% comment %}
+  The engine owns this overlay (showLoader/hideLoader in questionnaire-engine.js).
+  The duplicate .bg-overlay and the global showLoader/hideLoader that used to live
+  here were removed: index.liquid already renders .bg-overlay, and the globals
+  hid the loader on a timer that fought the engine's own fade.
+{% endcomment %}

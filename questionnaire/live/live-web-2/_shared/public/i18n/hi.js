@@ -412,6 +412,8 @@ window.SU_I18N.hi = {
     "इरेक्टाइल डिसफंक्शन",
   "Erectile Dysfunction (ED)":
     "इरेक्टाइल डिसफंक्शन (ED)",
+  "Erectile Dysfunction + Premature Ejaculation":
+    "इरेक्टाइल डिसफंक्शन + शीघ्रपतन",
   "Erectile Dysfunction can often be improved with medication, lifestyle changes, and therapy":
     "इरेक्टाइल डिसफंक्शन में दवा, जीवनशैली में बदलाव और इलाज से अक्सर सुधार हो जाता है",
   "Erectile Dysfunction Improvement":
@@ -1222,6 +1224,8 @@ window.SU_I18N.hi = {
     "संभावित अंदरूनी सूजन, शुरुआती एंडोमेट्रियोसिस या फ़ाइब्रॉइड।",
   "Premature Ejaculation":
     "शीघ्रपतन",
+  "Premature Ejaculation may be managed through specialized exercises, counseling, or medications":
+    "शीघ्रपतन में खास एक्सरसाइज़, काउंसलिंग और दवाओं से अक्सर सुधार हो जाता है",
   "Premature Ejaculation (PE)":
     "शीघ्रपतन (PE)",
   "Prioritize protein in the first meal — skipping breakfast worsens insulin resistance.":
@@ -1598,8 +1602,8 @@ window.SU_I18N.hi = {
     "आपका BMI ({bmi}) **{bmiClass}** दर्शाता है, साथ में गंभीर मेटाबॉलिक और हार्मोनल समस्याएँ हैं। {goal} किग्रा का लक्ष्य पाने के लिए तुरंत कदम उठाने की ज़रूरत है।",
   "Your BMI ({bmi}) suggests **Overweight** status. The weight gain is likely driven by underlying hormonal and thyroid issues and stress.":
     "आपका BMI ({bmi}) **ज़्यादा वज़न** दर्शाता है। वज़न बढ़ने की वजह संभवतः अंदरूनी हार्मोनल और थायरॉइड समस्याएँ तथा तनाव है।",
-  "Your health metrics indicate a need for major lifestyle changes and a SEHAT UP doctor-guided program.":
-    "आपके स्वास्थ्य आंकड़े बताते हैं कि जीवनशैली में बड़े बदलाव और SEHAT UP के डॉक्टर-निर्देशित प्रोग्राम की ज़रूरत है।",
+  "Your health metrics indicate a need for major lifestyle changes and a sehatUP doctor-guided program.":
+    "आपके स्वास्थ्य आंकड़े बताते हैं कि जीवनशैली में बड़े बदलाव और sehatUP के डॉक्टर-निर्देशित प्रोग्राम की ज़रूरत है।",
   "Your metabolic health is good (BMI {bmi}). Minor weight correction can be achieved through small lifestyle improvements.":
     "आपका मेटाबॉलिक स्वास्थ्य अच्छा है (BMI {bmi})। थोड़े से जीवनशैली सुधार से वज़न में छोटा सुधार पाया जा सकता है।",
   "Zero PMS signs":

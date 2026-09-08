@@ -55,7 +55,7 @@ const productDatabaseCommon = {
     },
 
     [PRODUCT_REGISTRY.INTIMATE_WASH.handle]: {
-        description: "SehatUP’s Intimate Foam Wash is a soothing, pH-balanced cleanser for daily hygiene...",
+        description: "sehatUP’s Intimate Foam Wash is a soothing, pH-balanced cleanser for daily hygiene...",
         whyPoints: [
             'Soothe and calm the skin.',
             'Maintain healthy pH balance.',

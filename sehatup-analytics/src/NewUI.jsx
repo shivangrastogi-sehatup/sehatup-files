@@ -19,6 +19,27 @@ import 'react-datepicker/dist/react-datepicker.css';
 import PriceCalculator from './components/PriceCalculator';
 import CartLinkGenerator from './components/CartLinkGenerator';
 
+/**
+ * Which Firestore collection a submission actually lives in.
+ *
+ * Callers tag the source inconsistently and always have: Clinical review uses
+ * `_collection` with 'full'/'partial'/'manual', the Submissions tab uses
+ * `_source` with 'completed'/'partial'/'manual', and global search sets
+ * `_collection: 'completed'`. Every site that resolved this inline had to know
+ * all three conventions, and the one in handleApproveSign only knew 'full' — so
+ * a patient opened from Submissions or global search resolved to
+ * manual_submissions, where transaction.update() throws on the missing doc and
+ * rolls back the whole approve-and-sign (prescription and isConsulted alike).
+ *
+ * Resolve it here so there is one place to be right.
+ */
+function submissionCollectionOf(item) {
+  const src = item?._collection || item?._source || item?.source;
+  if (src === 'full' || src === 'completed') return 'questionnaire_submissions';
+  if (src === 'partial') return 'partial_submissions';
+  return 'manual_submissions';
+}
+
 // Curated list of exportable columns — `default: true` means pre-selected in the picker.
 // Each `get(r)` produces the cell value for a row. No `answers`/`rawState`/`html` etc.
 const EXPORT_COLUMNS = [
@@ -693,43 +714,6 @@ const PRODUCTS = [
   { id: "P-107", name: "Ashwagandha 30 Tablets", subtitle: "Free sample · 30 tabs", price: 0, sku: "ASH-030", stock: 500, category: "Wellness", isFreeSample: true },
 ];
 
-const QUESTIONNAIRE = {
-  category: "Womens Wellness",
-  sections: [
-    {
-      name: "Profile", qs: [
-        { q: "What is your age?", a: "29 years" },
-        { q: "What is your weight?", a: "68 kg" },
-        { q: "What is your height?", a: "162 cm" },
-      ]
-    },
-    {
-      name: "Cycle & Hormones", qs: [
-        { q: "How regular are your periods?", a: "Irregular — varies by 7+ days" },
-        { q: "Do you experience severe cramps?", a: "Yes, often", flag: true },
-        { q: "Have you been diagnosed with PCOS / PCOD?", a: "Suspected but not confirmed", flag: true },
-        { q: "How would you rate your mood during periods?", a: "Often low, anxious" },
-      ]
-    },
-    {
-      name: "Lifestyle", qs: [
-        { q: "How many hours do you sleep on average?", a: "5–6 hours", flag: true },
-        { q: "How would you rate your daily stress?", a: "High" },
-        { q: "Do you exercise regularly?", a: "1–2 times a week" },
-        { q: "How is your appetite?", a: "Frequent cravings, especially sweets" },
-      ]
-    },
-    {
-      name: "Symptoms (last 30 days)", qs: [
-        { q: "Fatigue or low energy?", a: "Most days", flag: true },
-        { q: "Hair fall?", a: "Noticeable" },
-        { q: "Acne or skin issues?", a: "Mild but recurring" },
-        { q: "Weight gain unexplained?", a: "Yes, ~3kg in 3 months" },
-      ]
-    },
-  ],
-};
-
 const ORDERS = CUSTOMERS.filter(c => c.orders > 0).slice(0, 14).map((c, i) => ({
   id: "#SU-" + (45230 + i),
   customer: c,
@@ -808,7 +792,7 @@ const SHIPMENTS_STATUS = [
 window.SehatData = {
   CUSTOMERS, PRODUCTS, ORDERS, ROLES, USERS, RISKS, CATEGORIES, SOURCES,
   TIMELINE, RISK_DIST, GENDER_SPLIT, FUNNEL, ACTIVITY, SHIPMENTS_STATUS,
-  QUESTIONNAIRE, NOW, fmtTime, fmtShortTime, RISK_TYPE_OF_SCORE
+  NOW, fmtTime, fmtShortTime, RISK_TYPE_OF_SCORE
 };
 
 
@@ -3608,8 +3592,6 @@ function SelectChip({ icon, label, value, options, onChange }) {
 /* â”€â”€ Customer detail drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
-  const [isPurchased, setIsPurchased] = useStateCx(false);
-  const [isConsulted, setIsConsulted] = useStateCx(false);
   const [copiedId, setCopiedId] = useStateCx(false);
   const [copiedReport, setCopiedReport] = useStateCx(false);
   // Live Shopify order stats looked up by the patient's questionnaire phone number.
@@ -3746,22 +3728,9 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
         </div>
       </div>
 
-      {role === "doctor" && (
-        <div className="stack-12">
-          <div className="section-title">Clinical status</div>
-          <div className="card flat hstack-8" style={{ background: "var(--surface-2)" }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: isConsulted ? 'var(--accent)' : 'var(--fg)' }}>
-              <input type="checkbox" checked={isConsulted} onChange={(e) => setIsConsulted(e.target.checked)} style={{ accentColor: 'var(--accent)', width: 16, height: 16 }} />
-              Consulted
-            </label>
-            <span className="spacer" />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: isPurchased ? 'var(--accent)' : 'var(--fg)' }}>
-              <input type="checkbox" checked={isPurchased} onChange={(e) => setIsPurchased(e.target.checked)} style={{ accentColor: 'var(--accent)', width: 16, height: 16 }} />
-              Purchased
-            </label>
-          </div>
-        </div>
-      )}
+      {/* The "Clinical status" Consulted/Purchased pair used to sit here. It was
+          local state that was never written anywhere, so ticking it looked like
+          it saved and silently did nothing. Clinical review owns those flags. */}
 
       <DrawerFooter>
         {role === "doctor" ? (
@@ -3796,11 +3765,8 @@ function CustomerDrawer({ customer, onClose, openSubmission, setRoute, role }) {
 
 function SubmissionDrawer({ customer, onClose, onBack }) {
   const c = customer || {};
-  // Resolve which submission collection this doc lives in (for the prescriptions subcollection).
-  const src = c._collection || c._source || c.source;
-  const collForSrc = (src === 'full' || src === 'completed') ? 'questionnaire_submissions'
-    : src === 'partial' ? 'partial_submissions'
-      : 'manual_submissions';
+  // Which submission collection this doc lives in (for the prescriptions subcollection).
+  const collForSrc = submissionCollectionOf(c);
   // Latest prescription's recommendedProducts (if a doctor has prescribed). These
   // supersede the root recommendedProducts saved at assessment time, because the
   // doctor may have changed the products when writing the prescription.
@@ -4524,12 +4490,9 @@ function DoctorScreen({ openCustomer, openSubmission, context }) {
     setIsPurchasedState(selected?.isPurchased || false);
   }, [selected]);
 
-  const getCollectionName = (item) => {
-    if (!item) return 'questionnaire_submissions';
-    if (item._collection === 'full') return 'questionnaire_submissions';
-    if (item._collection === 'partial') return 'partial_submissions';
-    return 'manual_submissions';
-  };
+  // Same resolution as everywhere else, including the Submissions/global-search
+  // tags — otherwise the Consulted checkbox writes to the wrong collection too.
+  const getCollectionName = (item) => (item ? submissionCollectionOf(item) : 'questionnaire_submissions');
 
   const handleSaveConsultedState = async () => {
     if (!selected) return;
@@ -5306,10 +5269,11 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   // Load latest saved prescription from subcollection to prefill lifestyle, diagnosis & products
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-    if (!customer?.id || !customer?._collection) return;
-    const collName = customer._collection === 'full' ? 'questionnaire_submissions'
-      : customer._collection === 'partial' ? 'partial_submissions'
-        : 'manual_submissions';
+    // `_collection` alone is not enough: the Submissions tab tags with `_source`,
+    // and requiring `_collection` here meant the composer never prefilled the
+    // last prescription for patients opened from there.
+    if (!customer?.id) return;
+    const collName = submissionCollectionOf(customer);
     const loadLatest = async () => {
       try {
         const q = query(
@@ -5484,9 +5448,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   const [copiedCart, setCopiedCart] = useStateD(false);
   const [showConfirm, setShowConfirm] = useStateD(false);
 
-  const collectionName = customer?._collection === 'full' ? 'questionnaire_submissions'
-    : customer?._collection === 'partial' ? 'partial_submissions'
-      : 'manual_submissions';
+  const collectionName = submissionCollectionOf(customer);
 
   const handleApproveSign = async () => {
     if (!patientName.trim()) { alert('Patient name is required.'); return; }
@@ -6136,27 +6098,51 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
 }
 
 
+// Renders the patient's OWN questionnaire responses.
+//
+// This used to print the static `SehatData.QUESTIONNAIRE` demo object left over
+// from the UI scaffold — the same women's "Cycle & Hormones / PCOS" answers for
+// every patient, including men on the sexual-wellness questionnaire. The
+// `customer` prop was accepted and then never read.
+//
+// Real answers live on the submission doc as [{ question, answer, score }],
+// the same shape SubmissionDrawer renders.
 function AssessmentInline({ customer }) {
-  const D = window.SehatData;
-  let qn = 0;
+  const answers = Array.isArray(customer?.answers) ? customer.answers : [];
+  const isManual = submissionCollectionOf(customer) === 'manual_submissions';
+
+  if (!answers.length) {
+    return (
+      <div style={{ padding: 18 }}>
+        <div className="empty" style={{ padding: '36px 0', textAlign: 'center' }}>
+          <div className="fw5" style={{ marginBottom: 4 }}>
+            {isManual ? 'No questionnaire responses' : 'No responses recorded'}
+          </div>
+          <div className="muted" style={{ fontSize: 12.5 }}>
+            {isManual
+              ? 'This lead was added manually and has no assessment answers.'
+              : 'This submission has no answers stored against it.'}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 18 }}>
-      {D.QUESTIONNAIRE.sections.map(s => (
-        <div key={s.name} style={{ marginBottom: 14 }}>
-          <div className="h-label" style={{ marginBottom: 6 }}>{s.name}</div>
-          {s.qs.map((qa, i) => {
-            qn += 1;
-            return (
-              <div key={i} className="ans-row">
-                <div className="qn mono">{String(qn).padStart(2, "0")}</div>
-                <div className="qa">
-                  <div className="q">{qa.q}</div>
-                  <div className="a">{qa.a}</div>
-                </div>
-                <div>{qa.flag && <Badge tone="high" dot="var(--risk-high)">flag</Badge>}</div>
-              </div>
-            );
-          })}
+      <div className="hstack-8" style={{ marginBottom: 8 }}>
+        <div className="h-label">Responses</div>
+        <span className="muted" style={{ fontSize: 11.5 }}>
+          · {answers.length} questions{customer?.category ? ` · ${customer.category}` : ''}
+        </span>
+      </div>
+      {answers.map((qa, i) => (
+        <div key={i} className="ans-row">
+          <div className="qn mono">{String(i + 1).padStart(2, '0')}</div>
+          <div className="qa">
+            <div className="q">{qa.question}</div>
+            <div className="a">{Array.isArray(qa.answer) ? qa.answer.join(', ') : qa.answer}</div>
+          </div>
         </div>
       ))}
     </div>
@@ -6168,12 +6154,7 @@ function HistoryInline({ customer, onUsePrescription }) {
   const [pdfUrls, setPdfUrls] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // Works whether the caller tags the source as `_collection` (Clinical review:
-  // 'full'/'partial'/'manual') or `_source` (Submissions tab: 'completed'/'partial'/'manual').
-  const src = customer?._collection || customer?._source;
-  const collName = (src === 'full' || src === 'completed') ? 'questionnaire_submissions'
-    : src === 'partial' ? 'partial_submissions'
-      : 'manual_submissions';
+  const collName = submissionCollectionOf(customer);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -12650,10 +12631,12 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 // can_access_cart_links permission — that's the dynamic opt-in.
 const NAV = {
   admin: ["home", "submissions", "customers", "conversations", "prescriptions", "doctors", "orders", "order_create", "shipments", "cart_links", "popup_leads", "users", "focused_editor", "data_studio", "settings"],
-  doctor: ["doctor", "submissions", "customers", "prescriptions", "cart_links", "settings"],
+  // "customers" (Shopify customers) is admin-only — it exposes the full Shopify
+  // customer book, which no other role needs.
+  doctor: ["doctor", "submissions", "prescriptions", "cart_links", "settings"],
   telesales: ["submissions", "prescriptions", "calculator", "cart_links", "settings"],
-  operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "customers", "cart_links", "settings"],
-  marketing: ["home", "submissions", "customers", "prescriptions", "doctor", "cart_links", "popup_leads", "settings"],
+  operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "cart_links", "settings"],
+  marketing: ["home", "submissions", "prescriptions", "doctor", "cart_links", "popup_leads", "settings"],
   website_developer: ["focused_editor", "data_studio", "cart_links", "settings"],
 };
 
@@ -13220,7 +13203,16 @@ function App({ user, roles, onLogout }) {
 
         {/* Drawers */}
         {customerDrawer && <CustomerDrawer customer={customerDrawer} onClose={() => setCustomerDrawer(null)} openSubmission={setSubmissionDrawer} setRoute={setRoute} role={role} />}
-        {submissionDrawer && <SubmissionDrawer customer={submissionDrawer} onClose={() => setSubmissionDrawer(null)} onBack={customerDrawer ? () => setSubmissionDrawer(null) : null} />}
+        {/* Close dismisses the whole stack. It used to clear only the submission
+            drawer, which re-revealed the customer drawer underneath it, so "close"
+            looked like it had opened another panel. Back still steps back to it. */}
+        {submissionDrawer && (
+          <SubmissionDrawer
+            customer={submissionDrawer}
+            onClose={() => { setSubmissionDrawer(null); setCustomerDrawer(null); }}
+            onBack={customerDrawer ? () => setSubmissionDrawer(null) : null}
+          />
+        )}
 
         {/* Tweaks */}
         <TweaksPanel title="Tweaks">

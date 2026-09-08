@@ -12,6 +12,8 @@
     --brand: #1f7a53;
     --brand-soft: #eaf5ef;
     --off: #b8461f;
+    --oos: #c2410c;
+    --rx: #6d28d9;
   }
   * { box-sizing: border-box; }
   body {
@@ -28,6 +30,12 @@
   }
   .page-header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: .3px; }
   .page-header p { margin: 0; opacity: .85; font-size: 13px; }
+  .page-summary { margin-top: 10px !important; display: flex; gap: 8px; flex-wrap: wrap; opacity: 1 !important; }
+  .k {
+    font-size: 11.5px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
+  }
   .catalog {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -44,31 +52,55 @@
     display: flex;
     flex-direction: column;
   }
-  .card-media {
+  /* Floated, not a flex column: a flex row would reserve the image's full
+     height beside a one-line title and leave a gap under it. Floating lets the
+     title sit alongside and the copy reclaim the full width once it clears. */
+  .card-thumb {
+    float: right;
+    margin: 0 0 10px 14px;
+    width: 96px; height: 96px;
+    display: flex; align-items: center; justify-content: center;
     background: var(--brand-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    min-height: 220px;
+    border-radius: 8px;
+    padding: 6px;
+    overflow: hidden;
   }
   .product-img {
     max-width: 100%;
-    max-height: 260px;
+    max-height: 100%;
     object-fit: contain;
+    display: block;
   }
   .no-img {
-    width: 100%;
-    min-height: 200px;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 10px;
   }
-  .card-body { padding: 16px 18px 20px; position: relative; }
-  .card-index {
-    position: absolute; top: 14px; right: 16px;
-    font-size: 11px; color: var(--muted); font-weight: 600;
+  .card-body { padding: 16px 18px 20px; }
+  /* Contain the floated thumbnail so a short product still gets a full-height card. */
+  .card-body::after { content: ''; display: block; clear: both; }
+  .card-index { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .product-title { margin: 0; font-size: 17px; line-height: 1.3; }
+
+  /* Highlights. A flagged molecule that is also unavailable gets both the
+     stripe and the tinted head, so it reads first on a dense page. */
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .badge {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
   }
-  .product-title { margin: 0 40px 8px 0; font-size: 17px; line-height: 1.3; }
+  .badge-oos { background: #fdeceb; color: var(--oos); border: 1px solid #f6c9c4; }
+  .badge-rx  { background: #f1ecfd; color: var(--rx);  border: 1px solid #d9cbf8; }
+
+  .card[data-state~="oos"] { border-color: #f3c8c1; border-left: 4px solid var(--oos); }
+  .card[data-state~="rx"]  { border-left: 4px solid var(--rx); }
+  .card[data-state~="rx"][data-state~="oos"] {
+    border-left: 4px solid var(--oos);
+    background: #fffaf9;
+  }
+  .card[data-state~="oos"] .product-title { color: var(--oos); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .chip {
     font-size: 11px; padding: 2px 8px; border-radius: 999px;
@@ -83,44 +115,87 @@
   .description p:first-child { margin-top: 0; }
   .muted { color: var(--muted); }
 
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+
   @media print {
-    body { background: #fff; }
+    body { background: #fff; font-size: 10.5pt; }
+
+    /* Was a full page on its own; now a compact banner at the top of page 1. */
     .page-header {
       background: var(--brand) !important;
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
-      page-break-after: always; break-after: page;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 8mm;
+      /* Its own sheet, so every product starts at the top of a clean page. */
+      break-after: page; page-break-after: always;
     }
-    /* One product per page */
+    .page-header h1 { font-size: 17pt; }
+    .page-header p { font-size: 8.5pt; }
+
+    /* One product per sheet. */
     .catalog {
-      grid-template-columns: 1fr;
-      gap: 0; padding: 0; max-width: none;
+      display: block;
+      padding: 0; max-width: none;
     }
     .card {
       break-inside: avoid; page-break-inside: avoid;
-      page-break-after: always; break-after: page;
-      border: none; border-radius: 0;
+      break-after: page; page-break-after: always;
+      border: none;
+      border-radius: 0;
       box-shadow: none;
+      margin: 0;
     }
-    .card:last-child { page-break-after: auto; break-after: auto; }
-    .card-media { min-height: 0; padding: 16px; }
-    .product-img { max-height: 300px; max-width: 55%; }
-    .card-body { padding: 20px 40px 30px; }
-    .chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* Without this the forced break after the final card emits a blank sheet. */
+    .card:last-child { break-after: auto; page-break-after: auto; }
+    .card-body { padding: 8px 12px 10px; }
+    .card-thumb { width: 26mm; height: 26mm; margin-left: 8px; }
+    .product-title { font-size: 12.5pt; }
+    .price { font-size: 13pt; }
+    .price-row { margin-bottom: 8px; }
+    /* Tightened so the longest description still lands inside one sheet. */
+    .description { font-size: 9pt; line-height: 1.45; }
+    .description p { margin: 0 0 5px; }
+    .description ul, .description ol { margin: 5px 0; padding-left: 18px; }
+    .description li { margin-bottom: 2px; }
+    .description h1, .description h2, .description h3, .description h4 {
+      font-size: 10pt; margin: 8px 0 4px;
+    }
+    /* Keep a heading with the text under it rather than stranded at a page foot. */
+    .product-title, .badges, .price-row { break-after: avoid; page-break-after: avoid; }
+    .description h1, .description h2, .description h3,
+    .description h4, .description strong {
+      break-after: avoid; page-break-after: avoid;
+    }
+    .description p, .description li { orphans: 3; widows: 3; }
+
+    /* The highlights are the point of the sheet, so force them to ink. On a
+       mono printer the badge wording and the border still carry the meaning. */
+    .chip, .badge, .card[data-state], .k {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .card[data-state~="oos"] { border-left-width: 4px; }
   }
 </style>
 </head>
 <body>
   <header class="page-header">
     <h1>SehatUP Product Catalog</h1>
-    <p>32 products &middot; Generated 20/7/2026, 4:58:06 pm &middot; To save as PDF: press Ctrl+P and choose "Save as PDF"</p>
+    <p>22 products &middot; Generated 8/9/2026, 11:01:26 am &middot; To save as PDF: press Ctrl+P and choose "Save as PDF"</p>
+    <p class="page-summary">
+      <span class="k">13 excluded &mdash; out of stock &amp; tadalafil/dapoxetine</span>
+      
+      
+    </p>
   </header>
   <main class="catalog">
     
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Aloezy_Intimate_Foam_Wash1.webp?v=1770033818" alt="Aloezy ( Intimate Foam Wash) | Best intimate wash for Womens" loading="lazy" /></div>
     <div class="card-body">
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Aloezy_Intimate_Foam_Wash1_240x.webp?v=1770033818" alt="Aloezy ( Intimate Foam Wash) | Best intimate wash for Womens" loading="lazy" /></div>
       <div class="card-index">#1</div>
       <h2 class="product-title">Aloezy ( Intimate Foam Wash) | Best intimate wash for Womens</h2>
+      
       <div class="price-row">
         <span class="price">₹349.00</span>
         <span class="mrp">₹461.00</span>
@@ -149,133 +224,93 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Ashwagandha.webp?v=1773727966" alt="Ashwagandha Tablets" loading="lazy" /></div>
     <div class="card-body">
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Ashwagandha_240x.webp?v=1773727966" alt="Ashwagandha Tablets" loading="lazy" /></div>
       <div class="card-index">#2</div>
       <h2 class="product-title">Ashwagandha Tablets</h2>
+      
       <div class="price-row">
         <span class="price">₹499.00</span>
-        <span class="mrp">₹738.00</span>
+        <span class="mrp">₹799.00</span>
         <span class="off">10% off: ₹449.10</span>
       </div>
-      <div class="description"><p>Our homeopathic Ashwagandha enhances physical and mental strength, by utilizing a gentle and non-toxic form of Withania somnifera. Appropirately called the “ King of Herbs”, ashwagandha has been acclaimed for its adaptability, supporting hormones and aiding the body to rewire itself with strength, energy and vitality. As far as the homeopathic healing is concerned, Ashwagandha is a soothing and successful healing agent for the body.  It is an ideal solution for both men and women, without having any serious side effects. It can curb anxiety levels, fatigue and low levels of energy. It can be taken safely for a prolonged period.<br></p>
-<p class="p1"><meta charset="utf-8"><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-9f6b7911-7fff-f178-aa77-eaaff4da7025"><span>Disclaimer:</span><span><br></span></b><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-983ceab6-7fff-c14f-e07c-9689ece85759"><span>It is a conventional medication prescribed by the homeopathy practitioners. If you are expecting, lactating or on any other medication, it is highly recommended that you consult your doctor before taking it</span><span>.</span></b></p>
+      <div class="description"><p>Known scientifically as Withania somnifera, Ashwagandha is a traditional Ayurvedic herb that has supported general health and vitality for centuries. Our Ashwagandha Tablets offer a convenient way to make it part of your daily wellness routine. People commonly use Ashwagandha to support the body’s natural response to everyday stress, encourage relaxation, and maintain physical and mental well-being. Research suggests that some Ashwagandha preparations may also support stress management, sleep quality, energy, and overall vitality. For those following a balanced diet and healthy lifestyle, our Ashwagandha provides a straightforward option for adding this traditional herb to the day. Results may vary according to individual needs, dosage, and product formulation.<br></p>
+<p class="p1"><meta charset="utf-8"><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-9f6b7911-7fff-f178-aa77-eaaff4da7025"><span>Disclaimer:</span><span><br></span></b><strong>Follow the label’s directions. If you are pregnant or breastfeeding, have a health condition, or take medication, speak with a healthcare professional before using it. Results may vary from person to person.</strong><br><br></p>
 
 
 <p class="p1"><b>Key Benefits</b></p>
 <ul>
-<li dir="ltr" aria-level="1"><span>It acts a natural stress buster for tensions and exertions in human beings</span></li>
-<li dir="ltr" aria-level="1">Enhances energy and vitality without any kind of caffeine</li>
-<li dir="ltr" aria-level="1">Aids in better immunity and overall strength</li>
-<li dir="ltr" aria-level="1">Accelerates concentration, memory and sharpness<br>
-</li>
-<li dir="ltr" aria-level="1">The hormonal betterment is taken care of by synchronizing the levels of cortisol<span></span>
-</li>
+<li>
+<strong>Natural Stress Relief:</strong> Helps your body handle everyday stress, settle your mind, and remain naturally relaxed.</li>
+<li>
+<strong>Clean, Lasting Energy:</strong> Supports stamina and vitality throughout the day, without caffeine jitters or crashes.</li>
+<li>
+<strong>Stronger Immunity and Endurance: </strong>Supports your body’s natural defence system while building everyday physical strength.</li>
+<li>
+<strong>Sharper Focus and Memory:</strong> Promotes mental clarity, concentration, and alertness, helping you stay productive throughout the day.</li>
+<li>
+<strong>Balanced Cortisol Levels:</strong> Helps regulate your stress hormone, cortisol, supporting inner balance and a more positive mood.</li>
+<li>
+<strong>Better Sleep Quality:</strong> Calms the nervous system, making it easier to unwind at night and wake up feeling refreshed.</li>
 </ul>
 
 
 
-<p style="text-align: left;"><strong>How To Use</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>One or two pills should be taken daily with water, if possible after meals or as directed by a health practitioner.</span><span></span><span></span><span></span></p>
-</li>
-<li dir="ltr" aria-level="1"><span>You need to use regularly for effective results<br></span></li>
-</ul>
-<p dir="ltr"><span>Storage:</span></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Should be stored in a place that is cool and dry, free from sunlight  and not open to children.</span><span></span></p>
-</li>
-</ul>
+
+<p><strong>Suggested Dosage:</strong> Take 1 to 2 tablets each day with water, preferably after meals, or follow your health practitioner’s recommendation.</p>
+<p><strong>For Best Results: </strong>Take consistently every day for optimal benefits.</p>
+<p><b>Storage Instructions</b></p>
+<p>Store in a cool, dry spot away from sunlight. Keep this product out of reach of children</p>
 <p><b id="docs-internal-guid-a14594df-7fff-e573-bade-822b336e70eb"></b></p></div>
     </div>
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/3_8_1.webp?v=1773728802" alt="Boombatti- Stay up late, dominate fate" loading="lazy" /></div>
     <div class="card-body">
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Tadafil_01_240x.webp?v=1785743743" alt="Boldup – 100 mg" loading="lazy" /></div>
       <div class="card-index">#3</div>
-      <h2 class="product-title">Boombatti- Stay up late, dominate fate</h2>
+      <h2 class="product-title">Boldup – 100 mg</h2>
+      
       <div class="price-row">
-        <span class="price">₹1499.00</span>
-        <span class="mrp">₹2433.00</span>
-        <span class="off">10% off: ₹1349.10</span>
+        <span class="price">₹490.00</span>
+        <span class="mrp">₹698.00</span>
+        <span class="off">10% off: ₹441.00</span>
       </div>
-      <div class="description"><p dir="ltr"><span>Experience the perfect combination of </span><span>Ayurveda, Homeopathy &amp; Allopathy</span><span> with this exclusive combination of </span><span>Vaji Bati</span><span>, </span><span>Kern Drop</span><span> &amp; </span><span>Tadalafil Tablets 5mg</span><span>. This trio is designed to naturally enhance </span><span>male stamina, performance &amp; overall vitality</span><span>. This blend delivers complete wellness without compromising long-term health.</span></p>
-<p dir="ltr"><b id="docs-internal-guid-848e0456-7fff-29e3-9cea-4617fd501feb"><span>Vaji Bati</span><span> is an Ayurvedic powerhouse made with 10 strong herbs that support strength &amp; energy, while </span><span>Kern Drop</span><span> is a </span><span>homoeopathic formula</span><span> that promotes emotional balance &amp; hormonal wellness &amp; lastly an Allopathic medicine </span><span>Tadalafil 5mg</span><span> all these combination gently enhances blood flow &amp; performance when needed.</span></b><br></p>
+      <div class="description"><p>SehatUP Sildenafil Tablets contain Sildenafil Citrate, a well-studied PDE5 inhibitor used clinically to manage erectile dysfunction (ED). During sexual arousal, Sildenafil helps support blood flow to the penile region, which may help men achieve and maintain an erection sufficient for satisfactory sexual activity.</p>
+<p>This prescription medicine should be taken only under the supervision of a licensed physician. Before deciding whether Sildenafil is appropriate and whether the strength should be 50 mg or 100 mg, the physician can review your medical history, including heart conditions, blood pressure medication, and nitrate use.</p>
+<p><strong>Why choose SehatUP:</strong></p>
+<p>Formulated with clinically studied Sildenafil Citrate <br>Manufactured in [GMP-certified / licensed] facilities (only state this if verifiably true) <br>Supported by guidance from a [licensed pharmacist / medical advisor] <br>Available in two strengths to match individual, physician-recommended dosing </p>
+<p>Always speak with a qualified doctor before beginning any ED treatment. Do not self-prescribe. Results vary depending on underlying health conditions.</p>
+<p><strong>How Sildenafil Works</strong></p>
+<p>Sildenafil belongs to a class of medicines known as Phosphodiesterase Type-5 (PDE5) inhibitors. It works by relaxing blood vessels and increasing blood flow to the penis during sexual arousal. This physiological mechanism supports improved erectile response naturally when combined with sexual stimulation.</p>
+<p><strong>Precautions</strong></p>
+<p>To be used under medical supervision.<br>Avoid alcohol or heavy meals before consumption for optimal effectiveness.<br>Not recommended for individuals taking nitrate medications.</p>
+<p>Not intended for use by women or individuals below 18 years.</p>
 
 
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-
-<p dir="ltr"><strong>Key Ingredients:</strong></p>
+<p><strong>Key Benefits:</strong></p>
 <ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Vaji Bati</span><span> – Features 10 powerful Ayurvedic ingredients including Ashwagandha, Shilajit, Safed Musli, Gokshura &amp; Sidh Makardhwaj.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Kern Drop</span><span> – Exclusive </span><span>homoeopathic remedy</span><span> designed to support emotional balance, stress reduction &amp; internal balance.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Tadalafil 5mg – An allopathic agent that promotes healthy circulation &amp; mild performance enhancement. </span><span><br></span></p>
-</li>
+<li>Supports stronger and sustained erections</li>
+<li>Helps improve blood circulation to the penile tissues</li>
+<li>Enhances sexual confidence and performance satisfaction</li>
+<li>Fast-acting formula for on-demand support</li>
+<li>Scientifically backed PDE5 inhibition mechanism</li>
 </ul>
 
 
-
-
-
-
-<p dir="ltr"><span>Key Benefits:</span></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Improves stamina &amp; strength naturally:</span><span> Vaji Bati revitalizes physical energy &amp; endurance with Ayurvedic herbs.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Boosts emotional &amp; hormonal balance:</span><span> Kern Drop supports mental clarity, mood, &amp; natural vitality.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Enhances physical performance:</span><span> Tadalafil 5mg improves blood flow &amp; confidence.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Safe for daily &amp; long-term use:</span><span> Made for men who are looking for consistent, natural support.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Safe for consistent, long-term use: The Ayurvedic base helps balance the stronger Tadalafil dose for a well &amp; sustained effect. </span><span><br></span></p>
-</li>
-</ul>
-
-
-<p style="text-align: left;"><strong></strong><span><b id="docs-internal-guid-034d0df8-7fff-d8af-096a-d89d82fff348"></b></span><span><br><br></span></p>
-<p style="text-align: left;"><strong>How To Use:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Take </span><span>1 tablet of Tadalafil (5mg)</span><span> daily or as directed.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Follow standard dosage for Vaji Bati and Kern Drop as per product instructions or as advised by a healthcare professional. </span><span><br></span></p>
-</li>
-</ul>
-<p dir="ltr"><span>Storage:</span></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Store all products in a </span><span>cool, dry place</span><span>, away from direct sunlight.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Keep out of reach of children.</span><span><br><br></span></p>
-</li>
-</ul>
-<p><b id="docs-internal-guid-9cb5589d-7fff-2be7-8c94-b56e5bbd7891"><span>Disclaimer:</span><span><br></span><meta charset="utf-8"> <meta charset="utf-8"> <b id="docs-internal-guid-fa14e5d6-7fff-d378-8f61-ddd025ed7d49"><span> This wellness combo is a blend of </span><span>Ayurvedic, Homoeopathic &amp; Allopathic</span><span> approaches &amp; should be used under proper guidance. Not intended to diagnose, treat, cure, or prevent any disease. Please consult a healthcare provider before use, especially if on other medications.</span></b><br></b></p></div>
+<p><strong>How To Use:</strong></p>
+<p>Take one tablet approximately 30–60 minutes before sexual activity or as directed by a healthcare professional. Do not exceed the recommended dosage within 24 hours.</p>
+<p><strong>Storage</strong></p>
+<p>Store in a cool, dry place away from direct sunlight. Keep out of reach of children.</p></div>
     </div>
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati_Kern_Drop.webp?v=1773727816" alt="Confidence &amp; Performance Booster Kit" loading="lazy" /></div>
     <div class="card-body">
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati_Kern_Drop_240x.webp?v=1773727816" alt="Confidence &amp; Performance Booster Kit" loading="lazy" /></div>
       <div class="card-index">#4</div>
       <h2 class="product-title">Confidence &amp; Performance Booster Kit</h2>
+      
       <div class="price-row">
         <span class="price">₹1099.00</span>
         <span class="mrp">₹1999.00</span>
@@ -310,94 +345,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/pure-himalayan-shilajit-resin_5.webp?v=1773729905" alt="Control Tantra- Stretch the moment" loading="lazy" /></div>
     <div class="card-body">
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Shilajit_Ashwagandha_240x.webp?v=1773726886" alt="Daily Energy &amp; Stamina Support Kit" loading="lazy" /></div>
       <div class="card-index">#5</div>
-      <h2 class="product-title">Control Tantra- Stretch the moment</h2>
-      <div class="price-row">
-        <span class="price">₹1899.00</span>
-        <span class="mrp">₹3483.00</span>
-        <span class="off">10% off: ₹1709.10</span>
-      </div>
-      <div class="description"><p dir="ltr"><span>Experience extreme control, stamina &amp; confidence with </span><span>Shilajit + Ashwagandha + Dapoxetine 30mg</span><span>, a unique combination of </span><span>Ayurvedic wisdom, Homeopathic goodness &amp; modern allopathy</span><span>. This combination is specially designed for men who seek both </span><span>natural energy &amp; better timing</span><span> in their intimate life. With Ayurvedic adaptogen </span><span>Shilajit</span><span>, homeopathic </span><span>Ashwagandha</span><span>, paired with </span><span>Dapoxetine 30mg</span><span>, a clinically proven solution for improving control &amp; delaying climax, this product helps support your performance completely(</span><span>physically, mentally &amp; emotionally</span><span>).</span></p>
-<p dir="ltr"><b id="docs-internal-guid-bc8567e1-7fff-fa2d-41bd-5f25538bf955"><span>Perfect for regular use or occasional support, this formula balances the immediate effect of </span><span>Dapoxetine</span><span>, long-term renewing effects of traditional herbs. It promotes </span><span>sustained stamina</span><span>, reduces stress &amp; supports mental clarity.</span></b><br></p>
-
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-
-<p dir="ltr"><strong>Key Ingredients:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Shilajit Extract</span><span> – Enhances energy, testosterone levels &amp; physical recovery</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Ashwagandha Extract</span><span> – Reduces stress, improves mood &amp; supports stamina</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Dapoxetine 30mg – A modern, fast-acting allopathic compound to help delay ejaculation &amp; improve control </span><span><br></span></p>
-</li>
-</ul>
-
-
-
-
-
-<p dir="ltr"><strong>Key Benefits:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Improves timing &amp; control</span><span> during intimate moments with Dapoxetine 30mg.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Boosts energy &amp; physical stamina</span><span> with powerful Ayurvedic adaptogen.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Supports hormonal balance &amp; stress reduction</span><span>, naturally</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Helps reduce performance anxiety</span><span> &amp; build overall confidence</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Safe for regular or long-term use</span><span> under guided dosage</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>A balanced </span><span>Allopathy + Homeopathy + Ayurveda</span><span> formulation for complete male wellness</span><span><br><br></span></p>
-</li>
-</ul>
-
-
-<p style="text-align: left;"><strong></strong><span><b id="docs-internal-guid-034d0df8-7fff-d8af-096a-d89d82fff348"></b></span><span><br></span></p>
-<p dir="ltr"><span>How to Use:</span></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take </span><span>1 tablet</span><span> approximately 1–3 hours before activity or as prescribed by your healthcare provider</span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take one </span><span>250 mg serving</span><span> each day of Shilajit using the measuring spoon that comes with it. For a more intense effect, dissolve in milk or lukewarm water or consume straight</span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take 1–2 capsules/tablets of Ashwagandha daily with water, preferably after meals or as directed by a healthcare professional. </span></p>
-</li>
-</ul>
-<p dir="ltr"><span>Storage:</span></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Store in a </span><span>cool, dry place</span><span>, away from moisture &amp; sunlight</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Keep out of reach of children</span><span><br><br></span></p>
-</li>
-</ul>
-<p><b id="docs-internal-guid-e474dd82-7fff-c87e-31e7-63a585030fb1"><span>Disclaimer:</span><span><br></span><meta charset="utf-8"> <meta charset="utf-8"> <b id="docs-internal-guid-f4a9cf51-7fff-a7df-b2c6-9725bc01c134"><span> This product combines </span><span>Ayurvedic, Hoemopathic &amp; allopathic ingredients</span><span>. Consult a healthcare professional before starting if you have any medical conditions or are taking other medications. This product is not intended to treat, cure, or prevent any disease.</span></b><br></b></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Shilajit_Ashwagandha.webp?v=1773726886" alt="Daily Energy &amp; Stamina Support Kit" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#6</div>
       <h2 class="product-title">Daily Energy &amp; Stamina Support Kit</h2>
+      
       <div class="price-row">
         <span class="price">₹1699.00</span>
         <span class="mrp">₹3298.00</span>
@@ -438,60 +390,49 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Endless_2_1.webp?v=1773728461" alt="Dapoxetine Hydrochloride tablets IP 30 mg (Endless)" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#7</div>
-      <h2 class="product-title">Dapoxetine Hydrochloride tablets IP 30 mg (Endless)</h2>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Honey_stick_ashwagnadha_cc_240x.webp?v=1785324603" alt="Daily Energy &amp; Stamina Support Kit" loading="lazy" /></div>
+      <div class="card-index">#6</div>
+      <h2 class="product-title">Daily Energy &amp; Stamina Support Kit</h2>
+      
       <div class="price-row">
-        <span class="price">₹171.00</span>
-        
-        <span class="off">10% off: ₹153.90</span>
+        <span class="price">₹1149.00</span>
+        <span class="mrp">₹2137.00</span>
+        <span class="off">10% off: ₹1034.10</span>
       </div>
-      <div class="description"><p><meta charset="utf-8">The allopathic medication named Dapoxetine 30 mg was manufactured scientifically. It is specifically meant to address premature ejaculation or PE in grown up males in the age range of eighteen to sixty-four. It is the first oral medication of its kind, manufactured to aid men prolong the intimate sessions and minimize the discomfort associated with this ailment, regularly. The effect is instant and the ejaculation control is made much better. Dapoxetine is a pragmatic and competent remedy for men who wish to enhance their sexual confidence and overall joy. This medication can be utilized whenever required and has an instant impact.<br></p>
-<p class="p1"><meta charset="utf-8"><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-9f6b7911-7fff-f178-aa77-eaaff4da7025"><span>Disclaimer:</span><span><br></span>The Dapoxetin must be utilized only under the guidance of a licensed medical expert. This medication is not meant to stop cure or prevent any diseases.<br></b></p>
+      <div class="description"><p>The effective combination of Shilajit Honey Stick and Homeopathic Ashwagandha 2X provides you with the premium Shakti Surge for your daily wellness routine. It offers a well-balanced blend by supporting your body's energy while helping maintain a calm and focused mindset. This powerful combination works throughout the day to promote stamina, vitality, and overall well-being. The Shilajit Honey Stick helps support energy, endurance, and daily vitality, while Ashwagandha 2X contributes to emotional well-being, mental clarity, focus, and balance.</p>
+<p>Together, they deliver complementary benefits. Whether you're looking to improve your daily physical performance or better manage everyday stress, Shakti Surge helps you stay balanced, energized, and productive throughout the day.</p>
+<h3>Disclaimer:<br>It’s a conventional homeopathic medicinal product. Please consult your healthcare professional before use, especially if you are pregnant, nursing, or taking any medication.</h3>
 
 
-<p class="p1"><b>Key Benefits</b></p>
+<p>Key Benefits</p>
 <ul>
-<li role="presentation" dir="ltr">
-<span><strong>Enhanced control over ejaculation: </strong>Helps delay ejaculation, allowing for longer-lasting sexual activity &amp; better satisfaction for both partners.</span><span></span>
-</li>
-<li role="presentation" dir="ltr"><span><strong>Instant effect: </strong>The results are prominent within a time span of one to three hours of the tablet intake. Adaptability and timely support are provided.<br></span></li>
-<li role="presentation" dir="ltr"><span><strong>Lower tension levels for performance: </strong>Enhances the self-assurance and downplays the mental anxieties during PE.</span></li>
-<li role="presentation" dir="ltr"><span><strong>Comfort availability: </strong>You do not need to take it on a daily basis but as and when required. </span></li>
-<li role="presentation" dir="ltr"><span><strong>Medically approved: </strong>It is well researched scientifically and has been recommended by many medical experts for PE treatment.</span></li>
-<li role="presentation" dir="ltr"><span><strong>Patient friendly: </strong>It is patient friendly and is ideal for most men, without any kind of side effects.<br></span></li>
+<li>Supports energy, stamina, and daily vitality</li>
+<li>Helps improve mental clarity, focus, and concentration</li>
+<li>Supports stress management and emotional well-being</li>
+<li>Promotes hormonal balance and healthy sleep patterns</li>
+<li>Enhances overall mood and cognitive performance</li>
 </ul>
-<p><span><strong>User Instructions: </strong>Dapoxetine is a SSRI or a short-acting selective serotonin reuptake inhibitor. The serotonin function in the central nervous system is accelerated by this medication, consequently delaying the ejaculation. The spontaneous reaction of the body is boosted by Dapoxetine. The men have a successful physical interaction.<br></span></p>
 
 
-
-<p style="text-align: left;"><strong><b>How to Use</b></strong></p>
-<p dir="ltr">Have a single tablet of 30 MG with a glass filled with water. It should be done one to three hours prior to your physical activity<br></p>
-<p dir="ltr"><span>Directions for Use:</span></p>
+<p>How To Use:</p>
 <ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Have a single tablet of 30 MG with a glass filled with water. It should be done one to three hours prior to your physical activity<br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>It can be taken both with or without eating.<br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>It is not advisable to take more than one tablet daily.<br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Assuming that your 30 MG tablet has not done its work, your doctor can prescribe, boosting the dosage to 60 MG.<br></span></p>
-</li>
+<li>Take one tablet of Ashwagandha 2X daily with warm water, preferably in the morning or as directed by your healthcare professional.</li>
+<li>Consume one Shilajit Honey Stick daily. You can enjoy it directly from the stick or mix it into lukewarm water or milk (below 39°C) before consumption.</li>
+<li>For best absorption, consume on an empty stomach or at least 30 minutes before meals.</li>
+<li>Use consistently every day for sustained results.</li>
 </ul>
-<p dir="ltr" role="presentation"><b id="docs-internal-guid-eaa37f34-7fff-70a8-4946-e14fddeaad83"><span><b id="docs-internal-guid-827c3c5c-7fff-b1df-802b-f9c1625671a0">Storage:<br></b></span></b><strong>The storage area should be a cool and dry place with a temperature under 30 degrees centigrade. The children should not have access to it.</strong><br><br></p></div>
+<h3>Storage:</h3>
+<h3>Store in a cool, dry place away from direct sunlight.<br>Keep out of reach of children.</h3></div>
     </div>
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Diaboglob_Creatives_Front_imageFront_image.webp?v=1773726531" alt="Diaboglob" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#8</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Diaboglob_Creatives_Front_imageFront_image_240x.webp?v=1773726531" alt="Diaboglob" loading="lazy" /></div>
+      <div class="card-index">#7</div>
       <h2 class="product-title">Diaboglob</h2>
+      
       <div class="price-row">
         <span class="price">₹934.00</span>
         <span class="mrp">₹1099.00</span>
@@ -525,213 +466,43 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati_Kern_Drop_Tadalafil_5mg_dapoxetine_30mg.webp?v=1773727618" alt="FourPlay Formula- Delay right, delight night" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#9</div>
-      <h2 class="product-title">FourPlay Formula- Delay right, delight night</h2>
-      <div class="price-row">
-        <span class="price">₹1399.00</span>
-        <span class="mrp">₹2499.00</span>
-        <span class="off">10% off: ₹1259.10</span>
-      </div>
-      <div class="description"><p dir="ltr">SehatUP’s complete sexual wellness pack is a comprehensive formula aimed at taking care of general physical health issues and maximize total comfort and health. This comprehensive package consists of Vaji Bati, Tadalafil Tablets 1P 5 MG, Kern drops, Dapoxetine Hydrochloride Tablets 1P 30 MG to enhance function, energy and self-assurance.<br></p>
-<p><strong>SehatUP overall wellness package your energy enhancer</strong></p>
-<p><strong>Excellence achieved through AYUSH certification and approval</strong>: Created with as many as fifteen strong herbs which include <strong>Shilajit</strong>, <strong>Ashwagandha </strong>and <strong>Safed Musli</strong>. <br><strong>Natural Energy Booster</strong>:  You can opt for natural enhancements in your strength, energy and vitality.<br><strong>Persistent energy levels</strong>: Long lasting strength and enhanced welfare.<br></p>
-<p><strong>Our kit makes you feel reenergized and dynamic.</strong><br></p>
-
-
-<h3 dir="ltr">Advantages of the Complete Sexual Wellness Package</h3>
-<ul>
-<li role="presentation" dir="ltr">Improves sexual function, supports in getting and maintaining stronger erections for pleasurable intimate sessions.</li>
-<li role="presentation" dir="ltr">Vitality  boosted, tolerance levels are accelerated for longer sessions.<br>
-</li>
-<li role="presentation" dir="ltr">Ejaculation is delayed and complete control is provided boost intimacy.<br>
-</li>
-<li role="presentation" dir="ltr">The libido is activated, improves desire and uplifts energy levels for a high life condition.<span></span>
-</li>
-</ul>
-<p><strong>Downplays exertion levels, helps you to relax and unwind and enhances mental health for an improved lifestyle.</strong><br></p>
-<h3 dir="ltr">Pack Details</h3>
-<h4 dir="ltr"><span>1. Vaji Bati</span></h4>
-<ul>
-<li dir="ltr" role="presentation">
-<strong>Type</strong><span>: Tablet made from authentic Ayurvedic knowledge.<br></span>
-</li>
-<li dir="ltr" role="presentation"><span><strong>Components</strong>: Shilajit, Fenugreek, Ashwagandha and Safed Muslli.<br></span></li>
-<li dir="ltr" role="presentation"><span><strong>Merits</strong>: Enhances testosterone levels, activates libido and uplifts agility.</span></li>
-<li dir="ltr" role="presentation">
-<strong>Quantity</strong><span>: Sixty tablets<br></span>
-</li>
-</ul>
-<h4 dir="ltr"><span>2. Kern Drops</span></h4>
-<ul>
-<li dir="ltr" role="presentation">
-<strong>Kind</strong>: Homeopathic drops<br>
-</li>
-<li dir="ltr" role="presentation">
-<strong>Merits</strong>: Aids sexual function, soothes exertion and takes care of ED and PE.</li>
-<li dir="ltr" role="presentation">
-<strong>Quantity</strong>: thirty milligrams.<span></span>
-</li>
-</ul>
-<h4 dir="ltr"><span>3. Tadalafil Tablets IP 5mg</span></h4>
-<ul>
-<li dir="ltr" role="presentation">
-<strong>Type</strong>: Modern medicine</li>
-<li dir="ltr" role="presentation">
-<strong>Benefits</strong><span>: Improves circulation of blood for lengthier and stronger erections.</span>
-</li>
-<li dir="ltr" role="presentation">
-<span><strong>Quantity</strong>: 30 tablets </span><span></span>
-</li>
-</ul>
-<h4 dir="ltr"><span>4. Dapoxetine Hydrochloride Tablets IP 30mg</span></h4>
-<ul>
-<li dir="ltr" role="presentation">
-<strong>Type</strong><span>: Newly developed medicine</span>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><strong>Benefits</strong><span>: It enables in delay of ejaculation and enhances a high life session.</span></p>
-</li>
-</ul>
-
-
-<h3 dir="ltr">Methods to utilize the complete sexual wellness pack<br>
-</h3>
-<ul>
-<li dir="ltr" role="presentation">
-<strong>Vaji Bati</strong>: You need to take one or a couple of pills every day with slightly warm water or milk.<br>
-</li>
-<li dir="ltr" role="presentation">
-<strong>Kern Drops</strong><span>: Blend maximum ten to twenty drops in tablet of one half glass of water and have it thrice every day.</span>
-</li>
-<li dir="ltr" role="presentation">
-<strong>Tadalafil Tablets (Rx)</strong><span>: Have one supplement half an hour before your physical session. <br></span>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><strong>Dapoxetine Tablets(Rx)</strong><span>: Take a single tablet one to three hours before planned intimacy and do this weekly once or as advised by the doctor.<br></span></p>
-</li>
-</ul>
-<p dir="ltr"><strong>Note</strong><span>: Make it a point to abide by the prescribed dosages and make sure to discuss with your medical expert before usage, especially for prescription medications.</span></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/GaceniaCambogiaDropsArtboard1_1.webp?v=1777444102" alt="Garcinia Cambogia Drops - sehatUP" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#10</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/GaceniaCambogiaDropsArtboard1_1_240x.webp?v=1777444102" alt="Garcinia Cambogia Drops - sehatUP" loading="lazy" /></div>
+      <div class="card-index">#8</div>
       <h2 class="product-title">Garcinia Cambogia Drops - sehatUP</h2>
+      
       <div class="price-row">
         <span class="price">₹499.00</span>
         <span class="mrp">₹646.00</span>
         <span class="off">10% off: ₹449.10</span>
       </div>
-      <div class="description"><p dir="ltr"><span>Garcinia Cambogia is an authentic weight control medical product. It aids the fat metabolism and makes you cut down on hunger pangs related to your state of mind or emotional eating. It is created with HCA or hydroxycitric acid. It helps in suppressing or minimizing appetite and curbing fat accumulation and greatly improving your mindset for the better in a positive way. Thus, it becomes very motivating to keep your commitment to your health benefits.<br>Along with a fresh and healthy diet and a disciplined lifestyle, Garcinia Cambogia remains the perfect choice for those individuals who are opting for a natural weight management plan. You feel slimmer and trimmer, more self-assured and totally in control of your own self.<br></span></p>
+      <div class="description"><p><span>Garcinia Cambogia is an authentic weight-control supplement. It aids fat metabolism and helps you cut down on hunger pangs related to your state of mind or emotional eating. It contains HCA, or hydroxycitric acid. It helps in suppressing or minimizing appetite, curb fat accumulation, and greatly improve your mindset for the better. Thus, it becomes very motivating to keep your commitment to your health benefits.<br>Along with a fresh and healthy diet and a disciplined lifestyle, Garcinia Cambogia remains the perfect choice for those individuals who are opting for a natural weight management plan. You feel slimmer and trimmer, more self-assured and totally in control of your own self.<br></span></p>
 
 
 <h4 dir="ltr"><span>Advantages</span></h4>
 <ul>
 <li><span>Boosts the spontaneous ability of the body to burn the accumulated fat more effectively<br></span></li>
-<li><span>Helps the clients to address the portion sizes and consequently decelerates emotional eating<br></span></li>
+<li><span>Helps clients address portion sizes and consequently decelerates emotional eating<br></span></li>
 <li><span>Minimizes the quantity of enzymes in the body that transform the extra carbohydrates in the body into fats<br></span></li>
 <li><span>Enhances serotonin levels in the body. It helps to cut down on stress, allied cravings and exertion<br></span></li>
-<li><span>There is no caffeine content or any kind of stimulants that are artificial.<br></span></li>
+<li><span>There is no caffeine content or any kind of artificial stimulants.<br></span></li>
 </ul>
-<p dir="ltr"><span>Garcinia Cambogia supports you checking your weight in a comfortable and hassle-free manner. Your appetite becomes more well managed and your hunger pangs decrease significantly and your energy levels are enhanced. You will be able to control your food cravings, your meal times and see a positive outcome.</span></p>
+<p dir="ltr"><span>Garcinia Cambogia supports you in checking your weight in a comfortable and hassle-free manner. Your appetite becomes better managed, your hunger pangs decrease significantly, and your energy levels are enhanced. You will be able to control your food cravings, your meal times and see a positive outcome.</span></p>
 
 
 <h4 dir="ltr"><span>User instructions</span></h4>
-<p dir="ltr"><span>Pour as many as fifteen to twenty drops in half a cup of water.  It has to be done twice every day. Other wise you can also seek the guidance of a certified medical expert.<br></span></p></div>
+<p>For best results, stick to the serving size listed on the product label, and do not take more than recommended. Use it regularly as part of a balanced diet and healthy lifestyle.</p>
+<p><strong>Note: </strong>Consult a healthcare professional before use if you are pregnant or breastfeeding, take medication, or have a medical condition.</p>
+<p dir="ltr"><span><br></span></p></div>
     </div>
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Shilajit_Ashwagandha_Tadalafil_Tablets_5mg_677f09dd-447b-49c7-b4ea-06ca6532ff25.webp?v=1773728728" alt="Hard Yatra- No more tricks &amp; just kick" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#11</div>
-      <h2 class="product-title">Hard Yatra- No more tricks &amp; just kick</h2>
-      <div class="price-row">
-        <span class="price">₹1999.00</span>
-        <span class="mrp">₹3533.00</span>
-        <span class="off">10% off: ₹1799.10</span>
-      </div>
-      <div class="description"><p dir="ltr"><span>Shilajit + Ashwagandha + Tadalafil Tablets 5mg</span><span> offer you a strong combo of </span><span>Ayurvedic, Homeopathy </span><span>&amp; </span><span>allopathic </span><span>for you to support with </span><span>stamina, energy &amp; sexual performance</span><span>. This unique formulation combines the idea of ancient benefits of </span><span>Shilajit</span><span> &amp; </span><span>Ashwagandha</span><span>. The power of Ayurveda, goodness of Homeopathy combine with a clinically effective, low dose of </span><span>Tadalafil 5mg</span><span> for enhanced physical performance &amp; confidence.</span></p>
-<p>Carefully crafted for men who want <span>everyday support</span><span> without any effects that will harm the body, this combination is </span><span>safe for long-term use</span><span>, helping maintain energy levels, support hormonal balance &amp; improve overall quality of life.</span></p>
-
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-
-<p dir="ltr"><strong>Key Ingredients:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Shilajit Extract</span><span> – A powerful natural resin, with 75% fulvic acid, known to enhance strength, stamina &amp; vitality.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Ashwagandha Extract</span><span> – Adaptogenic herb that helps manage stress, improve energy levels &amp; support hormonal health.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Tadalafil 5mg – Allopathic agent that supports healthy blood flow &amp; performance enhancement with minimal side effects. </span><span><br></span></p>
-</li>
-</ul>
-
-
-
-
-
-
-<p class="p1"><b>Key Benefits</b></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Boosts stamina &amp; energy naturally:</span><span> Shilajit &amp; Ashwagandha work well with each other to fight fatigue &amp; enhance endurance.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Supports blood flow &amp; physical performance:</span><span> Tadalafil 5mg promotes healthy circulation, helping improve responsiveness &amp; confidence.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Reduces stress &amp; improves mental clarity:</span><span> Ashwagandha acts as a natural adaptogen, balancing stress hormones like cortisol.</span><span><br></span><span></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Enhances overall male vitality:</span><span> Shilajit renews the body's systems &amp; helps restore youthful energy.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Safe for daily &amp; long-term use: Made with allopathic dose with Ayurvedic herbs &amp; Homeopathic remedy for continuous support. </span><span><br></span></p>
-</li>
-</ul>
-
-
-
-<p style="text-align: left;"><strong>How To Use:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take </span><span>1 tablet daily</span><span> with lukewarm water, preferably after a meal, or as directed by your healthcare provider.</span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take one </span><span>250 mg serving</span><span> of Shilajit each day using the measuring spoon that comes with it. For a more intense effect, dissolve in milk or lukewarm water or consume straight.</span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take 1–2 capsules/tablets of Ashwagandha daily with water, preferably after meals or as directed by a healthcare professional </span></p>
-</li>
-</ul>
-<p dir="ltr"><strong>Storage:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Store in a </span><span>cool, dry place</span><span>, away from direct sunlight &amp; moisture.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Keep out of reach of children.</span><span><br><br></span></p>
-</li>
-</ul>
-<p role="presentation" dir="ltr"><span><b id="docs-internal-guid-034d0df8-7fff-d8af-096a-d89d82fff348">Disclaimer:<br></b></span><span><meta charset="utf-8"> <meta charset="utf-8"> <b id="docs-internal-guid-ee3ffa54-7fff-7bc2-9ef3-c38b319d62be"> This product is a blend of Ayurvedic, Homeopathic and allopathic ingredients and is intended for wellness support. It is not meant to diagnose, treat, cure, or prevent any disease. Always consult a healthcare professional before starting any new supplement regimen, especially if you have a medical condition or are taking other medications.</b><br><br></span></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_1_04c45726-86c9-440e-89f2-1d9e153d3a74.webp?v=1770037146" alt="Her Menses (For Rhythmic Relief &amp; Hormonal Harmony)" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#12</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/1_1_04c45726-86c9-440e-89f2-1d9e153d3a74_240x.webp?v=1770037146" alt="Her Menses (For Rhythmic Relief &amp; Hormonal Harmony)" loading="lazy" /></div>
+      <div class="card-index">#9</div>
       <h2 class="product-title">Her Menses (For Rhythmic Relief &amp; Hormonal Harmony)</h2>
+      
       <div class="price-row">
         <span class="price">₹499.00</span>
         <span class="mrp">₹738.00</span>
@@ -761,10 +532,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/HormoniHerb_Tea-1.webp?v=1764746066" alt="HormoniHerb | Herbal Blue Tea | Your All in One Tea" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#13</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/HormoniHerb_Tea-1_240x.webp?v=1764746066" alt="HormoniHerb | Herbal Blue Tea | Your All in One Tea" loading="lazy" /></div>
+      <div class="card-index">#10</div>
       <h2 class="product-title">HormoniHerb | Herbal Blue Tea | Your All in One Tea</h2>
+      
       <div class="price-row">
         <span class="price">₹399.00</span>
         <span class="mrp">₹449.00</span>
@@ -797,10 +569,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Page1.webp?v=1770455626" alt="Kern Drops" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#14</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Page1_240x.webp?v=1770455626" alt="Kern Drops" loading="lazy" /></div>
+      <div class="card-index">#11</div>
       <h2 class="product-title">Kern Drops</h2>
+      
       <div class="price-row">
         <span class="price">₹509.00</span>
         <span class="mrp">₹646.00</span>
@@ -832,10 +605,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/rn-image_picker_lib_temp_95a1fb3c-b5ab-41aa-bba3-5b650e8869c4.webp?v=1774086061" alt="LeanRoutine" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#15</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/rn-image_picker_lib_temp_95a1fb3c-b5ab-41aa-bba3-5b650e8869c4_240x.webp?v=1774086061" alt="LeanRoutine" loading="lazy" /></div>
+      <div class="card-index">#12</div>
       <h2 class="product-title">LeanRoutine</h2>
+      
       <div class="price-row">
         <span class="price">₹399.00</span>
         <span class="mrp">₹449.00</span>
@@ -880,163 +654,47 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati_Kern_Drop_Tadalafil_Dapoxetine_Tablets_10mg30mg.webp?v=1773727012" alt="Lovelinga- Power meets control" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#16</div>
-      <h2 class="product-title">Lovelinga- Power meets control</h2>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hermenses_Hormniherbteacc_1_240x.webp?v=1785483555" alt="Natural Period Care &amp; Hormonal Wellness | Her Menses &amp; HormoniHerb Combo" loading="lazy" /></div>
+      <div class="card-index">#13</div>
+      <h2 class="product-title">Natural Period Care &amp; Hormonal Wellness | Her Menses &amp; HormoniHerb Combo</h2>
+      
       <div class="price-row">
-        <span class="price">₹1499.00</span>
-        <span class="mrp">₹2498.00</span>
-        <span class="off">10% off: ₹1349.10</span>
+        <span class="price">₹799.00</span>
+        <span class="mrp">₹1187.00</span>
+        <span class="off">10% off: ₹719.10</span>
       </div>
-      <div class="description"><p dir="ltr"><span>Vaji Bati + Kern Drop + Tadalafil &amp; Dapoxetine Tablets (10mg/30mg)</span><span>, this powerful  combo combines the goodness of </span><span>Ayurveda</span><span>, the gentle healing of </span><span>Homoeopathy</span><span> &amp; the fast-acting precision of </span><span>Allopathy</span><span> to deliver </span><span>comprehensive male wellness</span><span>.</span></p>
-
-<p dir="ltr"><b id="docs-internal-guid-1fb37c41-7fff-1aa5-067f-49fe99df1eed"><span>Vaji Bati</span><span>, made from extracts of 10 strong Ayurvedic ingredients, builds stamina, strength &amp; energy naturally. </span><span>Kern Drop</span><span> </span><span>homoeopathic formula</span><span>, promotes emotional balance, stress relief &amp; mental clarity. Together with </span><span>Tadalafil 10mg</span><span> &amp; </span><span>Dapoxetine 30mg</span><span>. </span></b><br></p>
-<p dir="ltr"><strong>Key Ingredients:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Vaji Bati</span><span> – Features 10 powerful Ayurvedic ingredients including Ashwagandha, Shilajit, Safed Musli, Gokshura &amp; Sidh Makardhwaj.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Kern Drop</span><span> – Exclusive </span><span>homoeopathic remedy</span><span> designed to support emotional balance, stress reduction &amp; internal balance.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Tadalafil 10mg</span><span> – A trusted allopathic PDE5 inhibitor that improves blood circulation, performance &amp; confidence with a higher, yet safe, dosage.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Dapoxetine 30mg</span><span> – Supports timing &amp; control to boost confidence </span><span><br></span></p>
-</li>
-</ul>
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-<p dir="ltr"><strong>Key Benefits:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Enhances stamina, strength &amp; physical endurance</span><span> naturally</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Improves blood flow &amp; physical response</span><span> with Tadalafil 10mg</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Boosts timing &amp; control</span><span> during intimate moments with Dapoxetine 30mg</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Promotes emotional balance &amp; reduces performance stress</span><span> with Kern Drop</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Safe for regular &amp; long-term use with responsible guidance </span><span><br></span></p>
-</li>
+      <div class="description"><p class="MsoNormal">Your body goes through changes every month, and a little extra support can make all the difference. The <b>Her Menses &amp; HormoniHerb Combo</b> brings together the benefits of <b>Her Menses</b> and <b>HormoniHerb Herbal Blue Tea</b> to help you stay comfortable, balanced, and refreshed throughout your menstrual cycle.</p>
+<p><span style="font-size: 11.0pt; line-height: 107%; font-family: 'Calibri',sans-serif; mso-ascii-theme-font: minor-latin; mso-fareast-font-family: Calibri; mso-fareast-theme-font: minor-latin; mso-hansi-theme-font: minor-latin; mso-bidi-font-family: 'Times New Roman'; mso-bidi-theme-font: minor-bidi; mso-ansi-language: EN-IN; mso-fareast-language: EN-US; mso-bidi-language: AR-SA;">Crafted with carefully selected ingredients, this duo supports hormonal wellness, helps ease monthly discomfort, and promotes overall well-being, making it an easy addition to your everyday self-care routine.</span><span style="font-size: 11.0pt; line-height: 107%; font-family: 'Calibri',sans-serif; mso-ascii-theme-font: minor-latin; mso-fareast-font-family: Calibri; mso-fareast-theme-font: minor-latin; mso-hansi-theme-font: minor-latin; mso-bidi-font-family: 'Times New Roman'; mso-bidi-theme-font: minor-bidi; mso-ansi-language: EN-IN; mso-fareast-language: EN-US; mso-bidi-language: AR-SA;"></span></p>
+<p class="MsoNormal">Support your menstrual wellness naturally with the Her Menses &amp; HormoniHerb Combo. A herbal wellness duo that helps promote hormonal balance, menstrual comfort, and everyday well-being.</p>
+<p class="MsoNormal"><b>Why You'll Love It</b></p>
+<ul style="margin-top: 0cm;" type="disc">
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">A complete wellness combo for menstrual health</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Supports hormonal balance naturally</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Helps manage everyday menstrual discomfort</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Herbal ingredients you can trust</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Easy to include in your daily routine</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Supports overall health and well-being</li>
 </ul>
 
 
-<p style="text-align: left;"><strong></strong><span><br></span></p>
-<p dir="ltr"><strong>How to Use:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Take </span><span>one tablet of Tadalafil &amp; Dapoxetine (10mg/30mg)</span><span> about </span><span>30–60 minutes before activity</span><span> or as directed by your healthcare provider</span><span><br></span></p>
+<ul style="margin-top: 0cm;" type="disc">
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Promotes hormonal wellness</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Helps maintain a healthy menstrual cycle</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Supports comfort during your monthly periods</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Encourages better overall wellness and energy</li>
+<li class="MsoNormal" style="mso-list: l0 level1 lfo1; tab-stops: list 36.0pt;">Complements a healthy lifestyle with natural care<br>
 </li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span> </span><span></span><span> </span><span>Follow standard dosage for Vaji Bati and Kern Drop as per product instructions or as advised by a healthcare professional. </span><span></span><span><br></span></p>
-</li>
-</ul>
-<p dir="ltr"><strong>Storage:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Store all products in a </span><span>cool, dry place</span><span> away from sunlight</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Keep out of reach of children</span></p>
-</li>
-</ul>
-<p dir="ltr"><b id="docs-internal-guid-f991cb99-7fff-f90c-eb81-c1243ca13833"><span>Disclaimer:</span><span><br></span><span> This product combines </span><span>Ayurvedic, Homoeopathic &amp; Allopathic</span><span> approaches. Please consult a healthcare provider before beginning use, especially if you have any medical conditions or are on medication. This product is not intended to diagnose, treat, or cure any disease.</span></b><br></p></div>
+</ul></div>
     </div>
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Shilajit_Ashwagandha_Tadalafil_Tablets_10mg_2.webp?v=1773728925" alt="Max Drive- When average won't do" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#17</div>
-      <h2 class="product-title">Max Drive- When average won't do</h2>
-      <div class="price-row">
-        <span class="price">₹1899.00</span>
-        <span class="mrp">₹3438.00</span>
-        <span class="off">10% off: ₹1709.10</span>
-      </div>
-      <div class="description"><p dir="ltr"><meta charset="utf-8"><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-2d4c2bd0-7fff-7418-d457-142ff6201aac"><span>Shilajit + Ashwagandha + Tadalafil Tablets 10mg</span><span> offer a strong combination of </span><span>Ayurvedic, Homeopathy &amp; Allopathic performance enhancement</span><span> in one convenient tablet. Designed for men who look for a stronger,  immediate boost to their </span><span>stamina, energy, &amp; sexual vitality</span><span>, this formulation combines Ayurveda’s higher, yet safe,Homeopathy’s gentleness &amp; Allopathy’s dose of </span><span>Tadalafil 10mg</span><span>. It’s perfect for those who want </span><span>both long-term &amp; short-term results</span><span>. This combination is perfect for restoring confidence &amp; supporting a healthy, active lifestyle.</span></b><br></p>
-
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-
-<p dir="ltr"><strong>Key Ingredients:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Shilajit Extract</span><span> – Known for its mineral-rich profile &amp; ability to enhance strength, energy &amp; recovery.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Ashwagandha Extract</span><span> – An adaptogen that helps manage stress, boosts mood &amp; supports hormonal balance.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Tadalafil 10mg – An allopathic PDE5 inhibitor that promotes better circulation &amp; improved performance, commonly used in male wellness. </span><span><br></span></p>
-</li>
-</ul>
-
-
-
-
-
-
-<p dir="ltr"><span>Key Benefits:</span></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Powerful stamina &amp; strength support:</span><span> Shilajit &amp; Ashwagandha help build energy reserves, reduce fatigue &amp; support overall male vitality.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Enhanced blood flow &amp; performance:</span><span> Tadalafil 10mg improves circulation &amp; responsiveness for improved physical confidence.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Balances stress &amp; hormones:</span><span> Ashwagandha helps reduce cortisol levels &amp; promote emotional resilience.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Safe for consistent, long-term use: The Ayurvedic base helps balance the stronger Tadalafil dose for a well &amp; sustained effect. </span><span><br></span></p>
-</li>
-</ul>
-
-
-<p style="text-align: left;"><strong></strong><span><b id="docs-internal-guid-034d0df8-7fff-d8af-096a-d89d82fff348"></b></span><span><br></span></p>
-<p style="text-align: left;"><strong>How To Use:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Take </span><span>1 tablet 30–60 minutes before activity</span><span>, or as advised by your healthcare provider.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Take one </span><span>250 mg serving</span><span> each day of Shilajit using the measuring spoon that comes with it. For a more intense effect, dissolve in milk or lukewarm water or consume straight.</span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Take 1–2 capsules/tablets of Ashwagandha daily with water, preferably after meals or as directed by a healthcare professional </span></p>
-</li>
-</ul>
-<p dir="ltr"><span><strong>Storage</strong>:</span></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Store in a </span><span>cool, dry place</span><span>, away from sunlight &amp; moisture.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Keep out of reach of children.</span><span><br><br></span></p>
-</li>
-</ul>
-<p><b id="docs-internal-guid-21eb1d9e-7fff-a84e-b4fe-eab6eda71d0c"><span>Disclaimer:</span><span><br></span><meta charset="utf-8"> <meta charset="utf-8"> <b id="docs-internal-guid-27511b40-7fff-c0c7-602c-efefcdf9fa9b"><span> This is a </span><span>combination of Ayurvedic, Homeopathic &amp; Allopathic</span><span> ingredients. Always consult your physician before use, especially if taking other medications or managing existing health conditions. Not intended to treat, cure, or prevent any disease.</span></b><br></b></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Orlistat1.webp?v=1773726713" alt="Orlistat 60 mg (Smart Science for a Leaner You)" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#18</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Orlistat1_240x.webp?v=1773726713" alt="Orlistat 60 mg (Smart Science for a Leaner You)" loading="lazy" /></div>
+      <div class="card-index">#14</div>
       <h2 class="product-title">Orlistat 60 mg (Smart Science for a Leaner You)</h2>
+      
       <div class="price-row">
         <span class="price">₹599.00</span>
         <span class="mrp">₹737.00</span>
@@ -1068,16 +726,17 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/pure-himalayan-shilajit-resin.webp?v=1773727203" alt="Pure Himalayan Shilajit Resin - 20g | SehatUP" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#19</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/pure-himalayan-shilajit-resin_240x.webp?v=1773727203" alt="Pure Himalayan Shilajit Resin - 20g | SehatUP" loading="lazy" /></div>
+      <div class="card-index">#15</div>
       <h2 class="product-title">Pure Himalayan Shilajit Resin - 20g | SehatUP</h2>
+      
       <div class="price-row">
         <span class="price">₹1349.00</span>
         <span class="mrp">₹2309.00</span>
         <span class="off">10% off: ₹1214.10</span>
       </div>
-      <div class="description"><p class="s3" style="text-align: left;"><span class="s4">ShehatUP prides itself on presenting to you the finest natural premium product of Shilajit completely unadulterated, from the high Himalayas, 5000 meters above sea level. This product is truly exclusive and unique, being packaged with over 85 necessary minerals, immersed in authentic 24K gold and has an impressive fulvic acid of seventy five percent.<br>Himalayan Shilajit is tailored to aid complete body fitness, boost your energy levels and strengthen your mental focus and agility. It combines Ayurvedic traditions with modernly effective results.  Avail of all the modern benefits in one regular scoop. It is highly recommended to select SehatUP Himalayan Shilajit and ensure its daily companionship.<br></span></p>
+      <div class="description"><p class="s3" style="text-align: left;"><span class="s4">SehatUP prides itself on presenting to you the finest natural premium product of Shilajit completely unadulterated, from the high Himalayas, 5000 meters above sea level. This product is truly exclusive and unique, being packaged with over 85 necessary minerals, immersed in authentic 24K gold and has an impressive fulvic acid of seventy five percent.<br>Himalayan Shilajit is tailored to aid complete body fitness, boost your energy levels and strengthen your mental focus and agility. It combines Ayurvedic traditions with modernly effective results.  Avail of all the modern benefits in one regular scoop. It is highly recommended to select SehatUP Himalayan Shilajit and ensure its daily companionship.<br></span></p>
 <p class="p1"><b>Product Details</b></p>
 <ul class="ul1">
 <li class="li1">Each container has eighty servings<br>
@@ -1113,84 +772,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/3_8_2.webp?v=1773729099" alt="Rocket Ras- No delay, just play-rocket your way" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#20</div>
-      <h2 class="product-title">Rocket Ras- No delay, just play-rocket your way</h2>
-      <div class="price-row">
-        <span class="price">₹1399.00</span>
-        <span class="mrp">₹2338.00</span>
-        <span class="off">10% off: ₹1259.10</span>
-      </div>
-      <div class="description"><p dir="ltr"><span>This advanced </span><span>Vaji Bati + Kern Drop + Tadalafil 10mg</span><span> combo helps you to unlock your full potential. This perfectly combined trio brings together </span><span>Ayurvedic vitality</span><span>, </span><span>homoeopathic balance</span><span> &amp; </span><span>allopathic performance support</span><span> in one powerful regimen. Designed for men who want to take their stamina, energy &amp; confidence to the next level, this combination promotes both </span><span>immediate results</span><span> &amp; </span><span>long-term wellness</span><span>.</span></p>
-<p dir="ltr"><span>Vaji Bati</span><span> is an Ayurvedic powerhouse made with 10 strong herbs that support strength &amp; energy, while </span><span>Kern Drop</span><span> is a </span><span>homoeopathic formula</span><span> that promotes emotional balance &amp; hormonal wellness &amp; lastly an Allopathic medicine </span><span>Tadalafil 10mg</span><span> all these combination gently enhances blood flow &amp; performance when needed.</span></p>
-<p dir="ltr"><span></span><strong style="font-family: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; font-size: 1.7rem;"><b id="docs-internal-guid-c0444b3d-7fff-83b9-fd32-efa40457edeb"></b></strong></p>
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-
-<p dir="ltr"><strong style="font-family: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; font-size: 1.7rem;">Key Ingredients:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><strong>Vaji Bati – Features 10 powerful Ayurvedic ingredients including Ashwagandha, Shilajit, Safed Musli, Gokshura &amp; Sidh Makardhwaj.</strong><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation" style="text-align: left;"><strong>Kern Drop – Exclusive homoeopathic remedy designed to support emotional balance, stress reduction &amp; internal balance.</strong><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><strong>Tadalafil 10mg – A trusted allopathic PDE5 inhibitor that improves blood circulation, performance &amp; confidence with a higher, yet safe, dosage. </strong><span><br></span></p>
-</li>
-</ul>
-
-
-
-
-
-<p dir="ltr"><strong>Key Benefits:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Improves stamina &amp; physical vitality</span><span> with Ayurvedic support from Vaji Bati</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Enhances emotional balance &amp; hormonal regulation</span><span> through homoeopathic Kern Drop</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Boosts blood flow &amp; performance</span><span> with fast-acting Tadalafil 10mg</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Supports long-term reproductive wellness &amp; energy</span></p>
-</li>
-</ul>
-
-<p style="text-align: left;"><strong></strong><span><br></span></p>
-<p style="text-align: left;"><strong>How To Use:</strong></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Take </span><span>1 Tadalafil tablet (10mg)</span><span> about 30–60 minutes before activity or as directed.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Follow standard dosage for Vaji Bati and Kern Drop as per product instructions or as advised by a healthcare professional. </span><span><br></span></p>
-</li>
-</ul>
-<p dir="ltr"><strong>Storage:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Store in a </span><span>cool, dry place</span><span> away from direct sunlight.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Keep out of reach of children.</span><span><br><br></span></p>
-</li>
-</ul>
-<p><b id="docs-internal-guid-6b61cc52-7fff-5879-f610-ab2a304bf00c"><span>Disclaimer:</span><span><br></span><span> This combination includes </span><span>Ayurvedic, Homeopathy &amp; Allopathic</span><span> elements. Please consult your healthcare provider before use, especially if you are on medication or managing a health condition. Not intended to diagnose, treat, or cure any disease.</span></b></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Honey-Stick_01_1.webp?v=1782984858" alt="Shilajit Honey Sticks" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#21</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Honey-Stick_01_1_240x.webp?v=1782984858" alt="Shilajit Honey Sticks" loading="lazy" /></div>
+      <div class="card-index">#16</div>
       <h2 class="product-title">Shilajit Honey Sticks</h2>
+      
       <div class="price-row">
         <span class="price">₹899.00</span>
         <span class="mrp">₹1399.00</span>
@@ -1235,10 +821,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/rn-image_picker_lib_temp_7663c288-2388-4649-a694-1211965c9cdd.webp?v=1773725391" alt="Slimtox Energy Tea" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#22</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/rn-image_picker_lib_temp_7663c288-2388-4649-a694-1211965c9cdd_240x.webp?v=1773725391" alt="Slimtox Energy Tea" loading="lazy" /></div>
+      <div class="card-index">#17</div>
       <h2 class="product-title">Slimtox Energy Tea</h2>
+      
       <div class="price-row">
         <span class="price">₹399.00</span>
         <span class="mrp">₹449.00</span>
@@ -1278,311 +865,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Mighty_1.webp?v=1773728580" alt="Tadala + Dapox (Mighty)" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#23</div>
-      <h2 class="product-title">Tadala + Dapox (Mighty)</h2>
-      <div class="price-row">
-        <span class="price">₹400.00</span>
-        <span class="mrp">₹554.00</span>
-        <span class="off">10% off: ₹360.00</span>
-      </div>
-      <div class="description"><p><meta charset="utf-8">Tadala+ Dapox is a strong blended allopathy pill which has a couple of medically researched compounds Tadalafil and Dapoxetine. The objective is to take care of both ED or erectile dysfunction and PE or premature ejaculation in mature men. This basic and combined formula is effective in aiding men with getting an active erection but also managing ejaculation, consequently having a pleasurable physical intercourse. The Tadalafil’s prolonged impact and the immediate merits of Dapoxetine make Tadala+ Dapox the perfect alternative for men seeking a single capsule, rather than a number of medications.<br></p>
-<p class="p1"><meta charset="utf-8"><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-9f6b7911-7fff-f178-aa77-eaaff4da7025"><span>Disclaimer:</span><span><br></span></b><b id="docs-internal-guid-4b92b563-7fff-25b3-e21b-9fcf5049c38e"><span>Tadala+ Dapox should only be used under the guidance of a licensed doctor. It basically a medicine to be prescribed and not intended to identify or cure any kind of ailment.</span></b><br></p>
-
-
-<p class="p1"><b>Core plus points</b></p>
-<ul>
-<li role="presentation" dir="ltr">
-<span>Dual Treatment: The ED and PE are simultaneously taken care of with a single capsule.</span><span><br></span>
-</li>
-<li role="presentation" dir="ltr">
-<span>Long-term erections: The blood circulation is boosted by the Tadalafil to help gain and maintain the erections for a prolonged period of thirty- six hours.</span><span><br></span>
-</li>
-<li><span>Boosted ejaculation control: Dapoxetine prolongs the climax and boosts satisfaction.<br></span></li>
-<li><span>User friendly and immediate effects: It takes a period of one to three hours prior to the physical intimacies.</span></li>
-<li><span>Medically proven: Approved and recommended by doctors globally.<br></span></li>
-<li><span>Formula based on allopathy methods: It is backed up by scientific researches and is sanctioned for secure and daily usage.</span></li>
-</ul>
-
-
-<h3 dir="ltr"><span>Instructions</span></h3>
-<ul>
-<li><span>Fill a glass of water and take a single tablet. It should be done one to three hours before having physical intercourse, as recommended.<br></span></li>
-<li><span>You can take the medicine with or without eating.<br></span></li>
-<li><span>It is advisable to take one tablet every twenty- four hours.<br></span></li>
-<li><span>Make sure to use this medicine after consulting a medical expert, especially if you are unfamiliar with any of the ingredients.<br></span></li>
-</ul>
-<p dir="ltr"><span><strong>Storage Instructions </strong>:</span></p>
-<ul>
-<li><span>It has to be stored in a dry and cool place which has temperature below thirty degrees centigrade.<br></span></li>
-<li><span>It should be stored away from sunlight or humid areas and be inaccessible to children.<br></span></li>
-</ul></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_5_1.webp?v=1773728147" alt="Tadalafil 5 Mg (Hard 5)" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#24</div>
-      <h2 class="product-title">Tadalafil 5 Mg (Hard 5)</h2>
-      <div class="price-row">
-        <span class="price">₹217.00</span>
-        
-        <span class="off">10% off: ₹195.30</span>
-      </div>
-      <div class="description"><p dir="ltr"><span>It is an everyday low-dose allopathic medicine called tadalafil 5 mg that has the purpose to help adult males with erectile dysfunction (ED) &amp; the signs of benign prostatic hyperplasia (BPH). This dosage reduces BPH-related urine symptoms &amp; begins to improve sexual function by preserving constant levels of the drug in the body. Tadalafil 5 mg can be used for long-term daily usage with excellent outcomes, making it the perfect choice for men who regularly have ED or who prefer a more instant, pressure-free approach to love. Allopathy is a valuable choice for everyday wellbeing &amp; is trusted for its effectiveness as well as its safety.</span></p>
-<p class="p1"><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-3921c54a-7fff-0585-204b-1c58e0e4caf2"><span>Disclaimer:</span><span><br></span><span>Tadalafil 5 mg should be used under the supervision of a qualified medical professional. This product is not intended to diagnose, treat, cure, or prevent any disease.</span></b></p>
-
-
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-<p class="p1"><b>Key Benefits</b></p>
-<ul>
-<li dir="ltr">
-<span><strong>Low daily dose: </strong>Provides steady &amp; stiff, constant support for erectile function.</span><span></span><span></span>
-</li>
-<li dir="ltr">
-<span><strong>Helps two way: </strong>Approved for treating both erectile dysfunction &amp; urinary symptoms of BPH.</span><span></span><span></span>
-</li>
-<li dir="ltr">
-<span><strong>Instant Support: </strong>Allows instant sexual activity without timing the dose.</span><span></span><span></span>
-</li>
-<li dir="ltr">
-<span><strong>Supports Body:</strong> Gentle on the body, making it ideal for long-term daily use.</span><span></span><span></span>
-</li>
-<li dir="ltr"><span><strong>Clinically proven:</strong> Widely prescribed &amp; supported by medical research.</span></li>
-</ul>
-
-
-
-<p dir="ltr"><span>Tadalafil belongs to a category of </span><span>Allopathy</span><span> medicines known as </span><span>PDE5 inhibitors</span><span>. It works by relaxing the smooth muscles &amp; improving blood flow in the penis &amp; prostate, supporting natural erectile function &amp; eases the urinary flow.</span></p>
-<p dir="ltr"><span>Directions for Use:</span></p>
-<ul>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Take 1 tablet (5 mg) once daily at the same time each day, with or without food.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Suitable for long-term, continuous use as prescribed by your healthcare provider.</span><span><br></span></p>
-</li>
-<li dir="ltr" aria-level="1">
-<p dir="ltr" role="presentation"><span>Do not exceed the recommended daily dose.</span><span><br><br></span></p>
-</li>
-</ul>
-<h4>
-<b id="docs-internal-guid-5e5d3303-7fff-bcf6-ae2b-b451e7ec5596"><span>Storage:</span><span><br></span><span> Store in a cool, dry place below 30°C. Keep out of reach of children.</span></b><br>
-</h4></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Hard_10_1.webp?v=1773728313" alt="Tadalafil IP 10 mg (Hard 10)" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#25</div>
-      <h2 class="product-title">Tadalafil IP 10 mg (Hard 10)</h2>
-      <div class="price-row">
-        <span class="price">₹230.00</span>
-        <span class="mrp">₹258.00</span>
-        <span class="off">10% off: ₹207.00</span>
-      </div>
-      <div class="description"><p><meta charset="utf-8">An effective allopathic medication is Tadalafil 10 MG. It is mainly used for helping with erectile dysfunction or ED in adult men. The men obtain and make the stiff erection last a long time. It can be achieved by enhancing blood circulation to the penis, permitting a spontaneous response to the physical stimulation. This medicine effect has been reported to have lasted for as long as thirty six hours. It provides an accelerated level of enthusiasm and self-assurance, as compared to the temporary ED remedies. The men have a very basic choice because it can be utilized daily for continuous physical health or spanning over a prolonged time period. Tadalafil is a very happening allopathy medication for boosting physical stamina and overall welfare.<br></p>
-<p class="p1"><meta charset="utf-8"><meta charset="utf-8"><meta charset="utf-8"><b id="docs-internal-guid-2160c4e2-7fff-1ef6-8172-3858a3fcc475"><span>Disclaimer:</span><span><br></span></b><strong>The Tadalafil has to be utilized only as instructed by the medical expert. This product is not meant to treat or cure diseases.</strong><br></p>
-
-
-<p class="p1"><b>Merits</b></p>
-<ul>
-<li class="p1">
-<b>Permanent and successful ED treatment: </b>A more durable and competent erection is aided by boosting up the blood flow. </li>
-<li class="p1">
-<strong>Immediate effect: </strong>It shows results within half an hour to one hour of the intake.</li>
-<li class="p1">
-<strong>Prolonged tenure of the dosage:</strong> It has a successful impact for as long as thirty-six hours. The users can arrange their schedules in a flexible manner without any stress.</li>
-<li class="p1">
-<strong>Adjustable utilization: </strong>You can have it with or without a meal. So, it becomes very easy to implement in your daily routine.</li>
-<li class="p1">
-<strong>Medically approved: </strong>It is globally recommended by doctors and health experts and is proven by scientific studies.</li>
-</ul>
-
-
-<h3 style="text-align: left;">User instructions</h3>
-<p dir="ltr">Tadalafil is one of the most prominent allopathic medicines of the PDE5 blocker class. During intimate moments, the muscles in the walls of the blood vessels are unwound and loosened up. It boosts t the blood circulation to the important parts of the body, specifically the penis.<br></p>
-<h3 dir="ltr">How to use</h3>
-<ul>
-<li>
-<span>One 10 MG tablet should be taken with water and orally. It should be according to the doctor’s guidance.</span><span></span>
-</li>
-<li><span>It is advisable to take it at least half an hour before a physical session.<br></span></li>
-<li><span>You can take the 10 MG dosage on a permanent level if you are a man suffering from ED regularly. It can be taken everyday or as the doctor suggests.<br></span></li>
-<li><span>One dosage is sufficient for twenty-four hours.<br></span></li>
-</ul>
-<p dir="ltr"><b id="docs-internal-guid-eaa37f34-7fff-70a8-4946-e14fddeaad83"><span>Storage instructions:</span><span><br></span></b><strong>It is recommended to store in a cool and dry place with a temperature of thirty degree centigrade. The children should never have access to it.</strong><br></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati_Kern_Drop_dapoxetine_30mg.webp?v=1773729674" alt="Thrill Drill- No Flop, Just Pop" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#26</div>
-      <h2 class="product-title">Thrill Drill- No Flop, Just Pop</h2>
-      <div class="price-row">
-        <span class="price">₹1449.00</span>
-        <span class="mrp">₹2383.00</span>
-        <span class="off">10% off: ₹1304.10</span>
-      </div>
-      <div class="description"><p dir="ltr"><span>Enhance your performance &amp; stamina naturally with the powerful trio of </span><span>Vaji Bati</span><span>, </span><span>Kern Drop</span><span> &amp; </span><span>Dapoxetine 30mg</span><span>. This unique combination blends the </span><span>ancient strength of Ayurveda</span><span>, the </span><span>gentle balance of homoeopathy</span><span> &amp; the </span><span>proven effectiveness of allopathic medicine to support</span><span> both </span><span>natural energy</span><span> &amp; </span><span>better timing</span><span>.</span></p>
-<p dir="ltr"><b id="docs-internal-guid-ce7def4e-7fff-0b30-2802-bcd7ef680224"><span>Vaji Bati</span><span> is an Ayurvedic powerhouse made with 10 strong herbs that support strength &amp; energy, while </span><span>Kern Drop</span><span> is a </span><span>homoeopathic formula</span><span> that promotes emotional balance &amp; hormonal wellness, </span><span>Dapoxetine 30mg</span><span> provides reliable support for improved control &amp; timing, helping boost confidence when it matters most.</span></b></p>
-
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-
-<p dir="ltr"><strong>Key Ingredients:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Vaji Bati</span><span> – Features 10 powerful Ayurvedic ingredients including Ashwagandha, Shilajit, Safed Musli, Gokshura &amp; Sidh Makardhwaj.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Kern Drop</span><span> – Exclusive </span><span>homoeopathic remedy</span><span> designed to support emotional balance, stress reduction &amp; internal balance.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Dapoxetine 30mg – A fast-acting allopathic ingredient to help with timing &amp; control </span><span><br></span></p>
-</li>
-</ul>
-
-
-
-
-
-<p dir="ltr"><strong>Key Benefits:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Supports improved control &amp; timing</span><span> with clinically trusted Dapoxetine 30mg.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Enhances stamina, strength &amp; vitality</span><span> naturally with Ayurvedic ingredients.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Promotes mental clarity &amp; emotional resilience</span><span> through homoeopathic Kern Drop.</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Helps reduce stress &amp; performance anxiety</span><span>, improving overall quality of life.</span><span><br><br></span></p>
-</li>
-</ul>
-
-
-<p style="text-align: left;"><strong></strong><span><br></span></p>
-<p dir="ltr"><strong>How to Use:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take </span><span>1 tablet of Dapoxetine 30mg</span><span> about 1–3 hours before activity or as directed by your healthcare provider</span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Follow standard dosage for </span><span>Vaji Bati</span><span> and </span><span>Kern Drop</span><span> as per product instructions or as advised by a healthcare professional.</span><span><br><br></span></p>
-</li>
-</ul>
-<p dir="ltr"><strong>Storage:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Store all products in a </span><span>cool, dry place</span><span>, away from moisture and direct sunlight</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Keep out of reach of children</span></p>
-</li>
-</ul>
-<p><b id="docs-internal-guid-5bc50087-7fff-1a82-c2f3-83eba802438b"><span>Disclaimer:</span><span><br></span><span> This combination contains </span><span>Ayurvedic, Homoeopathic &amp; Allopathic</span><span> components. Please consult a healthcare provider before use, especially if you have underlying health conditions or are on medication. This product is not intended to diagnose, treat, or cure any disease.</span></b></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Shilajit_Ashwagandha_Tadalafil_Dapoxetine_Tablets_10mg30mg.webp?v=1773729529" alt="ThrustRx- Fuel your drive, rule the night" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#27</div>
-      <h2 class="product-title">ThrustRx- Fuel your drive, rule the night</h2>
-      <div class="price-row">
-        <span class="price">₹1999.00</span>
-        <span class="mrp">₹3598.00</span>
-        <span class="off">10% off: ₹1799.10</span>
-      </div>
-      <div class="description"><p dir="ltr"><span>Shilajit + Ashwagandha + Tadalafil 10mg &amp; Dapoxetine 30mg Tablets </span><span>are a powerful combination crafted for men who seek </span><span>maximum stamina, peak performance &amp; better timing</span><span>. This high-strength formula blends </span><span>ancient Ayurvedic herbs, Homeopathic remedies</span><span> with </span><span>modern allopathic solutions</span><span>, providing a complete approach to </span><span>physical, emotional &amp; intimate wellness</span><span>.</span></p>
-<p dir="ltr"><b id="docs-internal-guid-dadc9dfe-7fff-b89b-012d-dd083cbf20e5"><span>The strong adaptogen </span><span>Shilajit</span><span> &amp; homeopathic remedy </span><span>Ashwagandha</span><span> boost natural energy, stress resilience &amp; hormonal balance, while </span><span>Tadalafil 10mg</span><span> enhances blood circulation &amp; </span><span>Dapoxetine 30mg</span><span> improves control &amp; timing. Designed to support both </span><span>immediate results &amp; long-term vitality</span><span>, this formula is safe for </span><span>regular, guided use</span><span>.</span></b><br></p>
-<p dir="ltr"><b><span></span></b><strong></strong></p>
-
-<p style="text-align: left;"><strong>🔥Reignite Your Desire</strong></p>
-
-
-
-<p dir="ltr"><strong>Key Ingredients:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Shilajit Extract</span><span> – Restores energy, enhances testosterone levels &amp; supports overall vitality</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Ashwagandha Extract</span><span> – Reduces stress, supports hormonal balance &amp; builds endurance</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Tadalafil 10mg</span><span> – Improves blood circulation, promoting stronger &amp; longer performance</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Dapoxetine 30mg – A fast-acting solution for improved timing &amp; control</span><span><br></span></p>
-</li>
-</ul>
-
-
-<p dir="ltr"><strong>Key Benefits:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Maximizes stamina, strength &amp; endurance</span><span> naturally</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Promotes healthy blood flow &amp; stronger physical response</span><span> with Tadalafil 10mg</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Improves timing &amp; control</span><span> during intimate moments with Dapoxetine 30mg</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Helps manage stress &amp; enhances emotional well-being</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Suitable for consistent, long-term use under proper guidance </span><span><br></span></p>
-</li>
-</ul>
-
-
-<p style="text-align: left;"><strong></strong><span><br></span></p>
-<p dir="ltr"><strong>How to Use:</strong></p>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take </span><span>one tablet of Tadalafil &amp; Dapoxetine (10mg/30mg 30–60 minutes before activity</span><span> or as prescribed by your healthcare provider</span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take one </span><span>250 mg serving</span><span> each day of Shilajit using the measuring spoon that comes with it. For a more intense effect, dissolve in milk or lukewarm water or consume straight.</span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Take 1–2 capsules/tablets of Ashwagandha daily with water, preferably after meals or as directed by a healthcare professional </span></p>
-</li>
-</ul>
-<p dir="ltr"><strong>Storage:</strong></p>
-<ul></ul>
-<ul>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Store in a </span><span>cool, dry place</span><span> away from sunlight and moisture</span><span><br></span></p>
-</li>
-<li aria-level="1" dir="ltr">
-<p role="presentation" dir="ltr"><span>Keep out of reach of children</span></p>
-</li>
-</ul>
-<p><span><b id="docs-internal-guid-060f4a11-7fff-bec2-1b50-70cb47faf0e5">Disclaimer:<br>This product blends Ayurvedic, Homoeopathic &amp; Allopathic ingredients. Always consult a healthcare provider before beginning use, especially if you have medical conditions or are on other medications. Not intended to diagnose, treat, or cure any disease.</b></span></p></div>
-    </div>
-  </article>
-
-  <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Thyrostatin_01.webp?v=1775545104" alt="Thyrostatin 3X" loading="lazy" /></div>
-    <div class="card-body">
-      <div class="card-index">#28</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Thyrostatin_01_240x.webp?v=1775545104" alt="Thyrostatin 3X" loading="lazy" /></div>
+      <div class="card-index">#18</div>
       <h2 class="product-title">Thyrostatin 3X</h2>
+      
       <div class="price-row">
         <span class="price">₹249.00</span>
         <span class="mrp">₹399.00</span>
@@ -1613,10 +900,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati.webp?v=1773727366" alt="Vaji Bati" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#29</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Vaji_Bati_240x.webp?v=1773727366" alt="Vaji Bati" loading="lazy" /></div>
+      <div class="card-index">#19</div>
       <h2 class="product-title">Vaji Bati</h2>
+      
       <div class="price-row">
         <span class="price">₹849.00</span>
         <span class="mrp">₹1385.00</span>
@@ -1657,20 +945,31 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Garcinia-_-Slimtoxx-Combo_01.webp?v=1777370819" alt="Weight Management Kit - Female" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#30</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Garcinia-_-Slimtoxx-Combo_01_240x.webp?v=1777370819" alt="Weight Management Kit - Female" loading="lazy" /></div>
+      <div class="card-index">#20</div>
       <h2 class="product-title">Weight Management Kit - Female</h2>
+      
       <div class="price-row">
         <span class="price">₹799.00</span>
         <span class="mrp">₹1099.00</span>
         <span class="off">10% off: ₹719.10</span>
       </div>
-      <div class="description"><p class="MsoNormal">The effective combination of <b>Garcinia Cambogia</b> and <b>Leanixir Slimtox Energy Tea</b> is designed to support active weight management by targeting metabolism, fat oxidation, and appetite regulation.</p>
-<p class="MsoNormal">Garcinia Cambogia, standardized for <b>Hydroxycitric Acid (HCA)</b>, plays a role in inhibiting fat synthesis and managing appetite by influencing serotonin levels. This helps reduce calorie intake and supports controlled eating patterns.</p>
-<p class="MsoNormal">Leanixir Slimtox Energy Tea, enriched with <b>Green Tea and Oolong Tea extracts</b>, contributes to enhanced thermogenesis and improved metabolic rate. These bioactive compounds assist in increasing energy expenditure and promoting fat utilization throughout the day.</p>
-<p class="MsoNormal">This combination works synergistically to provide <b>day-long metabolic activation</b>, improved energy levels, and better control over dietary habits, making it suitable for men with active or sedentary lifestyles aiming for structured weight management.</p>
-<p class="MsoNormal">They add benefits collectively. This combination supports <b>fat metabolism, energy balance, and appetite control</b>, helping maintain consistency in weight management efforts.</p>
+      <div class="description"><p><strong>The Ultimate Weight Management Combo</strong></p>
+<p><strong>(Garcinia Cambogia + Leanixir Slimtox Energy Tea)</strong></p>
+<ul>
+<li>
+<strong>Supports Metabolism: </strong>Green and oolong tea extracts help keep your body burning calories throughout the day.</li>
+<li>
+<strong>Helps Manage Appetite: </strong>May reduce unnecessary snacking and support natural control of daily calorie intake.</li>
+<li>
+<strong>Limits Fat Production:</strong> Standardized HCA helps prevent fat synthesis before it begins.</li>
+<li>
+<strong>Steady Energy Throughout the Day:</strong> Supports stamina without fatigue.</li>
+<li>
+<strong>Suits Any Lifestyle: </strong>Made for active routines as well as busy desk-based or sedentary jobs.<br>
+</li>
+</ul>
 
 
 <ul style="margin-top: 0cm;" type="disc">
@@ -1706,10 +1005,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Garcinia-_-Lean-routine_01.webp?v=1777378688" alt="Weight Management Kit - Male" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#31</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Garcinia-_-Lean-routine_01_240x.webp?v=1777378688" alt="Weight Management Kit - Male" loading="lazy" /></div>
+      <div class="card-index">#21</div>
       <h2 class="product-title">Weight Management Kit - Male</h2>
+      
       <div class="price-row">
         <span class="price">₹799.00</span>
         <span class="mrp">₹1099.00</span>
@@ -1759,10 +1059,11 @@
   </article>
 
   <article class="card">
-    <div class="card-media"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Zencal-1.webp?v=1764844230" alt="Zencal D3K2" loading="lazy" /></div>
     <div class="card-body">
-      <div class="card-index">#32</div>
+      <div class="card-thumb"><img class="product-img" src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/Zencal-1_240x.webp?v=1764844230" alt="Zencal D3K2" loading="lazy" /></div>
+      <div class="card-index">#22</div>
       <h2 class="product-title">Zencal D3K2</h2>
+      
       <div class="price-row">
         <span class="price">₹499.00</span>
         <span class="mrp">₹699.00</span>

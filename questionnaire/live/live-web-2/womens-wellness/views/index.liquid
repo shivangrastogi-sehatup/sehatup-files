@@ -8,17 +8,6 @@
 <div class="bg-overlay"></div>
 
 {% render 'loader-overlay' %}
-<script>
-  (function() {
-    // Fast-hide loader on home page for new users before the main engine even loads
-    const quizId = 'womens-wellness';
-    const hasSession = localStorage.getItem('active_session_state_' + quizId) || localStorage.getItem('partialDocId_' + quizId);
-    if (!hasSession) {
-      const loader = document.getElementById('loader');
-      if (loader) loader.style.display = 'none';
-    }
-  })();
-</script>
 
 
 <div id="questionnaire">
@@ -228,7 +217,7 @@
             <div class="support-section">
               <img
                 src="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/24X7_Banner.webp?v=1774931578"
-                alt="24x7 Expert Doctor Support"
+                alt="24x7 Expert Doctor Support" data-i18n="doctor-support-banner"
                 style="max-width: 100%"
               >
             </div>
@@ -381,6 +370,9 @@
     {% endfor %}
   {% endpaginate %}
 </script>
+{% comment %}Where the Hindi catalogue actually lives. On Shopify this is the asset CDN;
+  the engine falls back to /i18n/hi.js when this is empty.{% endcomment %}
+<script>window.SU_I18N_URL = { hi: "{{ 'hi.js' | asset_url }}" };</script>
 <script defer="defer" src="{{ 'firebase-config.js' | asset_url }}"></script>
 <script defer="defer" src="{{ 'product-database-common.js' | asset_url }}"></script>
 <script defer="defer" src="{{ 'config-womens-health.js' | asset_url }}"></script>
