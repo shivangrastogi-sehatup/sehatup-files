@@ -13,11 +13,11 @@ import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'fi
 import { computeAnalytics } from "./utils/analytics";
 import { useProductSearch } from './utils/productSearchAPI';
 import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import PriceCalculator from './components/PriceCalculator';
 import CartLinkGenerator from './components/CartLinkGenerator';
+import { EXPORT_COLUMNS, DATE_PRESETS, resolveDateRange, exportToExcel, exportOrdersToExcel, exportShipmentsToExcel, exportPopupLeadsToExcel, popupLeadReceivedAt } from './utils/exports';
 
 /**
  * Which Firestore collection a submission actually lives in.
@@ -40,337 +40,6 @@ function submissionCollectionOf(item) {
   return 'manual_submissions';
 }
 
-// Curated list of exportable columns — `default: true` means pre-selected in the picker.
-// Each `get(r)` produces the cell value for a row. No `answers`/`rawState`/`html` etc.
-const EXPORT_COLUMNS = [
-  { key: 'docId', label: 'Doc ID', get: r => r.id || r.docId || '' },
-  { key: 'name', label: 'Name', get: r => r.name || r.userName || '', default: true },
-  { key: 'phone', label: 'Phone', get: r => r.phone || '', default: true },
-  { key: 'email', label: 'Email', get: r => r.email || '' },
-  { key: 'age', label: 'Age', get: r => r.age || '', default: true },
-  { key: 'gender', label: 'Gender', get: r => r.gender || '', default: true },
-  { key: 'dob', label: 'Date of Birth', get: r => r.dob || '' },
-  { key: 'city', label: 'City', get: r => r.city || '' },
-  { key: 'state', label: 'State', get: r => r.state || '' },
-  { key: 'category', label: 'Category', get: r => r.category || r.primaryGoal || r.reportCategory || '', default: true },
-  { key: 'score', label: 'Health Score', get: r => r.healthScore ?? r.score ?? '', default: true },
-  { key: 'risk', label: 'Risk Level', get: r => r.riskType || r.risk || '' },
-  { key: 'source', label: 'Source', get: r => r._source || r.source || '', default: true },
-  { key: 'consulted', label: 'Consulted', get: r => r.isConsulted ? 'Yes' : 'No', default: true },
-  { key: 'purchased', label: 'Purchased', get: r => r.isPurchased ? 'Yes' : 'No', default: true },
-  {
-    key: 'date', label: 'Date', get: r => {
-      const ts = r.timestamp?.toDate ? r.timestamp.toDate() : (r.timestamp ? new Date(r.timestamp) : null);
-      return ts && !isNaN(ts.getTime()) ? ts.toLocaleDateString('en-IN') : '';
-    }, default: true
-  },
-  {
-    key: 'time', label: 'Time', get: r => {
-      const ts = r.timestamp?.toDate ? r.timestamp.toDate() : (r.timestamp ? new Date(r.timestamp) : null);
-      return ts && !isNaN(ts.getTime()) ? ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
-    }, default: true
-  },
-  { key: 'primaryDiagnosis', label: 'Primary Diagnosis', get: r => r.primaryDiagnosis || '' },
-  { key: 'consultedBy', label: 'Consulted By', get: r => r.consultedByName || '' },
-  {
-    key: 'lastConsultedAt', label: 'Last Consulted At', get: r => {
-      const ts = r.lastConsultedAt?.toDate ? r.lastConsultedAt.toDate() : (r.lastConsultedAt ? new Date(r.lastConsultedAt) : null);
-      return ts && !isNaN(ts.getTime()) ? ts.toLocaleString('en-IN') : '';
-    }
-  },
-];
-
-// Export rows to an XLSX file. `selectedKeys` is an array of EXPORT_COLUMNS keys.
-function exportToExcel(filename, rows, selectedKeys) {
-  if (!rows || rows.length === 0) { alert('No rows to export.'); return; }
-  const cols = (selectedKeys && selectedKeys.length)
-    ? EXPORT_COLUMNS.filter(c => selectedKeys.includes(c.key))
-    : EXPORT_COLUMNS.filter(c => c.default);
-  if (!cols.length) { alert('Select at least one column.'); return; }
-  const data = rows.map(r => {
-    const out = {};
-    cols.forEach(c => { out[c.label] = c.get(r); });
-    return out;
-  });
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Submissions');
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `${filename}.xlsx`);
-}
-
-// Quick date-range presets for the Shopify Orders filter.
-const DATE_PRESETS = [
-  { value: 'all', label: 'All time' },
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: 'month', label: 'This month' },
-  { value: 'lastmonth', label: 'Last month' },
-];
-
-// Resolve a preset (or custom [start,end]) into an inclusive [start, end] Date pair.
-// Returns [null, null] for "all time" (no date filtering).
-function resolveDateRange(preset, custom) {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  if (preset === 'today') return [startOfToday, endOfToday];
-  if (preset === 'yesterday') {
-    const s = new Date(startOfToday); s.setDate(s.getDate() - 1);
-    const e = new Date(endOfToday); e.setDate(e.getDate() - 1);
-    return [s, e];
-  }
-  if (preset === '7d') { const s = new Date(startOfToday); s.setDate(s.getDate() - 6); return [s, endOfToday]; }
-  if (preset === '30d') { const s = new Date(startOfToday); s.setDate(s.getDate() - 29); return [s, endOfToday]; }
-  if (preset === 'month') return [new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0), endOfToday];
-  if (preset === 'lastmonth') {
-    return [new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0),
-    new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)];
-  }
-  if (preset === 'custom') {
-    const [cs, ce] = custom || [];
-    if (cs && ce) {
-      const s = new Date(cs); s.setHours(0, 0, 0, 0);
-      const e = new Date(ce); e.setHours(23, 59, 59, 999);
-      return [s, e];
-    }
-    return [null, null];
-  }
-  return [null, null]; // 'all'
-}
-
-// Export the given (already-filtered) Shopify orders to XLSX — the full order record,
-// matching Shopify's native orders CSV export: exact column set, in order, with one
-// row per line item (the first line of an order carries the order-level fields; extra
-// line-item rows repeat only "Name"). XLSX + file-saver, like the submission export.
-const ORDER_EXPORT_HEADERS = [
-  'Name', 'Email', 'Financial Status', 'Paid at', 'Fulfillment Status', 'Fulfilled at',
-  'Accepts Marketing', 'Currency', 'Subtotal', 'Shipping', 'Taxes', 'Total',
-  'Discount Code', 'Discount Amount', 'Shipping Method', 'Created at',
-  'Lineitem quantity', 'Lineitem name', 'Lineitem price', 'Lineitem compare at price',
-  'Lineitem sku', 'Lineitem requires shipping', 'Lineitem taxable', 'Lineitem fulfillment status',
-  'Billing Name', 'Billing Street', 'Billing Address1', 'Billing Address2', 'Billing Company',
-  'Billing City', 'Billing Zip', 'Billing Province', 'Billing Country', 'Billing Phone',
-  'Shipping Name', 'Shipping Street', 'Shipping Address1', 'Shipping Address2', 'Shipping Company',
-  'Shipping City', 'Shipping Zip', 'Shipping Province', 'Shipping Country', 'Shipping Phone',
-  'Notes', 'Note Attributes', 'Cancelled at', 'Payment Method', 'Payment Reference',
-  'Refunded Amount', 'Vendor', 'Outstanding Balance', 'Employee', 'Location', 'Device ID',
-  'Id', 'Tags', 'Risk Level', 'Source', 'Lineitem discount',
-  'Tax 1 Name', 'Tax 1 Value', 'Tax 2 Name', 'Tax 2 Value', 'Tax 3 Name', 'Tax 3 Value',
-  'Tax 4 Name', 'Tax 4 Value', 'Tax 5 Name', 'Tax 5 Value',
-  'Phone', 'Receipt Number', 'Duties', 'Billing Province Name', 'Shipping Province Name',
-  'Payment ID', 'Payment Terms Name', 'Next Payment Due At', 'Payment References',
-  // Not a native Shopify CSV column — the sales channel, sourced via GraphQL.
-  'Channel Name',
-];
-function exportOrdersToExcel(rows) {
-  if (!rows || rows.length === 0) { alert('No orders to export for the current filter.'); return; }
-  // Order-level columns that Shopify leaves blank on the 2nd+ line-item row of an order.
-  const blankOrderCols = Object.fromEntries(
-    ORDER_EXPORT_HEADERS
-      .filter(h => !['Name', 'Email', 'Id', 'Phone', 'Vendor',
-        'Lineitem quantity', 'Lineitem name', 'Lineitem price', 'Lineitem compare at price',
-        'Lineitem sku', 'Lineitem requires shipping', 'Lineitem taxable',
-        'Lineitem fulfillment status', 'Lineitem discount'].includes(h))
-      .map(h => [h, ''])
-  );
-  // "Billing/Shipping Street" in Shopify's CSV is address1 + address2 joined by ", ".
-  const street = (a) => [a?.address1, a?.address2].filter(Boolean).join(', ');
-  const addrCols = (a, prefix) => ({
-    [`${prefix} Name`]: a?.name || '',
-    [`${prefix} Street`]: street(a),
-    [`${prefix} Address1`]: a?.address1 || '',
-    [`${prefix} Address2`]: a?.address2 || '',
-    [`${prefix} Company`]: a?.company || '',
-    [`${prefix} City`]: a?.city || '',
-    [`${prefix} Zip`]: a?.zip || '',
-    [`${prefix} Province`]: a?.province_code || '',
-    [`${prefix} Country`]: a?.country_code || '',
-    [`${prefix} Phone`]: a?.phone || '',
-    [`${prefix} Province Name`]: a?.province || '',
-  });
-  // Sum of all refund transactions (Shopify's "Refunded Amount").
-  const refundedAmount = (o) => {
-    const sum = (o.refunds || []).reduce((acc, r) =>
-      acc + (r.transactions || []).reduce((t, tx) =>
-        t + (tx.kind === 'refund' ? parseFloat(tx.amount || 0) : 0), 0), 0);
-    return sum ? sum.toFixed(2) : '0.00';
-  };
-  // Up to 5 tax lines, each as a Name/Value pair.
-  const taxCols = (o) => {
-    const cols = {};
-    for (let i = 0; i < 5; i++) {
-      const tl = (o.tax_lines || [])[i];
-      cols[`Tax ${i + 1} Name`] = tl ? (tl.title || '') : '';
-      cols[`Tax ${i + 1} Value`] = tl ? (tl.price ?? '') : '';
-    }
-    return cols;
-  };
-  const data = [];
-  rows.forEach(({ raw: o }) => {
-    const items = (o.line_items && o.line_items.length) ? o.line_items : [{}];
-    items.forEach((li, idx) => {
-      const orderCols = idx === 0 ? {
-        'Email': o.email || o.customer?.email || '',
-        'Financial Status': o.financial_status || '',
-        'Paid at': o.financial_status === 'paid' ? (o.processed_at || o.created_at || '') : '',
-        'Fulfillment Status': o.fulfillment_status || 'unfulfilled',
-        'Fulfilled at': o.fulfillments?.[0]?.created_at || '',
-        'Accepts Marketing': o.buyer_accepts_marketing ? 'yes' : 'no',
-        'Currency': o.currency || '',
-        'Subtotal': o.subtotal_price || '',
-        'Shipping': o.total_shipping_price_set?.shop_money?.amount ?? (o.shipping_lines?.[0]?.price ?? '0.00'),
-        'Taxes': o.total_tax || '0.00',
-        'Total': o.total_price || '',
-        'Discount Code': o.discount_codes?.[0]?.code || '',
-        'Discount Amount': o.total_discounts || '0.00',
-        'Shipping Method': (o.shipping_lines || []).map(s => s.title).filter(Boolean).join(', '),
-        'Created at': o.created_at || '',
-        ...addrCols(o.billing_address, 'Billing'),
-        ...addrCols(o.shipping_address, 'Shipping'),
-        'Notes': o.note || '',
-        'Note Attributes': (o.note_attributes || []).map(n => `${n.name}: ${n.value}`).join('\n'),
-        'Cancelled at': o.cancelled_at || '',
-        'Payment Method': (o.payment_gateway_names || []).join(', '),
-        'Payment Reference': '',
-        'Refunded Amount': refundedAmount(o),
-        'Outstanding Balance': o.total_outstanding ?? '0.00',
-        'Employee': '',
-        'Location': '',
-        'Device ID': '',
-        'Id': o.id || '',
-        'Tags': o.tags || '',
-        'Risk Level': '',
-        'Source': o.source_name || '',
-        ...taxCols(o),
-        'Phone': o.phone || o.customer?.phone || o.shipping_address?.phone || '',
-        'Receipt Number': '',
-        'Duties': o.current_total_duties_set?.shop_money?.amount ?? '',
-        'Payment ID': '',
-        'Payment Terms Name': o.payment_terms?.payment_terms_name || '',
-        'Next Payment Due At': o.payment_terms?.payment_schedules?.[0]?.due_at || '',
-        'Payment References': '',
-        'Channel Name': o._channel || '',
-      } : { ...blankOrderCols };
-      data.push({
-        'Name': o.name || `#${o.order_number || ''}`,
-        // Shopify repeats Email / Id / Phone on every line-item row of an order.
-        'Email': o.email || o.customer?.email || '',
-        'Id': o.id || '',
-        'Phone': o.phone || o.customer?.phone || o.shipping_address?.phone || '',
-        'Vendor': li.vendor || '',
-        ...orderCols,
-        'Lineitem quantity': li.quantity ?? '',
-        'Lineitem name': li.name || li.title || '',
-        'Lineitem price': li.price ?? '',
-        'Lineitem compare at price': li.compare_at_price || '',
-        'Lineitem sku': li.sku || '',
-        'Lineitem requires shipping': li.requires_shipping === undefined ? '' : (li.requires_shipping ? 'TRUE' : 'FALSE'),
-        'Lineitem taxable': li.taxable === undefined ? '' : (li.taxable ? 'TRUE' : 'FALSE'),
-        'Lineitem fulfillment status': li.fulfillment_status || 'pending',
-        'Lineitem discount': li.total_discount ?? '0.00',
-      });
-    });
-  });
-  const ws = XLSX.utils.json_to_sheet(data, { header: ORDER_EXPORT_HEADERS });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Orders');
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `orders_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
-// Export the given (already-filtered + sorted) shipments to XLSX, one row per AWB.
-// `rows` is whatever the Shipments table is currently showing — status tab, source
-// filter, search and column sort already applied — so the file mirrors the view.
-const SHIPMENT_EXPORT_HEADERS = [
-  'AWB', 'Order', 'Source', 'Status', 'Raw status', 'Courier',
-  'Customer', 'Phone', 'Email', 'Address', 'City', 'State', 'Pincode',
-  'Items', 'Item details', 'Amount', 'Payment',
-  'Reached destination', 'Reached location', 'Last update', 'Last location',
-  'Last message', 'Events', 'RTO AWB',
-];
-function exportShipmentsToExcel(rows) {
-  if (!rows || rows.length === 0) { alert('No shipments to export for the current filter.'); return; }
-  const itemDetails = (items) => (Array.isArray(items) ? items : [])
-    .map(it => {
-      const name = it?.name || it?.title || '';
-      const qty = it?.qty ?? it?.quantity;
-      return qty ? `${name} x${qty}` : name;
-    })
-    .filter(Boolean)
-    .join('\n');
-  const data = rows.map(s => {
-    const c = s.customer || {};
-    return {
-      'AWB': s.awb || '',
-      'Order': s.orderName || (s.orderId ? `#${s.orderId}` : ''),
-      'Source': s.source === 'shopify' ? 'Shopify' : 'Non-Shopify',
-      'Status': s.status || '',
-      'Raw status': s.rawStatus || '',
-      'Courier': s.courier || '',
-      'Customer': c.name || '',
-      'Phone': c.phone || '',
-      'Email': c.email || '',
-      'Address': c.address || '',
-      'City': c.city || '',
-      'State': c.state || '',
-      'Pincode': c.pincode || '',
-      'Items': typeof s.itemCount === 'number' ? s.itemCount : '',
-      'Item details': itemDetails(s.items),
-      'Amount': typeof s.orderTotal === 'number' ? s.orderTotal : '',
-      'Payment': s.paymentMode || '',
-      'Reached destination': s.reachedAt || '',
-      'Reached location': s.reachedLocation || '',
-      'Last update': s.lastUpdate || '',
-      'Last location': s.lastLocation || '',
-      'Last message': s.lastMessage || '',
-      'Events': typeof s.eventCount === 'number' ? s.eventCount : '',
-      'RTO AWB': s.rtoAwb || '',
-    };
-  });
-  const ws = XLSX.utils.json_to_sheet(data, { header: SHIPMENT_EXPORT_HEADERS });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Shipments');
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `shipments_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
-// Leads captured by the Shopify storefront popup (shopify-elements/lead-capture-popup.liquid).
-// The popup writes a flat doc, so there is nothing to derive here.
-const POPUP_LEAD_HEADERS = ['Received', 'Name', 'Phone', 'Email', 'Age', 'City', 'Status', 'Page', 'Referrer'];
-
-function popupLeadReceivedAt(r) {
-  const raw = r.timestamp?.toDate ? r.timestamp.toDate()
-    : r.createdAt?.toDate ? r.createdAt.toDate()
-      : (r.createdAt ? new Date(r.createdAt) : null);
-  return raw && !isNaN(raw.getTime()) ? raw : null;
-}
-
-function exportPopupLeadsToExcel(rows) {
-  if (!rows || rows.length === 0) { alert('No leads to export for the current filter.'); return; }
-  const data = rows.map(r => {
-    const at = popupLeadReceivedAt(r);
-    return {
-      'Received': at ? at.toLocaleString('en-IN') : '',
-      'Name': r.name || '',
-      // Leading apostrophe keeps Excel from eating the leading zero / turning it into a number.
-      'Phone': r.phone ? `'${r.phone}` : '',
-      'Email': r.email || '',
-      'Age': typeof r.age === 'number' ? r.age : (r.age || ''),
-      'City': r.city || '',
-      'Status': r.status || '',
-      'Page': r.pageUrl || '',
-      'Referrer': r.referrer || '',
-    };
-  });
-  const ws = XLSX.utils.json_to_sheet(data, { header: POPUP_LEAD_HEADERS });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Popup leads');
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `popup_leads_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
 
 // Derive age (from `dob`), gender and category (from the questionnaire / category
 // fields) for a raw submission doc. Submission docs store `dob` but no `age`, and
@@ -395,6 +64,7 @@ function deriveDemographics(d) {
       const ageDate = new Date(Date.now() - bd.getTime());
       age = Math.abs(ageDate.getUTCFullYear() - 1970).toString();
     }
+
   }
 
   let gender = d.gender || '-';
@@ -429,6 +99,7 @@ function deriveDemographics(d) {
 
   return { age, gender, category: category || 'General' };
 }
+
 
 // Modal that asks the user which columns to include before downloading.
 function ColumnPickerModal({ open, mode, rowCount, onCancel, onConfirm }) {
@@ -10300,6 +9971,15 @@ const EDITABLE_COLLECTIONS = [
   "shipments", "crm_orders", "app_settings", "metadata", "admin_audit_logs",
 ];
 
+// The three places a questionnaire lands. Quick Editor reads all of them so a
+// half-finished assessment is as findable as a submitted one.
+const SUBMISSION_COLLECTIONS = ['questionnaire_submissions', 'partial_submissions', 'manual_submissions'];
+const SUBMISSION_KIND = {
+  questionnaire_submissions: 'Completed',
+  partial_submissions: 'Partial',
+  manual_submissions: 'Manual',
+};
+
 const isTimestamp = (v) => v && typeof v === 'object' && typeof v.toDate === 'function';
 function cellKind(v) {
   if (v === null || v === undefined) return 'null';
@@ -10326,7 +10006,7 @@ function previewValue(v) {
 
 // One editable table cell. Primitives edit inline (committed on blur / change);
 // objects & arrays open the JSON editor via onEditJson.
-function DSCell({ original, staged, onStage, onEditJson }) {
+function DSCell({ original, staged, onStage, onEditJson, readOnly }) {
   const hasStaged = staged !== undefined;
   const value = hasStaged ? staged : original;
   // Kind is driven by the original value so a field keeps its type after staging.
@@ -10337,6 +10017,16 @@ function DSCell({ original, staged, onStage, onEditJson }) {
       setLocal(value === null || value === undefined ? '' : value);
     }
   }, [hasStaged, value, baseKind]);
+
+  // Read-only is the default. These cells sit over live production data, and an
+  // input that stages on blur means a stray click and a tab away is an edit.
+  if (readOnly) {
+    if (baseKind === 'boolean') return <span className="ds-ro">{value ? 'true' : 'false'}</span>;
+    if (baseKind === 'timestamp') return <span className="ds-ro">{tsToInputValue(value).replace('T', ' ')}</span>;
+    if (baseKind === 'json') return <span className="ds-ro ds-ro-json">{previewValue(value)}</span>;
+    const text = value === null || value === undefined || value === '' ? '—' : String(value);
+    return <span className="ds-ro" title={text}>{text}</span>;
+  }
 
   if (baseKind === 'boolean') {
     return <input type="checkbox" checked={!!value} onChange={e => onStage(e.target.checked)} />;
@@ -10370,7 +10060,7 @@ function DSCell({ original, staged, onStage, onEditJson }) {
 // Password required to commit any backend edit in the Quick Editor / Detailed View.
 // Conceptually owned by the website_developer role (not admin). Hardcoded for now —
 // later this should be issued/rotated from the website_developer role only.
-const DEV_EDIT_PASSWORD = 'code2026';
+const DEV_EDIT_PASSWORD = 'sehatup2026';
 
 function DataStudioScreen({ me, initialView = 'full' }) {
   const [coll, setColl] = useState('questionnaire_submissions');
@@ -10393,9 +10083,23 @@ function DataStudioScreen({ me, initialView = 'full' }) {
   const [committing, setCommitting] = useState(false);
   // View is fixed by the nav entry: 'focused' (Quick Editor) or 'full' (Detailed View).
   const viewMode = initialView; // 'full' | 'focused'
-  const [focusCols, setFocusCols] = useState([]);    // ordered extra columns appended to the right
-  const [rowFilters, setRowFilters] = useState([]);  // [{ field, op, value }]
-  const [colToAdd, setColToAdd] = useState('');       // free-text "add field as column"
+  // Cells are read-only until this is switched on, so browsing the table can't
+  // quietly stage a change to production. Turning it off also drops any edits
+  // that were staged but not saved.
+  const [editMode, setEditMode] = useState(false);
+
+  // Clear the selection whenever the search changes. Without this you could tick
+  // ten rows, search for something else, and "Delete 10 selected" would delete
+  // rows that are no longer on screen.
+  useEffect(() => { setSelectedIds(new Set()); }, [search]);
+
+  // 'all' | one of SUBMISSION_COLLECTIONS
+  const [kindFilter, setKindFilter] = useState('all');
+  useEffect(() => { setSelectedIds(new Set()); }, [kindFilter]);
+
+  // focusCols / rowFilters / colToAdd backed the Quick Editor's column and
+  // row-filter builders, along with matchFilter. Quick Editor is one search box
+  // now, and Detailed View never had those builders, so all of it went with them.
 
   const isLive = FIREBASE_MODE === 'live';
   const showToast = (type, msg) => { setToast({ type, msg }); setTimeout(() => setToast(null), 3500); };
@@ -10404,13 +10108,39 @@ function DataStudioScreen({ me, initialView = 'full' }) {
     if (!collName) return;
     setLoading(true); setError(''); setPending({}); setSelectedIds(new Set());
     try {
-      let q = collection(db, collName);
-      if (currentDbQuery.field.trim() && currentDbQuery.value.trim()) {
-        q = query(q, where(currentDbQuery.field.trim(), '==', currentDbQuery.value.trim()));
+      const hasWhere = !!(currentDbQuery.field.trim() && currentDbQuery.value.trim());
+      const whereClause = hasWhere
+        ? [where(currentDbQuery.field.trim(), '==', currentDbQuery.value.trim())]
+        : [];
+
+      // Order server-side. Without this Firestore returns the first `lim` docs by
+      // document ID, so "250 recent submissions" was really 250 arbitrary ones —
+      // sorting them client-side only reorders that wrong slice, which is why the
+      // newest submissions were missing from the list entirely.
+      //
+      // A where + orderBy pair needs a composite index, and orderBy silently drops
+      // docs that lack the field, so fall back to the plain query if it fails.
+      const fetchFrom = async (name) => {
+        const c = collection(db, name);
+        let snap;
+        try {
+          snap = await getDocs(query(c, ...whereClause, orderBy('timestamp', 'desc'), limit(lim)));
+        } catch {
+          snap = await getDocs(query(c, ...whereClause, limit(lim)));
+        }
+        // _coll travels with the row: Quick Editor mixes collections, so saving
+        // or deleting has to know which one each document actually came from.
+        return snap.docs.map(d => ({ _id: d.id, _coll: name, ...d.data() }));
+      };
+
+      if (viewMode === 'focused') {
+        const results = await Promise.all(SUBMISSION_COLLECTIONS.map(
+          n => fetchFrom(n).catch(() => [])
+        ));
+        setRows(results.flat());
+      } else {
+        setRows(await fetchFrom(collName));
       }
-      q = query(q, limit(lim));
-      const snap = await getDocs(q);
-      setRows(snap.docs.map(d => ({ _id: d.id, ...d.data() })));
     } catch (e) {
       setError(e.message || String(e)); setRows([]);
     } finally { setLoading(false); }
@@ -10422,56 +10152,66 @@ function DataStudioScreen({ me, initialView = 'full' }) {
   // Column set = union of all keys across loaded rows (_id always first).
   const columns = useMemo(() => {
     const set = new Set();
-    rows.forEach(r => Object.keys(r).forEach(k => { if (k !== '_id') set.add(k); }));
+    rows.forEach(r => Object.keys(r).forEach(k => { if (k !== '_id' && k !== '_coll') set.add(k); }));
     return ['_id', ...[...set].sort()];
   }, [rows]);
 
   // Auto-detect the "name" column shown by default in focused view.
   const NAME_FIELDS = ['userName', 'name', 'fullName', 'customerName'];
   const nameField = useMemo(() => NAME_FIELDS.find(f => columns.includes(f)) || null, [columns]);
+  // Per row, because the collections disagree: questionnaire_submissions writes
+  // userName, partial_submissions writes name. Editing must land on whichever
+  // key that document actually uses, not create the other one alongside it.
+  const nameFieldOf = (row) => NAME_FIELDS.find(f => row[f] !== undefined) || nameField || 'name';
 
-  // Columns actually rendered: everything (full) or id + name + appended picks (focused).
+  // Columns actually rendered. Detailed View shows every field; Quick Editor
+  // shows a fixed set chosen so you can recognise the right person at a glance —
+  // no column builder, because picking columns is not the job here.
+  const QUICK_COLUMNS = ['_coll', 'phone', 'reportCategory', 'healthScore', 'timestamp'];
+  // Field names are how the database talks; these are how people do.
+  const QUICK_LABELS = {
+    userName: 'Name', name: 'Name', fullName: 'Name', customerName: 'Name',
+    _id: 'ID', phone: 'Phone', reportCategory: 'Category',
+    healthScore: 'Score', city: 'City', timestamp: 'Submitted',
+    _coll: 'Type', _name: 'Name',
+  };
   const displayColumns = useMemo(() => {
     if (viewMode === 'full') return columns;
-    const base = ['_id', ...(nameField ? [nameField] : [])];
-    const extra = focusCols.filter(c => c !== '_id' && c !== nameField);
-    return [...base, ...extra];
-  }, [viewMode, columns, nameField, focusCols]);
-
-  // Evaluate a single row filter against a row's ORIGINAL value (stable while editing).
-  const matchFilter = (row, f) => {
-    if (!f.field) return true;
-    const raw = row[f.field];
-    const empty = raw === null || raw === undefined || raw === '';
-    const s = String(raw ?? '');
-    switch (f.op) {
-      case 'empty': return empty;
-      case 'notempty': return !empty;
-      case 'eq': return s === f.value;
-      case 'neq': return s !== f.value;
-      case 'contains': return s.toLowerCase().includes((f.value || '').toLowerCase());
-      case 'gt': return Number(raw) > Number(f.value);
-      case 'lt': return Number(raw) < Number(f.value);
-      default: return true;
-    }
-  };
+    // '_name' rather than a fixed field: completed submissions store userName,
+    // partials store name. Picking one column would leave the other blank.
+    const base = ['_name', '_id'];
+    // _coll is stitched on at load time so it is not in `columns`; include it anyway.
+    const rest = QUICK_COLUMNS.filter(c => (c === '_coll' || columns.includes(c)) && c !== nameField);
+    return [...base, ...rest];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, columns, nameField]);
 
   const visibleRows = useMemo(() => {
     let list = rows;
-    if (rowFilters.length) list = list.filter(r => rowFilters.every(f => matchFilter(r, f)));
+    if (viewMode === 'focused' && kindFilter !== 'all') list = list.filter(r => r._coll === kindFilter);
     if (search.trim()) {
+      // Whole-row match, so one box covers name, phone, city, category and id
+      // without the person having to say which field they are searching.
       const q = search.toLowerCase();
       list = list.filter(r => { try { return JSON.stringify(r).toLowerCase().includes(q); } catch { return false; } });
     }
+    if (viewMode === 'focused') {
+      // "Recent submissions" — newest first. Firestore hands these back in
+      // whatever order the query produced, which is not useful here.
+      const when = (r) => {
+        const t = r.timestamp;
+        if (!t) return 0;
+        if (typeof t.toDate === 'function') return t.toDate().getTime();
+        if (t.seconds) return t.seconds * 1000;
+        const d = new Date(t);
+        return isNaN(d) ? 0 : d.getTime();
+      };
+      list = [...list].sort((a, b) => when(b) - when(a));
+    }
     return list;
     // eslint-disable-next-line
-  }, [rows, search, rowFilters]);
+  }, [rows, search, viewMode, kindFilter]);
 
-  const addFocusCol = (c) => { if (c && !focusCols.includes(c)) setFocusCols(prev => [...prev, c]); };
-  const removeFocusCol = (c) => setFocusCols(prev => prev.filter(x => x !== c));
-  const addFilter = () => setRowFilters(prev => [...prev, { field: '', op: 'empty', value: '' }]);
-  const updateFilter = (i, patch) => setRowFilters(prev => prev.map((f, idx) => idx === i ? { ...f, ...patch } : f));
-  const removeFilter = (i) => setRowFilters(prev => prev.filter((_, idx) => idx !== i));
 
   const stageEdit = (id, field, val) => setPending(p => ({ ...p, [id]: { ...p[id], [field]: val } }));
   const getStaged = (id, field) => (pending[id] && field in pending[id]) ? pending[id][field] : undefined;
@@ -10508,12 +10248,22 @@ function DataStudioScreen({ me, initialView = 'full' }) {
     finally { setCommitting(false); setConfirm(null); }
   };
 
+  // Quick Editor mixes three collections in one table, so a row's document path
+  // has to come from the row itself. Falling back to the single active `coll`
+  // would write or delete against the wrong collection entirely.
+  const collOfId = (id) => rows.find(r => r._id === id)?._coll || coll;
+  const describeTargets = (ids) => {
+    const counts = {};
+    ids.forEach(id => { const c = collOfId(id); counts[c] = (counts[c] || 0) + 1; });
+    return Object.entries(counts).map(([c, n]) => `${n} in "${c}"`).join(', ');
+  };
+
   const doCommitEdits = () => requestConfirm(
     'Save field changes',
-    `${pendingChangeCount} change(s) across ${pendingIds.length} document(s) in "${coll}".`,
+    `${pendingChangeCount} change(s) across ${pendingIds.length} document(s) — ${describeTargets(pendingIds)}.`,
     async () => {
       const batch = writeBatch(db);
-      pendingIds.forEach(id => batch.update(doc(db, coll, id), pending[id]));
+      pendingIds.forEach(id => batch.update(doc(db, collOfId(id), id), pending[id]));
       await batch.commit();
       await logAudit('update', pendingIds, { changes: pending });
       showToast('success', `Saved ${pendingChangeCount} change(s).`);
@@ -10523,12 +10273,42 @@ function DataStudioScreen({ me, initialView = 'full' }) {
 
   const doDelete = (ids) => requestConfirm(
     'Delete documents',
-    `Permanently delete ${ids.length} document(s) from "${coll}". This cannot be undone.`,
+    `Permanently delete ${ids.length} document(s) — ${describeTargets(ids)}. This cannot be undone.`,
     async () => {
-      const batch = writeBatch(db);
-      ids.forEach(id => batch.delete(doc(db, coll, id)));
-      await batch.commit();
-      await logAudit('delete', ids, {});
+      // One batch per collection rather than one for everything: a batch is
+      // atomic, so a single denied document used to roll back every other
+      // delete and report one opaque error.
+      const byColl = {};
+      ids.forEach(id => { const c = collOfId(id); (byColl[c] = byColl[c] || []).push(id); });
+
+      const failures = [];
+      for (const [c, list] of Object.entries(byColl)) {
+        try {
+          const batch = writeBatch(db);
+          list.forEach(id => batch.delete(doc(db, c, id)));
+          await batch.commit();
+        } catch (e) {
+          failures.push(`${c}: ${e.code || e.message || e}`);
+        }
+      }
+
+      // Firestore treats deleting a non-existent document as a success, so a
+      // wrong collection path reports "Deleted" while the row stays on screen.
+      // Read the targets back and say plainly which ones are still there.
+      const survivors = [];
+      for (const [c, list] of Object.entries(byColl)) {
+        for (const id of list) {
+          try { if ((await getDoc(doc(db, c, id))).exists()) survivors.push(`${c}/${id}`); }
+          catch { /* unreadable is not proof it survived */ }
+        }
+      }
+
+      await logAudit('delete', ids, { byColl, failures, survivors });
+
+      if (failures.length) throw new Error(failures.join(' · '));
+      if (survivors.length) {
+        throw new Error(`${survivors.length} document(s) still exist after delete: ${survivors.slice(0, 3).join(', ')}`);
+      }
       showToast('success', `Deleted ${ids.length} document(s).`);
       await load();
     }
@@ -10589,7 +10369,7 @@ function DataStudioScreen({ me, initialView = 'full' }) {
       <div className="page-head">
         <div>
           <h1 className="page-title">{viewMode === 'focused' ? 'Quick Editor' : 'Detailed View'}</h1>
-          <p className="page-sub">{viewMode === 'focused' ? 'Curated columns + row filters · fill in missing fields inline' : 'Direct Firestore editor · full read/write across collections'}</p>
+          <p className="page-sub">{viewMode === 'focused' ? 'Find a submission and fix a field.' : 'Direct Firestore editor · full read/write across collections'}</p>
         </div>
         <div className="page-head-actions">
           <span className={`ds-env ${isLive ? 'ds-env-live' : 'ds-env-dev'}`}>
@@ -10599,60 +10379,104 @@ function DataStudioScreen({ me, initialView = 'full' }) {
       </div>
 
       {/* Controls */}
-      <div className="card" style={{ padding: 14 }}>
-        {/* Focused-view builder: append columns + row filters */}
-        {viewMode === 'focused' && (
-          <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-            <div className="hstack-8" style={{ flexWrap: 'wrap', rowGap: 8, alignItems: 'center' }}>
-              <span className="lbl" style={{ fontSize: 11 }}>Columns</span>
-              <span className="chip" style={{ opacity: 0.7 }}>_id</span>
-              {nameField && <span className="chip" style={{ opacity: 0.7 }}>{nameField}</span>}
-              {focusCols.map(c => (
-                <span key={c} className="chip" style={{ cursor: 'pointer' }} onClick={() => removeFocusCol(c)} title="Remove column">
-                  {c} <Icon name="x" size={11} />
-                </span>
-              ))}
-              <select className="input sm" style={{ width: 170 }} value="" onChange={e => { addFocusCol(e.target.value); e.target.value = ''; }}>
-                <option value="">+ Add column…</option>
-                {columns.filter(c => c !== '_id' && c !== nameField && !focusCols.includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <div className="hstack-6">
-                <input className="input sm" style={{ width: 150 }} placeholder="or new field name" value={colToAdd} onChange={e => setColToAdd(e.target.value)} />
-                <button className="btn sm" disabled={!colToAdd.trim()} onClick={() => { addFocusCol(colToAdd.trim()); setColToAdd(''); }}>Add</button>
-              </div>
-            </div>
-
-            <div className="stack-8" style={{ marginTop: 10 }}>
-              {rowFilters.map((f, i) => (
-                <div key={i} className="hstack-8" style={{ flexWrap: 'wrap', rowGap: 6 }}>
-                  <span className="lbl" style={{ fontSize: 11, width: 36 }}>{i === 0 ? 'Where' : 'and'}</span>
-                  <select className="input sm" style={{ width: 170 }} value={f.field} onChange={e => updateFilter(i, { field: e.target.value })}>
-                    <option value="">field…</option>
-                    {columns.filter(c => c !== '_id').map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <select className="input sm" style={{ width: 130 }} value={f.op} onChange={e => updateFilter(i, { op: e.target.value })}>
-                    <option value="empty">is empty</option>
-                    <option value="notempty">is not empty</option>
-                    <option value="eq">equals</option>
-                    <option value="neq">not equals</option>
-                    <option value="contains">contains</option>
-                    <option value="gt">greater than</option>
-                    <option value="lt">less than</option>
-                  </select>
-                  {!['empty', 'notempty'].includes(f.op) && (
-                    <input className="input sm" style={{ width: 150 }} placeholder="value" value={f.value} onChange={e => updateFilter(i, { value: e.target.value })} />
-                  )}
-                  <button className="iconbtn" title="Remove filter" onClick={() => removeFilter(i)}><Icon name="x" size={14} /></button>
-                </div>
-              ))}
-              <div>
-                <button className="btn sm" onClick={addFilter}><Icon name="plus" size={13} /> Add row filter</button>
-                {rowFilters.length > 0 && <button className="btn sm ghost" style={{ marginLeft: 8 }} onClick={() => setRowFilters([])}>Clear filters</button>}
-              </div>
-            </div>
+      {viewMode === 'focused' ? (
+        /* Quick Editor: one search box. Column builders, row filters, raw
+           Firestore queries and bulk edits all live in Detailed View — this
+           screen exists to find one submission and fix or remove a field. */
+        <div className="card" style={{ padding: 14 }}>
+          <div className="ds-find">
+            <Icon name="search" size={16} />
+            {/* type=search + these attributes stop the browser's password manager
+                treating this as the username field for the delete dialog's password
+                box and filling an email into it. */}
+            <input
+              className="ds-find-input"
+              type="search"
+              name="ds-quick-find"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-lpignore="true"
+              data-1p-ignore="true"
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, phone, city or ID"
+              aria-label="Search recent submissions"
+            />
+            {search && (
+              <button className="iconbtn" title="Clear search" onClick={() => setSearch('')}>
+                <Icon name="x" size={14} />
+              </button>
+            )}
           </div>
-        )}
+          {/* Counts come from the loaded rows, so each tab says how much is
+              actually behind it rather than just naming a collection. */}
+          <div className="ds-kinds" role="group" aria-label="Filter by submission type">
+            {[['all', 'All'], ...SUBMISSION_COLLECTIONS.map(c => [c, SUBMISSION_KIND[c]])].map(([key, label]) => {
+              const n = key === 'all' ? rows.length : rows.filter(r => r._coll === key).length;
+              return (
+                <button
+                  key={key}
+                  className={`ds-kind ${kindFilter === key ? 'is-on' : ''}`}
+                  aria-pressed={kindFilter === key}
+                  onClick={() => setKindFilter(key)}
+                >
+                  {label} <span className="ds-kind-n">{n}</span>
+                </button>
+              );
+            })}
+          </div>
 
+          <div className="hstack-8" style={{ marginTop: 10, alignItems: 'center', flexWrap: 'wrap', rowGap: 8 }}>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {loading ? 'Loading…'
+                : selectedIds.size
+                  ? `${selectedIds.size} selected`
+                  : search.trim() || kindFilter !== 'all'
+                    ? `${visibleRows.length} of ${rows.length} shown`
+                    : `${rows.length} recent submissions`}
+            </span>
+
+            {selectedIds.size > 0 && (
+              <button className="btn sm ds-danger" onClick={() => doDelete([...selectedIds])}>
+                <Icon name="trash" size={14} /> Delete {selectedIds.size} selected
+              </button>
+            )}
+
+            <span className="spacer" />
+
+            <button
+              className={`btn sm ${editMode ? 'primary' : ''}`}
+              aria-pressed={editMode}
+              title={editMode ? 'Cells are editable' : 'Cells are read-only'}
+              onClick={() => {
+                // Leaving edit mode discards anything staged but unsaved, so the
+                // toggle can never hide pending writes behind a read-only table.
+                if (editMode && pendingChangeCount > 0
+                  && !window.confirm(`Discard ${pendingChangeCount} unsaved change(s)?`)) return;
+                if (editMode) setPending({});
+                setEditMode(v => !v);
+              }}
+            >
+              <Icon name={editMode ? 'edit' : 'shield'} size={14} /> {editMode ? 'Editing' : 'Edit off'}
+            </button>
+
+            {pendingChangeCount > 0 && (
+              <button className="btn sm ghost" onClick={() => setPending({})}>Discard {pendingChangeCount}</button>
+            )}
+            <button className="btn sm" onClick={() => load()} disabled={loading}>
+              <Icon name="refresh" size={14} /> Reload
+            </button>
+            <button className="btn sm primary" disabled={!pendingChangeCount} onClick={doCommitEdits}>
+              <Icon name="check" size={14} /> Review & Save ({pendingChangeCount})
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
+      <div className="card" style={{ padding: 14 }}>
         <div className="hstack-8" style={{ flexWrap: 'wrap', rowGap: 8, alignItems: 'flex-end' }}>
           <div className="field" style={{ minWidth: 220 }}>
             <label className="lbl" style={{ fontSize: 11 }}>Collection</label>
@@ -10714,36 +10538,66 @@ function DataStudioScreen({ me, initialView = 'full' }) {
         </div>
       </div>
 
+      </>
+      )}
       {/* Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>
         {error && <div style={{ padding: 14, color: 'var(--risk-critical)', fontSize: 13 }}>Error: {error}</div>}
         {loading ? (
           <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
         ) : visibleRows.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>No documents.</div>
+          <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>
+            {viewMode === 'focused' && search.trim() ? (
+              <>
+                <div className="fw5" style={{ marginBottom: 4 }}>Nothing matches “{search.trim()}”</div>
+                <div style={{ fontSize: 12.5 }}>Try part of a name, a phone number, or a city.</div>
+              </>
+            ) : 'No documents.'}
+          </div>
         ) : (
           <div style={{ overflowX: 'auto', maxHeight: '60vh' }}>
             <table className="tbl ds-tbl">
               <thead>
                 <tr>
-                  <th style={{ width: 32 }}><input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} /></th>
-                  {displayColumns.map(c => <th key={c} style={c === '_id' ? { position: 'sticky', left: 0 } : undefined}>{c}{c === '_id' && ' (id)'}</th>)}
+                  <th style={{ width: 32 }}>
+                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll}
+                      aria-label="Select all rows" />
+                  </th>
+                  {displayColumns.map(c => (
+                    <th key={c} style={c === '_id' && viewMode !== 'focused' ? { position: 'sticky', left: 0 } : undefined}>
+                      {viewMode === 'focused' ? (QUICK_LABELS[c] || c) : <>{c}{c === '_id' && ' (id)'}</>}
+                    </th>
+                  ))}
                   <th style={{ width: 60 }}></th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.map(r => (
                   <tr key={r._id} className={selectedIds.has(r._id) ? 'ds-row-sel' : ''}>
-                    <td><input type="checkbox" checked={selectedIds.has(r._id)} onChange={() => toggleSelect(r._id)} /></td>
-                    {displayColumns.map(c => {
-                      if (c === '_id') return <td key={c} className="ds-id" title={r._id}>{r._id}</td>;
+                    <td>
+                      <input type="checkbox" checked={selectedIds.has(r._id)} onChange={() => toggleSelect(r._id)}
+                        aria-label={`Select ${r[nameField] || r._id}`} />
+                    </td>
+                    {displayColumns.map(col => {
+                      // Resolve the virtual name column to this row's own key.
+                      const c = col === '_name' ? nameFieldOf(r) : col;
+                      if (c === '_id') return <td key={col} className="ds-id" title={r._id}>{r._id}</td>;
+                      // Never editable: it is where the row lives, not a field on it.
+                      if (c === '_coll') return (
+                        <td key={col}>
+                          <span className={`ds-kindtag ds-kindtag-${(SUBMISSION_KIND[r._coll] || '').toLowerCase()}`}>
+                            {SUBMISSION_KIND[r._coll] || r._coll}
+                          </span>
+                        </td>
+                      );
                       const staged = getStaged(r._id, c);
                       const edited = staged !== undefined;
                       return (
-                        <td key={c} className={edited ? 'ds-edited' : ''}>
+                        <td key={col} className={edited ? 'ds-edited' : ''}>
                           <DSCell
                             original={r[c]}
                             staged={staged}
+                            readOnly={viewMode === 'focused' && !editMode}
                             onStage={(v) => stageEdit(r._id, c, v)}
                             onEditJson={() => openJson(r._id, c, staged !== undefined ? staged : r[c])}
                           />
@@ -10758,7 +10612,11 @@ function DataStudioScreen({ me, initialView = 'full' }) {
           </div>
         )}
         <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)' }}>
-          Showing {visibleRows.length} of {rows.length} loaded (limit {rowLimit}). Edit cells inline, or select rows to bulk-edit.
+          {viewMode === 'focused'
+            ? (editMode
+              ? 'Cells are editable. Change a value, then Review & Save.'
+              : 'Cells are read-only. Turn on Edit to change a value. Tick rows to delete them.')
+            : `Showing ${visibleRows.length} of ${rows.length} loaded (limit ${rowLimit}). Edit cells inline, or select rows to bulk-edit.`}
         </div>
       </div>
 
@@ -10814,6 +10672,12 @@ function DataStudioScreen({ me, initialView = 'full' }) {
               <label className="lbl" style={{ fontSize: 11 }}>Developer edit password</label>
               <input
                 className="input sm" type="password" autoFocus
+                // new-password stops the manager offering to fill or save this,
+                // which is also what was dragging an email into the search box.
+                name="ds-edit-pass"
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 value={editPassword}
                 onChange={e => setEditPassword(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && liveOk && passOk && !committing) runConfirmed(); }}

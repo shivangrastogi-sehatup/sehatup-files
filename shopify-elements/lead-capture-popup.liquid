@@ -1385,6 +1385,9 @@
 
         // Mockup 1e: the form is REPLACED by the success card, not annotated
         // underneath it. Let the form animate out first, then swap.
+        // OpenAI Pixel: the lead row is written, so this is the conversion.
+        try { if (window.oaiq) oaiq("measure", "lead_created", { type: "customer_action" }); } catch (e) {}
+
         succeeded = true;
         showSuccess();
       } catch (err) {

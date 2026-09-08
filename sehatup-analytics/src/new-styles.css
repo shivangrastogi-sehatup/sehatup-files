@@ -1313,3 +1313,126 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .ds-modal { width: 100%; max-width: 600px; padding: 18px; }
 
+
+/* Quick Editor search — the one control on the screen, so it gets the weight.
+   Sized against the CRM's existing .input rather than introducing a new scale. */
+.ds-find {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--muted);
+  transition: border-color .15s ease, background .15s ease;
+}
+.ds-find:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.ds-find-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14.5px;
+  color: var(--fg);
+}
+.ds-find-input::placeholder { color: var(--muted); }
+
+/* Read-only cells. Plain text, not inputs — the point is that they cannot be
+   typed into by accident, so they should not look like fields either. */
+.ds-tbl .ds-ro {
+  display: block;
+  padding: 5px 2px;
+  font-size: 12.5px;
+  color: var(--fg);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-tbl .ds-ro-json { color: var(--muted); font-style: italic; }
+
+/* Destructive action, so it does not wear the same clothes as Reload. */
+.btn.ds-danger {
+  background: color-mix(in oklab, var(--risk-critical) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--risk-critical) 38%, var(--border));
+  color: var(--risk-critical);
+  font-weight: 600;
+}
+.btn.ds-danger:hover {
+  background: color-mix(in oklab, var(--risk-critical) 20%, var(--surface));
+}
+
+/* Checkbox column. .ds-tbl overrides td padding to 8px but leaves th on the
+   base --cell-px, so the header checkbox sat a few pixels right of the rows'.
+   Pin both to the same box and centre the input in it. */
+.ds-tbl th:first-child,
+.ds-tbl td:first-child {
+  width: 38px;
+  padding: 4px 8px;
+  text-align: center;
+}
+.ds-tbl th:first-child input[type="checkbox"],
+.ds-tbl td:first-child input[type="checkbox"] {
+  display: inline-block;
+  margin: 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+/* Submission-type filter. Segmented rather than a dropdown: there are only
+   four options and the counts are worth seeing without opening anything. */
+.ds-kinds {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.ds-kind {
+  border: 0;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.ds-kind:hover { color: var(--fg); }
+.ds-kind.is-on {
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+.ds-kind-n { color: var(--muted); font-weight: 500; margin-left: 3px; font-size: 11.5px; }
+.ds-kind.is-on .ds-kind-n { color: var(--accent); }
+
+/* Which collection a row came from. */
+.ds-kindtag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ds-kindtag-completed { background: color-mix(in oklab, #16a34a 14%, var(--surface)); color: #16a34a; }
+.ds-kindtag-partial   { background: color-mix(in oklab, #d97706 16%, var(--surface)); color: #b45309; }
+.ds-kindtag-manual    { background: color-mix(in oklab, #6366f1 14%, var(--surface)); color: #6366f1; }

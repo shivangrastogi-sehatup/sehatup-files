@@ -9,6 +9,10 @@
     {% endif %}
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    {%- comment -%} OpenAI Pixel - setup script. One per page, as high in <head> as possible. {%- endcomment -%}
+    <script>!function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:"6YvDyuZQsPeKJ7bhguTQEB",debug:false});</script>
+
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="theme-color" content="">
     <link rel="canonical" href="{{ canonical_url }}">
@@ -34,6 +38,8 @@
 
     {% render 'meta-tags', page_description: page_description, page_title: page_title %}
 
+    {% render 'sehatup-attribution' %}
+
     <script src="{{ 'constants.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'pubsub.js' | asset_url }}" defer="defer"></script>
     <script src="{{ 'global.js' | asset_url }}" defer="defer"></script>
@@ -45,7 +51,24 @@
       <script src="{{ 'animations.js' | asset_url }}" defer="defer"></script>
     {%- endif -%}
 
-    {{ content_for_header }}
+    {%- comment -%}
+      content_for_header is Shopify-generated and normally output verbatim.
+      The one exception here: on blog pages it emits
+        <link rel="prev" href="/blogs/news?page=1">
+      and ?page=1 is a duplicate of the canonical /blogs/news, which is what
+      breaks the rel prev/next sequence for crawlers. There is no setting for
+      it, so the string is patched on the way out.
+
+      Scoped to /blogs/ so nothing else in the blob is touched, and the filter
+      is a no-op on every other page.
+      ponytail: string surgery on a Shopify-owned blob. If analytics or the
+      theme editor ever misbehave on blog pages, drop the filter first.
+    {%- endcomment -%}
+    {%- if request.path contains '/blogs/' -%}
+      {{ content_for_header | replace: '?page=1"', '"' }}
+    {%- else -%}
+      {{ content_for_header }}
+    {%- endif -%}
 
     {%- liquid
       assign body_font_bold = settings.type_body_font | font_modify: 'weight', 'bold'
@@ -424,6 +447,51 @@
         ]
       }
     </script>
+    {%- comment -%} Storefront overrides that belong in <head>, not <body>. {%- endcomment -%}
+    <style>
+      .shiprocket-headless.sr-loaded::before {
+        display: none;
+      }
+
+      #sehatUP-proof-left {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        background: #ffffff;
+        padding: 14px 18px;
+        border-radius: 10px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        max-width: 280px;
+        font-size: 14px;
+        line-height: 1.4;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.4s ease;
+        z-index: 9999;
+      }
+
+      #sehatUP-proof-left.sp-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #sehatUP-proof-left .sp-stars {
+        color: #f5a623;
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+
+      #sehatUP-proof-left .sp-text {
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+
+      #sehatUP-proof-left .sp-name {
+        font-size: 12px;
+        color: #666;
+      }
+    </style>
+
   </head>
 
   <body class="gradient{% if settings.animations_hover_elements != 'none' %} animate--hover-{{ settings.animations_hover_elements }}{% endif %}">
@@ -438,7 +506,11 @@
     {% sections 'header-group' %}
 
     <main id="MainContent" class="content-for-layout focus-none" role="main" tabindex="-1">
-      {{ content_for_layout }}
+      {%- if request.path contains '/policies/' -%}
+        {% section 'main-policy' %}
+      {%- else -%}
+        {{ content_for_layout }}
+      {%- endif -%}
     </main>
 
     {% sections 'footer-group' %}
@@ -565,50 +637,7 @@
       });
     </script>
 
-    <style>
-      .shiprocket-headless.sr-loaded::before {
-        display: none;
-      }
-
-      #sehatUP-proof-left {
-        position: fixed;
-        bottom: 24px;
-        left: 24px;
-        background: #ffffff;
-        padding: 14px 18px;
-        border-radius: 10px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        max-width: 280px;
-        font-size: 14px;
-        line-height: 1.4;
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.4s ease;
-        z-index: 9999;
-      }
-
-      #sehatUP-proof-left.sp-visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
-
-      #sehatUP-proof-left .sp-stars {
-        color: #f5a623;
-        font-size: 14px;
-        margin-bottom: 6px;
-      }
-
-      #sehatUP-proof-left .sp-text {
-        font-weight: 500;
-        margin-bottom: 4px;
-      }
-
-      #sehatUP-proof-left .sp-name {
-        font-size: 12px;
-        color: #666;
-      }
-    </style>
-
     {% section 'lead-popup' %}
+    {% render 'sehatup-webchat' %}
   </body>
 </html>

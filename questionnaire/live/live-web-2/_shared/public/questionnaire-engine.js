@@ -1937,9 +1937,16 @@ class QuestionnaireEngine {
         delete dataToSave.healthScore;
 
         try {
-            await docRef.set(dataToSave, { merge: true });
+            // update(), not set(..., { merge: true }).
+            //
+            // set-with-merge CREATES the document when it is missing, so a partial
+            // that staff deleted in the CRM came straight back the next time the
+            // visitor answered a question — the delete looked broken when it had
+            // actually worked. update() fails on a deleted doc instead, which is
+            // the correct outcome: once it is removed, it stays removed.
+            await docRef.update(dataToSave);
         } catch (e) {
-            console.error('Error persisting partial data:', e);
+            console.warn('Partial not persisted (it may have been deleted):', e.message);
         }
     }
 
