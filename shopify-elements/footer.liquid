@@ -103,6 +103,41 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
         </ul>
       </nav>
 
+      <!-- ALSO AVAILABLE ON -->
+      {%- if section.blocks.size > 0 -%}
+        <section class="footer-stockists" aria-labelledby="footer-stockists-title">
+          <h3 class="footer-stockists-title" id="footer-stockists-title">{{ section.settings.stockists_title }}</h3>
+          <div class="footer-stockists-shelf">
+            {%- for block in section.blocks -%}
+              {%- liquid
+                assign label = block.settings.name | default: block.settings.logo.alt
+              -%}
+              {%- liquid
+                assign scale = block.settings.logo_scale | default: 100
+                assign scale = scale | divided_by: 100.0
+              -%}
+              {%- if block.settings.link != blank -%}
+                <a class="footer-stockist" href="{{ block.settings.link }}" target="_blank" rel="noopener"
+                   style="--stockist-scale: {{ scale }}"
+                   {% if label == blank %}aria-label="Buy on this marketplace"{% endif %} {{ block.shopify_attributes }}>
+              {%- else -%}
+                <div class="footer-stockist" style="--stockist-scale: {{ scale }}" {{ block.shopify_attributes }}>
+              {%- endif -%}
+                {%- if block.settings.logo -%}
+                  <img
+                    src="{{ block.settings.logo | image_url: width: 400 }}"
+                    alt="{{ label | escape }}"
+                    loading="lazy" decoding="async"
+                    width="{{ block.settings.logo.width }}" height="{{ block.settings.logo.height }}">
+                {%- else -%}
+                  <span class="footer-stockist-name">{{ label | default: 'Add a logo' }}</span>
+                {%- endif -%}
+              {%- if block.settings.link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+            {%- endfor -%}
+          </div>
+        </section>
+      {%- endif -%}
+
     </div>
   </div>
 
@@ -149,6 +184,10 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 1fr;
   gap: 40px;
+  /* Rows are tighter than columns: the stockist shelf sits on a second row and
+     a 40px row gap would push the footer taller instead of using space that is
+     already empty beside the brand column. */
+  row-gap: 24px;
   align-items: flex-start;
 }
 
@@ -239,6 +278,104 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
   color: #ffffff;
 }
 
+/* ── ALSO AVAILABLE ON ─────────────────────────────────────────────────────
+   Measured on the live footer at a 1280px viewport: the three link columns are
+   169px tall against the brand column's 326px, leaving an empty 828 x 157px
+   rectangle to their right. The shelf goes there, so on a laptop this section
+   costs no extra footer height at all.
+
+   No frame and no dividers: the logos sit straight on the footer, separated by
+   space alone. That means the gap has to be wide enough to read as a separator
+   on its own - too tight and six white wordmarks run together into one band. */
+.footer-stockists {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  align-self: end;
+  min-width: 0;
+}
+/* The brand column spans both rows, so the shelf sits beside it rather than
+   below everything. */
+.footer-branding {
+  grid-row: 1 / span 2;
+}
+
+.footer-stockists-title {
+  font-size: 13px;
+  font-weight: 600;
+  /* Quieter than the link headings: this labels the shelf, it is not a fourth
+     navigation column competing with them. */
+  color: {{ section.settings.footer_text_color }};
+  opacity: 0.62;
+  margin: 0 0 12px;
+}
+
+.footer-stockists-shelf {
+  display: grid;
+  grid-template-columns: repeat({{ section.settings.stockists_columns }}, 1fr);
+  /* Column gap is generous, row gap tighter: side by side the logos need real
+     separation, stacked they already have their own whitespace. */
+  gap: 20px 30px;
+  align-items: center;
+}
+
+.footer-stockist {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The grid gap does the spacing now, so the cell adds none of its own. */
+  padding: 0;
+  min-width: 0;
+  text-decoration: none;
+  /* Slightly held back at rest so the shelf reads as one quiet row rather than
+     six competing white blocks; full strength on hover. */
+  opacity: 0.82;
+  transition: opacity 0.2s ease;
+}
+
+/* Every file is the same canvas, but not the same drawing: some wordmarks are
+   six letters, some are nine, some carry a mark as well. Matching them by pixel
+   height therefore does not match them optically. --stockist-scale is a per-logo
+   multiplier set on the block, so one wordmark can be nudged without touching
+   the rest. It multiplies whichever height applies at the current breakpoint.
+
+   Only useful for logos bound by their HEIGHT. A very wide lockup is bound by
+   the cell's width instead, and no CSS can make it taller - that one is fixed by
+   trimming the empty margin inside the file itself. */
+.footer-stockist img {
+  display: block;
+  height: auto;
+  /* The multiplier has to move BOTH bounds. A logo is limited by whichever it
+     hits first, and which one that is depends on its shape: a squarish mark runs
+     out of height, a long wordmark runs out of width. Scaling only the height
+     cap did nothing at all to the wordmarks, which are the ones that look wrong.
+     The base is 84% so there is room to grow as well as shrink; min() stops a
+     large setting from eating the gap between neighbours. */
+  width: min(calc(84% * var(--stockist-scale, 1)), 100%);
+  max-height: calc({{ section.settings.stockist_logo_height }}px * var(--stockist-scale, 1));
+  object-fit: contain;
+}
+
+/* No logo picked yet: the cell still says which marketplace it is. */
+.footer-stockist-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: {{ section.settings.footer_text_color }};
+  opacity: 0.55;
+  text-align: center;
+}
+
+a.footer-stockist:hover {
+  opacity: 1;
+}
+a.footer-stockist:focus-visible {
+  opacity: 1;
+  outline: 2px solid {{ section.settings.contact_link_color }};
+  /* Positive offset now: with no cell border to sit inside, the ring reads
+     better just outside the logo. */
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 /* FIRST LINE - UNDER CONTACT INFO (LEFT COLUMN ONLY) */
 .contact-separator {
   height: 1px;
@@ -305,6 +442,25 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
   .footer-container {
     grid-template-columns: 1fr 1fr;
   }
+  /* Two columns leaves no empty space to slot the shelf into, so it becomes a
+     full-width band under the links. */
+  .footer-branding {
+    grid-row: auto;
+  }
+  .footer-stockists {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin-top: 4px;
+  }
+  .footer-stockists-shelf {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  /* Three cells across a full-width footer are far wider than six were in the
+     laptop void, so the logos are width-bound here and a tall cap only adds dead
+     space above and below. */
+  .footer-stockist img {
+    max-height: calc(25px * var(--stockist-scale, 1));
+  }
   .contact-separator {
     display: none; /* Hide first line on tablet/mobile */
   }
@@ -313,6 +469,15 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
 @media (max-width: 576px) {
   .footer-container {
     grid-template-columns: 1fr;
+  }
+  .footer-stockists-shelf {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .footer-stockist {
+    padding: 12px 8px;
+  }
+  .footer-stockist img {
+    max-height: calc(20px * var(--stockist-scale, 1));
   }
   .footer-bottom {
     flex-direction: column;
@@ -424,6 +589,11 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
       "default": 40
     },
 
+    { "type": "header", "content": "Also available on" },
+    { "type": "text", "id": "stockists_title", "label": "Heading", "default": "Also available on" },
+    { "type": "range", "id": "stockists_columns", "label": "Logos per row (desktop)", "min": 2, "max": 8, "step": 1, "default": 6, "info": "Drops to 3 on tablet and 2 on mobile." },
+    { "type": "range", "id": "stockist_logo_height", "label": "Logo height (desktop)", "min": 12, "max": 56, "step": 2, "default": 28, "unit": "px", "info": "Tablet and mobile use their own smaller sizes." },
+
     { "type": "text", "id": "copyright_text", "label": "Copyright Text" },
 
     { "type": "color", "id": "footer_background", "label": "Footer Background", "default": "#0f0f0f" },
@@ -437,6 +607,30 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
       "default": "<a href='https://facebook.com'>\n<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='currentColor' viewBox='0 0 24 24'>\n<path d='M22 12.07C22 6.48 17.52 2 11.93 2S1.86 6.48 1.86 12.07c0 5.05 3.66 9.24 8.44 10.02v-7.09H7.9v-2.93h2.4V9.41c0-2.37 1.41-3.68 3.56-3.68 1.03 0 2.1.18 2.1.18v2.31h-1.18c-1.17 0-1.53.73-1.53 1.47v1.77h2.6l-.42 2.93h-2.18v7.09C18.34 21.31 22 17.12 22 12.07z'/>\n</svg></a>\n\n<a href='https://instagram.com'>\n<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='currentColor' viewBox='0 0 24 24'>\n<path d='M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm4.25 5.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5z'/>\n</svg></a>\n\n<a href='https://linkedin.com'>\n<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='currentColor' viewBox='0 0 24 24'>\n<path d='M4.98 3.5C4.98 4.88 3.86 6 2.48 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.22 8.5H4.7V23H.22zM8.34 8.5h4.29v1.98h.06c.6-1.14 2.05-2.34 4.23-2.34 4.53 0 5.36 2.98 5.36 6.85V23h-4.48v-6.96c0-1.66-.03-3.79-2.31-3.79-2.31 0-2.66 1.8-2.66 3.67V23H8.34z'/>\n</svg></a>\n\n<a href='https://youtube.com'>\n<svg xmlns='http://www.w3.org/2000/svg' width='24' height='22' fill='currentColor' viewBox='0 0 24 24'>\n<path d='M23.5 6.2s-.2-1.7-.8-2.5c-.8-1-1.7-1-2.1-1.1C17.6 2.3 12 2.3 12 2.3s-5.6 0-8.6.3c-.4.1-1.3.1-2.1 1.1C.7 4.5.5 6.2.5 6.2S.2 8.2.2 10.1v1.8c0 1.9.3 3.9.3 3.9s.2 1.7.8 2.5c.8 1 1.9 1 2.4 1.1 1.8.2 7.7.3 7.7.3s5.6 0 8.6-.3c.4-.1 1.3-.1 2.1-1.1.6-.8.8-2.5.8-2.5s.3-2 .3-3.9v-1.8c0-1.9-.3-3.9-.3-3.9zM9.6 14.7V7.9l6.5 3.4-6.5 3.4z'/>\n</svg></a>"
     }
   ],
-  "presets": [{ "name": "sehatUP Footer", "category": "Footer" }]
+  "blocks": [
+    {
+      "type": "platform",
+      "name": "Marketplace",
+      "settings": [
+        { "type": "image_picker", "id": "logo", "label": "Logo" },
+        { "type": "range", "id": "logo_scale", "label": "Logo size", "min": 60, "max": 140, "step": 5, "unit": "%", "default": 100, "info": "Nudge one logo without touching the others. Use it when a wordmark reads too small or too heavy next to its neighbours." },
+        { "type": "text", "id": "name", "label": "Marketplace name", "info": "Used as the image's alt text." },
+        { "type": "url", "id": "link", "label": "Link to your store there" }
+      ]
+    }
+  ],
+  "max_blocks": 12,
+  "presets": [{
+    "name": "sehatUP Footer",
+    "category": "Footer",
+    "blocks": [
+      { "type": "platform", "settings": { "name": "Amazon" } },
+      { "type": "platform", "settings": { "name": "HealthMug" } },
+      { "type": "platform", "settings": { "name": "Flipkart" } },
+      { "type": "platform", "settings": { "name": "Tata 1mg" } },
+      { "type": "platform", "settings": { "name": "JioMart" } },
+      { "type": "platform", "settings": { "name": "Blinkit" } }
+    ]
+  }]
 }
 {% endschema %}

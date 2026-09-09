@@ -1,5 +1,10 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const https = require('https');
+
+// One pooled, keep-alive agent for every Shopify call. Without it each request
+// paid a fresh TLS handshake (~70ms measured), and an order creation makes about
+// ten calls back to back.
+const shopifyAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 30000, maxSockets: 20 });
 require('dotenv').config();
 
 // All-India offline pincode dataset (same file the deployed api/pincode.js uses).
@@ -11,7 +16,11 @@ module.exports = function (app) {
     const SHOPIFY_HOSTNAME = '0ec320-gj.myshopify.com';
     const STOREFRONT_TARGET = 'https://sehatup.com';
     const TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || '';
-    const API_VERSION = '2024-01';
+    // 2024-01 has been unsupported since Oct 2025 - Shopify was silently serving these
+    // calls from its oldest supported version. Pinned to a version that is actually
+    // supported, and that has the GraphQL orderCreate mutation (added 2024-10) the
+    // order builder needs for line-level discounts.
+    const API_VERSION = '2026-01';
 
     console.log('--- Proxy Config Initialized ---');
     console.log('Shopify Hostname:', SHOPIFY_HOSTNAME);
@@ -46,6 +55,7 @@ module.exports = function (app) {
                 path: apiPath,
                 method: req.method,
                 headers: reqHeaders,
+                agent: shopifyAgent,
             };
 
             const proxyReq = https.request(options, (proxyRes) => {

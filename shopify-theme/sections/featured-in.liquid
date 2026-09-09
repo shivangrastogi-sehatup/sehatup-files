@@ -1,0 +1,458 @@
+{% comment %}
+  sections/featured-in.liquid
+  ------------------------------------------------------------------
+  A logo strip that scrolls continuously, however many logos there are.
+
+  The loop is exact rather than approximate. The track is built as 2k
+  copies of the logo set and animated by exactly k sets' width in pixels,
+  so the frame after the last one is identical to the first: no jump, no
+  gap, no drift. k is whatever it takes to cover the viewport, which is
+  why four logos loop just as smoothly as forty.
+{% endcomment %}
+
+{%- liquid
+  assign sid = section.id | replace: '_', '' | downcase
+  assign s = section.settings
+-%}
+
+<style>
+  #shopify-section-{{ section.id }} {
+    --ftr-gap: {{ s.logo_spacing }}px;
+    --ftr-shift: 0px;
+    --ftr-dur: {{ s.scroll_speed }}s;
+  }
+
+  .ftr-{{ sid }} {
+    padding: {{ s.padding_top }}px 20px {{ s.padding_bottom }}px;
+    background: {{ s.background_color }};
+    overflow: hidden;
+  }
+  .ftr-inner-{{ sid }} { max-width: {{ s.max_width }}px; margin: 0 auto; }
+
+  .ftr-heading-{{ sid }} {
+    text-align: center;
+    /* Uses the heading size setting, which the original CSS declared but never read. */
+    font-size: clamp(20px, 3.4vw, {{ s.heading_size }}px);
+    line-height: 1.2;
+    margin: 0 0 40px;
+    color: {{ s.heading_color }};
+    font-weight: 600;
+  }
+
+  /* The ends fade out with a mask, so a logo slides away instead of being
+     clipped mid-glyph. A mask removes pixels rather than painting over them,
+     so nothing is drawn on top of the page and no colour of its own appears -
+     which is why this works on any background without a tint. */
+  .ftr-wrap-{{ sid }} {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    padding: 24px 0;
+    --ftr-fade: clamp(48px, 10%, 160px);
+    -webkit-mask-image: linear-gradient(to right,
+      transparent 0, #000 var(--ftr-fade),
+      #000 calc(100% - var(--ftr-fade)), transparent 100%);
+            mask-image: linear-gradient(to right,
+      transparent 0, #000 var(--ftr-fade),
+      #000 calc(100% - var(--ftr-fade)), transparent 100%);
+  }
+
+  /* gap, not margin-right on each item: a trailing margin makes the spacing
+     across the loop seam different from the spacing everywhere else. */
+  .ftr-track-{{ sid }} {
+    display: flex;
+    align-items: center;
+    gap: var(--ftr-gap);
+    width: max-content;
+    will-change: transform;
+  }
+  .ftr-track-{{ sid }}.is-scrolling {
+    animation: ftr-scroll-{{ sid }} var(--ftr-dur) linear infinite;
+  }
+  {%- comment -%}
+    No animation-play-state here. Freezing on hover snaps from full speed to
+    dead stop; the script eases the playback rate instead, which also gives a
+    moving logo time to settle before you click it.
+  {%- endcomment -%}
+
+  /* Shift by an exact pixel multiple of one set, set from JS. A -50% keyframe
+     only lines up when the track happens to hold exactly two sets. */
+  @keyframes ftr-scroll-{{ sid }} {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(calc(-1 * var(--ftr-shift)), 0, 0); }
+  }
+
+  /* Logos sit straight on the section background — no tile, no card. They only
+     scale and fade with distance from the centre, so the ends read as further
+     away without anything being drawn around them. */
+  .ftr-item-{{ sid }} {
+    flex: 0 0 auto;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
+  }
+
+  .ftr-item-{{ sid }} img {
+    max-width: {{ s.logo_max_width }}px;
+    height: auto;
+    opacity: {{ s.logo_opacity | divided_by: 100.0 }};
+    filter: grayscale({{ s.grayscale_amount }}%);
+    display: block;
+    /* The scale sits on the image, not on the item: the depth loop owns the
+       item's transform and rewrites it every frame, so anything set there
+       would be wiped. */
+    transform-origin: 50% 50%;
+    transition: transform .3s cubic-bezier(.2, .7, .3, 1),
+                opacity .3s ease, filter .3s ease;
+  }
+
+  {%- if s.hover_zoom > 0 -%}
+  /* The strip is already coasting to a stop under the pointer, so the logo has
+     somewhere steady to grow into. Full colour comes with it — a logo you are
+     looking at directly should not still be dimmed and grey. */
+  .ftr-item-{{ sid }}:hover img,
+  .ftr-item-{{ sid }} a:focus-visible img {
+    transform: scale({{ s.hover_zoom | plus: 100 | divided_by: 100.0 }});
+    opacity: 1;
+    filter: grayscale(0%);
+  }
+  {%- endif -%}
+
+  .ftr-item-{{ sid }} a {
+    display: block;
+    /* Keeps the focus ring on the logo rather than on a full-width box. */
+    border-radius: 4px;
+  }
+
+  .ftr-empty-{{ sid }} {
+    text-align: center; color: #6b7280; font-size: 14px; padding: 20px 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ftr-track-{{ sid }}.is-scrolling { animation: none; }
+    .ftr-track-{{ sid }} { justify-content: center; margin: 0 auto; }
+    /* Colour still responds to hover; only the movement is dropped. */
+    .ftr-item-{{ sid }} img { transition: opacity .3s ease, filter .3s ease; }
+    .ftr-item-{{ sid }}:hover img,
+    .ftr-item-{{ sid }} a:focus-visible img { transform: none; }
+  }
+</style>
+
+<section class="ftr-{{ sid }}">
+  <div class="ftr-inner-{{ sid }}">
+    {%- if s.heading != blank -%}
+      <h2 class="ftr-heading-{{ sid }}">{{ s.heading }}</h2>
+    {%- endif -%}
+
+    {%- if section.blocks.size > 0 -%}
+      <div class="ftr-wrap-{{ sid }}" data-ftr-wrap>
+        <div class="ftr-track-{{ sid }}" data-ftr-track>
+          {%- for block in section.blocks -%}
+            {%- liquid
+              assign label = block.settings.name | default: block.settings.logo.alt
+            -%}
+            <div class="ftr-item-{{ sid }}" data-ftr-item {{ block.shopify_attributes }}>
+              {%- if block.settings.link != blank -%}
+                <a href="{{ block.settings.link }}" target="_blank" rel="noopener"
+                   {% if label == blank %}aria-label="Publication logo"{% endif %}>
+              {%- endif -%}
+              {%- if block.settings.logo -%}
+                {%- comment -%}
+                  A logo with no link is decoration, so empty alt keeps screen
+                  readers from announcing it. A linked one needs a real name.
+                {%- endcomment -%}
+                <img
+                  src="{{ block.settings.logo | image_url: width: 400 }}"
+                  alt="{{ label | escape }}"
+                  loading="lazy" decoding="async"
+                  width="{{ s.logo_max_width }}"
+                  height="{{ s.logo_max_width | divided_by: 2 }}">
+              {%- endif -%}
+              {%- if block.settings.link != blank -%}
+                </a>
+              {%- endif -%}
+            </div>
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- else -%}
+      <p class="ftr-empty-{{ sid }}">Add a logo block to start the strip.</p>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+(function () {
+  var root = document.getElementById('shopify-section-{{ section.id }}');
+  if (!root) return;
+  var wrap = root.querySelector('[data-ftr-wrap]');
+  var track = root.querySelector('[data-ftr-track]');
+  if (!wrap || !track) return;
+
+  var BASE = {{ s.scroll_speed | json }};   // seconds for one set to pass
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function gapPx() {
+    return parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap) || 0;
+  }
+
+  function build() {
+    track.classList.remove('is-scrolling');
+    var clones = track.querySelectorAll('[data-ftr-clone]');
+    for (var i = 0; i < clones.length; i++) clones[i].remove();
+
+    var originals = track.querySelectorAll('[data-ftr-item]');
+    if (!originals.length || reduced) return;
+
+    var gap = gapPx();
+    // Distance from the start of one set to the start of the next: the set's
+    // own width plus the gap that will sit between the two.
+    var period = track.scrollWidth + gap;
+    if (period <= gap) return;
+
+    var wrapW = wrap.offsetWidth || 0;
+
+    // k sets to cover the viewport; render 2k so the strip can be shifted by
+    // exactly k sets and land on identical content. This is the bit that makes
+    // four logos scroll — the original only animated when one set already
+    // overflowed, and centred them otherwise.
+    var k = Math.max(1, Math.ceil(wrapW / period));
+
+    var frag = document.createDocumentFragment();
+    for (var copy = 1; copy < k * 2; copy++) {
+      for (var j = 0; j < originals.length; j++) {
+        var c = originals[j].cloneNode(true);
+        c.setAttribute('data-ftr-clone', '');
+
+        // Duplicates should not be announced twice or add a second lap to the
+        // tab order — but they DO have to stay clickable, because most of what
+        // is on screen at any moment is a duplicate.
+        //
+        // aria-hidden + tabindex="-1" on the link does that. `inert` does not:
+        // it also removes the subtree from hit-testing, so every duplicated
+        // logo silently stopped responding to clicks.
+        c.setAttribute('aria-hidden', 'true');
+        var link = c.querySelector('a');
+        if (link) link.setAttribute('tabindex', '-1');
+
+        c.removeAttribute('inert');
+        c.removeAttribute('data-shopify-editor-block');
+        c.removeAttribute('data-shopify-editor-section');
+        frag.appendChild(c);
+      }
+    }
+    track.appendChild(frag);
+
+    shiftPx = period * k;
+    track.style.setProperty('--ftr-shift', shiftPx + 'px');
+    // Scale the duration with k so the visual speed stays what the merchant set,
+    // however many copies it took to fill the screen.
+    track.style.setProperty('--ftr-dur', (BASE * k) + 's');
+
+    // Restart cleanly so a rebuild doesn't resume mid-way through the old shift.
+    void track.offsetWidth;
+    track.classList.add('is-scrolling');
+
+    startDepth();
+  }
+
+  // ── Depth ──────────────────────────────────────────────────────────────
+  // Each item is scaled and faded by how far it is from the centre line, so
+  // logos swell as they approach and recede toward the ends. Positions are
+  // cached once; per frame this reads ONE transform off the track and then
+  // only writes, so it never thrashes layout.
+  var depthRaf = null;
+  var shiftPx = 0;
+  var SCALE = {{ s.tunnel_scale | divided_by: 100.0 }};   // how small at the very edge
+  var FADE  = {{ s.tunnel_fade  | divided_by: 100.0 }};
+
+  function startDepth() {
+    if (depthRaf) cancelAnimationFrame(depthRaf);
+    if (reduced || (SCALE <= 0 && FADE <= 0)) return;
+
+    var nodes = track.querySelectorAll('[data-ftr-item]');
+    var cache = [];
+    for (var i = 0; i < nodes.length; i++) {
+      cache.push({ el: nodes[i], mid: nodes[i].offsetLeft + nodes[i].offsetWidth / 2 });
+    }
+
+    function frame() {
+      var w = wrap.clientWidth;
+      if (w) {
+        // Where the track has got to, taken from the animation's own progress.
+        // Reading getComputedStyle(track).transform instead forces a style
+        // recalc every frame, right after this loop has written to dozens of
+        // nodes — that read-after-write is what made the strip judder.
+        var a = track.getAnimations()[0];
+        var prog = 0;
+        if (a && a.effect) {
+          var ct = a.effect.getComputedTiming();
+          prog = typeof ct.progress === 'number' ? ct.progress : 0;
+        }
+        var off = -prog * shiftPx;
+        var half = w / 2;
+        for (var i = 0; i < cache.length; i++) {
+          var x = cache[i].mid + off;                 // centre of this logo, in wrap space
+          var d = Math.min(1, Math.abs(x - half) / half);
+          // Eased so the change is gentle near the middle and steep at the mouth.
+          var e = d * d;
+          var sc = (1 - e * SCALE).toFixed(4);
+          var op = (1 - e * FADE).toFixed(3);
+          // Skip the write when the value is unchanged: assigning the same
+          // string still invalidates style for that element.
+          if (cache[i].sc !== sc) { cache[i].el.style.transform = 'scale(' + sc + ')'; cache[i].sc = sc; }
+          if (cache[i].op !== op) { cache[i].el.style.opacity = op; cache[i].op = op; }
+        }
+      }
+      depthRaf = requestAnimationFrame(frame);
+    }
+    depthRaf = requestAnimationFrame(frame);
+  }
+
+  // Widths are only correct once the logos have their intrinsic size — and a
+  // logo that 404s must not stall the strip, which is why error counts too.
+  function whenImagesSettle(cb) {
+    var imgs = track.querySelectorAll('img');
+    var left = imgs.length;
+    if (!left) { cb(); return; }
+    var done = function () { if (--left <= 0) cb(); };
+    for (var i = 0; i < imgs.length; i++) {
+      if (imgs[i].complete) done();
+      else {
+        imgs[i].addEventListener('load', done, { once: true });
+        imgs[i].addEventListener('error', done, { once: true });
+      }
+    }
+  }
+
+  {%- if s.pause_on_hover -%}
+  // Ease the strip to a stop instead of freezing it. animation-play-state is a
+  // hard cut; ramping playbackRate reads as the strip coasting, and gives a
+  // moving logo time to settle before it is clicked.
+  (function () {
+    var raf = null, rate = 1, target = 1;
+    // Hover only stops the strip once the pointer has genuinely arrived. After
+    // a click-through the pointer is left sitting on the logo it opened, and
+    // treating that as a fresh hover is what read as "it never starts again".
+    var armed = true;
+    var EASE = 0.12;   // per frame, ~500ms to settle
+
+    function anim() {
+      return track.getAnimations()[0] || null;
+    }
+    function apply(v) {
+      var a = anim();
+      if (a) a.playbackRate = v;
+    }
+    function tick() {
+      rate += (target - rate) * EASE;
+      if (Math.abs(target - rate) < 0.004) rate = target;
+      apply(rate);
+      raf = (rate === target) ? null : requestAnimationFrame(tick);
+    }
+    function to(v) {
+      target = v;
+      // Always schedule a fresh frame. Skipping this when raf is already set
+      // assumed the pending callback would still run - but a backgrounded tab
+      // can drop it, and then raf stayed non-null and the ramp never finished,
+      // leaving the strip parked at whatever speed it froze at.
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(tick);
+    }
+
+    function stop() { if (armed) to(0); }
+    function go() { armed = true; to(1); }
+
+    wrap.addEventListener('pointerenter', stop);
+    wrap.addEventListener('pointerleave', go);
+    // A keyboard user tabbing onto a logo gets the same courtesy.
+    wrap.addEventListener('focusin', stop);
+    wrap.addEventListener('focusout', go);
+
+    // Clicking a logo opens it in a new tab, so pointerleave never fires and
+    // the strip stayed stopped for good. Coming back has to restart it - and
+    // restart it AT ONCE rather than easing, because no rAF ran while the tab
+    // was hidden, so a ramp would have nothing to run on and the first thing
+    // the user sees would be a stopped strip.
+    function resume() {
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      rate = target = 1;
+      apply(1);
+      // Disarmed until the pointer leaves and comes back, so a pointer parked
+      // where the click happened doesn't immediately stop it again.
+      armed = false;
+    }
+    window.addEventListener('blur', resume);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) resume();
+    });
+    window.addEventListener('pageshow', resume);   // back/forward cache
+  })();
+  {%- endif -%}
+
+  var t;
+  function rebuild() { clearTimeout(t); t = setTimeout(build, 150); }
+
+  whenImagesSettle(build);
+
+  if ('ResizeObserver' in window) {
+    var ro = new ResizeObserver(rebuild);
+    ro.observe(wrap);
+  } else {
+    window.addEventListener('resize', rebuild);
+  }
+
+  document.addEventListener('shopify:section:load', function (e) {
+    if (e.detail && e.detail.sectionId === '{{ section.id }}') whenImagesSettle(build);
+  });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Featured in",
+  "tag": "section",
+  "max_blocks": 30,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Featured In" },
+    { "type": "range", "id": "heading_size", "label": "Heading size", "min": 16, "max": 64, "step": 2, "unit": "px", "default": 32 },
+    { "type": "color", "id": "heading_color", "label": "Heading colour", "default": "#222222" },
+
+    { "type": "header", "content": "Logos" },
+    { "type": "range", "id": "logo_max_width", "label": "Logo width", "min": 60, "max": 200, "step": 10, "unit": "px", "default": 120 },
+    { "type": "range", "id": "logo_spacing", "label": "Space between logos", "min": 20, "max": 80, "step": 4, "unit": "px", "default": 40 },
+    { "type": "range", "id": "logo_opacity", "label": "Opacity", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 70 },
+    { "type": "range", "id": "grayscale_amount", "label": "Grayscale", "min": 0, "max": 100, "step": 10, "unit": "%", "default": 100 },
+
+    { "type": "header", "content": "Scrolling" },
+    { "type": "paragraph", "content": "Seconds for one set of logos to pass. The strip loops continuously whatever the number of logos." },
+    { "type": "range", "id": "scroll_speed", "label": "Speed", "min": 10, "max": 60, "step": 2, "unit": "s", "default": 30 },
+    { "type": "checkbox", "id": "pause_on_hover", "label": "Slow to a stop on hover", "default": true },
+
+    { "type": "header", "content": "Depth" },
+    { "type": "paragraph", "content": "Logos shrink and fade towards the ends, so the strip reads as receding. The ends themselves fade out cleanly." },
+    { "type": "range", "id": "tunnel_scale", "label": "Depth", "min": 0, "max": 60, "step": 5, "unit": "%", "default": 30, "info": "How much smaller a logo gets as it reaches the end." },
+    { "type": "range", "id": "hover_zoom", "label": "Grow on hover", "min": 0, "max": 40, "step": 2, "unit": "%", "default": 12, "info": "0 turns it off." },
+    { "type": "range", "id": "tunnel_fade", "label": "Distance fade", "min": 0, "max": 90, "step": 5, "unit": "%", "default": 55 },
+
+    { "type": "header", "content": "Layout" },
+    { "type": "color", "id": "background_color", "label": "Background", "default": "#ffffff" },
+    { "type": "range", "id": "max_width", "label": "Max width", "min": 800, "max": 1600, "step": 100, "unit": "px", "default": 1200 },
+    { "type": "range", "id": "padding_top", "label": "Padding top", "min": 20, "max": 120, "step": 4, "unit": "px", "default": 60 },
+    { "type": "range", "id": "padding_bottom", "label": "Padding bottom", "min": 20, "max": 120, "step": 4, "unit": "px", "default": 60 }
+  ],
+  "blocks": [
+    {
+      "type": "logo",
+      "name": "Logo",
+      "settings": [
+        { "type": "image_picker", "id": "logo", "label": "Logo" },
+        { "type": "text", "id": "name", "label": "Publication name", "info": "Used as the image's alt text." },
+        { "type": "url", "id": "link", "label": "Optional link" }
+      ]
+    }
+  ],
+  "presets": [
+    { "name": "Featured in", "blocks": [ { "type": "logo" }, { "type": "logo" }, { "type": "logo" }, { "type": "logo" } ] }
+  ]
+}
+{% endschema %}

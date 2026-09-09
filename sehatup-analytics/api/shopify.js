@@ -1,6 +1,10 @@
 export default async function handler(req, res) {
     const SHOPIFY_HOSTNAME = '0ec320-gj.myshopify.com';
-    const API_VERSION = '2024-01';
+    // 2024-01 has been unsupported since Oct 2025 - Shopify was silently serving these
+    // calls from its oldest supported version. Pinned to a version that is actually
+    // supported, and that has the GraphQL orderCreate mutation (added 2024-10) the
+    // order builder needs for line-level discounts.
+    const API_VERSION = '2026-01';
     const TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || '';
 
     // Extract the original path from the request URL

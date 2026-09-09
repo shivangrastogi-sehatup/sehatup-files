@@ -5976,6 +5976,10 @@ function HistoryInline({ customer, onUsePrescription }) {
 // FULFILLMENT template id is looked up once and cached. Best-effort — failures are
 // logged, never thrown, so they can't break a successfully-created order.
 let _fulfillmentTermsTemplateId = null;
+// Test mode lives in localStorage so it survives a reload and is per-operator.
+const ORDER_TEST_MODE_KEY = 'crm_order_test_mode';
+const orderTestModeOn = () => localStorage.getItem(ORDER_TEST_MODE_KEY) === 'on';
+
 async function attachFulfillmentPaymentTerms(orderId) {
   try {
     if (!_fulfillmentTermsTemplateId) {
@@ -6114,7 +6118,17 @@ function OrderCreate({ context = {}, setRoute }) {
   const [customItemModal, setCustomItemModal] = useStateO(null);
   const [customItemClosing, setCustomItemClosing] = useStateO(false);
 
+  // Results of the last dry run: [{ step, ok, detail }]. Non-null opens the panel.
+  const [testReport, setTestReport] = useStateO(null);
+
   const handleSaveToCRM = async (mode = 'draft') => {
+    // A dry run walks the REAL code below - same validation, same payloads, same
+    // reconciliation - and only swaps the calls that would write. Re-implementing it
+    // separately is how a test ends up passing while the thing it tests is broken.
+    const dryRun = mode === 'test';
+    const steps = [];
+    const step = (name, ok, detail) => { steps.push({ step: name, ok, detail }); return ok; };
+    if (dryRun) mode = 'active';
     const rawPhone = (custPhone || preset?.phone || '').replace(/\D/g, '');
     if (!rawPhone) return alert('Phone number is required for CRM orders.');
     const digits = rawPhone.slice(-10);
@@ -6123,7 +6137,11 @@ function OrderCreate({ context = {}, setRoute }) {
     if (!items || items.length === 0) return alert('Please add at least one product to the order.');
     if (pay !== "Prepaid" && pay !== "COD") return alert('Please select a payment type (Prepaid or COD) before creating the order.');
 
-    setSavingMode(mode);
+    if (dryRun) {
+      step('Form validation', true, `${items.length} line(s), payment ${pay}, phone ${normalizedPhone}`);
+      setTestReport(null);
+    }
+    setSavingMode(dryRun ? 'test' : mode);
     try {
       let finalCustomerId = null;
       // Trust the selected customer only while their number still matches the one on the form.
@@ -6154,6 +6172,10 @@ function OrderCreate({ context = {}, setRoute }) {
         }
         if (profileOwners.length > 0) {
           finalCustomerId = profileOwners[0].id;
+          if (dryRun) step('Customer', true, `Matched existing customer ${finalCustomerId}${profileOwners.length > 1 ? ` (${profileOwners.length} share this number)` : ''}`);
+        } else if (dryRun) {
+          step('Customer', true, 'No profile owns this number — a new customer would be created (not created in test mode).');
+          finalCustomerId = null;
         } else {
           console.log('--- SHOPIFY CREATE CUSTOMER ---');
           try {
@@ -6180,7 +6202,7 @@ function OrderCreate({ context = {}, setRoute }) {
       }
 
       // Force update customer profile with phone to ensure Contact Info populates in Draft
-      if (finalCustomerId) {
+      if (finalCustomerId && !dryRun) {
         try {
           const updateBody = {
             customer: {
@@ -6324,16 +6346,94 @@ function OrderCreate({ context = {}, setRoute }) {
       console.log(JSON.stringify(draftData, null, 2));
 
       let draftRes;
-      try {
-        draftRes = await createDraftOrder(draftData);
-        console.log('--- SHOPIFY DRAFT ORDER SUCCESS ---', draftRes);
-      } catch (shopErr) {
-        console.error('--- SHOPIFY DRAFT ORDER ERROR ---', shopErr);
-        throw new Error('Shopify Error: ' + shopErr.message);
+      if (dryRun) {
+        // draftOrderCalculate prices exactly what draftOrderCreate would, and saves nothing.
+        // This is the step that catches a bad variant id, a rejected discount or a price that
+        // has moved in Shopify since the product was added to the cart.
+        try {
+          const calcRes = await fetch('/shopify-v2/graphql.json', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `mutation calc($input: DraftOrderInput!) {
+                draftOrderCalculate(input: $input) {
+                  calculatedDraftOrder {
+                    subtotalPriceSet { shopMoney { amount } }
+                    totalShippingPriceSet { shopMoney { amount } }
+                    totalDiscountsSet { shopMoney { amount } }
+                    totalPriceSet { shopMoney { amount } }
+                    totalTaxSet { shopMoney { amount } }
+                  }
+                  userErrors { field message }
+                }
+              }`,
+              variables: {
+                input: {
+                  lineItems: line_items.map(li => (li.variant_id
+                    ? { variantId: `gid://shopify/ProductVariant/${li.variant_id}`, quantity: li.quantity,
+                        appliedDiscount: li.applied_discount ? {
+                          valueType: li.applied_discount.value_type === 'percentage' ? 'PERCENTAGE' : 'FIXED_AMOUNT',
+                          value: parseFloat(li.applied_discount.value),
+                          title: li.applied_discount.title,
+                        } : undefined }
+                    : { title: li.title, originalUnitPriceWithCurrency: { amount: li.price, currencyCode: 'INR' },
+                        quantity: li.quantity, requiresShipping: li.requires_shipping, taxable: li.taxable,
+                        appliedDiscount: li.applied_discount ? {
+                          valueType: li.applied_discount.value_type === 'percentage' ? 'PERCENTAGE' : 'FIXED_AMOUNT',
+                          value: parseFloat(li.applied_discount.value),
+                          title: li.applied_discount.title,
+                        } : undefined })),
+                  shippingLine: draftData.shipping_line
+                    ? { title: draftData.shipping_line.title, price: draftData.shipping_line.price }
+                    : undefined,
+                  appliedDiscount: draftData.applied_discount ? {
+                    valueType: 'FIXED_AMOUNT',
+                    value: parseFloat(draftData.applied_discount.value),
+                    title: draftData.applied_discount.title,
+                  } : undefined,
+                },
+              },
+            }),
+          });
+          const calcJson = await calcRes.json();
+          const uerr = calcJson?.data?.draftOrderCalculate?.userErrors;
+          if (calcJson.errors) throw new Error(JSON.stringify(calcJson.errors));
+          if (uerr?.length) throw new Error(uerr.map(e => `${(e.field || []).join('.')} ${e.message}`).join('; '));
+          const c = calcJson.data.draftOrderCalculate.calculatedDraftOrder;
+          const money = (x) => parseFloat(x?.shopMoney?.amount ?? '0');
+          draftRes = {
+            id: null,
+            admin_graphql_api_id: null,
+            total_price: money(c.totalPriceSet).toFixed(2),
+            shipping_line: draftData.shipping_line || null,
+            tags: draftData.tags,
+            customer: finalCustomerId ? { id: finalCustomerId } : null,
+            email: draftData.email || null,
+            shipping_address: draftData.shipping_address,
+            billing_address: draftData.billing_address,
+          };
+          const shopifyTotal = money(c.totalPriceSet);
+          const drift = Math.abs(shopifyTotal - total);
+          step('Shopify priced the order', drift <= 1,
+            `Shopify Rs.${shopifyTotal.toFixed(2)} vs summary Rs.${total.toFixed(2)} (subtotal Rs.${money(c.subtotalPriceSet).toFixed(2)}, ` +
+            `shipping Rs.${money(c.totalShippingPriceSet).toFixed(2)}, discounts Rs.${money(c.totalDiscountsSet).toFixed(2)}, tax Rs.${money(c.totalTaxSet).toFixed(2)})` +
+            (drift > 1 ? ` — OFF BY Rs.${drift.toFixed(2)}` : ''));
+        } catch (calcErr) {
+          step('Shopify priced the order', false, calcErr.message);
+          throw new Error('__test_abort__');
+        }
+      } else {
+        try {
+          draftRes = await createDraftOrder(draftData);
+          console.log('--- SHOPIFY DRAFT ORDER SUCCESS ---', draftRes);
+        } catch (shopErr) {
+          console.error('--- SHOPIFY DRAFT ORDER ERROR ---', shopErr);
+          throw new Error('Shopify Error: ' + shopErr.message);
+        }
       }
 
       // REST API does not support top-level `phone` on draft orders — use GraphQL to set Contact Information
-      try {
+      if (dryRun) { /* nothing to update: no draft was saved */ } else try {
         const gqlInput = { phone: normalizedPhone };
         if (custEmail && custEmail.trim()) gqlInput.email = custEmail.trim();
         const gqlRes = await fetch('/shopify-v2/graphql.json', {
@@ -6386,22 +6486,20 @@ function OrderCreate({ context = {}, setRoute }) {
           const d = draftRes;
           const orderPayload = {
             order: {
-              // Build line items from the source cart, each at its NET unit price.
+              // Build line items at their FULL unit price. Per-line discounts are applied
+              // afterwards by the order edit below, so the order reads the way the draft did:
+              // "Ashwagandha 30 Tablets Rs.399.00, Free Sample -100%, net Rs.0.00".
               //
-              // The Orders REST API has no line-level `applied_discount` — that field exists
-              // only on DRAFT orders, and orders.json drops it without an error. Sending it
-              // here is what charged customers for the free Ashwagandha sample (and silently
-              // voided every per-product discount): the draft priced the sample at 0, the
-              // rebuilt order charged the full Rs.399, and the pending transaction was left
-              // short by that amount. `price` IS honoured on order creation and overrides the
-              // variant price, so the discount is baked into it instead — a 100%-off sample
-              // becomes a genuine Rs.0.00 line.
+              // Neither API can discount a line at creation time. REST orders.json drops
+              // `applied_discount` silently (that field is draft-only), and GraphQL
+              // orderCreate has no discount field on OrderCreateLineItemInput either — only
+              // priceSet. Baking the discount into `price` was the old workaround, and it is
+              // why the free sample posted as a bare Rs.0.00 line with no discount shown.
               //
-              // Do NOT re-add `applied_discount` alongside this: if Shopify ever starts
-              // honouring it, the line would be discounted twice.
+              // Do NOT bake the discount into `price` again while the order edit runs, or the
+              // line would be discounted twice.
               line_items: items.map(item => {
-                const netUnit = getDiscountedPrice(item);
-                const li = { quantity: item.qty, price: netUnit.toFixed(2) };
+                const li = { quantity: item.qty, price: Number(item.price || 0).toFixed(2) };
                 if (item.isCustom) {
                   // Custom lines carry their own identity and shipping/tax facts — there is no
                   // variant behind them to supply any of it.
@@ -6456,17 +6554,62 @@ function OrderCreate({ context = {}, setRoute }) {
           // loudly here instead of silently creating an over/under-paid order (the class of the
           // old "Rs.200 unauthorized" bug). ±Rs.1 is expected from integer-rounding the combined discount.
           const draftTotal = parseFloat(d.total_price) || 0;
+          // What the order edit below will take off, line by line. The order is posted at full
+          // price and only reaches the draft's total once these are applied, so every check
+          // from here on has to include them.
+          const lineDiscounts = items
+            .map(item => ({ item, off: (item.price - getDiscountedPrice(item)) * item.qty }))
+            .filter(x => x.off > 0.005);
+          const lineDiscountTotal = lineDiscounts.reduce((s, x) => s + x.off, 0);
           {
             const lineItemsTotal = orderPayload.order.line_items.reduce(
               (s, it) => s + (parseFloat(it.price) || 0) * (Number(it.quantity) || 0), 0);
             const shipTotal = (orderPayload.order.shipping_lines || []).reduce((s, sl) => s + (parseFloat(sl.price) || 0), 0);
             const orderDisc = (orderPayload.order.discount_codes || []).reduce((s, dc) => s + (parseFloat(dc.amount) || 0), 0);
-            const recomputedTotal = lineItemsTotal + shipTotal - orderDisc;
+            const recomputedTotal = lineItemsTotal + shipTotal - orderDisc - lineDiscountTotal;
             const drift = Math.abs(recomputedTotal - draftTotal);
             console.log('--- ORDER TOTAL RECONCILIATION ---', { recomputedTotal, draftTotal, drift });
-            if (drift > 1) {
+            if (dryRun) {
+              step('Rebuilt order reconciles', drift <= 1,
+                `rebuilt Rs.${recomputedTotal.toFixed(2)} vs Shopify's Rs.${draftTotal.toFixed(2)} (drift Rs.${drift.toFixed(2)}; lines Rs.${lineItemsTotal.toFixed(2)}, shipping Rs.${shipTotal.toFixed(2)}, order discount Rs.${orderDisc.toFixed(2)}, line discounts Rs.${lineDiscountTotal.toFixed(2)})`);
+            }
+            if (drift > 1 && !dryRun) {
               throw new Error(`Order total mismatch — rebuilt Rs.${recomputedTotal.toFixed(2)} vs draft Rs.${draftTotal.toFixed(2)} (drift Rs.${drift.toFixed(2)}). Aborting before payment to avoid a mismatched/unauthorized amount.`);
             }
+          }
+
+          if (dryRun) {
+            const li = orderPayload.order.line_items;
+            step('Order payload', true,
+              `${li.length} line(s): ` + li.map(x => `${x.title || ('variant ' + x.variant_id)} x${x.quantity} @ Rs.${x.price}`).join(', '));
+            step('No zero or negative line prices',
+              li.every(x => parseFloat(x.price) >= 0 && x.quantity > 0),
+              li.filter(x => !(parseFloat(x.price) >= 0 && x.quantity > 0)).map(x => JSON.stringify(x)).join(', ') || 'all lines priced and quantified');
+            step('Every catalogue line has a variant',
+              li.every(x => x.variant_id || x.title),
+              'a line with neither a variant nor a title is rejected by Shopify');
+            step('Payment', true,
+              `${isPrepaid ? 'Prepaid → paid' : 'COD → pending'}, gateway "${isPrepaid ? PAYMENT_GATEWAY_PREPAID : PAYMENT_GATEWAY_COD}", transaction Rs.${d.total_price}`);
+            if (orderPayload.order.discount_codes?.length) {
+              const dc = orderPayload.order.discount_codes[0];
+              step('Order-level discount', true, `"${dc.code}" Rs.${dc.amount}`);
+            }
+            if (lineDiscounts.length) {
+              step('Per-line discounts (order edit)', true, lineDiscounts.map(({ item, off }) => {
+                const lineFull = item.price * item.qty;
+                const pct = lineFull > 0 ? Math.min(100, (off / lineFull) * 100) : 0;
+                return `${item.name} -${Number(pct.toFixed(4))}% (Rs.${off.toFixed(2)})`;
+              }).join(', '));
+              const sample = lineDiscounts.find(x => x.item.isFreeSample);
+              if (sample) {
+                step('Free sample nets to Rs.0.00',
+                  Math.abs(sample.off - sample.item.price * sample.item.qty) < 0.01,
+                  `${sample.item.name}: Rs.${(sample.item.price * sample.item.qty).toFixed(2)} listed, Rs.${sample.off.toFixed(2)} discounted`);
+              }
+            } else {
+              step('Per-line discounts (order edit)', true, 'none on this cart — the order edit is skipped');
+            }
+            throw new Error('__test_abort__');
           }
 
           const orderReq = await fetch('/shopify-v2/orders.json', {
@@ -6483,13 +6626,105 @@ function OrderCreate({ context = {}, setRoute }) {
             || (orderResData.order.order_number != null ? `#${orderResData.order.order_number}` : null);
           console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, finalOrderName, orderResData.order.payment_gateway_names);
 
+          // ── Per-line discounts, via the Order Editing API ─────────────────────────────
+          // The only way to put a discount ON a line of a real order: begin an edit, discount
+          // each line, commit. Until this commits the order stands at full price, so a failure
+          // here must be loud - the customer would be billed for the "free" sample.
+          if (lineDiscounts.length > 0) {
+            const orderGid = `gid://shopify/Order/${finalOrderId}`;
+            const gql = async (query, variables) => {
+              const r = await fetch('/shopify-v2/graphql.json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, variables }),
+              });
+              const j = await r.json();
+              if (j.errors) throw new Error(JSON.stringify(j.errors));
+              return j.data;
+            };
+
+            try {
+              const begun = await gql(`mutation($id: ID!) {
+                orderEditBegin(id: $id) {
+                  calculatedOrder {
+                    id
+                    lineItems(first: 50) { edges { node { id quantity variant { id } title } } }
+                  }
+                  userErrors { field message }
+                }
+              }`, { id: orderGid });
+              const errs = begun.orderEditBegin.userErrors;
+              if (errs?.length) throw new Error(errs.map(e => e.message).join('; '));
+
+              const calc = begun.orderEditBegin.calculatedOrder;
+              const calcLines = calc.lineItems.edges.map(e => e.node);
+              // Match on variant id where there is one; custom lines have no variant, so they
+              // fall back to the title they were created with.
+              const used = new Set();
+              const findLine = (item) => calcLines.find(l => {
+                if (used.has(l.id)) return false;
+                if (item.variantId && l.variant?.id) {
+                  return l.variant.id === `gid://shopify/ProductVariant/${item.variantId}`;
+                }
+                return l.title === item.name;
+              });
+
+              const unmatched = [];
+              for (const { item, off } of lineDiscounts) {
+                const line = findLine(item);
+                if (!line) { unmatched.push(item.name); continue; }
+                used.add(line.id);
+                // Everything goes across as a PERCENTAGE, including discounts the operator
+                // entered in rupees. fixedValue is ambiguous about whether it means per unit
+                // or per line, and guessing wrong on a multi-quantity line would discount by
+                // the quantity times too much or too little. A percentage means the same thing
+                // either way, and it is what makes the order read "-100%" instead of an opaque
+                // rupee figure. Rupee discounts convert exactly except for sub-paise rounding.
+                const lineFull = item.price * item.qty;
+                const pct = lineFull > 0 ? Math.min(100, (off / lineFull) * 100) : 0;
+                const discount = {
+                  percentValue: Number(pct.toFixed(4)),
+                  description: item.discountReason || 'Discount',
+                };
+
+                const applied = await gql(`mutation($id: ID!, $lineItemId: ID!, $discount: OrderEditAppliedDiscountInput!) {
+                  orderEditAddLineItemDiscount(id: $id, lineItemId: $lineItemId, discount: $discount) {
+                    userErrors { field message }
+                  }
+                }`, { id: calc.id, lineItemId: line.id, discount });
+                const aerr = applied.orderEditAddLineItemDiscount.userErrors;
+                if (aerr?.length) throw new Error(`${item.name}: ${aerr.map(e => e.message).join('; ')}`);
+              }
+              if (unmatched.length) throw new Error(`could not match line(s): ${unmatched.join(', ')}`);
+
+              const committed = await gql(`mutation($id: ID!) {
+                orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Per-product discounts applied by CRM") {
+                  order { id totalPriceSet { shopMoney { amount } } }
+                  userErrors { field message }
+                }
+              }`, { id: calc.id });
+              const cerrs = committed.orderEditCommit.userErrors;
+              if (cerrs?.length) throw new Error(cerrs.map(e => e.message).join('; '));
+
+              orderResData.order.total_price =
+                committed.orderEditCommit.order?.totalPriceSet?.shopMoney?.amount ?? orderResData.order.total_price;
+              console.log('--- LINE DISCOUNTS APPLIED ---', lineDiscounts.map(x => x.item.name), 'new total', orderResData.order.total_price);
+            } catch (editErr) {
+              console.error('--- LINE DISCOUNT EDIT FAILED ---', editErr);
+              totalMismatchWarning =
+                `WARNING: ${finalOrderName || finalOrderId} was created at full price and the ` +
+                `per-product discount could not be applied (${editErr.message}). ` +
+                `Discount Rs.${lineDiscountTotal.toFixed(2)} manually in Shopify admin before it ships.`;
+            }
+          }
+
           // Post-create check against what Shopify ACTUALLY priced. The guard above only proves
           // our payload is self-consistent; this proves Shopify agreed with it. Shopify dropping
           // a discount it doesn't support is silent (no userError) — that is exactly how the free
           // sample got charged for weeks. The order already exists, so this can't abort; it flags
           // the order number so the operator can correct it in Shopify admin straight away.
           const createdTotal = parseFloat(orderResData.order.total_price) || 0;
-          if (Math.abs(createdTotal - draftTotal) > 1) {
+          if (Math.abs(createdTotal - draftTotal) > 1 && !totalMismatchWarning) {
             totalMismatchWarning =
               `WARNING: Shopify priced ${finalOrderName || finalOrderId} at Rs.${createdTotal.toFixed(2)}, ` +
               `but the order summary showed Rs.${draftTotal.toFixed(2)}. ` +
@@ -6497,14 +6732,22 @@ function OrderCreate({ context = {}, setRoute }) {
             console.error('--- ACTIVE ORDER TOTAL MISMATCH ---', { createdTotal, draftTotal });
           }
 
-          // The draft was only needed to compute prices/shipping/discounts — discard it.
-          fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => { });
-
           // COD orders → attach "Due on fulfillment" payment terms (the Orders API ignores them).
-          if (!isPrepaid) await attachFulfillmentPaymentTerms(finalOrderId);
+          // Deliberately NOT awaited: it is two more round trips (~1.4s) of bookkeeping on an
+          // order that already exists, and it already swallows and logs its own failures, so
+          // awaiting it only made the operator wait longer for a result they never see.
+          if (!isPrepaid) attachFulfillmentPaymentTerms(finalOrderId);
         } catch (compErr) {
           console.error('--- ACTIVE ORDER ERROR ---', compErr);
           throw new Error('Failed to create active order: ' + compErr.message);
+        } finally {
+          // The draft is scaffolding: it exists only to make Shopify price the order. Delete it
+          // on the way out WHATEVER happened, not only on success. Deleting solely on success is
+          // why the store is holding orphaned CRM drafts - #D875 to #D878 are four identical
+          // Rs.498 drafts from one day, one per retry after a failed order creation. Deleting an
+          // already-deleted draft just 404s, so this is safe to run every time.
+          // draftRes.id is null on a dry run - nothing was saved, so there is nothing to remove.
+          if (draftRes?.id) fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => { });
         }
       }
 
@@ -6534,6 +6777,12 @@ function OrderCreate({ context = {}, setRoute }) {
         updatedBy: window.SehatData?.me?.name || 'CRM Order Creator'
       };
 
+      if (dryRun) {
+        step('CRM sheet sync', true, 'skipped in test mode');
+        setTestReport({ steps, at: new Date() });
+        return;
+      }
+
       // Best-effort CRM Google-Sheet logging. The Shopify order is ALREADY created
       // by this point, so a sheet-sync failure (e.g. /api/leads 404 from a stale
       // Apps Script URL) must never be reported as an order failure.
@@ -6558,7 +6807,17 @@ function OrderCreate({ context = {}, setRoute }) {
       );
       if (setRoute) setRoute('crm_orders');
     } catch (err) {
+      // __test_abort__ is how a dry run stops before a write; the steps already say why.
+      if (dryRun && err.message === '__test_abort__') {
+        setTestReport({ steps, at: new Date() });
+        return;
+      }
       console.error(err);
+      if (dryRun) {
+        step('Unexpected error', false, err.message);
+        setTestReport({ steps, at: new Date() });
+        return;
+      }
       alert('Failed to process order: ' + err.message);
     } finally {
       setSavingMode(null);
@@ -7188,9 +7447,48 @@ function OrderCreate({ context = {}, setRoute }) {
           <button className="btn" onClick={() => handleSaveToCRM('draft')} disabled={savingMode !== null}>
             <Icon name={savingMode === 'draft' ? "refresh" : "save"} className={savingMode === 'draft' ? "spin" : ""} /> {savingMode === 'draft' ? 'Saving...' : 'Save Draft Order'}
           </button>
+          {testReport && (() => {
+            const failed = testReport.steps.filter(x => !x.ok).length;
+            return (
+              <div className="card" style={{
+                width: '100%', marginBottom: 12,
+                borderLeft: `3px solid ${failed ? 'var(--risk-critical)' : 'var(--risk-low)'}`,
+              }}>
+                <div className="hstack-8" style={{ marginBottom: 10 }}>
+                  <Icon name={failed ? 'x' : 'check'} size={16} color={failed ? 'var(--risk-critical)' : 'var(--risk-low)'} />
+                  <span className="fw6">
+                    {failed ? `Test failed — ${failed} of ${testReport.steps.length} checks` : `Test passed — ${testReport.steps.length} checks`}
+                  </span>
+                  <span className="spacer" />
+                  <span className="muted" style={{ fontSize: 12 }}>Nothing was written to Shopify</span>
+                  <button className="btn sm ghost" onClick={() => setTestReport(null)}>Close</button>
+                </div>
+                <div className="stack-2">
+                  {testReport.steps.map((x, i) => (
+                    <div key={i} className="hstack-8" style={{ alignItems: 'flex-start', padding: '6px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                      <span style={{
+                        flexShrink: 0, fontSize: 11, fontWeight: 700, minWidth: 44, textAlign: 'center',
+                        padding: '2px 6px', borderRadius: 4,
+                        color: x.ok ? 'var(--risk-low)' : 'var(--risk-critical)',
+                        background: x.ok ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)',
+                      }}>{x.ok ? 'PASS' : 'FAIL'}</span>
+                      <span className="fw5" style={{ flexShrink: 0, minWidth: 200, fontSize: 13 }}>{x.step}</span>
+                      <span className="muted" style={{ fontSize: 12, wordBreak: 'break-word' }}>{x.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+          {orderTestModeOn() ? (
+            <button className="btn primary" onClick={() => handleSaveToCRM('test')} disabled={savingMode !== null} title="Runs the real order build and prices it with Shopify. Writes nothing.">
+              <Icon name={savingMode === 'test' ? "refresh" : "bolt"} className={savingMode === 'test' ? "spin" : ""} /> {savingMode === 'test' ? 'Testing...' : 'Test order'}
+            </button>
+          ) : (
           <button className="btn primary" onClick={() => handleSaveToCRM('active')} disabled={savingMode !== null}>
             <Icon name={savingMode === 'active' ? "refresh" : "check"} className={savingMode === 'active' ? "spin" : ""} /> {savingMode === 'active' ? 'Creating...' : 'Create Active Order'}
           </button>
+          )}
         </div>
       </div>
 
@@ -12340,10 +12638,16 @@ function NotificationsPane() {
 
 function IntegrationsPane() {
   const [gscriptUrl, setGscriptUrl] = useStateO(() => localStorage.getItem('crm_gscript_url') || '');
+  const [testMode, setTestMode] = useStateO(() => localStorage.getItem(ORDER_TEST_MODE_KEY) === 'on');
 
   const saveUrl = (val) => {
     setGscriptUrl(val);
     localStorage.setItem('crm_gscript_url', val);
+  };
+
+  const saveTestMode = (on) => {
+    setTestMode(on);
+    localStorage.setItem(ORDER_TEST_MODE_KEY, on ? 'on' : 'off');
   };
 
   const ints = [
@@ -12380,6 +12684,28 @@ function IntegrationsPane() {
           </div>
         ))}
       </div>
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="hstack-12">
+          <div className="stack-2" style={{ flex: 1 }}>
+            <div className="section-title" style={{ marginBottom: 4 }}>Order test mode</div>
+            <div className="muted" style={{ fontSize: 13 }}>
+              Replaces "Create Active Order" with a Test button. The test runs the real order
+              build and asks Shopify to price it, but writes nothing — no customer, no draft,
+              no order. Use it to check a cart before creating it for real.
+            </div>
+          </div>
+          <label className="checkbox" style={{ whiteSpace: 'nowrap' }}>
+            <input type="checkbox" checked={testMode} onChange={e => saveTestMode(e.target.checked)} />
+            {testMode ? ' On' : ' Off'}
+          </label>
+        </div>
+        {testMode && (
+          <div className="muted" style={{ fontSize: 12, marginTop: 10, color: 'var(--risk-med)' }}>
+            Order creation is disabled while this is on.
+          </div>
+        )}
+      </div>
+
       <div className="card" style={{ marginTop: 24 }}>
         <div className="section-title" style={{ marginBottom: 12 }}>Google Sheets CRM Sync</div>
         <div className="stack-8">
