@@ -1,0 +1,158 @@
+================================================================================
+FIXES - 10 Sep 2026
+Duplicate replies, wasted executions, and the "ji" tic
+================================================================================
+
+WHAT WENT WRONG
+---------------
+917300978845 received the same price message THREE times (09:32:19, :23, :25).
+919332895073 received the same canned line TWICE (15:00:02).
+
+Neither was triggered by the customer. Both were triggered by the bot's own
+outbound messages coming back in as webhook events.
+
+Evidence, from qrReceiveMessage Cloud Logging (1203 webhook requests, 10 Sep):
+
+    real user messages    139   payload._type = USER_TEXT / USER_BUTTON_REPLY
+                                msg_time present, messageBy USER, no `event`
+    status callbacks     1064   event = SENT (596) / DELIVERED (240) / READ (228)
+                                no payload._type, no msg_time, messageBy AGENT|AUTOMATION
+    bodies with both        0
+
+88% of webhook traffic is delivery receipts. QuickReply includes the message
+TEXT in those callbacks, and "Is Real User Message?" only checked that
+`body.payload` exists - so every receipt started a full n8n execution: a 60s
+wait, a 500-message Firestore read, a product lookup, a Doc fetch, a Gemini call.
+
+Three receipts (SENT + DELIVERED + READ) for one outbound message became three
+executions. All three waited 60s, then read the conversation in the SAME second.
+Each saw lastAi stale and latestInbound equal to its own timestamp, so neither
+`newer_message_wins` nor `already_answered` could fire. Three sends.
+
+The Cloud Function itself is correct - it branches on `!p || !p._type` and routes
+callbacks to the status-update path. Only its log line is wrong.
+
+
+FIX 1 - "Is Real User Message?"  (IF node, not a code node)
+-----------------------------------------------------------
+THIS IS THE ONE THAT MATTERS. It removes the cause; everything else is tidying.
+
+Open the node. It has one condition (payload exists). Add a SECOND condition,
+combinator "and":
+
+    {
+      "id": "is-user-message",
+      "leftValue": "={{ String($json.body.payload?._type || '') }}",
+      "rightValue": "USER_",
+      "operator": { "type": "string", "operation": "startsWith" }
+    }
+
+In the UI: Add condition -> String -> starts with
+    Value 1:  {{ String($json.body.payload?._type || '') }}
+    Value 2:  USER_
+
+Verified against all 1203 logged bodies: passes exactly the 139 real messages,
+blocks exactly the 1064 callbacks. This matches what qrReceiveMessage already
+does, so the two stay in sync.
+
+ALSO: edit the PINNED sample body on "QuickReply Webhook" and add
+    "_type": "USER_TEXT"
+inside its payload. Without it the pinned fixture stops passing this IF - and
+accommodating that fixture is exactly how this bug was introduced in the first
+place (see the history comment in tag-execution.txt).
+
+
+FIX 2 - Tag Execution   -> tag-execution.txt
+--------------------------------------------
+Same wrong test, so all 1064 callbacks were labelled MESSAGE in the executions
+list, which is why real conversations were impossible to find.
+
+    - const isStatus = !b.payload;
+    + const isStatus = !b.payload || !b.payload._type;
+
+Full corrected node code is in tag-execution.txt. Paste the whole file.
+
+
+FIX 3 - the "ji" tic    -> extract-ai-response.txt
+--------------------------------------------------
+Replies were carrying three or four "ji"s. Two causes:
+
+  a) sanitizeReply() rewrote every sir / mam / madam / bhai / didi into "ji".
+     That was the point - the customer's gender is unknown, so the honorific
+     cannot survive - but rewriting it as "ji" MANUFACTURED extra ones.
+     Now they are DELETED instead. "aap" already carries the politeness.
+
+  b) The guard-built replies are hand-typed and most of them already contain
+     their own "ji" ("Ji, dono ke rate...", "...hai ji", "...bata dijiye ji").
+     Rather than edit twenty hard-coded strings, a single cap runs LAST.
+
+New at the bottom of the node, after the intro block:
+
+    const JI_MAX = 1;
+    function qrTrimJi(t) { ... }
+    aiText = qrTrimJi(aiText);
+
+Keeps the FIRST "ji" (which in every guard reply opens the sentence, or follows
+"Hello" in the greeting - exactly where it belongs) and drops the rest. Any new
+guard reply someone adds later is trimmed automatically.
+
+Handled deliberately:
+  - the comma goes back when the "ji" was joining two clauses
+    "bata dijiye ji, main set kara deti hu" -> "bata dijiye, main set kara deti hu"
+  - not when the sentence already ended
+    "SehatUP se. Ji, dono ke rate" -> "SehatUP se. Dono ke rate"  (re-capitalised)
+  - capitalisation only after a literal space, never after a newline, because
+    every product link sits on its own line and would become "Https://..."
+  - \bji\b, so the name "Jiya" is untouched
+
+Before / after:
+
+    3 ji  Ji, note kar liya ji. Aap apna naam bata dijiye ji.
+    1 ji  Ji, note kar liya. Aap apna naam bata dijiye.
+
+    3 ji  Dose doctor hi batate hain ji. Aap apna naam bata dijiye ji, main
+          free consultation set kara deti hu ji.
+    1 ji  Dose doctor hi batate hain ji. Aap apna naam bata dijiye, main free
+          consultation set kara deti hu.
+
+If one still reads as too many, set JI_MAX = 0. That removes every "ji"
+including the opener.
+
+Full corrected node code is in extract-ai-response.txt. Paste the whole file.
+
+
+FIX 4 - qrReceiveMessage log line   (sehatup-firebase/functions/index.js:2445)
+------------------------------------------------------------------------------
+Cosmetic, but it is why every callback reads as "INBOUND _type=?" in Cloud
+Logging. The log tests `p`, the code branches on `p && p._type`.
+
+    - p ? `INBOUND _type=${p._type || "?"}` : `STATUS event=...`
+    + p && p._type ? `INBOUND _type=${p._type}` : `STATUS event=...`
+
+
+STILL OPEN - not fixed here
+---------------------------
+1. THE RACE ITSELF. Fix 1 removes what was feeding it, but two GENUINE customer
+   messages arriving in the same second would still both process: the guards in
+   Decide Process are read-then-write timestamp comparisons with no atomicity.
+   Closing it properly needs a Firestore transaction claiming
+   conversations/{convId}.claimedInbound. Ship Fix 1 first and watch whether it
+   ever fires again at 139 messages/day instead of 1203.
+
+2. repeatGuard FIRES AND SENDS ANYWAY. Both duplicate runs on 919332895073
+   recorded guards {repeatGuard: true} and replied: true. The guard rewrites the
+   text but nothing suppresses the send. Suppressing needs a new IF node between
+   "Extract AI Response" and "Send WhatsApp Reply".
+
+3. GEMINI RETURNS NO TEXT 18% OF THE TIME. 13 of the last 72 replies had
+   emptyReason: no_text_part and the customer got the canned fallback. On
+   919332895073 EVERY reply in the conversation was that fallback. The topic was
+   sexual wellness, so response-side safety filtering is the likely cause.
+   Check finishReason / safetyRatings in the [Empty Reply] log line - the code
+   already prints them - and adjust the safety settings on the Vertex call.
+   This is currently a bigger quality problem than the duplicates were: the
+   customer never gets a real answer at all.
+
+4. whatsapp-chatbot-unified.json in this folder is the Aug 17 export and is now
+   stale. It was NOT updated. The .txt files are the source of truth for the
+   code nodes.

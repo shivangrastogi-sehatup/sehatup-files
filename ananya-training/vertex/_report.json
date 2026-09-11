@@ -1,0 +1,128 @@
+{
+  "builtAt": "2026-09-10T05:49:03.869Z",
+  "train": 224,
+  "validation": 40,
+  "total": 264,
+  "duplicatesDropped": 8,
+  "invalidDropped": 0,
+  "repaired": 202,
+  "honorificsStripped": 385,
+  "turnsPerExample": {
+    "min": 2,
+    "max": 48,
+    "avg": 5.2
+  },
+  "splitBySource": {
+    "chunk-00_2026-07-07_synthetic.jsonl": {
+      "train": 14,
+      "validation": 2
+    },
+    "chunk-01_2026-06-16_2026-06-30.jsonl": {
+      "train": 17,
+      "validation": 3
+    },
+    "chunk-01_2026-07-01_2026-07-20.jsonl": {
+      "train": 4,
+      "validation": 1
+    },
+    "chunk-03_2026-05-17_2026-05-31.jsonl": {
+      "train": 56,
+      "validation": 10
+    },
+    "chunk-05_2026-04-17_2026-05-01.jsonl": {
+      "train": 17,
+      "validation": 3
+    },
+    "chunk-06_2026-04-02_2026-04-16.jsonl": {
+      "train": 1,
+      "validation": 1
+    },
+    "chunk-07_2026-03-18_2026-04-01.jsonl": {
+      "train": 4,
+      "validation": 1
+    },
+    "chunk-08_2026-03-03_2026-03-17.jsonl": {
+      "train": 7,
+      "validation": 1
+    },
+    "chunk-101_2026-08-01_2026-08-17.jsonl": {
+      "train": 98,
+      "validation": 17
+    },
+    "chunk-10_2026-02-01_2026-02-15.jsonl": {
+      "train": 4,
+      "validation": 1
+    },
+    "chunk-24_2025-07-06_2025-07-20.jsonl": {
+      "train": 1,
+      "validation": 0
+    },
+    "chunk-25_2025-06-21_2025-07-05.jsonl": {
+      "train": 1,
+      "validation": 0
+    }
+  },
+  "perFile": {
+    "chunk-00_2026-07-07_synthetic.jsonl": {
+      "kept": 16,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-01_2026-06-16_2026-06-30.jsonl": {
+      "kept": 20,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-01_2026-07-01_2026-07-20.jsonl": {
+      "kept": 5,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-03_2026-05-17_2026-05-31.jsonl": {
+      "kept": 66,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-05_2026-04-17_2026-05-01.jsonl": {
+      "kept": 20,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-06_2026-04-02_2026-04-16.jsonl": {
+      "kept": 2,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-07_2026-03-18_2026-04-01.jsonl": {
+      "kept": 5,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-08_2026-03-03_2026-03-17.jsonl": {
+      "kept": 8,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-101_2026-08-01_2026-08-17.jsonl": {
+      "kept": 115,
+      "dupes": 8,
+      "bad": 0
+    },
+    "chunk-10_2026-02-01_2026-02-15.jsonl": {
+      "kept": 5,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-24_2025-07-06_2025-07-20.jsonl": {
+      "kept": 1,
+      "dupes": 0,
+      "bad": 0
+    },
+    "chunk-25_2025-06-21_2025-07-05.jsonl": {
+      "kept": 1,
+      "dupes": 0,
+      "bad": 0
+    }
+  },
+  "problems": []
+}

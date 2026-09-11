@@ -589,6 +589,94 @@
   }
   el.close.addEventListener('click', close);
 
+  /* ------------------------------------------------- step aside for the footer
+
+     The launcher is fixed to the corner, so at the bottom of the page it covers
+     whatever the footer keeps there - links, contact details, payment marks. It
+     slides out through its own edge when the footer arrives and slides back when
+     the footer leaves.
+
+     atFooter is deliberately separate from the panel's own open/closed state:
+     "the footer is on screen" and "the visitor is mid-conversation" are different
+     facts, and conflating them would pop the launcher back over the footer the
+     moment somebody closed the chat down there. */
+  var atFooter = false;
+  var lessMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // With the panel open the launcher is already out of the way under .hidden,
+  // and fighting that with an animation would flash it back on screen.
+  function panelOpen() { return el.panel.classList.contains('show'); }
+
+  function settle(node, fn) {
+    var done = false;
+    function once() { if (done) return; done = true; fn(); }
+    node.addEventListener('animationend', once, { once: true });
+    // Backstop: animationend never fires under reduced motion or in a tab that
+    // was backgrounded for the whole animation, and without this the launcher
+    // would stay stranded mid-state.
+    window.setTimeout(once, 500);
+  }
+
+  function hideForFooter() {
+    if (atFooter) return;
+    atFooter = true;
+    hideTip();                       // the greeting pill sits in the same corner
+    if (panelOpen()) return;
+    if (lessMotion) { el.launcher.setAttribute('data-away', 'gone'); return; }
+    el.launcher.setAttribute('data-away', 'leaving');
+    settle(el.launcher, function () {
+      // Re-checked: the reader can scroll back up faster than .34s, and parking
+      // it then would leave the launcher off-screen with no way back.
+      if (atFooter) el.launcher.setAttribute('data-away', 'gone');
+      else el.launcher.removeAttribute('data-away');
+    });
+  }
+
+  function showAfterFooter() {
+    if (!atFooter) return;
+    atFooter = false;
+    if (panelOpen()) { el.launcher.removeAttribute('data-away'); return; }
+    if (lessMotion) { el.launcher.removeAttribute('data-away'); return; }
+    el.launcher.setAttribute('data-away', 'returning');
+    settle(el.launcher, function () { el.launcher.removeAttribute('data-away'); });
+  }
+
+  // Closing the chat while the footer is on screen must not drop the launcher
+  // back on top of it, so the close path honours atFooter too.
+  el.close.addEventListener('click', function () {
+    if (atFooter) el.launcher.setAttribute('data-away', 'gone');
+  });
+
+  function watchFooter() {
+    var footers;
+    try {
+      footers = document.querySelectorAll(
+        '[id*="shopify-section"][id*="footer"], footer, .footer, [class*="site-footer"]'
+      );
+    } catch (e) { return; }
+    // Last match: a page can hold several <footer> elements (article cards use
+    // them) and the real page footer is the final one in document order.
+    var footerEl = footers.length ? footers[footers.length - 1] : null;
+    if (!footerEl || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) hideForFooter();
+        else showAfterFooter();
+      });
+    }, { rootMargin: '0px 0px -40px 0px', threshold: 0 }).observe(footerEl);
+  }
+
+  // The widget can boot before the footer has been parsed - that is exactly what
+  // silently broke the storefront's video dock, where the lookup ran during parse
+  // and simply found nothing. readyState is checked rather than always binding,
+  // because on a cached or late-injected render DOMContentLoaded has already been
+  // and gone and would never fire again.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', watchFooter, { once: true });
+  } else {
+    watchFooter();
+  }
+
   el.form.addEventListener('submit', function (e) {
     e.preventDefault();
     send(el.input.value);
@@ -787,6 +875,24 @@
 .launcher:active { transform: translateY(0) scale(.97); }
 .launcher.hidden { opacity: 0; pointer-events: none; transform: scale(.7); }
 .launcher:focus-visible { outline: 2px solid var(--deep); outline-offset: 3px; }
+
+/* Stepping aside for the footer.
+   Once the reader reaches the bottom of the page the launcher is sitting on top
+   of the footer's own content, so it leaves the way a docked panel should - out
+   through the edge it lives on - and comes back when the footer scrolls away.
+   140% clears the button's own width plus its 32px inset before the fade lands,
+   so it is fully past the edge rather than dissolving in place. Mirrored from
+   the storefront's floating-video dock so the two behave identically, only this
+   one is right-docked and leaves to the right.
+   An animation beats both the hover transition and the .hidden transform while
+   it runs, so none of the existing states need touching. */
+@keyframes launcher-away { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(140%) scale(.94); } }
+@keyframes launcher-back { from { opacity: 0; transform: translateX(140%) scale(.94); } to { opacity: 1; transform: translateX(0) scale(1); } }
+.launcher[data-away="leaving"]   { animation: launcher-away .34s cubic-bezier(.6,0,.78,0) both; }
+.launcher[data-away="returning"] { animation: launcher-back .38s cubic-bezier(.18,.9,.28,1.06) both; }
+/* Out of the layout entirely once it has left, so it cannot be tabbed to or
+   clicked through while it is parked off-screen. */
+.launcher[data-away="gone"] { display: none; }
 
 /* Raster launcher art, in the two shapes it can take. A small glyph sits on the
    crimson button like the built-in SVG does. A full-bleed mark IS the button, so

@@ -2439,11 +2439,15 @@ exports.qrReceiveMessage = onRequest({ region: "us-central1" }, async (req, res)
     console.log("[qr-webhook] headers:", JSON.stringify(req.headers || {}));
     console.log("[qr-webhook] body:", JSON.stringify(b));
     // Classify so you can grep one log line per request type in Cloud Logging:
-    //   payload present  → inbound user message (and its _type tells the message kind)
-    //   no payload       → status callback (SENT / DELIVERED / READ), keyed by event
+    //   payload._type present  → inbound user message (and _type tells the message kind)
+    //   no payload._type       → status callback (SENT / DELIVERED / READ), keyed by event
+    // Tested on `p` alone until 10 Sep 2026, which did not match the branch below (which
+    // has always tested `!p || !p._type`). Status callbacks DO carry a payload - with the
+    // message text in it, just no _type - so all 1064 of them in a single day's logs were
+    // labelled "INBOUND _type=?" and were indistinguishable from the 139 real messages.
     console.log(
       "[qr-webhook] kind:",
-      p ? `INBOUND _type=${p._type || "?"}` : `STATUS event=${String(b.event || b.status || b.state || "?").toUpperCase()} messageBy=${b.messageBy || "?"}`,
+      p && p._type ? `INBOUND _type=${p._type}` : `STATUS event=${String(b.event || b.status || b.state || "?").toUpperCase()} messageBy=${b.messageBy || "?"}`,
       "phone:", b.phone || "?",
       "id:", b.id || "?",
     );

@@ -1,9 +1,11 @@
 {
-  "total": 144,
+  "total": 252,
   "byReviewer": {
-    "Roy": 9,
-    "Shivang": 138,
-    "Shivam": 11
+    "Roy": 8,
+    "Shivang": 123,
+    "SHIVANG": 123,
+    "shivang": 15,
+    "Shivam": 1
   },
   "chunks": [
     {
@@ -13,10 +15,10 @@
       "original": 18
     },
     {
-      "file": "chunk-01_2026-06-16_2026-06-30.jsonl",
-      "reviewedKept": 20,
-      "edited": 17,
-      "original": 410
+      "file": "chunk-01_2026-07-01_2026-07-20.jsonl",
+      "reviewedKept": 5,
+      "edited": 5,
+      "original": 597
     },
     {
       "file": "chunk-03_2026-05-17_2026-05-31.jsonl",
@@ -49,6 +51,12 @@
       "original": 13
     },
     {
+      "file": "chunk-101_2026-08-01_2026-08-17.jsonl",
+      "reviewedKept": 123,
+      "edited": 122,
+      "original": 1017
+    },
+    {
       "file": "chunk-10_2026-02-01_2026-02-15.jsonl",
       "reviewedKept": 5,
       "edited": 2,
@@ -63,7 +71,7 @@
     {
       "file": "chunk-25_2025-06-21_2025-07-05.jsonl",
       "reviewedKept": 1,
-      "edited": 0,
+      "edited": 1,
       "original": 4
     }
   ]

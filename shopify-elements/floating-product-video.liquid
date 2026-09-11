@@ -745,11 +745,13 @@
       stopTracking();
       overlay.hidden = true;
       unlockScroll();
-      if (!dockDismissed) {
+      if (!dockDismissed && !atFooter) {
         dock.removeAttribute('data-leaving');
         dock.setAttribute('data-return', 'true');
       }
-      dock.hidden = dockDismissed;
+      // atFooter as well as dockDismissed: closing the player while the footer
+      // is on screen must not put the dock back on top of it.
+      dock.hidden = dockDismissed || atFooter;
       if (lastFocused && lastFocused.focus) lastFocused.focus({ preventScroll: true });
     }
 
@@ -773,6 +775,101 @@
       dock.addEventListener('animationend', finish, { once: true });
       setTimeout(finish, 500);
     });
+
+    /* ------------------------------------------------------------------
+       Step aside for the footer.
+
+       The dock is fixed to the corner, so once the visitor reaches the bottom
+       of the page it sits on top of the footer - over the links, the contact
+       details, whatever is in that corner. An IntersectionObserver watches the
+       footer and slides the dock out the way it came, then slides it back when
+       the footer scrolls off again.
+
+       Reuses the dismiss animation (data-leaving) and the player's re-entry
+       animation (data-return, .38s with no delay), so this adds no new CSS.
+
+       Kept separate from dockDismissed on purpose: a visitor who pressed the X
+       wants it gone for the whole page view, while this is only "not right
+       now". Conflating the two would bring a dismissed dock back the moment
+       they scrolled up again.
+       ------------------------------------------------------------------ */
+    var atFooter = false;
+
+    function findFooter() {
+      try {
+        // The theme's own footer. Shopify wraps sections in
+        // #shopify-section-...__footer, and most themes also render a real
+        // <footer> element; either will do, and the last match is used because
+        // a page can contain more than one <footer> (article cards use them).
+        var footers = document.querySelectorAll(
+          '[id*="shopify-section"][id*="footer"], footer, .footer, [class*="site-footer"]'
+        );
+        return footers.length ? footers[footers.length - 1] : null;
+      } catch (e) { return null; }
+    }
+
+    function hideForFooter() {
+      if (dockDismissed || atFooter) return;
+      atFooter = true;
+      // The player is open, so the dock is already out of the way. Record the
+      // state and let closePlayer honour it.
+      if (!overlay.hidden || dock.hidden) return;
+      if (dockReduceMotion) { dock.hidden = true; return; }
+      dock.removeAttribute('data-return');
+      dock.setAttribute('data-leaving', 'true');
+      var gone = false;
+      function finish() {
+        if (gone) return;
+        gone = true;
+        dock.removeAttribute('data-leaving');
+        // Re-check: the visitor can scroll back up faster than the animation
+        // finishes, and hiding it then would strand the dock off-screen.
+        if (atFooter) dock.hidden = true;
+      }
+      dock.addEventListener('animationend', finish, { once: true });
+      setTimeout(finish, 500);
+    }
+
+    function showAfterFooter() {
+      if (!atFooter) return;
+      atFooter = false;
+      if (dockDismissed || !overlay.hidden) return;
+      dock.removeAttribute('data-leaving');
+      // Re-displaying the element restarts the CSS animation, which is what
+      // plays the slide back in. data-return makes it the quick .38s version.
+      if (!dockReduceMotion) dock.setAttribute('data-return', 'true');
+      dock.hidden = false;
+    }
+
+    /* This section's script is INLINE, so it executes while the browser is
+       still parsing the page - and the footer section is rendered AFTER this
+       one. Looking for the footer right here found nothing, footerEl was null,
+       the guard below failed silently and the dock never stepped aside. No
+       error, no warning, just a feature that quietly did not exist.
+       So the lookup waits for the DOM to finish parsing. On a cached or
+       late-injected render, readyState is already past 'loading' and it runs
+       immediately. */
+    function watchFooter() {
+      var footerEl = findFooter();
+      if (!footerEl || !('IntersectionObserver' in window)) return;
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) hideForFooter();
+          else showAfterFooter();
+        });
+      }, {
+        // A little before the footer's top edge actually arrives, so the dock
+        // is already moving rather than visibly overlapping for a frame.
+        rootMargin: '0px 0px -40px 0px',
+        threshold: 0
+      }).observe(footerEl);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', watchFooter, { once: true });
+    } else {
+      watchFooter();
+    }
 
     document.addEventListener('keydown', function (e) {
       if (overlay.hidden) return;

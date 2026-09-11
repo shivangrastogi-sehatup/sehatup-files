@@ -1,12 +1,19 @@
 const b = ($('QuickReply Webhook').first().json.body) || {};
 
-// Match "Is Real User Message?" EXACTLY: a real message is one that has a payload.
-// This used to test `b.payload._type`. QuickReply does not always send _type - the
-// workflow's own pinned sample body has a payload with text and no _type - so such a
-// message was tagged STATUS, its `text` tag was never set, and the execution looked
-// like a delivery callback in the list. That is why real conversations could not be
-// found among the hundreds of SENT/DELIVERED/READ executions.
-const isStatus = !b.payload;
+// Match "Is Real User Message?" EXACTLY: a real message is one whose payload carries a
+// USER_* _type.
+// HISTORY, and read this before "simplifying" it again. This once tested `b.payload._type`,
+// was changed to `!b.payload` because the workflow's own PINNED SAMPLE body had a payload
+// with text and no _type - i.e. it was weakened to accommodate a test fixture, not real
+// traffic. Real traffic proved the opposite: of 1203 webhook requests logged on 10 Sep 2026,
+// 139 were genuine messages (all with payload._type USER_TEXT / USER_BUTTON_REPLY, plus
+// msg_time, messageBy USER, no event) and 1064 were SENT/DELIVERED/READ status callbacks -
+// which DO carry a payload with the message text, and no _type. Not one body had both.
+// So `!b.payload` labelled all 1064 callbacks as MESSAGE, and the identical test in
+// "Is Real User Message?" let them start a full AI run, which is how the bot ended up
+// answering its own outbound messages three times over.
+// The pinned sample now carries "_type": "USER_TEXT" so the fixture matches reality.
+const isStatus = !b.payload || !b.payload._type;
 
 const tags = {
   kind: isStatus ? 'STATUS' : 'MESSAGE',
