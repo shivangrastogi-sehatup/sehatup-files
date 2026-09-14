@@ -388,6 +388,13 @@
     // Never to somebody already in a conversation. That guard holds in every
     // scope: interrupting a live chat is worse than missing a greeting.
     if (state.opened || state.messages.length) return;
+    // The pill is timed off page load (tipDelay), so a visitor who heads straight
+    // for the footer gets there before it fires. hideForFooter has already run and
+    // found nothing to hide, and without this the pill then unfurled on its own in
+    // an empty corner, the launcher it belongs to long gone. Checked BEFORE
+    // tipAlreadyShown, which claims the once-per-visit slot: waiting must not spend
+    // it. showAfterFooter plays it once they scroll back up.
+    if (atFooter) { tipDeferred = true; return; }
     if (tipAlreadyShown()) return;
     el.tip.classList.add('show');
     tipTimer = window.setTimeout(hideTip, CONFIG.tipHold);
@@ -601,6 +608,7 @@
      facts, and conflating them would pop the launcher back over the footer the
      moment somebody closed the chat down there. */
   var atFooter = false;
+  var tipDeferred = false;
   var lessMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // With the panel open the launcher is already out of the way under .hidden,
@@ -636,9 +644,20 @@
     if (!atFooter) return;
     atFooter = false;
     if (panelOpen()) { el.launcher.removeAttribute('data-away'); return; }
-    if (lessMotion) { el.launcher.removeAttribute('data-away'); return; }
+    if (lessMotion) { el.launcher.removeAttribute('data-away'); playDeferredTip(); return; }
     el.launcher.setAttribute('data-away', 'returning');
-    settle(el.launcher, function () { el.launcher.removeAttribute('data-away'); });
+    settle(el.launcher, function () {
+      el.launcher.removeAttribute('data-away');
+      // After the launcher is home, not during its slide: the pill unfurls out of
+      // the launcher, so it needs the launcher sitting in the corner first.
+      playDeferredTip();
+    });
+  }
+
+  function playDeferredTip() {
+    if (!tipDeferred || atFooter) return;
+    tipDeferred = false;
+    showTip();
   }
 
   // Closing the chat while the footer is on screen must not drop the launcher

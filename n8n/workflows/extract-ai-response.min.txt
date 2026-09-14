@@ -436,6 +436,8 @@ let bookingClaimGuard = false;
        /\b(request|details|detail|jaankari|naam)\b[^.!?]{0,26}\b(bhej\s*di|bhej\s*diya|bhej\s*dia|share\s*kar\s*di|share\s*kar\s*diya|de\s*di|de\s*diya)\b/i.test(String(aiText))
     || /\b(team|doctor)\b[^.!?]{0,26}\b(connect|call|contact|sampark)\b[^.!?]{0,20}\b(karegi|karenge|kar\s*legi|kar\s*lenge)\b/i.test(String(aiText))
     || /\b(consultation|appointment|slot|booking)\b[^.!?]{0,24}\b(fix\s*ho|book\s*ho|set\s*ho|ho\s*gay[ai]|kar\s*di\b|kar\s*diya\b|fix\s*kar\s*di\b)\b/i.test(String(aiText))
+
+    || /\b(consultation|appointment|slot|booking)\b[^.!?]{0,30}\b(book|set|fix)\b[^.!?]{0,12}\b(kar|kara|karwa)\b[^.!?]{0,10}\b(deti|dungi|denge|diya|di|liya)\b/i.test(String(aiText))
   );
 
   const _alsoAsks = /(kaunsa time|kis time|konsa time|time bata|naam bata|naam aur|ke beech)/i.test(String(aiText));
@@ -691,12 +693,19 @@ let inventGuard = false;
 
   const _offeredDiscount = /\b(discount|chhut|chhoot|chut\b|offer|kam\s*kar|kam\s*karwa|kam\s*me|sasta|rebate)\b/i.test(_t)
     && /\b(de\s*d|dedun|de\s*dun|kar\s*d|karwa|dilwa|mil\s*ja|ho\s*ja|check\s*kar|confirm)\b/i.test(_t);
-  if (_claimedSend || _claimedConfirm || _offeredDiscount) {
+
+  const _claimedViewed = /\b(maine|mai\s*ne|main\s*ne)\b[^.!?]{0,24}\b(dekh|dekha|dekhi|dekhli)\w*\b/i.test(_t)
+    || /\b(dekh\s*liya|dekh\s*li|dekh\s*lia|check\s*kar\s*liya)\b/i.test(_t);
+
+  if (_claimedSend || _claimedConfirm || _offeredDiscount || _claimedViewed) {
     inventGuard = _offeredDiscount ? 'offered_discount'
-      : (_claimedConfirm ? 'claimed_confirmation' : 'claimed_sent');
+      : (_claimedViewed ? 'claimed_viewed'
+      : (_claimedConfirm ? 'claimed_confirmation' : 'claimed_sent'));
     aiText = _offeredDiscount
       ? 'Ji, price wahi rehta hai - isme main khud se koi badlaav nahi kar sakti. Koi offer chal raha ho to hamari team aapko bata degi. Aap chahein to main aapki free consultation set kara deti hu, wo bilkul free hai.'
-      : 'Ji, main ye khud se confirm nahi kar sakti. Main aapki request team ko bhej deti hu, wo aapse jaldi connect karenge. Tab tak koi aur sawaal ho to bata dijiye.';
+      : (_claimedViewed
+      ? 'Ji, mujhe yahan photo ya video nahi dikhte, isliye main dekh nahi paayi. Aap likh kar bata dijiye - problem kya hai aur kab se hai? Doctor ko aap call par sab detail me bata sakte hain, wo puri baat samajh kar hi salah denge.'
+      : 'Ji, main ye khud se confirm nahi kar sakti. Main aapki request team ko bhej deti hu, wo aapse jaldi connect karenge. Tab tak koi aur sawaal ho to bata dijiye.');
     console.log('[Invent Guard] BLOCKED ' + inventGuard + ' | was=' + JSON.stringify(_t.slice(0, 100)));
   }
 }
@@ -707,6 +716,29 @@ if (/\b(a\.?\s?i\.?|artificial\s*intelligence|bot|chat\s*bot|chatbot|assistant|l
   aiIdentityGuard = true;
   aiText = 'Mai Ananya hu ji, SehatUP ki health advisor. Aap apni health se judi koi bhi baat bata dijiye, main help kar deti hu.';
   console.log('[AI Identity Guard] model claimed to be an AI/bot');
+}
+
+let pregnancyGuard = false;
+{
+  var _asksPregnancy = /\b(pregnan\w*|pregnency|garbh\w*|breast\s*feed\w*|breastfeed\w*|feeding\s*kara|doodh\s*pila|conceiv\w*)\b/i.test(String(aiText))
+    && /\?|\bnahi\s*hai\b|\bto\s*nahi\b|\bkya\b/i.test(String(aiText));
+  if (_asksPregnancy) {
+    var _said = String(newMsgText || '');
+    try {
+      var _ins = $('Fetch Conversation History').all().map(i => i && i.json)
+        .filter(m => m && m.direction === 'in' && m.text).map(m => String(m.text));
+      _said = _ins.join(' ') + ' ' + _said;
+    } catch (e) {}
+    var _maleConcern = /\b(timing|time\s*kam|jaldi\s*nikal|nikal\s*jata|discharge|premature|erection|erect\w*|ling|penis|land\b|size\s*chota|chota\s*size|mota\s*karna|veerya|virya|shukranu|sperm|night\s*fall|nightfall|swapnadosh|dhat|napunsak|mardana|marad|stamina\s*sex|sex\s*karta|sambhog)\b/i.test(_said);
+
+    var _femaleContext = /\b(period|periods|mahwari|mahavari|pcod|pcos|pregnan\w*|garbh\w*|conceiv\w*|breast\s*feed\w*|breastfeed\w*|menopaus\w*|ovary|ovaries|bacchedani|uterus|delivery\s*hui)\b/i.test(_said);
+    if (_maleConcern && !_femaleContext) {
+      pregnancyGuard = true;
+      aiText = 'Theek hai, note kar liya. Bas ye bata dijiye - koi health problem hai ya koi dawai chal rahi hai? Uske hisab se main sahi guidance de deti hu.';
+      console.log('[Pregnancy Guard] BLOCKED a pregnancy/breastfeeding question on a male concern'
+        + ' | was=' + JSON.stringify(String(aiText).slice(0, 90)));
+    }
+  }
 }
 
 let safetyClaimGuard = false;
@@ -762,10 +794,10 @@ if (!aiText) aiText = 'bataiye, mai aapki kya help kar sakti hu?';
 
 const _guardNames = ['roleGuard', 'scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
   'repeatGuard', 'companyGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard',
-  'pitchGuard', 'safetyClaimGuard', 'consultModeGuard', 'inventGuard', 'aiIdentityGuard', 'bookingClaimGuard'];
+  'pitchGuard', 'safetyClaimGuard', 'consultModeGuard', 'inventGuard', 'aiIdentityGuard', 'bookingClaimGuard', 'pregnancyGuard'];
 const _flagVals = { roleGuard, scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
   repeatGuard, companyGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard,
-  pitchGuard, safetyClaimGuard, consultModeGuard, inventGuard, aiIdentityGuard, bookingClaimGuard };
+  pitchGuard, safetyClaimGuard, consultModeGuard, inventGuard, aiIdentityGuard, bookingClaimGuard, pregnancyGuard };
 const _flags = _guardNames.filter(k => _flagVals[k])
   .map(k => k.replace(/Guard$/, '') + (typeof _flagVals[k] === 'string' ? '=' + _flagVals[k] : ''));
 if (emptyReason) _flags.push('empty=' + emptyReason);
@@ -805,6 +837,7 @@ return [{
     inventGuard,
     aiIdentityGuard,
     bookingClaimGuard,
+    pregnancyGuard,
     emptyReason,
     lastUpdated: new Date().toISOString()
   }
