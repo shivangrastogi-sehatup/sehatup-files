@@ -169,13 +169,26 @@ RESTRUCTURE (decided 2026-09-14) - move off the flat root, grouped by who writes
           app_settings/product_shipping. medicine_catalog stays in app_settings.
 
   MOVE 2: metadata/counters -> config/counters  (prescription RX number counter)
-    [ ] 1 rules: config/counters writable by doctor + marketing (+admin). DEPLOY BEFORE CRM,
+    [x] 1 rules: config/counters writable by doctor + marketing (+admin). DEPLOY BEFORE CRM,
           or every prescription save fails (the transaction writes config/counters).
-    [ ] 2 CRM code: preview + save transaction read BOTH counters, use the higher, write BOTH
-    [ ] 3 copy metadata/counters -> config/counters (value was 1378 on 2026-09-15)
-    [ ] 4 CRM check: save one prescription, RX number = old counter + 1, both docs equal
-    [ ] 5 later, with user OK: remove metadata read/write from the transaction + preview,
-          remove the metadata rule, delete metadata/counters.
+    [x] 2 CRM code: preview + save transaction read BOTH counters, use the higher, write BOTH
+          (commit 41c8da3)
+    [x] 3 copied metadata/counters -> config/counters (1378), verified identical
+    [x] 4 CRM check: RX-1379 saved 2026-09-15 07:04 UTC, both counters 1379 in the same
+          transaction, PDF generated, only one doc with that number
+    NOTE: pre-existing bug found (not caused by the move): 61 RX numbers were reused,
+          302 prescriptions share a number (241 extra copies), 54 of 61 by the same
+          doctor, last on 2026-09-12 (RX-1378 x2). Cause: the ID box is filled once when
+          the prescription screen opens and never refreshed after a save, and the save
+          trusted it. FIX written 2026-09-15: save takes the typed number only if it is
+          above the counter, else counter+1; box moves to the next number after a save;
+          stored numericPatientId matches the saved number. Existing duplicates untouched.
+    [~] 5 retire metadata/counters:
+          [x] a CRM code uses only config/counters (preview + transaction), 2026-09-15
+          [ ] b push, then wait ~1 day (or team refreshes CRM tabs)
+          [ ] c remove the metadata rule (deploy)
+          [ ] d delete metadata/counters with user OK (collection then disappears;
+                it is in the local backup). Also drop "metadata" from Data Studio list.
           PrescriptionEditor.jsx (dead App.js portal) still references metadata/counters.
   Full target map, migration steps and order: the "sehatUP Firestore Blueprint" page.
 

@@ -4917,12 +4917,8 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   React.useEffect(() => {
     const fetchNextId = async () => {
       try {
-        // Counter moved to config/counters; metadata/counters is read too until it is retired.
-        const [newSnap, oldSnap] = await Promise.all([
-          getDoc(doc(db, 'config', 'counters')),
-          getDoc(doc(db, 'metadata', 'counters')),
-        ]);
-        const current = Math.max(newSnap.data()?.prescriptionId || 0, oldSnap.data()?.prescriptionId || 0);
+        const counterSnap = await getDoc(doc(db, 'config', 'counters'));
+        const current = counterSnap.data()?.prescriptionId || 0;
         setNumericPatientId(current ? (current + 1).toString() : "1000");
       } catch (e) {
         console.error('Failed to fetch prescription counter:', e);
@@ -5183,24 +5179,18 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         timestamp: serverTimestamp(),
       };
 
+      let savedNumber;
       await runTransaction(db, async (transaction) => {
-        // Counter moved to config/counters. Until metadata/counters is retired, read both,
-        // continue from the higher one and write both, so an old CRM tab still bumping the
-        // old doc can never cause a duplicate RX number.
         const counterRef = doc(db, 'config', 'counters');
-        const legacyCounterRef = doc(db, 'metadata', 'counters');
         const counterDoc = await transaction.get(counterRef);
-        const legacyCounterDoc = await transaction.get(legacyCounterRef);
-        const currentSystemId = Math.max(
-          counterDoc.data()?.prescriptionId || 999,
-          legacyCounterDoc.data()?.prescriptionId || 999,
-        );
-        let nextId;
-        if (numericPatientId && !isNaN(parseInt(numericPatientId, 10))) {
-          nextId = parseInt(numericPatientId, 10);
-        } else {
-          nextId = currentSystemId + 1;
-        }
+        const currentSystemId = counterDoc.data()?.prescriptionId || 999;
+        // The ID box is filled once when the screen opens and is not refreshed between
+        // saves, so it can hold a number that is already used (61 RX numbers were reused
+        // this way). Only a number above the counter is taken as typed; anything else
+        // gets the next free number.
+        const typedId = parseInt(numericPatientId, 10);
+        const nextId = typedId > currentSystemId ? typedId : currentSystemId + 1;
+        savedNumber = nextId;
         const newCounterValue = Math.max(currentSystemId, nextId);
         const prescriptionID = `RX-${nextId}`;
 
@@ -5208,10 +5198,9 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         docId = newPrescriptionRef.id;
         const patientRef = doc(db, collectionName, customer.id);
         const patientPrescriptionRef = doc(collection(patientRef, 'prescriptions'), docId);
-        const finalData = { ...prescriptionData, sequentialId: nextId, prescriptionID };
+        const finalData = { ...prescriptionData, numericPatientId: String(nextId), sequentialId: nextId, prescriptionID };
 
         transaction.set(counterRef, { prescriptionId: newCounterValue }, { merge: true });
-        transaction.set(legacyCounterRef, { prescriptionId: newCounterValue }, { merge: true });
         transaction.set(newPrescriptionRef, finalData);
         const doctorName = auth?.currentUser?.displayName
           || auth?.currentUser?.email?.split('@')[0]?.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -5237,6 +5226,8 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
           transaction.set(myPrescRef, { ...finalData, docId, savedAt: serverTimestamp() });
         }
       });
+      // Show the next free number, so the box is not left on the one just used.
+      setNumericPatientId(String(savedNumber + 1));
 
       // Trigger PDF generation on local dev
       if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
