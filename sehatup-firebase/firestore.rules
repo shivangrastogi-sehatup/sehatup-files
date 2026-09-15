@@ -24,10 +24,12 @@ service cloud.firestore {
     // below. Reads of completed submissions stay auth-only (admin dashboard) via
     // the catch-all rule above; only the writes the quiz needs are opened here.
 
-    // In-progress (partial) submissions: created, read (to resume a session),
+    // In-progress (partial) submissions: created, fetched by ID (to resume a session),
     // updated as the user answers, and deleted once the quiz is completed.
+    // "get" not "read": the quiz only ever loads its own doc by ID, so public
+    // listing stays closed. The CRM lists them signed in, via the catch-all.
     match /partial_submissions/{doc} {
-      allow create, read, update, delete: if true;
+      allow create, get, update, delete: if true;
     }
 
     // Completed submissions: created on finish, and updated for the post-OTP

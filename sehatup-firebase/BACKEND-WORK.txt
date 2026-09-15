@@ -124,10 +124,10 @@ DO FIRST - Firebase config only, no app code changes
          active_whatsapp_requests). NOTE: rules are OR'd, so an "allow ... if false"
          block next to the catch-all does nothing. The exclusion has to be inside
          the catch-all itself. (done in repo, deploy)
-  [ ] 2. partial_submissions: change "read" to "get" (single doc by ID, no listing).
-         BEFORE CHANGING: confirm the questionnaire engine only loads a partial by its
-         ID and never queries/lists the collection. Also decide whether public delete
-         is really needed. Fixes P1.
+  [x] 2. partial_submissions: "read" changed to "get" (single doc by ID, no listing).
+         Checked 2026-09-15: live-web-1, live-web-2, dev engines and public/*-2.html
+         only do doc(id).get/set/delete. Only the CRM lists (signed in, catch-all).
+         Public delete kept: the quiz deletes its own partial on finish. Fixes P1.
   [ ] 3. Check whether anything uses Firebase phone sign-in. If not, turn the phone
          provider off in Firebase console > Authentication > Sign-in method. Fixes the
          easy half of P3.
