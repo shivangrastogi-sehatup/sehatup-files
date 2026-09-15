@@ -4917,12 +4917,13 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
   React.useEffect(() => {
     const fetchNextId = async () => {
       try {
-        const counterSnap = await getDoc(doc(db, 'metadata', 'counters'));
-        if (counterSnap.exists()) {
-          setNumericPatientId((counterSnap.data().prescriptionId + 1).toString());
-        } else {
-          setNumericPatientId("1000");
-        }
+        // Counter moved to config/counters; metadata/counters is read too until it is retired.
+        const [newSnap, oldSnap] = await Promise.all([
+          getDoc(doc(db, 'config', 'counters')),
+          getDoc(doc(db, 'metadata', 'counters')),
+        ]);
+        const current = Math.max(newSnap.data()?.prescriptionId || 0, oldSnap.data()?.prescriptionId || 0);
+        setNumericPatientId(current ? (current + 1).toString() : "1000");
       } catch (e) {
         console.error('Failed to fetch prescription counter:', e);
       }
@@ -5183,9 +5184,17 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
       };
 
       await runTransaction(db, async (transaction) => {
-        const counterRef = doc(db, 'metadata', 'counters');
+        // Counter moved to config/counters. Until metadata/counters is retired, read both,
+        // continue from the higher one and write both, so an old CRM tab still bumping the
+        // old doc can never cause a duplicate RX number.
+        const counterRef = doc(db, 'config', 'counters');
+        const legacyCounterRef = doc(db, 'metadata', 'counters');
         const counterDoc = await transaction.get(counterRef);
-        const currentSystemId = counterDoc.exists() ? (counterDoc.data().prescriptionId || 999) : 999;
+        const legacyCounterDoc = await transaction.get(legacyCounterRef);
+        const currentSystemId = Math.max(
+          counterDoc.data()?.prescriptionId || 999,
+          legacyCounterDoc.data()?.prescriptionId || 999,
+        );
         let nextId;
         if (numericPatientId && !isNaN(parseInt(numericPatientId, 10))) {
           nextId = parseInt(numericPatientId, 10);
@@ -5202,6 +5211,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
         const finalData = { ...prescriptionData, sequentialId: nextId, prescriptionID };
 
         transaction.set(counterRef, { prescriptionId: newCounterValue }, { merge: true });
+        transaction.set(legacyCounterRef, { prescriptionId: newCounterValue }, { merge: true });
         transaction.set(newPrescriptionRef, finalData);
         const doctorName = auth?.currentUser?.displayName
           || auth?.currentUser?.email?.split('@')[0]?.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())

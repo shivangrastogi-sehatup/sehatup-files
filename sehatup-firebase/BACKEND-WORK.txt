@@ -140,7 +140,8 @@ DO FIRST - Firebase config only, no app code changes
          delete the old cache once; old OTP docs are consumed on read anyway.
 
 NEXT - small code changes
-  [~] 7. Role-based rules using users/{uid}.roles written 2026-09-15 (not deployed yet).
+  [x] 7. Role-based rules using users/{uid}.roles, deployed + committed 2026-09-15
+         (live ruleset verified identical to repo).
          No catch-all; admin passes every check; a user can only edit own photo +
          calc settings, never roles. website_developer: submissions + logistics
          settings only, no users/prescriptions writes. Tested: scratchpad
@@ -157,6 +158,25 @@ NEXT - small code changes
   [ ] 11. Wire CRM delete/edit actions into admin_audit_logs. Fixes P9.
 
 RESTRUCTURE (decided 2026-09-14) - move off the flat root, grouped by who writes
+
+  MOVE 1: app_settings/{logistics,product_shipping} -> config/  (started 2026-09-15)
+    [x] 1 rules: config/{doc} block deployed
+    [x] 2 CRM code: reads config/ with app_settings fallback, saves to config/ (commit f7d12a7)
+    [x] 3 copied both docs 06:51 UTC, verified identical field by field
+    [ ] 4 CRM check: Settings > Logistics, Product shipping, Create order rate
+    [ ] 5 on/after 2026-09-29, with user OK: remove fallback in NewUI.jsx, remove the
+          app_settings rule for these 2 docs, delete app_settings/logistics and
+          app_settings/product_shipping. medicine_catalog stays in app_settings.
+
+  MOVE 2: metadata/counters -> config/counters  (prescription RX number counter)
+    [ ] 1 rules: config/counters writable by doctor + marketing (+admin). DEPLOY BEFORE CRM,
+          or every prescription save fails (the transaction writes config/counters).
+    [ ] 2 CRM code: preview + save transaction read BOTH counters, use the higher, write BOTH
+    [ ] 3 copy metadata/counters -> config/counters (value was 1378 on 2026-09-15)
+    [ ] 4 CRM check: save one prescription, RX number = old counter + 1, both docs equal
+    [ ] 5 later, with user OK: remove metadata read/write from the transaction + preview,
+          remove the metadata rule, delete metadata/counters.
+          PrescriptionEditor.jsx (dead App.js portal) still references metadata/counters.
   Full target map, migration steps and order: the "sehatUP Firestore Blueprint" page.
 
   Target groups:

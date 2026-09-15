@@ -127,6 +127,7 @@ service cloud.firestore {
     match /config/{docId} {
       allow read: if isStaff();
       allow write: if (docId in ['logistics', 'product_shipping'] && hasRole(['operations', 'website_developer']))
+        || (docId == 'counters' && hasRole(clinicWriters()))
         || isAdmin();
     }
     match /app_settings/{docId} {
