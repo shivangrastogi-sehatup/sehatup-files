@@ -128,9 +128,8 @@ DO FIRST - Firebase config only, no app code changes
          Checked 2026-09-15: live-web-1, live-web-2, dev engines and public/*-2.html
          only do doc(id).get/set/delete. Only the CRM lists (signed in, catch-all).
          Public delete kept: the quiz deletes its own partial on finish. Fixes P1.
-  [ ] 3. Check whether anything uses Firebase phone sign-in. If not, turn the phone
-         provider off in Firebase console > Authentication > Sign-in method. Fixes the
-         easy half of P3.
+  [x] 3. Phone sign-in provider turned OFF 2026-09-15 (nothing in the repo used
+         signInWithPhoneNumber / RecaptchaVerifier). Fixes the easy half of P3.
   [ ] 4. Turn on TTL (gcloud firestore fields ttls update expireAt ...) for
          nimbus_events_seen, shopify_sync_claims, qr_context_cache,
          active_whatsapp_requests. Fixes P4.
@@ -141,14 +140,19 @@ DO FIRST - Firebase config only, no app code changes
          delete the old cache once; old OTP docs are consumed on read anyway.
 
 NEXT - small code changes
-  [ ] 7. Replace the catch-all with role-based rules using users/{uid}.roles, so a
-         signed-in account only reaches what its role needs. Finishes P3. This one
-         needs care: map every CRM screen to the collections it touches first.
+  [~] 7. Role-based rules using users/{uid}.roles written 2026-09-15 (not deployed yet).
+         No catch-all; admin passes every check; a user can only edit own photo +
+         calc settings, never roles. website_developer: submissions + logistics
+         settings only, no users/prescriptions writes. Tested: scratchpad
+         role-rules-test.mjs (54 cases via Rules API, mocked users). All users now
+         have a roles array (old role field fixed by user).
+         NEXT TIME: enforce permission switches (users/{uid}/permissions/settings)
+         for prescriptions. Doctor "own prescriptions only" stays a screen filter.
   [x] 8. questionnaire_submissions: public update limited to phone, isVerified and
          rawState.userInfo.phone (done in repo 2026-09-15, deploy + run
          scratchpad submission-rules-test.mjs). Final save is add() = create.
          Live rawState has no userInfo until the phone sync adds it. Fixes P5.
-  [ ] 9. Export RED TALK to a file, then delete the collection. Fixes P8.
+  [-] 9. RED TALK: KEEP AS IS (user decision 2026-09-15). Do not move or delete.
   [ ] 10. Work out which prescriptions path is the source of truth. Fixes P7.
   [ ] 11. Wire CRM delete/edit actions into admin_audit_logs. Fixes P9.
 

@@ -3,43 +3,76 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Authenticated users can read/write all collections except the server-only
-    // ones. Rules are OR'd, so the exclusion has to live here, not in a deny block.
-    // Servers use service accounts and bypass rules.
-    match /{collection}/{document=**} {
-      allow read, write: if request.auth != null
-        && !(collection in ['ai_runs', 'qr_context_cache', 'nimbus_events_seen',
-                            'shopify_sync_claims', 'active_whatsapp_requests']);
+    // ── Roles ───────────────────────────────────────────────────────────────
+    // Staff roles live in users/{uid}.roles (array). A person can hold several roles;
+    // "admin" passes every check. There is no catch-all: a collection not listed here
+    // is closed to browsers. Servers (Cloud Functions, Vercel API, n8n) use service
+    // accounts and bypass these rules, so the server-only collections (ai_runs,
+    // qr_context_cache, nimbus_events_seen, shopify_sync_claims,
+    // active_whatsapp_requests) need no rule at all.
+    function signedIn() {
+      return request.auth != null;
+    }
+    function myRoles() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('roles', []);
+    }
+    function hasRole(list) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && myRoles().hasAny(list.concat(['admin']));
+    }
+    function isStaff() {
+      return hasRole(['doctor', 'telesales', 'operations', 'marketing', 'website_developer']);
+    }
+    function isAdmin() {
+      return hasRole([]);
+    }
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
     }
 
-    // Storefront lead-capture popup (shopify-elements/lead-capture-popup.liquid).
-    // Visitors are not logged in: create only, never read back.
-    match /popup_leads/{doc} {
-      allow create: if true;
-      allow read, update, delete: if false;
+    // Who does what, from the CRM screens (NewUI.jsx):
+    function clinicWriters()     { return ['doctor', 'marketing']; }
+    function prescriptionReaders() { return ['doctor', 'telesales', 'marketing']; }
+    function submissionWriters() { return ['doctor', 'marketing', 'website_developer']; }
+
+    // ── Staff accounts ──────────────────────────────────────────────────────
+    // Every staff member can read the user list (prescriber names). Only admin can
+    // create users or change roles. A user may edit only their own photo and
+    // price-calculator settings, never their roles.
+    match /users/{uid} {
+      allow read: if isStaff();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isSelf(uid)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['photoURL', 'photoUpdatedAt', 'calc_settings', 'calcUpdatedAt']));
+
+      match /permissions/{doc} {
+        allow read: if isSelf(uid) || isAdmin();
+        allow write: if isAdmin();
+      }
+      match /preferences/{doc} {
+        allow read, write: if isSelf(uid) || isAdmin();
+      }
+      match /prescription_presets/{doc} {
+        allow read, write: if isSelf(uid) || isAdmin();
+      }
+      match /my_prescriptions/{doc} {
+        allow read, write: if isSelf(uid) || isAdmin();
+      }
     }
 
-    // Public questionnaire: visitors are NOT logged in, so they must be able to
-    // submit without auth. Same inbound-write pattern as nimbus_tracking/shipments
-    // below. Reads of completed submissions stay auth-only (admin dashboard) via
-    // the catch-all rule above; only the writes the quiz needs are opened here.
-
-    // In-progress (partial) submissions: created, fetched by ID (to resume a session),
-    // updated as the user answers, and deleted once the quiz is completed.
-    // "get" not "read": the quiz only ever loads its own doc by ID, so public
-    // listing stays closed. The CRM lists them signed in, via the catch-all.
-    match /partial_submissions/{doc} {
-      allow create, get, update, delete: if true;
-    }
-
-    // Completed submissions: created on finish, and updated for the post-OTP
-    // phone-number sync. The whatsapp_requests subcollection is written when the
-    // user asks for their report on WhatsApp.
-    // Public update is limited to the phone sync: phone, rawState.userInfo.phone and
-    // isVerified. A visitor who knows a report ID cannot rewrite the report itself.
-    // Final reports are saved with add(), which is a create. CRM edits are signed in
-    // and go through the catch-all.
+    // ── Patients and questionnaires ─────────────────────────────────────────
+    // Staff read (global search runs for every role). Doctors, marketing and
+    // developers (Data Studio) edit. The public quiz rules further down stay as they are.
     match /questionnaire_submissions/{doc} {
+      allow read: if isStaff();
+      allow update, delete: if hasRole(submissionWriters());
+
+      // Public questionnaire: create on finish, then only the post-OTP phone sync.
+      // Final reports are saved with add(), which is a create. A visitor who knows a
+      // report ID cannot rewrite the report itself.
       allow create: if true;
       allow update: if request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['phone', 'rawState', 'isVerified'])
@@ -50,35 +83,100 @@ service cloud.firestore {
 
       match /whatsapp_requests/{reqDoc} {
         allow create: if true;
+        allow read: if isAdmin();
       }
     }
 
-    // ── Nimbus shipment tracking ────────────────────────────────────────────
-    // These collections USED TO carry `allow write: if true`, because the Vercel
-    // webhook wrote to Firestore with FIREBASE_WEB_API_KEY — an API key identifies the
-    // project, not a user, so `request.auth` was null and only an open rule let it
-    // through. That also meant anyone who knew the project ID could write here.
-    //
-    // The server now authenticates with a service account (api/_lib/google-auth.js),
-    // and service accounts bypass security rules entirely, so no public write rule is
-    // needed. Both remaining writers are covered:
-    //   • webhook / cron / backfill → service account, bypasses rules
-    //   • CRM staff (Excel upload)  → signed in, covered by the auth catch-all above
-    //
-    // ⚠️ Deploy order matters: set FIREBASE_SERVICE_ACCOUNT in Vercel and ship the API
-    // code BEFORE these rules, or inbound Nimbus events will be rejected.
-    //
-    // Structure:
-    //   shipments/{phone}              → customer summary
-    //   shipments/{phone}/awbs/{awb}   → per-shipment enriched doc
+    // In-progress quiz: the public quiz creates, fetches its own doc by ID, updates and
+    // deletes it. "get" not "read", so the public cannot list. Staff list it signed in.
+    match /partial_submissions/{doc} {
+      allow create, get, update, delete: if true;
+      allow list: if isStaff();
+    }
+
+    match /manual_submissions/{doc} {
+      allow read: if isStaff();
+      allow write: if hasRole(submissionWriters());
+    }
+
+    // ── Prescriptions ───────────────────────────────────────────────────────
+    // Top-level copy, the copy under each patient, and the RX number counter all move
+    // together in one transaction, so they share the same writers.
+    match /prescriptions/{doc} {
+      allow read: if hasRole(prescriptionReaders());
+      allow write: if hasRole(clinicWriters());
+    }
+    match /{patientColl}/{patientId}/prescriptions/{doc} {
+      allow read: if patientColl in ['questionnaire_submissions', 'partial_submissions', 'manual_submissions']
+        && hasRole(prescriptionReaders());
+      allow write: if patientColl in ['questionnaire_submissions', 'partial_submissions', 'manual_submissions']
+        && hasRole(clinicWriters());
+    }
+    match /metadata/{doc} {
+      allow read: if hasRole(prescriptionReaders());
+      allow write: if hasRole(clinicWriters());
+    }
+    match /doctor_details/{doc} {
+      allow read: if hasRole(['doctor', 'marketing', 'website_developer']);
+      allow write: if isAdmin();
+    }
+
+    // ── Settings ────────────────────────────────────────────────────────────
+    match /app_settings/{docId} {
+      allow read: if isStaff();
+      allow write: if (docId in ['logistics', 'product_shipping'] && hasRole(['operations', 'website_developer']))
+        || (docId == 'medicine_catalog' && hasRole(clinicWriters()))
+        || isAdmin();
+    }
+    match /settings/{doc} {
+      allow read, write: if isAdmin();
+    }
+    match /qr_config/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Messaging ───────────────────────────────────────────────────────────
+    // Admin runs the inbox; marketing sees message stats on the Analytics Dashboard.
+    match /conversations/{phone} {
+      allow read: if hasRole(['marketing']);
+      allow write: if isAdmin();
+    }
+    match /{path=**}/messages/{msg} {
+      allow read: if hasRole(['marketing']);
+      allow write: if isAdmin();
+    }
+    match /web_chats/{session=**} {
+      allow read: if isAdmin();
+    }
+
+    // ── Logistics ───────────────────────────────────────────────────────────
+    // Webhook, cron and backfill use a service account. Staff read (global search);
+    // operations upload and sync shipments from the CRM.
     match /nimbus_tracking/{doc} {
-      allow read, write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if hasRole(['operations']);
     }
     match /shipments/{phone} {
-      allow read, write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if hasRole(['operations']);
     }
-    match /shipments/{phone}/awbs/{awb} {
-      allow read, write: if request.auth != null;
+    match /{path=**}/awbs/{awb} {
+      allow read: if isStaff();
+      allow write: if hasRole(['operations']);
+    }
+
+    // ── Leads, audit, other ─────────────────────────────────────────────────
+    // Storefront lead popup: visitors create only.
+    match /popup_leads/{doc} {
+      allow create: if true;
+      allow read: if hasRole(['marketing']);
+    }
+    match /admin_audit_logs/{doc} {
+      allow read: if isAdmin();
+      allow create: if hasRole(['website_developer']);
+    }
+    match /RED%20TALK/{doc} {
+      allow read: if isAdmin();
     }
   }
 }
