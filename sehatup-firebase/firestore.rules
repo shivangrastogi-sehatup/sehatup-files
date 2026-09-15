@@ -35,8 +35,18 @@ service cloud.firestore {
     // Completed submissions: created on finish, and updated for the post-OTP
     // phone-number sync. The whatsapp_requests subcollection is written when the
     // user asks for their report on WhatsApp.
+    // Public update is limited to the phone sync: phone, rawState.userInfo.phone and
+    // isVerified. A visitor who knows a report ID cannot rewrite the report itself.
+    // Final reports are saved with add(), which is a create. CRM edits are signed in
+    // and go through the catch-all.
     match /questionnaire_submissions/{doc} {
-      allow create, update: if true;
+      allow create: if true;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['phone', 'rawState', 'isVerified'])
+                    && (!('rawState' in request.resource.data.diff(resource.data).affectedKeys())
+                        || (request.resource.data.rawState.diff(resource.data.rawState).affectedKeys().hasOnly(['userInfo'])
+                            && request.resource.data.rawState.userInfo
+                                 .diff(resource.data.rawState.get('userInfo', {})).affectedKeys().hasOnly(['phone'])));
 
       match /whatsapp_requests/{reqDoc} {
         allow create: if true;

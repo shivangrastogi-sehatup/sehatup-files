@@ -144,9 +144,10 @@ NEXT - small code changes
   [ ] 7. Replace the catch-all with role-based rules using users/{uid}.roles, so a
          signed-in account only reaches what its role needs. Finishes P3. This one
          needs care: map every CRM screen to the collections it touches first.
-  [ ] 8. questionnaire_submissions: limit public update to the phone-sync fields only
-         (request.resource.data.diff(resource.data).affectedKeys().hasOnly([...])).
-         Fixes P5.
+  [x] 8. questionnaire_submissions: public update limited to phone, isVerified and
+         rawState.userInfo.phone (done in repo 2026-09-15, deploy + run
+         scratchpad submission-rules-test.mjs). Final save is add() = create.
+         Live rawState has no userInfo until the phone sync adds it. Fixes P5.
   [ ] 9. Export RED TALK to a file, then delete the collection. Fixes P8.
   [ ] 10. Work out which prescriptions path is the source of truth. Fixes P7.
   [ ] 11. Wire CRM delete/edit actions into admin_audit_logs. Fixes P9.
