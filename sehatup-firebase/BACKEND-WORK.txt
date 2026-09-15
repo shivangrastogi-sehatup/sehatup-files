@@ -1,0 +1,214 @@
+================================================================================
+SEHATUP BACKEND WORK - FIRESTORE FINDINGS
+Project: sehatup-f96b5 (prod)   Database: (default)   Region: asia-south2
+Checked live on 2026-09-14 (admin read-only, deployed rules, auth config, TTL)
+================================================================================
+
+Nothing in this file has been changed in production yet. It is the to-do list.
+
+
+--------------------------------------------------------------------------------
+1. COLLECTION MAP - who writes what
+--------------------------------------------------------------------------------
+
+22 root collections, about 38,400 root documents plus subcollections.
+
+Collection                         Docs    Written by
+---------------------------------  ------  --------------------------------------------
+ai_runs                            15382   Cloud Function qrLogRun (n8n chatbot run log)
+conversations/{phone}/messages      6119   Cloud Function qrReceiveMessage (QuickReply)
+questionnaire_submissions           5963   Quiz sites, no login
+  /whatsapp_requests                       (report on WhatsApp requests)
+nimbus_tracking                     4496   sehatup-analytics Vercel API (Nimbus webhook, raw events)
+qr_context_cache                    2427   Cloud Function qrCustomerContext
+nimbus_events_seen                  1268   sehatup-analytics api/_lib/claim.js (duplicate-event lock)
+partial_submissions                 1177   Quiz sites, no login (half-filled quiz)
+prescriptions                        633   sehatup-analytics CRM
+shopify_sync_claims                  267   sehatup-analytics api/_lib/claim.js (duplicate Shopify sync lock)
+manual_submissions                   220   sehatup-analytics CRM (patients created by hand)
+  /prescriptions
+shipments/{phone}/awbs/{awb}         213   sehatup-analytics api/_lib/enrich.js + daily cron
+                                           api/cron-sync-shipments.js (01:00 UTC)
+active_whatsapp_requests             104   Cloud Functions (OTP / WhatsApp report flow)
+popup_leads                           88   shopify-elements/lead-capture-popup.liquid, no login
+web_chats/{sessionId}/turns           30   website-chatbot/api/_lib/log.js
+RED TALK                              29   NO WRITER ANYWHERE IN THIS REPO (outside event quiz app)
+users/{uid}/permissions               11   sehatup-analytics CRM (CRM staff accounts)
+app_settings                           2   sehatup-analytics CRM (e.g. doc "logistics")
+doctor_details                         2   sehatup-analytics CRM
+settings                               1   sehatup-analytics CRM (doc "prescription_config")
+metadata                               1   sehatup-analytics CRM (doc "counters", prescriptionId)
+admin_audit_logs                       1   sehatup-analytics CRM (only 1 entry, barely used)
+qr_config                              1   n8n + whatsapp-tools/chatbot-control (doc "chatbot")
+
+Notes on the two that were unknown:
+- shipments: per-customer tracking summary keyed by phone, one "awbs" subdoc per
+  shipment. Kept fresh by the Nimbus webhook and the daily Vercel cron.
+- shopify_sync_claims: an atomic "do this once" lock. Nimbus replays a shipment's
+  whole history as a burst of webhooks; without the lock every copy pushed the same
+  status to Shopify and the customer got duplicate WhatsApp messages.
+
+Composite indexes: none. One field override: messages.msgTime (collection group,
+needed by the CRM Conversations inbox).
+
+
+--------------------------------------------------------------------------------
+2. PROBLEMS FOUND (all verified against production)
+--------------------------------------------------------------------------------
+
+[P1 - SERIOUS] partial_submissions is publicly readable
+  Deployed rule:  match /partial_submissions/{doc} { allow create, read, update, delete: if true; }
+  "read" includes LIST. Anyone on the internet with the public web API key can pull
+  all 1,177 docs: name, date of birth, phone, health metrics, recommended products.
+  They can also delete them.
+
+[P2 - SERIOUS] Deployed rules are NOT the same as the repo file
+  sehatup-firebase/firestore.rules differs from what is live (last deployed
+  2026-08-18 06:47 UTC). The live version has this block, the repo file does not:
+
+      match /popup_leads/{doc} {
+        allow create: if true;
+        allow read, update, delete: if false;
+      }
+
+  Consequence: running `firebase deploy --only firestore` from the repo as it is
+  silently breaks lead capture on the storefront popup. No error anywhere.
+
+[P3 - SERIOUS] Any signed-in user can read and write EVERY collection
+  Catch-all rule:  match /{document=**} { allow read, write: if request.auth != null; }
+  That covers prescriptions, users (including roles), conversations, everything.
+  Auth providers enabled: email = ON, phone = ON, anonymous = OFF.
+  Phone sign-in being ON means anyone with a phone number can become "signed in"
+  using the public web config, and then passes this rule.
+  The quiz OTP flow uses our own functions (generateOTP / verifyOTP), so the Firebase
+  phone provider may not be used by anything. Needs confirming.
+
+[P4] TTL (auto-delete) is only half switched on
+  ai_runs               expireAt field present, TTL policy ACTIVE
+  nimbus_events_seen    expireAt field present, NO TTL policy  -> grows forever
+  shopify_sync_claims   expireAt field present, NO TTL policy  -> grows forever
+  qr_context_cache      NO expireAt field, NO TTL policy       -> grows forever
+
+[P5] questionnaire_submissions allows public update
+  Deployed rule:  allow create, update: if true;
+  Needed for the post-OTP phone sync, but it means anyone who knows or guesses a
+  document ID can overwrite a completed health report. Cannot list, so IDs are hard
+  to guess, but it is still tamperable.
+
+[P6] Rules for collections that do not exist
+  qr_conversations (public read!) and shipments_test. Neither collection exists.
+  The qr_conversations rule opens public read if anything ever gets written there.
+
+[P7] Prescriptions live in two places
+  Top-level "prescriptions" (633 docs) AND "{submissionCollection}/{id}/prescriptions"
+  subcollections (the CRM writes both paths). Not yet checked which one is the source
+  of truth, or whether they drift.
+
+[P8] RED TALK is outside data sitting in prod
+  29 quiz docs for an event (createdAt, score, phone, name, answers, percent). Nothing
+  in this repo writes it. Collection name has a space in it.
+
+[P9] admin_audit_logs is barely wired
+  Only 1 entry exists. CRM deletes/edits are mostly not being logged.
+
+
+--------------------------------------------------------------------------------
+3. PLAN
+--------------------------------------------------------------------------------
+
+DO FIRST - Firebase config only, no app code changes
+  [x] 1. Copy the LIVE rules into sehatup-firebase/firestore.rules (adds popup_leads)
+         so a future deploy cannot break lead capture. Fixes P2. (done in repo, deploy)
+  [x] 1b. Catch-all now excludes the 5 server-only collections (ai_runs,
+         qr_context_cache, nimbus_events_seen, shopify_sync_claims,
+         active_whatsapp_requests). NOTE: rules are OR'd, so an "allow ... if false"
+         block next to the catch-all does nothing. The exclusion has to be inside
+         the catch-all itself. (done in repo, deploy)
+  [ ] 2. partial_submissions: change "read" to "get" (single doc by ID, no listing).
+         BEFORE CHANGING: confirm the questionnaire engine only loads a partial by its
+         ID and never queries/lists the collection. Also decide whether public delete
+         is really needed. Fixes P1.
+  [ ] 3. Check whether anything uses Firebase phone sign-in. If not, turn the phone
+         provider off in Firebase console > Authentication > Sign-in method. Fixes the
+         easy half of P3.
+  [ ] 4. Turn on TTL (gcloud firestore fields ttls update expireAt ...) for
+         nimbus_events_seen, shopify_sync_claims, qr_context_cache,
+         active_whatsapp_requests. Fixes P4.
+  [x] 5. Delete the rules for qr_conversations and shipments_test. Fixes P6.
+         (whatsapp-tools/inbox-dashboard still reads qr_conversations, it is dead)
+  [x] 6. functions/index.js writes expireAt: qr_context_cache 7 days,
+         active_whatsapp_requests 1 day. Old docs have no expireAt and never expire:
+         delete the old cache once; old OTP docs are consumed on read anyway.
+
+NEXT - small code changes
+  [ ] 7. Replace the catch-all with role-based rules using users/{uid}.roles, so a
+         signed-in account only reaches what its role needs. Finishes P3. This one
+         needs care: map every CRM screen to the collections it touches first.
+  [ ] 8. questionnaire_submissions: limit public update to the phone-sync fields only
+         (request.resource.data.diff(resource.data).affectedKeys().hasOnly([...])).
+         Fixes P5.
+  [ ] 9. Export RED TALK to a file, then delete the collection. Fixes P8.
+  [ ] 10. Work out which prescriptions path is the source of truth. Fixes P7.
+  [ ] 11. Wire CRM delete/edit actions into admin_audit_logs. Fixes P9.
+
+RESTRUCTURE (decided 2026-09-14) - move off the flat root, grouped by who writes
+  Full target map, migration steps and order: the "sehatUP Firestore Blueprint" page.
+
+  Target groups:
+    intake/v1/     public writes, no login   partial_submissions, submissions
+                                             (+whatsapp_requests), leads, events/red_talk
+    clinic/v1/     doctor role               patients, prescriptions, doctors
+    admin/v1/      admin role                users/{uid}/permissions, audit_logs
+    config/        admin writes              chatbot, prescription, logistics, counters
+    messaging/v1/  servers write             whatsapp/{phone}/messages, web_chats/{id}/turns
+    logistics/v1/  servers write             shipments/{phone}/awbs, nimbus_events
+    NOT MOVED (stay at root, excluded from catch-all, TTL)
+                                             ai_runs, qr_context_cache, nimbus_events_seen,
+                                             shopify_sync_claims, active_whatsapp_requests
+    A separate "ops" database is DEFERRED (decided 2026-09-14). Revisit only if these
+    need their own backups/billing.
+
+  Per collection, always these 5 steps:
+    1 new rules live  2 dual write  3 backfill by id  4 switch readers  5 retire old path
+    (keep old read-only 14 days before delete)
+
+  Order, safest first:
+    config -> admin -> logistics -> messaging -> clinic -> intake
+
+  Things that bite during a move:
+  - collectionGroup('messages') / ('awbs') match by last segment, so they return
+    every doc twice between steps 2 and 5. Switch those readers at step 4.
+  - Document-triggered functions (report PDF, prescription PDF) are bound to a path
+    and must be redeployed for intake and clinic.
+  - Collection names are hardcoded across ~7 separately deployed codebases:
+    sehatup-analytics (CRM + Vercel API), sehatup-firebase functions, 8 copies of the
+    questionnaire engine, n8n, whatsapp-tools, website-chatbot, shopify-elements.
+    Every group move is a coordinated release of the apps that touch it.
+  - The security fixes in "DO FIRST" above ship before any of this.
+
+
+--------------------------------------------------------------------------------
+4. HOW TO RE-CHECK
+--------------------------------------------------------------------------------
+
+Before any rules deploy, compare live vs repo rules:
+  Firebase console > Firestore > Rules shows the live version.
+  Or pull it with the Firebase Rules API (releases > cloud.firestore > ruleset).
+
+Deploy commands (run by hand):
+  firebase deploy --only firestore:rules --project sehatup-f96b5
+  firebase deploy --only functions:verifyOTP,functions:qrCustomerContext,functions:qrProductLookup --project sehatup-f96b5
+
+Where the writers live:
+  sehatup-analytics/src/NewUI.jsx              most CRM reads/writes
+  sehatup-analytics/api/nimbus-webhook.js      nimbus_tracking, shipments
+  sehatup-analytics/api/_lib/enrich.js         shipments/{phone}/awbs
+  sehatup-analytics/api/_lib/claim.js          nimbus_events_seen, shopify_sync_claims
+  sehatup-analytics/api/cron-sync-shipments.js daily shipment refresh
+  sehatup-firebase/functions/index.js          conversations, ai_runs, qr_context_cache,
+                                               active_whatsapp_requests
+  questionnaire/live/live-web-1/_shared/public/questionnaire-engine.js
+                                               partial_submissions, questionnaire_submissions
+  website-chatbot/api/_lib/log.js              web_chats
+  shopify-elements/lead-capture-popup.liquid   popup_leads
+  whatsapp-tools/chatbot-control/index.html    qr_config

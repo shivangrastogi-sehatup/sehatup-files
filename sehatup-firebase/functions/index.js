@@ -2153,7 +2153,8 @@ exports.verifyOTP = onRequest(
           const db = getFirestore();
           await db.collection("active_whatsapp_requests").doc(phone).set({
             docId: docId,
-            timestamp: FieldValue.serverTimestamp()
+            timestamp: FieldValue.serverTimestamp(),
+            expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
           });
         }
         return res
@@ -2852,7 +2853,7 @@ exports.qrCustomerContext = onRequest(
       if (!customer) {
         out.source = "shopify";
         out.summary = "";
-        await cacheRef.set({ at: Date.now(), payload: JSON.stringify(out) }, { merge: true }).catch(() => {});
+        await cacheRef.set({ at: Date.now(), expireAt: new Date(Date.now() + 7 * 864e5), payload: JSON.stringify(out) }, { merge: true }).catch(() => {});
         console.log("[qrCustomerContext]", p10, "-> no Shopify customer");
         return res.status(200).json(out);
       }
@@ -2899,7 +2900,7 @@ exports.qrCustomerContext = onRequest(
           + "No delivery date/ETA exists in our system for any order, and orders not listed above are not visible to you.";
       }
 
-      await cacheRef.set({ at: Date.now(), payload: JSON.stringify(out) }, { merge: true }).catch(() => {});
+      await cacheRef.set({ at: Date.now(), expireAt: new Date(Date.now() + 7 * 864e5), payload: JSON.stringify(out) }, { merge: true }).catch(() => {});
       console.log("[qrCustomerContext]", p10, "->", orders.length, "orders |", orders.map((o) => `${o.name}:${o.status}`).join(", "));
       return res.status(200).json(out);
     } catch (err) {
@@ -3364,7 +3365,7 @@ exports.qrProductLookup = onRequest(
       if (!catalog) {
         catalog = await qrFetchCatalog();
         out.source = "shopify";
-        await cacheRef.set({ at: Date.now(), payload: JSON.stringify(catalog) }, { merge: true }).catch(() => {});
+        await cacheRef.set({ at: Date.now(), expireAt: new Date(Date.now() + 7 * 864e5), payload: JSON.stringify(catalog) }, { merge: true }).catch(() => {});
       }
       out.catalogSize = catalog.length;
 

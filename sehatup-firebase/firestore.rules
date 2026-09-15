@@ -3,19 +3,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Authenticated users can read/write all collections
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Authenticated users can read/write all collections except the server-only
+    // ones. Rules are OR'd, so the exclusion has to live here, not in a deny block.
+    // Servers use service accounts and bypass rules.
+    match /{collection}/{document=**} {
+      allow read, write: if request.auth != null
+        && !(collection in ['ai_runs', 'qr_context_cache', 'nimbus_events_seen',
+                            'shopify_sync_claims', 'active_whatsapp_requests']);
     }
 
-    // QuickReply tester: the local tester UI is unauthenticated, so allow public
-    // READ of conversation events only (writes still go through n8n's service
-    // account). Scoped to this collection so nothing else is exposed.
-    match /qr_conversations/{phone} {
-      allow read: if true;
-      match /events/{event} {
-        allow read: if true;
-      }
+    // Storefront lead-capture popup (shopify-elements/lead-capture-popup.liquid).
+    // Visitors are not logged in: create only, never read back.
+    match /popup_leads/{doc} {
+      allow create: if true;
+      allow read, update, delete: if false;
     }
 
     // Public questionnaire: visitors are NOT logged in, so they must be able to
@@ -65,15 +66,6 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     match /shipments/{phone}/awbs/{awb} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Test-mode mirror of shipments (CRM "Test mode" uploads/enrichment) — kept
-    // separate so production data is never touched.
-    match /shipments_test/{phone} {
-      allow read, write: if request.auth != null;
-    }
-    match /shipments_test/{phone}/awbs/{awb} {
       allow read, write: if request.auth != null;
     }
   }
