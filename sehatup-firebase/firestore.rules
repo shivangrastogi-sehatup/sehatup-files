@@ -122,6 +122,13 @@ service cloud.firestore {
     }
 
     // ── Settings ────────────────────────────────────────────────────────────
+    // config/ is the new home for shared settings docs (moved from app_settings).
+    // app_settings stays until its moved docs are retired; medicine_catalog is not moved.
+    match /config/{docId} {
+      allow read: if isStaff();
+      allow write: if (docId in ['logistics', 'product_shipping'] && hasRole(['operations', 'website_developer']))
+        || isAdmin();
+    }
     match /app_settings/{docId} {
       allow read: if isStaff();
       allow write: if (docId in ['logistics', 'product_shipping'] && hasRole(['operations', 'website_developer']))

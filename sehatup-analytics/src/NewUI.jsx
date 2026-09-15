@@ -186,21 +186,37 @@ function normalizePaymentLabel(v) {
   return v;
 }
 
-// --- Logistics config (shared via Firestore: app_settings/logistics) ---
+// --- Shared settings docs: config/{name} ---
+// Moved from app_settings/{name}. Until the old doc is retired, reads fall back to it
+// when config/{name} does not exist yet, and the first save copies its fields over so
+// nothing is lost. Remove the app_settings fallback once the old docs are deleted.
+function onConfigDoc(name, cb) {
+  let current = null, legacy = null;
+  const emit = () => { const d = current || legacy; if (d) cb(d); };
+  const unsubNew = onSnapshot(doc(db, 'config', name), (s) => { current = s.exists() ? s.data() : null; emit(); }, () => {});
+  const unsubOld = onSnapshot(doc(db, 'app_settings', name), (s) => { legacy = s.exists() ? s.data() : null; emit(); }, () => {});
+  return () => { unsubNew(); unsubOld(); };
+}
+async function saveConfigDoc(name, patch) {
+  const ref = doc(db, 'config', name);
+  if (!(await getDoc(ref)).exists()) {
+    const old = await getDoc(doc(db, 'app_settings', name));
+    if (old.exists()) await setDoc(ref, old.data());
+  }
+  await setDoc(ref, patch, { merge: true });
+}
+
+// --- Logistics config (shared via Firestore: config/logistics) ---
 const DEFAULT_TRACKING_URL_TEMPLATE = 'https://ship.nimbuspost.com/shipping/tracking/{awb}';
 function useLogisticsConfig() {
   const [cfg, setCfg] = useState({ trackingUrlTemplate: DEFAULT_TRACKING_URL_TEMPLATE, healthscoreDiscountCode: '' });
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'app_settings', 'logistics'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setCfg({
-          trackingUrlTemplate: data.trackingUrlTemplate || DEFAULT_TRACKING_URL_TEMPLATE,
-          healthscoreDiscountCode: data.healthscoreDiscountCode || '',
-        });
-      }
-    }, () => { /* keep defaults on error */ });
-    return unsub;
+    return onConfigDoc('logistics', (data) => {
+      setCfg({
+        trackingUrlTemplate: data.trackingUrlTemplate || DEFAULT_TRACKING_URL_TEMPLATE,
+        healthscoreDiscountCode: data.healthscoreDiscountCode || '',
+      });
+    });
   }, []);
   return cfg;
 }
@@ -208,7 +224,7 @@ function buildTrackingUrl(template, awb) {
   return String(template || DEFAULT_TRACKING_URL_TEMPLATE).replace('{awb}', encodeURIComponent(awb));
 }
 
-// --- Product shipping config (shared via Firestore: app_settings/product_shipping) ---
+// --- Product shipping config (shared via Firestore: config/product_shipping) ---
 // Per-product shipping is chosen from the Shopify delivery rates (not free-text), stored as
 // rate objects: { defaultRate: {title, price}, rates: { [productId]: {title, price} } }.
 // (Legacy { defaultPrice, prices } docs are read for back-compat.)
@@ -225,19 +241,15 @@ function useProductShipping() {
   // enabled defaults to false — product-based auto-shipping is opt-in.
   const [cfg, setCfg] = useState({ enabled: false, defaultRate: null, rates: {} });
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'app_settings', 'product_shipping'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const defaultRate = normalizeShippingRate(data.defaultRate)
-          || (typeof data.defaultPrice === 'number' ? { title: 'Shipping', price: data.defaultPrice } : null);
-        const rates = {};
-        const src = (data.rates && typeof data.rates === 'object') ? data.rates
-          : (data.prices && typeof data.prices === 'object') ? data.prices : {};
-        Object.entries(src).forEach(([k, v]) => { const n = normalizeShippingRate(v); if (n) rates[k] = n; });
-        setCfg({ enabled: data.enabled === true, defaultRate, rates });
-      }
-    }, () => { /* keep defaults on error */ });
-    return unsub;
+    return onConfigDoc('product_shipping', (data) => {
+      const defaultRate = normalizeShippingRate(data.defaultRate)
+        || (typeof data.defaultPrice === 'number' ? { title: 'Shipping', price: data.defaultPrice } : null);
+      const rates = {};
+      const src = (data.rates && typeof data.rates === 'object') ? data.rates
+        : (data.prices && typeof data.prices === 'object') ? data.prices : {};
+      Object.entries(src).forEach(([k, v]) => { const n = normalizeShippingRate(v); if (n) rates[k] = n; });
+      setCfg({ enabled: data.enabled === true, defaultRate, rates });
+    });
   }, []);
   return cfg;
 }
@@ -10266,7 +10278,7 @@ const PERMISSION_KEYS = [
 const EDITABLE_COLLECTIONS = [
   "users", "questionnaire_submissions", "partial_submissions", "manual_submissions",
   "prescriptions", "doctor_details", "doctor_signature_requests", "nimbus_tracking",
-  "shipments", "crm_orders", "app_settings", "metadata", "admin_audit_logs",
+  "shipments", "crm_orders", "config", "app_settings", "metadata", "admin_audit_logs",
 ];
 
 // The three places a questionnaire lands. Quick Editor reads all of them so a
@@ -11691,7 +11703,7 @@ function SettingsScreen({ tweaks, me }) {
 
 // Catalogue of live Shopify products where each product is assigned one of the SHOPIFY
 // delivery rates (fetched live — same source as order creation). Saved to
-// app_settings/product_shipping; order creation auto-selects the matching rate.
+// config/product_shipping; order creation auto-selects the matching rate.
 const rateKey = (r) => (r ? `${r.title}__${Number(r.price) || 0}` : "");
 function ProductShippingPane() {
   const cfg = useProductShipping();
@@ -11869,12 +11881,12 @@ function ProductShippingPane() {
         const r = getRate(k);
         if (r && k && k !== defaultKey) ratesOut[pid] = { title: r.title, price: Number(r.price) || 0 };
       });
-      await setDoc(doc(db, 'app_settings', 'product_shipping'), {
+      await saveConfigDoc('product_shipping', {
         enabled: !!enabled,
         defaultRate: defaultRate ? { title: defaultRate.title, price: Number(defaultRate.price) || 0 } : null,
         rates: ratesOut,
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      });
       setSavedAt(new Date());
     } catch (e) { alert('Save failed: ' + e.message); }
     finally { setSaving(false); }
@@ -12172,7 +12184,7 @@ function LogisticsSettingsPane() {
   const handleSaveHs = async () => {
     setHsSaving(true);
     try {
-      await setDoc(doc(db, 'app_settings', 'logistics'), { healthscoreDiscountCode: hsCode, updatedAt: serverTimestamp() }, { merge: true });
+      await saveConfigDoc('logistics', { healthscoreDiscountCode: hsCode, updatedAt: serverTimestamp() });
       setHsSavedAt(new Date());
     } catch (e) { alert('Save failed: ' + e.message); }
     finally { setHsSaving(false); }
@@ -12185,7 +12197,7 @@ function LogisticsSettingsPane() {
     if (!valid) { alert('URL must contain the {awb} placeholder.'); return; }
     setSaving(true);
     try {
-      await setDoc(doc(db, 'app_settings', 'logistics'), { trackingUrlTemplate: url, updatedAt: serverTimestamp() }, { merge: true });
+      await saveConfigDoc('logistics', { trackingUrlTemplate: url, updatedAt: serverTimestamp() });
       setSavedAt(new Date());
     } catch (e) {
       alert('Save failed: ' + e.message);
