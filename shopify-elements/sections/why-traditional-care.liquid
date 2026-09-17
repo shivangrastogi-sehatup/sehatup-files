@@ -1,0 +1,617 @@
+{%- liquid
+  assign hf = section.settings.heading_font
+  assign bf = section.settings.body_font
+  assign scale = section.settings.type_scale | default: 100 | divided_by: 100.0
+  assign fade = section.settings.image_fade | default: 22
+  assign maxw = section.settings.container_width | default: 1440
+-%}
+
+{% style %}
+  {%- unless section.settings.use_theme_fonts -%}
+    {{ hf | font_face: font_display: 'swap' }}
+    {{ bf | font_face: font_display: 'swap' }}
+    {%- assign hf_bold = hf | font_modify: 'weight', '700' -%}
+    {%- assign bf_med = bf | font_modify: 'weight', '500' -%}
+    {%- if hf_bold -%}{{ hf_bold | font_face: font_display: 'swap' }}{%- endif -%}
+    {%- if bf_med -%}{{ bf_med | font_face: font_display: 'swap' }}{%- endif -%}
+  {%- endunless -%}
+
+  #shopify-section-{{ section.id }} {
+    --wtc-bg: {{ section.settings.color_section_bg }};
+    --wtc-title: {{ section.settings.color_title }};
+    --wtc-title-accent: {{ section.settings.color_title_accent }};
+    --wtc-sub: {{ section.settings.color_sub }};
+    --wtc-arrow: {{ section.settings.color_arrow }};
+    --wtc-card-border: {{ section.settings.color_card_border }};
+    --wtc-radius: {{ section.settings.card_radius | default: 24 }}px;
+    --wtc-border-w: {{ section.settings.card_border_width | default: 1 }}px;
+    --wtc-gap: {{ section.settings.card_gap | default: 36 }}px;
+    --wtc-maxw: {{ maxw }}px;
+    --wtc-scale: {{ scale }};
+    --wtc-fade: {{ fade }}%;
+    --wtc-media-share: {{ section.settings.media_share | default: 46 }}%;
+    --wtc-pad-y: {{ section.settings.padding_top | default: 64 }}px;
+    --wtc-pad-y-end: {{ section.settings.padding_bottom | default: 64 }}px;
+    --wtc-pad-x: 18px;
+    --wtc-shadow: {% if section.settings.card_shadow %}0 1px 2px rgba(20, 24, 60, .04), 0 18px 40px -28px rgba(20, 24, 60, .28){% else %}none{% endif %};
+    {%- if section.settings.use_theme_fonts -%}
+      --wtc-font-head: var(--font-heading-family, inherit);
+      --wtc-font-body: var(--font-body-family, inherit);
+      --wtc-weight-head: var(--font-heading-weight, 700);
+    {%- else -%}
+      --wtc-font-head: {{ hf.family }}, {{ hf.fallback_families }};
+      --wtc-font-body: {{ bf.family }}, {{ bf.fallback_families }};
+      --wtc-weight-head: 700;
+    {%- endif -%}
+  }
+
+  /* ---------------------------------------------------------------- shell */
+  .wtc {
+    background: var(--wtc-bg);
+    font-family: var(--wtc-font-body);
+    padding: var(--wtc-pad-y) var(--wtc-pad-x) var(--wtc-pad-y-end);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wtc__inner {
+    width: 100%;
+    max-width: var(--wtc-maxw);
+    margin-inline: auto;
+  }
+
+  /* ----------------------------------------------------------- section head */
+  .wtc__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+    margin-bottom: clamp(26px, 3.4vw, 56px);
+  }
+  .wtc__head[data-align="left"] { align-items: flex-start; text-align: left; }
+
+  .wtc__title {
+    margin: 0;
+    color: var(--wtc-title);
+    font-family: var(--wtc-font-head);
+    font-weight: var(--wtc-weight-head);
+    font-size: calc(clamp(25px, 3.3vw, 60px) * var(--wtc-scale));
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    max-width: 22ch;
+  }
+  .wtc__head[data-align="left"] .wtc__title { max-width: 18ch; }
+  .wtc__title span {
+    display: block;
+    color: var(--wtc-title-accent);
+  }
+
+  .wtc__sub {
+    margin: 0;
+    color: var(--wtc-sub);
+    font-size: calc(clamp(14px, 1.15vw, 21px) * var(--wtc-scale));
+    line-height: 1.55;
+    max-width: 62ch;
+  }
+
+  /* --------------------------------------------------------------- the rows */
+  .wtc__rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--wtc-gap);
+  }
+
+  /* The card is its own sizing context, so type and spacing respond to how much
+     room the card actually has, not to the viewport. Three cards in a row on a
+     1280 screen get a 365px card; one card on a tablet gets 900px. Same rules,
+     very different result. */
+  .wtc__card {
+    position: relative;
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: 1fr;
+    background: var(--card-bg, #fdf2f4);
+    border: var(--wtc-border-w) solid var(--wtc-card-border);
+    border-radius: var(--wtc-radius);
+    box-shadow: var(--wtc-shadow);
+    overflow: hidden;
+  }
+
+  /* Each pair below: a viewport-based fallback first, then the container-based
+     value that modern browsers use. */
+  .wtc__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    order: 2;
+    gap: clamp(10px, 1.1vw, 20px);
+    gap: clamp(10px, 2.6cqi, 22px);
+    padding: clamp(22px, 3vw, 52px);
+    padding: clamp(18px, 5cqi, 46px) clamp(14px, 3.8cqi, 36px) clamp(18px, 5cqi, 46px) clamp(18px, 4.6cqi, 42px);
+  }
+
+  .wtc__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--badge-bg, #f9ced9);
+    color: var(--badge-fg, #c0134a);
+    font-family: var(--wtc-font-head);
+    font-weight: var(--wtc-weight-head);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    width: calc(clamp(40px, 3.4vw, 68px) * var(--wtc-scale));
+    width: calc(clamp(34px, 10.5cqi, 70px) * var(--wtc-scale));
+    font-size: calc(clamp(15px, 1.4vw, 27px) * var(--wtc-scale));
+    font-size: calc(clamp(13px, 4.2cqi, 29px) * var(--wtc-scale));
+  }
+
+  .wtc__cardtitle {
+    margin: 0;
+    color: var(--card-title, #000000);
+    font-family: var(--wtc-font-head);
+    font-weight: var(--wtc-weight-head);
+    line-height: 1.14;
+    letter-spacing: -0.018em;
+    max-width: 16ch;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+    font-size: calc(clamp(16px, 1.85vw, 32px) * var(--wtc-scale));
+    font-size: calc(clamp(16px, 4.8cqi, 34px) * var(--wtc-scale));
+  }
+
+  .wtc__text {
+    margin: 0;
+    color: var(--card-text, #4b5573);
+    line-height: 1.55;
+    max-width: 34ch;
+    font-size: calc(clamp(14px, 1.15vw, 21px) * var(--wtc-scale));
+    font-size: calc(clamp(13px, 3.4cqi, 22px) * var(--wtc-scale));
+  }
+
+  /* one card across the screen: the title can afford to be bigger than the
+     container rule alone would give it */
+  @media screen and (max-width: 749px) {
+    .wtc__cardtitle { font-size: calc(clamp(19px, 6.2cqi, 30px) * var(--wtc-scale)); }
+    .wtc__text { font-size: calc(clamp(14.5px, 4.1cqi, 20px) * var(--wtc-scale)); }
+  }
+
+  /* ------------------------------------------------------------ the artwork */
+  .wtc__media {
+    position: relative;
+    order: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: var(--media-ratio, auto);
+    background: var(--card-bg, #fdf2f4);
+  }
+  .wtc__media picture { display: block; width: 100%; height: var(--media-h, 100%); }
+  .wtc__media img {
+    display: block;
+    width: 100%;
+    height: var(--media-h, 100%);
+    object-fit: cover;
+    object-position: var(--focal, 50% 50%);
+  }
+  .wtc__media svg { width: 100%; height: 100%; opacity: .3; }
+
+  /* --------------------------------------------------- connector between rows */
+  .wtc__link {
+    display: flex;
+    justify-content: center;
+    color: var(--wtc-arrow);
+  }
+  .wtc__link svg { width: 26px; height: 26px; }
+
+  .wtc a:focus-visible,
+  .wtc *:focus-visible { outline: 2px solid var(--wtc-arrow); outline-offset: 3px; }
+
+  /* ===================== tablet and up: text on the left, artwork on the right */
+  @media screen and (min-width: 750px) {
+    #shopify-section-{{ section.id }} { --wtc-pad-x: 28px; }
+
+    .wtc__card {
+      grid-template-columns: calc(100% - var(--wtc-media-share)) var(--wtc-media-share);
+      align-items: stretch;
+    }
+    /* The number pins to the top of the text block, right under the artwork, so
+       it sits at the same height on every card. Any slack from shorter copy
+       collects at the bottom instead of pushing the number around. */
+    .wtc__body { order: 1; justify-content: flex-start; }
+    .wtc__media {
+      order: 2;
+      aspect-ratio: var(--desktop-ratio, auto);
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 var(--wtc-fade));
+      mask-image: linear-gradient(to right, transparent 0%, #000 var(--wtc-fade));
+    }
+    {%- if section.settings.desktop_fit == 'fill' -%}
+      .wtc__media { aspect-ratio: auto; }
+      .wtc__media picture, .wtc__media img { height: 100%; }
+    {%- else -%}
+      .wtc__media picture, .wtc__media img { height: var(--desktop-h, 100%); }
+    {%- endif -%}
+
+    /* optional mirrored rows */
+    .wtc__rows[data-alternate="true"] .wtc__card:nth-child(4n + 3) {
+      grid-template-columns: var(--wtc-media-share) calc(100% - var(--wtc-media-share));
+    }
+    .wtc__rows[data-alternate="true"] .wtc__card:nth-child(4n + 3) .wtc__body { order: 2; }
+    .wtc__rows[data-alternate="true"] .wtc__card:nth-child(4n + 3) .wtc__media {
+      order: 1;
+      -webkit-mask-image: linear-gradient(to left, transparent 0%, #000 var(--wtc-fade));
+      mask-image: linear-gradient(to left, transparent 0%, #000 var(--wtc-fade));
+    }
+  }
+
+  /* ============================== laptop and up: cards side by side in one row */
+  @media screen and (min-width: 990px) {
+    .wtc__rows {
+      flex-direction: row;
+      align-items: stretch;
+      justify-content: center;
+    }
+    .wtc__card {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .wtc__cardtitle, .wtc__text { max-width: none; }
+
+    {%- if section.settings.desktop_card_layout == 'beside' -%}
+      /* artwork stays beside the text; it has to crop to fill a narrow column */
+      .wtc__card { min-height: clamp(280px, 26vw, 520px); }
+    {%- else -%}
+      /* artwork above the text, full card width, so the whole scene is visible */
+      .wtc__card { grid-template-columns: 1fr; }
+      .wtc__body {
+        order: 2;
+        padding: clamp(16px, 4.6cqi, 40px) clamp(16px, 4.6cqi, 40px) clamp(20px, 5.4cqi, 46px);
+      }
+      .wtc__media {
+        order: 1;
+        aspect-ratio: var(--desktop-ratio, auto);
+        -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wtc-fade)), transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wtc-fade)), transparent 100%);
+      }
+      .wtc__media picture, .wtc__media img { height: var(--desktop-h, 100%); }
+      .wtc__cardtitle { font-size: calc(clamp(16px, 5cqi, 33px) * var(--wtc-scale)); }
+      .wtc__text { font-size: calc(clamp(13.5px, 3.6cqi, 21px) * var(--wtc-scale)); }
+    {%- endif -%}
+
+    .wtc__link {
+      flex: 0 0 auto;
+      align-self: center;
+      padding-inline: clamp(2px, 0.5vw, 14px);
+    }
+    .wtc__link svg { transform: rotate(-90deg); }
+  }
+
+  {%- if section.settings.hover_lift -%}
+  /* Lift on hover, mouse and trackpad only. Touch devices get nothing, since a
+     hover state there just sticks after a tap. */
+  @media screen and (min-width: 990px) and (hover: hover) and (pointer: fine) {
+    .wtc__card {
+      transform: translateY(0);
+      /* the longer duration here is the settle back down, so it never snaps */
+      transition: transform 620ms cubic-bezier(.22, .61, .36, 1), box-shadow 620ms cubic-bezier(.22, .61, .36, 1);
+    }
+    .wtc__card:hover {
+      transform: translateY(-8px);
+      transition-duration: 480ms;
+      box-shadow:
+        0 2px 4px rgba(20, 24, 60, .05),
+        0 14px 26px -14px rgba(20, 24, 60, .20),
+        0 36px 64px -30px rgba(20, 24, 60, .38);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wtc__card { transition: none; }
+      .wtc__card:hover { transform: none; }
+    }
+  }
+  {%- endif -%}
+
+  @media screen and (min-width: 1024px) {
+    #shopify-section-{{ section.id }} { --wtc-pad-x: 40px; }
+  }
+
+  /* ========================================================= large desktop */
+  @media screen and (min-width: 1600px) {
+    #shopify-section-{{ section.id }} {
+      --wtc-pad-x: 56px;
+      --wtc-pad-y: calc({{ section.settings.padding_top | default: 64 }}px * 1.35);
+      --wtc-pad-y-end: calc({{ section.settings.padding_bottom | default: 64 }}px * 1.35);
+    }
+  }
+
+  /* ================================================================ 2K / 4K */
+  @media screen and (min-width: 2000px) {
+    #shopify-section-{{ section.id }} {
+      --wtc-maxw: {{ maxw | times: 1.3 | round }}px;
+      --wtc-pad-x: 72px;
+      --wtc-scale: {{ scale | times: 1.12 }};
+    }
+    .wtc__link svg { width: 34px; height: 34px; }
+  }
+  @media screen and (min-width: 2800px) {
+    #shopify-section-{{ section.id }} {
+      --wtc-maxw: {{ maxw | times: 1.6 | round }}px;
+      --wtc-scale: {{ scale | times: 1.28 }};
+    }
+  }
+
+  /* ========================================================== small mobile */
+  @media screen and (max-width: 420px) {
+    #shopify-section-{{ section.id }} { --wtc-pad-x: 14px; --wtc-gap: 18px; }
+    .wtc__body { padding: 20px 18px 24px; gap: 10px; }
+    .wtc__cardtitle, .wtc__text { max-width: none; }
+  }
+{% endstyle %}
+
+<section class="wtc">
+  <div class="wtc__inner">
+
+    {%- if section.settings.heading != blank or section.settings.subheading != blank -%}
+      <div class="wtc__head" data-align="{{ section.settings.header_align }}">
+        {%- if section.settings.heading != blank -%}
+          <h2 class="wtc__title">
+            {{ section.settings.heading }}
+            {%- if section.settings.heading_accent != blank -%}
+              <span>{{ section.settings.heading_accent }}</span>
+            {%- endif -%}
+          </h2>
+        {%- endif -%}
+
+        {%- if section.settings.subheading != blank -%}
+          <p class="wtc__sub">{{ section.settings.subheading }}</p>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    <div class="wtc__rows" data-alternate="{{ section.settings.alternate_sides }}">
+      {%- for block in section.blocks -%}
+        {%- liquid
+          assign img = block.settings.image
+          assign img_m = block.settings.image_mobile | default: img
+          assign alt = img.alt | default: block.settings.title
+          assign focal = '50% 50%'
+          if img.presentation.focal_point != blank
+            assign focal = img.presentation.focal_point
+          endif
+
+          assign badge_text = block.settings.badge
+          if section.settings.auto_number
+            assign n = forloop.index
+            assign badge_text = n | prepend: '0'
+            if n > 9
+              assign badge_text = n
+            endif
+          endif
+
+          assign media_h = '100%'
+          if block.settings.mobile_ratio == 'auto'
+            assign media_h = 'auto'
+          endif
+          assign desktop_h = '100%'
+          if block.settings.desktop_ratio == 'auto'
+            assign desktop_h = 'auto'
+          endif
+        -%}
+
+        <article
+          class="wtc__card"
+          style="
+            --card-bg: {{ block.settings.card_bg }};
+            --card-title: {{ section.settings.color_card_title | default: "#000000" }};
+            --card-text: {{ block.settings.color_text }};
+            --badge-bg: {{ block.settings.badge_bg }};
+            --badge-fg: {{ block.settings.badge_fg }};
+            --media-ratio: {{ block.settings.mobile_ratio }};
+            --desktop-ratio: {{ block.settings.desktop_ratio }};
+            --media-h: {{ media_h }};
+            --desktop-h: {{ desktop_h }};
+            --focal: {{ focal }};
+          "
+          {{ block.shopify_attributes }}
+        >
+          <div class="wtc__body">
+            {%- if badge_text != blank -%}
+              <span class="wtc__badge" aria-hidden="true">{{ badge_text }}</span>
+            {%- endif -%}
+            {%- if block.settings.title != blank -%}
+              <h3 class="wtc__cardtitle">{{ block.settings.title }}</h3>
+            {%- endif -%}
+            {%- if block.settings.text != blank -%}
+              <p class="wtc__text">{{ block.settings.text }}</p>
+            {%- endif -%}
+          </div>
+
+          <div class="wtc__media">
+            {%- if img != blank -%}
+              <picture>
+                <source
+                  media="(max-width: 749px)"
+                  srcset="
+                    {{ img_m | image_url: width: 600 }} 600w,
+                    {{ img_m | image_url: width: 900 }} 900w,
+                    {{ img_m | image_url: width: 1200 }} 1200w
+                  "
+                  sizes="100vw">
+                <img
+                  src="{{ img | image_url: width: 1400 }}"
+                  srcset="
+                    {{ img | image_url: width: 700 }} 700w,
+                    {{ img | image_url: width: 1000 }} 1000w,
+                    {{ img | image_url: width: 1400 }} 1400w,
+                    {{ img | image_url: width: 1800 }} 1800w,
+                    {{ img | image_url: width: 2400 }} 2400w,
+                    {{ img | image_url: width: 3000 }} 3000w
+                  "
+                  sizes="(min-width: 990px) {% if section.settings.desktop_card_layout == 'beside' %}17vw{% else %}33vw{% endif %}, (min-width: 750px) {{ section.settings.media_share | default: 46 }}vw, 100vw"
+                  width="{{ img.width }}"
+                  height="{{ img.height }}"
+                  alt="{{ alt | escape }}"
+                  loading="lazy"
+                  decoding="async">
+              </picture>
+            {%- else -%}
+              {{ 'image' | placeholder_svg_tag }}
+            {%- endif -%}
+          </div>
+        </article>
+
+        {%- unless forloop.last -%}
+          {%- if section.settings.show_arrows -%}
+            <div class="wtc__link" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 4v15"></path>
+                <path d="M6 13l6 6 6-6"></path>
+              </svg>
+            </div>
+          {%- endif -%}
+        {%- endunless -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Why care isn't working",
+  "tag": "section",
+  "class": "section-wtc",
+  "settings": [
+    { "type": "header", "content": "Heading" },
+    { "type": "text", "id": "heading", "label": "Heading line 1", "default": "Why Traditional Healthcare" },
+    { "type": "text", "id": "heading_accent", "label": "Heading line 2", "info": "Shown in the accent colour below. Leave blank for a single line.", "default": "Isn't Working for You?" },
+    { "type": "text", "id": "subheading", "label": "Supporting line", "default": "Treating symptoms is easy. Finding the root cause is what matters." },
+    {
+      "type": "select", "id": "header_align", "label": "Heading alignment", "default": "center",
+      "options": [
+        { "value": "center", "label": "Centred" },
+        { "value": "left", "label": "Left" }
+      ]
+    },
+
+    { "type": "header", "content": "Typography" },
+    { "type": "checkbox", "id": "use_theme_fonts", "label": "Use the theme's fonts", "default": false },
+    { "type": "font_picker", "id": "heading_font", "label": "Heading font", "default": "poppins_n7" },
+    { "type": "font_picker", "id": "body_font", "label": "Body font", "default": "poppins_n4" },
+    { "type": "range", "id": "type_scale", "label": "Text size", "min": 80, "max": 130, "step": 5, "unit": "%", "default": 100 },
+
+    { "type": "header", "content": "Section colours" },
+    { "type": "color", "id": "color_section_bg", "label": "Section background", "default": "#ffffff" },
+    { "type": "color", "id": "color_title", "label": "Heading line 1", "default": "#14183c" },
+    { "type": "color", "id": "color_title_accent", "label": "Heading line 2", "default": "#ee204a" },
+    { "type": "color", "id": "color_sub", "label": "Supporting line", "default": "#4b5573" },
+    { "type": "color", "id": "color_arrow", "label": "Arrow between cards", "default": "#ee204a" },
+    { "type": "color", "id": "color_card_title", "label": "Card title", "default": "#000000" },
+
+    { "type": "header", "content": "Cards" },
+    {
+      "type": "select", "id": "desktop_card_layout", "label": "Card layout on laptop and desktop", "default": "stacked",
+      "info": "Above keeps the whole artwork visible in a narrow card. Beside is tighter but crops the photo.",
+      "options": [
+        { "value": "stacked", "label": "Artwork above the text" },
+        { "value": "beside", "label": "Artwork beside the text" }
+      ]
+    },
+    { "type": "checkbox", "id": "auto_number", "label": "Number the cards automatically", "default": true, "info": "Numbers follow card order: 01, 02, 03. Turn off to type each number yourself." },
+    { "type": "checkbox", "id": "show_arrows", "label": "Show arrow between cards", "default": true },
+    { "type": "checkbox", "id": "alternate_sides", "label": "Alternate which side the image sits on", "default": false, "info": "Mirrors every other card so the artwork swaps sides." },
+    { "type": "range", "id": "media_share", "label": "Image width inside the card", "min": 30, "max": 70, "step": 1, "unit": "%", "default": 46 },
+    {
+      "type": "select", "id": "desktop_fit", "label": "How the artwork sits in the card", "default": "fill",
+      "info": "Fill keeps the card tidy. Show the whole image leaves the card colour above and below it.",
+      "options": [
+        { "value": "fill", "label": "Fill the column (crops the edges)" },
+        { "value": "contain", "label": "Show the whole image" }
+      ]
+    },
+    { "type": "range", "id": "image_fade", "label": "Image fade into the card", "min": 0, "max": 50, "step": 1, "unit": "%", "default": 22 },
+    { "type": "range", "id": "card_radius", "label": "Corner radius", "min": 0, "max": 48, "step": 2, "unit": "px", "default": 24 },
+    { "type": "range", "id": "card_border_width", "label": "Border width", "min": 0, "max": 4, "step": 1, "unit": "px", "default": 1 },
+    { "type": "color", "id": "color_card_border", "label": "Border", "default": "#f7d9df" },
+    { "type": "checkbox", "id": "card_shadow", "label": "Soft shadow under cards", "default": false },
+    { "type": "checkbox", "id": "hover_lift", "label": "Lift the card when the cursor is over it", "default": true, "info": "Laptop and desktop only. Touch devices are unaffected." },
+    { "type": "range", "id": "card_gap", "label": "Space between cards", "min": 8, "max": 80, "step": 2, "unit": "px", "default": 36 },
+
+    { "type": "header", "content": "Layout" },
+    { "type": "range", "id": "container_width", "label": "Maximum width", "min": 1000, "max": 1920, "step": 20, "unit": "px", "default": 1440, "info": "Grows automatically on 2K and 4K screens." },
+    { "type": "range", "id": "padding_top", "label": "Padding top", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 64 },
+    { "type": "range", "id": "padding_bottom", "label": "Padding bottom", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 64 }
+  ],
+  "blocks": [
+    {
+      "type": "card",
+      "name": "Card",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Artwork", "info": "Landscape, about 1800x1200. The left edge fades into the card colour." },
+        { "type": "image_picker", "id": "image_mobile", "label": "Mobile artwork", "info": "Optional. Used below 750px." },
+        {
+          "type": "select", "id": "desktop_ratio", "label": "Image shape on tablet and up", "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Use the image's own shape (no cropping)" },
+            { "value": "16 / 9", "label": "Wide (16:9)" },
+            { "value": "3 / 2", "label": "Landscape (3:2)" },
+            { "value": "4 / 3", "label": "Classic (4:3)" },
+            { "value": "1 / 1", "label": "Square" }
+          ]
+        },
+        {
+          "type": "select", "id": "mobile_ratio", "label": "Mobile image shape", "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Use the image's own shape (no cropping)" },
+            { "value": "16 / 9", "label": "Wide (16:9)" },
+            { "value": "3 / 2", "label": "Landscape (3:2)" },
+            { "value": "4 / 3", "label": "Classic (4:3)" },
+            { "value": "1 / 1", "label": "Square" }
+          ]
+        },
+        { "type": "text", "id": "badge", "label": "Number", "info": "Ignored while automatic numbering is on. Left blank, no circle is shown.", "default": "01" },
+        { "type": "text", "id": "title", "label": "Title", "default": "Fragmented Treatment" },
+        { "type": "textarea", "id": "text", "label": "Text", "default": "Allopathy, ayurveda, homeopathy, a neighbour's remedy. Everyone has an answer and none of them agree." },
+        { "type": "header", "content": "Card colours" },
+        { "type": "color", "id": "card_bg", "label": "Card background", "default": "#fdf2f4" },
+        { "type": "color", "id": "color_text", "label": "Text", "default": "#4b5573" },
+        { "type": "color", "id": "badge_bg", "label": "Number circle", "default": "#f9ced9" },
+        { "type": "color", "id": "badge_fg", "label": "Number text", "default": "#c0134a" }
+      ]
+    }
+  ],
+  "max_blocks": 6,
+  "presets": [
+    {
+      "name": "Why care isn't working",
+      "blocks": [
+        {
+          "type": "card",
+          "settings": {
+            "badge": "01",
+            "title": "Fragmented Treatment",
+            "text": "Allopathy, ayurveda, homeopathy, a neighbour's remedy. Everyone has an answer and none of them agree."
+          }
+        },
+        {
+          "type": "card",
+          "settings": {
+            "badge": "02",
+            "title": "The Endless Medicine Cycle",
+            "text": "The tablet works for a few days. Then it is back, and so are you, starting the same cycle over."
+          }
+        },
+        {
+          "type": "card",
+          "settings": {
+            "badge": "03",
+            "title": "Trial-and-Error Prescriptions",
+            "text": "The prescription changes every visit. What you walked in with does not."
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

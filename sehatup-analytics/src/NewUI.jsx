@@ -6039,7 +6039,7 @@ async function attachFulfillmentPaymentTerms(orderId) {
   }
 }
 
-function OrderCreate({ context = {}, setRoute }) {
+function OrderCreate({ context = {}, setRoute, me = null }) {
   const preset = context.customer;
   const logisticsCfg = useLogisticsConfig();
   // True once the user manually changes shipping — stops us auto-overwriting their choice
@@ -6335,17 +6335,16 @@ function OrderCreate({ context = {}, setRoute }) {
         console.log('[Shipping] No shipping rate found — no shipping_line added');
       }
 
-      // Order Discount — discounts stack (Healthscore + code + custom). A Shopify DRAFT order
-      // accepts only one order-level applied_discount, so we send the combined total here; the
-      // ACTIVE-order path below splits them into separate discount_codes lines. `discount` and
-      // `activeDiscounts` are the same values shown in the order summary.
-      if (discount > 0) {
-        const reason = buildDiscountReason() || 'Discount';
+      // Order Discount — ONLY the manual rupee amount is an `applied_discount`. Real codes
+      // (Healthscore, anything picked from the autocomplete) are attached as codes in the
+      // GraphQL update further down, because REST drafts have no field for them. Shopify then
+      // shows one line per discount, matching what its own draft editor produces.
+      if (manualDiscountAmount > 0) {
         draftData.applied_discount = {
           value_type: 'fixed_amount',
-          value: discount.toFixed(2),
-          title: reason.slice(0, 255),
-          description: reason,
+          value: manualDiscountAmount.toFixed(2),
+          title: manualDiscountLabel,
+          description: manualDiscountLabel,
         };
       }
 
@@ -6404,6 +6403,10 @@ function OrderCreate({ context = {}, setRoute }) {
                     value: parseFloat(draftData.applied_discount.value),
                     title: draftData.applied_discount.title,
                   } : undefined,
+                  // Price the real codes too, or the test would quote a total the live order
+                  // never matches. An expired or non-qualifying code is dropped silently here,
+                  // which is exactly what the drift check below is for.
+                  discountCodes: orderDiscountCodesToSend.length ? orderDiscountCodesToSend : undefined,
                 },
               },
             }),
@@ -6449,13 +6452,22 @@ function OrderCreate({ context = {}, setRoute }) {
       if (dryRun) { /* nothing to update: no draft was saved */ } else try {
         const gqlInput = { phone: normalizedPhone };
         if (custEmail && custEmail.trim()) gqlInput.email = custEmail.trim();
+        // Real discount codes are attached HERE, not at creation — REST drafts have no field
+        // for them. Applying them changes the draft's total, so the new total is read back
+        // below; the active-order path prices its payment transaction off draftRes.total_price
+        // and would otherwise still be holding the pre-code figure.
+        if (orderDiscountCodesToSend.length) gqlInput.discountCodes = orderDiscountCodesToSend;
         const gqlRes = await fetch('/shopify-v2/graphql.json', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query: `mutation draftOrderUpdate($id: ID!, $input: DraftOrderInput!) {
                       draftOrderUpdate(id: $id, input: $input) {
-                          draftOrder { id phone email }
+                          draftOrder {
+                            id phone email
+                            totalPriceSet { shopMoney { amount } }
+                            discountCodes
+                          }
                           userErrors { field message }
                       }
                   }`,
@@ -6470,7 +6482,23 @@ function OrderCreate({ context = {}, setRoute }) {
         if (errs && errs.length > 0) {
           console.warn('--- DRAFT PHONE UPDATE ERRORS ---', errs);
         } else {
-          console.log('--- DRAFT CONTACT INFO UPDATED ---', gqlData?.data?.draftOrderUpdate?.draftOrder);
+          const updated = gqlData?.data?.draftOrderUpdate?.draftOrder;
+          console.log('--- DRAFT CONTACT INFO UPDATED ---', updated);
+          // Codes were applied after creation, so take Shopify's re-priced total as the truth.
+          // Without this the active-order path reconciles against the pre-code figure and
+          // aborts on a drift equal to the codes' value.
+          const repriced = parseFloat(updated?.totalPriceSet?.shopMoney?.amount);
+          if (orderDiscountCodesToSend.length && Number.isFinite(repriced)) {
+            const applied = updated?.discountCodes || [];
+            const missing = orderDiscountCodesToSend.filter(c => !applied.includes(c));
+            if (missing.length) {
+              // Shopify drops a code it won't honour without raising a userError.
+              console.warn('--- DISCOUNT CODES NOT APPLIED ---', missing, 'requested:', orderDiscountCodesToSend);
+            }
+            console.log('--- DRAFT REPRICED WITH CODES ---',
+              { was: draftRes.total_price, now: repriced.toFixed(2), applied });
+            draftRes.total_price = repriced.toFixed(2);
+          }
         }
       } catch (gqlErr) {
         console.warn('--- DRAFT PHONE UPDATE FAILED (non-fatal) ---', gqlErr.message);
@@ -6546,16 +6574,24 @@ function OrderCreate({ context = {}, setRoute }) {
           if (d.email) orderPayload.order.email = d.email;
           if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
           if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
-          // Discount → ONE combined order discount. Shopify's Orders API only honours the first
-          // discount_codes entry, and the transaction amount below uses the draft's already-
-          // combined total — so we must send the SAME single combined amount (named with all
-          // parts) or the totals mismatch (the "Rs.200 unauthorized" bug).
+          // Discount → one entry per discount, so the order reads the way Shopify's own draft
+          // editor writes it. The total still has to come out the same: the payment transaction
+          // below is pinned to the draft's total, and a mismatch is the "Rs.200 unauthorized"
+          // bug. So the split is only used when the parts add up exactly to `discount`; if the
+          // subtotal cap trimmed the sum, one combined line is sent instead.
           if (discount > 0) {
-            orderPayload.order.discount_codes = [{
-              code: (buildDiscountReason() || 'Discount').slice(0, 255),
-              amount: String(discount),
-              type: 'fixed_amount',
-            }];
+            const partsSum = activeDiscounts.reduce((s, x) => s + x.amount, 0);
+            orderPayload.order.discount_codes = (activeDiscounts.length > 0 && partsSum === discount)
+              ? activeDiscounts.map(x => ({
+                  code: String(x.label || 'Discount').slice(0, 255),
+                  amount: String(x.amount),
+                  type: 'fixed_amount',
+                }))
+              : [{
+                  code: (buildDiscountReason() || 'Discount').slice(0, 255),
+                  amount: String(discount),
+                  type: 'fixed_amount',
+                }];
           } else if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
             orderPayload.order.discount_codes = [{ code: d.applied_discount.title || 'Discount', amount: d.applied_discount.amount, type: 'fixed_amount' }];
           }
@@ -6834,6 +6870,10 @@ function OrderCreate({ context = {}, setRoute }) {
       alert('Failed to process order: ' + err.message);
     } finally {
       setSavingMode(null);
+      // Switch the shared custom code back off the moment this order is done with it, whether
+      // it saved, failed, or was only a dry run. Leaving it live would let anyone who knows the
+      // name redeem it at checkout.
+      if (appliedCodeDiscount?.code === CUSTOM_DISCOUNT_CODE) deactivateCustomDiscount();
     }
   };
 
@@ -7194,6 +7234,18 @@ function OrderCreate({ context = {}, setRoute }) {
     (customAmtRaw > 0) && { key: 'custom', label: (orderDiscountReason || '').trim() || 'partial pay', amount: Math.round(customAmtRaw) },
   ].filter(d => d && d.amount > 0);
   const hasManualDiscount = healthscoreLead || !!appliedCodeDiscount || orderDiscountIsCustom;
+  // A real Shopify code and a manual rupee amount are DIFFERENT things to Shopify, and it will
+  // hold both on one draft: codes ride in `discountCodes`, the manual amount in
+  // `appliedDiscount`. Sending them summed into one `applied_discount` is why every order used
+  // to show a single merged "partial pay 100 + CUSTOMDISCOUNT" line instead of two.
+  // Verified with draftOrderCalculate: code + manual on a Rs.1349 item priced at Rs.1149 with
+  // both listed separately.
+  const orderDiscountCodesToSend = [...new Set([
+    (healthscoreLead && healthscoreDisc?.code) ? healthscoreDisc.code : null,
+    appliedCodeDiscount?.code || null,
+  ].filter(Boolean))];
+  const manualDiscountAmount = activeDiscounts.find(d => d.key === 'custom')?.amount || 0;
+  const manualDiscountLabel = ((orderDiscountReason || '').trim() || 'partial pay').slice(0, 255);
   const discount = Math.round(Math.min(activeDiscounts.reduce((s, d) => s + d.amount, 0), subtotal));
   // Order total (full value of the order — items + shipping - combined discount)
   const total = Math.max(0, subtotal + shipping - discount);
@@ -7296,6 +7348,9 @@ function OrderCreate({ context = {}, setRoute }) {
   // combined discount, so it can be stacked with a partial-payment custom discount.
   const healthscoreCode = (logisticsCfg.healthscoreDiscountCode || '').trim();
   const healthscoreLeadOn = healthscoreLead;
+  // Creating a real discount code writes to the live store, so it is limited to operations.
+  // Admin is included because admin already carries every other permission in this app.
+  const canCreateDiscountCode = ['operations', 'admin'].includes(normalizeRole(me?.role));
   const resolveDiscountCode = async (code) => {
     try {
       const res = await fetch('/shopify-v2/graphql.json', {
@@ -7316,6 +7371,143 @@ function OrderCreate({ context = {}, setRoute }) {
       else if (v?.amount?.amount != null) { valueType = 'amount'; value = parseFloat(v.amount.amount); }
       return { code, valueType, value };
     } catch (e) { return null; }
+  };
+  // ── Custom discount code ───────────────────────────────────────────────────
+  // One permanent Shopify code, reused for every order that needs an ad-hoc rupee discount.
+  // It lives DEACTIVATED. Applying it here sets its value and switches it on; saving the order
+  // switches it back off, so the code is only redeemable during the seconds it takes to build
+  // one order. No usage limit is set — the on/off switch is the control, not a counter.
+  // A discount already recorded on an order is a snapshot, so deactivating afterwards never
+  // changes an order that has been placed.
+  const CUSTOM_DISCOUNT_CODE = 'CUSTOMDISCOUNT';
+  const [customCodeOn, setCustomCodeOn] = useStateO(false);
+  const [customCodeAmount, setCustomCodeAmount] = useStateO('');
+  const [customCodeBusy, setCustomCodeBusy] = useStateO(false);
+  const [customCodeError, setCustomCodeError] = useStateO(null);
+
+  const discountGql = async (query, variables) => {
+    const res = await fetch('/shopify-v2/graphql.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    });
+    const data = await res.json();
+    if (data?.errors?.length) throw new Error(data.errors.map(e => e.message).join('; '));
+    return data?.data || {};
+  };
+
+  // Find the shared code, creating it the first time this ever runs.
+  const ensureCustomDiscountNode = async () => {
+    const found = await discountGql(
+      `query($code: String!) { codeDiscountNodeByCode(code: $code) { id } }`,
+      { code: CUSTOM_DISCOUNT_CODE });
+    if (found?.codeDiscountNodeByCode?.id) return found.codeDiscountNodeByCode.id;
+    const made = await discountGql(`mutation($d: DiscountCodeBasicInput!) {
+      discountCodeBasicCreate(basicCodeDiscount: $d) {
+        codeDiscountNode { id }
+        userErrors { field message }
+      }
+    }`, {
+      d: {
+        title: CUSTOM_DISCOUNT_CODE,
+        code: CUSTOM_DISCOUNT_CODE,
+        startsAt: new Date().toISOString(),
+        customerSelection: { all: true },
+        customerGets: {
+          value: { discountAmount: { amount: '1', appliesOnEachItem: false } },
+          items: { all: true },
+        },
+        combinesWith: { orderDiscounts: true, productDiscounts: true, shippingDiscounts: true },
+      },
+    });
+    const errs = made?.discountCodeBasicCreate?.userErrors || [];
+    if (errs.length) throw new Error(errs.map(e => e.message).join('; '));
+    return made?.discountCodeBasicCreate?.codeDiscountNode?.id;
+  };
+
+  // Set the value, switch the code on, and apply it to this order.
+  const applyCustomDiscount = async () => {
+    const amount = Math.round(Number(customCodeAmount) || 0);
+    if (!(amount > 0)) { setCustomCodeError('Enter an amount greater than zero.'); return; }
+    if (amount > subtotal) { setCustomCodeError(`That is more than the order subtotal (Rs. ${subtotal}).`); return; }
+    setCustomCodeBusy(true);
+    setCustomCodeError(null);
+    try {
+      const id = await ensureCustomDiscountNode();
+      if (!id) throw new Error(`Could not find or create ${CUSTOM_DISCOUNT_CODE}.`);
+      // Value first, then activate. The other order would leave the code live at the previous
+      // order's amount for as long as the update took.
+      const upd = await discountGql(`mutation($id: ID!, $d: DiscountCodeBasicInput!) {
+        discountCodeBasicUpdate(id: $id, basicCodeDiscount: $d) {
+          codeDiscountNode { id }
+          userErrors { field message }
+        }
+      }`, {
+        id,
+        d: {
+          endsAt: null,
+          customerGets: {
+            value: { discountAmount: { amount: String(amount), appliesOnEachItem: false } },
+            items: { all: true },
+          },
+        },
+      });
+      const uerrs = upd?.discountCodeBasicUpdate?.userErrors || [];
+      if (uerrs.length) throw new Error(uerrs.map(e => e.message).join('; '));
+
+      const act = await discountGql(`mutation($id: ID!) {
+        discountCodeActivate(id: $id) {
+          codeDiscountNode { id }
+          userErrors { field message }
+        }
+      }`, { id });
+      const aerrs = act?.discountCodeActivate?.userErrors || [];
+      if (aerrs.length) throw new Error(aerrs.map(e => e.message).join('; '));
+
+      setAppliedCodeDiscount({ code: CUSTOM_DISCOUNT_CODE, valueType: 'amount', value: amount });
+      setOrderDiscountCode(CUSTOM_DISCOUNT_CODE);
+      fetchDiscountCodes();
+    } catch (e) {
+      console.error('[Discount] custom code apply failed', e);
+      setCustomCodeError(e.message || 'Could not apply the discount.');
+    } finally {
+      setCustomCodeBusy(false);
+    }
+  };
+
+  // Switch the code back off. Runs after every save attempt, successful or not, so the code is
+  // never left redeemable. Deliberately swallows its own errors: the order already exists and
+  // failing here must not turn a saved order into an error on screen.
+  const deactivateCustomDiscount = async () => {
+    try {
+      const found = await discountGql(
+        `query($code: String!) { codeDiscountNodeByCode(code: $code) { id } }`,
+        { code: CUSTOM_DISCOUNT_CODE });
+      const id = found?.codeDiscountNodeByCode?.id;
+      if (!id) return;
+      const res = await discountGql(`mutation($id: ID!) {
+        discountCodeDeactivate(id: $id) {
+          codeDiscountNode { id }
+          userErrors { field message }
+        }
+      }`, { id });
+      const errs = res?.discountCodeDeactivate?.userErrors || [];
+      if (errs.length) console.warn('[Discount] deactivate reported', errs);
+      else console.log(`[Discount] ${CUSTOM_DISCOUNT_CODE} deactivated`);
+    } catch (e) {
+      console.warn('[Discount] deactivate failed', e.message);
+    }
+  };
+
+  const clearCustomDiscount = () => {
+    setCustomCodeOn(false);
+    setCustomCodeAmount('');
+    setCustomCodeError(null);
+    if (appliedCodeDiscount?.code === CUSTOM_DISCOUNT_CODE) {
+      setAppliedCodeDiscount(null);
+      setOrderDiscountCode('');
+    }
+    deactivateCustomDiscount();
   };
   const toggleHealthscoreLead = async (checked) => {
     if (!checked) {
@@ -8163,6 +8355,54 @@ function OrderCreate({ context = {}, setRoute }) {
                           </div>
                         )}
                       </div>
+
+                      {/* Custom discount code — operations only. The code name is fixed, so the
+                          operator only ever picks an amount. */}
+                      {canCreateDiscountCode && (
+                        <div className="stack-8">
+                          <label className="hstack-8" style={{ alignItems: "center", cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={customCodeOn}
+                              onChange={e => (e.target.checked ? (setCustomCodeOn(true), setCustomCodeError(null)) : clearCustomDiscount())}
+                            />
+                            <span style={{ fontSize: 13 }}>Enable custom discount</span>
+                          </label>
+                          {customCodeOn && (
+                            <div className="fade-in stack-6" style={{ paddingLeft: 24 }}>
+                              <div className="hstack-8" style={{ alignItems: "flex-end" }}>
+                                <div className="field" style={{ margin: 0, flex: 1 }}>
+                                  <span className="lbl">Discount amount</span>
+                                  <div style={{ display: "flex", alignItems: "center", height: 40, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                                    <span className="muted" style={{ paddingLeft: 12 }}>Rs.</span>
+                                    <input
+                                      className="input num"
+                                      type="number"
+                                      min="0"
+                                      value={customCodeAmount}
+                                      onChange={e => { setCustomCodeAmount(e.target.value); setCustomCodeError(null); }}
+                                      onKeyDown={e => { if (e.key === 'Enter' && !customCodeBusy) applyCustomDiscount(); }}
+                                      placeholder="0"
+                                      autoFocus
+                                      style={{ height: "100%", border: 0, paddingLeft: 8, minWidth: 0, width: "100%" }}
+                                    />
+                                  </div>
+                                </div>
+                                <button className="btn primary" style={{ height: 40 }} disabled={customCodeBusy} onClick={applyCustomDiscount}>
+                                  {customCodeBusy
+                                    ? <><Icon name="refresh" className="spin" /> Applying…</>
+                                    : (appliedCodeDiscount?.code === CUSTOM_DISCOUNT_CODE ? 'Update amount' : 'Apply')}
+                                </button>
+                              </div>
+                              {customCodeError
+                                ? <div style={{ fontSize: 12, color: "var(--risk-high)" }}>{customCodeError}</div>
+                                : <div className="muted" style={{ fontSize: 12 }}>
+                                    Switches on once for this order and switches off again when the order is saved.
+                                  </div>}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Add custom order discount — expands with a fade-in */}
                       <label className="hstack-8" style={{ alignItems: "center", cursor: "pointer" }}>
@@ -14176,7 +14416,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
     case "shipment_tracking": return <ShipmentTrackingScreen setRoute={setRoute} openCustomer={openCustomer} />;
     case "conversations": return <ConversationsScreen me={me} ctx={route.ctx} />;
     case "crm_orders": return <CRMOrders setRoute={setRoute} openCustomer={openCustomer} />;
-    case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} />;
+    case "order_create": return <OrderCreate context={route.ctx} setRoute={setRoute} me={me} />;
     case "calculator": return <PriceCalculator me={me} canRx={canRx} />;
     case "cart_links": return <CartLinkGenerator />;
     case "popup_leads": return <PopupLeadsScreen />;

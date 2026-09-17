@@ -47,7 +47,13 @@ async function start() {
     // CSV Version (Excel compatible)
     let csv = 'Product Name,Selling Price (INR),MRP (INR),10% Off Price (INR)\n';
 
-    products.forEach(p => {
+    // Skip out-of-stock: keep if any variant has stock, isn't tracked, or allows overselling
+    const inStock = products.filter(p => p.variants.some(v =>
+      v.inventory_quantity > 0 || !v.inventory_management || v.inventory_policy === 'continue'
+    ));
+    console.log(`📦 ${inStock.length} in stock, ${products.length - inStock.length} out of stock skipped.`);
+
+    inStock.forEach(p => {
       const v = p.variants[0];
       const sellingPrice = parseFloat(v.price).toFixed(2);
       const mrp = v.compare_at_price ? parseFloat(v.compare_at_price).toFixed(2) : sellingPrice;

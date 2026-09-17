@@ -1,27 +1,3 @@
-{%- comment -%}
-  ============================================================================
-  sehatup Floating product video
-  ============================================================================
-  Drop-in replacement for the existing floating-video snippet. Same guard, same
-  metafield (custom.floating_video), so it can be pasted straight over the old
-  one with nothing else to re-wire.
-
-  What it does:
-    Small looping thumbnail, bottom left. Tapping it opens a player.
-      mobile   fullscreen, story style
-      tablet   and laptop: sized 9:16 card on a blurred backdrop
-    Progress line across the top, above the controls, draggable to seek.
-    Close, play/pause and sound controls.
-    Product card with variant, quantity and add to cart against /cart/add.js.
-
-  Install: Online Store > Themes > Edit code > Sections > add
-  `floating-product-video.liquid`. Then Customize > pick a Product template >
-  Add section > Floating product video. It only offers itself on product
-  templates (enabled_on below), and only renders on products that actually
-  have a video in the metafield.
-  ============================================================================
-{%- endcomment -%}
-
 {%- liquid
   assign fpv_accent      = section.settings.accent_color | default: '#ee204a'
   assign fpv_accent_dark = fpv_accent | color_darken: 8
@@ -29,12 +5,6 @@
   assign fpv_side        = section.settings.dock_side | default: 'left'
   assign fpv_bottom      = section.settings.dock_bottom | default: 96
 
-  # Two ways to supply the video.
-  #   product  the page's own product metafield, with the buy card
-  #   link     a pasted CDN url, video only, works on any page
-  # fpv_has_card is what separates them: everything product-shaped hangs off
-  # it, so link mode never touches the `product` object, which is nil on a
-  # page template and would otherwise render an empty card.
   assign fpv_show     = false
   assign fpv_video    = ''
   assign fpv_has_card = false
@@ -45,10 +15,6 @@
       assign fpv_link = section.settings.video_url | strip
       assign fpv_probe = fpv_link | downcase
 
-      # These are page addresses, not files. Instagram, Facebook, TikTok,
-      # YouTube and Vimeo all serve a player page that a <video> tag cannot
-      # read, and their real media urls are signed and expire. Refusing here
-      # is better than a silent black frame on a live page.
       assign fpv_is_page = false
       if fpv_probe contains 'instagram.com'
         assign fpv_is_page = true
@@ -66,13 +32,6 @@
         assign fpv_video = fpv_link
       endunless
     else
-      # A File metafield can hand back three different shapes depending on
-      # what Shopify decided the upload was, and picking the wrong one is a
-      # silent failure: the player opens on a black frame with no error
-      # anywhere. So try all three rather than assume.
-      #   Video       an mp4 Shopify transcoded, has a .sources list
-      #   GenericFile a plain file reference, has .url
-      #   legacy      the older shape the previous snippet used, needs file_url
       assign fpv_meta = product.metafields.custom.floating_video
       if template.name == 'product' and fpv_meta != blank
         if fpv_meta.value.sources != blank
@@ -91,8 +50,6 @@
 
     if fpv_video != blank
       assign fpv_show = true
-      # section.id, not product.id: two copies of the section on one template
-      # would otherwise share an element id and the second would be dead.
       assign fpv_id = 'fpv-' | append: section.id
     endif
   endif
@@ -108,7 +65,6 @@
   data-money-format="{{ shop.money_format | escape }}"
 >
 
-  {%- comment -%} The dock: the small looping teaser. {%- endcomment -%}
   <div class="fpv__dock" data-fpv-dock>
     <div class="fpv__dock-inner">
       <button type="button" class="fpv__dock-open" data-fpv-open aria-label="{{ fpv_label | escape }}">
@@ -120,7 +76,6 @@
     </div>
   </div>
 
-  {%- comment -%} The player. {%- endcomment -%}
   <div class="fpv__overlay" data-fpv-overlay hidden>
     <div class="fpv__backdrop" data-fpv-close></div>
 
@@ -129,10 +84,6 @@
         <source src="{{ fpv_video }}" type="video/mp4">
       </video>
 
-      {%- comment -%}
-        Progress line across the top, above the controls. It is a real
-        slider, not a readout: pointer events on the track seek the video.
-      {%- endcomment -%}
       <div
         class="fpv__progress"
         data-fpv-progress
@@ -165,7 +116,6 @@
         </div>
       </div>
 
-      {%- comment -%} Product card, pinned to the bottom of the frame. Product mode only. {%- endcomment -%}
       {%- if fpv_has_card -%}
       <div class="fpv__card">
         <div class="fpv__card-head">
@@ -229,16 +179,12 @@
     font-family: 'Montserrat', sans-serif;
   }
 
-  /* ---- Dock ------------------------------------------------------------ */
   #{{ fpv_id }} .fpv__dock {
     position: fixed;
     bottom: {{ fpv_bottom }}px;
     left: 16px;
     z-index: 60;
     width: 92px;
-    /* Arrives from off-screen after a beat, so the page settles first and the
-       movement is noticed. `both` fill keeps it parked off-screen during the
-       delay rather than sitting visible waiting to animate. */
     animation: fpv-dock-in-{{ section.id }} .55s cubic-bezier(.18, .9, .28, 1.06) .9s both;
   }
   #{{ fpv_id }}[data-side="right"] .fpv__dock {
@@ -248,11 +194,8 @@
   }
   #{{ fpv_id }} .fpv__dock[hidden] { display: none; }
 
-  /* Re-entry after the player closes: same move, but immediate and quicker.
-     Waiting another 0.9s here would feel broken rather than considered. */
   #{{ fpv_id }} .fpv__dock[data-return="true"] { animation-duration: .38s; animation-delay: 0s; }
 
-  /* Leaves the way it came. */
   #{{ fpv_id }} .fpv__dock[data-leaving="true"] {
     animation: fpv-dock-out-{{ section.id }} .34s cubic-bezier(.6, 0, .78, 0) both;
   }
@@ -260,8 +203,6 @@
     animation-name: fpv-dock-out-right-{{ section.id }};
   }
 
-  /* -140% clears the element's own width plus the 16px inset, so it is fully
-     past the viewport edge before it fades. */
   @keyframes fpv-dock-in-{{ section.id }} {
     from { opacity: 0; transform: translateX(-140%) scale(.94); }
     to   { opacity: 1; transform: translateX(0) scale(1); }
@@ -301,8 +242,6 @@
   #{{ fpv_id }} .fpv__dock-video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   @media (hover: hover) and (pointer: fine) {
-    /* Hovering anywhere on the dock, including the close button, lifts the
-       whole group. Scaling only the video left the close button behind. */
     #{{ fpv_id }} .fpv__dock:hover .fpv__dock-inner {
       transform: translateY(-3px) scale(1.04);
     }
@@ -325,7 +264,6 @@
     display: grid; place-items: center;
   }
 
-  /* ---- Overlay --------------------------------------------------------- */
   #{{ fpv_id }} .fpv__overlay {
     position: fixed;
     inset: 0;
@@ -346,15 +284,9 @@
   }
   @keyframes fpv-fade { from { opacity: 0; } to { opacity: 1; } }
 
-  /* Tablet and laptop: a sized 9:16 card that never outgrows the viewport. */
   #{{ fpv_id }} .fpv__stage {
     position: relative;
     z-index: 1;
-    /* Height drives it and width follows from the ratio. Setting an explicit
-       width AND height would make the browser ignore aspect-ratio entirely,
-       which squared the card off on short laptop screens. The three terms are
-       the design cap, the viewport height, and what the viewport width can
-       actually accommodate at 9:16. */
     aspect-ratio: 9 / 16;
     height: min(747px, 86vh, calc((100vw - 48px) * 16 / 9));
     width: auto;
@@ -379,7 +311,6 @@
     background: #000;
   }
 
-  /* ---- Controls -------------------------------------------------------- */
   #{{ fpv_id }} .fpv__top {
     position: absolute;
     top: 0; left: 0; right: 0;
@@ -387,9 +318,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    /* Top padding clears the progress line above it. */
     padding: 26px 12px 28px;
-    /* Scrim so white icons stay readable over a bright frame. */
     background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0));
   }
   #{{ fpv_id }} .fpv__top-right { display: flex; gap: 8px; }
@@ -412,7 +341,6 @@
   #{{ fpv_id }} .fpv__icon:active { transform: scale(.92); }
   #{{ fpv_id }} .fpv__icon:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
-  /* Icon pairs: only one half of each toggle is ever visible. */
   #{{ fpv_id }} .fpv__ico-loud,
   #{{ fpv_id }} .fpv__ico-play { display: none; }
   #{{ fpv_id }} [data-fpv-sound][aria-pressed="true"] .fpv__ico-loud { display: block; }
@@ -420,15 +348,6 @@
   #{{ fpv_id }} [data-fpv-playpause][data-paused="true"] .fpv__ico-play { display: block; }
   #{{ fpv_id }} [data-fpv-playpause][data-paused="true"] .fpv__ico-pause { display: none; }
 
-  /* ---- Progress: a story-style line across the very top ----------------
-     It sits above the control row, so the close and pause buttons read as
-     sitting underneath it rather than beside it. */
-  /* The element itself is a transparent 20px grab area; the visible 3px line
-     is drawn by ::before. The previous version used height:3px with vertical
-     padding and background-clip:content-box, which silently collapses to a
-     zero-height content box under the `box-sizing: border-box` that nearly
-     every Shopify theme sets globally. Track and fill vanished and only the
-     fixed-size knob survived. Nothing here depends on box-sizing. */
   #{{ fpv_id }} .fpv__progress {
     position: absolute;
     top: 12px;
@@ -440,9 +359,6 @@
     cursor: pointer;
     touch-action: none;
   }
-  /* The scrim on .fpv__top already darkens this band on every frame, so a
-     translucent white track reads on bright and dark video alike. A dark
-     track would vanish into a dark frame and hide the unplayed remainder. */
   #{{ fpv_id }} .fpv__progress::before {
     content: "";
     position: absolute;
@@ -463,7 +379,6 @@
     width: 0%;
     border-radius: 999px;
     background: #fff;
-    /* Keeps the white fill readable against a white frame. */
     box-shadow: 0 0 4px rgba(0, 0, 0, .5);
   }
   #{{ fpv_id }} .fpv__progress-knob {
@@ -484,16 +399,12 @@
   #{{ fpv_id }} .fpv__progress[data-dragging="true"] .fpv__progress-knob { opacity: 1; }
   #{{ fpv_id }} .fpv__progress:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 
-  /* ---- Product card ---------------------------------------------------- */
   #{{ fpv_id }} .fpv__card {
     position: absolute;
     left: 10px; right: 10px; bottom: 10px;
     z-index: 3;
     padding: 10px;
     border-radius: 14px;
-    /* Deliberately translucent. A solid card hides the bottom third of the
-       frame, which is usually where the product actually is. The heavy blur
-       plus saturation keeps dark text legible over whatever shows through. */
     background: rgba(255, 255, 255, .72);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
@@ -516,16 +427,11 @@
   #{{ fpv_id }} .fpv__title {
     font-weight: 700; font-size: 11.5px; line-height: 1.25;
     color: var(--fpv-ink);
-    /* Two lines then ellipsis, so a long title cannot push the button off.
-       line-clamp is the standard property; the -webkit- pair is what actually
-       ships today, so both are set. */
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    /* Trims the half-leading under the last line, which was most of the gap
-       the price appeared to have. */
     margin-bottom: -1px;
   }
   #{{ fpv_id }} .fpv__price { font-weight: 700; font-size: 13px; line-height: 1; color: var(--fpv-accent); }
@@ -614,7 +520,6 @@
   #{{ fpv_id }} .fpv__status[data-state="error"] { color: #d01d42; }
   #{{ fpv_id }} .fpv__status a { color: inherit; font-weight: 700; }
 
-  /* ---- Mobile: true fullscreen ----------------------------------------- */
   @media (max-width: 767px) {
     #{{ fpv_id }} .fpv__stage {
       width: 100%;
@@ -672,16 +577,10 @@
     try { variants = JSON.parse(root.parentNode.querySelector('[data-fpv-variants]').textContent); }
     catch (e) { try { variants = JSON.parse(document.querySelector('[data-fpv-variants]').textContent); } catch (e2) { variants = []; } }
 
-    // Dismissing the dock is deliberately NOT remembered. It hides the video
-    // for the current page view only, so every fresh page load shows it again.
     var dockDismissed = false;
     var dockVideo = $('.fpv__dock-video');
     var dockReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    /* The teaser holds still until it has finished sliding in, so the movement
-       and the motion in the clip do not compete. Guarded because animationend
-       does not fire under reduced motion, and a backstop timer covers a tab
-       that was backgrounded through the whole animation. */
     var dockPlaying = false;
     function playDock() {
       if (dockPlaying || !dockVideo) return;
@@ -696,11 +595,6 @@
     if (dockReduceMotion) playDock();
     setTimeout(playDock, 2200);
 
-    /* ------------------------------------------------------------------
-       Scroll lock. Hiding the scrollbar reclaims its width and shifts the
-       page sideways, so the body is padded by exactly that much. Previous
-       inline values are restored rather than blanked.
-       ------------------------------------------------------------------ */
     var priorOverflow = '', priorPad = '';
     function lockScroll() {
       var gap = window.innerWidth - document.documentElement.clientWidth;
@@ -717,7 +611,6 @@
       document.body.style.paddingRight = priorPad;
     }
 
-    /* ---- Open / close ------------------------------------------------- */
     var lastFocused = null;
 
     function openPlayer() {
@@ -727,8 +620,6 @@
       dock.hidden = true;
       lockScroll();
       setStatus('');
-      // Autoplay with sound is blocked, so it starts muted and the sound
-      // button is the visitor's way in.
       video.muted = true;
       syncSound();
       var p = video.play();
@@ -740,8 +631,6 @@
     function closePlayer() {
       if (overlay.hidden) return;
       video.pause();
-      // pause fires stopTracking, but close it out explicitly so a browser
-      // that swallows the event cannot leave the rAF loop running forever.
       stopTracking();
       overlay.hidden = true;
       unlockScroll();
@@ -749,8 +638,6 @@
         dock.removeAttribute('data-leaving');
         dock.setAttribute('data-return', 'true');
       }
-      // atFooter as well as dockDismissed: closing the player while the footer
-      // is on screen must not put the dock back on top of it.
       dock.hidden = dockDismissed || atFooter;
       if (lastFocused && lastFocused.focus) lastFocused.focus({ preventScroll: true });
     }
@@ -763,7 +650,6 @@
     $('[data-fpv-dismiss]').addEventListener('click', function () {
       dockDismissed = true;
       if (dockReduceMotion) { dock.hidden = true; return; }
-      // Let it travel back off-screen, then take it out of the layout.
       dock.setAttribute('data-leaving', 'true');
       var gone = false;
       function finish() {
@@ -776,31 +662,10 @@
       setTimeout(finish, 500);
     });
 
-    /* ------------------------------------------------------------------
-       Step aside for the footer.
-
-       The dock is fixed to the corner, so once the visitor reaches the bottom
-       of the page it sits on top of the footer - over the links, the contact
-       details, whatever is in that corner. An IntersectionObserver watches the
-       footer and slides the dock out the way it came, then slides it back when
-       the footer scrolls off again.
-
-       Reuses the dismiss animation (data-leaving) and the player's re-entry
-       animation (data-return, .38s with no delay), so this adds no new CSS.
-
-       Kept separate from dockDismissed on purpose: a visitor who pressed the X
-       wants it gone for the whole page view, while this is only "not right
-       now". Conflating the two would bring a dismissed dock back the moment
-       they scrolled up again.
-       ------------------------------------------------------------------ */
     var atFooter = false;
 
     function findFooter() {
       try {
-        // The theme's own footer. Shopify wraps sections in
-        // #shopify-section-...__footer, and most themes also render a real
-        // <footer> element; either will do, and the last match is used because
-        // a page can contain more than one <footer> (article cards use them).
         var footers = document.querySelectorAll(
           '[id*="shopify-section"][id*="footer"], footer, .footer, [class*="site-footer"]'
         );
@@ -811,8 +676,6 @@
     function hideForFooter() {
       if (dockDismissed || atFooter) return;
       atFooter = true;
-      // The player is open, so the dock is already out of the way. Record the
-      // state and let closePlayer honour it.
       if (!overlay.hidden || dock.hidden) return;
       if (dockReduceMotion) { dock.hidden = true; return; }
       dock.removeAttribute('data-return');
@@ -822,8 +685,6 @@
         if (gone) return;
         gone = true;
         dock.removeAttribute('data-leaving');
-        // Re-check: the visitor can scroll back up faster than the animation
-        // finishes, and hiding it then would strand the dock off-screen.
         if (atFooter) dock.hidden = true;
       }
       dock.addEventListener('animationend', finish, { once: true });
@@ -835,20 +696,10 @@
       atFooter = false;
       if (dockDismissed || !overlay.hidden) return;
       dock.removeAttribute('data-leaving');
-      // Re-displaying the element restarts the CSS animation, which is what
-      // plays the slide back in. data-return makes it the quick .38s version.
       if (!dockReduceMotion) dock.setAttribute('data-return', 'true');
       dock.hidden = false;
     }
 
-    /* This section's script is INLINE, so it executes while the browser is
-       still parsing the page - and the footer section is rendered AFTER this
-       one. Looking for the footer right here found nothing, footerEl was null,
-       the guard below failed silently and the dock never stepped aside. No
-       error, no warning, just a feature that quietly did not exist.
-       So the lookup waits for the DOM to finish parsing. On a cached or
-       late-injected render, readyState is already past 'loading' and it runs
-       immediately. */
     function watchFooter() {
       var footerEl = findFooter();
       if (!footerEl || !('IntersectionObserver' in window)) return;
@@ -858,8 +709,6 @@
           else showAfterFooter();
         });
       }, {
-        // A little before the footer's top edge actually arrives, so the dock
-        // is already moving rather than visibly overlapping for a frame.
         rootMargin: '0px 0px -40px 0px',
         threshold: 0
       }).observe(footerEl);
@@ -883,7 +732,6 @@
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
 
-    /* ---- Play / pause / sound ----------------------------------------- */
     function syncPlay() {
       var paused = video.paused;
       playBtn.setAttribute('data-paused', paused ? 'true' : 'false');
@@ -903,25 +751,14 @@
     soundBtn.addEventListener('click', function () { video.muted = !video.muted; syncSound(); });
     video.addEventListener('play', syncPlay);
     video.addEventListener('pause', syncPlay);
-    // Tapping the frame itself toggles playback, as it does in a story player.
     video.addEventListener('click', togglePlay);
 
-    /* ---- Progress ------------------------------------------------------
-       Driven by requestAnimationFrame, not by `timeupdate`. Browsers fire
-       timeupdate roughly four times a second, so painting from it advances
-       the line in visible ~250ms steps: on an 8 second clip that is a jump of
-       about 3% of the width each time, which reads as stutter. rAF samples
-       currentTime once per frame instead, so the line moves as smoothly as
-       the video does.
-       ------------------------------------------------------------------ */
     var rafId = null;
     var lastAria = -1;
 
     function paint(pct) {
       fill.style.width = pct + '%';
       knob.style.left = pct + '%';
-      // Only touch the attribute when the rounded value actually changes.
-      // Writing it 60 times a second spams assistive tech for no benefit.
       var rounded = Math.round(pct);
       if (rounded !== lastAria) {
         lastAria = rounded;
@@ -943,7 +780,6 @@
     video.addEventListener('playing', startTracking);
     video.addEventListener('pause', stopTracking);
     video.addEventListener('ended', stopTracking);
-    // A seek while paused still needs one repaint, and rAF is not running then.
     video.addEventListener('seeked', function () {
       if (video.paused && video.duration) paint(video.currentTime / video.duration * 100);
     });
@@ -974,13 +810,6 @@
       if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 5); }
     });
 
-    /* ---- Money ---------------------------------------------------------
-       Prices arrive as integer cents so quantity can multiply them. Rendering
-       is handed to the theme's own Shopify.formatMoney when it exists, so the
-       popup matches the rest of the storefront exactly (Indian grouping,
-       decimals or not). The fallback is Shopify's standard implementation for
-       themes that do not expose it.
-       ------------------------------------------------------------------ */
     var MONEY_FORMAT = root.dataset.moneyFormat || '{% raw %}{{amount}}{% endraw %}';
 
     function formatFallback(cents, format) {
@@ -1016,16 +845,10 @@
       return v ? v.price : (variants[0] ? variants[0].price : 0);
     }
 
-    // Recomputed from BOTH inputs, so changing the variant and then the
-    // quantity compounds correctly instead of one overwriting the other.
     function paintPrice() {
       if (priceEl) priceEl.textContent = money(unitPrice() * currentQty());
     }
 
-    /* ---- Buy ------------------------------------------------------------
-       In link mode there is no card at all, so none of these elements exist.
-       hasCard gates the whole section rather than null-checking each line.
-       -------------------------------------------------------------------- */
     var hasCard = !!atc;
 
     function currentQty() {
@@ -1054,7 +877,6 @@
         variantEl.addEventListener('change', function () { paintPrice(); setStatus(''); });
       }
 
-      // Paint once on boot so the figure matches the quantity box from the start.
       paintPrice();
     }
 
@@ -1078,18 +900,11 @@
           throw new Error(problem.description || problem.message || 'Add to cart failed');
         }
 
-        // Themes listen for different things, so tell all the common ones and
-        // let whichever the theme uses refresh its drawer or bubble.
         document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
         document.dispatchEvent(new CustomEvent('cart:build', { bubbles: true }));
         document.dispatchEvent(new CustomEvent('ajaxProduct:added', { bubbles: true }));
         document.dispatchEvent(new CustomEvent('cart:updated', { bubbles: true }));
 
-        // Straight to the cart. The button is still in its 'Adding' state, so
-        // that is the feedback; a success message would only flash for an
-        // instant before the page changed anyway.
-        // The scroll lock is released first, otherwise a browser that restores
-        // the page from bfcache comes back with the body still locked.
         unlockScroll();
         window.location.href = '/cart';
         return;

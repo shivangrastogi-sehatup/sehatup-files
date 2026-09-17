@@ -186,9 +186,22 @@ RESTRUCTURE (decided 2026-09-14) - move off the flat root, grouped by who writes
     [~] 5 retire metadata/counters:
           [x] a CRM code uses only config/counters (preview + transaction), 2026-09-15
           [ ] b push, then wait ~1 day (or team refreshes CRM tabs)
-          [ ] c remove the metadata rule (deploy)
-          [ ] d delete metadata/counters with user OK (collection then disappears;
-                it is in the local backup). Also drop "metadata" from Data Studio list.
+          [ ] c USER WILL DO LATER: remove the metadata rule (match /metadata/{doc}) from
+                firestore.rules and deploy
+          [ ] d USER WILL DO LATER: delete metadata/counters, which removes the whole
+                metadata collection (it is in the local backup D:\firebase\firestore-backup-2026-09-15).
+                Also drop "metadata" from the Data Studio list in NewUI.jsx (EDITABLE_COLLECTIONS).
+          Do c before or together with d. Do NOT do c/d before step b's wait: an old CRM tab
+          still reading metadata/counters would restart RX numbers at 1000.
+
+  MOVE 3: settings/prescription_config -> config/prescription_config  (started 2026-09-15)
+    No live reader: only PrescriptionConfigManager.jsx (dead App.js portal) uses it.
+    config rules already allow it (staff read, admin write), no rules change needed.
+    [x] 1 copied settings/prescription_config -> config/prescription_config 2026-09-15,
+          verified identical (showQR false, templateVersion v3). Note: live PDFs ignore
+          this doc (always V3 template, always a QR code).
+    [ ] 2 later, with user OK: remove the settings rule, delete settings/prescription_config
+          (settings collection then disappears)
           PrescriptionEditor.jsx (dead App.js portal) still references metadata/counters.
   Full target map, migration steps and order: the "sehatUP Firestore Blueprint" page.
 

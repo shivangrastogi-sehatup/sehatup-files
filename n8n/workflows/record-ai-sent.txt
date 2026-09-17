@@ -8,7 +8,7 @@ const cands = [send.id, send.messageId, send.message_id,
   send.message && send.message.id, send.result && send.result.id];
 for (const c of cands) { if (c) { sentId = String(c); break; } }
 
-const ai = $('Extract AI Response').first().json;
+const ai = $('Final Reply').first().json;
 const now = Date.now();
 const convId = String(ai.phone || '').replace(/[^0-9]/g, '');
 const msgId = sentId || ('local_' + now + '_' + Math.floor(Math.random() * 1e6));

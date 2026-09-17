@@ -1,5 +1,5 @@
 {
-  "name": "SehatUP QuickReply WhatsApp Chatbot",
+  "name": "SehatUP QuickReply WhatsApp Chatbot (Unified conversations)",
   "nodes": [
     {
       "parameters": {
@@ -8,13 +8,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "b1cd29fe-f815-4252-a97e-3ef19cc6bfce",
+      "id": "96ebee9c-e789-4987-a9cb-9c8ba679b2a4",
       "name": "QuickReply Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        80,
-        368
+        -1344,
+        704
       ],
       "webhookId": "b1df6342-bedd-4393-8786-401daaa53f01"
     },
@@ -26,13 +26,13 @@
           "responseCode": 200
         }
       },
-      "id": "14d87afc-f82b-4f35-ac22-d6f8f9e1b9d3",
+      "id": "5d003ea8-923b-4016-ad1b-951bc737fe38",
       "name": "Respond 200 Immediately",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        304,
-        272
+        -1104,
+        544
       ]
     },
     {
@@ -54,95 +54,54 @@
                 "operation": "exists",
                 "singleValue": true
               }
+            },
+            {
+              "id": "4f962688-2102-41b8-acfc-99e686ecd87a",
+              "leftValue": "={{ String($json.body.payload?._type || '') }}",
+              "rightValue": "USER_",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
             }
           ],
           "combinator": "and"
         },
         "options": {}
       },
-      "id": "f8dddc76-b277-41c9-912e-e8dd6f70bd89",
+      "id": "f404bf2b-4fdc-4df6-976b-c75d02a11755",
       "name": "Is Real User Message?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        304,
-        464
+        -1120,
+        800
       ]
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body;\nconst phone = body.phone || '';\nconst name = body.name || 'Customer';\nconst msgId = body.id || '';\nconst msgTime = body.msg_time || Date.now();\nconst payload = body.payload || {};\nconst text = payload.text || '';\n\nreturn [{\n  json: {\n    phone,\n    name,\n    msgId,\n    msgTime,\n    text,\n    type: 'USER_MESSAGE',\n    savedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Original QuickReply payload lives on the webhook node. Guard so testing a\n// single node in isolation doesn't hard-crash.\nlet body = {};\ntry {\n  body = $('QuickReply Webhook').first().json.body || {};\n} catch (e) {\n  const inp = $input.first();\n  body = (inp && inp.json && (inp.json.body || inp.json)) || {};\n}\n\nconst phone = body.phone || '';\nconst name = body.name || 'Customer';\nconst msgId = body.id || '';\nconst msgTime = Number(body.msg_time) || Date.now();\nconst payload = body.payload || {};\nconst text = payload.text || '';\n\n// ---- Classify the message (confirmed from prod cloud-run logs) ----\n//  text        -> _type USER_TEXT, has payload.text\n//  image       -> _type USER_FILE, contentType image/jpeg\n//  audio/voice -> _type USER_FILE, contentType audio/ogg, audioText \"\"\n//  button tap  -> _type USER_LIST_REPLY / USER_BUTTON_REPLY\nconst ptype = String(payload._type || '').toUpperCase();\nconst contentType = String(payload.contentType || '').toLowerCase();\nconst hasText = !!(text && String(text).trim());\n\n// MEDIA = any uploaded file: image, audio voice-note, report, document.\nconst isMedia = ptype === 'USER_FILE'\n  || (!hasText && ptype && ptype !== 'USER_TEXT')\n  || (!hasText && (contentType.startsWith('image/') || contentType.startsWith('audio/')));\nlet mediaKind = 'text';\nif (isMedia) {\n  if (contentType.startsWith('image/')) mediaKind = 'image';\n  else if (contentType.startsWith('audio/')) mediaKind = 'audio';\n  else mediaKind = 'file';\n}\nconst mediaPath = payload.path || '';\n\n// AUTOMATION / TEMPLATE triggers the AI must NOT answer - QuickReply's own flows\n// already handle these (e.g. the Health Score CTA sends its link automatically).\n// Add new predefined-button texts to AUTOMATION_TRIGGERS (matched case-insensitive).\n// Matched as PATTERNS, not exact substrings. The literal-substring list missed the real\n// button text \"I want to Check My Free PCOD Health Score\" - the word PCOD sits between\n// \"Free\" and \"Health Score\", so none of the four literals matched, the AI was not skipped,\n// and it answered by INVENTING a health score and a PCOD diagnosis. Patterns survive the\n// wording changes a marketing team makes to a button; exact strings do not.\n// Punctuation is stripped before matching, so \"Health-Score\" and \"health score!\" both work.\n// Health-score phrasings are deliberately NOT here. The four literal button texts below are\n// the ones QuickReply's own flow demonstrably answers. A NEW variant it does not recognise\n// (\"I want to Check My Free PCOD Health Score\") produced only the generic\n// \"Hi! Please let us know how we can help you.\" - so skipping the AI on those would leave the\n// customer with a greeting and no link at all. Anything else mentioning a health score now\n// reaches the AI, where a deterministic responder sends the real link.\n// >> If QuickReply is later configured to answer the PCOD variant too, add it here, or the\n//    customer will get the link twice.\n// The vaji-bati/kern-drops message (\"Mujhe vaji bati or kern drop chahiye\") is a\n// HUMAN-HANDOFF case, handled by HUMAN_HANDOFF_RES below - NOT by this AUTOMATION list.\n// History: it was a skip trigger, REMOVED 2026-07-31 when skipping produced silence (neither\n// QuickReply nor, at the time, anything else answered it), then RE-ADDED 2026-08-11 with a\n// different purpose: the AI must stay SILENT so a real agent takes over, and a separate\n// calling automation fires on the same phrasing. Silence is intentional now - do not delete\n// HUMAN_HANDOFF_RES expecting the AI to reply.\n// >> ADDED 2026-08-04: \"I want my detailed HealthScore360 report\". QuickReply's flow answers\n//    this one end to end - it posts \"We're processing your HealthScore360 Report\", then the\n//    PDF itself. The AI was not skipped (the old pattern ended at \"healthscore\", so the\n//    trailing \"360 report\" made it miss), so the report guard fired too and sent a SECOND\n//    copy as a raw signed storage URL. The customer got the report twice.\n//    Whitespace and the \"360\"/\"report\" tails are optional so the same entry survives\n//    \"healthscore360\", \"health score 360\" and \"HealthScore 360 Report\".\nconst AUTOMATION_TRIGGER_RES = [\n  /^\\s*check my free health\\s*score\\s*(360)?\\s*$/,\n  /^\\s*check free health\\s*score\\s*(360)?\\s*$/,\n  /^\\s*i want my detailed health\\s*score\\s*(360)?\\s*(report)?\\s*$/\n];\nconst textLc = String(text || '').toLowerCase().replace(/[^a-z0-9\\s]/g, ' ').replace(/\\s+/g, ' ').trim();\nconst isTriggerText = AUTOMATION_TRIGGER_RES.some(re => re.test(textLc));\n// HUMAN-HANDOFF triggers: AI must NOT answer, but for the OPPOSITE reason to the automation\n// triggers above - nothing automated *replies*. A real agent takes over and a separate\n// calling automation fires on the same phrasing. Added 2026-08-11 for the vaji-bati/kern-drops\n// buying message. Anchored to the full message (only this phrasing), tolerating drop/drops,\n// or/aur, an optional leading \"mujhe\", and common spellings of chahiye. Add entries here only\n// for phrasings you want handed to a human instead of answered by the AI.\nconst HUMAN_HANDOFF_RES = [\n  /^\\s*(mujhe\\s+)?vaji\\s*bati\\s+(or|aur)\\s+kern\\s*drops?\\s+(chahiye|chahie|chaiye|chahiya)\\s*$/\n];\nconst isHumanHandoffText = HUMAN_HANDOFF_RES.some(re => re.test(textLc));\nconst isButtonReply = ptype === 'USER_LIST_REPLY' || ptype === 'USER_BUTTON_REPLY';\nconst isAutomation = isTriggerText || isButtonReply || isHumanHandoffText;\n\n// The AI answers ONLY real typed questions. Skip media + automation/button messages.\nconst skipAi = isMedia || isAutomation;\nlet skipReason = '';\nif (isMedia) skipReason = 'media_' + mediaKind;\nelse if (isButtonReply) skipReason = 'button_reply';\nelse if (isHumanHandoffText) skipReason = 'human_handoff_trigger';\nelse if (isTriggerText) skipReason = 'automation_trigger';\n\nreturn [{\n  json: {\n    phone,\n    name,\n    msgId,\n    msgTime,\n    text,\n    msgType: ptype,\n    isMedia,\n    mediaKind,\n    mediaPath,\n    isAutomation,\n    skipAi,\n    skipReason,\n    convId: phone.replace(/[^0-9]/g, ''),   // matches CF qrConvId()\n    savedAt: new Date().toISOString()\n  }\n}];"
       },
-      "id": "c79a1d06-a5a0-41c2-9136-5f9968c3c8e8",
+      "id": "00d7e845-aaa0-4e1a-a8dd-a770d801f2e7",
       "name": "Extract Message Details",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        528,
-        368
+        -496,
+        704
       ]
     },
     {
       "parameters": {
-        "authentication": "serviceAccount",
-        "operation": "create",
-        "projectId": "sehatup-f96b5",
-        "collection": "={{ 'qr_conversations/' + $json.phone.replace('+', '') + '/events' }}",
-        "columns": "type,text,msgId,msgTime,savedAt"
+        "jsCode": "const RESUME_AFTER_SILENCE_MS = 30 * 60 * 1000; // human-silence before AI resumes\n\n// This message's own trigger time (from the webhook). No static data - the whole\n// decision is derived from the durable Firestore messages, so it works the same in\n// test and production executions.\nconst src = $('Extract Message Details').first().json;\nconst phone = src.phone;\nconst name = src.name || 'Customer';\nconst myMsgTime = Number(src.msgTime) || 0;\n\n// Surface WHY this execution did or did not reply, in the n8n executions list itself.\n// 'Decide Process bowed out' is the single most common question about this workflow and\n// answering it used to mean opening each execution one by one. No-op without customData.\nconst _tag = (o) => {\n  try {\n    $execution.customData.set('decision', String(o.reason || ''));\n    if (o.recentUserText) $execution.customData.set('text', String(o.recentUserText).slice(0, 60));\n  } catch (e) { /* paid feature; Tag Execution already logs when it is unavailable */ }\n  return [{ json: o }];\n};\n\n// ---- per-number lists (global 'off' already short-circuited by \"AI Enabled?\") ----\nlet mode = 'on';\nlet testNumbers = ['+917300978845', '+918756112227'];\nlet blockedNumbers = [];\nconst toList = (v) => {\n  if (!v) return [];\n  const raw = Array.isArray(v) ? v.join(',') : String(v);\n  return raw.split(',').map(s => s.trim()).filter(Boolean);\n};\ntry {\n  const cfg = $('Get AI Config').first().json;\n  if (cfg && typeof cfg.mode === 'string' && cfg.mode.trim()) mode = cfg.mode.trim().toLowerCase();\n  const tn = toList(cfg && cfg.testNumbers);\n  if (tn.length) testNumbers = tn;\n  blockedNumbers = toList(cfg && cfg.blockedNumbers);\n} catch (e) {}\n\nif (blockedNumbers.includes(phone)) return _tag({ phone, name, shouldProcess: false, reason: 'ai_blocked_number' });\nif (mode === 'off') return _tag({ phone, name, shouldProcess: false, reason: 'ai_paused_global' });\nif (mode === 'test' && !testNumbers.includes(phone)) return _tag({ phone, name, shouldProcess: false, reason: 'ai_test_mode_only' });\n\n// ---- OTHER AUTOMATIONS own certain templated messages. If THIS turn is one of their\n//      template texts, that automation handles it and Ananya must NOT answer - otherwise\n//      two bots reply to the same message and confuse the customer (fragmented \"Han\",\n//      \"Boliye\" replies etc). Add more exact texts to this list as needed. Matching is\n//      case- and whitespace-insensitive; switch to `.some(x => n.includes(x))` for partial.\nconst OTHER_AUTOMATION_TEXTS = [\n  'hurray! my next product is on you? tell me more!',\n];\nconst _norm = s => String(s || '').replace(/\\s+/g, ' ').trim().toLowerCase();\nconst _isOtherAutomation = t => { const n = _norm(t); return !!n && OTHER_AUTOMATION_TEXTS.includes(n); };\nif (_isOtherAutomation(src.text)) {\n  return _tag({ phone, name, shouldProcess: false, reason: 'other_automation_template', recentUserText: String(src.text || '').slice(0, 60) });\n}\n\n// ---- read messages from conversations/{convId}/messages ----\n//   customer      = direction 'in'\n//   AI reply      = out + senderKind 'AI'     (Save AI Message; legacy: messageBy 'AI')\n//   human reply   = out + senderKind 'HUMAN'  (CRM composer / qrSendMessage) - HAS text\n//                   OR an AGENT_PLACEHOLDER   (QuickReply dashboard)         - no text\nlet items = [];\ntry { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }\nconst tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();\n\n// The AI sends via ONE fixed QuickReply agent account; a dashboard takeover comes from\n// a DIFFERENT account, told apart by agentId.\nconst AI_AGENT_IDS = new Set(['u9ocdFtszn6BAXa7L_ag']);  // <- AI's own QuickReply send account(s)\n\n// senderKind is stamped at write time and is never touched by the status callbacks, so\n// it survives; messageBy and agentId are both overwritten in place by QuickReply's\n// SENT/DELIVERED/READ callbacks and cannot be trusted on their own.\nconst isAiOut = m => m.senderKind === 'AI' || m.messageBy === 'AI';\nconst isHumanOut = m => !isAiOut(m) && (\n     m.senderKind === 'HUMAN'\n  || (m._type === 'AGENT_PLACEHOLDER' && !m.automationBy && !AI_AGENT_IDS.has(String(m.agentId || '')))\n);\n\n// Pass 1 - learn extra AI send accounts, but ONLY from messages explicitly marked as the\n// AI's own. The old code learned from \"any outbound message that has text\", so a human\n// agent's CRM reply (AGENT_TEXT + text) both counted as an AI reply AND registered that\n// agent as an AI account - after which the bot never paused for them again.\nfor (const it of items) {\n  const m = it && it.json; if (!m) continue;\n  if (m.direction === 'out' && m.agentId && isAiOut(m)) AI_AGENT_IDS.add(String(m.agentId));\n}\n\nlet latestInboundAt = 0, lastAiAt = 0, lastHumanAt = 0;\nconst inbound = [];\nfor (const it of items) {\n  const m = it && it.json; if (!m) continue;\n  const t = tval(m);\n  if (m.direction === 'in') {\n    latestInboundAt = Math.max(latestInboundAt, t);\n    if (m.text && !_isOtherAutomation(m.text)) inbound.push({ t, text: String(m.text) });\n    continue;\n  }\n  if (m.direction !== 'out') continue;\n  if (isHumanOut(m)) { lastHumanAt = Math.max(lastHumanAt, t); continue; }\n  if (isAiOut(m)) { lastAiAt = Math.max(lastAiAt, t); continue; }\n  // Legacy / ambiguous outbound text, written before senderKind existed. Count it as the\n  // AI: calling it \"human\" would read every historical AI reply as a takeover and\n  // silence the bot on every chat it has ever answered.\n  if (m.text && !m.placeholder && m._type !== 'BOT_PLACEHOLDER') lastAiAt = Math.max(lastAiAt, t);\n}\n\n\n// Everything the decision turned on, in one place and human-readable. IST because that is\n// the only timezone anyone reading an n8n execution here cares about.\nconst _ist = (ms) => ms ? new Date(ms + 19800000).toISOString().replace('T', ' ').slice(0, 19) + ' IST' : '-';\nconst _dbg = () => ({\n  latestInboundAt, myMsgTime, lastAiAt, lastHumanAt,\n  latestInbound: _ist(latestInboundAt),\n  thisMessage: _ist(myMsgTime),\n  lastAi: _ist(lastAiAt),\n  lastHuman: _ist(lastHumanAt),\n  ageOfThisMessageMins: myMsgTime ? Math.round((Date.now() - myMsgTime) / 60000) : null,\n  fetched: items.length,\n});\nconsole.log('[Decide Process] age=' + (myMsgTime ? Math.round((Date.now() - myMsgTime) / 60000) + 'min' : '?')\n  + ' fetched=' + items.length\n  + ' lastInbound=' + (latestInboundAt ? new Date(latestInboundAt).toISOString() : '-')\n  + ' lastAi=' + (lastAiAt ? new Date(lastAiAt).toISOString() : '-')\n  + ' lastHuman=' + (lastHumanAt ? new Date(lastHumanAt).toISOString() : '-'));\n\n// ---- DEBOUNCE (Firestore-based): if a newer customer message arrived during the\n//      wait, let THAT execution answer the whole batch - this one bows out. ----\nif (latestInboundAt > myMsgTime) {\n  return _tag({ phone, name, shouldProcess: false, reason: 'newer_message_wins', ..._dbg() });\n}\n\n// ---- HANDOFF: a human agent is actively handling this chat ----\n// Once a human agent has sent ANYTHING in the last RESUME window, the AI backs off -\n// even if an in-flight AI reply happened to land after the human's message. The AI\n// resumes only after the human has been quiet for the whole window.\nconst now = Date.now();\nconst humanActive = lastHumanAt > 0 && (now - lastHumanAt) < RESUME_AFTER_SILENCE_MS;\nif (humanActive) {\n  return _tag({ phone, name, shouldProcess: false, reason: 'human_active', minsSinceHuman: Math.round((now - lastHumanAt) / 60000), ..._dbg() });\n}\n\n// ---- already answered? ANY reply (AI text or a genuine human reply) newer than the\n//      latest customer message => this / a duplicate execution bows out. ----\n// NOT a QuickReply automation/bot template - those don't answer the query.\nconst answeredAt = Math.max(lastAiAt, lastHumanAt);\nif (latestInboundAt > 0 && latestInboundAt <= answeredAt) {\n  return _tag({ phone, name, shouldProcess: false, reason: 'already_answered', ..._dbg() });\n}\n\n// ---- text of the current turn, for the product lookup ----\n// \"Fetch Product Matches\" runs before \"Build AI Prompt\", so it cannot use that node's\n// newMsgText. It must not use only the triggering message either: a customer who types\n// \"vaji bati\" and then \"price?\" would have the product name in the PREVIOUS message and\n// match nothing. This is the same unanswered-messages set Build AI Prompt assembles.\nlet recentUserText = inbound.filter(m => m.t > answeredAt).map(m => m.text).join(' ');\nif (!recentUserText && inbound.length) recentUserText = inbound[inbound.length - 1].text;\nif (!recentUserText) recentUserText = String(src.text || '');\nrecentUserText = recentUserText.replace(/\\s+/g, ' ').trim().slice(0, 300);\n\nreturn _tag({ phone, name, shouldProcess: true, reason: 'process', recentUserText, resumedFromHuman: (lastHumanAt > 0 && lastHumanAt >= lastAiAt), ..._dbg() });\n"
       },
-      "id": "node-save-user-msg",
-      "name": "Save User Message to Firebase",
-      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
-      "typeVersion": 1,
-      "position": [
-        752,
-        368
-      ],
-      "credentials": {
-        "googleApi": {
-          "id": "rqq4SmAHvUOCXqmg",
-          "name": "Google Firebase Cloud Firestore account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const DEBOUNCE_MS = 8000;\n\nconst src = $('Extract Message Details').first().json;\nconst phone = src.phone;\nconst name = src.name || 'Customer';\nconst text = src.text;\nconst msgId = src.msgId;\nconst msgTime = src.msgTime;\n\nif (!phone) throw new Error('Store Message in Session: phone missing');\n\nconst gs = $getWorkflowStaticData('global');\nif (!gs.sessions) gs.sessions = {};\n\nconst now = Date.now();\n\nif (!gs.sessions[phone]) {\n    gs.sessions[phone] = { phone, name, messages: [], executionId: null, lockTime: 0, processed: false };\n}\n\nconst session = gs.sessions[phone];\n\nsession.messages.push({ text, msgId, msgTime, addedAt: now });\nsession.name = name;\nsession.lockTime = now;\nsession.processed = false;\nsession.executionId = $execution.id;\n\nreturn [{\n    json: {\n          phone, name, text, msgId, msgTime,\n          executionId: $execution.id,\n          messagesCount: session.messages.length,\n          debounceMs: DEBOUNCE_MS\n    }\n}];\n    }\n}]\n}"
-      },
-      "id": "7fee6909-3f16-481f-900f-136cb2ea0add",
-      "name": "Store Message in Session",
+      "id": "2b90d900-e915-45f0-9bd3-37e784321bd5",
+      "name": "Decide Process",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        976,
-        368
-      ]
-    },
-    {
-      "parameters": {
-        "amount": 3
-      },
-      "id": "4cc4c02a-74da-43cd-bc04-ebc24ac630fe",
-      "name": "Wait 3 Minutes",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1200,
-        368
-      ],
-      "webhookId": "wait-3-min-webhook"
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst phone = item.phone;\nconst name = item.name || 'Customer';\n\nconst workflowStaticData = $getWorkflowStaticData('global');\nconst session = workflowStaticData.sessions && workflowStaticData.sessions[phone];\n\nif (!session) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'no_session', messages: [] } }];\n}\n\nif (session.processed) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'already_processed', messages: [] } }];\n}\n\nif (session.executionId !== $execution.id) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'newer_execution_wins', messages: [] } }];\n}\n\n// Extra safety: if the session lock is very recent (another message came in < 5 seconds ago), skip\nconst timeSinceLock = Date.now() - (session.lockTime || 0);\nif (timeSinceLock < 5000 && session.executionId !== $execution.id) {\n  return [{ json: { phone, name, shouldProcess: false, reason: 'lock_too_recent', messages: [] } }];\n}\n\n// Mark as processed immediately to prevent any race condition\nworkflowStaticData.sessions[phone].processed = true;\n\nconst messages = session.messages || [];\n\n// Clean up session\ndelete workflowStaticData.sessions[phone];\n\nreturn [{ json: { phone, name, shouldProcess: true, messages, reason: 'process' } }];"
-      },
-      "id": "91cd8e82-746e-4109-96a6-f281380ba86c",
-      "name": "Should We Process Now?",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1424,
-        368
+        160,
+        912
       ]
     },
     {
@@ -170,13 +129,13 @@
         },
         "options": {}
       },
-      "id": "acf73236-b283-45cb-b9d2-22314ce195cb",
+      "id": "a1aa856b-04fa-4c46-afa5-809517f748ed",
       "name": "Process or Skip?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1648,
-        368
+        320,
+        672
       ]
     },
     {
@@ -184,87 +143,63 @@
         "authentication": "serviceAccount",
         "operation": "getAll",
         "projectId": "sehatup-f96b5",
-        "collection": "={{ \"qr_conversations/\" + $json.phone.replace(\"+\", \"\") + \"/events\" }}",
-        "limit": 50
+        "collection": "={{ 'conversations/' + $json.phone.replace(/[^0-9]/g, '') + '/messages' }}",
+        "limit": 500
       },
-      "id": "37b4c156-7b3e-41ff-904e-9d0e8cdf0293",
+      "id": "92a540a7-196d-47cf-a8c7-5d84f8b00c88",
       "name": "Fetch Conversation History",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        1872,
-        368
+        0,
+        848
       ],
       "alwaysOutputData": true,
       "credentials": {
         "googleApi": {
-          "id": "rqq4SmAHvUOCXqmg",
-          "name": "Google Firebase Cloud Firestore account"
+          "id": "FIY6PRI1TzL86Bc8",
+          "name": "Firebase admin service account"
         }
       },
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "const procData = $('Should We Process Now?').first().json;\n\nconst phone = procData.phone;\nconst name = procData.name || 'Customer';\nconst newMessages = procData.messages || [];\n\n// Conversation history from Firestore\nlet historyItems = [];\ntry { historyItems = $('Fetch Conversation History').all(); } catch (e) { historyItems = []; }\n\nconst history = [];\nfor (const item of historyItems) {\n  const d = item.json;\n  if (!d.type) continue;\n  if (d.type === 'USER_MESSAGE') history.push({ role: 'user', content: d.text || '', time: d.msgTime || d.savedAt });\n  else if (d.type === 'AI_REPLY') history.push({ role: 'assistant', content: d.text || '', time: d.savedAt });\n}\n\n// Sort by time to ensure chronological order\nhistory.sort((a, b) => {\n  const timeA = new Date(a.time || 0).getTime();\n  const timeB = new Date(b.time || 0).getTime();\n  return timeA - timeB;\n});\n\nconst recentHistory = history.slice(-20);\n\n// FIX: Join with newline instead of space to keep messages separate\nconst newMsgText = newMessages.map(m => m.text).join('\\n');\n\nconst isFirstContact = !history.some(h => h.role === 'assistant');\n\n// Office hours check IST (9:30 AM - 6:30 PM)\nconst nowUTC = new Date();\nconst istTime = new Date(nowUTC.getTime() + (5.5 * 60 * 60 * 1000));\nconst totalMinutes = istTime.getUTCHours() * 60 + istTime.getUTCMinutes();\nconst isOfficeHours = totalMinutes >= (9 * 60 + 30) && totalMinutes < (18 * 60 + 30);\n\n// Read system prompt from Google Docs\nlet basePrompt = 'You are Ananya, a Health Expert at SehatUP.';\n\ntry {\n  const docData = $('Get a document').first().json;\n  if (docData && docData.body && docData.body.content && Array.isArray(docData.body.content)) {\n    const extracted = docData.body.content\n      .map(b => b.paragraph && b.paragraph.elements\n        ? b.paragraph.elements.map(e => (e.textRun && e.textRun.content) ? e.textRun.content : '').join('')\n        : '')\n      .join('').trim();\n    if (extracted) basePrompt = extracted;\n  }\n} catch (e) {\n  console.log('Could not read Google Doc, using default prompt:', e.message);\n}\n\n// Build conversation context string for better greeting detection\nconst conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();\nconst hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');\n\n// Inject dynamic variables with stronger anti-greeting guard\nconst systemPrompt = basePrompt\n  + '\\n\\nCONTEXT:\\nFirst contact: ' + (isFirstContact ? 'YES' : 'NO')\n  + '\\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')\n  + '\\nCustomer name: ' + name\n  + '\\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')\n  + '\\n\\nCRITICAL ANTI-SPAM RULES:\\n'\n  + '1. If \"Greeting already sent: YES\", NEVER send greeting again. Jump straight to answering the question.\\n'\n  + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\\n'\n  + '3. Only greet if: First contact: YES AND Greeting already sent: NO AND no assistant messages in history.\\n'\n  + '4. For follow-up questions, respond directly without any greeting or introduction.';\n\nconst messages = [\n  { role: 'system', content: systemPrompt },\n  ...recentHistory.map(h => ({ role: h.role, content: h.content })),\n  { role: 'user', content: newMsgText }\n];\n\nreturn [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, systemPromptLength: systemPrompt.length } }];"
+        "jsCode": "const decide = $('Decide Process').first().json;\r\nconst phone = decide.phone;\r\nconst name = decide.name || 'Customer';\r\n\r\nlet items = [];\r\ntry { items = $('Fetch Conversation History').all(); } catch (e) { items = []; }\r\nconst tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();\r\nconst evs = items.map(i => i.json).filter(m => m && (m.msgTime || m.createdAt))\r\n  .map(m => ({ ...m, _t: tval(m) })).sort((a, b) => a._t - b._t);\r\n\r\n\nconst AI_AGENT_IDS = new Set(['u9ocdFtszn6BAXa7L_ag']);\r\nconst isAiOut = m => m.senderKind === 'AI' || m.messageBy === 'AI';\r\nconst isHumanOut = m => !isAiOut(m) && (\r\n     m.senderKind === 'HUMAN'\r\n  || (m._type === 'AGENT_PLACEHOLDER' && !m.automationBy && !AI_AGENT_IDS.has(String(m.agentId || '')))\r\n);\r\nfor (const m of evs) { if (m.direction === 'out' && m.agentId && isAiOut(m)) AI_AGENT_IDS.add(String(m.agentId)); }\r\n\r\nconst isHumanMsg = m => m.direction === 'out' && isHumanOut(m);\r\n\nconst isAiMsg = m => m.direction === 'out' && !isHumanOut(m)\r\n  && (isAiOut(m) || (!!m.text && !m.placeholder && m._type !== 'BOT_PLACEHOLDER'));\r\n\r\nlet lastAiAt = 0, lastHumanAt = 0, humanTextSeen = false;\r\nfor (const m of evs) {\r\n  if (isHumanMsg(m)) { lastHumanAt = Math.max(lastHumanAt, m._t); if (m.text) humanTextSeen = true; }\r\n  else if (isAiMsg(m)) lastAiAt = Math.max(lastAiAt, m._t);\r\n}\r\nconst cutoff = Math.max(lastAiAt, lastHumanAt);\r\nconst resumedFromHuman = lastHumanAt > 0 && lastHumanAt >= lastAiAt;\r\n\r\n\nconst unanswered = evs.filter(m => m.direction === 'in' && m._t > cutoff);\r\nlet newMsgText = unanswered.map(m => m.text || '').filter(Boolean).join('\\n');\r\n\nif (!newMsgText) {\r\n  const lastUser = [...evs].reverse().find(m => m.direction === 'in' && m.text);\r\n  if (lastUser) newMsgText = lastUser.text || '';\r\n}\r\nif (!newMsgText) {\r\n  try { newMsgText = ($('Extract Message Details').first().json.text || '').trim(); } catch (e) {}\r\n}\r\n\r\n\nconst history = [];\r\nfor (const m of evs) {\r\n  if (m.direction === 'in') { if (m._t > cutoff) continue; history.push({ role: 'user', content: m.text || '' }); }\r\n  else if (isHumanMsg(m)) { if (m.text) history.push({ role: 'assistant', content: m.text }); }\r\n  else if (isAiMsg(m)) history.push({ role: 'assistant', content: m.text || '' });\r\n}\r\nconst recentHistory = history.slice(-20);\r\n\r\nconst isFirstContact = !history.some(h => h.role === 'assistant');\r\n\r\n\nlet adContext = '';\r\nlet adDebug = 'none';\r\ntry {\r\n  const _firstIn = evs.find(m => m.direction === 'in' && m.preview);\r\n  let _p = _firstIn && _firstIn.preview;\r\n  if (typeof _p === 'string') { try { _p = JSON.parse(_p); } catch (e) { _p = null; } }\r\n  const _ad = _p && typeof _p === 'object' ? (_p.adPreview || _p.ad || _p) : null;\r\n  if (_ad && typeof _ad === 'object') {\r\n    const _found = {};\r\n    const _walk = (o, depth) => {\r\n      if (!o || typeof o !== 'object' || depth > 4) return;\r\n      for (const k of Object.keys(o)) {\r\n        const v = o[k];\r\n        const kl = k.toLowerCase();\r\n        if (typeof v === 'string' && v.trim()) {\r\n          if (!_found[kl] && (kl === 'headline' || kl === 'title' || kl === 'text' || kl === 'body' || kl === 'caption')) {\r\n            _found[kl] = v.trim();\r\n          }\r\n        } else _walk(v, depth + 1);\r\n      }\r\n    };\r\n    _walk(_ad, 0);\r\n    const _headline = _found.headline || _found.title || '';\r\n    const _body = String(_found.text || _found.body || _found.caption || '').replace(/\\s+/g, ' ').slice(0, 300);\r\n    if (_headline || _body) {\r\n      adDebug = (_headline || _body).slice(0, 40);\r\n      adContext = '\\n\\nAD CONTEXT (hard rule): this customer did not come looking for us - they tapped the '\r\n        + 'WhatsApp button on one of our ads, and THIS is the ad they tapped:'\r\n        + (_headline ? '\\nAd headline: ' + _headline : '')\r\n        + (_body ? '\\nAd text: ' + _body : '')\r\n        + '\\n1. That ad is the subject they came to talk about. Open on THAT topic.'\r\n        + '\\n2. Their first messages will often be vague - \"hello\", \"isme kya hota hai\", \"kya help karoge\", '\r\n        + '\"price kya hai\". Vague does NOT mean topic-less: they mean the ad. Ask them about the concern '\r\n        + 'the ad is about instead of guessing a new one.'\r\n        + '\\n3. NEVER steer them to an unrelated health area, and never bring up a product or condition the '\r\n        + 'ad did not mention - especially not sexual wellness, weight or performance unless the ad or the '\r\n        + 'customer raised it.'\r\n        + '\\n4. Do not read the ad back to them, do not quote it, and do not say \"aapne ad dekha tha\". '\r\n        + 'Just talk about the subject it was about.';\r\n    }\r\n  }\r\n} catch (e) { adContext = ''; adDebug = 'error'; }\r\n\r\n\nlet curMsgTime = 0;\r\nif (unanswered.length) curMsgTime = unanswered[unanswered.length - 1]._t;\r\nif (!curMsgTime) { const lu = [...evs].reverse().find(m => m.direction === 'in'); if (lu) curMsgTime = lu._t; }\r\nif (!curMsgTime) { try { curMsgTime = Number($('Extract Message Details').first().json.msgTime) || 0; } catch (e) {} }\r\nif (!curMsgTime) curMsgTime = Date.now();\r\n\r\nconst istNow = new Date(curMsgTime + (5.5 * 60 * 60 * 1000));\r\nconst H = istNow.getUTCHours();\r\nconst Min = istNow.getUTCMinutes();\r\nconst clock = (((H + 11) % 12) + 1) + ':' + String(Min).padStart(2, '0') + ' ' + (H < 12 ? 'AM' : 'PM') + ' IST';\r\nlet partOfDay = 'night';\r\nif (H >= 5 && H < 12) partOfDay = 'morning';\r\nelse if (H >= 12 && H < 17) partOfDay = 'afternoon';\r\nelse if (H >= 17 && H < 21) partOfDay = 'evening';\r\nconst totalMinutes = H * 60 + Min;\r\nconst isOfficeHours = totalMinutes >= (9 * 60 + 30) && totalMinutes < (18 * 60 + 30);\r\n\r\n\nconst firstUnansweredAt = unanswered.length ? unanswered[0]._t : curMsgTime;\r\nlet prevInboundAt = 0;\r\nfor (const m of evs) { if (m.direction === 'in' && m._t < firstUnansweredAt) prevInboundAt = Math.max(prevInboundAt, m._t); }\r\nconst gapMs = prevInboundAt ? (firstUnansweredAt - prevInboundAt) : 0;\r\nfunction fmtGap(ms) {\r\n  if (!ms) return 'first message / no prior';\r\n  const min = Math.round(ms / 60000);\r\n  if (min < 1) return 'just now';\r\n  if (min < 60) return min + ' min ago';\r\n  const hr = Math.round(min / 60);\r\n  if (hr < 24) return hr + ' hr ago';\r\n  const d = Math.round(hr / 24);\r\n  return d + ' day' + (d > 1 ? 's' : '') + ' ago';\r\n}\r\nconst gapLabel = fmtGap(gapMs);\r\n\r\nlet basePrompt = 'You are Ananya, a Health Expert at SehatUP.';\r\ntry {\r\n  const docData = $('Get a document').first().json;\r\n  if (docData && docData.body && docData.body.content && Array.isArray(docData.body.content)) {\r\n    const extracted = docData.body.content\r\n      .map(b => b.paragraph && b.paragraph.elements\r\n        ? b.paragraph.elements.map(e => (e.textRun && e.textRun.content) ? e.textRun.content : '').join('')\r\n        : '')\r\n      .join('').trim();\r\n    if (extracted) basePrompt = extracted;\r\n  }\r\n} catch (e) { console.log('Could not read Google Doc, using default prompt:', e.message); }\r\n\r\n\nconst DOC_MIN_CHARS = 15000;\nconst DOC_REQUIRED = ['RULES:', 'DOSAGE', 'ORDERS, DELIVERY & PAYMENT', 'LIVE PRODUCT DATA & PRICES', 'CATALOG', 'FIRST-MESSAGE TEMPLATE', 'EXAMPLES'];\r\nconst docChars = basePrompt.length;\r\nconst docMissing = DOC_REQUIRED.filter(k => basePrompt.indexOf(k) < 0);\r\nconst docOk = docChars >= DOC_MIN_CHARS && docMissing.length === 0;\r\nif (!docOk) {\r\n  console.log('[Build AI Prompt] !! GOOGLE DOC LOOKS DAMAGED: ' + docChars + ' chars (expected >= '\r\n    + DOC_MIN_CHARS + ')' + (docMissing.length ? ' | MISSING SECTIONS: ' + docMissing.join(' / ') : '')\r\n    + ' -- re-paste from ananya-prompt.txt using a plain text editor, not a rendered panel.');\r\n}\r\n\r\n\nconst SCRIPTS = [\r\n  { name: 'Hindi (Devanagari)', re: /[\\u0900-\\u097F]/ },\r\n  { name: 'Bengali', re: /[\\u0980-\\u09FF]/ },\r\n  { name: 'Punjabi (Gurmukhi)', re: /[\\u0A00-\\u0A7F]/ },\r\n  { name: 'Gujarati', re: /[\\u0A80-\\u0AFF]/ },\r\n  { name: 'Odia', re: /[\\u0B00-\\u0B7F]/ },\r\n  { name: 'Tamil', re: /[\\u0B80-\\u0BFF]/ },\r\n  { name: 'Telugu', re: /[\\u0C00-\\u0C7F]/ },\r\n  { name: 'Kannada', re: /[\\u0C80-\\u0CFF]/ },\r\n  { name: 'Malayalam', re: /[\\u0D00-\\u0D7F]/ },\r\n  { name: 'Urdu/Arabic', re: /[\\u0600-\\u06FF]/ }\r\n];\r\nconst detectedScripts = SCRIPTS.filter(s => s.re.test(newMsgText)).map(s => s.name);\r\n\nconst foreignScripts = detectedScripts.filter(s => s !== 'Hindi (Devanagari)');\r\nconst scriptLabel = detectedScripts.length ? detectedScripts.join(', ') : 'Roman/Latin letters';\r\n\r\n\nlet orderSummary = '';\r\nlet orderCtxDebug = 'node missing';\r\ntry {\r\n  const cx = $('Fetch Customer Context').first().json || {};\r\n  if (cx.error) orderCtxDebug = 'error: ' + cx.error;\r\n  else if (cx.found && cx.summary) { orderSummary = String(cx.summary); orderCtxDebug = cx.orderCount + ' orders (' + (cx.source || '?') + ')'; }\r\n  else orderCtxDebug = 'no orders found (' + (cx.source || '?') + ')';\r\n} catch (e) { orderCtxDebug = 'node missing'; }\r\n\r\n\nlet productSummary = '';\r\nlet productCtxDebug = 'node missing';\r\ntry {\r\n  const px = $('Fetch Product Matches').first().json || {};\r\n  if (px.error) productCtxDebug = 'error: ' + px.error;\r\n  else if (px.found && px.summary) { productSummary = String(px.summary); productCtxDebug = px.matches.length + ' match(es) of ' + px.catalogSize + ' (' + (px.source || '?') + ')'; }\r\n  else productCtxDebug = 'no match of ' + (px.catalogSize || 0) + ' (' + (px.source || '?') + ')';\r\n} catch (e) { productCtxDebug = 'node missing'; }\r\n\r\n\nconst NAME_BLOCKLIST = /\\b(love|papa|pappa|mumm?y|mom|maa|dad|daddy|jaan|jaanu|baby|babu|king|queen|sir|madam|boss|bhai|bhaiya|didi|angel|princess|hero|star|ji|customer|unknown|test)\\b/i;\r\nconst nameIsPlausible = /^[A-Za-z][A-Za-z.'-]{1,20}(\\s+[A-Za-z][A-Za-z.'-]{1,20}){0,2}$/.test(String(name || '').trim())\r\n  && !NAME_BLOCKLIST.test(String(name || ''));\r\nconst displayName = nameIsPlausible ? String(name).trim() : '';\r\n\r\nconst conversationContext = recentHistory.map(h => h.content).join(' ').toLowerCase();\r\nconst hasGreetingInHistory = conversationContext.includes('main ananya hoon') || conversationContext.includes('health expert at sehatup');\r\n\r\nlet systemPrompt = basePrompt\r\n  + '\\n\\nCONTEXT:\\nFirst contact: ' + (isFirstContact ? 'YES' : 'NO')\r\n  + '\\nCurrent time (customer message, IST): ' + clock + ' (' + partOfDay + ')'\r\n  + '\\nOffice hours: ' + (isOfficeHours ? 'OPEN' : 'CLOSED')\r\n  + '\\nTime since customer\\'s previous message: ' + gapLabel\r\n  + \"\\nCustomer name: \" + (displayName || 'NOT KNOWN - do not use any name, and never repeat their WhatsApp display name')\r\n  + '\\nCustomer wrote in: ' + scriptLabel\r\n  + '\\nGreeting already sent: ' + (hasGreetingInHistory ? 'YES' : 'NO')\r\n  + adContext\r\n  + '\\n\\nCRITICAL ANTI-SPAM RULES:\\n'\r\n  + '1. If \"Greeting already sent: YES\", NEVER send greeting again. Jump straight to answering the question.\\n'\r\n  + '2. If conversation history shows you already introduced yourself as Ananya, do NOT repeat introduction.\\n'\r\n  + '3. Only greet if: First contact: YES AND Greeting already sent: NO AND no assistant messages in history.\\n'\r\n  + '4. For follow-up questions, respond directly without any greeting or introduction.'\r\n  + '\\n5. Agar aapne pichle assistant message mein already free consultation/doctor-pitch wala paragraph bheja hai, to usko word-for-word ya near-identical dobara mat bhejo - customer ki latest baat ka jawaab do, aur jab tak wo khud consultation na maange, naam ya time mat pucho.';\r\n\r\nsystemPrompt += '\\n\\nADDRESS POLICY (hard rule): the customer\\'s gender is UNKNOWN. NEVER write sir, mam, ma\\'am, madam, mem, ji sir, ji mam, bhai, bhaiya, bro, brother, behen, didi or bhabhi - not even if the customer calls themselves that, and not even once. Address them only as \"ji\", \"aap\", or their first name.';\r\n\r\nsystemPrompt += '\\n\\nLANGUAGE POLICY (hard rule - overrides any \"match the customer\\'s language\" line above):'\r\n  + '\\n1. You reply ONLY in Hindi, English, or Hinglish (Hindi written in Roman letters). Nothing else. Default is simple Hinglish in Roman letters.'\r\n  + '\\n2. Customer writes Hinglish -> reply Hinglish. Customer writes English -> reply English. Customer writes Hindi in Devanagari -> reply in Hindi or Hinglish.'\r\n  + '\\n3. Customer writes in ANY other language or script (Tamil, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia, Assamese, Urdu, Arabic, Nepali, Bhojpuri, or any foreign language) -> understand it fully, but STILL answer only in simple Hinglish or English. Use short easy words so they can follow.'\r\n  + '\\n4. Never type in that other script, never mix its words into your reply, never say sorry for the language and never say you cannot speak it. Just answer the question normally.';\r\n\r\nif (foreignScripts.length) {\r\n  systemPrompt += '\\n\\nLANGUAGE NOTE: this customer typed in ' + foreignScripts.join(', ') + '. Reply ONLY in simple Hinglish (Roman letters) - do not use that script anywhere in your reply.';\r\n}\r\n\r\nsystemPrompt += '\\n\\nDOSAGE POLICY (hard rule):'\r\n  + '\\n1. You NEVER give the dose, quantity, timing or duration of anything - tablet, capsule, powder, drops, tea, kit or home remedy. Not a \"general\" dose, not a \"normal\" one, not even if the customer insists, has already bought it, or says a doctor told them.'\r\n  + '\\n2. If the customer asks kitni goli / kitni matra / khurak / dose / kaise leni hai / kab leni hai / kitne din leni hai / khali pet ya khane ke baad / how many / how much / how to take - do NOT answer and do NOT guess. Reply in this spirit, 1-2 short lines: \"Dose doctor hi batate hain ji, kyunki ye har kisi ke liye alag hota hai. Aap chahein to main free consultation set kara deti hu.\" Never promise a callback time.'\r\n  + '\\n3. You may still tell them what the product helps with and its catalog price. Only the dose, timing and duration are off limits.';\r\n\r\n\nif (productSummary) {\r\n  systemPrompt += '\\n\\nLIVE PRODUCT DATA (from Shopify right now):\\n' + productSummary;\r\n  systemPrompt += '\\n\\nPRODUCT POLICY (hard rule, OVERRIDES the CATALOG list above):'\r\n    + '\\n1. For any product named in LIVE PRODUCT DATA, the price, stock and link there are the ONLY correct ones. If the CATALOG block above shows a different price, the CATALOG is out of date - use the live price and never mention the difference.'\r\n    + '\\n2. Never quote a price for a product that is not in LIVE PRODUCT DATA. Say the team will confirm the exact price.'\r\n    + '\\n3. A product marked PRESCRIPTION ONLY: never share its link or price. Say it needs a doctor\\'s prescription and offer the free consultation (for performance you may offer Vaji Bati instead, if it appears above).'\r\n    + '\\n4. A product marked OUT OF STOCK: do not push it or send its link. Offer the free consultation so the team can suggest an alternative.'\r\n    + '\\n5. Share at most 2 products, the most relevant one first. Never dump the list.'\r\n    + '\\n6. Use the exact product name shown above, and paste the link as a plain URL.'\r\n    + '\\n7. An \"about:\" line is what that product is for. Use it to explain the product in your own short simple Hinglish - 1-2 lines, never a paragraph, never copy it word for word, never read it out like a webpage.'\r\n    + '\\n8. The \"about:\" text is the ONLY product information you have. Do not add benefits, ingredients, results or timelines that are not in it. If they ask something it does not answer (how it works, ingredients, side effects, how long till results), say the doctor will explain properly in the free consultation.'\r\n    + '\\n9. Never state a dose, quantity, timing or duration even if you think you know it - that stays with the doctor (see DOSAGE POLICY).';\r\n} else {\r\n\n  systemPrompt += '\\n\\nPRODUCT POLICY (hard rule): no live product match was found for this message.'\r\n    + ' You may still describe what a product is for, but do NOT quote any price and do NOT share a product link from memory - prices in the CATALOG list above may be out of date.'\r\n    + ' If they asked a price, say the team will confirm the exact price, and offer the free consultation.';\r\n}\r\n\r\n\nsystemPrompt += '\\n\\nEMPATHY & PACING POLICY (hard rule - read this before SALES POLICY):'\r\n  + '\\n1. FEEL FIRST. When someone shares a health problem, your first reply is about THEM, not about a service. Acknowledge what they said in your own words, show you genuinely feel for them, and reassure them they are not alone - in the spirit of \"aap bilkul pareshaan mat hoiye, aisa bahut logon ke saath hota hai\", \"aap akele nahi hain, hum is safar me aapke saath hain\", \"hum milkar iska sahi raasta nikaalenge\".'\r\n  + '\\n2. UNDERSTAND BEFORE YOU SUGGEST. Ask one caring question at a time to understand the problem - since when, what they have already tried, what bothers them most. Build trust over a few messages. Never interrogate, never a checklist.'\r\n  + '\\n3. NO CONSULTATION IN THE FIRST REPLIES. In your first two replies about a health concern, do not mention, offer or try to book the consultation, and never ask for a name or a call time unless THEY asked for a consultation. Only exceptions: they ask for it themselves, they name a condition or a regular medicine (safety), they ask for a dose, or they want a prescription-only product.'\r\n  + '\\n4. WHEN YOU DO OFFER IT, offer it gently, once, as a choice and a helping hand: \"aap chahein to hamare doctor se free baat kara deti hu, wo aapki puri baat samajh kar sahi plan batayenge\". If they do not say yes, drop it and keep helping on chat.'\r\n  + '\\n5. Warmth is not a script. Do not paste the same comforting line into every message - say it naturally when it fits, in 1-3 short lines.';\r\n\r\nsystemPrompt += '\\n\\nSALES POLICY (hard rule - this decides whether you pitch the free consultation at all):'\r\n  + '\\n1. OFFER A CONSULTATION for: PCOD, PCOS, periods and any women\\'s hormonal or menstrual concern; thyroid; blood sugar / diabetes; and vitamin D / bone / calcium. For these the doctor genuinely changes the plan - but follow EMPATHY & PACING POLICY: comfort and understand first, then offer it gently.'\r\n  + '\\n2. SELL DIRECTLY, no consultation pitch, for: men\\'s performance and stamina (Vaji Bati, Kern Drops, the Confidence & Performance Booster Kit, Shilajit, Ashwagandha, the energy/stamina kit) and the whole weight range (LeanRoutine, Slimtox, Garcinia, the weight kits). Give the benefit in one line, the live price and the link, and stop. Do NOT add \"chahein to free consultation bhi kara deti hu\" to these.'\r\n  + '\\n3. ALWAYS ask the health question first, whichever bucket it is: \"koi health problem hai ya koi dawai chal rahi hai?\" If the answer is clear, send the link with a short caution to tell you if anything comes up. If they name ANY condition (thyroid, sugar, BP, heart, kidney, liver, pregnancy, breastfeeding, or a regular medicine), stop selling and offer the free consultation - that is rule 3 of the persona and it still applies to everyone, men included.'\r\n  + '\\n4. PRESCRIPTION ONLY products are NOT affected by this policy. They still get no price and no link, and still go to a doctor - that is a prescription requirement, not a sales choice.'\r\n  + '\\n5. If the customer asks for a consultation themselves, book it, whatever the topic.';\r\n\r\n\nlet _report = {};\r\ntry { _report = ($('Fetch Customer Context').first().json || {}).report || {}; } catch (e) {}\r\nconst HEALTH_SCORE_URL = 'https://www.sehatup.com/pages/health-score-360';\r\nsystemPrompt += '\\n\\nHEALTH REPORT & HEALTH SCORE (real data for THIS customer, hard rule):'\r\n  + (_report.found && _report.url\r\n    ? '\\n- Their Health Score 360 report is ready. If they ask for their report, share this link on its own line: ' + _report.url\r\n    : _report.found && _report.generating\r\n    ? '\\n- Their Health Score 360 report is still being generated. If they ask for it, say it is being prepared and the team will send it as soon as it is ready. Do not share any link for it.'\r\n    : '\\n- No completed Health Score 360 assessment was found for them. If they ask for a report, a health score or a health check, share this link on its own line so they can take the free assessment: ' + HEALTH_SCORE_URL)\r\n  + '\\n- If they want a NEW or fresh report, share the assessment link above so they can complete it again: ' + HEALTH_SCORE_URL\r\n  + '\\n- NEVER state a score, a number out of 10 or 100, or tell them they have a condition. Only the assessment and the doctor do that.';\r\n\r\nsystemPrompt += '\\n\\nCOMPANY FACTS (hard rule - the only facts you may give about SehatUP):'\r\n  + '\\n- SehatUP is India\\'s digital clinic: Ayurveda, Homeopathy and modern medicine doctors together. AYUSH-approved and GMP-certified.'\r\n  + '\\n- Everything happens online and on the phone, so we help people in any city. Calls come from our verified business number.'\r\n  + '\\n- We have NO clinic, branch, office address or city to visit. Never name a city, sector, street or address.'\r\n  + '\\n- You can only send text on WhatsApp. You cannot send voice notes, and you cannot see photos or videos the customer sends - never say you saw them; ask them to describe it in words instead.'\r\n  + '\\n- If they ask who you are: you are Ananya, a health advisor at SehatUP. Never say you are an AI, a bot or an assistant.';\r\n\r\n\nconst _orderQ = (String(newMsgText || '') + ' ' + recentHistory.slice(-2).map(h => h.content || '').join(' ')).toLowerCase();\r\nconst isOrderQuestion =\r\n     /\\border(s|id)?\\b/.test(_orderQ)\r\n  || /\\b(track|tracking|awb|courier|parcel|shipment|shipping|deliver|delivery)\\b/.test(_orderQ)\r\n  || /kab\\s*(tak\\s*)?(aa?yega|aaega|milega|pahunchega|pahuchega)/.test(_orderQ)\r\n  || /kaha\\s*(hai|h|pe|par|tak)/.test(_orderQ)\r\n  || /\\b(cancel|cancelled|refund|return|wapas|wapsi)\\b/.test(_orderQ)\r\n  || /#\\d{3,}/.test(_orderQ)\r\n  || /(mila\\s*(nahi|nhi)|(nahi|nhi)\\s*aaya|receive\\s*(nahi|nhi))/.test(_orderQ);\r\n\r\nif (orderSummary && !isOrderQuestion) {\r\n  systemPrompt += '\\n\\nORDER POLICY (hard rule): this is NOT an order question, so do not bring up'\r\n    + ' the customer\\'s past or cancelled orders at all - not as a greeting, not as context, not to fill a gap.'\r\n    + ' Answer only what they actually asked. If they ask about an order later you will be given the order data then;'\r\n    + ' until then never state an order number, amount, status or date.';\r\n} else if (orderSummary) {\r\n  systemPrompt += '\\n\\nTHIS CUSTOMER\\'S ORDER DATA (from our own system - these are FACTS, use them):\\n' + orderSummary;\r\n  systemPrompt += '\\n\\nORDER POLICY (hard rule):'\r\n    + '\\n1. Answer any order, delivery, payment or tracking question ONLY from the ORDER DATA above. It is the only order information you have.'\r\n    + '\\n2. NEVER invent or guess an order number, amount, courier, AWB/tracking number, or delivery date - not even an approximate one. No \"2-3 din me aa jayega\".'\r\n    + '\\n3. There is NO delivery date in our system. If they ask when it will arrive, tell them the current status and that the team will confirm the exact delivery date - do not estimate it yourself.'\r\n    + '\\n4. Quote the status in simple words (e.g. \"aapka order ship ho chuka hai\", \"abhi tak ship nahi hua hai\"). Do not read out raw status codes.'\r\n    + '\\n5. If they ask about an order that is NOT listed above, say you can see only these orders and the team will check the rest.'\r\n    + '\\n6. Never cancel, refund, change an address or promise money back yourself - say the team will do it.';\r\n} else {\r\n  systemPrompt += '\\n\\nORDER POLICY (hard rule): We could NOT find any order for this number in our system.'\r\n    + ' If they ask about an order, delivery, refund or payment: do NOT guess and do NOT invent an order number, amount or date.'\r\n    + ' Say honestly that you are checking with the team and ask for the order id or the name the order was placed under, if useful.';\r\n}\r\n\r\n\nsystemPrompt += '\\n\\nNAME POLICY (hard rule): the name in CONTEXT is a WhatsApp display name, not necessarily the person\\'s real name.'\r\n  + '\\n1. If CONTEXT says the name is NOT KNOWN, do not use any name at all - say \"ji\" or \"aap\". Never invent one, and never repeat their WhatsApp display name back to them.'\r\n  + '\\n2. Only treat something as their name if THEY typed it in this chat.'\r\n  + '\\n3. Never build a sentence around the name, and never echo it inside a product or service line.';\r\n\r\n\nsystemPrompt += '\\n\\nMEDICAL CLAIM POLICY (hard rule, highest priority):'\r\n  + '\\n1. You do NOT have the customer\\'s health score. There is no health score in front of you, ever. NEVER state a score, a number out of 10 or 100, a percentage, or a \"level\" for any customer - not even approximately, not even if they ask directly and insist.'\r\n  + '\\n2. NEVER tell a customer they HAVE a condition (PCOD, PCOS, thyroid, diabetes, BP, infertility, anything). You cannot diagnose. Only a doctor can, after checking.'\r\n  + '\\n3. You MAY discuss a condition the customer has already told you they have, and you MAY ask whether they have one (that is the safety check). Asking is fine; asserting is not.'\r\n  + '\\n4. If they want their health score, tell them the free health score check will give it to them, or that the doctor will go through it in the free consultation. Do not produce a number yourself.'\r\n  + '\\n5. If you are not sure whether something is a fact you were given or a guess, treat it as a guess and say the doctor will confirm.';\r\n\r\n\nsystemPrompt += '\\n\\nBOOKING POLICY (hard rule): consultations happen ONLY between 9:30 AM and 6:30 PM IST, any day.'\r\n  + '\\n1. If the customer asks for a slot outside those hours (early morning, late evening, night), do NOT agree to it. Say that time is not available, state the 9:30 AM - 6:30 PM window, and ask them to pick a time inside it.'\r\n  + '\\n2. Never confirm a slot you were not given a time for, and never invent a time yourself.'\r\n  + '\\n3. Once they give a valid time, confirm simply that the team will call them then. You cannot see a doctor calendar, so never promise a specific doctor or claim the slot is guaranteed.'\r\n  + '\\n4. NEVER promise a callback in a number of minutes. Not \"5 minutes\", not \"10 minutes\", not \"abhi call karenge\", not \"turant\". You have no control over when anyone calls, and a missed promise is worse than no promise. The call time is the CUSTOMER\\'S choice, not ours.'\r\n  + '\\n5. To book, you need three things: their NAME, what the problem is and since when, and their preferred TIME inside 9:30 AM - 6:30 PM. Ask for whatever is still missing - one or two things per message, never all three at once, never as a form.'\r\n  + '\\n6. If they ask \"kab call aayega\", do not invent a time. Ask which time suits them and confirm the team will call then.'\r\n  + '\\n7. Do not say the details have been \"shared with the doctor\" unless they have actually given you a name and a time. Until then nothing has been booked.';\r\n\r\nsystemPrompt += '\\n\\nTIME AWARENESS: The times in CONTEXT are the real IST time of the customer\\'s message (not \"now\"). Use them naturally: if it is late night, suggest a next-day consultation slot; if office hours are CLOSED, say the team will call during working hours (9:30am-6:30pm) instead of promising an immediate call; if the customer is returning after a long gap, continue warmly without repeating the full introduction. Do NOT open with good morning/afternoon/evening.';\r\n\r\nif (resumedFromHuman) {\r\n  systemPrompt += humanTextSeen\r\n    ? '\\n\\nHANDOFF NOTE: A human support agent was chatting with this customer and has now gone quiet, so you are taking over again. The agent\\'s replies appear as assistant messages in the history above - treat everything already said there as said. Do not repeat it, do not re-greet, do not contradict it; continue from that point.'\r\n    : '\\n\\nHANDOFF NOTE: A human support agent was chatting with this customer and has now gone quiet, so you are taking over again. You CANNOT see the human agent\\'s messages. Read the customer\\'s latest message(s), avoid repeating earlier greetings/pitches, and continue helpfully from the current point.';\r\n}\r\n\r\nconst messages = [\r\n  { role: 'system', content: systemPrompt },\r\n  ...recentHistory.map(h => ({ role: h.role, content: h.content })),\r\n  { role: 'user', content: newMsgText }\r\n];\r\n\r\n\nconst _debug = {\r\n  fetchedMessages: evs.length,\r\n  time: clock + ' ' + partOfDay + ' | office=' + (isOfficeHours ? 'OPEN' : 'CLOSED') + ' | gap=' + gapLabel,\r\n  sequence: evs.map(m => `${new Date(m._t).toISOString().slice(11, 19)} | ${m.direction || '?'} | ${m.direction === 'out' ? (isHumanMsg(m) ? 'HUMAN' : 'AI') + '/' : ''}${(m._type || '').replace('AGENT_', '')} | ${(m.text || m.placeholder || '').slice(0, 50)}`),\r\n  historyToAI: recentHistory.map(h => `${h.role}: ${(h.content || '').slice(0, 50)}`),\r\n  currentTurn: newMsgText,\r\n  isFirstContact,\r\n  resumedFromHuman,\r\n  humanTextSeen,\r\n  orderContext: orderCtxDebug,\r\n  productContext: productCtxDebug,\r\n  ad: adDebug,\r\n  doc: docOk ? 'ok ' + docChars + ' chars' : 'DAMAGED ' + docChars + ' chars' + (docMissing.length ? ' missing: ' + docMissing.join('/') : ''),\r\n};\r\nconsole.log('[Build AI Prompt] fetched=' + evs.length + ' doc=' + _debug.doc + ' time=' + _debug.time + ' orders=' + orderCtxDebug + ' products=' + productCtxDebug + ' ad=' + adDebug + ' history=' + JSON.stringify(_debug.sequence));\r\n\r\nreturn [{ json: { phone, name, messages, newMsgText, isFirstContact, hasGreetingInHistory, resumedFromHuman, humanTextSeen, displayName, orderCtxDebug, productCtxDebug, adDebug, docOk, docChars, docMissing, clock, partOfDay, isOfficeHours, gapLabel, systemPromptLength: systemPrompt.length, _debug } }];\n"
       },
-      "id": "ba0ad25b-6544-46c0-bade-be6ece938f5d",
+      "id": "91efcf43-e941-4175-b8e3-d21e684d968a",
       "name": "Build AI Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2320,
-        368
+        992,
+        880
       ]
     },
     {
       "parameters": {
-        "jsCode": "const groqResponse = $input.first().json;\nconst aiText = groqResponse.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, kuch problem aa gayi. Please dobara try karein.';\n\nconst buildData = $('Build AI Prompt').first().json || {};\n\n// Fallback chain: trust the upstream source-of-truth nodes, not just one ref\nlet phone = buildData.phone;\nif (!phone) {\n  try { phone = $('Should We Process Now?').first().json.phone; } catch (e) {}\n}\n\n// Fail loud with context instead of a cryptic .replace crash\nif (!phone) {\n  throw new Error(\n    'Extract AI Response: phone missing. buildData=' + JSON.stringify(buildData)\n  );\n}\n\nconst name = buildData.name || 'Customer';\nconst newMsgText = buildData.newMsgText || '';\nconst docId = phone.replace('+', '');\n\nreturn [{\n  json: {\n    phone,\n    name,\n    lastAiReply: aiText,\n    lastUserMessage: newMsgText,\n    docId,\n    lastUpdated: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const MAX_ATTEMPTS = 3;\nconst attempt = (typeof $runIndex === 'number' && $runIndex >= 0) ? $runIndex : 0;\nconst lastChance = attempt >= MAX_ATTEMPTS - 1;\n\nconst geminiResponse = $input.first().json || {};\nconst _parts = geminiResponse.candidates?.[0]?.content?.parts || [];\nlet aiText = '';\nfor (let i = _parts.length - 1; i >= 0; i--) {\n  const tx = _parts[i] && _parts[i].text ? _parts[i].text.trim() : '';\n  if (tx) { aiText = tx; break; }\n}\naiText = aiText.replace(/^\\s*(think|thought|reasoning)\\b[\\s\\S]*?\\n\\n/i, '').trim();\n\nlet emptyReason = '';\nif (!aiText) {\n  const cand = (geminiResponse.candidates || [])[0] || {};\n  emptyReason = String(cand.finishReason || '')\n    || String((geminiResponse.promptFeedback || {}).blockReason || '')\n    || (geminiResponse.error ? 'api_error' : 'no_text_part');\n}\n\nconst buildData = $('Build AI Prompt').first().json || {};\nlet phone = buildData.phone;\nif (!phone) { try { phone = $('Decide Process').first().json.phone; } catch (e) {} }\nif (!phone) throw new Error('Extract AI Response: phone missing. buildData=' + JSON.stringify(buildData));\nconst name = buildData.name || 'Customer';\nconst newMsgText = String(buildData.newMsgText || '');\nconst _q = newMsgText.toLowerCase();\n\nlet _hist = [];\ntry {\n  _hist = $('Fetch Conversation History').all().map(i => i && i.json).filter(Boolean)\n    .sort((a, b) => (Number(a.msgTime) || 0) - (Number(b.msgTime) || 0));\n} catch (e) {}\n\nconst _outs = _hist.filter(m => m.direction === 'out' && m.text && String(m._type || '') !== 'BOT_PLACEHOLDER');\nconst _lastOutText = _outs.length ? String(_outs[_outs.length - 1].text || '') : '';\nconst _aiTurns = _outs.length;\nconst _custAll = _hist.filter(m => m.direction === 'in' && m.text).map(m => String(m.text)).join('\\n') + '\\n' + newMsgText;\nconst greetedBefore = _outs.length > 0\n  || _hist.some(m => { const t = String(m.text || '').toLowerCase(); return t.includes('ananya') && t.includes('sehat'); });\n\nconst _askedIdentity = /\\b(who\\s*(are|r)\\s*(you|u)|who\\s*made\\s*(you|u)|kaun\\s*ho|kon\\s*ho|kaun\\s*hai|kon\\s*hai|tum\\s*kaun|tum\\s*kon|aap\\s*kaun|aap\\s*kon|kisne\\s*banaya|kisne\\s*bnaya|introduce\\s*your|apna\\s*introduction)\\b/i.test(newMsgText);\n\nconst _sentences = (t) => String(t || '').split(/(?<=[.!?])\\s+|\\n+/).map(x => x.trim()).filter(Boolean);\n\nfunction qrKeepSentences(t, keep) {\n  const pieces = String(t || '').split(/((?<=[.!?])[ \\t]+|\\n+)/);\n  let out = '';\n  for (let i = 0; i < pieces.length; i += 2) {\n    const s = pieces[i] || '', sep = pieces[i + 1] || '';\n    if (s.trim() && !keep(s)) continue;\n    out += s + sep;\n  }\n  return out.replace(/[ \\t]{2,}/g, ' ').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\n\nconst QR_INTRO_SENT = /(\\bananya\\b[^.!?\\n]{0,40}\\b(baat\\s*kar|bol\\s*rah|hu\\b|hoon\\b)|\\bsehat\\s*up\\s*se\\b[^.!?\\n]{0,30}\\b(baat\\s*kar|bol\\s*rah)|\\b(this\\s+is|i\\s*am|i'?m)\\s+a+n+[ay]+n*[ya]*\\b|\\ba+n+[ay]+n*[ya]*\\b[^.!?\\n]{0,30}\\b(health\\s*expert|health\\s*advisor|team\\s*sehat\\s*up|from\\s*sehat\\s*up|at\\s*sehat\\s*up|sehat\\s*up\\s*se)\\b)/i;\nfunction sanitizeReply(t) {\n  if (!t) return '';\n  let s = String(t);\n  s = s.replace(/\\b(good\\s*(morning|afternoon|evening|noon)|gud\\s*(mrng|morning|evening|evng)|shubh\\s*(prabhat|sandhya)|subh\\s*prabhat)\\b[\\s,!.-]*/gi, '');\n\n  s = s.replace(/\\b(ma['\\u2019`]?am|m['\\u2019`]am|mam|madam|mdm|mem(\\s*(saab|sahab|saheb|sahib))?)(\\s*(ji|jee))?\\b/gi, '');\n\n  s = s.replace(/\\bsirs?(\\s*(ji|jee))?\\b(?!\\s*(dard|dukh|dukhna|pain|ache|ghum|ghoom|chakkar|bhari|heavy|me\\b|mein\\b))/gi, '');\n  s = s.replace(/\\b(bhai|bhaiya|bhaiyya|bhaisahab|bro|brother|behen|bahen|behn|didi|bhabhi)(\\s*(ji|jee))?\\b/gi, '');\n  s = s.replace(/(\\u092E\\u0948\\u0921\\u092E|\\u092E\\u0948\\u092E|\\u092E\\u0947\\u092E|\\u092E\\u0947\\u092E\\u0938\\u093E\\u0939\\u092C|\\u0938\\u0930\\s*\\u091C\\u0940|\\u0938\\u0930\\u091C\\u0940|\\u092D\\u0948\\u092F\\u093E|\\u092D\\u093E\\u0908\\u0938\\u093E\\u0939\\u092C|\\u092D\\u093E\\u0908\\s*\\u0938\\u093E\\u0939\\u092C|\\u0926\\u0940\\u0926\\u0940|\\u092C\\u0939\\u0928\\s*\\u091C\\u0940)/g, '');\n\n  s = s.replace(/^[\\s>*-]*(ananya|agent|bot|assistant)\\s*(ji)?\\s*[:\\-\\u2013\\u2014]+\\s*/gim, '');\n  if (greetedBefore && !_askedIdentity) {\n\n    s = s.replace(/hello\\s*ji[\\s,!.]*/gi, '');\n    s = qrKeepSentences(s, x => !QR_INTRO_SENT.test(x));\n    s = s.replace(/\\bma?i?n?\\s*ananya\\s+baat\\s+kar\\s+rah[iy]\\s*hu?n?\\s*,?\\s*(sehat\\s*up\\s*se)?[\\s,.!]*/gi, '');\n    s = s.replace(/\\bma?i?n?\\s*ananya\\s+(hu|hoon)\\b\\s*,?\\s*(sehat\\s*up\\s*se)?[\\s,.!]*/gi, '');\n  } else if (!greetedBefore) {\n\n    let seen = false;\n    s = qrKeepSentences(s, x => { if (!QR_INTRO_SENT.test(x)) return true; if (seen) return false; seen = true; return true; });\n  }\n  s = s.replace(/\\b(ji)(\\s*,?\\s*ji\\b)+/gi, 'ji');\n  s = s.replace(/(\\u091C\\u0940)(\\s*,?\\s*\\u091C\\u0940)+/g, '\\u091C\\u0940');\n  s = s.replace(/[ \\t]{2,}/g, ' ').replace(/\\n{3,}/g, '\\n\\n');\n  s = s.replace(/^[\\s,.:;!-]+/, '').replace(/[ \\t]+([,.!?])/g, '$1').replace(/[\\s,;:-]+$/, '').trim();\n  return s;\n}\nconst _rawModelText = String(aiText || '');\naiText = sanitizeReply(aiText);\n\nconst QR_FILLER_RE = /^(ji|jee|g|ok|okay|okey|k|hmm+|hm|acha|accha|achha|theek|thik|theek hai|thik hai|haan|han|ha|yes|sure|right|ji haan|ji ok|noted|welcome|most welcome)[\\s.,!]*$/i;\n\nfunction qrIsNonAnswer(t) {\n  const s = String(t || '').trim();\n  if (!s) return true;\n  if (QR_FILLER_RE.test(s)) return true;\n  if (/\\?/.test(s)) return false;\n  if (/(rs\\.?\\s*\\d{2,}|\\b\\d{3,}\\s*(rupees|rupaye|rupay)\\b|sehatup\\.com|https?:\\/\\/)/i.test(s)) return false;\n  return s.split(/\\s+/).filter(Boolean).length <= 5;\n}\n\nif (!greetedBefore && QR_FILLER_RE.test(aiText.trim())) aiText = '';\n\nconst _rawName = String(name || '').trim();\nconst _nameIsPlausible = /^[A-Za-z][A-Za-z.'-]{1,20}(\\s+[A-Za-z][A-Za-z.'-]{1,20}){0,2}$/.test(_rawName)\n  && !/(love|papa|mumm?y|\\bmom\\b|dad+y?|jaan|baby|king|queen|\\bji\\b|\\bsir\\b|madam|boss|bhai|didi|angel|princess|hero|star|customer|unknown)/i.test(_rawName);\nif (_rawName && !_nameIsPlausible && _rawName.length >= 3) {\n  const _re = new RegExp('\\\\b' + _rawName.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\\\b', 'ig');\n  const _hits = (aiText.match(_re) || []).length;\n  if (_hits > 0 && _hits <= 3) {\n    const _stripped = aiText.replace(_re, '').replace(/\\s+for\\s*$/i, '').replace(/\\s*,+\\s*,/g, ',')\n      .replace(/\\s{2,}/g, ' ').replace(/\\s+([,.!?])/g, '$1').trim();\n    if (_stripped && _stripped.length >= aiText.length * 0.4) aiText = _stripped;\n  }\n}\n\nfunction qrTrimJi(t) {\n  let kept = 0;\n  return String(t || '')\n    .replace(/\\bji\\b\\s*,?\\s*/gi, (m, off, s) => {\n      if (++kept <= 1) return m;\n      if (off + m.length >= s.length) return '';\n      if (/(^|[.!?\\n]\\s*)$/.test(s.slice(0, off))) return '';\n      return m.includes(',') ? ', ' : ' ';\n    })\n    .replace(/[ \\t]{2,}/g, ' ')\n    .replace(/\\s+([,.!?])/g, '$1')\n    .replace(/([,.!?])\\s*\\1+/g, '$1')\n    .replace(/^[\\s,]+/, '')\n    .replace(/[ \\t]+$/gm, '')\n    .replace(/([.!?] +)([a-z])/g, (m, a, b) => a + b.toUpperCase())\n    .trim();\n}\naiText = qrTrimJi(aiText);\n\nconst violations = [];\nconst ALL = () => true;\nfunction flag(code, severity, note, bad) { violations.push({ code, severity, note, bad: bad || ALL }); }\nfunction flagSentences(code, note, bad) { if (_sentences(aiText).some(bad)) flag(code, 'safety', note, bad); }\n\nif (!aiText.trim()) {\n  flag('empty' + (emptyReason ? ':' + emptyReason : ''), 'quality',\n    'Your draft was empty. Write a short, warm reply to the customer\\'s latest message.');\n}\nif (!greetedBefore && !QR_INTRO_SENT.test(aiText)) {\n  flag('intro_missing', 'quality',\n    'This is your very first message to this customer. Start with \"Hello ji, mai Ananya baat kar rahi hu SehatUP se.\" and then respond to what they wrote.');\n}\n\n{\n  const _rt = _rawModelText + '\\n' + aiText;\n  const _vocativeAnanya =\n       /(^|\\n)\\s*((hi|hello|hey|namaste|dear|good\\s*(morning|afternoon|evening))\\b[\\s,]*)?ananya\\s*[,:]/i.test(_rt)\n    || /\\b(to|dear|thanks|thank\\s*you|ok|okay)\\s+ananya\\b/i.test(_rt);\n  const _SYMPTOMS = '(pcod|pcos|thyroid|diabetes|sugar|bp|acne|pigmentation|hair\\\\s*fall|hairfall|infertility|anxiety|stress|dard|pain|problem|issue)';\n  const _patientVoice =\n       /\\b(i\\s*am|i\\s*m|im)\\s+(suffering|facing|dealing)\\b/i.test(_rt)\n    || new RegExp('\\\\bi\\\\s+(have|had|ve\\\\s*got|got)\\\\s+(been\\\\s+)?' + _SYMPTOMS, 'i').test(_rt)\n    || /\\bi\\s+(used|tried|took)\\s+(medication|medicine|tablet|tablets|treatment|dawa)/i.test(_rt)\n    || new RegExp('\\\\bmujhe\\\\s+' + _SYMPTOMS + '\\\\b[^.!?]{0,14}\\\\b(hai|h)\\\\b', 'i').test(_rt)\n    || new RegExp('\\\\bmer[ia]\\\\s+' + _SYMPTOMS + '\\\\b[^.!?]{0,14}\\\\b(hai|h)\\\\b', 'i').test(_rt);\n  const _custLines = newMsgText.split(/\\n+/).map(s => s.trim()).filter(Boolean);\n  const _replyLines = _rawModelText.split(/\\n+/).map(s => s.trim()).filter(Boolean);\n  const _lastLine = (_replyLines[_replyLines.length - 1] || '').toLowerCase();\n  const _echoesCustomer = _replyLines.length > 1 && !!_lastLine && _custLines.some(c => c.toLowerCase() === _lastLine);\n  const _norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\\s]+/g, ' ').replace(/\\s+/g, ' ').trim();\n  const _replyTok = _norm(_rawModelText)\n    .replace(/\\b(good\\s*(morning|afternoon|evening)|hello|hi|hey|namaste|ji|sir|mam|madam|ok|okay)\\b/g, ' ')\n    .split(/\\s+/).filter(w => w.length > 1);\n  const _custTok = new Set(_norm(newMsgText).split(/\\s+/).filter(Boolean));\n  const _overlap = _replyTok.length ? _replyTok.filter(w => _custTok.has(w)).length / _replyTok.length : 0;\n  const _addsSomething = /(https?:\\/\\/|sehatup\\.com|rs\\.?\\s*\\d{2,}|\\?)/i.test(_rawModelText);\n  const _parrots = _replyTok.length >= 3 && _overlap >= 0.8 && !_addsSomething;\n  if (_vocativeAnanya || _patientVoice || _echoesCustomer || _parrots) {\n    flag('role_reversal', 'safety',\n      'Your draft was written as the CUSTOMER (speaking as the patient, or repeating their message back). You are Ananya replying TO the customer. Never speak as the patient and never copy their words back.');\n  }\n}\n\nconst _CONDITIONS = '(pcod|pcos|thyroid|hypothyroid|hyperthyroid|diabetes|sugar|bp|blood\\\\s*pressure|infertility|anemia|anaemia|cancer|hormonal\\\\s*imbalance)';\nconst _custRaisedCondition = new RegExp(_CONDITIONS, 'i').test(_custAll);\nconst _custGaveNumber = /\\b(score|skor)\\b[^.!?]{0,20}\\d/i.test(_q);\n\nconst _noUrl = (s) => String(s || '').replace(/https?:\\/\\/\\S+|\\bwww\\.\\S+|\\S+\\.com\\/\\S*/gi, ' ');\nconst qrGivesScore = (s0) => {\n  const s = _noUrl(s0);\n  return !_custGaveNumber && (\n       /\\b(score|skor)\\b[^.!?]{0,24}\\b\\d{1,3}\\b/i.test(s)\n    || /\\b\\d{1,3}\\s*(\\/|out\\s*of)\\s*(10|100)\\b/i.test(s)\n    || /\\b\\d{1,3}\\s*(me|mein|mai)\\s*se\\s*\\d{1,3}\\b/i.test(s));\n};\nconst _ASSERT_RE = new RegExp('\\\\b(aapko|apko|aap\\\\s*ko|aapka|apka|you\\\\s*have|you\\\\s*are\\\\s*having|u\\\\s*have)\\\\b[^.!?]{0,26}\\\\b' + _CONDITIONS + '\\\\b', 'i');\nconst qrAssertsCondition = (s) => !_custRaisedCondition && !/\\?/.test(s) && !/\\bkya\\b/i.test(s)\n  && !/\\b(agar|if|jab|yadi|shayad|ho\\s*sakta)\\b/i.test(s) && _ASSERT_RE.test(s);\nflagSentences('diagnosis_or_score',\n  'Never give a health score or tell them they have a condition - only the assessment and the doctor can do that.',\n  s => qrGivesScore(s) || qrAssertsCondition(s));\n\nconst HEALTH_SCORE_URL = 'https://www.sehatup.com/pages/health-score-360';\nlet _report = {};\ntry { _report = ($('Fetch Customer Context').first().json || {}).report || {}; } catch (e) {}\n\nlet _automationAnswered = false;\n{\n  const _inTimes = _hist.filter(m => m.direction === 'in').map(m => Number(m.msgTime) || 0);\n  const _lastIn = _inTimes.length ? Math.max.apply(null, _inTimes) : 0;\n  _automationAnswered = _hist.some(m => m.direction === 'out'\n    && (m._type === 'BOT_PLACEHOLDER' || m.messageBy === 'AUTOMATION' || !!m.automationBy)\n    && (Number(m.msgTime) || 0) >= _lastIn);\n}\nconst _REPORTWORD = '(report|repot|reprot|rport|riport)';\nconst askedReport = new RegExp('(health|medical)\\\\s*' + _REPORTWORD + '|\\\\b' + _REPORTWORD + '\\\\b|' + _REPORTWORD + '\\\\s*(chahiye|chaiye|nahi|nhi|nai|kaha|kahan|mila|milega|bhej|send|dijiye|do\\\\b)', 'i').test(_q)\n  || /(meri|mera|apni|apna|my)\\s+report/i.test(_q);\nconst _reportCtx = /report|assessment|score/i.test(_q) || /report|assessment|score/i.test(_lastOutText);\nconst askedNewReport = _reportCtx && (\n     /\\bre-?new\\b|\\brenewal\\b/i.test(_q)\n  || /\\b(new|naya|nayi|nayaa|fresh|dubara|dobara|again|update|updated)\\b[^.!?]{0,16}\\b(report|assessment|test|score)\\b/i.test(_q)\n  || /\\b(report|assessment|test|score)\\b[^.!?]{0,16}\\b(new|naya|nayi|fresh|dubara|dobara|again|update|updated)\\b/i.test(_q)\n  || /phir\\s*se[^.!?]{0,16}\\b(report|assessment|banwa|karwa)\\b/i.test(_q));\nconst askedHealthScore = /health\\s*score|healthscore|health\\s*check|score\\s*check|score\\s*(chahiye|batao|bata|check)/i.test(_q);\nif (_automationAnswered && (askedReport || askedNewReport)) {\n  if (/storage\\.googleapis\\.com|healthscore360report|\\.pdf\\b/i.test(aiText) || (_report.url && aiText.includes(_report.url))) {\n    flag('report_duplicate', 'quality',\n      'Our automated message has just sent them the report. Do not send the report link again - ask kindly if they need help understanding anything in it.');\n  }\n} else {\n  let _wantLink = '';\n  if (askedNewReport) _wantLink = HEALTH_SCORE_URL;\n  else if (askedReport) _wantLink = (_report.found && _report.url) ? _report.url : ((_report.found && _report.generating) ? '' : HEALTH_SCORE_URL);\n  else if (askedHealthScore) _wantLink = HEALTH_SCORE_URL;\n  if (_wantLink && !aiText.includes(_wantLink)) {\n    flag('report_link_missing', 'quality',\n      'They asked for their ' + (askedReport ? 'report' : 'health score') + '. Share this exact link on its own line: ' + _wantLink);\n  }\n  if (askedReport && _report.found && _report.generating && !_report.url && /https?:\\/\\//i.test(aiText)) {\n    flag('report_not_ready', 'quality',\n      'Their report is still being prepared. Do not share any link; say the team will send it as soon as it is ready.');\n  }\n}\n\nflagSentences('ai_identity',\n  'Never say you are an AI, a bot, an assistant or a program. You are Ananya, a health advisor at SehatUP.',\n  s => /\\b(a\\.?\\s?i\\.?|artificial\\s*intelligence|bot|chat\\s*bot|chatbot|assistant|language\\s*model|virtual\\s*assistant|machine|program|software)\\b/i.test(s)\n    && /\\b(hu|hoon|hun|am|is|ek)\\b/i.test(s));\n\nconst _orderish = /\\b(order|parcel|shipment|courier|delivery|awb|track|tracking|refund|return)\\b/i.test(_q);\nconst _payish = /\\b(pay|payment|paid|paisa|paise|rupee|rupay|cod|prepaid|upi|card|netbanking|emi)\\b/i.test(_q);\nconst _askedWhereFrom = !_orderish && (\n     /\\b(kaha|kahan|kahaa)\\s*se\\b[^.!?]{0,20}\\b(aap|ho|hain|bol|baat|call|ka?r)/i.test(_q)\n  || /\\b(aap|aapka|apka|tum|tumhara|ye|yah|sehatup|company|office)\\b[^.!?]{0,20}\\b(kaha|kahan|kahaa)\\b/i.test(_q)\n  || /\\bwhere\\b[^.!?]{0,20}\\b(are\\s*you|from|based|located)\\b/i.test(_q)\n  || /\\b(company|office|address|pata)\\b[^.!?]{0,20}\\b(kaha|kahan|kya|kis|batao|bataiye)\\b/i.test(_q));\nif (_askedWhereFrom) {\n  flagSentences('invented_address',\n    'Do not name a city, sector, street or address. Say everything happens online and on the phone, so SehatUP helps people in any city.',\n    s => /\\b(gurgaon|gurugram|noida|delhi|mumbai|bombay|bangalore|bengaluru|pune|hyderabad|chennai|kolkata|jaipur|lucknow|indore|ahmedabad|chandigarh|street|road|lane|pin\\s*code|pincode)\\b|\\bsector\\s*-?\\s*\\d+/i.test(s));\n}\nflagSentences('voice_note_promise',\n  'You cannot send voice notes. Say so kindly and help them in text.',\n  s => /\\b(voice\\s*(note|msg|message)|audio|recording|awaz|awaaz)\\b/i.test(s)\n    && /\\b(bhej|send|share|kar\\s*deti|karti|karungi|record\\s*kar)/i.test(s)\n    && !/\\b(nahi|nhi|nai|cannot|can'?t|not)\\b/i.test(s));\n\nconst _DOSE_VERB = /(len[aeiu]|lene|khan[aeiu]|khaye|khaun|pee?n[aei]|piye|piyu|\\btake\\b|\\bconsume\\b|istemal|use\\s*kar)/;\nconst askedDose =\n     /\\bdos(e|es|age|ages)\\b/.test(_q)\n  || /khura+k|\\bmatra\\b|\\bmaatra\\b/.test(_q)\n  || /(kitni|kitne|kitna|kitnii)\\s+(\\S+\\s+){0,2}(goli|goliy|tablet|tablets|capsule|cap\\b|churan|churna|chammach|spoon|boond|drop|drops|scoop|sachet|\\bml\\b|\\bmg\\b)/.test(_q)\n  || (/(kitni|kitne)\\s+(\\S+\\s+){0,2}(din|days|baar|dafa|hafte|weeks|mahine|months)/.test(_q) && _DOSE_VERB.test(_q))\n  || /(kitna|kitni|kitne)\\s+(\\S+\\s+){0,2}(len[aeiu]|lene|leni|khan[aeiu]|khani|khaye|khaun|pee?n[aei]|piye|piyu|istemal|use)/.test(_q)\n  || /(kaise|kese|kaisay|kab|kis\\s*time|kis\\s*samay|kis\\s*tarah|kitne\\s*din|kitni\\s*der|khali\\s*pet)\\s*(\\S+\\s+){0,3}(len[aei]|lene|leni|khan[aei]|khani|khaye|khaun|pee?n[aei]|piye|piyu|use|istemal|isteml|upyog|upayog|upyaog|lagan[aei]|lagani)/.test(_q)\n  || /\\bhow\\s+(many|much|often|long)\\b/.test(_q)\n  || /\\b(when|how)\\s+(should\\s+i\\s+|do\\s+i\\s+|to\\s+)?(take|consume|use)\\b/.test(_q)\n  || /(empty\\s*stomach|before\\s+(food|meal)|after\\s+(food|meal))/.test(_q);\n\nconst _NOT_A_DOSE = '(?!\\\\s*(bhi\\\\s+)?(band|bnd|mat|nahi|nhi|na\\\\b|kam|chhod|chod|skip|miss|rok))';\nconst _DOSE_UNIT = '(goli|goliya|goliyan|tablet|tablets|capsule|capsules|chammach|spoon|boond|drop|drops|scoop|sachet)';\nconst qrGivesDose = (s0) => {\n  const s = _noUrl(s0);\n  return new RegExp('\\\\b\\\\d+\\\\s*(-|to|se|se\\\\s*\\\\d+)?\\\\s*' + _DOSE_UNIT + '\\\\b' + _NOT_A_DOSE, 'i').test(s)\n    || new RegExp('\\\\b(ek|do|teen|char|one|two|three|four)\\\\s+' + _DOSE_UNIT + '\\\\b' + _NOT_A_DOSE, 'i').test(s)\n    || /\\b(once|twice|thrice)\\s+(a\\s+)?(day|daily)\\b/i.test(s)\n    || /\\b(din|roz|rozana)\\s*(me|mein)?\\s*(ek|do|teen|\\d+)\\s*baar\\b/i.test(s);\n};\nflagSentences('dose_given',\n  'Never give a dose, quantity, timing or duration for anything. The doctor decides that, because it is different for everyone.',\n  qrGivesDose);\nif (askedDose && aiText.trim() && !/\\b(doctor|dr\\.?|daktar)\\b/i.test(aiText)) {\n  flag('dose_not_deferred', 'quality',\n    'They asked about the dose or how to take it. Do not give any dose, timing or duration. Say kindly that the doctor decides it because it is different for everyone, and gently offer the free consultation as a choice.');\n}\n\nconst WORK_START_MIN = 9 * 60 + 30;\nconst WORK_END_MIN = 18 * 60 + 30;\nconst _hhmm = (mins) => {\n  const h = Math.floor(mins / 60), m = mins % 60;\n  return (((h + 11) % 12) + 1) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? ' AM' : ' PM');\n};\n\nfunction qrParseSlot(text) {\n  const s = String(text || '').toLowerCase();\n  const re = /(\\d{1,2})(?:[:.](\\d{2}))?\\s*(a\\.?m\\.?|p\\.?m\\.?|baje|bje|bajey|bajay|baze|bajke|o'?\\s?clock)/g;\n  let m, best = null;\n  while ((m = re.exec(s)) !== null) {\n    let h = parseInt(m[1], 10);\n    const min = m[2] ? parseInt(m[2], 10) : 0;\n    if (h < 1 || h > 24 || min > 59) continue;\n    const marker = m[3] || '';\n    const around = s.slice(Math.max(0, m.index - 26), m.index + m[0].length + 26);\n    let pm = null;\n    if (/^p/.test(marker)) pm = true;\n    else if (/^a/.test(marker)) pm = false;\n    else if (/(raat|raat\\s*ko|\\brat\\b|night|shaam|\\bsham\\b|evening|dopahar|dopeher|afternoon)/.test(around)) pm = true;\n    else if (/(subah|savere|sawere|\\bsubh\\b|morning)/.test(around)) pm = false;\n    else pm = (h >= 1 && h <= 6);\n    if (pm && h < 12) h += 12;\n    if (!pm && h === 12) h = 0;\n    if (h === 24) h = 0;\n    best = h * 60 + min;\n  }\n  return best;\n}\n\nfunction qrParseBareTime(text) {\n  const m = String(text || '').trim().match(/^\\s*(\\d{1,2})(?:[:.]?(\\d{2}))?\\s*$/);\n  if (!m) return null;\n  let h = parseInt(m[1], 10);\n  const min = m[2] ? parseInt(m[2], 10) : 0;\n  if (h < 1 || h > 24 || min > 59) return null;\n  if (h >= 1 && h <= 6) h += 12;\n  if (h === 24) h = 0;\n  return h * 60 + min;\n}\nconst _mentionsWindow = (t) => /(9[:.]?30|6[:.]?30|nahi\\s*ho\\s*paa|available\\s*nahi|not\\s*available|uplabdh\\s*nahi)/i.test(t);\nconst _weAskedForTime = /kaunsa time|naam aur|time aapke liye theek|time bata dijiye|kis time|konsa time/i.test(_lastOutText);\nconst _bookingTalk = _weAskedForTime || /\\b(call|consult\\w*|appointment|slot|time|baat|fix|book)\\b/i.test(_q);\nconst _slotMin = qrParseSlot(newMsgText);\nconst _slotOrBare = _slotMin !== null ? _slotMin : (_weAskedForTime ? qrParseBareTime(newMsgText) : null);\nif (_bookingTalk && _slotOrBare !== null && (_slotOrBare < WORK_START_MIN || _slotOrBare > WORK_END_MIN) && !_mentionsWindow(aiText)) {\n  flag('slot_out_of_hours', 'safety',\n    'The customer asked for a call at ' + _hhmm(_slotOrBare) + ', which is outside consultation hours. Say kindly that this time is not available, that doctors are available '\n    + _hhmm(WORK_START_MIN) + ' to ' + _hhmm(WORK_END_MIN) + ', and ask them to choose a time in that window.');\n}\n\nconst _NOT_A_NAME = /^(ji|jee|ok|okay|haan|han|ha|yes|no|nahi|nhi|hmm|acha|accha|theek|thik|hi|hello|hey|namaste|kya|kyu|kyun|kaisa|kaise|kaisi|kab|kahan|kaun|kaunsa|konsa|mera|meri|aapka|apka|aap|main|mai|hai|h|price|order|product|dawa|medicine|consultation|time|naam)$/i;\nconst _isNameWord = (x) => /^[A-Za-z][A-Za-z.'-]{1,20}$/.test(x || '') && !_NOT_A_NAME.test(x || '');\nconst _replyWords = newMsgText.trim().split(/\\s+/).filter(Boolean);\nlet _givenName = '';\nconst _nameStated = newMsgText.match(/(?:mera\\s+naam|my\\s+name\\s+is|naam\\s+hai|i\\s*am)\\s+([A-Za-z][A-Za-z.'-]{1,20})/i);\nif (_nameStated && _isNameWord(_nameStated[1])) _givenName = _nameStated[1];\nelse if (_replyWords.length >= 1 && _replyWords.length <= 2 && _replyWords.every(_isNameWord)) _givenName = _replyWords.join(' ');\nconst _haveName = !!(buildData.displayName || '').trim();\nif (_weAskedForTime && qrIsNonAnswer(aiText)) {\n  if (_slotOrBare !== null && _slotOrBare >= WORK_START_MIN && _slotOrBare <= WORK_END_MIN) {\n    flag('booking_time_ignored', 'quality',\n      'They just gave ' + _hhmm(_slotOrBare) + ' as their call time. Acknowledge it warmly'\n      + (_haveName ? ' and confirm the team will call them at that time.' : ' and ask for their name so you can note the consultation.'));\n  } else if (_givenName && !_haveName) {\n    flag('booking_name_ignored', 'quality',\n      'They just told you their name (' + _givenName + '). Thank them and ask which time between '\n      + _hhmm(WORK_START_MIN) + ' and ' + _hhmm(WORK_END_MIN) + ' suits them for the call.');\n  }\n}\n\n{\n  const _bookingCtx = aiText + ' ' + _lastOutText + ' ' + newMsgText;\n  const _isBookingSubject = /\\b(consultation|appointment|slot|booking)\\b/i.test(_bookingCtx);\n  const _notBookingSubject = _orderish\n    || /\\b(refund|return|wapas|wapsi|cancel|order|parcel|courier|tracking)\\b/i.test(_bookingCtx)\n    || /\\b(hospital|emergency|ambulance|dangerous|oncologist|gynaecologist|gynecologist)\\b/i.test(aiText);\n  const qrClaimsBooked = (s) =>\n       /\\b(request|details|detail|jaankari|naam)\\b[^.!?]{0,26}\\b(bhej\\s*di|bhej\\s*diya|bhej\\s*dia|share\\s*kar\\s*di|share\\s*kar\\s*diya|de\\s*di|de\\s*diya)\\b/i.test(s)\n    || /\\b(team|doctor)\\b[^.!?]{0,26}\\b(connect|call|contact|sampark)\\b[^.!?]{0,20}\\b(karegi|karenge|kar\\s*legi|kar\\s*lenge)\\b/i.test(s)\n    || /\\b(consultation|appointment|slot|booking)\\b[^.!?]{0,24}\\b(fix\\s*ho|book\\s*ho|set\\s*ho|ho\\s*gay[ai]|kar\\s*di\\b|kar\\s*diya\\b|fix\\s*kar\\s*di\\b)\\b/i.test(s)\n    || /\\b(consultation|appointment|slot|booking)\\b[^.!?]{0,30}\\b(book|set|fix)\\b[^.!?]{0,12}\\b(kar|kara|karwa)\\b[^.!?]{0,10}\\b(deti|dungi|denge|diya|di|liya)\\b/i.test(s);\n\n  const _alsoAsks = /(kaunsa time|kis time|konsa time|time bata|naam bata|naam aur|ke beech)/i.test(aiText);\n  const _isOffer = /\\b(chahe|chahein|chahen|chaahein|chaho|agar\\s+aap|if\\s+you\\s+(want|like|wish|prefer))\\b/i.test(aiText)\n    || /\\bkya\\s+(main|mai|hum)\\b[^.!?]*\\?/i.test(aiText);\n  if (_isBookingSubject && !_notBookingSubject && !_alsoAsks && !_isOffer && _sentences(aiText).some(qrClaimsBooked)) {\n    const _gaveTimeEver = _hist.some(m => m.direction === 'in' && m.text\n      && (qrParseSlot(m.text) !== null || qrParseBareTime(m.text) !== null));\n    if (!_gaveTimeEver) {\n      flag('booking_claim', 'safety',\n        'Nothing is booked yet - they have not given a call time. Do not say it is booked or that the team or doctor will call. If they want the consultation, ask for their name and a time between '\n        + _hhmm(WORK_START_MIN) + ' and ' + _hhmm(WORK_END_MIN) + '.', qrClaimsBooked);\n    }\n  }\n}\n\nlet _matches = [];\ntry { _matches = ($('Fetch Product Matches').first().json || {}).matches || []; } catch (e) {}\nconst _pname = (p) => String(p.title || '').replace(/\\s+-\\s+/g, ' ').trim();\nconst askedPrice = /\\b(price|rate|cost|mrp)\\b/.test(_q) || /\\b(keemat|kimat|kimmat|daam|dam)\\b/.test(_q)\n  || /kitne?\\s*(ka|ki|ke)\\b/.test(_q) || /\\bkitna\\s*(hai|h|hoga|padega)\\b/.test(_q) || /\\bhow\\s+much\\b/.test(_q);\nconst askedLink = /\\b(link|url)\\b/.test(_q) || /\\b(bhej\\s*d(o|ijiye|ena)|bhejo|send\\s*kar|share\\s*kar)\\b/.test(_q);\nconst _PRODUCT_NOUN = '(product|products|dawa|dawai|medicine|item|option|options|kit|combo|pack'\n  + '|drops?|boond|goli|goliyan|tablet|tablets|capsule|capsules|churna|churan|powder'\n  + '|tel|oil|syrup|tea|bati|vati|resin|sachet|cream|gel)';\nconst askedProduct =\n     /\\b(chahiye|chaiye|chahie|mangwana|mangana|khareed|buy|order\\s*karna|lena\\s*(hai|h)\\b)/i.test(_q)\n  || new RegExp('\\\\b(konsa|konse|kaunsa|kaunse|kaun\\\\s*sa|which|what)\\\\b[^.!?]{0,24}\\\\b' + _PRODUCT_NOUN + '\\\\b', 'i').test(_q)\n  || new RegExp('\\\\b' + _PRODUCT_NOUN + '\\\\b[^.!?]{0,24}\\\\b(batao|bata|bta|dikhao|dikha|suggest|recommend|hai|\\\\bh\\\\b|available|milega|milta)', 'i').test(_q)\n  || /\\b(kya|kaun|konsa|kaunsa|kaunse|kis)\\b\\s*(\\S+\\s+){0,2}(chij|cheez|chiz|chize)\\b/i.test(_q)\n  || new RegExp('\\\\b(kya|kaun|konsa|kaunsa|kis)\\\\b\\\\s*(\\\\S+\\\\s+){0,2}' + _PRODUCT_NOUN + '\\\\b', 'i').test(_q)\n  || /\\b(recommend|suggest)\\b/i.test(_q)\n  || /\\bke\\s*liye\\b[^.!?]{0,24}\\b(kya|konsa|konse|kaunsa|product)\\b/i.test(_q);\nconst _productQ = askedPrice || askedLink || askedProduct;\n\nconst qrPricesIn = (s) => {\n  const out = [];\n  const re = /(?:\\brs\\.?|\\u20B9)\\s*([\\d,]{2,})|\\b([\\d,]{3,})\\s*(?:rupees|rupaye|rupay|rs)\\b/gi;\n  let m;\n  while ((m = re.exec(String(s || ''))) !== null) {\n    const n = parseInt(String(m[1] || m[2]).replace(/,/g, ''), 10);\n    if (!isNaN(n)) out.push(n);\n  }\n  return out;\n};\nconst _nonRx = _matches.filter(p => !p.isRx);\nconst _rx = _matches.filter(p => p.isRx);\nconst _oos = _nonRx.filter(p => !p.inStock);\nconst _sellable = _nonRx.filter(p => p.inStock);\nconst replyHasPrice = qrPricesIn(aiText).length > 0;\nconst replyHasLink = /sehatup\\.com\\/products\\//i.test(aiText);\nconst _replyNamesAMatch = _matches.some(p => {\n  const key = String(p.title || '').split(/[^A-Za-z0-9]+/).filter(w => w.length > 3)[0];\n  return key && new RegExp(key.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'i').test(aiText);\n});\nconst needsPrice = askedPrice && !replyHasPrice;\nconst needsLink = askedLink && !replyHasLink;\nconst ignoredTheCatalog = askedProduct && !_replyNamesAMatch && !replyHasPrice && !replyHasLink;\n\nconst CONSULT_HANDLES = /(her-menses|harmen|hormoniherb|tea-for-period-cramps|aloezy|thyrostatin|diaboglob|vitamin-d3k2|zencal)/i;\nconst CONSULT_TOPIC_RE = /\\b(pcod|pcos|poly\\s*cystic|period|periods|menses|menstrual|cramp|cramps|hormonal|hormone|thyroid|thyro|sugar|diabetes|diabetic|bp|blood\\s*pressure|vitamin\\s*d|d3|calcium|haddi|bone|pregnan|breastfeed|heart|kidney|liver)\\b/i;\nconst _consultTopic = CONSULT_TOPIC_RE.test(_q)\n  || _matches.some(p => CONSULT_HANDLES.test(String(p.url || '') + ' ' + String(p.title || '')));\n\nif (_matches.length && !askedDose && (needsPrice || needsLink || ignoredTheCatalog)) {\n  const _line = (p) => _pname(p) + ': ' + (p.isRx\n    ? 'PRESCRIPTION ONLY - never share its price or link, it needs a doctor'\n    : (!p.inStock ? 'OUT OF STOCK - do not send its link, say the team will suggest an alternative'\n      : 'Rs ' + p.price + ', link ' + p.url)) + (p.isKit ? ' (combo pack)' : '');\n  const _named = _sellable.filter(p => !p.isKit && (p.named || 0) > 0);\n  const _kit = _sellable.find(p => p.isKit);\n  const _parts2 = _sellable.filter(p => !p.isKit);\n  let _how = '';\n  if (_named.length >= 2) {\n    const _sum = Number(_named[0].price) + Number(_named[1].price);\n    _how = ' They named two products, so give both prices and links'\n      + (_kit && Number(_kit.price) < _sum ? ', and mention the combo ' + _pname(_kit) + ' at Rs ' + _kit.price + ' against Rs ' + _sum + ' bought separately' : '') + '.';\n  } else if (_parts2.length > 1 && !_named.length) {\n    _how = ' Two products match - show both with price and link, each link on its own line, and ask which one they mean.';\n  }\n  flag('product_answer_missing', 'quality',\n    'They asked about a product, its price or its link, and your draft did not answer from the live data. LIVE PRODUCT DATA: '\n    + _matches.slice(0, 3).map(_line).join('; ') + '.' + _how\n    + ' Put each link on its own line.'\n    + (_consultTopic\n      ? ' This is a concern where a doctor helps, so after the price you may gently offer the free consultation as a choice.'\n      : ' Do not pitch a consultation. After the price and link, ask in one line whether they have any health problem or take any regular medicine.'));\n}\nif (!_orderish && !_payish) {\n  const _live = new Set();\n  _nonRx.forEach(p => _live.add(Number(p.price)));\n  for (let i = 0; i < _nonRx.length; i++) for (let j = i + 1; j < _nonRx.length; j++) _live.add(Number(_nonRx[i].price) + Number(_nonRx[j].price));\n  flagSentences('price_not_live',\n    'Quote prices only from LIVE PRODUCT DATA. ' + (_nonRx.length\n      ? 'The correct prices are: ' + _nonRx.map(p => _pname(p) + ' Rs ' + p.price).join(', ') + '.'\n      : 'There is no live price for this, so say the team will confirm the exact price.'),\n    s => !/\\b(order|paid|pay|payment|refund|cod|amount)\\b/i.test(s) && qrPricesIn(s).some(n => !_live.has(n)));\n}\nif (_rx.length) {\n  flagSentences('rx_price_or_link',\n    _rx.map(_pname).join(', ') + ' is prescription-only: never share its price or link. Say it contains allopathic medicine and needs a doctor\\'s advice, and offer the free consultation; for performance you may suggest Vaji Bati.',\n    s => _rx.some(p => (p.url && s.includes(p.url)) || qrPricesIn(s).includes(Number(p.price))));\n}\nif (_oos.length) {\n  flagSentences('out_of_stock_link',\n    _oos.map(_pname).join(', ') + ' is out of stock: do not send its link. Say it is unavailable right now and the team will suggest the right alternative.',\n    s => _oos.some(p => p.url && s.includes(p.url)));\n}\n\nconst _CATALOG_NAME_RE = new RegExp('\\\\b(vaji\\\\s*bati|kern\\\\s*drops?|shilajit|ashwagandha|her\\\\s*menses|harmen'\n  + '|hormoniherb|aloezy|leanroutine|slimtox|garcinia|diaboglob|thyrostatin|zencal|shaktisurge'\n  + '|boombatti|control\\\\s*tantra|fourplay|hard\\\\s*yatra|max\\\\s*drive|rocket\\\\s*ras|lovelinga'\n  + '|thrill\\\\s*drill|thrustrx|endless|tadalafil|dapoxetine|orlistat)\\\\b', 'i');\n\nconst _PITCH_THING_RE = /\\b(ye|yeh|yah|is|isme|ismein)\\b[^.!?]{0,24}\\b(ayurvedic|herbal|homeopathic|allopathic)?\\s*(medicine|dawa|dawai|tablet|goli|goliyan|drops?|churna|powder|kit|capsule|syrup|tea|product)\\b/i;\nconst _PITCH_CLAIM_RE = /\\b(behtar|behter|bahter|bahtar|improve|badhata|badhati|badhane|theek\\s*karta|thik\\s*karta|fayda|faida|asar\\s*karta|help\\s*karta|kaam\\s*karta|sex\\s*life|stamina|performance)\\b/i;\nif (!_matches.length && !_productQ\n    && (_CATALOG_NAME_RE.test(aiText) || (_PITCH_THING_RE.test(aiText) && _PITCH_CLAIM_RE.test(aiText)))) {\n  flag('unasked_product_pitch', 'safety',\n    'They did not ask for a product and nothing matched. Do not name or describe any product. Understand their concern first with one caring question.',\n    s => _CATALOG_NAME_RE.test(s) || _PITCH_THING_RE.test(s) || _PITCH_CLAIM_RE.test(s));\n}\n\nconst _consultModeQ = !_orderish && !_payish && new RegExp(\n     '\\\\b(online|offline|on\\\\s*line|off\\\\s*line)\\\\b'\n  + '|\\\\b(clinic|hospital|centre|center|branch|showroom)\\\\b'\n  + '|\\\\b(video\\\\s*call|phone\\\\s*(pe|par|call)|call\\\\s*(pe|par))\\\\b'\n  + '|\\\\b(aana|ana|aanaa|jana|jaana|visit|milna|milne|aake|aakar)\\\\b[^.!?]{0,18}\\\\b(padega|padegi|padta|padti|hoga|hogi|hai|h|kya)\\\\b'\n  + '|\\\\bconsultation\\\\b[^.!?]{0,18}\\\\b(kaise|kese|kahan|kaha|kidhar)\\\\b'\n  + '|\\\\b(kaise|kese|kahan|kaha|kidhar)\\\\b[^.!?]{0,18}\\\\b(consultation|consult|checkup|check\\\\s*up)\\\\b', 'i').test(_q);\nif (_consultModeQ && !/\\b(online|call|phone)\\b/i.test(aiText)) {\n  flag('consult_mode_unanswered', 'quality',\n    'They asked how the consultation happens. Explain simply: it is fully online, on a normal phone call at a time they choose, free, 10 to 15 minutes, with nothing to visit. You may offer to set it up as a choice.');\n}\n\nconst _CALLWORD = '(call|phone|ring|baat|connect|contact|sampark)';\nconst _MINS = '(?<!\\\\d\\\\s?-\\\\s?)\\\\b\\\\d{1,2}\\\\s*(minute|minutes|min|mins|minit|minut)\\\\b';\nconst _promiseRe = new RegExp(\n  _MINS + '[^.!?]{0,30}\\\\b' + _CALLWORD + '\\\\b'\n  + '|\\\\b' + _CALLWORD + '\\\\b[^.!?]{0,30}' + _MINS\n  + '|\\\\b(abhi|turant|immediately|right\\\\s*now|just\\\\s*now)\\\\b[^.!?]{0,26}\\\\b' + _CALLWORD + '\\\\b'\n  + '|\\\\b' + _CALLWORD + '\\\\b[^.!?]{0,26}\\\\b(abhi|turant|immediately|right\\\\s*now|just\\\\s*now)\\\\b', 'i');\nflagSentences('callback_promise',\n  'Never promise a call in a number of minutes or \"abhi/turant\". The call happens at a time the customer chooses between '\n  + _hhmm(WORK_START_MIN) + ' and ' + _hhmm(WORK_END_MIN) + '.',\n  s => _promiseRe.test(s));\n\nconst _hasLink = /https?:\\/\\/|sehatup\\.com/i.test(aiText);\nflagSentences('claimed_sent',\n  'Never say you sent a link, report or details unless it is inside this very message.',\n  s => !_hasLink && /\\b(maine|mai\\s*ne|main\\s*ne)\\b[^.!?]{0,34}\\b(link|url|report|pdf|catalog|catalogue|price\\s*list|details|jaankari)\\b[^.!?]{0,20}\\b(bhej|send|share|forward)\\b/i.test(s));\nflagSentences('claimed_confirmation',\n  'Never say you confirmed or checked something with the team, a doctor or a manager - you cannot do that inside this chat.',\n  s => /\\b(team|doctor|manager|senior)\\b[^.!?]{0,24}\\b(se)\\b[^.!?]{0,20}\\b(confirm|pooch|puch|baat)\\b[^.!?]{0,16}\\b(kar\\s*li\\b|kar\\s*liya\\b|kar\\s*diya\\b|kar\\s*di\\b|liya\\b)/i.test(s)\n    || /\\b(confirm|approve|approval)\\b[^.!?]{0,20}\\b(kar\\s*li\\b|kar\\s*liya\\b|ho\\s*gaya\\b|mil\\s*gaya\\b)/i.test(s));\nflagSentences('offered_discount',\n  'You cannot offer, approve or hint at any discount, lower price or free item. Hold the price warmly; any running offer comes from the team.',\n  s => /\\b(discount|chhut|chhoot|chut\\b|offer|kam\\s*kar|kam\\s*karwa|kam\\s*me|sasta|rebate)\\b/i.test(s)\n    && /\\b(de\\s*d|dedun|de\\s*dun|kar\\s*d|karwa|dilwa|mil\\s*ja|ho\\s*ja|check\\s*kar|confirm)\\b/i.test(s));\nflagSentences('claimed_viewed',\n  'You cannot see photos or videos. Never say you saw or checked them; ask them kindly to describe it in words.',\n  s => /\\b(maine|mai\\s*ne|main\\s*ne)\\b[^.!?]{0,24}\\b(dekh|dekha|dekhi|dekhli)\\w*\\b/i.test(s)\n    || /\\b(dekh\\s*liya|dekh\\s*li|dekh\\s*lia|check\\s*kar\\s*liya)\\b/i.test(s));\n\n{\n  const _maleConcern = /\\b(timing|time\\s*kam|jaldi\\s*nikal|nikal\\s*jata|discharge|premature|erection|erect\\w*|ling|penis|land\\b|size\\s*chota|chota\\s*size|mota\\s*karna|veerya|virya|shukranu|sperm|night\\s*fall|nightfall|swapnadosh|dhat|napunsak|mardana|marad|stamina\\s*sex|sex\\s*karta|sambhog)\\b/i.test(_custAll);\n  const _femaleContext = /\\b(period|periods|mahwari|mahavari|pcod|pcos|pregnan\\w*|garbh\\w*|conceiv\\w*|breast\\s*feed\\w*|breastfeed\\w*|menopaus\\w*|ovary|ovaries|bacchedani|uterus|delivery\\s*hui)\\b/i.test(_custAll);\n  if (_maleConcern && !_femaleContext) {\n    flagSentences('pregnancy_question',\n      'The customer described a male concern. Do not ask about pregnancy or breastfeeding. If a safety question is needed, ask one neutral line: koi health problem hai ya koi dawai chal rahi hai?',\n      s => /\\b(pregnan\\w*|pregnency|garbh\\w*|breast\\s*feed\\w*|breastfeed\\w*|feeding\\s*kara|doodh\\s*pila|conceiv\\w*)\\b/i.test(s)\n        && /\\?|\\bnahi\\s*hai\\b|\\bto\\s*nahi\\b|\\bkya\\b/i.test(s));\n  }\n}\n\nconst _SAFETY_CLAIM_RE = new RegExp(\n     '\\\\b(side\\\\s*effects?|nuksan|nuksaan|haani)\\\\b[^.!?]{0,24}\\\\b(nahi|nhi|nai)\\\\b'\n  + '|\\\\bno\\\\s+side\\\\s*effects?\\\\b'\n  + '|\\\\b100\\\\s*(%|percent|pratishat)\\\\s*(safe|sure|cure|guaranteed?|result)\\\\b'\n  + '|\\\\b(bilkul|puri\\\\s*tarah|puri\\\\s*trah|totally|completely)\\\\s*safe\\\\b'\n  + '|\\\\b(guarantee|guaranteed)\\\\b[^.!?]{0,20}\\\\b(result|cure|ilaj|theek|thik)\\\\b', 'i');\nflagSentences('safety_claim',\n  'Never claim a product has no side effects, is 100% safe, or guarantees a result. Say the doctor can advise based on their health history.',\n  s => _SAFETY_CLAIM_RE.test(s));\n\nconst _custWords = newMsgText.trim().split(/\\s+/).filter(Boolean).length;\nconst _custSaidSomething = _custWords >= 12 || newMsgText.trim().length >= 70;\nconst _weAskedQuestion = /\\?/.test(_lastOutText)\n  || /\\b(bata\\s*d(o|ijiye|ena)|bataiye|batao|bta\\s*d(o|ijiye)|kitni|kitna|kitne|kab\\s*se|kaunsa|konsa|kaun\\s*sa|kya\\s*problem|naam)\\b/i.test(_lastOutText);\nconst _custAskedQuestion = /\\?/.test(newMsgText)\n  || /\\b(kya|kyu|kyun|kyo|kyon|kaise|kese|kaisa|kaisi|kab|kahan|kaha|kaun|kaunsa|konsa|kis|kisliye|kitna|kitni|kitne|batao|bataiye|bta|btao|btaiye|samjhao|samjhaiye|explain|tell)\\b/i.test(newMsgText);\nconst _alreadyFlaggedAnswer = violations.some(v => /^(empty|booking_time_ignored|booking_name_ignored|product_answer_missing|consult_mode_unanswered|dose_not_deferred|report_link_missing)/.test(v.code));\nif (aiText.trim() && !_alreadyFlaggedAnswer && qrIsNonAnswer(aiText) && (_custSaidSomething || _weAskedQuestion || _custAskedQuestion)) {\n  flag('filler_reply', 'quality', _custSaidSomething\n    ? 'The customer described their problem in detail and your draft was only filler. Acknowledge what they shared in your own words, reassure them that they are not alone and that you are with them in this, and ask one caring follow-up question.'\n    : (_custAskedQuestion\n      ? 'They asked a question and your draft did not answer it. Answer it directly and warmly. If only a doctor can answer it, say so kindly.'\n      : 'They answered your question. Acknowledge their answer and move the conversation forward with care.'));\n}\n\n{\n  const _normReply = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n  const _now = _normReply(aiText), _prev = _normReply(_lastOutText);\n  if (_now && _prev && (_now === _prev || (_now.length >= 12 && (_prev.includes(_now) || _now.includes(_prev))))) {\n    flag('repeat', 'quality',\n      'Your draft repeats your previous message. Say something new that responds to their latest message.');\n  }\n}\n\n{\n  const _custWantsConsult = /\\b(consult\\w*|doctor|dr|daktar|appointment|salah)\\b/i.test(_custAll)\n    || /\\bcall\\s*(karwa|karva|karwao|karvao|kar\\s*do|kar\\s*dijiye|chahiye|aayega|aaega|kab)\\b/i.test(_custAll)\n    || /\\bbaat\\s*(karni|karna|karwa|karva|kara)\\b/i.test(_custAll);\n  const _safetyRaised = /\\b(thyroid|sugar|diabetes|diabetic|bp|blood\\s*pressure|heart|kidney|liver|pregnan\\w*|breastfeed\\w*|surgery|operation)\\b/i.test(_custAll)\n    || /\\b(dawai|dawa|medicine|tablet|goli)\\b[^.!?]{0,20}\\b(chal\\s*rahi|chal\\s*raha|le\\s*rah\\w*|leta|leti|lete)\\b/i.test(_custAll);\n  const _offeredBefore = _outs.some(m => /\\bconsult/i.test(String(m.text)));\n  const _exempt = _custWantsConsult || _safetyRaised || askedDose || _rx.length > 0 || _consultModeQ;\n  const _mentionsConsult = /\\bconsult/i.test(aiText);\n  const _asksNameOrTime = /(\\bnaam\\b[^.!?]{0,24}\\b(bata|batao|bataiye|dijiye)|kaunsa\\s*time|konsa\\s*time|kis\\s*time|time\\s*bata)/i.test(aiText);\n  if (!_exempt && _asksNameOrTime && !_offeredBefore) {\n    flag('booking_ask_unrequested', 'quality',\n      'The customer has not asked for a consultation, so do not ask for their name or a call time. Keep helping them with their concern.');\n  } else if (!_exempt && _mentionsConsult && _productQ && _matches.length && !_consultTopic) {\n    flag('consultation_on_direct_sale', 'quality',\n      'This product is sold directly. Do not pitch a consultation - give the price and link, then ask in one line whether they have any health problem or take any regular medicine.');\n  } else if (!_exempt && _mentionsConsult && !_productQ && !_offeredBefore && _aiTurns < 2) {\n    flag('consultation_too_early', 'quality',\n      'It is too early to bring up the consultation - the customer has not asked for it. First comfort them and understand their problem: acknowledge what they said, reassure them that they are not alone and that you are with them, and ask one caring question. Do not mention the consultation yet.');\n  }\n}\n\nconst _codes = violations.map(v => v.code);\nconst _baseMessages = Array.isArray(buildData.messages) ? buildData.messages : [];\n\nif (violations.length && !lastChance && _baseMessages.length) {\n\n  const messages = JSON.parse(JSON.stringify(_baseMessages));\n  const _notes = violations.map(v => v.note).filter((n, i, a) => a.indexOf(n) === i);\n  messages[0].content = String(messages[0].content || '')\n    + '\\n\\nREWRITE NOTE (read this before replying): you drafted this reply to the customer\\'s latest message:\\n\"\"\"\\n'\n    + (_rawModelText || '(empty)') + '\\n\"\"\"\\nIt cannot be sent because:\\n'\n    + _notes.map((n, i) => (i + 1) + '. ' + n).join('\\n')\n    + '\\nWrite a NEW reply to the customer\\'s latest message that fixes all of this and still follows every rule above. Reply with the message text only - warm, natural, 1 to 3 short lines. Never mention this note.';\n  console.log('[Check Reply] attempt ' + (attempt + 1) + '/' + MAX_ATTEMPTS + ' -> retry | ' + _codes.join(',')\n    + ' | draft=' + JSON.stringify(_rawModelText.slice(0, 80)));\n  try { $execution.customData.set('attempt' + (attempt + 1), _codes.join(',').slice(0, 200)); } catch (e) {}\n  return [{ json: { route: 'retry', attempt: attempt + 1, violations: _codes, messages } }];\n}\n\nlet finalText = aiText;\nlet route = 'send';\nconst _safety = violations.filter(v => v.severity === 'safety');\nif (_safety.length) {\n  const _preds = _safety.map(v => v.bad);\n  finalText = qrKeepSentences(aiText, s => !_preds.some(p => p(s)));\n  if (_preds.some(p => _sentences(finalText).some(s => p(s)))) finalText = '';\n}\nif (!finalText.trim() || (_safety.length && qrIsNonAnswer(finalText))) {\n  route = 'human';\n  finalText = '';\n}\n\nconst aiGuards = _codes.concat(attempt ? ['attempts=' + (attempt + 1)] : []).concat(route === 'human' ? ['needs_human'] : []).join(',');\ntry {\n  $execution.customData.set('reply', String(finalText).slice(0, 60));\n  $execution.customData.set('guards', aiGuards || 'none');\n} catch (e) {  }\nconsole.log('[Check Reply] attempt ' + (attempt + 1) + '/' + MAX_ATTEMPTS + ' -> ' + route\n  + ' | ' + (aiGuards || 'clean') + ' | reply=' + JSON.stringify(String(finalText).slice(0, 60)));\n\nreturn [{\n  json: {\n    route,\n    phone,\n    name,\n    lastAiReply: finalText,\n    aiGuards,\n    violations: _codes,\n    attempts: attempt + 1,\n    needsHuman: route === 'human',\n    lastUserMessage: newMsgText,\n    docId: String(phone).replace(/[^0-9]/g, ''),\n    emptyReason,\n    lastUpdated: new Date().toISOString()\n  }\n}];\n"
       },
-      "id": "359369ae-842e-421e-a61e-b68c8eaf7ee6",
+      "id": "418c0573-8d75-4f44-9e3b-d0d3cec5b408",
       "name": "Extract AI Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2768,
-        368
+        1280,
+        896
       ]
     },
     {
       "parameters": {
-        "authentication": "serviceAccount",
-        "operation": "upsert",
-        "projectId": "sehatup-f96b5",
-        "collection": "qr_conversations",
-        "updateKey": "docId",
-        "columns": "phone,name,lastUpdated,lastAiReply,lastUserMessage"
+        "jsCode": "// After the WhatsApp send: capture the id QuickReply returned (data.id) so the\n// message doc is keyed by it - then the CF's forwarded SENT/DELIVERED/READ status\n// callbacks update THIS doc in place instead of making a \"Bot replied\" placeholder.\nconst send = $input.first().json || {};\nlet sentId = null;\nconst cands = [send.id, send.messageId, send.message_id,\n  send.data && send.data.id, send.data && send.data.messageId,\n  send.message && send.message.id, send.result && send.result.id];\nfor (const c of cands) { if (c) { sentId = String(c); break; } }\n\nconst ai = $('Final Reply').first().json;\nconst now = Date.now();\nconst convId = String(ai.phone || '').replace(/[^0-9]/g, '');\nconst msgId = sentId || ('local_' + now + '_' + Math.floor(Math.random() * 1e6));\n\n// WHY the bot said what it said, stored next to the message itself. n8n Cloud prunes\n// executions, so an n8n-only record disappears exactly when you need it for a complaint that\n// came in last week - and console.log lines are per-execution and not searchable across\n// chats. This lands in Firestore, so it is queryable and shows in the CRM beside the reply.\n// Built in Extract AI Response, where the guard flags live, so the list of guards exists in\n// exactly one place.\nconst aiGuards = String(ai.aiGuards || '');\n\nconsole.log('QR send response (first 200):', JSON.stringify(send).slice(0, 200), '| id:', sentId,\n  '| guards:', aiGuards || 'none');\n\nreturn [{\n  json: {\n    convId,\n    msgId,\n    id: msgId,\n    phone: ai.phone,\n    direction: 'out',\n    aiGuards,\n    // messageBy is overwritten by QuickReply's status callback ('AI' -> 'AGENT'), and so\n    // is agentId - both end up identical to a human agent's CRM reply. senderKind is\n    // written once here and never touched again, so it is the ONLY field that lets\n    // \"Decide Process\" tell the AI's own replies apart from a human takeover.\n    senderKind: 'AI',\n    messageBy: 'AI',\n    _type: 'AGENT_TEXT',\n    text: ai.lastAiReply,\n    status: 'SENT',\n    msgTime: now,\n    createdAt: new Date().toISOString()\n  }\n}];\n"
       },
-      "id": "9915d558-1f36-40d9-a8fa-ae0327370ef8",
-      "name": "Update Main Firebase Doc",
-      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
-      "typeVersion": 1,
-      "position": [
-        2992,
-        368
-      ],
-      "credentials": {
-        "googleApi": {
-          "id": "rqq4SmAHvUOCXqmg",
-          "name": "Google Firebase Cloud Firestore account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    phone: item.phone,\n    type: 'AI_REPLY',\n    text: item.lastAiReply,\n    savedAt: new Date().toISOString()\n  }\n}];"
-      },
-      "id": "node-prep-ai-reply",
-      "name": "Prepare AI Reply Data",
+      "id": "770b9a9d-3b08-49fd-9213-809bba80a193",
+      "name": "Record AI Sent",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3216,
-        368
+        1568,
+        832
       ]
     },
     {
@@ -272,21 +207,22 @@
         "authentication": "serviceAccount",
         "operation": "create",
         "projectId": "sehatup-f96b5",
-        "collection": "={{ 'qr_conversations/' + $json.phone.replace('+', '') + '/events' }}",
-        "columns": "type,text,savedAt"
+        "collection": "={{ 'conversations/' + $json.convId + '/messages' }}",
+        "documentId": "={{ $json.msgId }}",
+        "columns": "id,direction,senderKind,aiGuards,messageBy,_type,text,status,msgTime,createdAt"
       },
-      "id": "node-save-ai-reply",
-      "name": "Save AI Reply Event",
+      "id": "d8e5f0d8-0521-420d-a528-43aba86f67e4",
+      "name": "Save AI Message",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1,
       "position": [
-        3440,
-        368
+        1712,
+        640
       ],
       "credentials": {
         "googleApi": {
-          "id": "rqq4SmAHvUOCXqmg",
-          "name": "Google Firebase Cloud Firestore account"
+          "id": "FIY6PRI1TzL86Bc8",
+          "name": "Firebase admin service account"
         }
       }
     },
@@ -299,11 +235,11 @@
           "parameters": [
             {
               "name": "client-id",
-              "value": "=GgbHGAprcvQx26qKL_c"
+              "value": "@@@"
             },
             {
               "name": "secret-key",
-              "value": "=PSHi6HyyfctzHFak6"
+              "value": "@@@"
             },
             {
               "name": "Content-Type",
@@ -313,111 +249,30 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Extract AI Response').first().json.phone) }},\n  \"payload\": {\n    \"_type\": \"AGENT_TEXT\",\n    \"text\": {{ JSON.stringify($('Extract AI Response').first().json.lastAiReply) }}\n  }\n}",
+        "jsonBody": "={\n  \"to\": {{ JSON.stringify($('Final Reply').first().json.phone) }},\n  \"payload\": {\n    \"_type\": \"AGENT_TEXT\",\n    \"text\": {{ JSON.stringify($('Final Reply').first().json.lastAiReply) }}\n  }\n}",
         "options": {}
       },
-      "id": "eadc1e99-fc09-4b9e-a409-6ae17104ec6c",
+      "id": "960b4eb7-25fc-49a4-96ff-3d00d24d155e",
       "name": "Send WhatsApp Reply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3664,
-        368
+        1408,
+        672
       ]
     },
     {
       "parameters": {
-        "jsCode": "const phone = $('Prepare AI Reply Data').first().json.phone || 'unknown';\nconst aiText = $('Prepare AI Reply Data').first().json.text || '';\nconsole.log('WhatsApp reply sent to:', phone, '| Reply:', aiText.substring(0, 50));\nreturn [{json: {success: true, phone, aiReplyPreview: aiText.substring(0, 100), timestamp: new Date().toISOString()}}];"
+        "jsCode": "const phone = $('Record AI Sent').first().json.phone || 'unknown';\nconst aiText = $('Record AI Sent').first().json.text || '';\nconsole.log('WhatsApp reply sent to:', phone, '| Reply:', aiText.substring(0, 50));\nreturn [{json: {success: true, phone, aiReplyPreview: aiText.substring(0, 100), timestamp: new Date().toISOString()}}];"
       },
-      "id": "3a7b8bd6-1702-4faa-a884-040d1d71751a",
+      "id": "6f1f8af2-9de5-4974-b286-2e2bba41cb21",
       "name": "Log Success",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3888,
-        368
+        1856,
+        832
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const body = $input.first().json.body;\nreturn [{\n  json: {\n    phone: body.phone || '',\n    type: 'STATUS',\n    event: body.event || '',\n    messageBy: body.messageBy || '',\n    msgId: body.id || '',\n    savedAt: new Date().toISOString()\n  }\n}];"
-      },
-      "id": "node-prep-status",
-      "name": "Prepare Status Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        528,
-        560
-      ]
-    },
-    {
-      "parameters": {
-        "authentication": "serviceAccount",
-        "operation": "create",
-        "projectId": "sehatup-f96b5",
-        "collection": "={{ 'qr_conversations/' + $json.phone.replace('+', '') + '/events' }}",
-        "columns": "type,event,messageBy,msgId,savedAt"
-      },
-      "id": "node-save-status",
-      "name": "Save Status Event",
-      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
-      "typeVersion": 1,
-      "position": [
-        752,
-        560
-      ],
-      "credentials": {
-        "googleApi": {
-          "id": "rqq4SmAHvUOCXqmg",
-          "name": "Google Firebase Cloud Firestore account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "11212013-f5bb-4eb6-ab99-bd020af12935",
-              "leftValue": "={{ $json.phone }}",
-              "rightValue": "+917300978845",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            },
-            {
-              "id": "63473cca-ea30-4093-a3c7-05b5a5187619",
-              "leftValue": "={{ $json.phone }}",
-              "rightValue": "+918756112227",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        80,
-        48
-      ],
-      "id": "82d8b59e-9d3a-4189-baa0-264b847264f6",
-      "name": "Test Numbers Only",
-      "disabled": true
     },
     {
       "parameters": {
@@ -428,23 +283,23 @@
       "type": "n8n-nodes-base.googleDocs",
       "typeVersion": 2,
       "position": [
-        2096,
-        368
+        832,
+        1040
       ],
-      "id": "8cf2b62a-208d-44d7-aaf2-eb3cd075a8b2",
+      "id": "52ea7394-0ed7-4923-ac14-2aeeb3e1fb99",
       "name": "Get a document",
       "executeOnce": true,
       "credentials": {
         "googleDocsOAuth2Api": {
-          "id": "juz4Re37VEuOK131",
-          "name": "Google Docs account"
+          "id": "dHdhSyfXH5PeW9VN",
+          "name": "Google Firebase Cloud Firestore account"
         }
       }
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/sehatup-f96b5/locations/us-central1/endpoints/230203100240019456:generateContent",
+        "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/886569695434/locations/us-central1/endpoints/6576755739577024512:generateContent",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleApi",
         "sendHeaders": true,
@@ -458,23 +313,341 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": {{ JSON.stringify($json.messages.slice(1).map(m => ({\n    \"role\": m.role === \"assistant\" ? \"model\" : m.role,\n    \"parts\": [{\"text\": m.content}]\n  }))) }},\n  \"systemInstruction\": {\n    \"parts\": [{\"text\": {{ JSON.stringify($json.messages[0].content) }}}]\n  },\n  \"generationConfig\": {\n    \"maxOutputTokens\": 400,\n    \"temperature\": 0.7\n  }\n}",
+        "jsonBody": "={\n  \"contents\": {{ JSON.stringify($json.messages.slice(1).map(m => ({\n    \"role\": m.role === \"assistant\" ? \"model\" : m.role,\n    \"parts\": [{\"text\": m.content}]\n  }))) }},\n  \"systemInstruction\": {\n    \"parts\": [{\"text\": {{ JSON.stringify($json.messages[0].content) }}}]\n  },\n  \"generationConfig\": {\n    \"maxOutputTokens\": 500,\n    \"temperature\": 0.7,\n    \"thinkingConfig\": { \"thinkingBudget\": 0 }\n  }\n}",
         "options": {}
       },
-      "id": "afd87da2-db7d-4bc2-988a-2b56395b5891",
+      "id": "aad1916a-085c-4a10-ac9a-2e9abf90790d",
       "name": "Call Gemini AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2544,
-        368
+        1120,
+        720
       ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 1500,
       "credentials": {
         "googleApi": {
-          "id": "sixZUiV1rnzhegM2",
-          "name": "Google Service Account account"
+          "id": "oULY3BvjHLOFXo8V",
+          "name": "n8n Service Account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "projectId": "sehatup-f96b5",
+        "collection": "qr_config",
+        "documentId": "chatbot"
+      },
+      "id": "46f1ac5a-5b11-496a-adc4-c429cc847ccf",
+      "name": "Get AI Config",
+      "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        720
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "googleApi": {
+          "id": "FIY6PRI1TzL86Bc8",
+          "name": "Firebase admin service account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://us-central1-sehatup-f96b5.cloudfunctions.net/qrReceiveMessage?token=@@@",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "f363d7ec-b305-4219-bbc1-14beec36c758",
+      "name": "Forward to Cloud Function",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1104,
+        320
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ai-not-off",
+              "leftValue": "={{ ($('Get AI Config').first().json.mode || 'on').toString().toLowerCase() }}",
+              "rightValue": "off",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c2b19ce7-8acf-4c8a-b4fc-b7021fc0443f",
+      "name": "AI Enabled?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -704,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = ($('QuickReply Webhook').first().json.body) || {};\n\n// Match \"Is Real User Message?\" EXACTLY: a real message is one that has a payload.\n// This used to test `b.payload._type`. QuickReply does not always send _type - the\n// workflow's own pinned sample body has a payload with text and no _type - so such a\n// message was tagged STATUS, its `text` tag was never set, and the execution looked\n// like a delivery callback in the list. That is why real conversations could not be\n// found among the hundreds of SENT/DELIVERED/READ executions.\nconst isStatus = !b.payload;\n\nconst tags = {\n  kind: isStatus ? 'STATUS' : 'MESSAGE',\n  phone: String(b.phone || ''),\n};\nif (isStatus) {\n  tags.event = String(b.event || '');\n  tags.by = String(b.messageBy || '');\n} else {\n  tags.text = String((b.payload && b.payload.text) || '').slice(0, 60);\n  // Kept so a media/button message is identifiable in the list without opening it.\n  tags.ptype = String((b.payload && b.payload._type) || 'none');\n}\n\n// customData is a PAID n8n feature and is stored on PRODUCTION executions only - a manual\n// run never keeps it. The old code swallowed the failure with a bare comment, so \"no tags\n// in the executions list\" was indistinguishable from \"this plan does not support tags\".\n// Log it instead: one line in the execution log tells you which of the two it is.\n// Limits: 10 keys per execution, key <= 50 chars, value <= 512 chars.\ntry {\n  for (const k of Object.keys(tags)) $execution.customData.set(k, tags[k]);\n} catch (e) {\n  console.log('[Tag Execution] customData NOT saved - ' + e.message\n    + ' (paid feature, and production executions only). Tags attempted: ' + JSON.stringify(tags));\n}\n\nreturn $input.all();\n"
+      },
+      "id": "543e0a4d-683f-43f6-949a-56b998d1431a",
+      "name": "Tag Execution",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "skip-ai",
+              "leftValue": "={{ $json.skipAi }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "12d5c61e-0c1b-40fc-81e5-4bb7c58c5fd2",
+      "name": "Skip AI? (media/automation)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -304,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $json || {};\nconsole.log('[Skip AI] reason=' + (s.skipReason || '') + ' | phone=' + (s.phone || '') + ' | type=' + (s.msgType || '') + ' | text=' + String(s.text || '').slice(0, 40));\nreturn [{ json: { skipped: true, reason: s.skipReason, phone: s.phone, msgType: s.msgType, mediaKind: s.mediaKind } }];"
+      },
+      "id": "4c5a7aa0-a76b-42ae-ae85-83df0d04f3c8",
+      "name": "Log Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "id": "c5ec609a-3b08-47e7-b7c7-8475f5c4d02e",
+      "name": "Wait 60 Seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        800
+      ],
+      "webhookId": "wait-3-min-webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://us-central1-sehatup-f96b5.cloudfunctions.net/qrCustomerContext",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "token",
+              "value": "sehatup_ctx_9f3b7c21ea54"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        1008
+      ],
+      "id": "981c2e2c-e059-41b4-bcf1-f4d060fa7ef8",
+      "name": "Fetch Customer Context",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://us-central1-sehatup-f96b5.cloudfunctions.net/qrProductLookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $('Decide Process').first().json.recentUserText }}"
+            },
+            {
+              "name": "token",
+              "value": "sehatup_ctx_9f3b7c21ea54"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        1072
+      ],
+      "id": "e2c09dac-52d2-42e5-8611-9a279b3998bb",
+      "name": "Fetch Product Matches",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flight-recorder: build ONE record for this execution AND post it to qrLogRun (Firestore\n// `ai_runs`) directly from this node — there is NO separate HTTP node whose body field can be\n// misconfigured (that was the \"every row is empty\" bug). This turns \"why didn't the bot reply\n// to X?\" into a Firestore QUERY instead of opening executions one by one in the n8n UI.\n//\n// Wire this ONE Code node onto EVERY terminal branch of the main workflow (nothing after it):\n//   Log Skipped                       --> Build Run Log\n//   Process or Skip?  (FALSE output)  --> Build Run Log\n//   Log Success                       --> Build Run Log\n//\n// One body covers all three. The outcome is INFERRED from how far the message got, so there\n// is nothing to edit per branch. Every upstream read is guarded because each branch can see\n// a different subset of nodes — the skip branch runs BEFORE Decide Process, so that node has\n// not executed there, and Extract AI Response only exists on the reply branch.\nconst pick = (name) => { try { return $(name).first().json || {}; } catch (e) { return {}; } };\n\nconst src  = pick('Extract Message Details');   // present on all three branches\nconst dec  = pick('Decide Process');            // absent on the skip branch\nconst ai   = pick('Final Reply');               // present once the reply check finished (sent or needs_human)\nconst prod = pick('Fetch Product Matches');     // present on the reply branch\n\n// Infer outcome from how far this message travelled.\nlet outcome = 'replied';\nif (src.skipAi === true) outcome = 'skipped';\nelse if (dec.shouldProcess === false) outcome = 'bowed_out';\nelse if (ai.route === 'human') outcome = 'needs_human';   // every draft broke a safety rule - nothing was sent\n\nconst reason = outcome === 'skipped'   ? (src.skipReason || '')\n             : outcome === 'bowed_out' ? (dec.reason || '')\n             : (dec.reason || 'process');\n\n// n8n execution id — makes the Firestore doc idempotent and lets the Error Trigger's failure\n// record MERGE onto the same doc as the run it belongs to.\nlet executionId = '';\ntry { executionId = String($execution.id || ''); } catch (e) {}\n\n// Only the guards that actually FIRED, so the doc stays small and you can query a single one:\n//   ai_runs  where  guards.doseGuard != null\nconst guards = {};\nfor (const code of (Array.isArray(ai.violations) ? ai.violations : [])) guards[String(code).split(':')[0]] = true;\n\n// Firestore rejects `undefined`, so every optional value falls back to null / '' / [].\nconst run = {\n  executionId,\n  phone:  src.phone || dec.phone || '',\n  name:   src.name  || dec.name  || 'Customer',\n  convId: src.convId || '',\n  ts:     Number(src.msgTime) || Date.now(),\n  outcome,\n  reason,\n  input: {\n    text:      src.text || '',\n    msgType:   src.msgType || '',\n    isMedia:   !!src.isMedia,\n    mediaKind: src.mediaKind || '',\n  },\n  decision: {\n    shouldProcess:  dec.shouldProcess === undefined ? null : dec.shouldProcess,\n    latestInbound:  dec.latestInbound || null,      // human-readable IST from Decide Process\n    thisMessage:    dec.thisMessage || null,\n    lastAi:         dec.lastAi || null,\n    lastHuman:      dec.lastHuman || null,\n    ageMins:        dec.ageOfThisMessageMins === undefined ? null : dec.ageOfThisMessageMins,\n    fetched:        dec.fetched === undefined ? null : dec.fetched,\n    minsSinceHuman: dec.minsSinceHuman === undefined ? null : dec.minsSinceHuman,\n    recentUserText: dec.recentUserText || '',\n  },\n  products: Array.isArray(prod.matches)\n    ? prod.matches.map(p => (p && (p.title || p.name)) ? (p.title || p.name) : String(p)).slice(0, 10)\n    : [],\n  ai: {\n    replied:       outcome === 'replied',\n    reply:         ai.lastAiReply || '',\n    guardsSummary: ai.aiGuards || '',   // compact string, e.g. \"price=ambiguous,dose\"\n    emptyReason:   ai.emptyReason || '',\n    attempts:      Number(ai.attempts) || 0,\n    needsHuman:    ai.route === 'human',\n    guards,                             // map of only-the-fired guards\n  },\n};\n\n// POST straight to qrLogRun from inside this node, so there is NO separate HTTP node whose\n// body field can be misconfigured. Requires this node's Mode = \"Run Once for All Items\" (the\n// default). Wrapped so a logging failure can never break the flow — the customer's reply\n// already went out upstream. If you keep this, DELETE the old \"Log Run\" HTTP node, or it will\n// keep writing empty rows next to these good ones.\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://us-central1-sehatup-f96b5.cloudfunctions.net/qrLogRun',\n    body: run,\n    json: true,\n  });\n} catch (e) {\n  console.log('[Build Run Log] qrLogRun POST failed: ' + e.message);\n}\n\nreturn [{ json: run }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        368
+      ],
+      "id": "93e2b3ca-982f-4e9d-9a5f-a7c729e78800",
+      "name": "Build Run Log"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0c3160b3-99b9-478a-8284-912eb6bac9f3",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "retry",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "167c1f0f-4818-419c-bf7c-47bb2b299c58",
+      "name": "Retry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1456,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The single, final result of the reply check. Extract AI Response can run up to 3 times\n// (each retry loops back through Call Gemini AI), so everything downstream reads THIS node,\n// which runs exactly once per execution.\nreturn $input.all();"
+      },
+      "id": "e12a3824-936c-48f9-bd64-abac8932086d",
+      "name": "Final Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "857d7c97-7b5a-476e-89d8-d9f7ddc2945a",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "send",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4048c7b1-d02b-4f80-9680-92b4927d0f26",
+      "name": "Send Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1808,
+        1056
+      ]
     }
   ],
   "pinData": {
@@ -534,6 +707,16 @@
             "index": 0
           },
           {
+            "node": "Tag Execution",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Forward to Cloud Function",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Is Real User Message?",
             "type": "main",
             "index": 0
@@ -545,14 +728,29 @@
       "main": [
         [
           {
-            "node": "Extract Message Details",
+            "node": "Get AI Config",
             "type": "main",
             "index": 0
           }
-        ],
+        ]
+      ]
+    },
+    "Get AI Config": {
+      "main": [
         [
           {
-            "node": "Prepare Status Data",
+            "node": "AI Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Enabled?": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Details",
             "type": "main",
             "index": 0
           }
@@ -563,47 +761,25 @@
       "main": [
         [
           {
-            "node": "Save User Message to Firebase",
+            "node": "Skip AI? (media/automation)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save User Message to Firebase": {
+    "Fetch Conversation History": {
       "main": [
         [
           {
-            "node": "Store Message in Session",
+            "node": "Decide Process",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Store Message in Session": {
-      "main": [
-        [
-          {
-            "node": "Wait 3 Minutes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait 3 Minutes": {
-      "main": [
-        [
-          {
-            "node": "Should We Process Now?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Should We Process Now?": {
+    "Decide Process": {
       "main": [
         [
           {
@@ -618,19 +794,25 @@
       "main": [
         [
           {
-            "node": "Fetch Conversation History",
+            "node": "Fetch Customer Context",
             "type": "main",
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Build Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Fetch Conversation History": {
+    "Get a document": {
       "main": [
         [
           {
-            "node": "Get a document",
+            "node": "Build AI Prompt",
             "type": "main",
             "index": 0
           }
@@ -648,44 +830,22 @@
         ]
       ]
     },
+    "Call Gemini AI": {
+      "main": [
+        [
+          {
+            "node": "Extract AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Extract AI Response": {
       "main": [
         [
           {
-            "node": "Update Main Firebase Doc",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Main Firebase Doc": {
-      "main": [
-        [
-          {
-            "node": "Prepare AI Reply Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare AI Reply Data": {
-      "main": [
-        [
-          {
-            "node": "Save AI Reply Event",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Save AI Reply Event": {
-      "main": [
-        [
-          {
-            "node": "Send WhatsApp Reply",
+            "node": "Retry?",
             "type": "main",
             "index": 0
           }
@@ -696,6 +856,28 @@
       "main": [
         [
           {
+            "node": "Record AI Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record AI Sent": {
+      "main": [
+        [
+          {
+            "node": "Save AI Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save AI Message": {
+      "main": [
+        [
+          {
             "node": "Log Success",
             "type": "main",
             "index": 0
@@ -703,38 +885,125 @@
         ]
       ]
     },
-    "Prepare Status Data": {
+    "Skip AI? (media/automation)": {
       "main": [
         [
           {
-            "node": "Save Status Event",
+            "node": "Log Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 60 Seconds",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Test Numbers Only": {
+    "Wait 60 Seconds": {
+      "main": [
+        [
+          {
+            "node": "Fetch Conversation History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Customer Context": {
+      "main": [
+        [
+          {
+            "node": "Fetch Product Matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Product Matches": {
+      "main": [
+        [
+          {
+            "node": "Get a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Skipped": {
+      "main": [
+        [
+          {
+            "node": "Build Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Build Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Run Log": {
       "main": [
         []
       ]
     },
-    "Get a document": {
+    "Retry?": {
       "main": [
         [
           {
-            "node": "Build AI Prompt",
+            "node": "Call Gemini AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final Reply",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Call Gemini AI": {
+    "Final Reply": {
       "main": [
         [
           {
-            "node": "Extract AI Response",
+            "node": "Send Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reply?": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Run Log",
             "type": "main",
             "index": 0
           }
@@ -748,12 +1017,12 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "45ebc357-e75f-4d82-bbca-005d1901793d",
+  "versionId": "a14fc0a0-69e3-4e51-84db-affd81d002bc",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "892bee1fea9c15010c0f41c58635aa266a754745ca676817a76e5fcb28c45ccc"
+    "instanceId": "b25fed4e684ca542391e363b091cade116bb5471c8a32615a11629973fb6bb33"
   },
   "nodeGroups": [],
-  "id": "YPRVzwGdJtxV3OXo",
+  "id": "9tGc7HIEVt1ggKcN",
   "tags": []
 }

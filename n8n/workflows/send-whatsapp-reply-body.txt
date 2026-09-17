@@ -1,0 +1,7 @@
+={
+  "to": {{ JSON.stringify($('Final Reply').first().json.phone) }},
+  "payload": {
+    "_type": "AGENT_TEXT",
+    "text": {{ JSON.stringify($('Final Reply').first().json.lastAiReply) }}
+  }
+}

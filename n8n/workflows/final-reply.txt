@@ -1,0 +1,4 @@
+// The single, final result of the reply check. Extract AI Response can run up to 3 times
+// (each retry loops back through Call Gemini AI), so everything downstream reads THIS node,
+// which runs exactly once per execution.
+return $input.all();

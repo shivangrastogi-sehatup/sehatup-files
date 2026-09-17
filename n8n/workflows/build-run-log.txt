@@ -16,13 +16,14 @@ const pick = (name) => { try { return $(name).first().json || {}; } catch (e) { 
 
 const src  = pick('Extract Message Details');   // present on all three branches
 const dec  = pick('Decide Process');            // absent on the skip branch
-const ai   = pick('Extract AI Response');       // present only when the AI actually replied
+const ai   = pick('Final Reply');               // present once the reply check finished (sent or needs_human)
 const prod = pick('Fetch Product Matches');     // present on the reply branch
 
 // Infer outcome from how far this message travelled.
 let outcome = 'replied';
 if (src.skipAi === true) outcome = 'skipped';
 else if (dec.shouldProcess === false) outcome = 'bowed_out';
+else if (ai.route === 'human') outcome = 'needs_human';   // every draft broke a safety rule - nothing was sent
 
 const reason = outcome === 'skipped'   ? (src.skipReason || '')
              : outcome === 'bowed_out' ? (dec.reason || '')
@@ -36,9 +37,7 @@ try { executionId = String($execution.id || ''); } catch (e) {}
 // Only the guards that actually FIRED, so the doc stays small and you can query a single one:
 //   ai_runs  where  guards.doseGuard != null
 const guards = {};
-for (const k of Object.keys(ai)) {
-  if (/Guard$/.test(k) && ai[k]) guards[k] = ai[k];
-}
+for (const code of (Array.isArray(ai.violations) ? ai.violations : [])) guards[String(code).split(':')[0]] = true;
 
 // Firestore rejects `undefined`, so every optional value falls back to null / '' / [].
 const run = {
@@ -74,6 +73,8 @@ const run = {
     reply:         ai.lastAiReply || '',
     guardsSummary: ai.aiGuards || '',   // compact string, e.g. "price=ambiguous,dose"
     emptyReason:   ai.emptyReason || '',
+    attempts:      Number(ai.attempts) || 0,
+    needsHuman:    ai.route === 'human',
     guards,                             // map of only-the-fired guards
   },
 };
