@@ -7228,9 +7228,39 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
   // orders; drafts combine them into one (Shopify draft API allows a single applied_discount).
   const pctOrAmt = (vt, v) => vt === "percentage" ? subtotal * (Math.min(Number(v) || 0, 100) / 100) : (Number(v) || 0);
   const customAmtRaw = orderDiscountIsCustom ? pctOrAmt(orderDiscountType, orderDiscountValue) : 0;
+  // Code discounts are worked out first, because Shopify will not necessarily honour both.
+  const codeDiscountParts = [
+    (healthscoreLead && healthscoreDisc) && {
+      key: 'hs',
+      label: healthscoreDisc.code || 'Healthscore Lead',
+      code: healthscoreDisc.code,
+      combines: healthscoreDisc.combines !== false,
+      amount: Math.round(pctOrAmt(healthscoreDisc.valueType, healthscoreDisc.value)),
+    },
+    appliedCodeDiscount && {
+      key: 'code',
+      label: appliedCodeDiscount.code,
+      code: appliedCodeDiscount.code,
+      combines: appliedCodeDiscount.combines !== false,
+      amount: Math.round(pctOrAmt(appliedCodeDiscount.valueType, appliedCodeDiscount.value)),
+    },
+  ].filter(d => d && d.amount > 0);
+
+  // Two ORDER-LEVEL codes stack only when BOTH are set to combine with other order discounts.
+  // Otherwise Shopify keeps the one worth MORE and silently drops the rest — no userError, and
+  // the order they are sent in makes no difference. Measured against draftOrderCalculate:
+  // Rs.250 vs Rs.134.90 kept the 250, Rs.50 vs Rs.134.90 kept the 134.90, both orderings.
+  // Mirroring that rule here means the summary shows the total Shopify will actually charge,
+  // and the dropped code is named rather than quietly counted.
+  const codeDiscountsCombine = codeDiscountParts.every(d => d.combines);
+  const keptCodeDiscounts = (codeDiscountParts.length < 2 || codeDiscountsCombine)
+    ? codeDiscountParts
+    : [codeDiscountParts.reduce((best, d) => (d.amount > best.amount ? d : best))];
+  const droppedCodeDiscounts = codeDiscountParts.filter(d => !keptCodeDiscounts.includes(d));
+
+  // A manual rupee discount is not a code and always stacks, so it is never dropped.
   const activeDiscounts = [
-    (healthscoreLead && healthscoreDisc) && { key: 'hs', label: healthscoreDisc.code || 'Healthscore Lead', amount: Math.round(pctOrAmt(healthscoreDisc.valueType, healthscoreDisc.value)) },
-    appliedCodeDiscount && { key: 'code', label: appliedCodeDiscount.code, amount: Math.round(pctOrAmt(appliedCodeDiscount.valueType, appliedCodeDiscount.value)) },
+    ...keptCodeDiscounts,
     (customAmtRaw > 0) && { key: 'custom', label: (orderDiscountReason || '').trim() || 'partial pay', amount: Math.round(customAmtRaw) },
   ].filter(d => d && d.amount > 0);
   const hasManualDiscount = healthscoreLead || !!appliedCodeDiscount || orderDiscountIsCustom;
@@ -7240,10 +7270,9 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
   // to show a single merged "partial pay 100 + CUSTOMDISCOUNT" line instead of two.
   // Verified with draftOrderCalculate: code + manual on a Rs.1349 item priced at Rs.1149 with
   // both listed separately.
-  const orderDiscountCodesToSend = [...new Set([
-    (healthscoreLead && healthscoreDisc?.code) ? healthscoreDisc.code : null,
-    appliedCodeDiscount?.code || null,
-  ].filter(Boolean))];
+  // Only the codes Shopify will actually honour are sent. Sending a code we know will be
+  // dropped just invites the totals to disagree.
+  const orderDiscountCodesToSend = [...new Set(keptCodeDiscounts.map(d => d.code).filter(Boolean))];
   const manualDiscountAmount = activeDiscounts.find(d => d.key === 'custom')?.amount || 0;
   const manualDiscountLabel = ((orderDiscountReason || '').trim() || 'partial pay').slice(0, 255);
   const discount = Math.round(Math.min(activeDiscounts.reduce((s, d) => s + d.amount, 0), subtotal));
@@ -7273,7 +7302,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     try {
       const q = `query { codeDiscountNodes(first: 50, query: "status:active") { edges { node { codeDiscount {
         __typename
-        ... on DiscountCodeBasic { title codes(first: 1) { edges { node { code } } } customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
+        ... on DiscountCodeBasic { title combinesWith { orderDiscounts } codes(first: 1) { edges { node { code } } } customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
         ... on DiscountCodeBxgy { title codes(first: 1) { edges { node { code } } } }
         ... on DiscountCodeFreeShipping { title codes(first: 1) { edges { node { code } } } }
       } } } } }`;
@@ -7295,7 +7324,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
         let valueType = null, value = 0;
         if (v?.percentage != null) { valueType = 'percentage'; value = Math.round(v.percentage * 100); }
         else if (v?.amount?.amount != null) { valueType = 'amount'; value = parseFloat(v.amount.amount); }
-        return { code, title: cd?.title || code, valueType, value };
+        return { code, title: cd?.title || code, valueType, value, combines: cd?.combinesWith?.orderDiscounts !== false };
       }).filter(o => o.code);
       setDiscountCodeOptions(opts);
     } catch (e) {
@@ -7327,7 +7356,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
   // Code, custom and Healthscore all stack now — selecting a code no longer clears the custom.
   const selectDiscountCode = (opt) => {
     setOrderDiscountCode(opt.code);
-    setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value });
+    setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value, combines: opt.combines !== false });
   };
   const enableCustomDiscount = (checked) => {
     setOrderDiscountIsCustom(checked);
@@ -7358,7 +7387,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
         body: JSON.stringify({
           query: `query { codeDiscountNodeByCode(code: ${JSON.stringify(code)}) { codeDiscount {
             __typename
-            ... on DiscountCodeBasic { title customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
+            ... on DiscountCodeBasic { title combinesWith { orderDiscounts } customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
           } } }`,
         }),
       });
@@ -7369,7 +7398,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
       let valueType = null, value = 0;
       if (v?.percentage != null) { valueType = 'percentage'; value = Math.round(v.percentage * 100); }
       else if (v?.amount?.amount != null) { valueType = 'amount'; value = parseFloat(v.amount.amount); }
-      return { code, valueType, value };
+      return { code, valueType, value, combines: cd?.combinesWith?.orderDiscounts !== false };
     } catch (e) { return null; }
   };
   // ── Custom discount code ───────────────────────────────────────────────────
@@ -7446,6 +7475,9 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
         id,
         d: {
           endsAt: null,
+          // Our side always agrees to combine. Shopify only stacks two order-level codes when
+          // BOTH say yes, so this alone is not enough — it just means the block is never us.
+          combinesWith: { orderDiscounts: true, productDiscounts: true, shippingDiscounts: true },
           customerGets: {
             value: { discountAmount: { amount: String(amount), appliesOnEachItem: false } },
             items: { all: true },
@@ -7464,7 +7496,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
       const aerrs = act?.discountCodeActivate?.userErrors || [];
       if (aerrs.length) throw new Error(aerrs.map(e => e.message).join('; '));
 
-      setAppliedCodeDiscount({ code: CUSTOM_DISCOUNT_CODE, valueType: 'amount', value: amount });
+      setAppliedCodeDiscount({ code: CUSTOM_DISCOUNT_CODE, valueType: "amount", value: amount, combines: true });
       setOrderDiscountCode(CUSTOM_DISCOUNT_CODE);
       fetchDiscountCodes();
     } catch (e) {
@@ -7525,7 +7557,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
       alert(`Couldn't resolve the configured Healthscore code "${healthscoreCode}". Check it's active in Shopify.`);
       return;
     }
-    setHealthscoreDisc({ code: opt.code, valueType: opt.valueType, value: opt.value });
+    setHealthscoreDisc({ code: opt.code, valueType: opt.valueType, value: opt.value, combines: opt.combines !== false });
     setHealthscoreLead(true);
   };
 
@@ -8311,6 +8343,18 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                         <input type="checkbox" checked={healthscoreLeadOn} disabled={!healthscoreCode} onChange={e => toggleHealthscoreLead(e.target.checked)} />
                         <span style={{ fontSize: 12.5, fontWeight: 500 }}>Healthscore Lead</span>
                       </label>
+                      {/* Custom discount sits beside Healthscore: both are codes, and only one
+                          of the two can survive unless both are set to combine. */}
+                      {canCreateDiscountCode && (
+                        <label className="hstack-6" style={{ alignItems: "center", gap: 6, cursor: "pointer", padding: "5px 10px", border: "1px solid " + (customCodeOn ? "var(--accent)" : "var(--border)"), borderRadius: 8, background: customCodeOn ? "var(--accent-soft)" : "transparent" }} title={`Applies code ${CUSTOM_DISCOUNT_CODE}`}>
+                          <input
+                            type="checkbox"
+                            checked={customCodeOn}
+                            onChange={e => (e.target.checked ? (setCustomCodeOn(true), setCustomCodeError(null)) : clearCustomDiscount())}
+                          />
+                          <span style={{ fontSize: 12.5, fontWeight: 500 }}>Custom discount</span>
+                        </label>
+                      )}
                       <button className="btn sm ghost icon" onClick={cancelDiscountPopup}><Icon name="x" /></button>
                     </div>
                     <div className="stack-12" style={{ padding: 20, overflowY: "auto" }}>
@@ -8356,20 +8400,29 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                         )}
                       </div>
 
+                      {droppedCodeDiscounts.length > 0 && (
+                        <div className="fade-in" style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--risk-moderate)", background: "rgba(217,119,6,.07)" }}>
+                          <div className="fw6" style={{ fontSize: 12.5 }}>
+                            {droppedCodeDiscounts.map(d => d.label).join(' and ')} will not apply
+                          </div>
+                          <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                            {keptCodeDiscounts.map(d => d.label).join(' and ')} is worth more, and these codes are not set to combine with other order discounts, so Shopify keeps only the larger one. The total below already excludes {droppedCodeDiscounts.map(d => `${d.label} (Rs. ${d.amount})`).join(' and ')}.
+                          </div>
+                          <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                            To use both, turn on “Combines with other order discounts” for {droppedCodeDiscounts.map(d => d.label).join(' and ')} in Shopify.
+                          </div>
+                        </div>
+                      )}
+
                       {/* Custom discount code — operations only. The code name is fixed, so the
                           operator only ever picks an amount. */}
-                      {canCreateDiscountCode && (
-                        <div className="stack-8">
-                          <label className="hstack-8" style={{ alignItems: "center", cursor: "pointer" }}>
-                            <input
-                              type="checkbox"
-                              checked={customCodeOn}
-                              onChange={e => (e.target.checked ? (setCustomCodeOn(true), setCustomCodeError(null)) : clearCustomDiscount())}
-                            />
-                            <span style={{ fontSize: 13 }}>Enable custom discount</span>
-                          </label>
-                          {customCodeOn && (
-                            <div className="fade-in stack-6" style={{ paddingLeft: 24 }}>
+                      {canCreateDiscountCode && customCodeOn && (
+                        <div className="fade-in stack-6" style={{ padding: "12px 14px", border: "1px solid var(--accent)", borderRadius: 10, background: "var(--accent-soft)" }}>
+                          <div className="hstack-8" style={{ alignItems: "center" }}>
+                            <span className="fw5" style={{ fontSize: 13 }}>Custom discount</span>
+                            <span className="muted" style={{ fontSize: 11.5 }}>applies as {CUSTOM_DISCOUNT_CODE}</span>
+                          </div>
+                          <div>
                               <div className="hstack-8" style={{ alignItems: "flex-end" }}>
                                 <div className="field" style={{ margin: 0, flex: 1 }}>
                                   <span className="lbl">Discount amount</span>
@@ -8395,12 +8448,11 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                                 </button>
                               </div>
                               {customCodeError
-                                ? <div style={{ fontSize: 12, color: "var(--risk-high)" }}>{customCodeError}</div>
-                                : <div className="muted" style={{ fontSize: 12 }}>
-                                    Switches on once for this order and switches off again when the order is saved.
+                                ? <div style={{ fontSize: 12, color: "var(--risk-high)", marginTop: 6 }}>{customCodeError}</div>
+                                : <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                                    Switches on for this order only, and switches off again when the order is saved.
                                   </div>}
-                            </div>
-                          )}
+                          </div>
                         </div>
                       )}
 
