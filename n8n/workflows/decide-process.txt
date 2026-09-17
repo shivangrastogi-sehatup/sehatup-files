@@ -1,4 +1,10 @@
 const RESUME_AFTER_SILENCE_MS = 30 * 60 * 1000; // human-silence before AI resumes
+// How far back an unanswered message can still count as part of THIS turn. Without it, a
+// message QuickReply's own template "answered" months ago stays unanswered forever and gets
+// replied to the next time the customer says anything: on 16 Sep a "Hi" was answered with the
+// products from a 29 Jul ad click, and on 17 Sep "doctor kon h ?" was answered with the report
+// link asked for on 11 Sep. Older messages still go to the model as history, never as the question.
+const TURN_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 // This message's own trigger time (from the webhook). No static data - the whole
 // decision is derived from the durable Firestore messages, so it works the same in
@@ -152,7 +158,8 @@ if (latestInboundAt > 0 && latestInboundAt <= answeredAt) {
 // newMsgText. It must not use only the triggering message either: a customer who types
 // "vaji bati" and then "price?" would have the product name in the PREVIOUS message and
 // match nothing. This is the same unanswered-messages set Build AI Prompt assembles.
-let recentUserText = inbound.filter(m => m.t > answeredAt).map(m => m.text).join(' ');
+const turnFloor = Math.max(answeredAt, (myMsgTime || Date.now()) - TURN_MAX_AGE_MS);
+let recentUserText = inbound.filter(m => m.t > turnFloor).map(m => m.text).join(' ');
 if (!recentUserText && inbound.length) recentUserText = inbound[inbound.length - 1].text;
 if (!recentUserText) recentUserText = String(src.text || '');
 recentUserText = recentUserText.replace(/\s+/g, ' ').trim().slice(0, 300);

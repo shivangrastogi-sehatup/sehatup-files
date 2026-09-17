@@ -1,12 +1,13 @@
 # Tests
 
-Four harnesses, no dependencies. Run from anywhere:
+Five harnesses, no dependencies. Run from anywhere:
 
 ```
 node n8n/workflows/tests/product-matcher.test.js
 node n8n/workflows/tests/reply-guards.test.js
 node n8n/workflows/tests/automation-triggers.test.js
 node n8n/workflows/tests/ad-context.test.js
+node n8n/workflows/tests/turn-window.test.js
 ```
 
 All of them **extract the real shipping code** rather than copying it, so they cannot drift:
@@ -17,6 +18,7 @@ All of them **extract the real shipping code** rather than copying it, so they c
 | `reply-guards.test.js` | `n8n/workflows/extract-ai-response.txt` | the whole guard chain, with the n8n `$()` calls stubbed — what is tested is exactly what gets pasted into n8n |
 | `automation-triggers.test.js` | `n8n/workflows/extract-message-details.txt` | which inbound messages skip the AI (health-score triggers, button/list replies, media) |
 | `ad-context.test.js` | `n8n/workflows/build-ai-prompt.txt` | the click-to-WhatsApp **AD CONTEXT** block, against the real 2026-08-07 `adPreview` payload plus four malformed ones |
+| `turn-window.test.js` | `n8n/workflows/decide-process.txt` + `build-ai-prompt.txt` | the 6-hour age floor on "the current turn": an old unanswered message stays history and is never answered as if it were just sent (the 29 Jul and 11 Sep replays) |
 
 `reply-guards.test.js` and `ad-context.test.js` run the node body through
 `new Function($, $input, $execution, console)`. If you add a new `$('Some Node')` call to either
