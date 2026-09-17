@@ -1,6 +1,9 @@
-const geminiResponse = $input.first().json;
-const _parts = geminiResponse.candidates?.[0]?.content?.parts || [];
+const MAX_ATTEMPTS = 3;
+const attempt = (typeof $runIndex === 'number' && $runIndex >= 0) ? $runIndex : 0;
+const lastChance = attempt >= MAX_ATTEMPTS - 1;
 
+const geminiResponse = $input.first().json || {};
+const _parts = geminiResponse.candidates?.[0]?.content?.parts || [];
 let aiText = '';
 for (let i = _parts.length - 1; i >= 0; i--) {
   const tx = _parts[i] && _parts[i].text ? _parts[i].text.trim() : '';
@@ -13,15 +16,7 @@ if (!aiText) {
   const cand = (geminiResponse.candidates || [])[0] || {};
   emptyReason = String(cand.finishReason || '')
     || String((geminiResponse.promptFeedback || {}).blockReason || '')
-    || 'no_text_part';
-  const safetyHit = ((cand.safetyRatings || []).filter(r => r && r.blocked) || [])
-    .map(r => r.category).join(',');
-  console.log('[Empty Reply] model returned no text | finishReason=' + emptyReason
-    + (safetyHit ? ' | blockedCategories=' + safetyHit : '')
-    + ' | parts=' + _parts.length
-    + ' | promptTokens=' + ((geminiResponse.usageMetadata || {}).promptTokenCount || '?'));
-
-  aiText = 'ji, bataiye - aapko kya problem ho rahi hai aur kab se? Main aapki help karti hu.';
+    || (geminiResponse.error ? 'api_error' : 'no_text_part');
 }
 
 const buildData = $('Build AI Prompt').first().json || {};
@@ -29,31 +24,40 @@ let phone = buildData.phone;
 if (!phone) { try { phone = $('Decide Process').first().json.phone; } catch (e) {} }
 if (!phone) throw new Error('Extract AI Response: phone missing. buildData=' + JSON.stringify(buildData));
 const name = buildData.name || 'Customer';
-const newMsgText = buildData.newMsgText || '';
+const newMsgText = String(buildData.newMsgText || '');
+const _q = newMsgText.toLowerCase();
 
-const _askedIdentity = /\b(who\s*(are|r)\s*(you|u)|who\s*made\s*(you|u)|kaun\s*ho|kon\s*ho|kaun\s*hai|kon\s*hai|tum\s*kaun|tum\s*kon|aap\s*kaun|aap\s*kon|kisne\s*banaya|kisne\s*bnaya|introduce\s*your|apna\s*introduction)\b/i
-  .test(String(newMsgText || ''));
-
-let _lastOutText = '';
+let _hist = [];
 try {
-  const _outs = $('Fetch Conversation History').all().map(i => i && i.json)
-    .filter(m => m && m.direction === 'out' && m.text)
+  _hist = $('Fetch Conversation History').all().map(i => i && i.json).filter(Boolean)
     .sort((a, b) => (Number(a.msgTime) || 0) - (Number(b.msgTime) || 0));
-  if (_outs.length) _lastOutText = String(_outs[_outs.length - 1].text || '');
 } catch (e) {}
 
-let greetedBefore = false;
-try {
-  const items = $('Fetch Conversation History').all();
-  for (const it of items) {
-    const m = it && it.json; if (!m) continue;
-    const txt = (m.text || '').toLowerCase();
+const _outs = _hist.filter(m => m.direction === 'out' && m.text && String(m._type || '') !== 'BOT_PLACEHOLDER');
+const _lastOutText = _outs.length ? String(_outs[_outs.length - 1].text || '') : '';
+const _aiTurns = _outs.length;
+const _custAll = _hist.filter(m => m.direction === 'in' && m.text).map(m => String(m.text)).join('\n') + '\n' + newMsgText;
+const greetedBefore = _outs.length > 0
+  || _hist.some(m => { const t = String(m.text || '').toLowerCase(); return t.includes('ananya') && t.includes('sehat'); });
 
-    if (m.direction === 'out' && m.text && String(m._type || '') !== 'BOT_PLACEHOLDER') greetedBefore = true;
-    if (txt.includes('ananya') && txt.includes('sehat')) greetedBefore = true;
+const _askedIdentity = /\b(who\s*(are|r)\s*(you|u)|who\s*made\s*(you|u)|kaun\s*ho|kon\s*ho|kaun\s*hai|kon\s*hai|tum\s*kaun|tum\s*kon|aap\s*kaun|aap\s*kon|kisne\s*banaya|kisne\s*bnaya|introduce\s*your|apna\s*introduction)\b/i.test(newMsgText);
+
+const _askedOurName = /\b(aap\s*ka|aapka|apka|tumhara|tera)\s*naam\b|\bnaam\s*(kya|batao|bataiye|bata\s*d|please|plz)\b|\byour\s*name\b|\bname\s*please\b/i.test(newMsgText);
+
+const _sentences = (t) => String(t || '').split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+
+function qrKeepSentences(t, keep) {
+  const pieces = String(t || '').split(/((?<=[.!?])[ \t]+|\n+)/);
+  let out = '';
+  for (let i = 0; i < pieces.length; i += 2) {
+    const s = pieces[i] || '', sep = pieces[i + 1] || '';
+    if (s.trim() && !keep(s)) continue;
+    out += s + sep;
   }
-} catch (e) {}
+  return out.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
 
+const QR_INTRO_SENT = /(\bananya\b[^.!?\n]{0,40}\b(baat\s*kar|bol\s*rah|hu\b|hoon\b)|\bsehat\s*up\s*se\b[^.!?\n]{0,30}\b(baat\s*kar|bol\s*rah)|\b(this\s+is|i\s*am|i'?m)\s+a+n+[ay]+n*[ya]*\b|\ba+n+[ay]+n*[ya]*\b[^.!?\n]{0,30}\b(health\s*expert|health\s*advisor|team\s*sehat\s*up|from\s*sehat\s*up|at\s*sehat\s*up|sehat\s*up\s*se)\b)/i;
 function sanitizeReply(t) {
   if (!t) return '';
   let s = String(t);
@@ -63,243 +67,232 @@ function sanitizeReply(t) {
 
   s = s.replace(/\bsirs?(\s*(ji|jee))?\b(?!\s*(dard|dukh|dukhna|pain|ache|ghum|ghoom|chakkar|bhari|heavy|me\b|mein\b))/gi, '');
   s = s.replace(/\b(bhai|bhaiya|bhaiyya|bhaisahab|bro|brother|behen|bahen|behn|didi|bhabhi)(\s*(ji|jee))?\b/gi, '');
-
   s = s.replace(/(\u092E\u0948\u0921\u092E|\u092E\u0948\u092E|\u092E\u0947\u092E|\u092E\u0947\u092E\u0938\u093E\u0939\u092C|\u0938\u0930\s*\u091C\u0940|\u0938\u0930\u091C\u0940|\u092D\u0948\u092F\u093E|\u092D\u093E\u0908\u0938\u093E\u0939\u092C|\u092D\u093E\u0908\s*\u0938\u093E\u0939\u092C|\u0926\u0940\u0926\u0940|\u092C\u0939\u0928\s*\u091C\u0940)/g, '');
 
   s = s.replace(/^[\s>*-]*(ananya|agent|bot|assistant)\s*(ji)?\s*[:\-\u2013\u2014]+\s*/gim, '');
-  s = s.replace(/hello\s*ji[\s,!.]*/gi, '');
+  if (greetedBefore && !_askedIdentity) {
 
-  if (!_askedIdentity) {
-
-    const QR_INTRO_SENT = /(\bananya\b[^.!?\n]{0,40}\b(baat\s*kar|bol\s*rah|hu\b|hoon\b)|\bsehat\s*up\s*se\b[^.!?\n]{0,30}\b(baat\s*kar|bol\s*rah)|\b(this\s+is|i\s*am|i'?m)\s+a+n+[ay]+n*[ya]*\b|\ba+n+[ay]+n*[ya]*\b[^.!?\n]{0,30}\b(health\s*expert|health\s*advisor|team\s*sehat\s*up|from\s*sehat\s*up|at\s*sehat\s*up|sehat\s*up\s*se)\b)/i;
-    s = s.split(/(?<=[.!?])\s+|\n+/).filter(x => !QR_INTRO_SENT.test(x)).join(' ');
+    s = s.replace(/hello\s*ji[\s,!.]*/gi, '');
+    s = qrKeepSentences(s, x => !QR_INTRO_SENT.test(x));
     s = s.replace(/\bma?i?n?\s*ananya\s+baat\s+kar\s+rah[iy]\s*hu?n?\s*,?\s*(sehat\s*up\s*se)?[\s,.!]*/gi, '');
-
     s = s.replace(/\bma?i?n?\s*ananya\s+(hu|hoon)\b\s*,?\s*(sehat\s*up\s*se)?[\s,.!]*/gi, '');
+  } else if (!greetedBefore) {
+
+    let seen = false;
+    s = qrKeepSentences(s, x => { if (!QR_INTRO_SENT.test(x)) return true; if (seen) return false; seen = true; return true; });
   }
   s = s.replace(/\b(ji)(\s*,?\s*ji\b)+/gi, 'ji');
   s = s.replace(/(\u091C\u0940)(\s*,?\s*\u091C\u0940)+/g, '\u091C\u0940');
   s = s.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n');
-
   s = s.replace(/^[\s,.:;!-]+/, '').replace(/[ \t]+([,.!?])/g, '$1').replace(/[\s,;:-]+$/, '').trim();
   return s;
 }
-
 const _rawModelText = String(aiText || '');
 aiText = sanitizeReply(aiText);
 
 const QR_FILLER_RE = /^(ji|jee|g|ok|okay|okey|k|hmm+|hm|acha|accha|achha|theek|thik|theek hai|thik hai|haan|han|ha|yes|sure|right|ji haan|ji ok|noted|welcome|most welcome)[\s.,!]*$/i;
 
-const QR_NONANSWER_MAX_WORDS = 5;
 function qrIsNonAnswer(t) {
   const s = String(t || '').trim();
   if (!s) return true;
   if (QR_FILLER_RE.test(s)) return true;
   if (/\?/.test(s)) return false;
-
   if (/(rs\.?\s*\d{2,}|\b\d{3,}\s*(rupees|rupaye|rupay)\b|sehatup\.com|https?:\/\/)/i.test(s)) return false;
-  return s.split(/\s+/).filter(Boolean).length <= QR_NONANSWER_MAX_WORDS;
-}
-if (!greetedBefore && QR_FILLER_RE.test(String(aiText || '').trim())) {
-  console.log('[Sanitize] first-contact reply was intro-only - blanked so the opener is used | was=' + JSON.stringify(aiText));
-  aiText = '';
+  return s.split(/\s+/).filter(Boolean).length <= 5;
 }
 
-const _modelText = String(aiText || '');
+if (!greetedBefore && QR_FILLER_RE.test(aiText.trim())) aiText = '';
 
-let roleGuard = false;
+const _rawName = String(name || '').trim();
+const _nameIsPlausible = /^[A-Za-z][A-Za-z.'-]{1,20}(\s+[A-Za-z][A-Za-z.'-]{1,20}){0,2}$/.test(_rawName)
+  && !/(love|papa|mumm?y|\bmom\b|dad+y?|jaan|baby|king|queen|\bji\b|\bsir\b|madam|boss|bhai|didi|angel|princess|hero|star|customer|unknown)/i.test(_rawName);
+if (_rawName && !_nameIsPlausible && _rawName.length >= 3) {
+  const _re = new RegExp('\\b' + _rawName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'ig');
+  const _hits = (aiText.match(_re) || []).length;
+  if (_hits > 0 && _hits <= 3) {
+    const _stripped = aiText.replace(_re, '').replace(/\s+for\s*$/i, '').replace(/\s*,+\s*,/g, ',')
+      .replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
+    if (_stripped && _stripped.length >= aiText.length * 0.4) aiText = _stripped;
+  }
+}
+
+function qrTrimJi(t) {
+  let kept = 0;
+  return String(t || '')
+    .replace(/\bji\b\s*,?\s*/gi, (m, off, s) => {
+      if (++kept <= 1) return m;
+      if (off + m.length >= s.length) return '';
+      if (/(^|[.!?\n]\s*)$/.test(s.slice(0, off))) return '';
+      return m.includes(',') ? ', ' : ' ';
+    })
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([,.!?])/g, '$1')
+    .replace(/([,.!?])\s*\1+/g, '$1')
+    .replace(/^[\s,]+/, '')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/([.!?] +)([a-z])/g, (m, a, b) => a + b.toUpperCase())
+    .trim();
+}
+aiText = qrTrimJi(aiText);
+
+const violations = [];
+const ALL = () => true;
+function flag(code, severity, note, bad) { violations.push({ code, severity, note, bad: bad || ALL }); }
+function flagSentences(code, note, bad) { if (_sentences(aiText).some(bad)) flag(code, 'safety', note, bad); }
+
+if (!aiText.trim()) {
+  flag('empty' + (emptyReason ? ':' + emptyReason : ''), 'quality',
+    'Your draft was empty. Write a short, warm reply to the customer\'s latest message.');
+}
+if (!greetedBefore && !QR_INTRO_SENT.test(aiText)) {
+  flag('intro_missing', 'quality',
+    'This is your very first message to this customer. Start with "Hello ji, mai Ananya baat kar rahi hu SehatUP se." and then respond to what they wrote.');
+}
+
 {
-
-  const _rt = _rawModelText + '\n' + String(aiText || '');
-
+  const _rt = _rawModelText + '\n' + aiText;
   const _vocativeAnanya =
        /(^|\n)\s*((hi|hello|hey|namaste|dear|good\s*(morning|afternoon|evening))\b[\s,]*)?ananya\s*[,:]/i.test(_rt)
     || /\b(to|dear|thanks|thank\s*you|ok|okay)\s+ananya\b/i.test(_rt);
-
   const _SYMPTOMS = '(pcod|pcos|thyroid|diabetes|sugar|bp|acne|pigmentation|hair\\s*fall|hairfall|infertility|anxiety|stress|dard|pain|problem|issue)';
   const _patientVoice =
-       new RegExp('\\b(i\\s*am|i\\s*m|im)\\s+(suffering|facing|dealing)\\b', 'i').test(_rt)
+       /\b(i\s*am|i\s*m|im)\s+(suffering|facing|dealing)\b/i.test(_rt)
     || new RegExp('\\bi\\s+(have|had|ve\\s*got|got)\\s+(been\\s+)?' + _SYMPTOMS, 'i').test(_rt)
-    || new RegExp('\\bi\\s+(used|tried|took)\\s+(medication|medicine|tablet|tablets|treatment|dawa)', 'i').test(_rt)
+    || /\bi\s+(used|tried|took)\s+(medication|medicine|tablet|tablets|treatment|dawa)/i.test(_rt)
     || new RegExp('\\bmujhe\\s+' + _SYMPTOMS + '\\b[^.!?]{0,14}\\b(hai|h)\\b', 'i').test(_rt)
     || new RegExp('\\bmer[ia]\\s+' + _SYMPTOMS + '\\b[^.!?]{0,14}\\b(hai|h)\\b', 'i').test(_rt);
-
-  const _custLines = String(newMsgText || '').split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const _custLines = newMsgText.split(/\n+/).map(s => s.trim()).filter(Boolean);
   const _replyLines = _rawModelText.split(/\n+/).map(s => s.trim()).filter(Boolean);
   const _lastLine = (_replyLines[_replyLines.length - 1] || '').toLowerCase();
-  const _echoesCustomer = _replyLines.length > 1 && !!_lastLine
-    && _custLines.some(c => c.toLowerCase() === _lastLine);
-
+  const _echoesCustomer = _replyLines.length > 1 && !!_lastLine && _custLines.some(c => c.toLowerCase() === _lastLine);
   const _norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').replace(/\s+/g, ' ').trim();
   const _replyTok = _norm(_rawModelText)
     .replace(/\b(good\s*(morning|afternoon|evening)|hello|hi|hey|namaste|ji|sir|mam|madam|ok|okay)\b/g, ' ')
     .split(/\s+/).filter(w => w.length > 1);
   const _custTok = new Set(_norm(newMsgText).split(/\s+/).filter(Boolean));
   const _overlap = _replyTok.length ? _replyTok.filter(w => _custTok.has(w)).length / _replyTok.length : 0;
-
   const _addsSomething = /(https?:\/\/|sehatup\.com|rs\.?\s*\d{2,}|\?)/i.test(_rawModelText);
-  const _parrotsCustomer = _replyTok.length >= 3 && _overlap >= 0.8 && !_addsSomething;
-
-  if (_vocativeAnanya || _patientVoice || _echoesCustomer || _parrotsCustomer) {
-    roleGuard = _vocativeAnanya ? 'addressed_ananya'
-      : (_patientVoice ? 'patient_voice'
-      : (_echoesCustomer ? 'echoed_customer' : 'parroted_customer'));
-
-    aiText = 'Ji bilkul, main aapki help karti hu. Aap thoda detail me bata dijiye - problem kya hai aur kab se hai? '
-      + 'Free consultation me doctor aapko sahi plan bata denge, consultation aur diet plan dono free hain.';
-    console.log('[Role Guard] BLOCKED ' + roleGuard + ' - model replied as the CUSTOMER'
-      + ' | was=' + JSON.stringify(_rawModelText.slice(0, 120)));
+  const _parrots = _replyTok.length >= 3 && _overlap >= 0.8 && !_addsSomething;
+  if (_vocativeAnanya || _patientVoice || _echoesCustomer || _parrots) {
+    flag('role_reversal', 'safety',
+      'Your draft was written as the CUSTOMER (speaking as the patient, or repeating their message back). You are Ananya replying TO the customer. Never speak as the patient and never copy their words back.');
   }
 }
 
-const _qLower = String(newMsgText || '').toLowerCase();
 const _CONDITIONS = '(pcod|pcos|thyroid|hypothyroid|hyperthyroid|diabetes|sugar|bp|blood\\s*pressure|infertility|anemia|anaemia|cancer|hormonal\\s*imbalance)';
-const _custRaisedCondition = new RegExp(_CONDITIONS, 'i').test(_qLower);
-const _custGaveNumber = /\b(score|skor)\b[^.!?]{0,20}\d/i.test(_qLower);
+const _custRaisedCondition = new RegExp(_CONDITIONS, 'i').test(_custAll);
+const _custGaveNumber = /\b(score|skor)\b[^.!?]{0,20}\d/i.test(_q);
 
-const gaveScore = !_custGaveNumber && (
-     /\b(score|skor)\b[^.!?]{0,24}\b\d{1,3}\b/i.test(aiText)
-  || /\b\d{1,3}\s*(\/|out\s*of)\s*(10|100)\b/i.test(aiText)
-  || /\b\d{1,3}\s*(me|mein|mai)\s*se\s*\d{1,3}\b/i.test(aiText)
-);
+const _noUrl = (s) => String(s || '').replace(/https?:\/\/\S+|\bwww\.\S+|\S+\.com\/\S*/gi, ' ');
+const qrGivesScore = (s0) => {
+  const s = _noUrl(s0);
+  return !_custGaveNumber && (
+       /\b(score|skor)\b[^.!?]{0,24}\b\d{1,3}\b/i.test(s)
+    || /\b\d{1,3}\s*(\/|out\s*of)\s*(10|100)\b/i.test(s)
+    || /\b\d{1,3}\s*(me|mein|mai)\s*se\s*\d{1,3}\b/i.test(s));
+};
+const _ASSERT_RE = new RegExp('\\b(aapko|apko|aap\\s*ko|aapka|apka|you\\s*have|you\\s*are\\s*having|u\\s*have)\\b[^.!?]{0,26}\\b' + _CONDITIONS + '\\b', 'i');
+const qrAssertsCondition = (s) => !_custRaisedCondition && !/\?/.test(s) && !/\bkya\b/i.test(s)
+  && !/\b(agar|if|jab|yadi|shayad|ho\s*sakta)\b/i.test(s) && _ASSERT_RE.test(s);
+flagSentences('diagnosis_or_score',
+  'Never give a health score or tell them they have a condition - only the assessment and the doctor can do that.',
+  s => qrGivesScore(s) || qrAssertsCondition(s));
 
-function qrAssertsCondition(t) {
-  const RE = new RegExp('\\b(aapko|apko|aap\\s*ko|aapka|apka|you\\s*have|you\\s*are\\s*having|u\\s*have)\\b[^.!?]{0,26}\\b' + _CONDITIONS + '\\b', 'i');
-  const sentences = String(t || '').split(/(?<=[.!?])\s+|\n+/);
-  for (const s of sentences) {
-    if (/\?/.test(s)) continue;
-    if (/\bkya\b/i.test(s)) continue;
-    if (/\b(agar|if|jab|yadi|shayad|ho\s*sakta)\b/i.test(s)) continue;
-    if (RE.test(s)) return true;
-  }
-  return false;
-}
-const gaveDiagnosis = !_custRaisedCondition && qrAssertsCondition(aiText);
-
-const _rawName = String(name || '').trim();
-const _nameIsPlausible = /^[A-Za-z][A-Za-z.'-]{1,20}(\s+[A-Za-z][A-Za-z.'-]{1,20}){0,2}$/.test(_rawName)
-  && !/(love|papa|mumm?y|\bmom\b|dad+y?|jaan|baby|king|queen|\bji\b|\bsir\b|madam|boss|bhai|didi|angel|princess|hero|star|customer|unknown)/i.test(_rawName);
-let nameGuard = false;
-
-const NAME_MIN_STRIP = 3;
-if (_rawName && !_nameIsPlausible && _rawName.length >= NAME_MIN_STRIP) {
-  const _esc = _rawName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const _re = new RegExp('\\b' + _esc + '\\b', 'ig');
-  const _hits = (aiText.match(_re) || []).length;
-
-  if (_hits > 0 && _hits <= 3) {
-    const _stripped = aiText.replace(_re, '')
-      .replace(/\s+for\s*$/i, '').replace(/\s*,+\s*,/g, ',')
-      .replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
-    if (_stripped && _stripped.length >= aiText.length * 0.4) {
-      aiText = _stripped;
-      nameGuard = true;
-      console.log('[Name Guard] stripped the WhatsApp profile name | name=' + JSON.stringify(_rawName));
-    } else {
-      console.log('[Name Guard] SKIPPED - stripping ' + JSON.stringify(_rawName) + ' (' + _hits + ' hits) would have destroyed the reply');
-    }
-  }
-}
-
-const _rs = (n) => 'Rs ' + n;
-
-const _pname = (p) => String(p.title || '').replace(/\s+-\s+/g, ' ').trim();
-const _productLine = (p, i) => (i ? i + ') ' : '') + _pname(p) + ' - ' + _rs(p.price) + '\n' + p.url;
-
-const HEALTH_SCORE_URL_2 = 'https://www.sehatup.com/pages/health-score-360';
-let reportGuard = false;
+const HEALTH_SCORE_URL = 'https://www.sehatup.com/pages/health-score-360';
 let _report = {};
 try { _report = ($('Fetch Customer Context').first().json || {}).report || {}; } catch (e) {}
 
 let _automationAnswered = false;
-try {
-  const _hist = $('Fetch Conversation History').all().map(i => i && i.json).filter(Boolean);
+{
   const _inTimes = _hist.filter(m => m.direction === 'in').map(m => Number(m.msgTime) || 0);
   const _lastIn = _inTimes.length ? Math.max.apply(null, _inTimes) : 0;
   _automationAnswered = _hist.some(m => m.direction === 'out'
     && (m._type === 'BOT_PLACEHOLDER' || m.messageBy === 'AUTOMATION' || !!m.automationBy)
     && (Number(m.msgTime) || 0) >= _lastIn);
-  if (_automationAnswered) console.log('[Report Guard] a QuickReply automation already replied to this message');
-} catch (e) {}
+}
 const _REPORTWORD = '(report|repot|reprot|rport|riport)';
-const askedReport = new RegExp('(health|medical)\\s*' + _REPORTWORD + '|\\b' + _REPORTWORD + '\\b|' + _REPORTWORD + '\\s*(chahiye|chaiye|nahi|nhi|nai|kaha|kahan|mila|milega|bhej|send|dijiye|do\\b)', 'i').test(_qLower)
-  || /(meri|mera|apni|apna|my)\s+report/i.test(_qLower);
-
-const _reportCtx = /report|assessment|score/i.test(_qLower) || /report|assessment|score/i.test(_lastOutText);
+const askedReport = new RegExp('(health|medical)\\s*' + _REPORTWORD + '|\\b' + _REPORTWORD + '\\b|' + _REPORTWORD + '\\s*(chahiye|chaiye|nahi|nhi|nai|kaha|kahan|mila|milega|bhej|send|dijiye|do\\b)', 'i').test(_q)
+  || /(meri|mera|apni|apna|my)\s+report/i.test(_q);
+const _reportCtx = /report|assessment|score/i.test(_q) || /report|assessment|score/i.test(_lastOutText);
 const askedNewReport = _reportCtx && (
-     /\bre-?new\b|\brenewal\b/i.test(_qLower)
-  || /\b(new|naya|nayi|nayaa|fresh|dubara|dobara|again|update|updated)\b[^.!?]{0,16}\b(report|assessment|test|score)\b/i.test(_qLower)
-  || /\b(report|assessment|test|score)\b[^.!?]{0,16}\b(new|naya|nayi|fresh|dubara|dobara|again|update|updated)\b/i.test(_qLower)
-  || /phir\s*se[^.!?]{0,16}\b(report|assessment|banwa|karwa)\b/i.test(_qLower)
-);
-if (_automationAnswered && (askedNewReport || askedReport)) {
-
-  reportGuard = false;
-  console.log('[Report Guard] SKIPPED - QuickReply automation already delivered the report | q=' + _qLower.slice(0, 50));
-} else if (askedNewReport) {
-  reportGuard = 'new_requested';
-  aiText = 'Ji, nayi report ke liye assessment dobara complete kar lijiye:\n'
-    + HEALTH_SCORE_URL_2
-    + '\n\nReport ban jayegi, aur free consultation me doctor aapko usko detail me samjha denge.';
-  console.log('[Health Report] new_requested | q=' + _qLower.slice(0, 50));
-} else if (askedReport) {
-  if (_report.found && _report.url) {
-    reportGuard = 'sent';
-    aiText = 'Ji, ye rahi aapki health report:\n' + _report.url
-      + '\n\nIse download kar lijiye. Free consultation me doctor ise detail me samjha denge, wo bilkul free hai.';
-  } else if (_report.found && _report.generating) {
-    reportGuard = 'generating';
-    aiText = 'Ji, aapki report abhi tayaar ho rahi hai. Ready hote hi hamari team aapko bhej degi. Tab tak koi sawaal ho to bataiye.';
-  } else {
-
-    reportGuard = 'no_submission';
-    aiText = 'Ji, aapka health assessment abhi complete nahi dikh raha. Yahan se kar lijiye, report ban jayegi:\n'
-      + HEALTH_SCORE_URL_2
-      + '\n\nUske baad free consultation me doctor aapko sab detail me samjha denge.';
+     /\bre-?new\b|\brenewal\b/i.test(_q)
+  || /\b(new|naya|nayi|nayaa|fresh|dubara|dobara|again|update|updated)\b[^.!?]{0,16}\b(report|assessment|test|score)\b/i.test(_q)
+  || /\b(report|assessment|test|score)\b[^.!?]{0,16}\b(new|naya|nayi|fresh|dubara|dobara|again|update|updated)\b/i.test(_q)
+  || /phir\s*se[^.!?]{0,16}\b(report|assessment|banwa|karwa)\b/i.test(_q));
+const askedHealthScore = /health\s*score|healthscore|health\s*check|score\s*check|score\s*(chahiye|batao|bata|check)/i.test(_q);
+if (_automationAnswered && (askedReport || askedNewReport)) {
+  if (/storage\.googleapis\.com|healthscore360report|\.pdf\b/i.test(aiText) || (_report.url && aiText.includes(_report.url))) {
+    flag('report_duplicate', 'quality',
+      'Our automated message has just sent them the report. Do not send the report link again - ask kindly if they need help understanding anything in it.');
   }
-  console.log('[Health Report] ' + reportGuard + ' | url=' + (_report.url ? 'yes' : 'no') + ' | q=' + _qLower.slice(0, 50));
+} else {
+  let _wantLink = '';
+  if (askedNewReport) _wantLink = HEALTH_SCORE_URL;
+  else if (askedReport) _wantLink = (_report.found && _report.url) ? _report.url : ((_report.found && _report.generating) ? '' : HEALTH_SCORE_URL);
+  else if (askedHealthScore) _wantLink = HEALTH_SCORE_URL;
+  if (_wantLink && !aiText.includes(_wantLink)) {
+    flag('report_link_missing', 'quality',
+      'They asked for their ' + (askedReport ? 'report' : 'health score') + '. Share this exact link on its own line: ' + _wantLink);
+  }
+  if (askedReport && _report.found && _report.generating && !_report.url && /https?:\/\//i.test(aiText)) {
+    flag('report_not_ready', 'quality',
+      'Their report is still being prepared. Do not share any link; say the team will send it as soon as it is ready.');
+  }
 }
 
-const HEALTH_SCORE_URL = 'https://www.sehatup.com/pages/health-score-360';
-let scoreGuard = false;
-const askedHealthScore = /health\s*score|healthscore|health\s*check|score\s*check|score\s*(chahiye|batao|bata|check)/i.test(_qLower);
-if (!reportGuard && askedHealthScore) {
-  scoreGuard = true;
-  aiText = 'Ji, apna free health score aap yahan check kar sakte hain:\n' + HEALTH_SCORE_URL
-    + '\n\nYe bilkul free hai. Score aane ke baad free consultation me doctor aapko detail me samjha denge.';
-  console.log('[Health Score] sent the official link | q=' + _qLower.slice(0, 60));
+flagSentences('ai_identity',
+  'Never say you are an AI, a bot, an assistant or a program. You are Ananya, a health advisor at SehatUP.',
+  s => /\b(a\.?\s?i\.?|artificial\s*intelligence|bot|chat\s*bot|chatbot|assistant|language\s*model|virtual\s*assistant|machine|program|software)\b/i.test(s)
+    && /\b(hu|hoon|hun|am|is|ek)\b/i.test(s));
+
+const _askedIfBot = /\b(ai|a\.\s?i\.?|artificial\s*intelligence|bot|chat\s*bot|chatbot|robot|machine|software|program|insaan|human|aadmi|banda)\b/i.test(newMsgText)
+  && /\b(ho|hai|h|hu|are|r|ya|se|through|kya|se\s*baat)\b/i.test(newMsgText);
+if (_askedIdentity || _askedOurName || _askedIfBot) {
+  const _bareNo = /^(no|nope|nahi|nhi|nai|not\s*at\s*all)\b[\s.!,]*$/i.test(aiText.trim());
+  if (!aiText.trim() || _bareNo || qrIsNonAnswer(aiText)) {
+    flag('identity_unanswered', 'quality',
+      'They asked who you are or what your name is. Answer in one warm line - "ji, mai Ananya hu, SehatUP se" - and then carry on with their question. Never answer this with only "no" or filler.');
+  }
 }
 
-let identityGuard = false;
-if (!reportGuard && !scoreGuard && _askedIdentity) {
-  identityGuard = true;
-  aiText = 'Mai Ananya hu ji, SehatUP ki health advisor. SehatUP India ki digital clinic hai - '
-    + 'Ayurveda, Homeopathy aur modern medicine ke doctors ek saath, aur consultation bilkul free hai. '
-    + 'Aap apni health ki koi bhi problem bata dijiye, main help kar deti hu.';
-  console.log('[Identity] answered a who-are-you question | q=' + _qLower.slice(0, 60));
+const _askedDoctorName = /\b(doctor|dr\.?|daktar|dakter)\b[^.!?]{0,24}\b(kaun|kon|naam|name)\b|\b(kaun|kon|which)\s*(sa|si|se)?\s*(doctor|dr\.?)\b|\bdoctor'?s?\s*name\b/i.test(newMsgText);
+const _DOC_STOP = /^(se|ko|ka|ki|ke|hi|bhi|hai|hain|h|ji|sahab|sahib|team|panel|consultation|consult|call|baat|time|slot|appointment|online|available|aapko|apko|aapse|apse|aapka|apka|aapki|apki|hamare|hamara|humare|humara|us|is|ye|yeh|wo|woh|jo|kaun|kon|kya|naam|name|from|our|your|the|will|can|are|and|with|advice|salah|check|visit|karenge|karengi|karti|karta|kar|batayenge|dekhenge|prescribe|decide)$/i;
+const _docNames = (s) => {
+  const out = []; const re = /\b(?:dr\.?|doctor|daktar)\s+([A-Za-z][A-Za-z'.-]{1,20})/gi;
+  let m; while ((m = re.exec(String(s)))) { if (!_DOC_STOP.test(m[1])) out.push(m[1]); }
+  return out;
+};
+
+const _flatDoc = (s) => String(s).replace(/\b(dr|doctor|daktar)\.\s*/gi, '$1 ');
+const _docSentence = (s) => _docNames(_flatDoc(s)).length > 0 || /\b(dr\.?|doctor|daktar)[\s.]*$/i.test(String(s).trim());
+const _replyDocNames = _docNames(_flatDoc(aiText));
+if (_replyDocNames.some(w => !/^ujala$/i.test(w))) {
+  flag('doctor_name_invented', 'safety',
+    'Never name any doctor except Dr. Ujala. If they asked who the doctor is, the answer is Dr. Ujala and nothing more. Otherwise say "hamare doctor" with no name.',
+    _docSentence);
+} else if (!_askedDoctorName && _replyDocNames.some(w => /^ujala$/i.test(w))) {
+  flag('doctor_name_unasked', 'safety',
+    'The customer did not ask who the doctor is, so do not give the doctor\'s name. Say "hamare doctor" without naming anyone.',
+    _docSentence);
 }
 
-let companyGuard = false;
-
-const _orderish = /\b(order|parcel|shipment|courier|delivery|awb|track|tracking|refund|return)\b/i.test(_qLower);
+const _orderish = /\b(order|parcel|shipment|courier|delivery|awb|track|tracking|refund|return)\b/i.test(_q);
+const _payish = /\b(pay|payment|paid|paisa|paise|rupee|rupay|cod|prepaid|upi|card|netbanking|emi)\b/i.test(_q);
 const _askedWhereFrom = !_orderish && (
-     /\b(kaha|kahan|kahaa)\s*se\b[^.!?]{0,20}\b(aap|ho|hain|bol|baat|call|ka?r)/i.test(_qLower)
-  || /\b(aap|aapka|apka|tum|tumhara|ye|yah|sehatup|company|office)\b[^.!?]{0,20}\b(kaha|kahan|kahaa)\b/i.test(_qLower)
-  || /\bwhere\b[^.!?]{0,20}\b(are\s*you|from|based|located)\b/i.test(_qLower)
-  || /\b(company|office|address|pata)\b[^.!?]{0,20}\b(kaha|kahan|kya|kis|batao|bataiye)\b/i.test(_qLower)
-);
-
-const _askedRecording = /\b(recording|record\s*kar|voice\s*(note|msg|message)?|audio|awaz|awaaz)\b/i.test(_qLower);
-
-let claimGuard = false;
-if (!reportGuard && !scoreGuard && !identityGuard && (gaveScore || gaveDiagnosis)) {
-  claimGuard = gaveScore ? 'invented_score' : 'invented_diagnosis';
-  aiText = 'Ji, main khud se koi score ya health condition nahi bata sakti - ye doctor properly check karke hi batate hain. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye, main free consultation set kara deti hu.';
-  console.log('[Claim Guard] BLOCKED ' + claimGuard + ' | q=' + _qLower.slice(0, 60));
+     /\b(kaha|kahan|kahaa)\s*se\b[^.!?]{0,20}\b(aap|ho|hain|bol|baat|call|ka?r)/i.test(_q)
+  || /\b(aap|aapka|apka|tum|tumhara|ye|yah|sehatup|company|office)\b[^.!?]{0,20}\b(kaha|kahan|kahaa)\b/i.test(_q)
+  || /\bwhere\b[^.!?]{0,20}\b(are\s*you|from|based|located)\b/i.test(_q)
+  || /\b(company|office|address|pata)\b[^.!?]{0,20}\b(kaha|kahan|kya|kis|batao|bataiye)\b/i.test(_q));
+if (_askedWhereFrom) {
+  flagSentences('invented_address',
+    'Do not name a city, sector, street or address. Say everything happens online and on the phone, so SehatUP helps people in any city.',
+    s => /\b(gurgaon|gurugram|noida|delhi|mumbai|bombay|bangalore|bengaluru|pune|hyderabad|chennai|kolkata|jaipur|lucknow|indore|ahmedabad|chandigarh|street|road|lane|pin\s*code|pincode)\b|\bsector\s*-?\s*\d+/i.test(s));
 }
-
-const DOSE_HANDOFF = 'Dose doctor hi batate hain ji. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye, main free consultation set kara deti hu - doctor sab detail me samjha denge.';
-const _q = String(newMsgText || '').toLowerCase();
+flagSentences('voice_note_promise',
+  'You cannot send voice notes. Say so kindly and help them in text.',
+  s => /\b(voice\s*(note|msg|message)|audio|recording|awaz|awaaz)\b/i.test(s)
+    && /\b(bhej|send|share|kar\s*deti|karti|karungi|record\s*kar)/i.test(s)
+    && !/\b(nahi|nhi|nai|cannot|can'?t|not)\b/i.test(s));
 
 const _DOSE_VERB = /(len[aeiu]|lene|khan[aeiu]|khaye|khaun|pee?n[aei]|piye|piyu|\btake\b|\bconsume\b|istemal|use\s*kar)/;
 const askedDose =
@@ -307,30 +300,27 @@ const askedDose =
   || /khura+k|\bmatra\b|\bmaatra\b/.test(_q)
   || /(kitni|kitne|kitna|kitnii)\s+(\S+\s+){0,2}(goli|goliy|tablet|tablets|capsule|cap\b|churan|churna|chammach|spoon|boond|drop|drops|scoop|sachet|\bml\b|\bmg\b)/.test(_q)
   || (/(kitni|kitne)\s+(\S+\s+){0,2}(din|days|baar|dafa|hafte|weeks|mahine|months)/.test(_q) && _DOSE_VERB.test(_q))
-
   || /(kitna|kitni|kitne)\s+(\S+\s+){0,2}(len[aeiu]|lene|leni|khan[aeiu]|khani|khaye|khaun|pee?n[aei]|piye|piyu|istemal|use)/.test(_q)
-
   || /(kaise|kese|kaisay|kab|kis\s*time|kis\s*samay|kis\s*tarah|kitne\s*din|kitni\s*der|khali\s*pet)\s*(\S+\s+){0,3}(len[aei]|lene|leni|khan[aei]|khani|khaye|khaun|pee?n[aei]|piye|piyu|use|istemal|isteml|upyog|upayog|upyaog|lagan[aei]|lagani)/.test(_q)
   || /\bhow\s+(many|much|often|long)\b/.test(_q)
   || /\b(when|how)\s+(should\s+i\s+|do\s+i\s+|to\s+)?(take|consume|use)\b/.test(_q)
   || /(empty\s*stomach|before\s+(food|meal)|after\s+(food|meal))/.test(_q);
 
-const _a = String(aiText || '').toLowerCase();
-
 const _NOT_A_DOSE = '(?!\\s*(bhi\\s+)?(band|bnd|mat|nahi|nhi|na\\b|kam|chhod|chod|skip|miss|rok))';
-const gaveDose =
-     new RegExp('\\b\\d+\\s*(-|to|se|se\\s*\\d+)?\\s*(goli|goliya|goliyan|tablet|tablets|capsule|capsules|chammach|spoon|boond|drop|drops|scoop|sachet)\\b' + _NOT_A_DOSE).test(_a)
-  || new RegExp('\\b(ek|do|teen|char|one|two|three|four)\\s+(goli|goliya|goliyan|tablet|tablets|capsule|capsules|chammach|spoon|boond|drop|drops|scoop|sachet)\\b' + _NOT_A_DOSE).test(_a)
-  || /\b(once|twice|thrice)\s+(a\s+)?(day|daily)\b/.test(_a)
-  || /\b(din|roz|rozana)\s*(me|mein)?\s*(ek|do|teen|\d+)\s*baar\b/.test(_a);
-
-let consultModeGuard = false;
-const _answered = () => !!(reportGuard || scoreGuard || identityGuard || claimGuard || companyGuard || consultModeGuard);
-
-const doseGuard = !_answered() && (askedDose || gaveDose);
-if (doseGuard) {
-  console.log('[Dose Guard] replaced reply | askedDose=' + askedDose + ' gaveDose=' + gaveDose + ' | q=' + _q.slice(0, 60));
-  aiText = DOSE_HANDOFF;
+const _DOSE_UNIT = '(goli|goliya|goliyan|tablet|tablets|capsule|capsules|chammach|spoon|boond|drop|drops|scoop|sachet)';
+const qrGivesDose = (s0) => {
+  const s = _noUrl(s0);
+  return new RegExp('\\b\\d+\\s*(-|to|se|se\\s*\\d+)?\\s*' + _DOSE_UNIT + '\\b' + _NOT_A_DOSE, 'i').test(s)
+    || new RegExp('\\b(ek|do|teen|char|one|two|three|four)\\s+' + _DOSE_UNIT + '\\b' + _NOT_A_DOSE, 'i').test(s)
+    || /\b(once|twice|thrice)\s+(a\s+)?(day|daily)\b/i.test(s)
+    || /\b(din|roz|rozana)\s*(me|mein)?\s*(ek|do|teen|\d+)\s*baar\b/i.test(s);
+};
+flagSentences('dose_given',
+  'Never give a dose, quantity, timing or duration for anything. The doctor decides that, because it is different for everyone.',
+  qrGivesDose);
+if (askedDose && aiText.trim() && !/\b(doctor|dr\.?|daktar)\b/i.test(aiText)) {
+  flag('dose_not_deferred', 'quality',
+    'They asked about the dose or how to take it. Do not give any dose, timing or duration. Say kindly that the doctor decides it because it is different for everyone, and gently offer the free consultation as a choice.');
 }
 
 const WORK_START_MIN = 9 * 60 + 30;
@@ -355,7 +345,6 @@ function qrParseSlot(text) {
     else if (/^a/.test(marker)) pm = false;
     else if (/(raat|raat\s*ko|\brat\b|night|shaam|\bsham\b|evening|dopahar|dopeher|afternoon)/.test(around)) pm = true;
     else if (/(subah|savere|sawere|\bsubh\b|morning)/.test(around)) pm = false;
-
     else pm = (h >= 1 && h <= 6);
     if (pm && h < 12) h += 12;
     if (!pm && h === 12) h = 0;
@@ -364,21 +353,6 @@ function qrParseSlot(text) {
   }
   return best;
 }
-
-let slotGuard = false;
-const _slotMin = qrParseSlot(newMsgText);
-if (!_answered() && !doseGuard && _slotMin !== null && (_slotMin < WORK_START_MIN || _slotMin > WORK_END_MIN)) {
-  slotGuard = true;
-  aiText = _hhmm(_slotMin) + ' par consultation nahi ho paayegi ji, hamare doctor '
-    + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN)
-    + ' tak available rehte hain. Is beech ka koi time bata dijiye, main slot fix kara deti hu.';
-  console.log('[Slot Guard] requested ' + _hhmm(_slotMin) + ' is outside '
-    + _hhmm(WORK_START_MIN) + '-' + _hhmm(WORK_END_MIN) + ' | q=' + String(newMsgText || '').slice(0, 60));
-}
-
-let bookingGuard = false;
-
-const _weAskedForTime = /kaunsa time|naam aur|time aapke liye theek|time bata dijiye|kis time|konsa time/i.test(_lastOutText);
 
 function qrParseBareTime(text) {
   const m = String(text || '').trim().match(/^\s*(\d{1,2})(?:[:.]?(\d{2}))?\s*$/);
@@ -390,213 +364,182 @@ function qrParseBareTime(text) {
   if (h === 24) h = 0;
   return h * 60 + min;
 }
-
-const _replyWords = String(newMsgText || '').trim().split(/\s+/).filter(Boolean);
-const _NOT_A_NAME = /^(ji|jee|ok|okay|haan|han|ha|yes|no|nahi|nhi|hmm|acha|accha|theek|thik|hi|hello|hey|namaste|kya|kyu|kyun|kaisa|kaise|kaisi|kab|kahan|kaun|kaunsa|konsa|mera|meri|aapka|apka|aap|main|mai|hai|h|price|order|product|dawa|medicine|consultation|time|naam)$/i;
-const _isNameWord = (x) => /^[A-Za-z][A-Za-z.'-]{1,20}$/.test(x || '') && !_NOT_A_NAME.test(x || '');
-let _givenName = '';
-
-const _nameStated = String(newMsgText || '').match(/(?:mera\s+naam|my\s+name\s+is|naam\s+hai|i\s*am)\s+([A-Za-z][A-Za-z.'-]{1,20})/i);
-if (_nameStated && _isNameWord(_nameStated[1])) _givenName = _nameStated[1];
-else if (_replyWords.length >= 1 && _replyWords.length <= 2 && _replyWords.every(_isNameWord)) _givenName = _replyWords.join(' ');
-const _looksLikeName = !!_givenName;
-const _haveName = !!(buildData.displayName || '').trim();
-
-if (!_answered() && !doseGuard && !slotGuard && _weAskedForTime) {
-  const _t = (_slotMin !== null) ? _slotMin : qrParseBareTime(newMsgText);
-  if (_t !== null && (_t < WORK_START_MIN || _t > WORK_END_MIN)) {
-    bookingGuard = 'out_of_hours';
-    aiText = _hhmm(_t) + ' par consultation nahi ho paayegi ji, hamare doctor '
-      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN)
-      + ' tak available rehte hain. Is beech ka koi time bata dijiye.';
-  } else if (_t !== null) {
-    bookingGuard = 'time_taken';
-    aiText = 'Ji, ' + _hhmm(_t) + ' note kar liya. '
-      + (_haveName
-        ? 'Hamari team us time par aapko call karegi.'
-        : 'Aapka naam bhi bata dijiye, main consultation confirm kar deti hu.');
-  } else if (_looksLikeName && !_haveName) {
-    bookingGuard = 'name_taken';
-    aiText = 'Shukriya ' + _givenName + ' ji. Ab bas ye bata dijiye ki kaunsa time aapke liye theek rahega ('
-      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
-  }
-  if (bookingGuard) console.log('[Booking Guard] ' + bookingGuard + ' | reply=' + JSON.stringify(String(newMsgText || '').slice(0, 30)));
+const _mentionsWindow = (t) => /(9[:.]?30|6[:.]?30|nahi\s*ho\s*paa|available\s*nahi|not\s*available|uplabdh\s*nahi)/i.test(t);
+const _weAskedForTime = /kaunsa time|naam aur|time aapke liye theek|time bata dijiye|kis time|konsa time/i.test(_lastOutText);
+const _bookingTalk = _weAskedForTime || /\b(call|consult\w*|appointment|slot|time|baat|fix|book)\b/i.test(_q);
+const _slotMin = qrParseSlot(newMsgText);
+const _slotOrBare = _slotMin !== null ? _slotMin : (_weAskedForTime ? qrParseBareTime(newMsgText) : null);
+if (_bookingTalk && _slotOrBare !== null && (_slotOrBare < WORK_START_MIN || _slotOrBare > WORK_END_MIN) && !_mentionsWindow(aiText)) {
+  flag('slot_out_of_hours', 'safety',
+    'The customer asked for a call at ' + _hhmm(_slotOrBare) + ', which is outside consultation hours. Say kindly that this time is not available, that doctors are available '
+    + _hhmm(WORK_START_MIN) + ' to ' + _hhmm(WORK_END_MIN) + ', and ask them to choose a time in that window.');
 }
 
-let bookingClaimGuard = false;
-{
+const _NOT_A_NAME = /^(ji|jee|ok|okay|haan|han|ha|yes|no|nahi|nhi|hmm|acha|accha|theek|thik|hi|hello|hey|namaste|kya|kyu|kyun|kaisa|kaise|kaisi|kab|kahan|kaun|kaunsa|konsa|mera|meri|aapka|apka|aap|main|mai|hai|h|price|order|product|dawa|medicine|consultation|time|naam)$/i;
+const _isNameWord = (x) => /^[A-Za-z][A-Za-z.'-]{1,20}$/.test(x || '') && !_NOT_A_NAME.test(x || '');
+const _replyWords = newMsgText.trim().split(/\s+/).filter(Boolean);
+let _givenName = '';
+const _nameStated = newMsgText.match(/(?:mera\s+naam|my\s+name\s+is|naam\s+hai|i\s*am)\s+([A-Za-z][A-Za-z.'-]{1,20})/i);
+if (_nameStated && _isNameWord(_nameStated[1])) _givenName = _nameStated[1];
+else if (_replyWords.length >= 1 && _replyWords.length <= 2 && _replyWords.every(_isNameWord)) _givenName = _replyWords.join(' ');
+const _haveName = !!(buildData.displayName || '').trim();
+if (_weAskedForTime && qrIsNonAnswer(aiText)) {
+  if (_slotOrBare !== null && _slotOrBare >= WORK_START_MIN && _slotOrBare <= WORK_END_MIN) {
+    flag('booking_time_ignored', 'quality',
+      'They just gave ' + _hhmm(_slotOrBare) + ' as their call time. Acknowledge it warmly'
+      + (_haveName ? ' and confirm the team will call them at that time.' : ' and ask for their name so you can note the consultation.'));
+  } else if (_givenName && !_haveName) {
+    flag('booking_name_ignored', 'quality',
+      'They just told you their name (' + _givenName + '). Thank them and ask which time between '
+      + _hhmm(WORK_START_MIN) + ' and ' + _hhmm(WORK_END_MIN) + ' suits them for the call.');
+  }
+}
 
-  const _bookingCtx = String(aiText) + ' ' + String(_lastOutText) + ' ' + String(newMsgText);
+{
+  const _bookingCtx = aiText + ' ' + _lastOutText + ' ' + newMsgText;
   const _isBookingSubject = /\b(consultation|appointment|slot|booking)\b/i.test(_bookingCtx);
   const _notBookingSubject = _orderish
     || /\b(refund|return|wapas|wapsi|cancel|order|parcel|courier|tracking)\b/i.test(_bookingCtx)
-    || /\b(hospital|emergency|ambulance|dangerous|oncologist|gynaecologist|gynecologist)\b/i.test(String(aiText));
+    || /\b(hospital|emergency|ambulance|dangerous|oncologist|gynaecologist|gynecologist)\b/i.test(aiText);
+  const qrClaimsBooked = (s) =>
+       /\b(request|details|detail|jaankari|naam)\b[^.!?]{0,26}\b(bhej\s*di|bhej\s*diya|bhej\s*dia|share\s*kar\s*di|share\s*kar\s*diya|de\s*di|de\s*diya)\b/i.test(s)
+    || /\b(team|doctor)\b[^.!?]{0,26}\b(connect|call|contact|sampark)\b[^.!?]{0,20}\b(karegi|karenge|kar\s*legi|kar\s*lenge)\b/i.test(s)
+    || /\b(consultation|appointment|slot|booking)\b[^.!?]{0,24}\b(fix\s*ho|book\s*ho|set\s*ho|ho\s*gay[ai]|kar\s*di\b|kar\s*diya\b|fix\s*kar\s*di\b)\b/i.test(s)
+    || /\b(consultation|appointment|slot|booking)\b[^.!?]{0,30}\b(book|set|fix)\b[^.!?]{0,12}\b(kar|kara|karwa)\b[^.!?]{0,10}\b(deti|dungi|denge|diya|di|liya)\b/i.test(s);
 
-  const _claimsBooked = _isBookingSubject && !_notBookingSubject && (
-       /\b(request|details|detail|jaankari|naam)\b[^.!?]{0,26}\b(bhej\s*di|bhej\s*diya|bhej\s*dia|share\s*kar\s*di|share\s*kar\s*diya|de\s*di|de\s*diya)\b/i.test(String(aiText))
-    || /\b(team|doctor)\b[^.!?]{0,26}\b(connect|call|contact|sampark)\b[^.!?]{0,20}\b(karegi|karenge|kar\s*legi|kar\s*lenge)\b/i.test(String(aiText))
-    || /\b(consultation|appointment|slot|booking)\b[^.!?]{0,24}\b(fix\s*ho|book\s*ho|set\s*ho|ho\s*gay[ai]|kar\s*di\b|kar\s*diya\b|fix\s*kar\s*di\b)\b/i.test(String(aiText))
-
-    || /\b(consultation|appointment|slot|booking)\b[^.!?]{0,30}\b(book|set|fix)\b[^.!?]{0,12}\b(kar|kara|karwa)\b[^.!?]{0,10}\b(deti|dungi|denge|diya|di|liya)\b/i.test(String(aiText))
-  );
-
-  const _alsoAsks = /(kaunsa time|kis time|konsa time|time bata|naam bata|naam aur|ke beech)/i.test(String(aiText));
-
-  if (_claimsBooked && !_alsoAsks && !bookingGuard) {
-
-    let _gaveTimeEver = false, _gaveNameEver = _haveName;
-    try {
-      const _ins = $('Fetch Conversation History').all().map(i => i && i.json)
-        .filter(m => m && m.direction === 'in' && m.text);
-      for (const m of _ins) {
-        const t = String(m.text || '');
-        if (qrParseSlot(t) !== null || qrParseBareTime(t) !== null) _gaveTimeEver = true;
-        if (/(?:mera\s+naam|my\s+name\s+is|naam\s+hai)\s+[A-Za-z]/i.test(t)) _gaveNameEver = true;
-      }
-    } catch (e) {}
+  const _alsoAsks = /(kaunsa time|kis time|konsa time|time bata|naam bata|naam aur|ke beech)/i.test(aiText);
+  const _isOffer = /\b(chahe|chahein|chahen|chaahein|chaho|agar\s+aap|if\s+you\s+(want|like|wish|prefer))\b/i.test(aiText)
+    || /\bkya\s+(main|mai|hum)\b[^.!?]*\?/i.test(aiText);
+  if (_isBookingSubject && !_notBookingSubject && !_alsoAsks && !_isOffer && _sentences(aiText).some(qrClaimsBooked)) {
+    const _gaveTimeEver = _hist.some(m => m.direction === 'in' && m.text
+      && (qrParseSlot(m.text) !== null || qrParseBareTime(m.text) !== null));
     if (!_gaveTimeEver) {
-      bookingClaimGuard = _gaveNameEver ? 'no_time' : 'no_name_no_time';
-      aiText = 'Ji bilkul, main consultation set kara deti hu. '
-        + (_gaveNameEver ? '' : 'Bas apna naam bata dijiye aur ')
-        + 'kaunsa time aapke liye theek rahega (' + _hhmm(WORK_START_MIN) + ' se '
-        + _hhmm(WORK_END_MIN) + ' ke beech)? Doctor us time par aapko call karenge.';
-      console.log('[Booking Claim Guard] ' + bookingClaimGuard
-        + ' - reply claimed a booking with no time on record | was=' + JSON.stringify(String(aiText).slice(0, 80)));
+      flag('booking_claim', 'safety',
+        'Nothing is booked yet - they have not given a call time. Do not say it is booked or that the team or doctor will call. If they want the consultation, ask for their name and a time between '
+        + _hhmm(WORK_START_MIN) + ' and ' + _hhmm(WORK_END_MIN) + '.', qrClaimsBooked);
     }
   }
 }
 
-let priceGuard = false;
 let _matches = [];
 try { _matches = ($('Fetch Product Matches').first().json || {}).matches || []; } catch (e) {}
-
-const _pq = String(newMsgText || '').toLowerCase();
-const askedPrice =
-     /\b(price|rate|cost|mrp)\b/.test(_pq)
-  || /\b(keemat|kimat|kimmat|daam|dam)\b/.test(_pq)
-  || /kitne?\s*(ka|ki|ke)\b/.test(_pq)
-  || /\bkitna\s*(hai|h|hoga|padega)\b/.test(_pq)
-  || /\bhow\s+much\b/.test(_pq);
-
-const replyHasPrice = /(rs\.?\s*\d{2,}|\u20B9\s*\d{2,}|\b\d{3,}\s*(rupees|rupaye|rupay|rs)\b)/i.test(String(aiText));
-
-const askedLink = /\b(link|url)\b/.test(_pq) || /\b(bhej\s*d(o|ijiye|ena)|bhejo|send\s*kar|share\s*kar)\b/.test(_pq);
-const replyHasLink = /sehatup\.com\/products\//i.test(String(aiText));
-
+const _pname = (p) => String(p.title || '').replace(/\s+-\s+/g, ' ').trim();
+const askedPrice = /\b(price|rate|cost|mrp)\b/.test(_q) || /\b(keemat|kimat|kimmat|daam|dam)\b/.test(_q)
+  || /kitne?\s*(ka|ki|ke)\b/.test(_q) || /\bkitna\s*(hai|h|hoga|padega)\b/.test(_q) || /\bhow\s+much\b/.test(_q);
+const askedLink = /\b(link|url)\b/.test(_q) || /\b(bhej\s*d(o|ijiye|ena)|bhejo|send\s*kar|share\s*kar)\b/.test(_q);
 const _PRODUCT_NOUN = '(product|products|dawa|dawai|medicine|item|option|options|kit|combo|pack'
   + '|drops?|boond|goli|goliyan|tablet|tablets|capsule|capsules|churna|churan|powder'
   + '|tel|oil|syrup|tea|bati|vati|resin|sachet|cream|gel)';
 const askedProduct =
-     /\b(chahiye|chaiye|chahie|mangwana|mangana|khareed|buy|order\s*karna|lena\s*(hai|h)\b)/i.test(_pq)
-  || new RegExp('\\b(konsa|konse|kaunsa|kaunse|kaun\\s*sa|which|what)\\b[^.!?]{0,24}\\b' + _PRODUCT_NOUN + '\\b', 'i').test(_pq)
-  || new RegExp('\\b' + _PRODUCT_NOUN + '\\b[^.!?]{0,24}\\b(batao|bata|bta|dikhao|dikha|suggest|recommend|hai|\\bh\\b|available|milega|milta)', 'i').test(_pq)
+     /\b(chahiye|chaiye|chahie|mangwana|mangana|khareed|buy|order\s*karna|lena\s*(hai|h)\b)/i.test(_q)
+  || new RegExp('\\b(konsa|konse|kaunsa|kaunse|kaun\\s*sa|which|what)\\b[^.!?]{0,24}\\b' + _PRODUCT_NOUN + '\\b', 'i').test(_q)
+  || new RegExp('\\b' + _PRODUCT_NOUN + '\\b[^.!?]{0,24}\\b(batao|bata|bta|dikhao|dikha|suggest|recommend|hai|\\bh\\b|available|milega|milta)', 'i').test(_q)
+  || /\b(kya|kaun|konsa|kaunsa|kaunse|kis)\b\s*(\S+\s+){0,2}(chij|cheez|chiz|chize)\b/i.test(_q)
+  || new RegExp('\\b(kya|kaun|konsa|kaunsa|kis)\\b\\s*(\\S+\\s+){0,2}' + _PRODUCT_NOUN + '\\b', 'i').test(_q)
+  || /\b(recommend|suggest)\b/i.test(_q)
+  || /\bke\s*liye\b[^.!?]{0,24}\b(kya|konsa|konse|kaunsa|product)\b/i.test(_q);
+const _productQ = askedPrice || askedLink || askedProduct;
 
-  || new RegExp('\\b(kya|kaun|konsa|kaunsa|kaunse|kis)\\b\\s*(\\S+\\s+){0,2}(chij|cheez|chiz|chize|cheez)\\b', 'i').test(_pq)
-  || new RegExp('\\b(kya|kaun|konsa|kaunsa|kis)\\b\\s*(\\S+\\s+){0,2}' + _PRODUCT_NOUN + '\\b', 'i').test(_pq)
-  || /\b(recommend|suggest)\b/i.test(_pq)
-  || /\bke\s*liye\b[^.!?]{0,24}\b(kya|konsa|konse|kaunsa|product)\b/i.test(_pq);
-
+const qrPricesIn = (s) => {
+  const out = [];
+  const re = /(?:\brs\.?|\u20B9)\s*([\d,]{2,})|\b([\d,]{3,})\s*(?:rupees|rupaye|rupay|rs)\b/gi;
+  let m;
+  while ((m = re.exec(String(s || ''))) !== null) {
+    const n = parseInt(String(m[1] || m[2]).replace(/,/g, ''), 10);
+    if (!isNaN(n)) out.push(n);
+  }
+  return out;
+};
+const _nonRx = _matches.filter(p => !p.isRx);
+const _rx = _matches.filter(p => p.isRx);
+const _oos = _nonRx.filter(p => !p.inStock);
+const _sellable = _nonRx.filter(p => p.inStock);
+const replyHasPrice = qrPricesIn(aiText).length > 0;
+const replyHasLink = /sehatup\.com\/products\//i.test(aiText);
 const _replyNamesAMatch = _matches.some(p => {
   const key = String(p.title || '').split(/[^A-Za-z0-9]+/).filter(w => w.length > 3)[0];
-  return key && new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(String(aiText));
+  return key && new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(aiText);
 });
-
 const needsPrice = askedPrice && !replyHasPrice;
-
-const ignoredTheCatalog = askedProduct && !_replyNamesAMatch && !replyHasPrice && !replyHasLink;
 const needsLink = askedLink && !replyHasLink;
+const ignoredTheCatalog = askedProduct && !_replyNamesAMatch && !replyHasPrice && !replyHasLink;
 
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && (needsPrice || needsLink || ignoredTheCatalog) && _matches.length) {
-  const sellable = _matches.filter(p => !p.isRx && p.inStock);
-  const rx = _matches.filter(p => p.isRx);
-  const oos = _matches.filter(p => !p.isRx && !p.inStock);
-  const CONSULT = 'Chahein to free consultation me doctor aapke liye best option confirm kar denge, wo free hai.';
+const CONSULT_HANDLES = /(her-menses|harmen|hormoniherb|tea-for-period-cramps|aloezy|thyrostatin|diaboglob|vitamin-d3k2|zencal)/i;
+const CONSULT_TOPIC_RE = /\b(pcod|pcos|poly\s*cystic|period|periods|menses|menstrual|cramp|cramps|hormonal|hormone|thyroid|thyro|sugar|diabetes|diabetic|bp|blood\s*pressure|vitamin\s*d|d3|calcium|haddi|bone|pregnan|breastfeed|heart|kidney|liver)\b/i;
+const _consultTopic = CONSULT_TOPIC_RE.test(_q)
+  || _matches.some(p => CONSULT_HANDLES.test(String(p.url || '') + ' ' + String(p.title || '')));
 
-  const CONSULT_HANDLES = /(her-menses|harmen|hormoniherb|tea-for-period-cramps|aloezy|thyrostatin|diaboglob|vitamin-d3k2|zencal)/i;
-  const CONSULT_TOPIC_RE = /\b(pcod|pcos|poly\s*cystic|period|periods|menses|menstrual|cramp|cramps|hormonal|hormone|thyroid|thyro|sugar|diabetes|diabetic|bp|blood\s*pressure|vitamin\s*d|d3|calcium|haddi|bone|pregnan|breastfeed|heart|kidney|liver)\b/i;
-  const _consultTopic = CONSULT_TOPIC_RE.test(_pq)
-    || _matches.some(p => CONSULT_HANDLES.test(String(p.url || '') + ' ' + String(p.title || '')));
-
-  const CAUTION = 'Koi health problem ho ya koi dawai chal rahi ho to bata dijiye, main doctor se check kara deti hu - warna aap order kar sakte hain.';
-  const CLOSE = _consultTopic ? CONSULT : CAUTION;
-
-  const kit = sellable.find(p => p.isKit);
-  const parts = sellable.filter(p => !p.isKit);
-  const namedParts = parts.filter(p => (p.named || 0) > 0);
-  if (namedParts.length >= 2) {
-
-    const [a, b] = namedParts;
-    const sum = a.price + b.price;
-    aiText = 'Ji, dono ke rate ye hain:\n\n' + _productLine(a, 1) + '\n\n' + _productLine(b, 2);
-
-    if (kit && kit.price < sum) {
-      aiText += '\n\nDono ka combo ' + _pname(kit) + ' me ' + _rs(kit.price)
-        + ' me mil jata hai, alag-alag lene par ' + _rs(sum) + ' padta hai:\n' + kit.url;
-    }
-    aiText += '\n\n' + CLOSE;
-    priceGuard = (kit && kit.price < sum) ? 'both_with_combo' : 'both';
-  } else if (parts.length === 1) {
-    const p = parts[0];
-    aiText = _pname(p) + ' ka price ' + _rs(p.price) + ' hai ji.\n' + p.url + '\n\n' + CLOSE;
-    priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended' : 'one';
-  } else if (parts.length > 1) {
-
-    const [a, b] = parts;
-    aiText = 'Ji, do options hain:\n\n'
-      + _productLine(a, 1) + '\n\n'
-      + _productLine(b, 2) + '\n\n'
-      + 'Aapko kaunsa chahiye - 1 ya 2?';
-    priceGuard = ignoredTheCatalog && !needsPrice && !needsLink ? 'recommended_2' : 'ambiguous';
-  } else if (kit) {
-
-    aiText = _pname(kit) + ' ka price ' + _rs(kit.price) + ' hai ji.\n' + kit.url + '\n\n' + CLOSE;
-    priceGuard = 'kit';
-  } else if (rx.length) {
-    aiText = rx[0].title + ' me allopathic medicine hoti hai ji, iske liye doctor ki salah zaroori hai - iska price share nahi kar sakti. 10-15 min ki free consultation kara deti hu.';
-    priceGuard = 'rx';
-  } else if (oos.length) {
-    aiText = oos[0].title + ' abhi available nahi hai ji. ' + (_consultTopic ? 'Free consultation me doctor aapke liye sahi alternative bata denge, consultation aur diet plan free hai.' : 'Hamari team aapko iska sahi alternative bata degi.');
-    priceGuard = 'out_of_stock';
+if (_matches.length && !askedDose && (needsPrice || needsLink || ignoredTheCatalog)) {
+  const _line = (p) => _pname(p) + ': ' + (p.isRx
+    ? 'PRESCRIPTION ONLY - never share its price or link, it needs a doctor'
+    : (!p.inStock ? 'OUT OF STOCK - do not send its link, say the team will suggest an alternative'
+      : 'Rs ' + p.price + ', link ' + p.url)) + (p.isKit ? ' (combo pack)' : '');
+  const _named = _sellable.filter(p => !p.isKit && (p.named || 0) > 0);
+  const _kit = _sellable.find(p => p.isKit);
+  const _parts2 = _sellable.filter(p => !p.isKit);
+  let _how = '';
+  if (_named.length >= 2) {
+    const _sum = Number(_named[0].price) + Number(_named[1].price);
+    _how = ' They named two products, so give both prices and links'
+      + (_kit && Number(_kit.price) < _sum ? ', and mention the combo ' + _pname(_kit) + ' at Rs ' + _kit.price + ' against Rs ' + _sum + ' bought separately' : '') + '.';
+  } else if (_parts2.length > 1 && !_named.length) {
+    _how = ' Two products match - show both with price and link, each link on its own line, and ask which one they mean.';
   }
-  if (priceGuard) {
-    console.log('[Price Guard] ' + priceGuard + ' | q=' + _pq.slice(0, 50)
-      + ' | matches=' + _matches.map(p => p.title + '=' + p.price + (p.isRx ? '/Rx' : '') + (p.inStock ? '' : '/OOS')).join(', '));
-  }
+  flag('product_answer_missing', 'quality',
+    'They asked about a product, its price or its link, and your draft did not answer from the live data. LIVE PRODUCT DATA: '
+    + _matches.slice(0, 3).map(_line).join('; ') + '.' + _how
+    + ' Put each link on its own line.'
+    + (_consultTopic
+      ? ' This is a concern where a doctor helps, so after the price you may gently offer the free consultation as a choice.'
+      : ' Do not pitch a consultation. After the price and link, ask in one line whether they have any health problem or take any regular medicine.'));
+}
+if (!_orderish && !_payish) {
+  const _live = new Set();
+  _nonRx.forEach(p => _live.add(Number(p.price)));
+  for (let i = 0; i < _nonRx.length; i++) for (let j = i + 1; j < _nonRx.length; j++) _live.add(Number(_nonRx[i].price) + Number(_nonRx[j].price));
+  flagSentences('price_not_live',
+    'Quote prices only from LIVE PRODUCT DATA. ' + (_nonRx.length
+      ? 'The correct prices are: ' + _nonRx.map(p => _pname(p) + ' Rs ' + p.price).join(', ') + '.'
+      : 'There is no live price for this, so say the team will confirm the exact price.'),
+    s => !/\b(order|paid|pay|payment|refund|cod|amount)\b/i.test(s) && qrPricesIn(s).some(n => !_live.has(n)));
+}
+if (_rx.length) {
+  flagSentences('rx_price_or_link',
+    _rx.map(_pname).join(', ') + ' is prescription-only: never share its price or link. Say it contains allopathic medicine and needs a doctor\'s advice, and offer the free consultation; for performance you may suggest Vaji Bati.',
+    s => _rx.some(p => (p.url && s.includes(p.url)) || qrPricesIn(s).includes(Number(p.price))));
+}
+if (_oos.length) {
+  flagSentences('out_of_stock_link',
+    _oos.map(_pname).join(', ') + ' is out of stock: do not send its link. Say it is unavailable right now and the team will suggest the right alternative.',
+    s => _oos.some(p => p.url && s.includes(p.url)));
 }
 
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard
-    && (_askedWhereFrom || _askedRecording)) {
-  companyGuard = _askedWhereFrom ? (_askedRecording ? 'where_from_voice' : 'where_from') : 'voice_note';
-  aiText = (_askedRecording ? 'Main voice note nahi bhej sakti ji, isliye likh kar bata rahi hu. ' : '')
-    + (_askedWhereFrom
+const _CATALOG_NAME_RE = new RegExp('\\b(vaji\\s*bati|kern\\s*drops?|shilajit|ashwagandha|her\\s*menses|harmen'
+  + '|hormoniherb|aloezy|leanroutine|slimtox|garcinia|diaboglob|thyrostatin|zencal|shaktisurge'
+  + '|boombatti|control\\s*tantra|fourplay|hard\\s*yatra|max\\s*drive|rocket\\s*ras|lovelinga'
+  + '|thrill\\s*drill|thrustrx|endless|tadalafil|dapoxetine|orlistat)\\b', 'i');
 
-      ? 'SehatUP India ki digital clinic hai - Ayurveda, Homeopathy aur modern medicine ke doctors ek saath. '
-        + 'Sab kuch online aur phone par hota hai, isliye aap kisi bhi shehar me ho hum help kar dete hain. '
-        + 'Hum AYUSH-approved aur GMP-certified hain, aur call hamare verified business number se hi aati hai. '
-        + 'Aur kuch jaanna ho to bata dijiye.'
-      : 'Aap jo jaanna chahte hain wo likh kar puch lijiye, main detail me bata deti hu.');
-  console.log('[Company Guard] ' + companyGuard + ' | q=' + _qLower.slice(0, 60));
+const _PITCH_THING_RE = /\b(ye|yeh|yah|is|isme|ismein)\b[^.!?]{0,24}\b(ayurvedic|herbal|homeopathic|allopathic)?\s*(medicine|dawa|dawai|tablet|goli|goliyan|drops?|churna|powder|kit|capsule|syrup|tea|product)\b/i;
+const _PITCH_CLAIM_RE = /\b(behtar|behter|bahter|bahtar|improve|badhata|badhati|badhane|theek\s*karta|thik\s*karta|fayda|faida|asar\s*karta|help\s*karta|kaam\s*karta|sex\s*life|stamina|performance)\b/i;
+if (!_matches.length && !_productQ
+    && (_CATALOG_NAME_RE.test(aiText) || (_PITCH_THING_RE.test(aiText) && _PITCH_CLAIM_RE.test(aiText)))) {
+  flag('unasked_product_pitch', 'safety',
+    'They did not ask for a product and nothing matched. Do not name or describe any product. Understand their concern first with one caring question.',
+    s => _CATALOG_NAME_RE.test(s) || _PITCH_THING_RE.test(s) || _PITCH_CLAIM_RE.test(s));
 }
 
-const _payish = /\b(pay|payment|paid|paisa|paise|rupee|rupay|cod|prepaid|upi|card|netbanking|emi)\b/i.test(_qLower);
-const _consultModeRe = new RegExp(
+const _consultModeQ = !_orderish && !_payish && new RegExp(
      '\\b(online|offline|on\\s*line|off\\s*line)\\b'
   + '|\\b(clinic|hospital|centre|center|branch|showroom)\\b'
   + '|\\b(video\\s*call|phone\\s*(pe|par|call)|call\\s*(pe|par))\\b'
   + '|\\b(aana|ana|aanaa|jana|jaana|visit|milna|milne|aake|aakar)\\b[^.!?]{0,18}\\b(padega|padegi|padta|padti|hoga|hogi|hai|h|kya)\\b'
   + '|\\bconsultation\\b[^.!?]{0,18}\\b(kaise|kese|kahan|kaha|kidhar)\\b'
-  + '|\\b(kaise|kese|kahan|kaha|kidhar)\\b[^.!?]{0,18}\\b(consultation|consult|checkup|check\\s*up)\\b', 'i');
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard
-    && !_orderish && !_payish && _consultModeRe.test(_qLower)) {
-  consultModeGuard = true;
-  aiText = 'Ji, consultation puri tarah online hoti hai - doctor aapko call karke baat karte hain, '
-    + 'aapko kahin aana nahi padta. 10-15 minute lagte hain aur consultation bilkul free hai. '
-    + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
-    + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
-  console.log('[Consult Mode Guard] answered online-vs-offline | q=' + _qLower.slice(0, 60));
+  + '|\\b(kaise|kese|kahan|kaha|kidhar)\\b[^.!?]{0,18}\\b(consultation|consult|checkup|check\\s*up)\\b', 'i').test(_q);
+if (_consultModeQ && !/\b(online|call|phone)\b/i.test(aiText)) {
+  flag('consult_mode_unanswered', 'quality',
+    'They asked how the consultation happens. Explain simply: it is fully online, on a normal phone call at a time they choose, free, 10 to 15 minutes, with nothing to visit. You may offer to set it up as a choice.');
 }
 
-let promiseGuard = false;
 const _CALLWORD = '(call|phone|ring|baat|connect|contact|sampark)';
 const _MINS = '(?<!\\d\\s?-\\s?)\\b\\d{1,2}\\s*(minute|minutes|min|mins|minit|minut)\\b';
 const _promiseRe = new RegExp(
@@ -604,240 +547,146 @@ const _promiseRe = new RegExp(
   + '|\\b' + _CALLWORD + '\\b[^.!?]{0,30}' + _MINS
   + '|\\b(abhi|turant|immediately|right\\s*now|just\\s*now)\\b[^.!?]{0,26}\\b' + _CALLWORD + '\\b'
   + '|\\b' + _CALLWORD + '\\b[^.!?]{0,26}\\b(abhi|turant|immediately|right\\s*now|just\\s*now)\\b', 'i');
+flagSentences('callback_promise',
+  'Never promise a call in a number of minutes or "abhi/turant". The call happens at a time the customer chooses between '
+  + _hhmm(WORK_START_MIN) + ' and ' + _hhmm(WORK_END_MIN) + '.',
+  s => _promiseRe.test(s));
 
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && _promiseRe.test(String(aiText))) {
-  promiseGuard = true;
-  aiText = 'Ji, main aapki free consultation set kara deti hu. Aapka naam aur kaunsa time aapke liye theek rahega bata dijiye ('
-    + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), doctor us time par call karenge.';
-  console.log('[Promise Guard] replaced an invented callback promise | q=' + String(newMsgText || '').slice(0, 50));
-}
+const _hasLink = /https?:\/\/|sehatup\.com/i.test(aiText);
+flagSentences('claimed_sent',
+  'Never say you sent a link, report or details unless it is inside this very message.',
+  s => !_hasLink && /\b(maine|mai\s*ne|main\s*ne)\b[^.!?]{0,34}\b(link|url|report|pdf|catalog|catalogue|price\s*list|details|jaankari)\b[^.!?]{0,20}\b(bhej|send|share|forward)\b/i.test(s));
+flagSentences('claimed_confirmation',
+  'Never say you confirmed or checked something with the team, a doctor or a manager - you cannot do that inside this chat.',
+  s => /\b(team|doctor|manager|senior)\b[^.!?]{0,24}\b(se)\b[^.!?]{0,20}\b(confirm|pooch|puch|baat)\b[^.!?]{0,16}\b(kar\s*li\b|kar\s*liya\b|kar\s*diya\b|kar\s*di\b|liya\b)/i.test(s)
+    || /\b(confirm|approve|approval)\b[^.!?]{0,20}\b(kar\s*li\b|kar\s*liya\b|ho\s*gaya\b|mil\s*gaya\b)/i.test(s));
+flagSentences('offered_discount',
+  'You cannot offer, approve or hint at any discount, lower price or free item. Hold the price warmly; any running offer comes from the team.',
+  s => /\b(discount|chhut|chhoot|chut\b|offer|kam\s*kar|kam\s*karwa|kam\s*me|sasta|rebate)\b/i.test(s)
+    && /\b(de\s*d|dedun|de\s*dun|kar\s*d|karwa|dilwa|mil\s*ja|ho\s*ja|check\s*kar|confirm)\b/i.test(s));
+flagSentences('claimed_viewed',
+  'You cannot see photos or videos. Never say you saw or checked them; ask them kindly to describe it in words.',
+  s => /\b(maine|mai\s*ne|main\s*ne)\b[^.!?]{0,24}\b(dekh|dekha|dekhi|dekhli)\w*\b/i.test(s)
+    || /\b(dekh\s*liya|dekh\s*li|dekh\s*lia|check\s*kar\s*liya)\b/i.test(s));
 
-let pitchGuard = false;
-const _CATALOG_NAME_RE = new RegExp('\\b(vaji\\s*bati|kern\\s*drops?|shilajit|ashwagandha|her\\s*menses|harmen'
-  + '|hormoniherb|aloezy|leanroutine|slimtox|garcinia|diaboglob|thyrostatin|zencal|shaktisurge'
-  + '|boombatti|control\\s*tantra|fourplay|hard\\s*yatra|max\\s*drive|rocket\\s*ras|lovelinga'
-  + '|thrill\\s*drill|thrustrx|endless|tadalafil|dapoxetine|orlistat)\\b', 'i');
-
-const _pitchThing = /\b(ye|yeh|yah|is|isme|ismein)\b[^.!?]{0,24}\b(ayurvedic|herbal|homeopathic|allopathic)?\s*(medicine|dawa|dawai|tablet|goli|goliyan|drops?|churna|powder|kit|capsule|syrup|tea|product)\b/i.test(String(aiText));
-const _pitchClaim = /\b(behtar|behter|bahter|bahtar|improve|badhata|badhati|badhane|theek\s*karta|thik\s*karta|fayda|faida|asar\s*karta|help\s*karta|kaam\s*karta|sex\s*life|stamina|performance)\b/i.test(String(aiText));
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard
-    && !_matches.length && !askedProduct && !askedPrice && !askedLink
-    && (_CATALOG_NAME_RE.test(String(aiText)) || (_pitchThing && _pitchClaim))) {
-  pitchGuard = _CATALOG_NAME_RE.test(String(aiText)) ? 'named_product' : 'described_product';
-  aiText = 'Ji bataiye, aapko kya problem ho rahi hai aur kab se? Aapki baat sun kar main sahi guidance de deti hu - '
-    + 'free consultation me doctor aapke liye best plan batayenge, consultation aur diet plan dono free hain.';
-  console.log('[Pitch Guard] BLOCKED ' + pitchGuard + ' - no catalog match and no product asked'
-    + ' | q=' + String(newMsgText || '').slice(0, 50));
-}
-
-let substanceGuard = false;
-const _custWords = String(newMsgText || '').trim().split(/\s+/).filter(Boolean).length;
-const _replyIsFiller = qrIsNonAnswer(aiText);
-const _custSaidSomething = _custWords >= 12 || String(newMsgText || '').trim().length >= 70;
-const _weAskedQuestion = /\?/.test(_lastOutText)
-  || /\b(bata\s*d(o|ijiye|ena)|bataiye|batao|bta\s*d(o|ijiye)|kitni|kitna|kitne|kab\s*se|kaunsa|konsa|kaun\s*sa|kya\s*problem|naam)\b/i.test(_lastOutText);
-
-const _healthOrProductQ = _matches.length > 0
-  || /\b(dawa|dawai|medicine|product|tablet|goli|capsule|drops?|churna|powder|kit|combo|price|dose|khurak|matra|problem|pareshani|dard|symptom|ilaj|treatment|fayda|faida|asar|side\s*effect|istemal|upyog|upayog|health|body|weight|skin|hair)\b/i.test(String(newMsgText || ''));
-const _custAskedQuestion = /\?/.test(String(newMsgText || ''))
-  || /\b(kya|kyu|kyun|kyo|kyon|kaise|kese|kaisa|kaisi|kab|kahan|kaha|kaun|kaunsa|konsa|kis|kisliye|kitna|kitni|kitne|batao|bataiye|bta|btao|btaiye|samjhao|samjhaiye|explain|tell)\b/i.test(String(newMsgText || ''));
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard && !pitchGuard
-    && _replyIsFiller && (_custSaidSomething || _weAskedQuestion || _custAskedQuestion)) {
-
-  substanceGuard = _custSaidSomething ? 'long_message'
-    : (_custAskedQuestion ? 'unanswered_question'
-    : (_weAskedQuestion ? 'answered_our_question' : 'unanswered_question'));
-
-  aiText = substanceGuard === 'long_message'
-    ? 'Ji, aapne jo bataya wo maine samajh liya - aap pareshaan mat hoiye, isko manage kiya ja sakta hai. '
-      + 'Free consultation me doctor aapki puri history dekh kar sahi plan batayenge, consultation aur diet plan dono free hain. '
-      + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye?'
-    : substanceGuard === 'answered_our_question'
-
-    ? 'Ji, note kar liya. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
-      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech), main free consultation set kara deti hu - doctor aapko sahi plan batayenge.'
-
-    : _healthOrProductQ
-    ? 'Ji, iske baare me doctor aapko theek se samjha denge - free consultation me sab detail mil jayegi, wo bilkul free hai. '
-      + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
-      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?'
-    : 'Ji, ye main hamari team se confirm karke aapko bata deti hu. Tab tak aapko health ya product se juda koi sawaal ho to bata dijiye, main abhi help kar deti hu.';
-  console.log('[Substance Guard] ' + substanceGuard + ' | custWords=' + _custWords
-    + ' | reply=' + JSON.stringify(String(aiText).slice(0, 30))
-    + ' | lastOut=' + JSON.stringify(String(_lastOutText).slice(0, 40)));
-}
-
-let repeatGuard = false;
-const _normReply = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-if (!_answered() && !doseGuard && !slotGuard && !bookingGuard && !priceGuard && !promiseGuard && !substanceGuard && !pitchGuard) {
-  const _now = _normReply(aiText), _prev = _normReply(_lastOutText);
-  if (_now && _prev && (_now === _prev || (_now.length >= 12 && (_prev.includes(_now) || _now.includes(_prev))))) {
-    repeatGuard = true;
-    aiText = 'Ji, lagta hai main aapko theek se samjha nahi paayi. Free consultation me doctor aapke saare sawaal ka jawaab de denge, wo bilkul free hai. '
-      + 'Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye ('
-      + _hhmm(WORK_START_MIN) + ' se ' + _hhmm(WORK_END_MIN) + ' ke beech)?';
-    console.log('[Repeat Guard] reply repeated the previous one | was=' + JSON.stringify(String(_lastOutText).slice(0, 50)));
-  }
-}
-
-let inventGuard = false;
 {
-  const _t = String(aiText || '');
-  const _hasLink = /https?:\/\/|sehatup\.com/i.test(_t);
-
-  const _claimedSend = !_hasLink
-    && /\b(maine|mai\s*ne|main\s*ne)\b[^.!?]{0,34}\b(link|url|report|pdf|catalog|catalogue|price\s*list|details|jaankari)\b[^.!?]{0,20}\b(bhej|send|share|forward)\b/i.test(_t);
-
-  const _claimedConfirm = /\b(team|doctor|manager|senior)\b[^.!?]{0,24}\b(se)\b[^.!?]{0,20}\b(confirm|pooch|puch|baat)\b[^.!?]{0,16}\b(kar\s*li\b|kar\s*liya\b|kar\s*diya\b|kar\s*di\b|liya\b)/i.test(_t)
-    || /\b(confirm|approve|approval)\b[^.!?]{0,20}\b(kar\s*li\b|kar\s*liya\b|ho\s*gaya\b|mil\s*gaya\b)/i.test(_t);
-
-  const _offeredDiscount = /\b(discount|chhut|chhoot|chut\b|offer|kam\s*kar|kam\s*karwa|kam\s*me|sasta|rebate)\b/i.test(_t)
-    && /\b(de\s*d|dedun|de\s*dun|kar\s*d|karwa|dilwa|mil\s*ja|ho\s*ja|check\s*kar|confirm)\b/i.test(_t);
-
-  const _claimedViewed = /\b(maine|mai\s*ne|main\s*ne)\b[^.!?]{0,24}\b(dekh|dekha|dekhi|dekhli)\w*\b/i.test(_t)
-    || /\b(dekh\s*liya|dekh\s*li|dekh\s*lia|check\s*kar\s*liya)\b/i.test(_t);
-
-  if (_claimedSend || _claimedConfirm || _offeredDiscount || _claimedViewed) {
-    inventGuard = _offeredDiscount ? 'offered_discount'
-      : (_claimedViewed ? 'claimed_viewed'
-      : (_claimedConfirm ? 'claimed_confirmation' : 'claimed_sent'));
-    aiText = _offeredDiscount
-      ? 'Ji, price wahi rehta hai - isme main khud se koi badlaav nahi kar sakti. Koi offer chal raha ho to hamari team aapko bata degi. Aap chahein to main aapki free consultation set kara deti hu, wo bilkul free hai.'
-      : (_claimedViewed
-      ? 'Ji, mujhe yahan photo ya video nahi dikhte, isliye main dekh nahi paayi. Aap likh kar bata dijiye - problem kya hai aur kab se hai? Doctor ko aap call par sab detail me bata sakte hain, wo puri baat samajh kar hi salah denge.'
-      : 'Ji, main ye khud se confirm nahi kar sakti. Main aapki request team ko bhej deti hu, wo aapse jaldi connect karenge. Tab tak koi aur sawaal ho to bata dijiye.');
-    console.log('[Invent Guard] BLOCKED ' + inventGuard + ' | was=' + JSON.stringify(_t.slice(0, 100)));
+  const _maleConcern = /\b(timing|time\s*kam|jaldi\s*nikal|nikal\s*jata|discharge|premature|erection|erect\w*|ling|penis|land\b|size\s*chota|chota\s*size|mota\s*karna|veerya|virya|shukranu|sperm|night\s*fall|nightfall|swapnadosh|dhat|napunsak|mardana|marad|stamina\s*sex|sex\s*karta|sambhog)\b/i.test(_custAll);
+  const _femaleContext = /\b(period|periods|mahwari|mahavari|pcod|pcos|pregnan\w*|garbh\w*|conceiv\w*|breast\s*feed\w*|breastfeed\w*|menopaus\w*|ovary|ovaries|bacchedani|uterus|delivery\s*hui)\b/i.test(_custAll);
+  if (_maleConcern && !_femaleContext) {
+    flagSentences('pregnancy_question',
+      'The customer described a male concern. Do not ask about pregnancy or breastfeeding. If a safety question is needed, ask one neutral line: koi health problem hai ya koi dawai chal rahi hai?',
+      s => /\b(pregnan\w*|pregnency|garbh\w*|breast\s*feed\w*|breastfeed\w*|feeding\s*kara|doodh\s*pila|conceiv\w*)\b/i.test(s)
+        && /\?|\bnahi\s*hai\b|\bto\s*nahi\b|\bkya\b/i.test(s));
   }
 }
 
-let aiIdentityGuard = false;
-if (/\b(a\.?\s?i\.?|artificial\s*intelligence|bot|chat\s*bot|chatbot|assistant|language\s*model|virtual\s*assistant|machine|program|software)\b/i.test(String(aiText))
-    && /\b(hu|hoon|hun|am|is|ek)\b/i.test(String(aiText))) {
-  aiIdentityGuard = true;
-  aiText = 'Mai Ananya hu ji, SehatUP ki health advisor. Aap apni health se judi koi bhi baat bata dijiye, main help kar deti hu.';
-  console.log('[AI Identity Guard] model claimed to be an AI/bot');
-}
-
-let pregnancyGuard = false;
-{
-  var _asksPregnancy = /\b(pregnan\w*|pregnency|garbh\w*|breast\s*feed\w*|breastfeed\w*|feeding\s*kara|doodh\s*pila|conceiv\w*)\b/i.test(String(aiText))
-    && /\?|\bnahi\s*hai\b|\bto\s*nahi\b|\bkya\b/i.test(String(aiText));
-  if (_asksPregnancy) {
-    var _said = String(newMsgText || '');
-    try {
-      var _ins = $('Fetch Conversation History').all().map(i => i && i.json)
-        .filter(m => m && m.direction === 'in' && m.text).map(m => String(m.text));
-      _said = _ins.join(' ') + ' ' + _said;
-    } catch (e) {}
-    var _maleConcern = /\b(timing|time\s*kam|jaldi\s*nikal|nikal\s*jata|discharge|premature|erection|erect\w*|ling|penis|land\b|size\s*chota|chota\s*size|mota\s*karna|veerya|virya|shukranu|sperm|night\s*fall|nightfall|swapnadosh|dhat|napunsak|mardana|marad|stamina\s*sex|sex\s*karta|sambhog)\b/i.test(_said);
-
-    var _femaleContext = /\b(period|periods|mahwari|mahavari|pcod|pcos|pregnan\w*|garbh\w*|conceiv\w*|breast\s*feed\w*|breastfeed\w*|menopaus\w*|ovary|ovaries|bacchedani|uterus|delivery\s*hui)\b/i.test(_said);
-    if (_maleConcern && !_femaleContext) {
-      pregnancyGuard = true;
-      aiText = 'Theek hai, note kar liya. Bas ye bata dijiye - koi health problem hai ya koi dawai chal rahi hai? Uske hisab se main sahi guidance de deti hu.';
-      console.log('[Pregnancy Guard] BLOCKED a pregnancy/breastfeeding question on a male concern'
-        + ' | was=' + JSON.stringify(String(aiText).slice(0, 90)));
-    }
-  }
-}
-
-let safetyClaimGuard = false;
 const _SAFETY_CLAIM_RE = new RegExp(
      '\\b(side\\s*effects?|nuksan|nuksaan|haani)\\b[^.!?]{0,24}\\b(nahi|nhi|nai)\\b'
   + '|\\bno\\s+side\\s*effects?\\b'
   + '|\\b100\\s*(%|percent|pratishat)\\s*(safe|sure|cure|guaranteed?|result)\\b'
   + '|\\b(bilkul|puri\\s*tarah|puri\\s*trah|totally|completely)\\s*safe\\b'
   + '|\\b(guarantee|guaranteed)\\b[^.!?]{0,20}\\b(result|cure|ilaj|theek|thik)\\b', 'i');
+flagSentences('safety_claim',
+  'Never claim a product has no side effects, is 100% safe, or guarantees a result. Say the doctor can advise based on their health history.',
+  s => _SAFETY_CLAIM_RE.test(s));
 
-const _claimInReply = _SAFETY_CLAIM_RE.test(String(aiText));
-const _claimByModel = _SAFETY_CLAIM_RE.test(_modelText);
-if (_claimInReply || _claimByModel) {
-  const _blocked = (_claimInReply ? String(aiText) : _modelText).slice(0, 80);
-  safetyClaimGuard = _claimInReply ? 'blocked' : 'model_only';
-  if (_claimInReply) {
-    aiText = 'Ji, kisi bhi product ki safety ya result ka dava main khud se nahi kar sakti - ye doctor hi aapki '
-      + 'puri history dekh kar batate hain. Aap apna naam aur kaunsa time aapke liye theek rahega bata dijiye, '
-      + 'main free consultation set kara deti hu.';
+const _custWords = newMsgText.trim().split(/\s+/).filter(Boolean).length;
+const _custSaidSomething = _custWords >= 12 || newMsgText.trim().length >= 70;
+const _weAskedQuestion = /\?/.test(_lastOutText)
+  || /\b(bata\s*d(o|ijiye|ena)|bataiye|batao|bta\s*d(o|ijiye)|kitni|kitna|kitne|kab\s*se|kaunsa|konsa|kaun\s*sa|kya\s*problem|naam)\b/i.test(_lastOutText);
+const _custAskedQuestion = /\?/.test(newMsgText)
+  || /\b(kya|kyu|kyun|kyo|kyon|kaise|kese|kaisa|kaisi|kab|kahan|kaha|kaun|kaunsa|konsa|kis|kisliye|kitna|kitni|kitne|batao|bataiye|bta|btao|btaiye|samjhao|samjhaiye|explain|tell)\b/i.test(newMsgText);
+const _alreadyFlaggedAnswer = violations.some(v => /^(empty|booking_time_ignored|booking_name_ignored|product_answer_missing|consult_mode_unanswered|dose_not_deferred|report_link_missing)/.test(v.code));
+if (aiText.trim() && !_alreadyFlaggedAnswer && qrIsNonAnswer(aiText) && (_custSaidSomething || _weAskedQuestion || _custAskedQuestion)) {
+  flag('filler_reply', 'quality', _custSaidSomething
+    ? 'The customer described their problem in detail and your draft was only filler. Acknowledge what they shared in your own words, reassure them that they are not alone and that you are with them in this, and ask one caring follow-up question.'
+    : (_custAskedQuestion
+      ? 'They asked a question and your draft did not answer it. Answer it directly and warmly. If only a doctor can answer it, say so kindly.'
+      : 'They answered your question. Acknowledge their answer and move the conversation forward with care.'));
+}
+
+{
+  const _normReply = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const _now = _normReply(aiText), _prev = _normReply(_lastOutText);
+  if (_now && _prev && (_now === _prev || (_now.length >= 12 && (_prev.includes(_now) || _now.includes(_prev))))) {
+    flag('repeat', 'quality',
+      'Your draft repeats your previous message. Say something new that responds to their latest message.');
   }
-  console.log('[Safety Claim Guard] ' + safetyClaimGuard + ' an absolute safety/cure claim | was='
-    + JSON.stringify(_blocked));
 }
 
-if (!greetedBefore) {
-  aiText = 'Hello ji, mai Ananya baat kar rahi hu SehatUP se. ' + (aiText || 'mai aapki kya help kar sakti hu?');
+{
+  const _custWantsConsult = /\b(consult\w*|doctor|dr|daktar|appointment|salah)\b/i.test(_custAll)
+    || /\bcall\s*(karwa|karva|karwao|karvao|kar\s*do|kar\s*dijiye|chahiye|aayega|aaega|kab)\b/i.test(_custAll)
+    || /\bbaat\s*(karni|karna|karwa|karva|kara)\b/i.test(_custAll);
+  const _safetyRaised = /\b(thyroid|sugar|diabetes|diabetic|bp|blood\s*pressure|heart|kidney|liver|pregnan\w*|breastfeed\w*|surgery|operation)\b/i.test(_custAll)
+    || /\b(dawai|dawa|medicine|tablet|goli)\b[^.!?]{0,20}\b(chal\s*rahi|chal\s*raha|le\s*rah\w*|leta|leti|lete)\b/i.test(_custAll);
+  const _offeredBefore = _outs.some(m => /\bconsult/i.test(String(m.text)));
+  const _exempt = _custWantsConsult || _safetyRaised || askedDose || _rx.length > 0 || _consultModeQ;
+  const _mentionsConsult = /\bconsult/i.test(aiText);
+  const _asksNameOrTime = /(\bnaam\b[^.!?]{0,24}\b(bata|batao|bataiye|dijiye)|kaunsa\s*time|konsa\s*time|kis\s*time|time\s*bata)/i.test(aiText);
+  if (!_exempt && _asksNameOrTime && !_offeredBefore) {
+    flag('booking_ask_unrequested', 'quality',
+      'The customer has not asked for a consultation, so do not ask for their name or a call time. Keep helping them with their concern.');
+  } else if (!_exempt && _mentionsConsult && _productQ && _matches.length && !_consultTopic) {
+    flag('consultation_on_direct_sale', 'quality',
+      'This product is sold directly. Do not pitch a consultation - give the price and link, then ask in one line whether they have any health problem or take any regular medicine.');
+  } else if (!_exempt && _mentionsConsult && !_productQ && !_offeredBefore && _aiTurns < 2) {
+    flag('consultation_too_early', 'quality',
+      'It is too early to bring up the consultation - the customer has not asked for it. First comfort them and understand their problem: acknowledge what they said, reassure them that they are not alone and that you are with them, and ask one caring question. Do not mention the consultation yet.');
+  }
 }
-if (!aiText) aiText = 'bataiye, mai aapki kya help kar sakti hu?';
 
-const JI_MAX = 1;
-function qrTrimJi(t) {
-  let kept = 0;
-  return String(t || '')
+const _codes = violations.map(v => v.code);
+const _baseMessages = Array.isArray(buildData.messages) ? buildData.messages : [];
 
-    .replace(/\bji\b\s*,?\s*/gi, (m, off, s) => {
-      if (++kept <= JI_MAX) return m;
-      if (off + m.length >= s.length) return '';
+if (violations.length && !lastChance && _baseMessages.length) {
 
-      if (/(^|[.!?\n]\s*)$/.test(s.slice(0, off))) return '';
-      return m.includes(',') ? ', ' : ' ';
-    })
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\s+([,.!?])/g, '$1')
-    .replace(/([,.!?])\s*\1+/g, '$1')
-    .replace(/^[\s,]+/, '')
-    .replace(/[ \t]+$/gm, '')
-
-    .replace(/([.!?] +)([a-z])/g, (m, a, b) => a + b.toUpperCase())
-    .trim();
+  const messages = JSON.parse(JSON.stringify(_baseMessages));
+  const _notes = violations.map(v => v.note).filter((n, i, a) => a.indexOf(n) === i);
+  messages[0].content = String(messages[0].content || '')
+    + '\n\nREWRITE NOTE (read this before replying): you drafted this reply to the customer\'s latest message:\n"""\n'
+    + (_rawModelText || '(empty)') + '\n"""\nIt cannot be sent because:\n'
+    + _notes.map((n, i) => (i + 1) + '. ' + n).join('\n')
+    + '\nWrite a NEW reply to the customer\'s latest message that fixes all of this and still follows every rule above. Reply with the message text only - warm, natural, 1 to 3 short lines. Never mention this note.';
+  console.log('[Check Reply] attempt ' + (attempt + 1) + '/' + MAX_ATTEMPTS + ' -> retry | ' + _codes.join(',')
+    + ' | draft=' + JSON.stringify(_rawModelText.slice(0, 80)));
+  try { $execution.customData.set('attempt' + (attempt + 1), _codes.join(',').slice(0, 200)); } catch (e) {}
+  return [{ json: { route: 'retry', attempt: attempt + 1, violations: _codes, messages } }];
 }
-aiText = qrTrimJi(aiText);
-if (!aiText) aiText = 'bataiye, mai aapki kya help kar sakti hu?';
 
-const _guardNames = ['roleGuard', 'scoreGuard', 'reportGuard', 'identityGuard', 'bookingGuard', 'substanceGuard',
-  'repeatGuard', 'companyGuard', 'nameGuard', 'claimGuard', 'doseGuard', 'slotGuard', 'priceGuard', 'promiseGuard',
-  'pitchGuard', 'safetyClaimGuard', 'consultModeGuard', 'inventGuard', 'aiIdentityGuard', 'bookingClaimGuard', 'pregnancyGuard'];
-const _flagVals = { roleGuard, scoreGuard, reportGuard, identityGuard, bookingGuard, substanceGuard,
-  repeatGuard, companyGuard, nameGuard, claimGuard, doseGuard, slotGuard, priceGuard, promiseGuard,
-  pitchGuard, safetyClaimGuard, consultModeGuard, inventGuard, aiIdentityGuard, bookingClaimGuard, pregnancyGuard };
-const _flags = _guardNames.filter(k => _flagVals[k])
-  .map(k => k.replace(/Guard$/, '') + (typeof _flagVals[k] === 'string' ? '=' + _flagVals[k] : ''));
-if (emptyReason) _flags.push('empty=' + emptyReason);
-const aiGuards = _flags.join(',');
+let finalText = aiText;
+let route = 'send';
+const _safety = violations.filter(v => v.severity === 'safety');
+if (_safety.length) {
+  const _preds = _safety.map(v => v.bad);
+  finalText = qrKeepSentences(aiText, s => !_preds.some(p => p(s)));
+  if (_preds.some(p => _sentences(finalText).some(s => p(s)))) finalText = '';
+}
+if (!finalText.trim() || (_safety.length && qrIsNonAnswer(finalText))) {
+  route = 'human';
+  finalText = '';
+}
+
+const aiGuards = _codes.concat(attempt ? ['attempts=' + (attempt + 1)] : []).concat(route === 'human' ? ['needs_human'] : []).join(',');
 try {
-  $execution.customData.set('reply', String(aiText).slice(0, 60));
+  $execution.customData.set('reply', String(finalText).slice(0, 60));
   $execution.customData.set('guards', aiGuards || 'none');
 } catch (e) {  }
-console.log('[Extract AI Response] guards=' + (aiGuards || 'none') + ' | reply=' + JSON.stringify(String(aiText).slice(0, 60)));
+console.log('[Check Reply] attempt ' + (attempt + 1) + '/' + MAX_ATTEMPTS + ' -> ' + route
+  + ' | ' + (aiGuards || 'clean') + ' | reply=' + JSON.stringify(String(finalText).slice(0, 60)));
 
-const docId = phone.replace(/[^0-9]/g, '');
 return [{
   json: {
+    route,
     phone,
     name,
-    lastAiReply: aiText,
+    lastAiReply: finalText,
     aiGuards,
+    violations: _codes,
+    attempts: attempt + 1,
+    needsHuman: route === 'human',
     lastUserMessage: newMsgText,
-    docId,
-    roleGuard,
-    scoreGuard,
-    reportGuard,
-    identityGuard,
-    bookingGuard,
-    substanceGuard,
-    repeatGuard,
-    companyGuard,
-    nameGuard,
-    claimGuard,
-    doseGuard,
-    slotGuard,
-    priceGuard,
-    promiseGuard,
-    pitchGuard,
-    safetyClaimGuard,
-    consultModeGuard,
-    inventGuard,
-    aiIdentityGuard,
-    bookingClaimGuard,
-    pregnancyGuard,
+    docId: String(phone).replace(/[^0-9]/g, ''),
     emptyReason,
     lastUpdated: new Date().toISOString()
   }
