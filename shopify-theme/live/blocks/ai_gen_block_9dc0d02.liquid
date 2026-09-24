@@ -1,0 +1,864 @@
+{% doc %}
+  @prompt
+    Create a responsive "Our Story" section with heading, description, feature cards, and additional text blocks.
+    
+    Layout structure:
+    - Section heading: "Our Story"
+    - Section description: "We Started sehatUP Because We Were Tired Of Seeing People Struggle-Not With Illness, But With Direction."
+    - Three feature cards in a row (3 columns desktop, stacked mobile):
+      
+    Card 1 (light green background):
+    - Icon: leaf/plant icon
+    - Title: "Ayurveda"
+    - Description: "Some used Ayurveda for balance."
+    
+    Card 2 (light pink background):
+    - Icon: mortar and pestle icon
+    - Title: "Homeopathy"
+    - Description: "Some used Homeopathy for gentle care."
+    
+    Card 3 (light beige/peach background):
+    - Icon: medical/pill icon
+    - Title: "Allopathy"
+    - Description: "Some used Modern Medicine for fast relief."
+    
+    Below cards:
+    - Text block 1: "But No One Combined Them To Create A Complete, Personalized Pathway .So We Built It" (with "Complete, Personalized Pathway" in bold)
+    - Text block 2 (light gray background box): "A Clinic That Doesn't Ask You To Choose- It Integrates What Works, Rejects The Noise, And Delivers Clarity."
+    
+    Requirements:
+    - Fully responsive layout:
+      * Desktop: 3 columns for cards, centered content
+      * Tablet: 3 columns or 2+1 layout for cards
+      * Mobile: single column, stacked cards
+    - Settings schema to customize:
+      * Section heading text and typography (size, weight, color)
+      * Section description text and typography
+      * Content max-width control
+      * Feature cards (repeatable blocks):
+        - Icon/image upload
+        - Icon size and color
+        - Card title
+        - Card description
+        - Background color per card
+        - Card padding and border radius
+      * Grid layout: columns per row (2 or 3 on desktop)
+      * Card styling: border radius, padding, shadow (optional)
+      * Text block 1: text with rich text support for bold/color
+      * Text block 1: typography and color controls
+      * Text block 2: text with rich text support
+      * Text block 2: background color, padding, border radius
+      * Text block 2: typography and color controls
+      * Spacing controls: section padding, card gaps, text block spacing
+      * Text alignment options for all text elements
+      * Background: section background color
+      * Optional: Add more text blocks (repeatable)
+      * Mobile-specific: font size overrides, card spacing
+    - Cards should have soft pastel backgrounds and rounded corners
+    - Icons centered above titles in cards
+    - Equal height cards on desktop
+    - Text blocks centered below cards with proper spacing
+    - Support for bold text and color highlights in text blocks
+    - Text block 2 should have subtle background box with padding
+    - Mobile: cards stack vertically, full width
+    - Flexible block system to add/remove/reorder cards
+    - Optional hover effects on cards
+    - Accessible color contrast ratios
+    - Clean, minimal design with good readability, align the all text and icon left align, i was talking text just inside cards else other texts should be in center 
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-our-story-{{ ai_gen_id }} {
+    display: block;
+    background-color: {{ block.settings.section_bg_color }};
+    padding: {{ block.settings.section_padding_top }}px {{ block.settings.section_padding_horizontal }}px {{ block.settings.section_padding_bottom }}px;
+  }
+
+  .ai-our-story-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.content_max_width }}px;
+    margin: 0 auto;
+  }
+
+  .ai-our-story-header-{{ ai_gen_id }} {
+    text-align: center;
+    margin-bottom: {{ block.settings.header_spacing }}px;
+  }
+
+  .ai-our-story-heading-{{ ai_gen_id }} {
+    font-size: clamp(24px, 3.4vw, 64px);
+    font-weight: {{ block.settings.heading_weight }};
+    color: {{ block.settings.heading_color }};
+    margin: 0 0 {{ block.settings.heading_description_gap }}px;
+    line-height: 1.2;
+  }
+
+  .ai-our-story-description-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1vw, 20px);
+    color: {{ block.settings.description_color }};
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .ai-our-story-cards-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: repeat({{ block.settings.columns_desktop }}, 1fr);
+    gap: {{ block.settings.card_gap }}px;
+    margin-bottom: {{ block.settings.cards_text_spacing }}px;
+  }
+
+  .ai-our-story-card-{{ ai_gen_id }} {
+    background-color: var(--card-bg-color);
+    padding: {{ block.settings.card_padding }}px;
+    border-radius: {{ block.settings.card_border_radius }}px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  {% if block.settings.card_hover_effect %}
+    .ai-our-story-card-{{ ai_gen_id }}:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+  {% endif %}
+
+  .ai-our-story-card-icon-{{ ai_gen_id }} {
+    width: {{ block.settings.icon_size }}px;
+    height: {{ block.settings.icon_size }}px;
+    margin-bottom: {{ block.settings.icon_title_gap }}px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .ai-our-story-card-icon-{{ ai_gen_id }} img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .ai-our-story-card-icon-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    fill: {{ block.settings.icon_color }};
+  }
+
+  .ai-our-story-card-title-{{ ai_gen_id }} {
+    font-size: clamp(14px, 2.4vw, 35px);
+    font-weight: {{ block.settings.card_title_weight }};
+    color: {{ block.settings.card_title_color }};
+    margin: 0 0 {{ block.settings.card_title_description_gap }}px;
+    line-height: 1.3;
+  }
+
+  .ai-our-story-card-description-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1vw, 20px);
+    color: {{ block.settings.card_description_color }};
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .ai-our-story-text-blocks-{{ ai_gen_id }} {
+    display: flex;
+    flex-direction: column;
+    gap: {{ block.settings.text_block_gap }}px;
+  }
+
+  .ai-our-story-text-block-{{ ai_gen_id }} {
+    text-align: center;
+    font-size: clamp(10px, 1vw, 20px);
+    color: {{ block.settings.text_block_color }};
+    line-height: 1.6;
+  }
+
+  .ai-our-story-text-block-{{ ai_gen_id }}.has-background {
+    background-color: {{ block.settings.text_block_bg_color }};
+    padding: {{ block.settings.text_block_padding }}px;
+    border-radius: {{ block.settings.text_block_border_radius }}px;
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-our-story-{{ ai_gen_id }} {
+      padding: {{ block.settings.section_padding_top | times: 0.7 }}px {{ block.settings.section_padding_horizontal | times: 0.7 }}px {{ block.settings.section_padding_bottom | times: 0.7 }}px;
+    }
+
+    .ai-our-story-cards-{{ ai_gen_id }} {
+      grid-template-columns: repeat({{ block.settings.columns_tablet }}, 1fr);
+    }
+
+    .ai-our-story-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size_mobile }}px;
+    }
+
+    .ai-our-story-description-{{ ai_gen_id }} {
+      font-size: {{ block.settings.description_size_mobile }}px;
+    }
+
+    .ai-our-story-card-title-{{ ai_gen_id }} {
+      font-size: {{ block.settings.card_title_size_mobile }}px;
+    }
+
+    .ai-our-story-card-description-{{ ai_gen_id }} {
+      font-size: {{ block.settings.card_description_size_mobile }}px;
+    }
+
+    .ai-our-story-text-block-{{ ai_gen_id }} {
+      font-size: {{ block.settings.text_block_size_mobile }}px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-our-story-cards-{{ ai_gen_id }} {
+      grid-template-columns: 1fr;
+      gap: {{ block.settings.card_gap_mobile }}px;
+    }
+  }
+{% endstyle %}
+
+<our-story-{{ ai_gen_id }} class="ai-our-story-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-our-story-container-{{ ai_gen_id }}">
+    {% if block.settings.heading != blank or block.settings.description != blank %}
+      <div class="ai-our-story-header-{{ ai_gen_id }}">
+        {% if block.settings.heading != blank %}
+          <h2 class="ai-our-story-heading-{{ ai_gen_id }}">{{ block.settings.heading }}</h2>
+        {% endif %}
+        {% if block.settings.description != blank %}
+          <div class="ai-our-story-description-{{ ai_gen_id }}">{{ block.settings.description }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if block.settings.show_cards %}
+      <div class="ai-our-story-cards-{{ ai_gen_id }}">
+        {% for i in (1..3) %}
+          {% liquid
+            assign card_enabled_key = 'card_' | append: i | append: '_enabled'
+            assign card_bg_key = 'card_' | append: i | append: '_bg_color'
+            assign card_icon_key = 'card_' | append: i | append: '_icon'
+            assign card_title_key = 'card_' | append: i | append: '_title'
+            assign card_desc_key = 'card_' | append: i | append: '_description'
+
+            assign card_enabled = block.settings[card_enabled_key]
+            assign card_bg = block.settings[card_bg_key]
+            assign card_icon = block.settings[card_icon_key]
+            assign card_title = block.settings[card_title_key]
+            assign card_desc = block.settings[card_desc_key]
+          %}
+
+          {% if card_enabled %}
+            <div class="ai-our-story-card-{{ ai_gen_id }}" style="--card-bg-color: {{ card_bg }};">
+              {% if card_icon != blank %}
+                <div class="ai-our-story-card-icon-{{ ai_gen_id }}">
+                  <img src="{{ card_icon | image_url: width: 200 }}" alt="{{ card_title | escape }}" loading="lazy">
+                </div>
+              {% else %}
+                <div class="ai-our-story-card-icon-{{ ai_gen_id }}">
+                  {% case i %}
+                    {% when 1 %}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/>
+                        <path d="M12 6c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6z"/>
+                        <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                        <path d="M8 2l1 4M16 2l-1 4M2 8l4 1M2 16l4-1M22 8l-4 1M22 16l-4-1M8 22l1-4M16 22l-1-4"/>
+                      </svg>
+                    {% when 2 %}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                        <path d="M12 8v8M8 12h8"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    {% when 3 %}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6v6H9z"/>
+                        <path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>
+                      </svg>
+                  {% endcase %}
+                </div>
+              {% endif %}
+
+              {% if card_title != blank %}
+                <h3 class="ai-our-story-card-title-{{ ai_gen_id }}">{{ card_title }}</h3>
+              {% endif %}
+
+              {% if card_desc != blank %}
+                <div class="ai-our-story-card-description-{{ ai_gen_id }}">{{ card_desc }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if block.settings.text_block_1 != blank or block.settings.text_block_2 != blank %}
+      <div class="ai-our-story-text-blocks-{{ ai_gen_id }}">
+        {% if block.settings.text_block_1 != blank %}
+          <div class="ai-our-story-text-block-{{ ai_gen_id }}">
+            {{ block.settings.text_block_1 }}
+          </div>
+        {% endif %}
+
+        {% if block.settings.text_block_2 != blank %}
+          <div class="ai-our-story-text-block-{{ ai_gen_id }} has-background">
+            {{ block.settings.text_block_2 }}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</our-story-{{ ai_gen_id }}>
+
+{% schema %}
+{
+  "name": "Our story",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section heading"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Our Story"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 20,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "Heading size (mobile)",
+      "min": 16,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "Heading weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#262626"
+    },
+    {
+      "type": "header",
+      "content": "Section description"
+    },
+    {
+      "type": "richtext",
+      "id": "description",
+      "label": "Description",
+      "default": "<p>We Started sehatUP Because We Were Tired Of Seeing People Struggle-Not With Illness, But With Direction.</p>"
+    },
+    {
+      "type": "range",
+      "id": "description_size",
+      "label": "Description size",
+      "min": 12,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "description_size_mobile",
+      "label": "Description size (mobile)",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "description_color",
+      "label": "Description color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "heading_description_gap",
+      "label": "Gap between heading and description",
+      "min": 8,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "header_spacing",
+      "label": "Space below header",
+      "min": 20,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "header",
+      "content": "Feature cards"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_cards",
+      "label": "Show feature cards",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "columns_desktop",
+      "label": "Columns (desktop)",
+      "options": [
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "select",
+      "id": "columns_tablet",
+      "label": "Columns (tablet)",
+      "options": [
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "label": "Gap between cards",
+      "min": 12,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "card_gap_mobile",
+      "label": "Gap between cards (mobile)",
+      "min": 12,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Card padding",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Card border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "checkbox",
+      "id": "card_hover_effect",
+      "label": "Enable hover effect",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Card icons"
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon size",
+      "min": 32,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 64
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Default icon color",
+      "default": "#4a5568"
+    },
+    {
+      "type": "range",
+      "id": "icon_title_gap",
+      "label": "Gap between icon and title",
+      "min": 8,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Card typography"
+    },
+    {
+      "type": "range",
+      "id": "card_title_size",
+      "label": "Title size",
+      "min": 14,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "card_title_size_mobile",
+      "label": "Title size (mobile)",
+      "min": 14,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "select",
+      "id": "card_title_weight",
+      "label": "Title weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "color",
+      "id": "card_title_color",
+      "label": "Title color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "card_title_description_gap",
+      "label": "Gap between title and description",
+      "min": 4,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "card_description_size",
+      "label": "Description size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "card_description_size_mobile",
+      "label": "Description size (mobile)",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "card_description_color",
+      "label": "Description color",
+      "default": "#666666"
+    },
+    {
+      "type": "header",
+      "content": "Card 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_1_enabled",
+      "label": "Show card 1",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "card_1_bg_color",
+      "label": "Background color",
+      "default": "#d4f4dd"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_1_icon",
+      "label": "Icon"
+    },
+    {
+      "type": "text",
+      "id": "card_1_title",
+      "label": "Title",
+      "default": "Ayurveda"
+    },
+    {
+      "type": "textarea",
+      "id": "card_1_description",
+      "label": "Description",
+      "default": "Some used Ayurveda for balance."
+    },
+    {
+      "type": "header",
+      "content": "Card 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_2_enabled",
+      "label": "Show card 2",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "card_2_bg_color",
+      "label": "Background color",
+      "default": "#ffd4e5"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_2_icon",
+      "label": "Icon"
+    },
+    {
+      "type": "text",
+      "id": "card_2_title",
+      "label": "Title",
+      "default": "Homeopathy"
+    },
+    {
+      "type": "textarea",
+      "id": "card_2_description",
+      "label": "Description",
+      "default": "Some used Homeopathy for gentle care."
+    },
+    {
+      "type": "header",
+      "content": "Card 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_3_enabled",
+      "label": "Show card 3",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "card_3_bg_color",
+      "label": "Background color",
+      "default": "#ffe4d4"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_3_icon",
+      "label": "Icon"
+    },
+    {
+      "type": "text",
+      "id": "card_3_title",
+      "label": "Title",
+      "default": "Allopathy"
+    },
+    {
+      "type": "textarea",
+      "id": "card_3_description",
+      "label": "Description",
+      "default": "Some used Modern Medicine for fast relief."
+    },
+    {
+      "type": "header",
+      "content": "Text blocks"
+    },
+    {
+      "type": "richtext",
+      "id": "text_block_1",
+      "label": "Text block 1",
+      "default": "<p>But No One Combined Them To Create A <strong>Complete, Personalized Pathway</strong>. So We Built It</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "text_block_2",
+      "label": "Text block 2",
+      "default": "<p>A Clinic That Doesn't Ask You To Choose- It Integrates What Works, Rejects The Noise, And Delivers Clarity.</p>"
+    },
+    {
+      "type": "range",
+      "id": "text_block_size",
+      "label": "Text size",
+      "min": 14,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "text_block_size_mobile",
+      "label": "Text size (mobile)",
+      "min": 14,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "text_block_color",
+      "label": "Text color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "text_block_gap",
+      "label": "Gap between text blocks",
+      "min": 12,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "cards_text_spacing",
+      "label": "Space between cards and text",
+      "min": 20,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "header",
+      "content": "Text block 2 background"
+    },
+    {
+      "type": "color",
+      "id": "text_block_bg_color",
+      "label": "Background color",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "range",
+      "id": "text_block_padding",
+      "label": "Padding",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "text_block_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Section layout"
+    },
+    {
+      "type": "range",
+      "id": "content_max_width",
+      "label": "Content max width",
+      "min": 600,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "color",
+      "id": "section_bg_color",
+      "label": "Section background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Padding top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "section_padding_horizontal",
+      "label": "Padding horizontal",
+      "min": 16,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    }
+  ],
+  "presets": [
+    {
+      "name": "Our story"
+    }
+  ]
+}
+{% endschema %}

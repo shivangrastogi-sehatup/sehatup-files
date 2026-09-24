@@ -1,0 +1,48 @@
+Design a website section from scratch and give me four completely different design directions for it, laid out in one image.
+
+Do not take inspiration from the attached screenshot of the current version. It is attached only so you can reuse its four illustrations and read the wording. Treat the layout, colours and structure in it as something to get away from.
+
+CANVAS
+One tall image, about 2400 by 3000 pixels, divided into four equal panels stacked in a 2 by 2 grid, separated by thin white gutters. Each panel is one complete, self-contained design of the same section as it would look on a desktop page. Put a small plain label in the corner of each panel: A, B, C, D. Nothing else outside the panels.
+
+THE FOUR ILLUSTRATIONS (reuse, unchanged)
+From the attached screenshot, in this order:
+1. a phone showing a health score,
+2. three overlapping cards labelled Ayurveda, Homeopathy, Allopathy,
+3. a dark care kit box with medicine bottles and a care plan card,
+4. a calendar covered in ticks with a marker pen.
+Redraw them faithfully: same shapes, same internal colours, same level of detail. They may be different sizes, cropped into shapes, or arranged differently in each direction, but they must stay these four illustrations.
+
+COLOUR (this is the main correction)
+The section must NOT read as a red section.
+- Base it on neutrals: white, off-white, soft warm grey, and a near-black #1d1d1d for text.
+- Crimson #ee204a is a spot accent only, used once or twice per design at most, for example the primary button or a single underline. Never for backdrops, connectors, arrows, number badges, sparkles or decoration.
+- Soft pink #fde8ec may appear as a quiet surface, but no design should be mostly pink.
+- No gradients, no glows, no confetti strokes, no wavy dividers.
+Each of the four directions should handle colour differently so I can compare: one nearly all white with a single crimson touch; one built on warm grey surfaces; one on a deep near-black band with light type; one mostly white with a soft pink surface for the artwork only.
+
+FOUR DIFFERENT STRUCTURES (do not repeat the same layout with new colours)
+Give each panel a genuinely different structure. Choose four from, or better than, these:
+- a numbered editorial list, large numerals set in the margin, artwork aligned to a strict column grid;
+- a vertical timeline with the four moments running down the page and the artwork alternating sides;
+- an overlapping collage where the four illustrations interlock rather than sit in tidy boxes;
+- a wide strip where one large illustration leads and the other three sit smaller beside it;
+- a table-like layout with hairline rules separating the four steps;
+- a single large card containing four quiet rows.
+Whatever the structure, a first-time reader must be able to tell the order of the four steps, and where the section ends with its button.
+
+TYPE
+One geometric sans throughout (Poppins-like), heading bold, body regular, generous line spacing, calm and premium. Vary the type treatment between the four panels: for example one with a very large heading, one with a modest heading and larger step titles, one with the numbers as the dominant type. No all-caps labels, no small tracked-out eyebrow text.
+
+TEXT (spell exactly, nothing else anywhere)
+Heading: How sehatUP Works
+Subtitle: Simple steps. Better insights. Healthier you.
+1, Know Your Health Score: A quick assessment that reveals issues in hormones, stress, digestion, sleep and lifestyle.
+2, Multi-System Doctor Review: Doctors from Ayurveda, Homeopathy and Allopathy analyse your score and history together.
+3, Get a Personalized Care Kit: Custom medicines, herbs, nutrition and lifestyle, designed for your body.
+4, Continuous Monitoring: Monthly follow-ups and plan adjustments based on your body's response.
+Button: Start Your Health Score
+
+Spell "sehatUP" exactly: one word, lowercase s, capital UP. In the heading it may be set in crimson in one or two of the four panels, plain near-black in the others.
+
+No browser frames, no device mockups, no cursors, no watermarks, no extra words.

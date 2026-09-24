@@ -1,0 +1,394 @@
+{%- liquid
+  assign hf = section.settings.heading_font
+  assign bf = section.settings.body_font
+  assign scale = section.settings.type_scale | default: 100 | divided_by: 100.0
+-%}
+
+{% style %}
+  {%- unless section.settings.use_theme_fonts -%}
+    {{ hf | font_face: font_display: 'swap' }}
+    {{ bf | font_face: font_display: 'swap' }}
+    {%- assign bf_med = bf | font_modify: 'weight', '500' -%}
+    {%- if bf_med -%}{{ bf_med | font_face: font_display: 'swap' }}{%- endif -%}
+  {%- endunless -%}
+
+  #shopify-section-{{ section.id }} {
+    --hsw-bg: {{ section.settings.color_bg }};
+    --hsw-title: {{ section.settings.color_title }};
+    --hsw-accent: {{ section.settings.color_accent }};
+    --hsw-sub: {{ section.settings.color_sub }};
+    --hsw-step-title: {{ section.settings.color_step_title }};
+    --hsw-step-text: {{ section.settings.color_step_text }};
+    --hsw-disc: {{ section.settings.color_disc }};
+    --hsw-badge: {{ section.settings.color_badge }};
+    --hsw-badge-text: {{ section.settings.color_badge_text }};
+    --hsw-btn: {{ section.settings.color_button }};
+    --hsw-btn-text: {{ section.settings.color_button_text }};
+    --hsw-scale: {{ scale }};
+    --hsw-maxw: {{ section.settings.container_width | default: 1320 }}px;
+    --hsw-pad-top: {{ section.settings.padding_top }}px;
+    --hsw-pad-bottom: {{ section.settings.padding_bottom }}px;
+    {%- if section.settings.use_theme_fonts -%}
+      --hsw-font-head: var(--font-heading-family, inherit);
+      --hsw-font-body: var(--font-body-family, inherit);
+    {%- else -%}
+      --hsw-font-head: {{ hf.family }}, {{ hf.fallback_families }};
+      --hsw-font-body: {{ bf.family }}, {{ bf.fallback_families }};
+    {%- endif -%}
+  }
+
+  .hsw {
+    background: var(--hsw-bg);
+    font-family: var(--hsw-font-body);
+    padding: calc(var(--hsw-pad-top) * .75) 16px calc(var(--hsw-pad-bottom) * .75);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  .hsw__inner { max-width: var(--hsw-maxw); margin-inline: auto; }
+
+  .hsw__head { text-align: center; margin-bottom: clamp(28px, 4vw, 64px); }
+  .hsw__title {
+    margin: 0;
+    color: var(--hsw-title);
+    font-family: var(--hsw-font-head);
+    font-weight: 700;
+    font-size: calc(clamp(25px, 3.3vw, 60px) * var(--hsw-scale));
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  .hsw__title em { font-style: normal; color: var(--hsw-accent); }
+  .hsw__sub {
+    margin: 10px auto 0;
+    max-width: 52ch;
+    color: var(--hsw-sub);
+    font-size: calc(clamp(14px, 1.3vw, 22px) * var(--hsw-scale));
+    line-height: 1.5;
+  }
+
+  /* Phones: one step per row, artwork beside the text, joined by a vertical dotted line. */
+  .hsw__steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 22px;
+  }
+  .hsw__step {
+    position: relative;
+    display: grid;
+    grid-template-columns: clamp(92px, 28vw, 120px) 1fr;
+    align-items: center;
+    gap: 16px;
+  }
+  .hsw__step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: calc(clamp(92px, 28vw, 120px) / 2);
+    top: calc(100% - 2px);
+    height: 26px;
+    border-left: 2px dotted var(--hsw-accent);
+    opacity: .55;
+  }
+
+  .hsw__media { position: relative; }
+  .hsw__disc {
+    position: relative;
+    aspect-ratio: 1;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 50%;
+    background: var(--hsw-disc);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  .hsw__disc img,
+  .hsw__disc svg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--hsw-art, 88%);
+    height: var(--hsw-art, 88%);
+    max-width: none;
+    transform: translate(calc(-50% + var(--hsw-x, 0%)), calc(-50% + var(--hsw-y, 0%)));
+    object-fit: contain;
+    display: block;
+  }
+  .hsw__disc--photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--hsw-focal, 50% 50%);
+  }
+  .hsw__badge {
+    position: absolute;
+    top: 2%;
+    left: 2%;
+    z-index: 1;
+    width: clamp(26px, 8vw, 34px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--hsw-badge);
+    color: var(--hsw-badge-text);
+    font-weight: 700;
+    font-size: clamp(11px, 3vw, 13px);
+    box-shadow: 0 4px 10px -4px rgba(238, 32, 74, .6);
+  }
+
+  .hsw__step-title {
+    margin: 0 0 6px;
+    color: var(--hsw-step-title);
+    font-family: var(--hsw-font-head);
+    font-weight: 700;
+    font-size: calc(clamp(17px, 4.6vw, 20px) * var(--hsw-scale));
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  .hsw__step-text {
+    margin: 0;
+    color: var(--hsw-step-text);
+    font-size: calc(clamp(13.5px, 3.6vw, 15px) * var(--hsw-scale));
+    line-height: 1.55;
+  }
+  .hsw__arrow { display: none; }
+
+  .hsw__cta-wrap { text-align: center; margin-top: clamp(28px, 4vw, 56px); }
+  .hsw__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 clamp(24px, 3vw, 40px);
+    border-radius: 999px;
+    background: var(--hsw-btn);
+    color: var(--hsw-btn-text);
+    font-weight: 500;
+    font-size: calc(clamp(14px, 1.2vw, 20px) * var(--hsw-scale));
+    text-decoration: none;
+    box-shadow: 0 12px 26px -14px rgba(238, 32, 74, .75);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .hsw__cta:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -14px rgba(238, 32, 74, .8); }
+  .hsw__cta:focus-visible { outline: 3px solid var(--hsw-title); outline-offset: 3px; }
+  .hsw__cta svg { width: 1em; height: 1em; }
+
+  /* Very small phones (e.g. 320px): stack artwork above text. */
+  @media (max-width: 359px) {
+    .hsw__step { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+    .hsw__media { width: 120px; }
+    .hsw__step:not(:last-child)::after { left: 50%; }
+  }
+
+  /* Large phones and tablets: two by two grid, artwork above the text. */
+  @media (min-width: 600px) {
+    .hsw { padding-inline: 24px; }
+    .hsw__steps { grid-template-columns: repeat(2, 1fr); gap: 40px 32px; }
+    .hsw__step { grid-template-columns: 1fr; align-content: start; justify-items: center; text-align: center; }
+    .hsw__step::after { display: none; }
+    .hsw__media { width: clamp(150px, 26vw, 200px); }
+    .hsw__step-text { max-width: 32ch; margin-inline: auto; }
+  }
+
+  /* Laptops and desktops: four in a row with dotted arrows between. */
+  @media (min-width: 990px) {
+    .hsw { padding: var(--hsw-pad-top) 32px var(--hsw-pad-bottom); }
+    .hsw__steps { grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    .hsw__step { justify-items: start; text-align: left; }
+    .hsw__media { width: min(100%, clamp(160px, 15vw, 240px)); }
+    .hsw__step-text { margin-inline: 0; }
+    .hsw__arrow {
+      display: block;
+      position: absolute;
+      top: calc(min(100%, clamp(160px, 15vw, 240px)) / 2);
+      left: calc(min(100%, clamp(160px, 15vw, 240px)) + 14px);
+      right: -10px;
+      height: 12px;
+      transform: translateY(-50%);
+      color: var(--hsw-accent);
+      pointer-events: none;
+    }
+    .hsw__arrow::before {
+      content: "";
+      position: absolute;
+      left: 15%;
+      right: calc(15% + 10px);
+      top: 50%;
+      border-top: 2px dotted currentColor;
+      opacity: .7;
+    }
+    .hsw__arrow::after {
+      content: "";
+      position: absolute;
+      right: calc(15% + 1px);
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      border-top: 2px solid currentColor;
+      border-right: 2px solid currentColor;
+      transform: translateY(-50%) rotate(45deg);
+    }
+    .hsw__step:last-child .hsw__arrow { display: none; }
+    .hsw__step-title { font-size: calc(clamp(19px, 1.6vw, 30px) * var(--hsw-scale)); }
+    .hsw__step-text { font-size: calc(clamp(14px, 1.05vw, 19px) * var(--hsw-scale)); }
+    .hsw__badge { width: clamp(32px, 2.6vw, 48px); font-size: clamp(12px, 1vw, 17px); }
+  }
+
+  /* 2K and 4K: let the section grow instead of floating in a narrow column. */
+  @media (min-width: 1920px) { .hsw__inner { max-width: calc(var(--hsw-maxw) * 1.25); } }
+  @media (min-width: 2560px) { .hsw__inner { max-width: calc(var(--hsw-maxw) * 1.6); } }
+  @media (min-width: 3400px) { .hsw__inner { max-width: calc(var(--hsw-maxw) * 2.1); } }
+
+  /* Same heading size as the "Why care isn't working" section, including its 2K and 4K step-ups. */
+  @media (min-width: 2000px) { .hsw__title { font-size: calc(clamp(25px, 3.3vw, 60px) * var(--hsw-scale) * 1.12); } }
+  @media (min-width: 2800px) { .hsw__title { font-size: calc(clamp(25px, 3.3vw, 60px) * var(--hsw-scale) * 1.28); } }
+
+  @media (hover: hover) and (min-width: 990px) {
+    .hsw__disc { transition: transform .3s ease; }
+    .hsw__step:hover .hsw__disc { transform: translateY(-4px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hsw__cta, .hsw__disc { transition: none; }
+    .hsw__cta:hover, .hsw__step:hover .hsw__disc { transform: none; }
+  }
+{% endstyle %}
+
+<section class="hsw" aria-labelledby="hsw-title-{{ section.id }}">
+  <div class="hsw__inner">
+    <header class="hsw__head">
+      <h2 class="hsw__title" id="hsw-title-{{ section.id }}">
+        {{- section.settings.heading_before | escape }}
+        {% if section.settings.heading_accent != blank %}<em>{{ section.settings.heading_accent | escape }}</em>{% endif %}
+        {{ section.settings.heading_after | escape -}}
+      </h2>
+      {%- if section.settings.subheading != blank -%}
+        <p class="hsw__sub">{{ section.settings.subheading | escape }}</p>
+      {%- endif -%}
+    </header>
+
+    <ol class="hsw__steps">
+      {%- for block in section.blocks -%}
+        {%- capture num -%}{% if forloop.index < 10 %}0{% endif %}{{ forloop.index }}{%- endcapture -%}
+        <li class="hsw__step" {{ block.shopify_attributes }}>
+          <div class="hsw__media">
+            <span class="hsw__badge" aria-hidden="true">{{ num }}</span>
+            <div class="hsw__disc{% if section.settings.artwork_fit == 'photo' %} hsw__disc--photo{% endif %}" style="--hsw-art: {{ block.settings.image_scale | default: 88 }}%; --hsw-x: {{ block.settings.image_x | default: 0 }}%; --hsw-y: {{ block.settings.image_y | default: 0 }}%;{% if block.settings.image.presentation.focal_point != blank %} --hsw-focal: {{ block.settings.image.presentation.focal_point }};{% endif %}">
+              {%- if block.settings.image != blank -%}
+                {%- assign alt = block.settings.image.alt | default: block.settings.title -%}
+                {{
+                  block.settings.image
+                  | image_url: width: 960
+                  | image_tag:
+                    loading: 'lazy',
+                    decoding: 'async',
+                    widths: '120, 180, 240, 320, 400, 480, 640, 800, 960',
+                    sizes: '(min-width: 3400px) 480px, (min-width: 2560px) 380px, (min-width: 1920px) 300px, (min-width: 990px) 15vw, (min-width: 600px) 26vw, 120px',
+                    alt: alt
+                }}
+              {%- else -%}
+                {{ 'image' | placeholder_svg_tag }}
+              {%- endif -%}
+            </div>
+          </div>
+          <div class="hsw__body">
+            {%- if block.settings.title != blank -%}
+              <h3 class="hsw__step-title"><span class="visually-hidden">Step {{ forloop.index }}: </span>{{ block.settings.title | escape }}</h3>
+            {%- endif -%}
+            {%- if block.settings.text != blank -%}
+              <p class="hsw__step-text">{{ block.settings.text | escape }}</p>
+            {%- endif -%}
+          </div>
+          <span class="hsw__arrow" aria-hidden="true"></span>
+        </li>
+      {%- endfor -%}
+    </ol>
+
+    {%- if section.settings.button_label != blank -%}
+      <div class="hsw__cta-wrap">
+        <a class="hsw__cta" href="{{ section.settings.button_link | default: '#' }}">
+          {{ section.settings.button_label | escape }}
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "How sehatUP works",
+  "tag": "div",
+  "class": "section-hsw",
+  "max_blocks": 6,
+  "settings": [
+    { "type": "header", "content": "Heading" },
+    { "type": "text", "id": "heading_before", "label": "Heading start", "default": "How" },
+    { "type": "text", "id": "heading_accent", "label": "Heading highlight", "info": "Shown in the accent colour.", "default": "sehatUP" },
+    { "type": "text", "id": "heading_after", "label": "Heading end", "default": "Works" },
+    { "type": "text", "id": "subheading", "label": "Supporting line", "default": "Simple steps. Better insights. Healthier you." },
+
+    { "type": "header", "content": "Button" },
+    { "type": "text", "id": "button_label", "label": "Button text", "default": "Start Your Health Journey" },
+    { "type": "url", "id": "button_link", "label": "Button link" },
+
+    { "type": "header", "content": "Typography" },
+    { "type": "checkbox", "id": "use_theme_fonts", "label": "Use the theme's fonts", "default": false },
+    { "type": "font_picker", "id": "heading_font", "label": "Heading font", "default": "poppins_n7" },
+    { "type": "font_picker", "id": "body_font", "label": "Body font", "default": "poppins_n4" },
+    { "type": "range", "id": "type_scale", "label": "Text size", "min": 80, "max": 130, "step": 5, "unit": "%", "default": 100 },
+
+    { "type": "header", "content": "Colours" },
+    { "type": "color", "id": "color_bg", "label": "Section background", "default": "#fff8f9" },
+    { "type": "color", "id": "color_title", "label": "Heading", "default": "#14183c" },
+    { "type": "color", "id": "color_accent", "label": "Accent (highlight word, arrows)", "default": "#ee204a" },
+    { "type": "color", "id": "color_sub", "label": "Supporting line", "default": "#4b5573" },
+    { "type": "color", "id": "color_step_title", "label": "Step title", "default": "#14183c" },
+    { "type": "color", "id": "color_step_text", "label": "Step text", "default": "#4b5573" },
+    { "type": "color", "id": "color_disc", "label": "Circle behind artwork", "default": "#fde8ec" },
+    {
+      "type": "select", "id": "artwork_fit", "label": "Artwork style", "default": "illustration",
+      "info": "Photos fill the whole circle and are cropped to it; set each image's focal point in Files to control the crop. Illustrations sit inside the circle on its colour.",
+      "options": [
+        { "value": "illustration", "label": "Illustration (sits inside the circle)" },
+        { "value": "photo", "label": "Photo (fills the circle)" }
+      ]
+    },
+    { "type": "color", "id": "color_badge", "label": "Number badge", "default": "#ee204a" },
+    { "type": "color", "id": "color_badge_text", "label": "Number badge text", "default": "#ffffff" },
+    { "type": "color", "id": "color_button", "label": "Button", "default": "#ee204a" },
+    { "type": "color", "id": "color_button_text", "label": "Button text", "default": "#ffffff" },
+
+    { "type": "header", "content": "Layout" },
+    { "type": "range", "id": "container_width", "label": "Maximum width", "min": 1000, "max": 1800, "step": 20, "unit": "px", "default": 1320, "info": "Grows automatically on 2K and 4K screens." },
+    { "type": "range", "id": "padding_top", "label": "Padding top", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 72 },
+    { "type": "range", "id": "padding_bottom", "label": "Padding bottom", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 72 }
+  ],
+  "blocks": [
+    {
+      "type": "step",
+      "name": "Step",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Artwork", "info": "Square PNG or WebP, at least 800 x 800. Transparent or white background; the pink circle is added by the section." },
+        { "type": "range", "id": "image_scale", "label": "Artwork size in the circle", "min": 60, "max": 150, "step": 2, "unit": "%", "default": 88, "info": "Raise it when the picture has empty space around it and looks small. Above 100% the circle trims the edges." },
+        { "type": "range", "id": "image_x", "label": "Move artwork left or right", "min": -40, "max": 40, "step": 1, "unit": "%", "default": 0, "info": "Negative moves it left, positive moves it right." },
+        { "type": "range", "id": "image_y", "label": "Move artwork up or down", "min": -40, "max": 40, "step": 1, "unit": "%", "default": 0, "info": "Negative moves it up, positive moves it down." },
+        { "type": "text", "id": "title", "label": "Title", "default": "Know Your Health Score" },
+        { "type": "textarea", "id": "text", "label": "Description", "default": "Take a quick assessment that looks at your lifestyle, symptoms and health goals." }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "How sehatUP works",
+      "blocks": [
+        { "type": "step", "settings": { "title": "Know Your Health Score", "text": "Take a quick assessment that looks at your lifestyle, symptoms and health goals." } },
+        { "type": "step", "settings": { "title": "Multi-System Doctor Review", "text": "Our doctors review your health across multiple areas: hormonal, metabolic, sexual and more." } },
+        { "type": "step", "settings": { "title": "Get a Personalized Care Kit", "text": "Receive a tailored plan with lifestyle guidance, supplements and expert recommendations for your unique needs." } },
+        { "type": "step", "settings": { "title": "Continuous Monitoring", "text": "Track your progress with regular check-ins and plan adjustments as you improve." } }
+      ]
+    }
+  ]
+}
+{% endschema %}

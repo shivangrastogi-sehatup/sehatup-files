@@ -1,0 +1,734 @@
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% liquid
+  assign description = product.description
+  assign who_subtitle_start = '[who_subtitle]'
+  assign who_subtitle_end = '[/who_subtitle]'
+  assign who_should_use_start = '[who_should_use]'
+  assign who_should_use_end = '[/who_should_use]'
+  assign who_should_not_use_start = '[who_should_not_use]'
+  assign who_should_not_use_end = '[/who_should_not_use]'
+
+  assign subtitle_content = ''
+  assign should_use_content = ''
+  assign should_not_use_content = ''
+
+  if description contains who_subtitle_start
+    assign subtitle_parts = description | split: who_subtitle_start
+    assign subtitle_temp = subtitle_parts[1] | split: who_subtitle_end
+    assign subtitle_content = subtitle_temp[0] | strip
+  endif
+
+  if description contains who_should_use_start
+    assign should_use_parts = description | split: who_should_use_start
+    assign should_use_temp = should_use_parts[1] | split: who_should_use_end
+    assign should_use_content = should_use_temp[0] | strip
+  endif
+
+  if description contains who_should_not_use_start
+    assign should_not_use_parts = description | split: who_should_not_use_start
+    assign should_not_use_temp = should_not_use_parts[1] | split: who_should_not_use_end
+    assign should_not_use_content = should_not_use_temp[0] | strip
+  endif
+
+  assign has_content = false
+  if should_use_content != blank or should_not_use_content != blank
+    assign has_content = true
+  endif
+
+  assign show_section = false
+  if has_content or block.settings.show_section_override
+    assign show_section = true
+  endif
+
+  assign card_title_should_use = block.settings.card_title_should_use | replace: '[product_name]', product.title
+  assign card_title_should_not_use = block.settings.card_title_should_not_use | replace: '[product_name]', product.title
+%}
+
+
+{% assign clean_should_use = should_use_content | replace: '<br>', '' | replace: '<br/>', '' | replace: '<br />', '' | replace: '<p></p>', '' | replace: '<p><br></p>', '' | replace: '<meta charset="utf-8">', '' | replace: '<span>', '' | replace: '</span>', '' | replace: '<p>', '' | replace: '</p>', '' | replace: '<b>', '' | replace: '</b>', '' %}
+
+{% assign clean_should_not_use = should_not_use_content | replace: '<br>', '' | replace: '<br/>', '' | replace: '<br />', '' | replace: '<p></p>', '' | replace: '<p><br></p>', '' | replace: '<meta charset="utf-8">', '' | replace: '<span>', '' | replace: '</span>', '' | replace: '<p>', '' | replace: '</p>', '' | replace: '<b>', '' | replace: '</b>', '' %}
+
+
+{% style %}
+    .who-this-is-for-section-{{ ai_gen_id }} {
+      display: block;
+      width: 100%;
+      background-color: {{ block.settings.section_bg_color }};
+      padding-top: {{ block.settings.section_padding_top }}px;
+      padding-bottom: {{ block.settings.section_padding_bottom }}px;
+    }
+
+    .who-this-is-for-outer-wrapper-{{ ai_gen_id }} {
+      max-width: {{ block.settings.outer_max_width }}px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .who-this-is-for-cards-wrapper-{{ ai_gen_id }} {
+      background-color: {{ block.settings.cards_wrapper_bg_color }};
+      border-radius: {{ block.settings.cards_wrapper_border_radius }}px;
+      padding: {{ block.settings.cards_wrapper_padding }}px;
+    }
+
+    .who-this-is-for-container-{{ ai_gen_id }} {
+      max-width: {{ block.settings.container_max_width }}px;
+      margin: 0 auto;
+    }
+
+    .who-this-is-for-header-{{ ai_gen_id }} {
+      text-align: {{ block.settings.heading_alignment }};
+      margin-bottom: {{ block.settings.header_spacing }}px;
+    }
+
+    .who-this-is-for-heading-{{ ai_gen_id }} {
+      font-size: clamp(24px,3.4vw,64px);
+      color: {{ block.settings.heading_color }};
+      margin: 0 0 12px 0;
+      font-weight: {{ block.settings.heading_weight }};
+      line-height: 1.2;
+    }
+
+    .who-this-is-for-subtitle-{{ ai_gen_id }} {
+      font-size: clamp(14px, 1.5vw, 25px) ;
+      color: {{ block.settings.subtitle_color }};
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .who-this-is-for-cards-{{ ai_gen_id }} {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: {{ block.settings.card_gap }}px;
+      margin-top: {{ block.settings.cards_top_spacing }}px;
+    }
+
+    .who-this-is-for-card-{{ ai_gen_id }} {
+      background-color: {{ block.settings.card_bg_color }};
+      border: {{ block.settings.card_border_width }}px solid {{ block.settings.card_border_color }};
+      border-radius: {{ block.settings.card_border_radius }}px;
+      padding: {{ block.settings.card_padding }}px;
+      box-shadow: 0 {{ block.settings.card_shadow_vertical }}px {{ block.settings.card_shadow_blur }}px rgba(0, 0, 0, {{ block.settings.card_shadow_opacity | divided_by: 100.0 }});
+    }
+
+    .who-this-is-for-card-title-{{ ai_gen_id }} {
+      font-size: {{ block.settings.card_title_size }}px;
+      color: {{ block.settings.card_title_color }};
+      margin: 0 0 {{ block.settings.card_title_spacing }}px 0;
+      font-weight: {{ block.settings.card_title_weight }};
+      line-height: 1.3;
+    }
+
+    .who-this-is-for-card-content-{{ ai_gen_id }} ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .who-this-is-for-card-content-{{ ai_gen_id }} li {
+      display: flex;
+      align-items: center;
+      gap: {{ block.settings.checkmark_text_gap }}px;
+      margin-bottom: {{ block.settings.list_item_spacing }}px;
+      color: {{ block.settings.list_text_color }};
+      font-size: {{ block.settings.list_text_size }}px;
+      line-height: {{ block.settings.list_line_height }};
+    }
+
+    .who-this-is-for-card-content-{{ ai_gen_id }} li:last-child {
+      margin-bottom: 0;
+    }
+
+    .who-this-is-for-card-content-{{ ai_gen_id }} li::before {
+      content: '✓';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: {{ block.settings.checkmark_size }}px;
+      height: {{ block.settings.checkmark_size }}px;
+      min-width: {{ block.settings.checkmark_size }}px;
+      flex-shrink: 0;
+      background-color: {{ block.settings.checkmark_bg_color }};
+      color: {{ block.settings.checkmark_icon_color }};
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: calc({{ block.settings.checkmark_size }}px * 0.6);
+      line-height: 1;
+    }
+
+    .who-this-is-for-empty-state-{{ ai_gen_id }} {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+      font-size: 14px;
+      font-style: italic;
+    }
+    /* Equal height cards fix */
+  .who-this-is-for-cards-{{ ai_gen_id }} {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    align-items: stretch !important;
+  }
+
+  .who-this-is-for-card-{{ ai_gen_id }} {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+  }
+
+  /* Mobile responsive */
+  @media screen and (max-width: 768px) {
+    .who-this-is-for-cards-{{ ai_gen_id }} {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+
+    @media screen and (max-width: 768px) {
+      .who-this-is-for-section-{{ ai_gen_id }} {
+        padding-top: calc({{ block.settings.section_padding_top }}px * 0.75);
+        padding-bottom: calc({{ block.settings.section_padding_bottom }}px * 0.75);
+      }
+
+      .who-this-is-for-cards-wrapper-{{ ai_gen_id }} {
+        padding: calc({{ block.settings.cards_wrapper_padding }}px * 0.75);
+      }
+
+      .who-this-is-for-cards-{{ ai_gen_id }} {
+        grid-template-columns: 1fr;
+      }
+
+      .who-this-is-for-heading-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.heading_size }}px * 0.75);
+      }
+
+      .who-this-is-for-card-{{ ai_gen_id }} {
+        padding: calc({{ block.settings.card_padding }}px * 0.75);
+      }
+    }
+
+    @media screen and (min-width: 769px) and (max-width: 1024px) {
+      .who-this-is-for-outer-wrapper-{{ ai_gen_id }} {
+        padding: 0 40px;
+      }
+    }
+{% endstyle %}
+
+{% if show_section %}
+  <div class="who-this-is-for-section-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+    <div class="who-this-is-for-outer-wrapper-{{ ai_gen_id }}">
+      <div class="who-this-is-for-cards-wrapper-{{ ai_gen_id }}">
+        <div class="who-this-is-for-container-{{ ai_gen_id }}">
+          <div class="who-this-is-for-header-{{ ai_gen_id }}">
+            {% if block.settings.heading != blank %}
+              <h2 class="who-this-is-for-heading-{{ ai_gen_id }}">{{ block.settings.heading }}</h2>
+            {% endif %}
+            {% if subtitle_content != blank %}
+              <div class="who-this-is-for-subtitle-{{ ai_gen_id }}">{{ subtitle_content | raw }}</div>
+            {% elsif block.settings.subtitle_fallback != blank %}
+              <div class="who-this-is-for-subtitle-{{ ai_gen_id }}">{{ block.settings.subtitle_fallback }}</div>
+            {% endif %}
+          </div>
+
+          {% if has_content %}
+            <div
+              class="who-this-is-for-cards-{{ ai_gen_id }}"
+              style="display: grid; grid-template-columns: repeat(2, 1fr); gap: {{ block.settings.card_gap }}px; align-items: stretch;"
+            >
+              {% if should_use_content != blank %}
+                <div
+                  class="who-this-is-for-card-{{ ai_gen_id }}"
+                  style="height: 100%; display: flex; flex-direction: column;"
+                >
+                  <h3 class="who-this-is-for-card-title-{{ ai_gen_id }}">{{ card_title_should_use }}</h3>
+                  <div class="who-this-is-for-card-content-{{ ai_gen_id }}">
+                    {{ clean_should_use | raw }}
+                  </div>
+                </div>
+              {% endif %}
+
+              {% if should_not_use_content != blank %}
+                <div
+                  class="who-this-is-for-card-{{ ai_gen_id }}"
+                  style="height: 100%; display: flex; flex-direction: column;"
+                >
+                  <h3 class="who-this-is-for-card-title-{{ ai_gen_id }}">{{ card_title_should_not_use }}</h3>
+                  <div class="who-this-is-for-card-content-{{ ai_gen_id }}">
+                    {{ clean_should_not_use | raw }}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="who-this-is-for-empty-state-{{ ai_gen_id }}">
+              Add delimiter content to product description to display cards
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Who this is for",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_section_override",
+      "label": "Show section even without content",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Heading"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading text",
+      "default": "Who This Is For"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Size",
+      "min": 20,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Color",
+      "default": "#262626"
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "Font weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Subtitle"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle_fallback",
+      "label": "Fallback subtitle",
+      "info": "Used when [who_subtitle] delimiter is not found"
+    },
+    {
+      "type": "range",
+      "id": "subtitle_size",
+      "label": "Size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "subtitle_color",
+      "label": "Color",
+      "default": "#666666"
+    },
+    {
+      "type": "header",
+      "content": "Card titles"
+    },
+    {
+      "type": "text",
+      "id": "card_title_should_use",
+      "label": "Should use title",
+      "default": "Who Should Use [product_name]",
+      "info": "Use [product_name] as placeholder"
+    },
+    {
+      "type": "text",
+      "id": "card_title_should_not_use",
+      "label": "Should not use title",
+      "default": "Who Should Not Use [product_name]",
+      "info": "Use [product_name] as placeholder"
+    },
+    {
+      "type": "range",
+      "id": "card_title_size",
+      "label": "Size",
+      "min": 16,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "color",
+      "id": "card_title_color",
+      "label": "Color",
+      "default": "#262626"
+    },
+    {
+      "type": "select",
+      "id": "card_title_weight",
+      "label": "Font weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "range",
+      "id": "card_title_spacing",
+      "label": "Bottom spacing",
+      "min": 8,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "color",
+      "id": "card_bg_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "card_border_color",
+      "label": "Border color",
+      "default": "#e5e5e5"
+    },
+    {
+      "type": "range",
+      "id": "card_border_width",
+      "label": "Border width",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_opacity",
+      "label": "Shadow opacity",
+      "min": 0,
+      "max": 30,
+      "step": 5,
+      "unit": "%",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_vertical",
+      "label": "Shadow vertical offset",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_blur",
+      "label": "Shadow blur",
+      "min": 0,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Padding",
+      "min": 20,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "header",
+      "content": "List items"
+    },
+    {
+      "type": "color",
+      "id": "list_text_color",
+      "label": "Text color",
+      "default": "#333333"
+    },
+    {
+      "type": "range",
+      "id": "list_text_size",
+      "label": "Text size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "list_line_height",
+      "label": "Line height",
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.6
+    },
+    {
+      "type": "range",
+      "id": "list_item_spacing",
+      "label": "Item spacing",
+      "min": 8,
+      "max": 32,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Checkmark icons"
+    },
+    {
+      "type": "color",
+      "id": "checkmark_bg_color",
+      "label": "Background",
+      "default": "#e8f5e9"
+    },
+    {
+      "type": "color",
+      "id": "checkmark_icon_color",
+      "label": "Icon color",
+      "default": "#2e7d32"
+    },
+    {
+      "type": "range",
+      "id": "checkmark_size",
+      "label": "Size",
+      "min": 16,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "checkmark_text_gap",
+      "label": "Gap from text",
+      "min": 8,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Cards wrapper"
+    },
+    {
+      "type": "color",
+      "id": "cards_wrapper_bg_color",
+      "label": "Background",
+      "default": "#FFFDF4"
+    },
+    {
+      "type": "range",
+      "id": "cards_wrapper_padding",
+      "label": "Padding",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "cards_wrapper_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "outer_max_width",
+      "label": "Outer max width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1400
+    },
+    {
+      "type": "range",
+      "id": "container_max_width",
+      "label": "Content max width",
+      "min": 800,
+      "max": 1400,
+      "step": 100,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "label": "Card gap",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "header_spacing",
+      "label": "Header spacing",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "cards_top_spacing",
+      "label": "Cards top spacing",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "header",
+      "content": "Section spacing"
+    },
+    {
+      "type": "color",
+      "id": "section_bg_color",
+      "label": "Background",
+      "default": "#fafafa"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    }
+  ],
+  "presets": [
+    {
+      "name": "Who this is for"
+    }
+  ]
+}
+{% endschema %}

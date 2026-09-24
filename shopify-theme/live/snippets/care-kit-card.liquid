@@ -1,0 +1,42 @@
+<div class="care-kit-card" {{ block.shopify_attributes }}>
+
+  <div class="care-kit-accent" style="background: {{ accent_bg_color }}; height: {{ block.settings.accent_height }}px;">
+    <div class="care-kit-media">
+
+      {% if block.settings.person_image %}
+        <img
+          src="{{ block.settings.person_image | image_url: width: block.settings.person_image_width }}"
+          style="width: {{ block.settings.person_image_width }}px"
+          loading="lazy"
+          alt=""
+        >
+      {% endif %}
+
+      {% if block.settings.product_image %}
+        <img
+          src="{{ block.settings.product_image | image_url: width: block.settings.product_image_width }}"
+          style="width: {{ block.settings.product_image_width }}px"
+          loading="lazy"
+          alt=""
+        >
+      {% endif %}
+
+    </div>
+  </div>
+
+  <div class="care-kit-content">
+    <h3 style="color: {{ heading_color }};">{{ block.settings.title }}</h3>
+    <div class="rte" style="color: {{ text_color }};">{{ block.settings.description }}</div>
+
+    {% if block.settings.button_label and block.settings.button_link %}
+      <a
+        href="{{ block.settings.button_link }}"
+        style="background: {{ button_bg }}; color: {{ button_text }};"
+        class="button"
+      >
+        {{ block.settings.button_label }}
+      </a>
+    {% endif %}
+  </div>
+
+</div>

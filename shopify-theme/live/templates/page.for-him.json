@@ -1,0 +1,653 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "blocks_pGGnd6": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_1a1cde1_hXrmWC": {
+          "type": "ai_gen_block_1a1cde1",
+          "settings": {
+            "layout_mode": "background-with-overlay-image",
+            "desktop_width_percent": 100,
+            "background_image": "shopify://shop_images/Frame_215.webp",
+            "background_image_size": "cover",
+            "background_position_x": "center",
+            "background_position_y": "center",
+            "background_overlay_opacity": 100,
+            "background_overlay_color": "#000000",
+            "show_white_panel": false,
+            "white_panel_width": 45,
+            "white_panel_color": "#ffffff",
+            "white_panel_opacity": 95,
+            "white_panel_rounded": true,
+            "white_panel_border_radius": 20,
+            "foreground_image": "shopify://shop_images/Frame_243.webp",
+            "foreground_position_x": "right",
+            "foreground_position_y": "bottom",
+            "foreground_offset_x": 5,
+            "foreground_offset_y": 0,
+            "hide_foreground_mobile": true,
+            "heading": "Manufactured For Masculine Prowess",
+            "subheading_prefix": "",
+            "subheading_highlight": "",
+            "subheading_highlight_color": "#ff4757",
+            "body_text": "<p>The Allopathy, Ayurveda and Homeopathy collaborate to ensure effective erection, improved control, enhanced energy and better weight.</p>",
+            "content_position": "left",
+            "content_max_width": 1400,
+            "content_text_max_width": 600,
+            "heading_size": 40,
+            "heading_weight": "700",
+            "heading_color": "#ffffff",
+            "subheading_size": 24,
+            "subheading_weight": "500",
+            "subheading_color": "#ffffff",
+            "body_size": 15,
+            "body_color": "#ffffff",
+            "text_shadow_enabled": true,
+            "button_1_text": "Shop Men’s Products",
+            "button_1_link": "shopify://pages/for-him",
+            "button_1_style": "filled",
+            "button_1_bg_color": "#000000",
+            "button_1_text_color": "#ffffff",
+            "button_1_border_color": "#000000",
+            "button_1_hover_bg_color": "#464e46",
+            "button_1_hover_text_color": "#ffffff",
+            "button_1_hover_border_color": "#000000",
+            "show_button_2": true,
+            "enable_doctor_new_tab": true,
+            "button_2_text": "Take FREE Men’s Health Score",
+            "button_2_link": "shopify://pages/health-score-360",
+            "button_2_style": "outline",
+            "button_2_bg_color": "#ffffff",
+            "button_2_text_color": "#ffffff",
+            "button_2_border_color": "#ffffff",
+            "button_2_hover_bg_color": "#ffffff",
+            "button_2_hover_text_color": "#000000",
+            "button_2_hover_border_color": "#ffffff",
+            "button_layout": "horizontal",
+            "button_font_size": 14,
+            "button_font_weight": "600",
+            "button_padding_vertical": 14,
+            "button_padding_horizontal": 32,
+            "button_border_radius": 50,
+            "button_spacing": 32,
+            "section_min_height": 430,
+            "section_padding_top": 60,
+            "section_padding_bottom": 60,
+            "section_padding_horizontal": 40,
+            "content_spacing": 20,
+            "section_min_height_mobile": 500,
+            "section_padding_top_mobile": 40,
+            "section_padding_bottom_mobile": 40,
+            "section_padding_horizontal_mobile": 20,
+            "mobile_content_alignment": "center",
+            "mobile_background_position_x": "center",
+            "mobile_background_position_y": "center"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_1a1cde1_hXrmWC"
+      ],
+      "name": "Healthcare hero banner",
+      "settings": {}
+    },
+    "177011795365099f7c": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_9e53ff5_7c3D9N": {
+          "type": "ai_gen_block_9e53ff5",
+          "settings": {
+            "section_bg_color": "#fffdf9",
+            "content_max_width": 1200,
+            "section_padding_top": 50,
+            "section_padding_bottom": 5,
+            "heading": "Which area  do you require assistance in?",
+            "heading_size": 36,
+            "heading_weight": 600,
+            "heading_color": "#262626",
+            "heading_alignment": "center",
+            "heading_to_subheading_spacing": 15,
+            "subheading": "The efficacy of the threemedical methods collaborating",
+            "subheading_size": 16,
+            "subheading_weight": 400,
+            "subheading_color": "#666666",
+            "subheading_alignment": "center",
+            "subheading_to_pills_spacing": 30,
+            "pills_alignment": "center",
+            "pills_gap": 10,
+            "pill_padding_vertical": 8,
+            "pill_padding_horizontal": 10,
+            "pill_bg_color": "#f4f4f4",
+            "pill_text_color": "#262626",
+            "pill_border_color": "#d1d1d1",
+            "pill_border_thickness": 1,
+            "pill_radius": 40,
+            "pill_font_size": 14,
+            "pill_font_weight": 500,
+            "pill_letter_spacing": 0,
+            "pill_1_enabled": true,
+            "pill_1_text": "More durable",
+            "pill_2_enabled": true,
+            "pill_2_text": "Erections are more effective",
+            "pill_3_enabled": true,
+            "pill_3_text": "Upgrades vitality",
+            "pill_4_enabled": true,
+            "pill_4_text": "Enhances the energy levels",
+            "pill_5_enabled": true,
+            "pill_5_text": "Loss of weight",
+            "pill_6_enabled": true,
+            "pill_6_text": "Fatigue and Hormones",
+            "pill_7_enabled": false,
+            "pill_7_text": "",
+            "pill_8_enabled": false,
+            "pill_8_text": "",
+            "pill_9_enabled": false,
+            "pill_9_text": "",
+            "pill_10_enabled": false,
+            "pill_10_text": "",
+            "pill_11_enabled": false,
+            "pill_11_text": "",
+            "pill_12_enabled": false,
+            "pill_12_text": "",
+            "mobile_pills_layout": "wrap"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_9e53ff5_7c3D9N"
+      ],
+      "settings": {}
+    },
+    "177011846057cacb94": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_8cb2b28_4kActg": {
+          "type": "ai_gen_block_8cb2b28",
+          "settings": {
+            "section_heading": "Shop by Category",
+            "section_background_color": "#ffffff",
+            "content_max_width": 900,
+            "section_padding_top": 28,
+            "section_padding_bottom": 60,
+            "heading_size": 36,
+            "heading_weight": "700",
+            "heading_color": "#000000",
+            "heading_alignment": "center",
+            "heading_spacing": 40,
+            "cards_per_row_desktop": "4",
+            "cards_per_row_tablet": "3",
+            "cards_per_row_mobile": "2",
+            "card_gap": 25,
+            "card_alignment": "center",
+            "mobile_scroll_behavior": "grid",
+            "image_size": 100,
+            "mobile_image_size": 80,
+            "hover_effect": "lift",
+            "text_spacing": 20,
+            "text_alignment": "center",
+            "title_size": 22,
+            "mobile_title_size": 16,
+            "title_weight": "600",
+            "title_color": "#000000",
+            "description_spacing": 10,
+            "description_size": 14,
+            "mobile_description_size": 13,
+            "description_color": "#666666",
+            "description_line_height": 1.5,
+            "mobile_heading_size": 28,
+            "scroll_offset": 80,
+            "scroll_duration": 800,
+            "card_1_enabled": true,
+            "card_1_image": "shopify://shop_images/Ellipse_14_1.webp",
+            "card_1_bg_color": "#ffb6c1",
+            "card_1_border_color": "#ffb6c1",
+            "card_1_border_width": 0,
+            "card_1_title": "Sexual Wellness",
+            "card_1_description": "Better erections, better control, better confidence.",
+            "card_1_scroll_behavior": "scroll",
+            "card_1_section_id": "shopify-block-AWVVNcnhMMmVtTlNTc__ai_gen_block_1595750_D9fNhM",
+            "card_1_link": "",
+            "card_2_enabled": true,
+            "card_2_image": "shopify://shop_images/Ellipse_13_1.webp",
+            "card_2_bg_color": "#2c3e50",
+            "card_2_border_color": "#2c3e50",
+            "card_2_border_width": 0,
+            "card_2_title": "Weight Management",
+            "card_2_description": "Smart, safe and science-backed fat loss.",
+            "card_2_scroll_behavior": "scroll",
+            "card_2_section_id": "shopify-block-AMDRQd1MrZXp0TTVEd__ai_gen_block_1595750_jVXcQK",
+            "card_2_link": "",
+            "card_3_enabled": true,
+            "card_3_image": "shopify://shop_images/Ellipse_14_2.webp",
+            "card_3_bg_color": "#87ceeb",
+            "card_3_border_color": "#87ceeb",
+            "card_3_border_width": 0,
+            "card_3_title": "Energy & Strength",
+            "card_3_description": "Daily stamina, strength & immunity boosters.",
+            "card_3_scroll_behavior": "scroll",
+            "card_3_section_id": "shopify-block-AMEhSNGcvcnJFRnZQW__ai_gen_block_1595750_bBpMEE",
+            "card_3_link": "",
+            "card_4_enabled": false,
+            "card_4_bg_color": "#98d8c8",
+            "card_4_border_color": "#98d8c8",
+            "card_4_border_width": 0,
+            "card_4_title": "Nutrition",
+            "card_4_description": "Essential vitamins and minerals for daily health",
+            "card_4_scroll_behavior": "navigate",
+            "card_4_section_id": "",
+            "card_4_link": "",
+            "card_5_enabled": false,
+            "card_5_bg_color": "#f6ad55",
+            "card_5_border_color": "#f6ad55",
+            "card_5_border_width": 0,
+            "card_5_title": "Energy",
+            "card_5_description": "Natural energy boosters for active lifestyles",
+            "card_5_scroll_behavior": "navigate",
+            "card_5_section_id": "",
+            "card_5_link": "",
+            "card_6_enabled": false,
+            "card_6_bg_color": "#b794f4",
+            "card_6_border_color": "#b794f4",
+            "card_6_border_width": 0,
+            "card_6_title": "Sleep",
+            "card_6_description": "Natural sleep support for restful nights",
+            "card_6_scroll_behavior": "navigate",
+            "card_6_section_id": "",
+            "card_6_link": "",
+            "card_7_enabled": false,
+            "card_7_bg_color": "#fc8181",
+            "card_7_border_color": "#fc8181",
+            "card_7_border_width": 0,
+            "card_7_title": "Immunity",
+            "card_7_description": "Strengthen your natural defenses",
+            "card_7_scroll_behavior": "navigate",
+            "card_7_section_id": "",
+            "card_7_link": "",
+            "card_8_enabled": false,
+            "card_8_bg_color": "#68d391",
+            "card_8_border_color": "#68d391",
+            "card_8_border_width": 0,
+            "card_8_title": "Digestion",
+            "card_8_description": "Support for healthy gut and digestive wellness",
+            "card_8_scroll_behavior": "navigate",
+            "card_8_section_id": "",
+            "card_8_link": ""
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_8cb2b28_4kActg"
+      ],
+      "settings": {}
+    },
+    "integrated_KeNAie": {
+      "type": "integrated",
+      "name": "Integrated Care Cards",
+      "settings": {
+        "main_title": "The Integrated Solutions Come in Handy For Men",
+        "main_subtitle": "The Triple System Benefits For Men",
+        "icon_layout": "vertical",
+        "icon_align_vertical": "flex-start",
+        "card1_bg_image": "shopify://shop_images/Rectangle_17.webp",
+        "card1_icon": "shopify://shop_images/AYURVEDA_ELEMENTS-01_1.webp",
+        "card1_box_bg": "#d4f4dd",
+        "card1_title": "Ayurveda",
+        "card1_description": "A well -balanced strategy of daily life, hormones and complete well-being.",
+        "card2_bg_image": "shopify://shop_images/Rectangle_17_1.webp",
+        "card2_icon": "shopify://shop_images/HOMEOPATHY_ELEMENTS-01_1.webp",
+        "card2_box_bg": "#fef3e8",
+        "card2_title": "Homeopathy",
+        "card2_description": "Addresses the core issues effectively with no or negligible side effects.",
+        "card3_bg_image": "shopify://shop_images/Rectangle_17_2.webp",
+        "card3_icon": "shopify://shop_images/MODERN_MEDICINE_ELEMENTS-01_1.webp",
+        "card3_box_bg": "#fef0f0",
+        "card3_title": "Modern Medicine",
+        "card3_description": "Instant and indicative cures for quicker outcomes.",
+        "strip_text_before": "",
+        "strip_text_highlight": "The combined effects provide a lasting and beneficial outcome, energizing and enhancing bodily functions.",
+        "strip_text_after": "",
+        "strip_show_bg": true,
+        "strip_bg_color": "#f5f5f5",
+        "strip_show_border": false,
+        "strip_border_color": "#ff6b6b",
+        "strip_alignment": "center",
+        "strip_text_color": "#333333",
+        "strip_highlight_color": "#000000",
+        "strip_highlight_weight": "700",
+        "strip_font_size": 16,
+        "mobile_heading_size": 24,
+        "mobile_subtitle_size": 14,
+        "mobile_card_height": 380,
+        "dots_position": "below_cards"
+      }
+    },
+    "177044969452c69ffa": {
+      "type": "_blocks",
+      "settings": {}
+    },
+    "blocks_6XLBMX": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_1595750_D9fNhM": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "",
+            "scroll_offset": 100,
+            "collection": "for-him",
+            "pinned_products": [
+              "boldup-100"
+            ],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#fffdfd",
+            "products_count": 37,
+            "heading": "Beneficial packs for intercourse",
+            "description": "",
+            "show_sidebar": true,
+            "sidebar_title": "For more powerful erections, effective control and enhanced performance",
+            "sidebar_paragraph": "The sexual intimacies do not just deal with the physical issues. The hormonal development, daily life pattern, exertion and sleep patterns are all influenced by the sexual performances. Our comprehensive medical remedies solve everything together.",
+            "view_all_url": "",
+            "view_all_text": "View All Sexual Products",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": true,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#f12f46",
+            "cart_btn_hover_bg": "#f12f46",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        },
+        "ai_gen_block_1595750_jVXcQK": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "",
+            "scroll_offset": 100,
+            "collection": "weight-for-him",
+            "pinned_products": [],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#fffdf4",
+            "products_count": 8,
+            "heading": "Remedies For Weight Control",
+            "description": "",
+            "show_sidebar": true,
+            "sidebar_title": "For the persistent fat, decelerated metabolismand pangs",
+            "sidebar_paragraph": "The excess weight is often gained because of hormonal issues, exertion and irregular sleeping patterns. Calories do not just cause weight gain. Our effective products aim at metabolism, processing of fat and insulin.",
+            "view_all_url": "",
+            "view_all_text": "View All Weight Products",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": true,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#f12f46",
+            "cart_btn_hover_bg": "#f12f46",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        },
+        "ai_gen_block_1595750_bBpMEE": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "",
+            "scroll_offset": 100,
+            "collection": "overall-wellness",
+            "pinned_products": [
+              "sehatup-shilajit-honey-sticks"
+            ],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#fffdfd",
+            "products_count": 28,
+            "heading": "Energy & Daily Wellness",
+            "description": "",
+            "show_sidebar": true,
+            "sidebar_title": "Decreased levels of energy, tiredness, exertion and in effective stamina",
+            "sidebar_paragraph": "Regular exertion stops the strength. The vitality is enhanced with credible natural remedies.",
+            "view_all_url": "",
+            "view_all_text": "View All Energy Products",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": true,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#f12f46",
+            "cart_btn_hover_bg": "#f12f46",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_1595750_D9fNhM",
+        "ai_gen_block_1595750_jVXcQK",
+        "ai_gen_block_1595750_bBpMEE"
+      ],
+      "name": "Collection showcase",
+      "settings": {}
+    },
+    "blocks_PMCNnD": {
+      "type": "_blocks",
+      "name": "Collection showcase",
+      "settings": {}
+    },
+    "blocks_Lp4Aqa": {
+      "type": "_blocks",
+      "name": "Collection showcase",
+      "settings": {}
+    },
+    "trust_certification_AkmXEL": {
+      "type": "trust-certification",
+      "blocks": {
+        "certification_zC6T4H": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "certification_rUWkTH": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "certification_tXcC9e": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "certification_zC6T4H",
+        "certification_rUWkTH",
+        "certification_tXcC9e"
+      ],
+      "name": "Trust certifications",
+      "settings": {
+        "heading": "Why People Trust Us",
+        "heading_size": 28,
+        "heading_color": "#222222",
+        "container_width": 1200,
+        "logo_max_width": 140,
+        "label_font_size": 14,
+        "label_color": "#333333",
+        "enable_scroll": true,
+        "scroll_speed": 30,
+        "background_color": "#ffffff",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "margin_top": 0,
+        "margin_bottom": 0
+      }
+    },
+    "product_faq_LEmEVN": {
+      "type": "product-faq",
+      "blocks": {
+        "faq_GW9fqq": {
+          "type": "faq",
+          "settings": {
+            "question": "How can I start my care plan?",
+            "answer": "<p>After your purchase, our doctors will conduct a comprehensive evaluation of your concerns, medical history, and lifestyle to customize the plan to meet your specific needs.</p>"
+          }
+        },
+        "faq_pKnVwK": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my information confidential?",
+            "answer": "<p>Confidentiality and clarity are our priorities. Your data is held in strict confidence, and the information you share will solely be utilized for transparent communication and to deliver effective care.</p>"
+          }
+        },
+        "faq_PXBt7n": {
+          "type": "faq",
+          "settings": {
+            "question": "Are the products safe?",
+            "answer": "<p>Our products are approved by AYUSH. All our products are formulated by experts and are safe to use, and free from harmful chemicals.</p>"
+          }
+        },
+        "faq_kWxRxr": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my treatment plan customized to my needs?",
+            "answer": "<p>The plans provided offer a glimpse of what you can anticipate in your customized plan, but every individual's needs vary, and our doctors excel in leading you toward your unique journey to well-being.</p>"
+          }
+        },
+        "faq_j8VMX4": {
+          "type": "faq",
+          "settings": {
+            "question": "Do I have to pay for doctor consultation?",
+            "answer": "<p>Your doctor consultation is included at no additional cost with your care plan.</p>"
+          }
+        },
+        "faq_xBhifH": {
+          "type": "faq",
+          "settings": {
+            "question": "Are medications part of the program?",
+            "answer": "<p>Depending on the diagnosis, our doctors/nutritionists may prescribe medications as part of the treatment plan.<br/>These are selected based on individual needs and may include supplements, prescriptions, or other suitable options.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_GW9fqq",
+        "faq_pKnVwK",
+        "faq_PXBt7n",
+        "faq_kWxRxr",
+        "faq_j8VMX4",
+        "faq_xBhifH"
+      ],
+      "name": "FAQ accordion",
+      "settings": {
+        "heading": "Frequently Asked Questions",
+        "heading_size": 28,
+        "max_width": 1100,
+        "padding_top": 60,
+        "padding_bottom": 104,
+        "item_padding": 20,
+        "border_radius": 8,
+        "question_size": 16,
+        "answer_size": 15,
+        "background_color": "#ffffff",
+        "item_background": "#ffffff",
+        "border_color": "#e5e5e5",
+        "heading_color": "#1d1d1d",
+        "question_color": "#1d1d1d",
+        "answer_color": "#666666",
+        "him_q1": "Who is the For Him range designed for?",
+        "him_a1": "<p>Designed for men looking to support testosterone, energy, and performance naturally.</p>",
+        "him_q2": "Are these products safe for daily use?",
+        "him_a2": "<p>Yes, all products are clinically formulated and safe for daily use as directed.</p>",
+        "him_q3": "How soon will I see results?",
+        "him_a3": "<p>Most users notice improvements within 4–6 weeks of consistent use.</p>",
+        "her_q1": "Who is the For Her range designed for?",
+        "her_a1": "<p>Designed for women seeking hormonal balance, skin health, and sustained energy.</p>",
+        "her_q2": "Are these safe during pregnancy?",
+        "her_a2": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>",
+        "her_q3": "Can I take these with other supplements?",
+        "her_a3": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>"
+      }
+    }
+  },
+  "order": [
+    "blocks_pGGnd6",
+    "177011795365099f7c",
+    "177011846057cacb94",
+    "integrated_KeNAie",
+    "177044969452c69ffa",
+    "blocks_6XLBMX",
+    "blocks_PMCNnD",
+    "blocks_Lp4Aqa",
+    "trust_certification_AkmXEL",
+    "product_faq_LEmEVN"
+  ]
+}

@@ -1,0 +1,102 @@
+Act as a senior web designer and frontend engineer. Redesign the homepage of sehatUP with the polish, smooth motion and product focus of Apple's marketing pages, but with its own warm identity built from the sehatUP logo colours. Only the homepage. No other pages yet.
+
+THE BUSINESS
+sehatUP is an Indian digital clinic. Doctors from Ayurveda, Homeopathy and modern medicine (Allopathy) look at one person's case together and give one care plan, with medicines and care kits delivered home.
+It helps men and women:
+- Women: periods, PCOD and PCOS, hormonal imbalance, weight loss.
+- Men: stamina, timing and sexual wellness, weight loss.
+- Everyone: stress, sleep, digestion and bloating, low energy, immunity.
+The first step for a visitor is a free 2 minute health assessment called Health Score 360: https://www.sehatup.com/pages/health-score-360
+The second option is to talk to a doctor.
+
+WHO VISITS
+Men and women across India, many from small towns and villages, many on a low-cost Android phone with a slow connection, many reading English as a second language. Some arrive embarrassed about their problem (sexual health, periods). The page must feel private, respectful and trustworthy.
+
+THE ONE JOB OF THIS PAGE
+A visitor understands in a few seconds what sehatUP does and whether it is for them, then taps "Start free assessment". Everything on the page either explains, builds trust, or leads to that button.
+
+WRITING RULES
+- Simple English, short sentences, everyday words. Write for someone who reads English slowly. No medical jargon without a plain explanation.
+- Say the benefit directly. No "not X, but Y" phrasing, no em dashes, no en dashes.
+- No hype words: revolutionary, holistic journey, unlock, empower, seamless, transform your life.
+- Sensitive topics (sexual health, periods) in calm, respectful words. No suggestive images or wording.
+- Button labels say exactly what happens: "Start free assessment", "Talk to a doctor", "View kit".
+
+BRAND
+Colours from the sehatUP logo:
+- Crimson #ee204a: the lead brand colour. Main buttons, the "UP" in the logo, highlights, icons, active states, one or two bold crimson moments on the page (for example the final call to action band).
+- Soft pink #fde8ec and lighter pink tints: the signature background. Hero, image backdrops, alternating sections. The page should feel light, warm and pink-and-white, like the current site.
+- Navy #14183c: text colour for headings and body only. Never large dark navy sections or dark navy backgrounds; at most the footer.
+- Page background: a warm off-white with a hint of pink, not pure white and not beige.
+Pick the neutrals and any extra tints yourself and define them all as reusable tokens.
+Type: choose one readable typeface family with good Indian-rupee and number support (for example a humanist sans), used at clear sizes. Body text at least 17px on mobile. Do not use Inter, Geist or Space Grotesk.
+
+WHAT IS ON THE CURRENT HOMEPAGE (screenshot attached)
+Keep the substance, redesign the presentation, and cut what does not help the one job. Current sections, top to bottom:
+1. Top strip: Free shipping on prepaid orders, 100% trusted, Verified doctors.
+2. Header: logo, For Him, For Her, Combos, Blogs, About Us, Health Score 360, search, account, cart.
+3. Hero: "Struggling with stress, hormones, weight or sexual health? Find the real cause in 60 seconds." Subline: India's first digital clinic where doctors from Ayurveda, Homeopathy and Allopathy work together for you. Buttons: Start free assessment, Talk to a doctor. Photo of a doctor with a patient.
+4. Why traditional healthcare isn't working: fragmented treatment, the endless medicine cycle, trial and error prescriptions.
+5. Why sehatUP integrated care works: the power of three medical systems, Ayurveda, Homeopathy and modern medicine, together giving a 360 care plan.
+6. How sehatUP works, four steps: Know your health score, Multi-system doctor review, Get a personalized care kit, Continuous monitoring. (Four matching product photos exist for these steps; reuse them.)
+7. Conditions we solve: sexual wellness, hormonal imbalance, weight gain and metabolism, stress and anxiety, sleep issues, digestion and bloating, low energy and fatigue, immunity. Plus "Not sure what to choose? Take the 2 minute health score quiz".
+8. Meet our medical experts: three doctors with photo, name, qualification and years of experience. Use the real names, titles and photos from the current site exactly as they are.
+9. Doctor-designed care kits: Stress and Sleep Balance Kit, Women's Hormone Balance Kit, Men's Performance Kit, Weight Management Kit, each with a Buy now button linking to its product page.
+10. Why people trust us: AYUSH approved, GMP certified, verified doctors.
+11. Real people, real progress: 40% better sleep, 30% improved energy, 25% reduced stress, better digestion.
+12. Featured in: press logos.
+13. Frequently asked questions.
+14. Blogs: three latest posts.
+15. Footer.
+
+DIRECTION FOR THE NEW PAGE
+- Lead with the person's problem and the free assessment. The hero must make the two paths obvious: "For women" and "For men", then one clear "Start free assessment" button.
+- Merge sections 4 and 5 into one short story: the problem with one-system treatment, then how three systems together solve it. One section, not two.
+- Make "How it works" the visual centre of the page, using the four existing step photos.
+- Conditions: let visitors pick their concern quickly, grouped by For women, For men, For everyone, each item linking to its page or to the assessment.
+- Keep doctors, kits, trust badges, FAQ and blogs, each in a composition suited to its content. No wall of identical cards.
+- The page should feel short. Cut repetition. Every section earns its place.
+
+TRUST AND HONESTY (hard rules)
+- Do not invent testimonials, doctor names, statistics, press mentions, certifications or claims. Use only what is listed above or visible in the screenshot.
+- The progress numbers in section 11 (40%, 30%, 25%) are only shown if we can say where they come from. Design the section with a visible source line, and mark it "Source needed before launch" for review.
+- Press logos and certification badges: use the real ones from the current site. If an asset is missing, leave a clearly labelled placeholder, never a made-up logo.
+- Medical claims stay modest: "may help", "doctors will guide you". No cures, no guarantees, no "no side effects".
+
+DESIGN LIMITS
+Avoid harsh gradients, rainbow or neon colours, purple-and-black themes, radial glow orbs, dot grids, glass effects, decorative stripes, sparkle icons, emojis, animated arrows, shadows on everything, and the same rounded card used for every section. No three-feature-card rows, bento grids, checkmark bullet lists or three pricing tiers. No Lucide icons; use icons only where they make an action clearer.
+
+MOBILE AND SPEED FIRST
+- Design at 360px width first, then scale up to desktop.
+- Tap targets at least 48px. The "Start free assessment" button stays easy to reach on mobile, for example a slim sticky bar at the bottom after the hero scrolls away.
+- Images compressed and lazy-loaded below the fold. The page must stay usable on a slow 3G connection.
+- Clear contrast on every text and button; nothing below WCAG AA.
+
+BEHAVIOUR AND MOTION
+The page must feel alive and premium, not flat. Use purposeful motion that guides the eye:
+- Hero: one orchestrated entrance on load. Headline, then subline, then buttons, then the hero image, staggered over under a second.
+- How it works: as the section scrolls into view, the four steps appear one after another and the connector line between them draws itself from step 1 to step 4.
+- Sections and images fade and rise gently into place once as they enter the screen (only once, never on every scroll).
+- Condition chips, kit cards and doctor cards respond to hover and tap with a small lift or image zoom.
+- FAQ answers open and close with a smooth height animation.
+- The sticky mobile "Start free assessment" bar slides up after the hero scrolls away.
+- Buttons have a clear pressed state.
+Keep every animation short (150 to 600ms), smooth, and never blocking reading. Respect prefers-reduced-motion by turning all of it off. Normal scrolling, no scroll hijacking.
+
+VISUAL RICHNESS
+Avoid a raw, wireframe-like look. Use large real photography (the attached images), circular pink image backdrops like the current step images, layered image compositions, generous whitespace, and clear contrast between sections through pink and off-white backgrounds.
+- Menus, FAQ accordion, search and buttons must work, with visible keyboard focus and labelled inputs.
+- Footer links to Terms of Service and Privacy Policy. Keep the existing pages; do not write new legal text.
+
+TECHNICAL CONTEXT
+The live site is a Shopify store. The homepage is built from Shopify sections in Liquid. The redesign must be buildable as Shopify sections later: plain HTML, CSS and a little vanilla JavaScript, no heavy frameworks, product and cart links kept as real Shopify URLs. Preserve every working feature: cart, search, account, product links, the health score quiz link.
+
+RESPONSIVE PREVIEW
+Build one working homepage, not static mockups. Add a small preview toolbar at the top (outside the page itself) with buttons that switch the viewport width, so I can see the same live page at: 4K 3840px, laptop 1440px, tablet 768px, mobile 390px, small phone 320px. Scale the frame down to fit my screen when it is wider than the window, and show the current width. Every size must work: no horizontal scrolling, no cut-off text, no overlapping elements, readable text, and a layout designed for that size, not just stretched. On 4K, cap the content width so lines stay readable and the page does not look empty.
+
+WORKFLOW
+1. Explain the visual direction in a few lines: colours, type, and the one memorable idea of the page.
+2. Build the hero and the How it works section first with the real content above. Check them at 360px and at desktop width.
+3. Once those are right, build the rest of the page in the same system.
+4. Check mobile wrapping, overflow, contrast, links and the full path from the hero to the assessment. Fix what you find.
+5. Report what you actually checked, what still needs real assets or data (source for the progress numbers, missing logos), and what is unfinished. Do not claim to have checked anything you could not see.

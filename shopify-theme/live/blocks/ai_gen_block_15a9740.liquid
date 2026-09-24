@@ -1,0 +1,454 @@
+{% doc %}
+  @prompt
+    Create a custom Shopify section for an Announcement Bar with the following exact behavior and structure.
+    
+    🎯 CORE BEHAVIOR (MOST IMPORTANT)
+    
+    The announcement bar must be full width
+    
+    It contains multiple announcement items in a single horizontal row
+    
+    Each item contains: icon on the left + text on the right
+    
+    The bar should:
+    
+    ✅ Stay perfectly centered and static when all items fit in one screen width
+    ✅ Automatically start horizontal scrolling ONLY when the items overflow the screen width
+    
+    This decision must be made dynamically using JavaScript by comparing:
+    
+    track.scrollWidth > wrapper.clientWidth
+    
+    
+    If true → start infinite scrolling animation
+    If false → keep items centered and static
+    
+    This must work on all screen sizes, not based on breakpoints.
+    
+    🧱 STRUCTURE
+    
+    HTML hierarchy must be:
+    
+    .announcement-bar → full width outer container
+    
+    .announcement-wrap → centered content wrapper
+    
+    .announcement-track → flex row containing all items
+    
+    Multiple .announcement-item inside the track
+    
+    Each item:
+    
+    optional icon image
+    
+    text span
+    
+    Use:
+    
+    {{ block.shopify_attributes }}
+    {{ block.settings.icon | image_url: width: 200 }}
+    
+    
+    Lazy load images. Icons always appear to the left of text.
+    
+    🎨 DESIGN RULES (NO SETTINGS, HARD-CODED CLEAN VALUES)
+    
+    Use these fixed values directly in CSS (no Liquid settings):
+    
+    Background: #1c1c1c
+    
+    Text color: #ffffff
+    
+    Max width: 2000px
+    
+    Padding: 12px 16px
+    
+    Gap between items: 40px
+    
+    Gap between icon and text: 8px
+    
+    Font size: 14px
+    
+    Icon size: 20px
+    
+    Opacity: 0.95
+    
+    white-space: nowrap
+    
+    flex-shrink: 0 on items
+    
+    will-change: transform on track
+    
+    object-fit: contain for icons
+    
+    Wrapper must have overflow: hidden
+    
+    No min-width tricks. No max-content.
+    
+    ⚙️ SCROLLING ANIMATION (CRITICAL)
+    
+    Implement smooth infinite marquee using:
+    
+    requestAnimationFrame
+    
+    Clone the track and append to wrapper
+    
+    Move using transform: translateX()
+    
+    Logic per frame:
+    
+    pos -= speed / 60
+    if abs(pos) >= track.scrollWidth → reset to 0
+    
+    
+    Apply transform to both original and clone.
+    
+    Speed constant: 28
+    
+    🧠 SMART START / STOP LOGIC
+    
+    On load and on resize:
+    
+    if (track.scrollWidth > wrapper.clientWidth)
+        start scrolling
+    else
+        stop animation, remove clone, center items
+    
+    
+    Centered items must use:
+    
+    justify-content: center;
+    
+    
+    Scrolling state must use:
+    
+    justify-content: flex-start;
+    
+    ♻️ ROBUSTNESS
+    
+    Wrap JS in IIFE
+    
+    Use unique IDs based on section.id
+    
+    Remove ID from cloned track
+    
+    Cancel animation frame on reset
+    
+    Listen to:
+    
+    DOMContentLoaded
+    
+    resize
+    
+    shopify:section:load
+    
+    Must work smoothly inside Shopify theme editor.
+    
+    🧩 BLOCKS (ONLY THING EDITABLE)
+    
+    Schema should ONLY contain blocks:
+    
+    Block type: "item"
+    
+    Block settings:
+    
+    Image picker → icon (optional)
+    
+    Text field → announcement text
+    
+    No section settings. No color pickers. No controls.
+    
+    Preset must include 3 default items.
+    
+    ✅ EXPECTED RESULT
+    Condition	Behavior
+    Items fit screen	Centered, static, no movement
+    Items overflow	Smooth infinite horizontal scroll
+    Resize	Auto recalculates
+    Mobile/Desktop	Same logic
+    Theme editor	Works perfectly
+    
+    This must feel premium, smooth, and intelligent — not breakpoint-based scrolling.
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .announcement-bar-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    background-color: #1c1c1c;
+    opacity: 0.95;
+  }
+
+  .announcement-wrap-{{ ai_gen_id }} {
+    max-width: 2000px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .announcement-track-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    will-change: transform;
+  }
+
+  .announcement-item-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: #ffffff;
+    font-size: 14px;
+  }
+
+  .announcement-icon-{{ ai_gen_id }} {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    object-fit: contain;
+  }
+{% endstyle %}
+
+<announcement-bar-{{ ai_gen_id }}
+  class="announcement-bar-{{ ai_gen_id }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="announcement-wrap-{{ ai_gen_id }}">
+    <div class="announcement-track-{{ ai_gen_id }}">
+      {% if block.settings.item_1_text != blank %}
+        <div class="announcement-item-{{ ai_gen_id }}">
+          {% if block.settings.item_1_icon %}
+            <img
+              src="{{ block.settings.item_1_icon | image_url: width: 200 }}"
+              alt=""
+              class="announcement-icon-{{ ai_gen_id }}"
+              loading="lazy"
+              width="20"
+              height="20"
+            >
+          {% endif %}
+          <span>{{ block.settings.item_1_text }}</span>
+        </div>
+      {% endif %}
+      {% if block.settings.item_2_text != blank %}
+        <div class="announcement-item-{{ ai_gen_id }}">
+          {% if block.settings.item_2_icon %}
+            <img
+              src="{{ block.settings.item_2_icon | image_url: width: 200 }}"
+              alt=""
+              class="announcement-icon-{{ ai_gen_id }}"
+              loading="lazy"
+              width="20"
+              height="20"
+            >
+          {% endif %}
+          <span>{{ block.settings.item_2_text }}</span>
+        </div>
+      {% endif %}
+      {% if block.settings.item_3_text != blank %}
+        <div class="announcement-item-{{ ai_gen_id }}">
+          {% if block.settings.item_3_icon %}
+            <img
+              src="{{ block.settings.item_3_icon | image_url: width: 200 }}"
+              alt=""
+              class="announcement-icon-{{ ai_gen_id }}"
+              loading="lazy"
+              width="20"
+              height="20"
+            >
+          {% endif %}
+          <span>{{ block.settings.item_3_text }}</span>
+        </div>
+      {% endif %}
+      {% if block.settings.item_4_text != blank %}
+        <div class="announcement-item-{{ ai_gen_id }}">
+          {% if block.settings.item_4_icon %}
+            <img
+              src="{{ block.settings.item_4_icon | image_url: width: 200 }}"
+              alt=""
+              class="announcement-icon-{{ ai_gen_id }}"
+              loading="lazy"
+              width="20"
+              height="20"
+            >
+          {% endif %}
+          <span>{{ block.settings.item_4_text }}</span>
+        </div>
+      {% endif %}
+      {% if block.settings.item_5_text != blank %}
+        <div class="announcement-item-{{ ai_gen_id }}">
+          {% if block.settings.item_5_icon %}
+            <img
+              src="{{ block.settings.item_5_icon | image_url: width: 200 }}"
+              alt=""
+              class="announcement-icon-{{ ai_gen_id }}"
+              loading="lazy"
+              width="20"
+              height="20"
+            >
+          {% endif %}
+          <span>{{ block.settings.item_5_text }}</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</announcement-bar-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class AnnouncementBar{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.wrapper = this.querySelector('.announcement-wrap-{{ ai_gen_id }}');
+        this.track = this.querySelector('.announcement-track-{{ ai_gen_id }}');
+        this.clone = null;
+        this.animationId = null;
+        this.position = 0;
+        this.speed = 28;
+        this.isScrolling = false;
+      }
+
+      connectedCallback() {
+        this.checkAndInitialize();
+        window.addEventListener('resize', () => this.checkAndInitialize());
+        document.addEventListener('shopify:section:load', () => this.checkAndInitialize());
+      }
+
+      disconnectedCallback() {
+        this.stopScrolling();
+        window.removeEventListener('resize', () => this.checkAndInitialize());
+      }
+
+      checkAndInitialize() {
+        const shouldScroll = this.track.scrollWidth > this.wrapper.clientWidth;
+
+        if (shouldScroll && !this.isScrolling) {
+          this.startScrolling();
+        } else if (!shouldScroll && this.isScrolling) {
+          this.stopScrolling();
+        }
+      }
+
+      startScrolling() {
+        this.isScrolling = true;
+        this.track.style.justifyContent = 'flex-start';
+
+        if (!this.clone) {
+          this.clone = this.track.cloneNode(true);
+          this.clone.removeAttribute('id');
+          this.wrapper.appendChild(this.clone);
+        }
+
+        this.position = 0;
+        this.animate();
+      }
+
+      stopScrolling() {
+        this.isScrolling = false;
+        this.track.style.justifyContent = 'center';
+
+        if (this.animationId) {
+          cancelAnimationFrame(this.animationId);
+          this.animationId = null;
+        }
+
+        if (this.clone) {
+          this.clone.remove();
+          this.clone = null;
+        }
+
+        this.track.style.transform = 'translateX(0)';
+      }
+
+      animate() {
+        if (!this.isScrolling) return;
+
+        this.position -= this.speed / 60;
+
+        if (Math.abs(this.position) >= this.track.scrollWidth) {
+          this.position = 0;
+        }
+
+        this.track.style.transform = `translateX(${this.position}px)`;
+        if (this.clone) {
+          this.clone.style.transform = `translateX(${this.position}px)`;
+        }
+
+        this.animationId = requestAnimationFrame(() => this.animate());
+      }
+    }
+
+    customElements.define('announcement-bar-{{ ai_gen_id }}', AnnouncementBar{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Announcement bar",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "item_1_text",
+      "label": "Item 1 text",
+      "default": "Free shipping on orders over ₹999"
+    },
+    {
+      "type": "image_picker",
+      "id": "item_1_icon",
+      "label": "Item 1 icon"
+    },
+    {
+      "type": "text",
+      "id": "item_2_text",
+      "label": "Item 2 text",
+      "default": "100% natural ingredients"
+    },
+    {
+      "type": "image_picker",
+      "id": "item_2_icon",
+      "label": "Item 2 icon"
+    },
+    {
+      "type": "text",
+      "id": "item_3_text",
+      "label": "Item 3 text",
+      "default": "Trusted by 10,000+ customers"
+    },
+    {
+      "type": "image_picker",
+      "id": "item_3_icon",
+      "label": "Item 3 icon"
+    },
+    {
+      "type": "text",
+      "id": "item_4_text",
+      "label": "Item 4 text"
+    },
+    {
+      "type": "image_picker",
+      "id": "item_4_icon",
+      "label": "Item 4 icon"
+    },
+    {
+      "type": "text",
+      "id": "item_5_text",
+      "label": "Item 5 text"
+    },
+    {
+      "type": "image_picker",
+      "id": "item_5_icon",
+      "label": "Item 5 icon"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Announcement bar"
+    }
+  ]
+}
+{% endschema %}

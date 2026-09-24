@@ -1,0 +1,432 @@
+{% assign uid = section.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .health-hero-{{ uid }}{
+    position:relative;
+    width:100%;
+    overflow:hidden;
+    background:#000;
+  }
+
+  /* Background */
+  .health-hero__bg-{{ uid }}{
+    position:absolute;
+    inset:0;
+    z-index:0;
+  }
+
+  .health-hero__bg-{{ uid }} img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transform: scale(1.08);
+    opacity: {{ section.settings.image_opacity | divided_by: 100.0 }};
+  }
+
+  .health-hero__blur-{{ uid }}{
+    position:absolute;
+    inset:0;
+    backdrop-filter: blur({{ section.settings.layer_blur }}px);
+  }
+
+  /* Container */
+  .health-hero__container-{{ uid }}{
+    position:relative;
+    z-index:2;
+    max-width:{{ section.settings.container_width }}px;
+    margin:auto;
+    padding: {{ section.settings.padding_top }}px 60px {{ section.settings.padding_bottom }}px;
+    display:flex;
+    align-items:center;
+    min-height:{{ section.settings.min_height }}px;
+  }
+
+  /* Content */
+  .health-hero__content-{{ uid }}{
+    max-width:640px;
+    color:#fff;
+  }
+
+  .hero-heading-{{ uid }}{
+    font-size: {{ section.settings.heading_size }}px;
+    font-weight: {{ section.settings.heading_weight }};
+    color:white;
+    line-height:120%;
+    margin:0;
+  }
+
+  .hero-sub-{{ uid }}{
+    margin-top:16px;
+    font-size: {{ section.settings.sub_size }}px;
+  }
+
+  .hero-desc-{{ uid }}{
+    margin-top:14px;
+    font-size: {{ section.settings.desc_size }}px;
+    line-height:1.6;
+  }
+
+  .hero-highlight-{{ uid }}{
+    color: {{ section.settings.highlight_color }};
+    font-weight:700;
+  }
+
+  /* Buttons */
+  .health-hero__buttons-{{ uid }}{
+    display:flex;
+    gap:18px;
+    margin-top:30px;
+  }
+
+  .btn{
+    padding:16px 34px;
+    border-radius:40px;
+    font-weight:600;
+    text-decoration:none;
+    font-size:12px;
+  }
+  .btn-primary{ background:#F12F46; color:#fff; }
+  .btn-secondary{ border:2px solid #ffffffaa; color:#fff; }
+
+  /* Doctor */
+  .health-hero__doctor-{{ uid }}{
+    position:absolute;
+    right:0;
+    bottom:0;
+    z-index:2;
+  }
+
+  .health-hero__doctor-{{ uid }} img{
+    height: {{ section.settings.doctor_height }}px;
+    width: auto;
+    object-fit: cover;
+    object-position: bottom right;
+    display: block;
+  }
+
+  /* ============ TABLET ADJUSTMENTS ============ */
+  @media (max-width:1278px){
+    .health-hero__doctor-{{ uid }} img{
+      height:460px;
+    }
+
+    .hero-heading-{{ uid }}{
+      font-size:37px;
+    }
+
+    .hero-sub-{{ uid }}{
+      font-size:16px;
+    }
+
+    .hero-desc-{{ uid }}{
+      font-size:13px;
+    }
+  }
+
+  /* ============ CRITICAL OVERLAP FIX BELOW 1208px ============ */
+  @media (max-width:1208px){
+    .health-hero__container-{{ uid }}{
+      padding: {{ section.settings.padding_top | minus: 30 }}px 40px {{ section.settings.padding_bottom | minus: 30 }}px;
+      min-height:405px;
+    }
+
+    .health-hero__doctor-{{ uid }} img{
+      height:380px;
+    }
+
+    .hero-heading-{{ uid }}{
+      font-size:30px;
+      line-height:115%;
+    }
+
+    .hero-sub-{{ uid }}{
+      font-size:14px;
+    }
+
+    .hero-desc-{{ uid }}{
+      font-size:12px;
+    }
+
+    .health-hero__buttons-{{ uid }}{
+      gap:12px;
+      margin-top:22px;
+    }
+
+    .btn{
+      padding:12px 22px;
+      font-size:13px;
+    }
+  }
+
+  /* ============ MOBILE ============ */
+  @media(max-width:1024px){
+    .health-hero__container-{{ uid }}{
+      padding: {{ section.settings.padding_top | minus: 30 }}px 40px {{ section.settings.padding_bottom | minus: 30 }}px;
+      min-height:359px;
+    }
+
+    .health-hero__doctor-{{ uid }} img{
+      height:320px;
+    }
+
+    .hero-heading-{{ uid }}{
+      font-size:24px;
+      line-height:115%;
+    }
+
+    .hero-sub-{{ uid }}{
+      font-size:13px;
+    }
+
+    .hero-desc-{{ uid }}{
+      font-size:12px;
+    }
+
+    .health-hero__buttons-{{ uid }}{
+      gap:12px;
+      margin-top:22px;
+    }
+
+    .btn{
+      padding:12px 22px;
+      font-size:11px;
+    }
+  }
+
+  /* ============ PHONE PERFECT LAYOUT ============ */
+  @media (max-width:972px){
+    /* Remove hero behavior */
+    .health-hero__container-{{ uid }}{
+      display:block;
+      padding:24px 16px;
+      min-height:auto;
+    }
+
+    .health-hero__content-{{ uid }}{
+      max-width:100%;
+      text-align:left;
+    }
+
+    .hero-heading-{{ uid }}{
+      font-size:22px;
+      line-height:130%;
+    }
+
+    .hero-sub-{{ uid }}{
+      font-size:13px;
+      margin-top:10px;
+    }
+
+    .hero-desc-{{ uid }}{
+      font-size:12px;
+      margin-top:10px;
+    }
+
+    /* Buttons left aligned */
+    .health-hero__buttons-{{ uid }}{
+      justify-content:flex-start;
+      gap:10px;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      padding:10px 18px;
+      font-size:12px;
+    }
+
+    /* Doctor centered below content */
+    .health-hero__doctor-{{ uid }}{
+      position:relative;
+      right:auto;
+      bottom:auto;
+      margin:20px auto 0 auto;
+      display:flex;
+      justify-content:center;
+      width:100%;
+    }
+
+    .health-hero__doctor-{{ uid }} img{
+      height:260px;
+    }
+  }
+
+  @media (max-width:380px){
+    .health-hero__buttons-{{ uid }}{
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .btn{
+      width:100%;
+      text-align:center;
+      padding:12px 16px;
+    }
+  }
+{% endstyle %}
+
+
+<section class="health-hero-{{ uid }}">
+  <div class="health-hero__bg-{{ uid }}">
+    <img src="{{ section.settings.background_image | image_url: width:2000 }}">
+    <div class="health-hero__blur-{{ uid }}"></div>
+  </div>
+
+  <div class="health-hero__container-{{ uid }}">
+    <div class="health-hero__content-{{ uid }}">
+      <h1 class="hero-heading-{{ uid }}">{{ section.settings.heading }}</h1>
+
+      <div class="hero-sub-{{ uid }}">
+        {{ section.settings.sub_text_before }}
+        <span class="hero-highlight-{{ uid }}">{{ section.settings.highlight_text }}</span>
+      </div>
+
+      <div class="hero-desc-{{ uid }}">{{ section.settings.description }}</div>
+
+      <div class="health-hero__buttons-{{ uid }}">
+        <a href="{{ section.settings.primary_link }}" class="btn btn-primary">{{ section.settings.primary_label }}</a>
+        <a href="{{ section.settings.secondary_link }}" class="btn btn-secondary">
+          {{- section.settings.secondary_label -}}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="health-hero__doctor-{{ uid }}">
+    <img src="{{ section.settings.doctor_image | image_url: width:1200 }}">
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Healthcare hero banner",
+  "settings": [
+    { "type": "image_picker", "id": "background_image", "label": "Background image" },
+    { "type": "image_picker", "id": "doctor_image", "label": "Doctor image" },
+
+    {
+      "type": "range",
+      "id": "image_opacity",
+      "min": 10,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 39,
+      "label": "Image opacity"
+    },
+    {
+      "type": "range",
+      "id": "layer_blur",
+      "min": 0,
+      "max": 25,
+      "step": 1,
+      "unit": "px",
+      "default": 8,
+      "label": "Background blur"
+    },
+
+    {
+      "type": "range",
+      "id": "container_width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1400,
+      "label": "Container width"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 40,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 120,
+      "label": "Top padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 40,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 80,
+      "label": "Bottom padding"
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "min": 100,
+      "max": 1000,
+      "step": 10,
+      "unit": "px",
+      "default": 700,
+      "label": "Min height"
+    },
+
+    { "type": "text", "id": "heading", "label": "Heading" },
+    { "type": "text", "id": "sub_text_before", "label": "Sub text before highlight" },
+    { "type": "text", "id": "highlight_text", "label": "Highlight text" },
+    { "type": "color", "id": "highlight_color", "default": "#F12F46", "label": "Highlight color" },
+    { "type": "richtext", "id": "description", "label": "Description" },
+
+    { "type": "text", "id": "primary_label", "default": "Start Free Assessment", "label": "Primary button label" },
+    { "type": "url", "id": "primary_link", "label": "Primary button link" },
+    { "type": "text", "id": "secondary_label", "default": "Talk to a Doctor", "label": "Secondary button label" },
+    { "type": "url", "id": "secondary_link", "label": "Secondary button link" },
+
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 24,
+      "max": 90,
+      "step": 2,
+      "unit": "px",
+      "default": 64,
+      "label": "Heading size"
+    },
+    {
+      "type": "range",
+      "id": "heading_weight",
+      "min": 400,
+      "max": 900,
+      "step": 100,
+      "default": 700,
+      "label": "Heading weight"
+    },
+    {
+      "type": "range",
+      "id": "sub_size",
+      "min": 14,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 22,
+      "label": "Subheading size"
+    },
+    {
+      "type": "range",
+      "id": "desc_size",
+      "min": 12,
+      "max": 22,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "label": "Description size"
+    },
+    {
+      "type": "range",
+      "id": "doctor_height",
+      "min": 200,
+      "max": 1200,
+      "step": 10,
+      "unit": "px",
+      "default": 700,
+      "label": "Doctor image height"
+    }
+  ],
+  "presets": [{ "name": "Healthcare hero banner" }]
+}
+{% endschema %}

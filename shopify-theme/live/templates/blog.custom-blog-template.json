@@ -1,0 +1,120 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "blog_listing_premium_BQkMrJ": {
+      "type": "blog-listing-premium",
+      "name": "Premium blog listing",
+      "settings": {
+        "show_hero": true,
+        "hero_title": "Our Blog",
+        "hero_description": "<p>Discover wellness insights, tips, and stories</p>",
+        "hero_text_alignment": "left",
+        "hero_background_color": "#ffffff",
+        "hero_background_gradient": "",
+        "hero_overlay_type": "none",
+        "hero_overlay_opacity": 0,
+        "hero_title_size": 48,
+        "hero_title_weight": 700,
+        "hero_title_color": "#262626",
+        "hero_description_size": 18,
+        "hero_description_color": "#262626",
+        "hero_padding_top": 80,
+        "hero_padding_bottom": 40,
+        "layout_style": "grid",
+        "max_content_width": 1400,
+        "section_padding_top": 20,
+        "section_padding_bottom": 60,
+        "posts_per_page": 12,
+        "columns_desktop": 3,
+        "columns_tablet": 2,
+        "columns_mobile": "1",
+        "grid_gap": 24,
+        "card_background_color": "#ffffff",
+        "card_border_radius": 8,
+        "card_padding": 24,
+        "card_shadow_opacity": 0.1,
+        "card_shadow_vertical": 4,
+        "card_shadow_blur": 12,
+        "hover_effect": "lift",
+        "show_featured_image": true,
+        "image_aspect_ratio": "16-9",
+        "image_object_fit": "cover",
+        "image_hover_effect": "zoom",
+        "image_overlay_type": "none",
+        "image_overlay_opacity": 0.2,
+        "show_author": true,
+        "show_author_avatar": true,
+        "show_date": true,
+        "date_format": "%B %d, %Y",
+        "show_read_time": true,
+        "show_tags": false,
+        "show_excerpt": true,
+        "excerpt_word_count": 30,
+        "excerpt_max_lines": 4,
+        "show_read_more": true,
+        "card_title_size": 22,
+        "card_title_weight": 600,
+        "title_max_lines": 3,
+        "card_title_color": "#262626",
+        "excerpt_font_size": 15,
+        "excerpt_text_color": "#797068",
+        "meta_font_size": 13,
+        "meta_text_color": "#797068",
+        "tag_background_color": "#c2b7ac",
+        "tag_text_color": "#262626",
+        "tag_border_radius": 20,
+        "button_text": "Read more",
+        "button_style": "filled",
+        "button_background_color": "#262626",
+        "button_text_color": "#ffffff",
+        "button_hover_color": "#797068",
+        "button_font_size": 14,
+        "button_border_radius": 6,
+        "show_page_numbers": true,
+        "pagination_alignment": "center",
+        "pagination_button_bg": "#ffffff",
+        "pagination_button_text": "#262626",
+        "pagination_button_border": "#c2b7ac",
+        "pagination_button_hover_bg": "#c2b7ac",
+        "pagination_button_hover_text": "#262626",
+        "pagination_active_bg": "#262626",
+        "pagination_active_text": "#ffffff",
+        "pagination_border_radius": 6,
+        "show_recent_posts": true,
+        "show_all_tags": true,
+        "accent_color": "#ee204a"
+      }
+    },
+    "main": {
+      "type": "main-blog",
+      "disabled": true,
+      "settings": {
+        "layout": "grid",
+        "show_image": true,
+        "image_height": "small",
+        "show_date": false,
+        "show_author": false,
+        "enable_blog_schema": true,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "17705541211b145daa": {
+      "type": "_blocks",
+      "settings": {}
+    }
+  },
+  "order": [
+    "blog_listing_premium_BQkMrJ",
+    "main",
+    "17705541211b145daa"
+  ]
+}

@@ -1,0 +1,491 @@
+{% doc %}
+  @prompt
+    Create a responsive text marquee/ticker section with a single line of scrolling or static text.Layout structure:- Single line of text: "We Didn't Choose One Medical System. We United The Strongest Parts Of Three."- Clean, minimal design with text centered or scrolling horizontally- Optional background color or transparentRequirements:- Fully responsive layout:  * Desktop: full-width text display, centered or scrolling  * Tablet: adjusted font size, maintained layout  * Mobile: optimized font size, scrolling or wrapped text- Settings schema to customize:  * Text content (single line or multiple lines)  * Text color  * Background color  * Typography controls:    - Font size (desktop, tablet, mobile)    - Font weight    - Letter spacing    - Line height    - Text transform (uppercase, lowercase, capitalize, none)  * Text alignment: left, center, right  * Animation options:    - Static (no animation)    - Scroll/marquee (continuous horizontal scroll)    - Fade in on scroll    - Animation speed control (if scrolling)    - Animation direction (left to right, right to left)  * Section padding (top/bottom)  * Container max-width or full-width toggle  * Border options: top border, bottom border, color, width  * Mobile-specific:    - Font size override    - Text wrapping (single line or allow wrap)    - Animation toggle (enable/disable on mobile)- Text should be clean and readable- Optional scrolling/marquee animation for long text- Smooth animation if marquee is enabled- Text should scale appropriately on all devices- Support for rich text formatting (bold, italic)- Optional: duplicate text for seamless loop if using marquee- Accessible color contrast ratios- Clean, minimal design focused on typography- Optional: pause animation on hover- Mobile: text can wrap to multiple lines or scroll horizontally
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-text-marquee-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    padding: {{ block.settings.padding_top }}px 0 {{ block.settings.padding_bottom }}px;
+    background-color: {{ block.settings.background_color }};
+    {% if block.settings.show_top_border %}
+      border-top: {{ block.settings.border_width }}px solid {{ block.settings.border_color }};
+    {% endif %}
+    {% if block.settings.show_bottom_border %}
+      border-bottom: {{ block.settings.border_width }}px solid {{ block.settings.border_color }};
+    {% endif %}
+  }
+
+  .ai-text-marquee-container-{{ ai_gen_id }} {
+    {% if block.settings.full_width %}
+      width: 100%;
+      max-width: none;
+    {% else %}
+      max-width: {{ block.settings.max_width }}px;
+      margin: 0 auto;
+      padding: 0 20px;
+    {% endif %}
+  }
+
+  .ai-text-marquee-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    {% if block.settings.animation_type == 'marquee' %}
+      display: flex;
+      align-items: center;
+    {% endif %}
+  }
+
+  .ai-text-marquee-content-{{ ai_gen_id }} {
+    color: {{ block.settings.text_color }};
+    font-size: {{ block.settings.font_size_desktop }}px;
+    font-weight: {{ block.settings.font_weight }};
+    letter-spacing: {{ block.settings.letter_spacing }}px;
+    line-height: {{ block.settings.line_height }};
+    text-transform: {{ block.settings.text_transform }};
+    margin: 0;
+    {% if block.settings.animation_type == 'static' %}
+      text-align: {{ block.settings.text_alignment }};
+    {% elsif block.settings.animation_type == 'marquee' %}
+      white-space: nowrap;
+      display: inline-block;
+      padding-right: 50px;
+      animation: ai-marquee-scroll-{{ ai_gen_id }} {{ block.settings.animation_speed }}s linear infinite;
+      {% if block.settings.animation_direction == 'right_to_left' %}
+        animation-direction: normal;
+      {% else %}
+        animation-direction: reverse;
+      {% endif %}
+    {% elsif block.settings.animation_type == 'fade' %}
+      text-align: {{ block.settings.text_alignment }};
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    {% endif %}
+  }
+
+  {% if block.settings.animation_type == 'marquee' %}
+    .ai-text-marquee-wrapper-{{ ai_gen_id }}:hover .ai-text-marquee-content-{{ ai_gen_id }} {
+      {% if block.settings.pause_on_hover %}
+        animation-play-state: paused;
+      {% endif %}
+    }
+
+    @keyframes ai-marquee-scroll-{{ ai_gen_id }} {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+  {% endif %}
+
+  {% if block.settings.animation_type == 'fade' %}
+    .ai-text-marquee-content-{{ ai_gen_id }}.ai-visible-{{ ai_gen_id }} {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  {% endif %}
+
+  @media screen and (max-width: 989px) {
+    .ai-text-marquee-content-{{ ai_gen_id }} {
+      font-size: {{ block.settings.font_size_tablet }}px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-text-marquee-{{ ai_gen_id }} {
+      padding: {{ block.settings.padding_top | times: 0.7 | round }}px 0 {{ block.settings.padding_bottom | times: 0.7 | round }}px;
+    }
+
+    .ai-text-marquee-content-{{ ai_gen_id }} {
+      font-size: {{ block.settings.font_size_mobile }}px;
+      {% if block.settings.mobile_text_wrap %}
+        white-space: normal;
+        word-wrap: break-word;
+      {% endif %}
+      {% if block.settings.disable_animation_mobile and block.settings.animation_type == 'marquee' %}
+        animation: none;
+        white-space: normal;
+        word-wrap: break-word;
+        text-align: {{ block.settings.text_alignment }};
+      {% endif %}
+    }
+  }
+{% endstyle %}
+
+<text-marquee-{{ ai_gen_id }}
+  class="ai-text-marquee-{{ ai_gen_id }}"
+  {{ block.shopify_attributes }}
+  data-animation-type="{{ block.settings.animation_type }}"
+>
+  <div class="ai-text-marquee-container-{{ ai_gen_id }}">
+    <div class="ai-text-marquee-wrapper-{{ ai_gen_id }}">
+      {% if block.settings.animation_type == 'marquee' %}
+        <p class="ai-text-marquee-content-{{ ai_gen_id }}">
+          {{ block.settings.text_content }}
+        </p>
+        <p class="ai-text-marquee-content-{{ ai_gen_id }}" aria-hidden="true">
+          {{ block.settings.text_content }}
+        </p>
+      {% else %}
+        <p class="ai-text-marquee-content-{{ ai_gen_id }}">
+          {{ block.settings.text_content }}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</text-marquee-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class TextMarquee{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.animationType = this.dataset.animationType;
+      }
+
+      connectedCallback() {
+        if (this.animationType === 'fade') {
+          this.setupFadeAnimation();
+        }
+      }
+
+      setupFadeAnimation() {
+        const content = this.querySelector('.ai-text-marquee-content-{{ ai_gen_id }}');
+        if (!content) return;
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                content.classList.add('ai-visible-{{ ai_gen_id }}');
+              }
+            });
+          },
+          {
+            threshold: 0.2,
+            rootMargin: '0px 0px -50px 0px'
+          }
+        );
+
+        observer.observe(content);
+      }
+    }
+
+    customElements.define('text-marquee-{{ ai_gen_id }}', TextMarquee{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Text marquee",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "richtext",
+      "id": "text_content",
+      "label": "Text",
+      "default": "<p>We Didn't Choose One Medical System. We United The Strongest Parts Of Three.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "checkbox",
+      "id": "full_width",
+      "label": "Full width",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "label": "Max width",
+      "min": 600,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "range",
+      "id": "font_size_desktop",
+      "label": "Font size (desktop)",
+      "min": 12,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "font_size_tablet",
+      "label": "Font size (tablet)",
+      "min": 12,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "font_size_mobile",
+      "label": "Font size (mobile)",
+      "min": 12,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "Font weight",
+      "options": [
+        {
+          "value": "300",
+          "label": "Light"
+        },
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "500"
+    },
+    {
+      "type": "range",
+      "id": "letter_spacing",
+      "label": "Letter spacing",
+      "min": -2,
+      "max": 4,
+      "step": 0.5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Line height",
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.5
+    },
+    {
+      "type": "select",
+      "id": "text_transform",
+      "label": "Text transform",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "uppercase",
+          "label": "Uppercase"
+        },
+        {
+          "value": "lowercase",
+          "label": "Lowercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "Capitalize"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Animation"
+    },
+    {
+      "type": "select",
+      "id": "animation_type",
+      "label": "Animation type",
+      "options": [
+        {
+          "value": "static",
+          "label": "Static (no animation)"
+        },
+        {
+          "value": "marquee",
+          "label": "Marquee (scroll)"
+        },
+        {
+          "value": "fade",
+          "label": "Fade in on scroll"
+        }
+      ],
+      "default": "static"
+    },
+    {
+      "type": "select",
+      "id": "animation_direction",
+      "label": "Scroll direction",
+      "options": [
+        {
+          "value": "right_to_left",
+          "label": "Right to left"
+        },
+        {
+          "value": "left_to_right",
+          "label": "Left to right"
+        }
+      ],
+      "default": "right_to_left"
+    },
+    {
+      "type": "range",
+      "id": "animation_speed",
+      "label": "Animation speed",
+      "min": 5,
+      "max": 50,
+      "step": 5,
+      "unit": "s",
+      "default": 20
+    },
+    {
+      "type": "checkbox",
+      "id": "pause_on_hover",
+      "label": "Pause on hover",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Mobile settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_text_wrap",
+      "label": "Allow text wrap on mobile",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_animation_mobile",
+      "label": "Disable animation on mobile",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "header",
+      "content": "Borders"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_top_border",
+      "label": "Show top border",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_bottom_border",
+      "label": "Show bottom border",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "Border width",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border color",
+      "default": "#262626"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Text marquee"
+    }
+  ]
+}
+{% endschema %}

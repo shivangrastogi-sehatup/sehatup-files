@@ -1,0 +1,728 @@
+{% doc %}
+  @prompt
+    I want you to redesign my Shopify header search in an ADVANCED but SHOPIFY-SAFE way.
+    
+    IMPORTANT CONSTRAINTS (must follow strictly):
+    1. Use Shopify native predictive search only (no custom JS search logic).
+    2. There must be ONLY ONE predictive-search instance on the page.
+    3. Do NOT break existing predictive search functionality.
+    4. Keep the logic compatible with Dawn-based themes.
+    5. Do NOT create duplicate search icons or duplicate predictive-search blocks.
+    
+    DESIGN & UX REQUIREMENTS:
+    1. Search trigger should be a CAPSULE DESIGN on desktop:
+       - Rounded pill / capsule
+       - Search icon + placeholder text like “Search products…”
+       - Looks like a clickable input but acts as a trigger
+    2. Below a certain width (configurable via CSS min-width, e.g. 990px):
+       - Capsule hides
+       - Only a simple search icon is shown
+    3. Capsule and icon must both open the SAME search modal.
+    
+    SEARCH MODAL BEHAVIOR (VERY IMPORTANT):
+    1. When the modal opens and the input is EMPTY:
+       - Show a list of “Popular searches” or “Top selling products”
+       - Include a title like “Popular products” or “Trending now”
+       - Products should come from Shopify (use collections or search suggestions, not static hardcoded items)
+    2. When the user STARTS TYPING:
+       - Hide popular products
+       - Show live predictive search recommendations (products, collections, pages)
+    3. Recommendations must update live while typing (Shopify predictive search).
+    4. When input is cleared again:
+       - Popular products section should reappear.
+    
+    TECHNICAL IMPLEMENTATION REQUIREMENTS:
+    1. Keep predictive search inside a modal (details-modal).
+    2. Capsule must be only a trigger (NOT an input field).
+    3. Use CSS media queries to switch between capsule and icon:
+       - Example: capsule visible above 990px, icon visible below
+    4. Do NOT use display:none hacks that break accessibility.
+    5. Keep proper ARIA attributes intact.
+    6. No inline JavaScript hacks; rely on Shopify’s existing predictive-search behavior.
+    
+    FILES TO MODIFY / CREATE:
+    1. snippets/header-search.liquid
+       - Implement capsule trigger + modal search
+       - Add popular products section inside modal when input is empty
+    2. assets/component-search.css
+       - Capsule styles
+       - Responsive behavior (min-width based switch)
+    3. sections/header.liquid
+       - Ensure header-search is rendered ONLY ONCE
+    
+    BONUS (nice to have if possible):
+    1. Smooth hover animation on capsule
+    2. Focus state that visually indicates search readiness
+    3. Clean mobile UX (icon only)
+    
+    OUTPUT FORMAT I WANT:
+    1. Give me the COMPLETE updated `header-search.liquid`
+    2. Give me ONLY the REQUIRED CSS additions for `component-search.css`
+    3. Tell me EXACTLY what to remove or keep in `header.liquid`
+    4. No extra explanations, no assumptions, no missing code
+    
+    Remember:
+    - One predictive search instance
+    - Capsule = trigger
+    - Modal = actual search
+    - Desktop = capsule
+    - Mobile = icon
+    - Empty input = popular products
+    - Typing = live recommendations
+    
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-header-search-{{ ai_gen_id }} {
+    display: block;
+    position: relative;
+  }
+
+  .ai-search-capsule-{{ ai_gen_id }} {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background-color: {{ block.settings.capsule_bg_color }};
+    border: {{ block.settings.capsule_border_thickness }}px solid {{ block.settings.capsule_border_color }};
+    border-radius: {{ block.settings.capsule_border_radius }}px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: {{ block.settings.capsule_min_width }}px;
+  }
+
+  @media screen and (min-width: {{ block.settings.breakpoint }}px) {
+    .ai-search-capsule-{{ ai_gen_id }} {
+      display: flex;
+    }
+    .ai-search-icon-only-{{ ai_gen_id }} {
+      display: none;
+    }
+  }
+
+  @media screen and (max-width: {{ block.settings.breakpoint | minus: 1 }}px) {
+    .ai-search-capsule-{{ ai_gen_id }} {
+      display: none;
+    }
+    .ai-search-icon-only-{{ ai_gen_id }} {
+      display: flex;
+    }
+  }
+
+  .ai-search-capsule-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.capsule_hover_bg_color }};
+    border-color: {{ block.settings.capsule_hover_border_color }};
+    transform: translateY(-1px);
+  }
+
+  .ai-search-capsule-{{ ai_gen_id }}:focus-visible {
+    outline: 2px solid {{ block.settings.capsule_border_color }};
+    outline-offset: 2px;
+  }
+
+  .ai-search-capsule-icon-{{ ai_gen_id }} {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: {{ block.settings.capsule_icon_color }};
+  }
+
+  .ai-search-capsule-text-{{ ai_gen_id }} {
+    color: {{ block.settings.capsule_text_color }};
+    font-size: {{ block.settings.capsule_font_size }}px;
+    white-space: nowrap;
+  }
+
+  .ai-search-icon-only-{{ ai_gen_id }} {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: {{ block.settings.icon_color }};
+  }
+
+  .ai-search-icon-only-{{ ai_gen_id }}:focus-visible {
+    outline: 2px solid {{ block.settings.capsule_border_color }};
+    outline-offset: 2px;
+  }
+
+  .ai-search-icon-only-{{ ai_gen_id }} svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ai-search-modal-{{ ai_gen_id }} {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  .ai-search-modal-{{ ai_gen_id }}[open] {
+    display: flex;
+  }
+
+  .ai-search-modal-content-{{ ai_gen_id }} {
+    background-color: {{ block.settings.modal_bg_color }};
+    border-radius: {{ block.settings.modal_border_radius }}px;
+    width: 90%;
+    max-width: {{ block.settings.modal_max_width }}px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .ai-search-modal-header-{{ ai_gen_id }} {
+    padding: 20px;
+    border-bottom: 1px solid {{ block.settings.modal_border_color }};
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ai-search-modal-input-wrapper-{{ ai_gen_id }} {
+    flex-grow: 1;
+    position: relative;
+  }
+
+  .ai-search-modal-input-{{ ai_gen_id }} {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid {{ block.settings.input_border_color }};
+    border-radius: {{ block.settings.input_border_radius }}px;
+    font-size: 16px;
+    background-color: {{ block.settings.input_bg_color }};
+    color: {{ block.settings.input_text_color }};
+  }
+
+  .ai-search-modal-input-{{ ai_gen_id }}:focus {
+    outline: 2px solid {{ block.settings.capsule_border_color }};
+    outline-offset: 0;
+    border-color: transparent;
+  }
+
+  .ai-search-modal-close-{{ ai_gen_id }} {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: {{ block.settings.modal_text_color }};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-search-modal-close-{{ ai_gen_id }}:focus-visible {
+    outline: 2px solid {{ block.settings.capsule_border_color }};
+    outline-offset: 2px;
+  }
+
+  .ai-search-modal-close-{{ ai_gen_id }} svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ai-search-modal-body-{{ ai_gen_id }} {
+    overflow-y: auto;
+    flex-grow: 1;
+  }
+
+  .ai-popular-products-{{ ai_gen_id }} {
+    padding: 20px;
+  }
+
+  .ai-popular-products-title-{{ ai_gen_id }} {
+    font-size: {{ block.settings.popular_title_size }}px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    color: {{ block.settings.modal_text_color }};
+  }
+
+  .ai-popular-products-grid-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+  }
+
+  .ai-popular-product-{{ ai_gen_id }} {
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ai-popular-product-image-{{ ai_gen_id }} {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  .ai-popular-product-title-{{ ai_gen_id }} {
+    font-size: 14px;
+    color: {{ block.settings.modal_text_color }};
+    line-height: 1.3;
+  }
+
+  .ai-popular-product-price-{{ ai_gen_id }} {
+    font-size: 14px;
+    font-weight: 600;
+    color: {{ block.settings.modal_text_color }};
+  }
+
+  .ai-search-results-{{ ai_gen_id }} {
+    display: none;
+  }
+
+  .ai-search-results-{{ ai_gen_id }}.active {
+    display: block;
+  }
+
+  .ai-popular-products-{{ ai_gen_id }}.hidden {
+    display: none;
+  }
+
+  predictive-search .predictive-search {
+    border: none;
+    box-shadow: none;
+    position: static;
+    width: 100%;
+  }
+
+  .ai-search-modal-{{ ai_gen_id }} predictive-search {
+    width: 100%;
+  }
+
+  .ai-empty-state-{{ ai_gen_id }} {
+    padding: 40px 20px;
+    text-align: center;
+    color: {{ block.settings.modal_text_color }};
+    opacity: 0.6;
+  }
+{% endstyle %}
+
+<advanced-header-search-{{ ai_gen_id }} class="ai-header-search-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <button
+    class="ai-search-capsule-{{ ai_gen_id }}"
+    aria-label="Open search"
+    data-search-trigger
+  >
+    <svg class="ai-search-capsule-icon-{{ ai_gen_id }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <path d="m21 21-4.35-4.35"></path>
+    </svg>
+    <span class="ai-search-capsule-text-{{ ai_gen_id }}">{{ block.settings.capsule_placeholder }}</span>
+  </button>
+
+  <button
+    class="ai-search-icon-only-{{ ai_gen_id }}"
+    aria-label="Open search"
+    data-search-trigger
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <path d="m21 21-4.35-4.35"></path>
+    </svg>
+  </button>
+
+  <details class="ai-search-modal-{{ ai_gen_id }}" data-search-modal>
+    <summary class="ai-search-modal-overlay-{{ ai_gen_id }}" aria-label="Close search"></summary>
+    <div class="ai-search-modal-content-{{ ai_gen_id }}" role="dialog" aria-modal="true" aria-label="Search">
+      <div class="ai-search-modal-header-{{ ai_gen_id }}">
+        <div class="ai-search-modal-input-wrapper-{{ ai_gen_id }}">
+          <predictive-search data-loading-text="Loading...">
+            <form action="{{ routes.search_url }}" method="get" role="search">
+              <input
+                type="search"
+                name="q"
+                class="ai-search-modal-input-{{ ai_gen_id }}"
+                placeholder="{{ block.settings.input_placeholder }}"
+                aria-label="Search"
+                autocomplete="off"
+                data-search-input
+              >
+              <input type="hidden" name="options[prefix]" value="last">
+            </form>
+            <div class="ai-search-results-{{ ai_gen_id }}" data-search-results>
+              <div class="predictive-search predictive-search--header" tabindex="-1" data-predictive-search>
+                <div class="predictive-search__loading-state">
+                  <svg aria-hidden="true" focusable="false" class="spinner" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+                    <circle class="path" fill="none" stroke-width="6" cx="33" cy="33" r="30"></circle>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </predictive-search>
+        </div>
+        <button class="ai-search-modal-close-{{ ai_gen_id }}" aria-label="Close search" data-search-close>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="ai-search-modal-body-{{ ai_gen_id }}">
+        <div class="ai-popular-products-{{ ai_gen_id }}" data-popular-products>
+          {% if block.settings.popular_collection != blank %}
+            <h3 class="ai-popular-products-title-{{ ai_gen_id }}">{{ block.settings.popular_title }}</h3>
+            <div class="ai-popular-products-grid-{{ ai_gen_id }}">
+              {% for product in block.settings.popular_collection.products limit: block.settings.popular_products_count %}
+                <a href="{{ product.url }}" class="ai-popular-product-{{ ai_gen_id }}">
+                  {% if product.featured_image %}
+                    <img
+                      src="{{ product.featured_image | image_url: width: 300 }}"
+                      alt="{{ product.featured_image.alt | escape }}"
+                      class="ai-popular-product-image-{{ ai_gen_id }}"
+                      loading="lazy"
+                      width="300"
+                      height="300"
+                    >
+                  {% endif %}
+                  <div class="ai-popular-product-title-{{ ai_gen_id }}">{{ product.title }}</div>
+                  {% if block.settings.show_popular_prices %}
+                    <div class="ai-popular-product-price-{{ ai_gen_id }}">{{ product.price | money }}</div>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="ai-empty-state-{{ ai_gen_id }}">
+              Select a collection to show popular products
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </details>
+</advanced-header-search-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class AdvancedHeaderSearch{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.triggers = this.querySelectorAll('[data-search-trigger]');
+        this.modal = this.querySelector('[data-search-modal]');
+        this.closeButton = this.querySelector('[data-search-close]');
+        this.searchInput = this.querySelector('[data-search-input]');
+        this.popularProducts = this.querySelector('[data-popular-products]');
+        this.searchResults = this.querySelector('[data-search-results]');
+      }
+
+      connectedCallback() {
+        this.setupEventListeners();
+      }
+
+      setupEventListeners() {
+        this.triggers.forEach(trigger => {
+          trigger.addEventListener('click', () => this.openModal());
+        });
+
+        this.closeButton.addEventListener('click', () => this.closeModal());
+
+        this.modal.addEventListener('click', (e) => {
+          if (e.target === this.modal) {
+            this.closeModal();
+          }
+        });
+
+        this.searchInput.addEventListener('input', (e) => {
+          this.handleSearchInput(e.target.value);
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.modal.hasAttribute('open')) {
+            this.closeModal();
+          }
+        });
+      }
+
+      openModal() {
+        this.modal.setAttribute('open', '');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => {
+          this.searchInput.focus();
+        }, 100);
+      }
+
+      closeModal() {
+        this.modal.removeAttribute('open');
+        document.body.style.overflow = '';
+        this.searchInput.value = '';
+        this.handleSearchInput('');
+      }
+
+      handleSearchInput(value) {
+        if (value.trim() === '') {
+          this.popularProducts.classList.remove('hidden');
+          this.searchResults.classList.remove('active');
+        } else {
+          this.popularProducts.classList.add('hidden');
+          this.searchResults.classList.add('active');
+        }
+      }
+    }
+
+    customElements.define('advanced-header-search-{{ ai_gen_id }}', AdvancedHeaderSearch{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Advanced header search",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Capsule trigger"
+    },
+    {
+      "type": "text",
+      "id": "capsule_placeholder",
+      "label": "Placeholder text",
+      "default": "Search products…"
+    },
+    {
+      "type": "range",
+      "id": "capsule_min_width",
+      "label": "Minimum width",
+      "min": 150,
+      "max": 400,
+      "step": 10,
+      "unit": "px",
+      "default": 250
+    },
+    {
+      "type": "range",
+      "id": "capsule_font_size",
+      "label": "Font size",
+      "min": 12,
+      "max": 18,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "capsule_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "capsule_border_thickness",
+      "label": "Border thickness",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "color",
+      "id": "capsule_bg_color",
+      "label": "Background color",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "capsule_hover_bg_color",
+      "label": "Hover background color",
+      "default": "#e8e8e8"
+    },
+    {
+      "type": "color",
+      "id": "capsule_border_color",
+      "label": "Border color",
+      "default": "#d4d4d4"
+    },
+    {
+      "type": "color",
+      "id": "capsule_hover_border_color",
+      "label": "Hover border color",
+      "default": "#c4c4c4"
+    },
+    {
+      "type": "color",
+      "id": "capsule_text_color",
+      "label": "Text color",
+      "default": "#666666"
+    },
+    {
+      "type": "color",
+      "id": "capsule_icon_color",
+      "label": "Icon color",
+      "default": "#666666"
+    },
+    {
+      "type": "header",
+      "content": "Mobile icon"
+    },
+    {
+      "type": "range",
+      "id": "breakpoint",
+      "label": "Breakpoint",
+      "min": 600,
+      "max": 1200,
+      "step": 10,
+      "unit": "px",
+      "default": 990
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Icon color",
+      "default": "#262626"
+    },
+    {
+      "type": "header",
+      "content": "Search modal"
+    },
+    {
+      "type": "text",
+      "id": "input_placeholder",
+      "label": "Input placeholder",
+      "default": "Search for products..."
+    },
+    {
+      "type": "range",
+      "id": "modal_max_width",
+      "label": "Maximum width",
+      "min": 400,
+      "max": 900,
+      "step": 50,
+      "unit": "px",
+      "default": 700
+    },
+    {
+      "type": "range",
+      "id": "modal_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "input_border_radius",
+      "label": "Input border radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "color",
+      "id": "modal_bg_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "modal_text_color",
+      "label": "Text color",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "modal_border_color",
+      "label": "Border color",
+      "default": "#e8e8e8"
+    },
+    {
+      "type": "color",
+      "id": "input_bg_color",
+      "label": "Input background color",
+      "default": "#f9f9f9"
+    },
+    {
+      "type": "color",
+      "id": "input_text_color",
+      "label": "Input text color",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "input_border_color",
+      "label": "Input border color",
+      "default": "#d4d4d4"
+    },
+    {
+      "type": "header",
+      "content": "Popular products"
+    },
+    {
+      "type": "text",
+      "id": "popular_title",
+      "label": "Section title",
+      "default": "Popular products"
+    },
+    {
+      "type": "range",
+      "id": "popular_title_size",
+      "label": "Title size",
+      "min": 14,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "collection",
+      "id": "popular_collection",
+      "label": "Collection"
+    },
+    {
+      "type": "range",
+      "id": "popular_products_count",
+      "label": "Number of products",
+      "min": 3,
+      "max": 12,
+      "step": 1,
+      "default": 6
+    },
+    {
+      "type": "checkbox",
+      "id": "show_popular_prices",
+      "label": "Show prices",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    }
+  ],
+  "presets": [
+    {
+      "name": "Advanced header search"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,65 @@
+// ============================================================================================
+// RECHECK HANDOFF - last-moment "did a human agent reply?" guard, right before sending.
+//
+// Why: Decide Process checks for a human agent BEFORE the context lookups + Gemini call, so
+// Gemini tokens are not spent on chats a human already owns. But an agent can reply during
+// that 10-60s gap, and the customer then gets the agent's message AND the AI's reply within
+// a minute. This re-reads Firestore just before sending and drops the AI reply if a human
+// has replied since Decide Process looked.
+//
+// WIRING (3 new nodes, inserted between "Send Reply?" (true) and "Send WhatsApp Reply"):
+//
+//   Final Reply --> Send Reply? --true--> Re-fetch History --> Recheck Handoff --> Still OK to Send? --true--> Send WhatsApp Reply
+//                               \-false-> Build Run Log                                               \-false-> Build Run Log
+//
+//   Keep "Send Reply?" first: it stops needs_human (empty reply) from being sent, and it
+//   saves the Firestore read when there is nothing to send anyway.
+//
+// 1) "Re-fetch History"  = duplicate "Fetch Conversation History", change ONLY Collection to:
+//      {{ 'conversations/' + $('Extract Message Details').first().json.phone.replace(/[^0-9]/g, '') + '/messages' }}
+//    Keep: Operation Get Many, Limit 500, Settings > Always Output Data ON,
+//          Settings > On Error "Continue".
+//
+// 2) "Recheck Handoff"   = Code node, Mode "Run Once for All Items", paste EVERYTHING below.
+//
+// 3) "Still OK to Send?" = IF node, condition type BOOLEAN -> "is true", value {{ $json.okToSend }}
+//    (NOT String equals "True" - with strict type validation a boolean never equals a string)
+//
+// Nothing else changes: Send WhatsApp Reply reads $('Final Reply') by name, and Record AI Sent
+// still sits directly after Send, so its $input is still the send response.
+// ============================================================================================
+
+const src = $('Decide Process').first().json;
+
+// Same human/AI rules as Decide Process - keep the two in sync.
+const AI_AGENT_IDS = new Set(['u9ocdFtszn6BAXa7L_ag']);  // <- AI's own QuickReply send account(s)
+const isAiOut = m => m.senderKind === 'AI' || m.messageBy === 'AI';
+const isHumanOut = m => m.direction === 'out' && !isAiOut(m) && (
+     m.senderKind === 'HUMAN'
+  || (m._type === 'AGENT_PLACEHOLDER' && !m.automationBy && !AI_AGENT_IDS.has(String(m.agentId || '')))
+);
+const tval = m => Number(m.msgTime) || new Date(m.createdAt || 0).getTime();
+
+let lastHumanAt = 0;
+for (const it of $input.all()) {
+  const m = it && it.json; if (!m) continue;
+  if (isHumanOut(m)) lastHumanAt = Math.max(lastHumanAt, tval(m));
+}
+
+// Only a human reply NEWER than what Decide Process already saw counts: older ones were
+// handled there (30-min resume window), so this never double-blocks.
+const seenByDecide = Number(src.lastHumanAt) || 0;
+const humanJumpedIn = lastHumanAt > seenByDecide;
+
+if (humanJumpedIn) {
+  try { $execution.customData.set('decision', 'human_replied_during_ai'); } catch (e) {}
+  console.log('[Recheck Handoff] human replied at ' + new Date(lastHumanAt).toISOString() + ' - AI reply dropped');
+}
+
+return [{ json: {
+  okToSend: !humanJumpedIn,
+  reason: humanJumpedIn ? 'human_replied_during_ai' : 'ok',
+  phone: src.phone,
+  lastHumanAt,
+  seenByDecide,
+} }];

@@ -279,15 +279,25 @@ if (_replyDocNames.some(w => !/^ujala$/i.test(w))) {
 const _orderish = /\b(order|parcel|shipment|courier|delivery|awb|track|tracking|refund|return)\b/i.test(_q);
 const _payish = /\b(pay|payment|paid|paisa|paise|rupee|rupay|cod|prepaid|upi|card|netbanking|emi)\b/i.test(_q);
 const _askedWhereFrom = !_orderish && (
-     /\b(kaha|kahan|kahaa)\s*se\b[^.!?]{0,20}\b(aap|ho|hain|bol|baat|call|ka?r)/i.test(_q)
-  || /\b(aap|aapka|apka|tum|tumhara|ye|yah|sehatup|company|office)\b[^.!?]{0,20}\b(kaha|kahan|kahaa)\b/i.test(_q)
+     /\b(kha|kaha|kahan|kahaa)\s*se\b[^.!?]{0,20}\b(aap|ho|hain|bol|baat|call|ka?r)/i.test(_q)
+  || /\b(aap|ap|aapka|apka|tum|tumhara|ye|yah|sehatup|company|office)\b[^.!?]{0,20}\b(kha|kaha|kahan|kahaa)\b/i.test(_q)
   || /\bwhere\b[^.!?]{0,20}\b(are\s*you|from|based|located)\b/i.test(_q)
   || /\b(company|office|address|pata)\b[^.!?]{0,20}\b(kaha|kahan|kya|kis|batao|bataiye)\b/i.test(_q));
 if (_askedWhereFrom) {
   flagSentences('invented_address',
-    'Do not name a city, sector, street or address. Say everything happens online and on the phone, so SehatUP helps people in any city.',
-    s => /\b(gurgaon|gurugram|noida|delhi|mumbai|bombay|bangalore|bengaluru|pune|hyderabad|chennai|kolkata|jaipur|lucknow|indore|ahmedabad|chandigarh|street|road|lane|pin\s*code|pincode)\b|\bsector\s*-?\s*\d+/i.test(s));
+    'Our office is in Sector 2, Noida. Say only "Sector 2, Noida" - no other city, sector, street, plot number or pincode - and add that the consultation happens on a phone call, so SehatUP helps people in any city.',
+
+    s => /\b(gurgaon|gurugram|delhi|mumbai|bombay|bangalore|bengaluru|pune|hyderabad|chennai|kolkata|jaipur|lucknow|indore|ahmedabad|chandigarh|ghaziabad|faridabad|street|road|lane|pin\s*code|pincode|201301)\b|\bc\s*-?\s*79\b|\bsector\s*-?\s*(?!2\b)\d+/i.test(s));
 }
+
+flagSentences('vulgar_word',
+  'Never use slang or abusive words for body parts or sex, even if the customer does. Say "ling" or "penis size" instead, calmly and professionally.',
+  s => /\b(lund|lunnd|land|lauda|lavda|loda|lode|chut|choot|chutiya|gaand|gandu|bhosd\w*|randi|madarchod|behenchod|bhenchod)\b/i.test(s));
+
+flagSentences('denied_phone_call',
+  'Never say we do not do calls. The doctor consultation IS a free phone call at a time the customer picks.',
+  s => /\b(call|phone)\b[^.!?]{0,30}\b(nahi|nhi|nai)\s*(karte|karti|dete|deti)\b/i.test(s)
+    || /\b(don'?t|do\s*not)\s*(do|offer|provide)\b[^.!?]{0,15}\b(call|phone)/i.test(s));
 flagSentences('voice_note_promise',
   'You cannot send voice notes. Say so kindly and help them in text.',
   s => /\b(voice\s*(note|msg|message)|audio|recording|awaz|awaaz)\b/i.test(s)
@@ -617,7 +627,9 @@ if (aiText.trim() && !_alreadyFlaggedAnswer && qrIsNonAnswer(aiText) && (_custSa
 {
   const _custWantsConsult = /\b(consult\w*|doctor|dr|daktar|appointment|salah)\b/i.test(_custAll)
     || /\bcall\s*(karwa|karva|karwao|karvao|kar\s*do|kar\s*dijiye|chahiye|aayega|aaega|kab)\b/i.test(_custAll)
-    || /\bbaat\s*(karni|karna|karwa|karva|kara)\b/i.test(_custAll);
+    || /\bbaat\s*(karni|karna|karwa|karva|kara|ho\s*sakti|ho\s*sakta)\b/i.test(_custAll)
+
+    || /\b(call|phone)\s*(me|karo|kro|kar\s*lo|kijiye|kariye|kar\s*sakt\w*)\b/i.test(_custAll);
   const _safetyRaised = /\b(thyroid|sugar|diabetes|diabetic|bp|blood\s*pressure|heart|kidney|liver|pregnan\w*|breastfeed\w*|surgery|operation)\b/i.test(_custAll)
     || /\b(dawai|dawa|medicine|tablet|goli)\b[^.!?]{0,20}\b(chal\s*rahi|chal\s*raha|le\s*rah\w*|leta|leti|lete)\b/i.test(_custAll);
   const _offeredBefore = _outs.some(m => /\bconsult/i.test(String(m.text)));

@@ -1,0 +1,724 @@
+{% comment %}
+  Medical Experts Section
+  - Dynamic doctor blocks
+  - Parent + child styling separation
+  - Centered, screenshot-accurate layout
+  - Responsive: mobile scroll (1 card), tablet (2 cards), desktop (3 cards)
+{% endcomment %}
+
+<section
+  class="medical-experts-section"
+  style="
+    background: {{ section.settings.section_bg }};
+    padding-top: {{ section.settings.padding_top }}px;
+    padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div
+    class="medical-experts-container"
+    style="max-width: {{ section.settings.max_width }}px;"
+  >
+
+    {% if section.settings.heading != blank %}
+      <h2
+        class="medical-experts-heading"
+        style="
+          font-size: clamp(24px,3.4vw,64px);
+          font-weight: {{ section.settings.heading_weight }};
+          color: {{ section.settings.heading_color }};
+        "
+      >
+        {{ section.settings.heading }}
+      </h2>
+    {% endif %}
+
+    <div class="medical-experts-wrapper">
+      <button class="scroll-arrow scroll-arrow-left" aria-label="Scroll left">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+
+      <div
+        class="medical-experts-grid"
+        style="
+          gap: {{ section.settings.grid_gap }}px;
+          max-width: {{ section.settings.grid_max_width }}px;
+          --card-width: {{ section.settings.card_width }}px;
+        "
+      >
+        {% for block in section.blocks %}
+          {% if block.type == 'doctor' %}
+            <div
+              class="medical-expert-card"
+              style="max-width: {{ section.settings.card_width }}px;"
+              {{ block.shopify_attributes }}
+            >
+
+              {% if block.settings.image %}
+                <div
+                  class="medical-expert-image"
+                  style="
+                    width: {{ section.settings.image_width }}px;
+                    height: {{ section.settings.image_height }}px;
+                    border-radius: {{ section.settings.image_radius }}px;
+                  "
+                >
+                  <img
+                    src="{{ block.settings.image | image_url: width: 700 }}"
+                    srcset="{{ block.settings.image | image_url: width: 400 }} 400w,
+                            {{ block.settings.image | image_url: width: 700 }} 700w,
+                            {{ block.settings.image | image_url: width: 900 }} 900w"
+                    sizes="(max-width: 599px) 78vw, (max-width: 991px) 45vw, 340px"
+                    alt="{{ block.settings.name | escape }}"
+                    width="{{ block.settings.image.width }}"
+                    height="{{ block.settings.image.height }}"
+                    loading="lazy"
+                    decoding="async"
+                    style="
+                      object-fit: {{ section.settings.image_fit }};
+                      object-position: {{ section.settings.image_position }};
+                    "
+                  >
+                </div>
+              {% endif %}
+
+              {% if block.settings.speciality != blank %}
+                <span class="medical-expert-chip"><b>{{ block.settings.speciality }}</b></span>
+              {% endif %}
+              <h3
+                class="medical-expert-name" data-chip="{{ block.settings.speciality | escape }}"
+                style="
+                  font-size: clamp(14px, 1.5vw, 35px);
+                  font-weight: 600;
+                  color: {{ section.settings.name_color }};
+                  margin-top: {{ section.settings.text_spacing }}px;
+                "
+              >
+                {{ block.settings.name }}
+              </h3>
+
+              <p
+                class="medical-expert-qualification"
+                style="
+                  font-size: clamp(14px, 1.1vw, 20px);
+                  color: {{ section.settings.qual_color }};
+                "
+              >
+                {{ block.settings.qualification }}
+              </p>
+
+              <p
+                class="medical-expert-experience"
+                style="
+                  font-size: clamp(14px, 1.1vw, 20px);
+                  color: {{ section.settings.exp_color }};
+                "
+              >
+                {{ block.settings.experience }}
+              </p>
+
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <button class="scroll-arrow scroll-arrow-right" aria-label="Scroll right">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <div class="medical-experts-swipe" hidden>
+      <div class="medical-experts-dots" role="tablist" aria-label="Choose a doctor"></div>
+    </div>
+
+  </div>
+</section>
+
+<style>
+  .medical-experts-container {
+    margin: 0 auto;
+    padding: 0 16px;
+    text-align: center;
+  }
+
+  .medical-experts-heading {
+    margin-bottom: 48px;
+  }
+
+  .medical-experts-wrapper {
+    position: relative;
+    margin: 0 auto;
+  }
+
+  .medical-experts-grid {
+    margin: 0 auto;
+    display: grid;
+    justify-content: center;
+    grid-template-columns: repeat(auto-fit, minmax(var(--card-width, 260px), 1fr));
+  }
+
+  .medical-expert-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .medical-expert-image {
+    overflow: hidden;
+    background: #f3f3f3;
+  }
+
+  .medical-expert-qualification, .medical-expert-experience{
+    margin:0;
+  }
+
+  .medical-expert-name{
+    margin-bottom:0;
+  }
+
+  .medical-expert-image img {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .scroll-arrow {
+    display: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .scroll-arrow:hover {
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .scroll-arrow svg {
+    color: #333;
+  }
+
+  .scroll-arrow-left {
+    left: -20px;
+  }
+
+  .scroll-arrow-right {
+    right: -20px;
+  }
+
+  /* Desktop: 3 cards in grid */
+  @media (min-width: 992px) {
+    .medical-experts-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* Tablet: 2 cards in grid */
+  @media (min-width: 576px) and (max-width: 991px) {
+    .medical-experts-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .medical-experts-heading {
+      margin-bottom: 36px;
+    }
+  }
+
+  /* Mobile: horizontal scroll, 1 card per view */
+  @media (max-width: 575px) {
+    .medical-experts-wrapper {
+      padding: 0 40px;
+    }
+
+    .medical-experts-grid {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      justify-content: flex-start;
+      padding: 0 calc((100% - var(--card-width)) / 2);
+    }
+
+    .medical-experts-grid::-webkit-scrollbar {
+      display: none;
+    }
+
+    .medical-expert-card {
+      flex: 0 0 var(--card-width);
+      scroll-snap-align: center;
+      min-width: var(--card-width);
+    }
+
+    .medical-experts-heading {
+      font-size: 26px !important;
+      margin-bottom: 32px;
+    }
+
+    .scroll-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scroll-arrow-left {
+      left: 0;
+    }
+
+    .scroll-arrow-right {
+      right: 0;
+    }
+  }
+
+  .medical-expert-chip { display: none; }
+  /* the dots belong to the phone carousel only */
+  .medical-experts-swipe { display: none; }
+
+  /* ---- Phones: a card you swipe. The portrait sits on a pink field, the
+     details on a lighter one underneath, read left to right. ---- */
+  @media (max-width: 599px) {
+    .medical-experts-container { padding: 0; }
+    .medical-experts-heading {
+      font-size: 27px !important;
+      line-height: 1.15;
+      letter-spacing: -.02em;
+      text-align: center;
+      padding-inline: 16px;
+      margin-bottom: 20px !important;
+    }
+
+    .medical-experts-wrapper { padding: 0 !important; }
+    .scroll-arrow { display: none !important; }
+
+    .medical-experts-grid {
+      display: flex;
+      gap: 14px !important;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      justify-content: flex-start;
+      padding: 4px 16px 10px !important;
+      scroll-padding-inline: 16px;
+      max-width: none !important;
+      align-items: stretch;
+    }
+
+    .medical-expert-card {
+      flex: 0 0 calc(100% - 74px) !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      scroll-snap-align: start;
+      align-items: stretch;
+      text-align: left;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #ffffff;
+      border: 1px solid #e8e8ee;
+    }
+
+    .medical-expert-image {
+      width: 100% !important;
+      height: 250px !important;
+      border-radius: 0 !important;
+      background: #f2f2f5 !important;
+    }
+    /* the portrait fills its panel instead of being letterboxed inside it,
+       which is what left the empty band under each doctor */
+    .medical-expert-image img {
+      object-fit: cover !important;
+      object-position: center top !important;
+    }
+
+    .medical-expert-chip { display: block; padding: 16px 16px 0; }
+    .medical-expert-chip b {
+      display: inline-block;
+      background: #f2f2f5;
+      color: #3b3b46;
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: .01em;
+      padding: 5px 11px;
+      border-radius: 6px;
+    }
+
+    .medical-expert-name {
+      font-size: 19px !important;
+      line-height: 1.25;
+      padding: 12px 16px 0;
+      margin: 0 !important;
+    }
+    .medical-expert-qualification,
+    .medical-expert-experience {
+      font-size: 15px !important;   /* was clamping down to 10px */
+      line-height: 1.5;
+      padding: 4px 16px 0;
+      margin: 0 !important;
+    }
+    .medical-expert-experience { padding-bottom: 18px; }
+
+    /* same swipe row as the conditions carousel above it */
+    .medical-experts-swipe { display: block; margin-top: 14px; }
+    .medical-experts-dots { display: flex; justify-content: center; gap: 7px; }
+    .medical-experts-dots button {
+      width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%;
+      background: #d9d9e0; cursor: pointer;
+      transition: background .25s ease, width .25s ease;
+    }
+    .medical-experts-dots button[aria-selected="true"] { background: #14183c; width: 20px; border-radius: 4px; }
+
+    /* the card you are looking at is the full size one */
+    @supports (animation-timeline: view()) {
+      @media (prefers-reduced-motion: no-preference) {
+        .medical-expert-card {
+          animation: mx-center linear both;
+          animation-timeline: view(inline);
+          animation-range: cover 5% cover 95%;
+        }
+        @keyframes mx-center {
+          0%, 100% { transform: scale(.955); opacity: .72; }
+          50%      { transform: scale(1);    opacity: 1; }
+        }
+      }
+    }
+    /* pressing a card acknowledges the tap */
+    .medical-expert-card:active { transform: scale(.985); }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const sections = document.querySelectorAll('.medical-experts-section');
+    
+    sections.forEach(section => {
+      const grid = section.querySelector('.medical-experts-grid');
+      const leftArrow = section.querySelector('.scroll-arrow-left');
+      const rightArrow = section.querySelector('.scroll-arrow-right');
+      
+      if (!grid || !leftArrow || !rightArrow) return;
+      
+      const scrollAmount = () => {
+        const cardWidth = parseInt(getComputedStyle(grid).getPropertyValue('--card-width')) || 280;
+        const gap = parseInt(getComputedStyle(grid).gap) || 32;
+        return cardWidth + gap;
+      };
+      
+      leftArrow.addEventListener('click', () => {
+        grid.scrollBy({ left: -scrollAmount(), behavior: 'smooth' });
+      });
+      
+      rightArrow.addEventListener('click', () => {
+        grid.scrollBy({ left: scrollAmount(), behavior: 'smooth' });
+      });
+      
+      // Update arrow visibility based on scroll position
+      function updateArrows() {
+        if (window.innerWidth <= 575) {
+          const isAtStart = grid.scrollLeft <= 10;
+          const isAtEnd = grid.scrollLeft >= (grid.scrollWidth - grid.clientWidth - 10);
+          
+          leftArrow.style.opacity = isAtStart ? '0.3' : '1';
+          leftArrow.style.pointerEvents = isAtStart ? 'none' : 'auto';
+          
+          rightArrow.style.opacity = isAtEnd ? '0.3' : '1';
+          rightArrow.style.pointerEvents = isAtEnd ? 'none' : 'auto';
+        }
+      }
+      
+      // dots: one per doctor, following the scroll (phones only, hidden by CSS elsewhere)
+      const swipe = section.querySelector('.medical-experts-swipe');
+      const dotWrap = swipe && swipe.querySelector('.medical-experts-dots');
+      const cards = [...grid.children];
+      if (dotWrap && cards.length > 1) {
+        swipe.hidden = false;
+        cards.forEach((card, i) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.setAttribute('role', 'tab');
+          b.setAttribute('aria-label', 'Doctor ' + (i + 1));
+          b.addEventListener('click', () => {
+            grid.scrollTo({ left: card.offsetLeft - grid.offsetLeft - 16, behavior: 'smooth' });
+          });
+          dotWrap.appendChild(b);
+        });
+        const marks = [...dotWrap.children];
+        let queued = false;
+        const paintDots = () => {
+          queued = false;
+          const mid = grid.scrollLeft + grid.clientWidth / 2;
+          let best = 0, bestGap = Infinity;
+          cards.forEach((c, i) => {
+            const gap = Math.abs(c.offsetLeft - grid.offsetLeft + c.offsetWidth / 2 - mid);
+            if (gap < bestGap) { bestGap = gap; best = i; }
+          });
+          marks.forEach((m, i) => m.setAttribute('aria-selected', i === best));
+        };
+        grid.addEventListener('scroll', () => {
+          if (queued) return;
+          queued = true;
+          requestAnimationFrame(paintDots);
+        }, { passive: true });
+        paintDots();
+      }
+
+      grid.addEventListener('scroll', updateArrows);
+      window.addEventListener('resize', updateArrows);
+      updateArrows();
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Medical Experts",
+  "tag": "section",
+
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Meet Our Medical Experts"
+    },
+    {
+      "type": "color",
+      "id": "section_bg",
+      "label": "Section background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "label": "Section content width",
+      "min": 900,
+      "max": 1500,
+      "step": 50,
+      "default": 1200
+    },
+
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 22,
+      "max": 48,
+      "step": 2,
+      "default": 32
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "Heading weight",
+      "options": [
+        { "value": "400", "label": "Regular" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semibold" }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#1a1a1a"
+    },
+
+    {
+      "type": "header",
+      "content": "Grid & Alignment"
+    },
+    {
+      "type": "range",
+      "id": "grid_max_width",
+      "label": "Doctors group max width",
+      "min": 700,
+      "max": 1400,
+      "step": 50,
+      "default": 1100
+    },
+    {
+      "type": "range",
+      "id": "grid_gap",
+      "label": "Spacing between doctors",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "card_width",
+      "label": "Doctor card width",
+      "min": 220,
+      "max": 360,
+      "step": 10,
+      "default": 280
+    },
+
+    {
+      "type": "header",
+      "content": "Image Styling"
+    },
+    {
+      "type": "range",
+      "id": "image_width",
+      "label": "Image width",
+      "min": 160,
+      "max": 300,
+      "step": 10,
+      "default": 220
+    },
+    {
+      "type": "range",
+      "id": "image_height",
+      "label": "Image height",
+      "min": 160,
+      "max": 300,
+      "step": 10,
+      "default": 220
+    },
+    {
+      "type": "range",
+      "id": "image_radius",
+      "label": "Image corner radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "image_fit",
+      "label": "Image fit",
+      "options": [
+        { "value": "cover", "label": "Cover (crop)" },
+        { "value": "contain", "label": "Contain (no crop)" }
+      ],
+      "default": "cover"
+    },
+    {
+      "type": "select",
+      "id": "image_position",
+      "label": "Image position",
+      "options": [
+        { "value": "center", "label": "Center" },
+        { "value": "top", "label": "Top" }
+      ],
+      "default": "center"
+    },
+
+    {
+      "type": "header",
+      "content": "Text Styling"
+    },
+    {
+      "type": "range",
+      "id": "text_spacing",
+      "label": "Spacing above name",
+      "min": 4,
+      "max": 20,
+      "step": 2,
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "name_size",
+      "label": "Name size",
+      "min": 16,
+      "max": 22,
+      "step": 1,
+      "default": 18
+    },
+    {
+      "type": "color",
+      "id": "name_color",
+      "label": "Name color",
+      "default": "#1a1a1a"
+    },
+    {
+      "type": "range",
+      "id": "qual_size",
+      "label": "Qualification size",
+      "min": 12,
+      "max": 16,
+      "step": 1,
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "qual_color",
+      "label": "Qualification color",
+      "default": "#555555"
+    },
+    {
+      "type": "range",
+      "id": "exp_size",
+      "label": "Experience size",
+      "min": 12,
+      "max": 16,
+      "step": 1,
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "exp_color",
+      "label": "Experience color",
+      "default": "#777777"
+    },
+
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Padding top",
+      "min": 0,
+      "max": 120,
+      "step": 8,
+      "default": 64
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 120,
+      "step": 8,
+      "default": 64
+    }
+  ],
+
+  "blocks": [
+    {
+      "type": "doctor",
+      "name": "Doctor",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Doctor image" },
+        { "type": "text", "id": "name", "label": "Doctor name", "default": "Dr. John Doe" },
+        { "type": "text", "id": "speciality", "label": "Speciality chip", "info": "One short word shown above the name on phones, e.g. Ayurveda" },
+        { "type": "text", "id": "qualification", "label": "Qualification", "default": "MBBS, MD" },
+        { "type": "text", "id": "experience", "label": "Experience", "default": "5 years experience" }
+      ]
+    }
+  ],
+
+  "presets": [
+    {
+      "name": "Medical Experts",
+      "blocks": [{ "type": "doctor" }]
+    }
+  ]
+}
+{% endschema %}

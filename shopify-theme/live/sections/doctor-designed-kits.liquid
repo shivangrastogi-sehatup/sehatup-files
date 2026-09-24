@@ -1,0 +1,733 @@
+<section
+  class="care-kits-section{% if section.settings.mobile_image_center %} care-kits--center-image{% endif %}"
+  style="
+    padding-top: {{ section.settings.padding_top }}px;
+    padding-bottom: {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="care-kits-container">
+    {% if section.settings.heading != blank %}
+      <h2 class="care-kits-heading">{{ section.settings.heading }}</h2>
+    {% endif %}
+
+    {% for row_value in (1..2) %}
+      {% assign row_key = "row1" %}
+      {% if row_value == 2 %}
+        {% assign row_key = "row2" %}
+      {% endif %}
+
+      {% assign row_has_blocks = false %}
+      {% for block in section.blocks %}
+        {% if block.settings.grid_row == row_key %}
+          {% assign row_has_blocks = true %}
+        {% endif %}
+      {% endfor %}
+
+      {% if row_has_blocks %}
+        <div class="care-kits-row">
+          {% for block in section.blocks %}
+            {% if block.settings.grid_row == row_key %}
+            <div
+              class="care-kit-card"
+              style="
+                --card-bg: {{ block.settings.card_bg }};
+                --accent-bg: {{ block.settings.accent_bg }};
+                --img-width: {{ block.settings.image_width }}px;
+                --img-height: {{ block.settings.image_height }}px;
+                --img-scale-1165: {{ block.settings.image_scale_1165 | divided_by: 100.0 }};
+                --img-scale-1024: {{ block.settings.image_scale_1024 | divided_by: 100.0 }};
+                --img-scale-900: {{ block.settings.image_scale_900 | divided_by: 100.0 }};
+                --img-x: {{ block.settings.image_position_x }}px;
+                --title-size: {{ block.settings.title_size }}px;
+                --desc-size: {{ block.settings.desc_size }}px;
+                width: {{ block.settings.card_width }}%;
+              "
+              {{ block.shopify_attributes }}
+            >
+              <div class="care-kit-title-row">
+                <h3
+                  class="care-kit-title"
+                  style="
+                    font-weight: {{ block.settings.title_weight }};
+                    color: {{ block.settings.title_color }};
+                  "
+                >
+                  {{ block.settings.title }}
+                </h3>
+              </div>
+
+              <div class="care-kit-body">
+                {% if block.settings.show_accent %}
+                  <div class="care-kit-accent"></div>
+                {% endif %}
+
+                <div class="care-kit-text">
+                  {% if block.settings.description != blank %}
+                    <p
+                      class="care-kit-description"
+                      style="
+                        font-weight: {{ block.settings.desc_weight }};
+                        color: {{ block.settings.desc_color }};
+                      "
+                    >
+                      {{ block.settings.description }}
+                    </p>
+                  {% endif %}
+
+                  {% if block.settings.button_label != blank %}
+                    <a href="{{ block.settings.button_link }}" class="care-kit-button">
+                      {{ block.settings.button_label }}
+                    </a>
+                  {% endif %}
+                </div>
+
+                {% if block.settings.combined_image %}
+                  <div class="care-kit-media" data-block-id="{{ block.id }}">
+                    <img
+                      src="{{ block.settings.combined_image | image_url: width: 1200 }}"
+                      srcset="
+                        {{ block.settings.combined_image | image_url: width: 400 }} 400w,
+                        {{ block.settings.combined_image | image_url: width: 800 }} 800w,
+                        {{ block.settings.combined_image | image_url: width: 1200 }} 1200w
+                      "
+                      sizes="(max-width: 900px) 78vw, 500px"
+                      class="care-kit-image"
+                      width="{{ block.settings.combined_image.width }}"
+                      height="{{ block.settings.combined_image.height }}"
+                      loading="lazy"
+                      decoding="async"
+                      alt="{{ block.settings.title | escape }}"
+                    >
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+
+<style>
+  .care-kits-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  .care-kits-heading {
+    text-align: center;
+    /* matched to "How sehatUP Works" and "Conditions we Solve" */
+    font-size: clamp(25px, 3.3vw, 60px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin-bottom: clamp(24px, 4vw, 48px);
+    color: #1d1d1d;
+    text-wrap: balance;
+  }
+
+  .care-kits-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+
+  .care-kits-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .care-kit-card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid #e8e8ee;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Title: its own full-width row, single line - truncates instead of wrapping */
+  .care-kit-title-row {
+    padding: 28px 32px 0;
+  }
+
+  .care-kit-title {
+    margin: 0;
+    line-height: 1.2;
+    /* was nowrap with an ellipsis, which cut "Women's Hormone Balance Kit" */
+    text-wrap: balance;
+    font-size: clamp(20px, 2.1vw, var(--title-size));
+    letter-spacing: -0.01em;
+  }
+
+  /* Body: two columns below the title - text left, image right */
+  .care-kit-body {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-height: 220px;
+    padding-top: 16px;
+  }
+
+  .care-kit-accent {
+    position: absolute;
+    inset: 0;
+    right: 0;
+    width: 42%;
+    background: var(--accent-bg);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .care-kit-text {
+    position: relative;
+    z-index: 2;
+    flex: 1 1 0%;
+    min-width: 160px;
+    box-sizing: border-box;
+    padding: 0 16px 32px 32px;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .care-kit-description {
+    margin: 0 0 22px;
+    line-height: 1.55;
+    max-width: 34ch;
+    overflow-wrap: normal;
+    word-break: normal;
+    font-size: clamp(15px, 1.2vw, var(--desc-size));
+  }
+
+  .care-kit-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 28px;
+    border-radius: 999px;
+    background: #111111;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+    white-space: nowrap;
+    box-shadow: 0 10px 22px -12px rgba(0, 0, 0, .45);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+
+  .care-kit-button:hover {
+    background: #2a2a2a;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 26px -12px rgba(0, 0, 0, .5);
+  }
+
+  .care-kit-button:focus-visible { outline: 3px solid #ee204a; outline-offset: 3px; }
+
+  .care-kit-media {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-end;
+    align-self: flex-end;
+    justify-content: center;
+    flex: 0 1 var(--img-width);
+    min-width: 80px;
+    max-width: var(--img-width);
+    box-sizing: border-box;
+    margin-left: auto;
+    padding: 0 16px 0 0;
+  }
+
+  .care-kit-image {
+    width: 100%;
+    height: auto;
+    max-height: var(--img-height);
+    object-fit: contain;
+    object-position: center bottom;
+    display: block;
+    transform: translateX(var(--img-x, 0px));
+  }
+
+  /* One movement in this section: the picture rises into the corner as the
+     card comes into view, like a kit being set down. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .care-kit-image {
+        animation: kit-settle linear both;
+        animation-timeline: view();
+        animation-range: entry 25% entry 90%;
+      }
+      @keyframes kit-settle {
+        from { opacity: 0; translate: 0 18px; }
+        to   { opacity: 1; translate: 0 0; }
+      }
+    }
+  }
+
+  .care-kit-button:active { transform: scale(.97); }
+
+  @media (max-width: 1165px) {
+    .care-kits-heading { margin-bottom: 32px; }
+
+    .care-kit-title-row {
+      padding: 24px 28px 0;
+    }
+
+    .care-kit-body {
+      min-height: 200px;
+    }
+
+    .care-kit-text {
+      padding: 0 14px 28px 28px;
+    }
+
+    .care-kit-button {
+      padding: 11px 24px;
+      font-size: 13px;
+    }
+
+    .care-kit-media {
+      padding-right: 14px;
+      flex-basis: calc(var(--img-width) * var(--img-scale-1165));
+      max-width: calc(var(--img-width) * var(--img-scale-1165));
+    }
+
+    .care-kit-image {
+      max-height: calc(var(--img-height) * var(--img-scale-1165));
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .care-kits-heading { margin-bottom: 30px; }
+
+    .care-kit-title-row {
+      padding: 22px 26px 0;
+    }
+
+    .care-kit-body {
+      min-height: 180px;
+    }
+
+    .care-kit-text {
+      padding: 0 12px 26px 26px;
+    }
+
+    .care-kit-media {
+      padding-right: 12px;
+      flex-basis: calc(var(--img-width) * var(--img-scale-1024));
+      max-width: calc(var(--img-width) * var(--img-scale-1024));
+    }
+
+    .care-kit-image {
+      max-height: calc(var(--img-height) * var(--img-scale-1024));
+    }
+  }
+
+  /* Mobile: stack title -> text -> image tightly, no forced height,
+     no dead space between the button and the image. */
+  @media (max-width: 900px) {
+    .care-kits-row {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .care-kit-card {
+      width: 100% !important;
+    }
+
+    .care-kit-title-row {
+      padding: 22px 22px 0;
+    }
+
+    .care-kit-title { font-size: 22px; }
+
+    .care-kit-body {
+      flex-direction: column;
+      align-items: stretch;
+      min-height: 0;
+      padding-top: 8px;
+    }
+
+    .care-kit-accent {
+      inset: auto 0 0 0;
+      width: 100%;
+      height: 48%;
+    }
+
+    .care-kit-text {
+      width: 100%;
+      flex: none;
+      padding: 0 22px 12px;
+    }
+
+    .care-kit-description {
+      font-size: 15.5px;
+      margin-bottom: 18px;
+      max-width: 30ch;
+    }
+
+    /* The picture sits in the bottom right corner of the card, the way it does
+       on a laptop. It used to be centred and carried the desktop nudge
+       (--img-x), which pushed it off the right edge and cut it in half. */
+    .care-kit-media {
+      width: 100%;
+      flex: none;
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+      justify-content: flex-end;
+      align-items: flex-end;
+    }
+
+    .care-kit-image {
+      transform: none;
+      width: auto;
+      max-width: 86%;
+      max-height: calc(var(--img-height) * var(--img-scale-900));
+      object-position: right bottom;
+      margin-right: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .care-kits-heading { margin-bottom: 24px; }
+
+    .care-kit-card {
+      border-width: 1.5px;
+    }
+
+    .care-kit-title-row {
+      padding: 18px 18px 0;
+    }
+
+    .care-kit-title { font-size: 20px; }
+
+    .care-kit-text {
+      padding: 0 18px 4px;
+    }
+
+    .care-kit-description { font-size: 15px; }
+
+    .care-kit-button {
+      min-height: 46px;
+      padding: 0 24px;
+      font-size: 14px;
+    }
+
+    .care-kit-media {
+      flex: none;
+      padding: 0;
+    }
+
+    .care-kit-image { max-width: 92%; max-height: 190px; }
+  }
+
+  /* Setting: centre the picture on phones with equal space either side,
+     instead of tucking it into the bottom right corner. */
+  @media (max-width: 900px) {
+    .care-kits--center-image .care-kit-media {
+      justify-content: center;
+      padding: 0 18px;
+    }
+    .care-kits--center-image .care-kit-image {
+      margin-inline: auto;
+      object-position: center bottom;
+      max-width: 100%;
+    }
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Doctor-Designed Care Kits",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "mobile_image_center",
+      "label": "Centre the kit image on phones",
+      "info": "Off: the image sits in the bottom right corner of the card. On: it is centred with equal space on both sides.",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "default": "Doctor-Designed Care Kits",
+      "label": "Heading"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 120,
+      "step": 8,
+      "default": 80,
+      "label": "Padding top",
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 120,
+      "step": 8,
+      "default": 80,
+      "label": "Padding bottom",
+      "unit": "px"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "kit",
+      "name": "Care Kit",
+      "settings": [
+        {
+          "type": "select",
+          "id": "grid_row",
+          "label": "Row placement",
+          "options": [
+            { "value": "row1", "label": "Top row" },
+            { "value": "row2", "label": "Bottom row" }
+          ],
+          "default": "row1"
+        },
+        {
+          "type": "range",
+          "id": "card_width",
+          "label": "Card width (%)",
+          "min": 30,
+          "max": 70,
+          "step": 1,
+          "default": 50,
+          "info": "Desktop only - mobile is always 100%"
+        },
+        {
+          "type": "header",
+          "content": "Colors"
+        },
+        {
+          "type": "color",
+          "id": "card_bg",
+          "default": "#eeeeee",
+          "label": "Card background"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_accent",
+          "label": "Show accent background",
+          "default": true
+        },
+        {
+          "type": "color",
+          "id": "accent_bg",
+          "default": "#f4f4f4",
+          "label": "Accent background"
+        },
+        {
+          "type": "header",
+          "content": "Content"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Care Kit Title"
+        },
+        {
+          "type": "range",
+          "id": "title_size",
+          "label": "Title size",
+          "min": 18,
+          "max": 42,
+          "step": 2,
+          "default": 28,
+          "unit": "px"
+        },
+        {
+          "type": "range",
+          "id": "title_weight",
+          "label": "Title weight",
+          "min": 400,
+          "max": 900,
+          "step": 100,
+          "default": 700
+        },
+        {
+          "type": "color",
+          "id": "title_color",
+          "label": "Title color",
+          "default": "#222222"
+        },
+        {
+          "type": "textarea",
+          "id": "description",
+          "label": "Description",
+          "default": "Expertly curated products for your health needs."
+        },
+        {
+          "type": "range",
+          "id": "desc_size",
+          "label": "Description size",
+          "min": 12,
+          "max": 20,
+          "step": 1,
+          "default": 15,
+          "unit": "px"
+        },
+        {
+          "type": "range",
+          "id": "desc_weight",
+          "label": "Description weight",
+          "min": 300,
+          "max": 700,
+          "step": 100,
+          "default": 400
+        },
+        {
+          "type": "color",
+          "id": "desc_color",
+          "label": "Description color",
+          "default": "#555555"
+        },
+        {
+          "type": "header",
+          "content": "Button"
+        },
+        {
+          "type": "text",
+          "id": "button_label",
+          "default": "Buy Now",
+          "label": "Button label"
+        },
+        {
+          "type": "url",
+          "id": "button_link",
+          "label": "Button link"
+        },
+        {
+          "type": "header",
+          "content": "Image"
+        },
+        {
+          "type": "image_picker",
+          "id": "combined_image",
+          "label": "Combined image (product + model)",
+          "info": "Upload a single image with both product and model"
+        },
+        {
+          "type": "range",
+          "id": "image_width",
+          "min": 200,
+          "max": 900,
+          "step": 10,
+          "default": 350,
+          "label": "Image max width",
+          "unit": "px",
+          "info": "The image will render at this width whenever the card has room; it only shrinks below this if the text needs space."
+        },
+        {
+          "type": "range",
+          "id": "image_height",
+          "min": 200,
+          "max": 700,
+          "step": 10,
+          "default": 300,
+          "label": "Image max height",
+          "unit": "px"
+        },
+        {
+          "type": "range",
+          "id": "image_position_x",
+          "min": -100,
+          "max": 100,
+          "step": 5,
+          "default": 0,
+          "label": "Image X position",
+          "unit": "px",
+          "info": "Negative values move the image left, positive values move it right. Purely visual - doesn't affect the text column."
+        },
+        {
+          "type": "header",
+          "content": "Responsive Image Scaling"
+        },
+        {
+          "type": "range",
+          "id": "image_scale_1165",
+          "min": 50,
+          "max": 100,
+          "step": 5,
+          "default": 75,
+          "label": "Image scale @ 1165px",
+          "unit": "%",
+          "info": "Scale image at screen width below 1165px"
+        },
+        {
+          "type": "range",
+          "id": "image_scale_1024",
+          "min": 50,
+          "max": 100,
+          "step": 5,
+          "default": 70,
+          "label": "Image scale @ 1024px",
+          "unit": "%",
+          "info": "Scale image at screen width below 1024px"
+        },
+        {
+          "type": "range",
+          "id": "image_scale_900",
+          "min": 50,
+          "max": 100,
+          "step": 5,
+          "default": 80,
+          "label": "Image scale @ 900px",
+          "unit": "%",
+          "info": "Scale image at mobile screen width"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Doctor-Designed Care Kits",
+      "blocks": [
+        {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row1",
+            "card_width": 50,
+            "title": "Men's Health Kit"
+          }
+        },
+        {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row1",
+            "card_width": 50,
+            "title": "Women's Wellness Kit"
+          }
+        },
+        {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row2",
+            "card_width": 50,
+            "title": "Immunity Booster Kit"
+          }
+        },
+        {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row2",
+            "card_width": 50,
+            "title": "Digestive Care Kit"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

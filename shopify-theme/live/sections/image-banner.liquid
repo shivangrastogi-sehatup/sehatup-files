@@ -1,0 +1,228 @@
+{% style %}
+/* ===============================
+   COMMON
+================================ */
+.clinic-hero {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  color: #fff;
+}
+
+/* ===============================
+   DESKTOP (UNCHANGED)
+================================ */
+@media (min-width: 768px) {
+  .clinic-hero {
+    padding: 60px;
+  }
+
+  .clinic-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url({{ section.settings.desktop_bg | image_url }});
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.45);
+  }
+
+  .clinic-hero__wrap {
+    position: relative;
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    z-index: 2;
+  }
+
+  .clinic-hero__left {
+    width: 60%;
+  }
+
+  .clinic-hero__right {
+    width: 40%;
+    text-align: right;
+  }
+
+  .clinic-hero__right img {
+    max-width: 460px;
+    width: 100%;
+  }
+}
+
+/* ===============================
+   MOBILE (NO TILE / NO CARD)
+================================ */
+@media (max-width: 767px) {
+  .clinic-hero {
+    padding: 40px 18px;
+    background-image: url({{ section.settings.mobile_bg | image_url }});
+    background-size: cover;
+    background-position: center;
+  }
+
+  /* REMOVE DARK TILE EFFECT */
+  .clinic-hero::before {
+    display: none;
+  }
+
+  .clinic-hero__wrap {
+    display: block;
+  }
+
+  .clinic-hero__right {
+    margin-top: 20px;
+  }
+
+  .clinic-hero__right img {
+    width: 100%;
+    border-radius: 0;
+  }
+}
+
+/* ===============================
+   TEXT & BUTTONS
+================================ */
+.clinic-hero__heading {
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 767px) {
+  .clinic-hero__heading {
+    font-size: 26px;
+  }
+}
+
+.clinic-hero__subheading {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.clinic-hero__subheading span {
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+.clinic-hero__desc {
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.9;
+  max-width: 520px;
+}
+
+.clinic-hero__buttons {
+  display: flex;
+  gap: 14px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.clinic-btn {
+  padding: 14px 28px;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+}
+
+.clinic-btn.primary {
+  background: #ff2d55;
+  color: #fff;
+}
+
+.clinic-btn.secondary {
+  border: 1.5px solid #fff;
+  color: #fff;
+}
+{% endstyle %}
+
+<section class="clinic-hero">
+  <div class="clinic-hero__wrap">
+
+    <!-- LEFT CONTENT -->
+    <div class="clinic-hero__left">
+      <div class="clinic-hero__heading">
+        Struggling with stress, hormones, weight or sexual health?
+      </div>
+
+      <div class="clinic-hero__subheading">
+        Find the real cause in <span>60 seconds</span>
+      </div>
+
+      <div class="clinic-hero__desc">
+        India's first digital clinic where doctors from Ayurveda, Homeopathy and Allopathy work together for you.
+      </div>
+
+      {% if section.settings.show_cta %}
+      <div class="clinic-hero__buttons">
+        {% if section.settings.primary_link != blank %}
+          <a href="{{ section.settings.primary_link }}" class="clinic-btn primary">
+            Start Free Assessment
+          </a>
+        {% endif %}
+
+        {% if section.settings.secondary_link != blank %}
+          <a href="{{ section.settings.secondary_link }}" class="clinic-btn secondary">
+            Talk to a Doctor
+          </a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RIGHT IMAGE (DESKTOP & MOBILE BOTH) -->
+    <div class="clinic-hero__right">
+      <img src="{{ section.settings.right_image | image_url }}" alt="">
+    </div>
+
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Hero Desktop + Mobile",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "desktop_bg",
+      "label": "Desktop Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_bg",
+      "label": "Mobile Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "right_image",
+      "label": "Doctor Image"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_cta",
+      "label": "Show CTA Buttons",
+      "default": true
+    },
+    {
+      "type": "url",
+      "id": "primary_link",
+      "label": "Primary Button Link"
+    },
+    {
+      "type": "url",
+      "id": "secondary_link",
+      "label": "Secondary Button Link"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Clinic Hero Responsive"
+    }
+  ]
+}
+{% endschema %}

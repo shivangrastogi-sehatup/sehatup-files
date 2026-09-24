@@ -18,15 +18,17 @@ const src  = pick('Extract Message Details');   // present on all three branches
 const dec  = pick('Decide Process');            // absent on the skip branch
 const ai   = pick('Final Reply');               // present once the reply check finished (sent or needs_human)
 const prod = pick('Fetch Product Matches');     // present on the reply branch
+const rc   = pick('Recheck Handoff');           // present only when a reply was about to be sent
 
 // Infer outcome from how far this message travelled.
 let outcome = 'replied';
 if (src.skipAi === true) outcome = 'skipped';
 else if (dec.shouldProcess === false) outcome = 'bowed_out';
 else if (ai.route === 'human') outcome = 'needs_human';   // every draft broke a safety rule - nothing was sent
+else if (rc.okToSend === false) outcome = 'bowed_out';    // a human agent replied while Gemini was drafting - nothing was sent
 
 const reason = outcome === 'skipped'   ? (src.skipReason || '')
-             : outcome === 'bowed_out' ? (dec.reason || '')
+             : outcome === 'bowed_out' ? (rc.okToSend === false ? rc.reason : (dec.reason || ''))
              : (dec.reason || 'process');
 
 // n8n execution id — makes the Firestore doc idempotent and lets the Error Trigger's failure

@@ -1,0 +1,26 @@
+{% if product.variants.size >= 3 %}
+  <div class="sub-variant-selector">
+    {% for variant in product.variants limit: 3 %}
+      <div
+        class="sub-card {% if forloop.first %}sub-card-active{% endif %}"
+        data-variant-id="{{ variant.id }}"
+      >
+        <div class="sub-header">
+          <span>{{ variant.title }}</span>
+        </div>
+
+        {% if variant.compare_at_price %}
+          <div class="sub-save">
+            SAVE ₹{{ variant.compare_at_price | minus: variant.price | money_without_currency }}
+          </div>
+        {% endif %}
+
+        <div class="sub-price-new">₹{{ variant.price | money_without_currency }}</div>
+
+        {% if variant.compare_at_price %}
+          <div class="sub-price-old">₹{{ variant.compare_at_price | money_without_currency }}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

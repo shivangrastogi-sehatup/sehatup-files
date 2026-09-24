@@ -1,0 +1,1259 @@
+{% doc %}
+  @prompt
+    Create a responsive "Meet the Founders" team section with profile cards featuring images, names, titles, descriptions, and quotes.
+    
+    Layout structure:
+    - Section heading: "Meet the Founders"
+    - Team member cards in a grid (2 columns desktop, stacked mobile)
+    
+    Card 1:
+    - Profile image: professional headshot with rounded corners
+    - Name: "Karan Bhargava"
+    - Title/Role: "Founder & CEO"
+    - Description: "Bringing 15+ years of digital health innovation, Karan is obsessed with one question:"
+    - Quote (with left border accent): "What if healthcare treated people, not just problems?"
+    
+    Card 2:
+    - Profile image: professional headshot with rounded corners
+    - Name: "Amit Singh Sandhu"
+    - Title/Role: "Co-founder & CMO"
+    - Description: "A brand strategist who understands behavior and stigma in health. Amit ensures solutions don't just exist:"
+    - Quote (with left border accent): "They are understood, adopted, and trusted."
+    
+    Requirements:
+    - Fully responsive layout:
+      * Desktop: 2 columns side by side, centered
+      * Tablet: 2 columns with adjusted spacing
+      * Mobile: single column, stacked vertically
+    - Settings schema to customize:
+      * Section heading text and typography (size, weight, color, alignment)
+      * Section background color
+      * Content max-width control
+      * Team member cards (repeatable blocks):
+        - Profile image upload
+        - Image border radius control
+        - Image aspect ratio (square, portrait)
+        - Name text
+        - Title/role text
+        - Description text (rich text support)
+        - Quote text
+        - Quote border color and width
+        - Card background color (optional)
+        - Card padding and spacing
+      * Grid layout: columns per row (2, 3, or 4 on desktop)
+      * Typography controls:
+        - Name font size, weight, color
+        - Title font size, weight, color
+        - Description font size, color
+        - Quote font size, style (italic option), color
+      * Spacing controls: section padding, card gaps, internal card spacing
+      * Image styling: border radius, shadow (optional), hover effects
+      * Quote styling: left border accent, background color (optional), padding
+      * Text alignment within cards
+      * Mobile-specific: image size, font size overrides
+    - Profile images should have rounded corners and consistent sizing
+    - Cards should have equal heights on desktop
+    - Quote should have a colored left border accent (pink/red)
+    - Clean, professional design with good spacing
+    - Support for adding/removing team members (flexible blocks)
+    - Optional card background or subtle border
+    - Images should maintain aspect ratio and be responsive
+    - Mobile: cards stack vertically, full width, optimized spacing
+    - Optional hover effects on images (zoom, overlay)
+    - Accessible color contrast ratios
+    - Support for 2-6 team members in flexible grid
+    - Optional social media links per team member (LinkedIn, Twitter, etc.)
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-team-section-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    background-color: {{ block.settings.section_bg_color }};
+    padding: {{ block.settings.section_padding_top }}px {{ block.settings.section_padding_horizontal }}px {{ block.settings.section_padding_bottom }}px;
+  }
+
+  .ai-team-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.content_max_width }}px;
+    margin: 0 auto;
+  }
+
+  .ai-team-heading-{{ ai_gen_id }} {
+    font-size: clamp(24px, 3.4vw, 64px);
+    font-weight: {{ block.settings.heading_weight }};
+    color: {{ block.settings.heading_color }};
+    text-align: {{ block.settings.heading_alignment }};
+    margin: 0 0 {{ block.settings.heading_margin_bottom }}px;
+  }
+
+  .ai-team-grid-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: repeat({{ block.settings.columns_desktop }}, 1fr);
+    gap: {{ block.settings.card_gap }}px;
+    margin-top: {{ block.settings.grid_margin_top }}px;
+  }
+
+  .ai-team-card-{{ ai_gen_id }} {
+    background-color: {{ block.settings.card_bg_color }};
+    border-radius: {{ block.settings.card_border_radius }}px;
+    padding: {{ block.settings.card_padding }}px;
+    text-align: {{ block.settings.card_text_alignment }};
+    {% if block.settings.card_border_width > 0 %}
+      border: {{ block.settings.card_border_width }}px solid {{ block.settings.card_border_color }};
+    {% endif %}
+    {% if block.settings.card_shadow_opacity > 0 %}
+      box-shadow: 0 {{ block.settings.card_shadow_vertical }}px {{ block.settings.card_shadow_blur }}px rgba(0, 0, 0, {{ block.settings.card_shadow_opacity | divided_by: 100.0 }});
+    {% endif %}
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ai-team-image-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    margin-bottom: {{ block.settings.image_margin_bottom }}px;
+    overflow: hidden;
+    border-radius: {{ block.settings.image_border_radius }}px;
+    {% if block.settings.image_aspect_ratio == 'square' %}
+      aspect-ratio: 1 / 1;
+    {% elsif block.settings.image_aspect_ratio == 'portrait' %}
+      aspect-ratio: 3 / 4;
+    {% endif %}
+  }
+
+  .ai-team-image-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  {% if block.settings.image_hover_effect == 'zoom' %}
+    .ai-team-card-{{ ai_gen_id }}:hover .ai-team-image-{{ ai_gen_id }} {
+      transform: scale(1.05);
+    }
+  {% endif %}
+
+  .ai-team-image-placeholder-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-team-image-placeholder-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ai-team-content-{{ ai_gen_id }} {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ai-team-name-{{ ai_gen_id }} {
+    font-size: clamp(14px, 2.4vw, 35px);
+    font-weight: {{ block.settings.name_weight }};
+    color: {{ block.settings.name_color }};
+    margin: 0 0 {{ block.settings.name_margin_bottom }}px;
+  }
+
+  .ai-team-title-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1vw, 20px);
+    font-weight: {{ block.settings.title_weight }};
+    color: {{ block.settings.title_color }};
+    margin: 0 0 {{ block.settings.title_margin_bottom }}px;
+  }
+
+  .ai-team-description-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1vw, 20px);
+    color: {{ block.settings.description_color }};
+    line-height: 1.6;
+    margin: 0 0 {{ block.settings.description_margin_bottom }}px;
+  }
+
+  .ai-team-quote-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1vw, 20px);
+    color: {{ block.settings.quote_color }};
+    {% if block.settings.quote_italic %}
+      font-style: italic;
+    {% endif %}
+    line-height: 1.5;
+    padding: {{ block.settings.quote_padding }}px;
+    padding-left: {{ block.settings.quote_padding | plus: 12 }}px;
+    border-left: {{ block.settings.quote_border_width }}px solid {{ block.settings.quote_border_color }};
+    {% if block.settings.quote_bg_color != blank and block.settings.quote_bg_color != 'rgba(0,0,0,0)' %}
+      background-color: {{ block.settings.quote_bg_color }};
+      border-radius: 4px;
+    {% endif %}
+    margin: 0;
+  }
+
+  .ai-team-social-{{ ai_gen_id }} {
+    display: flex;
+    gap: 12px;
+    margin-top: {{ block.settings.social_margin_top }}px;
+    {% if block.settings.card_text_alignment == 'center' %}
+      justify-content: center;
+    {% elsif block.settings.card_text_alignment == 'right' %}
+      justify-content: flex-end;
+    {% endif %}
+  }
+
+  .ai-team-social-link-{{ ai_gen_id }} {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: {{ block.settings.social_bg_color }};
+    color: {{ block.settings.social_icon_color }};
+    transition: all 0.3s ease;
+  }
+
+  .ai-team-social-link-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.social_hover_bg_color }};
+    color: {{ block.settings.social_hover_icon_color }};
+    transform: translateY(-2px);
+  }
+
+  .ai-team-social-link-{{ ai_gen_id }} svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-team-grid-{{ ai_gen_id }} {
+      grid-template-columns: repeat({{ block.settings.columns_tablet }}, 1fr);
+    }
+
+    .ai-team-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size | times: 0.85 }}px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-team-section-{{ ai_gen_id }} {
+      padding: {{ block.settings.section_padding_top | times: 0.7 }}px {{ block.settings.section_padding_horizontal | times: 0.7 }}px {{ block.settings.section_padding_bottom | times: 0.7 }}px;
+    }
+
+    .ai-team-grid-{{ ai_gen_id }} {
+      grid-template-columns: 1fr;
+      gap: {{ block.settings.card_gap | times: 0.8 }}px;
+    }
+
+    .ai-team-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size_mobile }}px;
+    }
+
+    .ai-team-name-{{ ai_gen_id }} {
+      font-size: {{ block.settings.name_size_mobile }}px;
+    }
+
+    .ai-team-title-{{ ai_gen_id }} {
+      font-size: {{ block.settings.title_size_mobile }}px;
+    }
+
+    .ai-team-description-{{ ai_gen_id }} {
+      font-size: {{ block.settings.description_size_mobile }}px;
+    }
+
+    .ai-team-quote-{{ ai_gen_id }} {
+      font-size: {{ block.settings.quote_size_mobile }}px;
+    }
+
+    .ai-team-card-{{ ai_gen_id }} {
+      padding: {{ block.settings.card_padding | times: 0.8 }}px;
+    }
+  }
+{% endstyle %}
+
+<team-founders-{{ ai_gen_id }} class="ai-team-section-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-team-container-{{ ai_gen_id }}">
+    {% if block.settings.section_heading != blank %}
+      <h2 class="ai-team-heading-{{ ai_gen_id }}">{{ block.settings.section_heading }}</h2>
+    {% endif %}
+
+    <div class="ai-team-grid-{{ ai_gen_id }}">
+      {% for i in (1..6) %}
+        {% liquid
+          assign enabled_key = 'member_' | append: i | append: '_enabled'
+          assign image_key = 'member_' | append: i | append: '_image'
+          assign name_key = 'member_' | append: i | append: '_name'
+          assign title_key = 'member_' | append: i | append: '_title'
+          assign description_key = 'member_' | append: i | append: '_description'
+          assign quote_key = 'member_' | append: i | append: '_quote'
+          assign linkedin_key = 'member_' | append: i | append: '_linkedin'
+          assign twitter_key = 'member_' | append: i | append: '_twitter'
+
+          assign enabled = block.settings[enabled_key]
+          assign image = block.settings[image_key]
+          assign name = block.settings[name_key]
+          assign title = block.settings[title_key]
+          assign description = block.settings[description_key]
+          assign quote = block.settings[quote_key]
+          assign linkedin = block.settings[linkedin_key]
+          assign twitter = block.settings[twitter_key]
+        %}
+
+        {% if enabled %}
+          <div class="ai-team-card-{{ ai_gen_id }}">
+            <div class="ai-team-image-wrapper-{{ ai_gen_id }}">
+              {% if image %}
+                <img
+                  src="{{ image | image_url: width: 800 }}"
+                  alt="{{ name | escape }}"
+                  loading="lazy"
+                  width="800"
+                  height="{% if block.settings.image_aspect_ratio == 'square' %}800{% else %}1067{% endif %}"
+                  class="ai-team-image-{{ ai_gen_id }}"
+                >
+              {% else %}
+                <div class="ai-team-image-placeholder-{{ ai_gen_id }}">
+                  {{ 'image' | placeholder_svg_tag }}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="ai-team-content-{{ ai_gen_id }}">
+              {% if name != blank %}
+                <h3 class="ai-team-name-{{ ai_gen_id }}">{{ name }}</h3>
+              {% endif %}
+
+              {% if title != blank %}
+                <p class="ai-team-title-{{ ai_gen_id }}">{{ title }}</p>
+              {% endif %}
+
+              {% if description != blank %}
+                <div class="ai-team-description-{{ ai_gen_id }}">{{ description }}</div>
+              {% endif %}
+
+              {% if quote != blank %}
+                <blockquote class="ai-team-quote-{{ ai_gen_id }}">{{ quote }}</blockquote>
+              {% endif %}
+
+              {% if linkedin != blank or twitter != blank %}
+                <div class="ai-team-social-{{ ai_gen_id }}">
+                  {% if linkedin != blank %}
+                    <a
+                      href="{{ linkedin }}"
+                      class="ai-team-social-link-{{ ai_gen_id }}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="LinkedIn profile for {{ name }}"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                      </svg>
+                    </a>
+                  {% endif %}
+
+                  {% if twitter != blank %}
+                    <a
+                      href="{{ twitter }}"
+                      class="ai-team-social-link-{{ ai_gen_id }}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Twitter profile for {{ name }}"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                    </a>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</team-founders-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class TeamFounders{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        this.initEqualHeights();
+        window.addEventListener('resize', this.initEqualHeights.bind(this));
+      }
+
+      initEqualHeights() {
+        if (window.innerWidth > 749) {
+          const cards = this.querySelectorAll('.ai-team-card-{{ ai_gen_id }}');
+          cards.forEach(card => {
+            card.style.height = 'auto';
+          });
+
+          let maxHeight = 0;
+          cards.forEach(card => {
+            const height = card.offsetHeight;
+            if (height > maxHeight) {
+              maxHeight = height;
+            }
+          });
+
+          cards.forEach(card => {
+            card.style.height = maxHeight + 'px';
+          });
+        } else {
+          const cards = this.querySelectorAll('.ai-team-card-{{ ai_gen_id }}');
+          cards.forEach(card => {
+            card.style.height = 'auto';
+          });
+        }
+      }
+
+      disconnectedCallback() {
+        window.removeEventListener('resize', this.initEqualHeights.bind(this));
+      }
+    }
+
+    customElements.define('team-founders-{{ ai_gen_id }}', TeamFounders{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Meet the founders",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section"
+    },
+    {
+      "type": "text",
+      "id": "section_heading",
+      "label": "Heading",
+      "default": "Meet the Founders"
+    },
+    {
+      "type": "color",
+      "id": "section_bg_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "content_max_width",
+      "min": 600,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "label": "Content max width",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_horizontal",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding horizontal",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Heading style"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 20,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "label": "Desktop size",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "min": 16,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Mobile size",
+      "default": 28
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "Font weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Color",
+      "default": "#262626"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "heading_margin_bottom",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "label": "Margin bottom",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Grid layout"
+    },
+    {
+      "type": "select",
+      "id": "columns_desktop",
+      "label": "Columns on desktop",
+      "options": [
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" },
+        { "value": "4", "label": "4" }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "select",
+      "id": "columns_tablet",
+      "label": "Columns on tablet",
+      "options": [
+        { "value": "1", "label": "1" },
+        { "value": "2", "label": "2" }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Gap between cards",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "grid_margin_top",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "label": "Grid margin top",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "color",
+      "id": "card_bg_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Border radius",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "card_border_width",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "card_border_color",
+      "label": "Border color",
+      "default": "#e0e0e0"
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Shadow opacity",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_vertical",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "label": "Shadow vertical offset",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_blur",
+      "min": 0,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "label": "Shadow blur",
+      "default": 12
+    },
+    {
+      "type": "select",
+      "id": "card_text_alignment",
+      "label": "Text alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Image style"
+    },
+    {
+      "type": "select",
+      "id": "image_aspect_ratio",
+      "label": "Aspect ratio",
+      "options": [
+        { "value": "square", "label": "Square (1:1)" },
+        { "value": "portrait", "label": "Portrait (3:4)" }
+      ],
+      "default": "square"
+    },
+    {
+      "type": "range",
+      "id": "image_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Border radius",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "image_margin_bottom",
+      "min": 0,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "label": "Margin bottom",
+      "default": 20
+    },
+    {
+      "type": "select",
+      "id": "image_hover_effect",
+      "label": "Hover effect",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "zoom", "label": "Zoom" }
+      ],
+      "default": "zoom"
+    },
+    {
+      "type": "header",
+      "content": "Name style"
+    },
+    {
+      "type": "range",
+      "id": "name_size",
+      "min": 16,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Desktop size",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "name_size_mobile",
+      "min": 14,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "label": "Mobile size",
+      "default": 20
+    },
+    {
+      "type": "select",
+      "id": "name_weight",
+      "label": "Font weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "color",
+      "id": "name_color",
+      "label": "Color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "name_margin_bottom",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "label": "Margin bottom",
+      "default": 8
+    },
+    {
+      "type": "header",
+      "content": "Title style"
+    },
+    {
+      "type": "range",
+      "id": "title_size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Desktop size",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "title_size_mobile",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Mobile size",
+      "default": 14
+    },
+    {
+      "type": "select",
+      "id": "title_weight",
+      "label": "Font weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" }
+      ],
+      "default": "500"
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "title_margin_bottom",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "label": "Margin bottom",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Description style"
+    },
+    {
+      "type": "range",
+      "id": "description_size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Desktop size",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "description_size_mobile",
+      "min": 12,
+      "max": 18,
+      "step": 1,
+      "unit": "px",
+      "label": "Mobile size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "description_color",
+      "label": "Color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "description_margin_bottom",
+      "min": 0,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "label": "Margin bottom",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Quote style"
+    },
+    {
+      "type": "range",
+      "id": "quote_size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Desktop size",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "quote_size_mobile",
+      "min": 12,
+      "max": 18,
+      "step": 1,
+      "unit": "px",
+      "label": "Mobile size",
+      "default": 14
+    },
+    {
+      "type": "checkbox",
+      "id": "quote_italic",
+      "label": "Italic style",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "quote_color",
+      "label": "Text color",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "quote_border_color",
+      "label": "Border color",
+      "default": "#e91e63"
+    },
+    {
+      "type": "range",
+      "id": "quote_border_width",
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "label": "Border width",
+      "default": 4
+    },
+    {
+      "type": "color",
+      "id": "quote_bg_color",
+      "label": "Background color"
+    },
+    {
+      "type": "range",
+      "id": "quote_padding",
+      "min": 8,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "label": "Padding",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Social links style"
+    },
+    {
+      "type": "range",
+      "id": "social_margin_top",
+      "min": 0,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "label": "Margin top",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "social_bg_color",
+      "label": "Background color",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "social_icon_color",
+      "label": "Icon color",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "social_hover_bg_color",
+      "label": "Hover background color",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "social_hover_icon_color",
+      "label": "Hover icon color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "header",
+      "content": "Team member 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "member_1_enabled",
+      "label": "Enable member 1",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "member_1_image",
+      "label": "Profile image"
+    },
+    {
+      "type": "text",
+      "id": "member_1_name",
+      "label": "Name",
+      "default": "Karan Bhargava"
+    },
+    {
+      "type": "text",
+      "id": "member_1_title",
+      "label": "Title",
+      "default": "Founder & CEO"
+    },
+    {
+      "type": "richtext",
+      "id": "member_1_description",
+      "label": "Description",
+      "default": "<p>Bringing 15+ years of digital health innovation, Karan is obsessed with one question:</p>"
+    },
+    {
+      "type": "text",
+      "id": "member_1_quote",
+      "label": "Quote",
+      "default": "What if healthcare treated people, not just problems?"
+    },
+    {
+      "type": "url",
+      "id": "member_1_linkedin",
+      "label": "LinkedIn URL"
+    },
+    {
+      "type": "url",
+      "id": "member_1_twitter",
+      "label": "Twitter URL"
+    },
+    {
+      "type": "header",
+      "content": "Team member 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "member_2_enabled",
+      "label": "Enable member 2",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "member_2_image",
+      "label": "Profile image"
+    },
+    {
+      "type": "text",
+      "id": "member_2_name",
+      "label": "Name",
+      "default": "Amit Singh Sandhu"
+    },
+    {
+      "type": "text",
+      "id": "member_2_title",
+      "label": "Title",
+      "default": "Co-founder & CMO"
+    },
+    {
+      "type": "richtext",
+      "id": "member_2_description",
+      "label": "Description",
+      "default": "<p>A brand strategist who understands behavior and stigma in health. Amit ensures solutions don't just exist:</p>"
+    },
+    {
+      "type": "text",
+      "id": "member_2_quote",
+      "label": "Quote",
+      "default": "They are understood, adopted, and trusted."
+    },
+    {
+      "type": "url",
+      "id": "member_2_linkedin",
+      "label": "LinkedIn URL"
+    },
+    {
+      "type": "url",
+      "id": "member_2_twitter",
+      "label": "Twitter URL"
+    },
+    {
+      "type": "header",
+      "content": "Team member 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "member_3_enabled",
+      "label": "Enable member 3",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "member_3_image",
+      "label": "Profile image"
+    },
+    {
+      "type": "text",
+      "id": "member_3_name",
+      "label": "Name"
+    },
+    {
+      "type": "text",
+      "id": "member_3_title",
+      "label": "Title"
+    },
+    {
+      "type": "richtext",
+      "id": "member_3_description",
+      "label": "Description"
+    },
+    {
+      "type": "text",
+      "id": "member_3_quote",
+      "label": "Quote"
+    },
+    {
+      "type": "url",
+      "id": "member_3_linkedin",
+      "label": "LinkedIn URL"
+    },
+    {
+      "type": "url",
+      "id": "member_3_twitter",
+      "label": "Twitter URL"
+    },
+    {
+      "type": "header",
+      "content": "Team member 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "member_4_enabled",
+      "label": "Enable member 4",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "member_4_image",
+      "label": "Profile image"
+    },
+    {
+      "type": "text",
+      "id": "member_4_name",
+      "label": "Name"
+    },
+    {
+      "type": "text",
+      "id": "member_4_title",
+      "label": "Title"
+    },
+    {
+      "type": "richtext",
+      "id": "member_4_description",
+      "label": "Description"
+    },
+    {
+      "type": "text",
+      "id": "member_4_quote",
+      "label": "Quote"
+    },
+    {
+      "type": "url",
+      "id": "member_4_linkedin",
+      "label": "LinkedIn URL"
+    },
+    {
+      "type": "url",
+      "id": "member_4_twitter",
+      "label": "Twitter URL"
+    },
+    {
+      "type": "header",
+      "content": "Team member 5"
+    },
+    {
+      "type": "checkbox",
+      "id": "member_5_enabled",
+      "label": "Enable member 5",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "member_5_image",
+      "label": "Profile image"
+    },
+    {
+      "type": "text",
+      "id": "member_5_name",
+      "label": "Name"
+    },
+    {
+      "type": "text",
+      "id": "member_5_title",
+      "label": "Title"
+    },
+    {
+      "type": "richtext",
+      "id": "member_5_description",
+      "label": "Description"
+    },
+    {
+      "type": "text",
+      "id": "member_5_quote",
+      "label": "Quote"
+    },
+    {
+      "type": "url",
+      "id": "member_5_linkedin",
+      "label": "LinkedIn URL"
+    },
+    {
+      "type": "url",
+      "id": "member_5_twitter",
+      "label": "Twitter URL"
+    },
+    {
+      "type": "header",
+      "content": "Team member 6"
+    },
+    {
+      "type": "checkbox",
+      "id": "member_6_enabled",
+      "label": "Enable member 6",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "member_6_image",
+      "label": "Profile image"
+    },
+    {
+      "type": "text",
+      "id": "member_6_name",
+      "label": "Name"
+    },
+    {
+      "type": "text",
+      "id": "member_6_title",
+      "label": "Title"
+    },
+    {
+      "type": "richtext",
+      "id": "member_6_description",
+      "label": "Description"
+    },
+    {
+      "type": "text",
+      "id": "member_6_quote",
+      "label": "Quote"
+    },
+    {
+      "type": "url",
+      "id": "member_6_linkedin",
+      "label": "LinkedIn URL"
+    },
+    {
+      "type": "url",
+      "id": "member_6_twitter",
+      "label": "Twitter URL"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Meet the founders"
+    }
+  ]
+}
+{% endschema %}

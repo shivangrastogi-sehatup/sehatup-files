@@ -1,0 +1,120 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "name": "t:sections.footer.name",
+  "type": "footer",
+  "sections": {
+    "footer": {
+      "type": "footer",
+      "blocks": {
+        "platform_7KaTRa": {
+          "type": "platform",
+          "settings": {
+            "logo": "shopify://shop_images/Tata_1mg.webp",
+            "logo_scale": 70,
+            "name": "Tata 1 Mg",
+            "link": "https://www.1mg.com/marketer/212-healthcare-pvt.ltd-91497"
+          }
+        },
+        "platform_qk7BUm": {
+          "type": "platform",
+          "settings": {
+            "logo": "shopify://shop_images/Jiomart-02.webp",
+            "logo_scale": 90,
+            "name": "Jio Mart",
+            "link": "https://www.jiomart.com/products?brand=SehatUP&journey=shop-all"
+          }
+        },
+        "platform_x393QN": {
+          "type": "platform",
+          "settings": {
+            "logo": "shopify://shop_images/Amazon-03.webp",
+            "logo_scale": 75,
+            "name": "Amazon",
+            "link": "https://www.amazon.in/stores/page/872AD0A5-8644-498A-A735-01E996C03F8A?ingress=2&lp_context_asin=B0FKTF2N9W&lp_context_query=sehatup&visitId=5bfa9c14-5ad5-43fb-ac3d-de470e6cb784&ref_=ast_bln"
+          }
+        },
+        "platform_FyPMAL": {
+          "type": "platform",
+          "settings": {
+            "logo": "shopify://shop_images/Flipkart-04.webp",
+            "logo_scale": 105,
+            "name": "Flipkart",
+            "link": "https://www.flipkart.com/search?q=sehatupWellness&otracker=search&otracker1=search&marketplace=FLIPKART&as-show=on&as=off"
+          }
+        },
+        "platform_atjeLj": {
+          "type": "platform",
+          "settings": {
+            "logo": "shopify://shop_images/Blinkit-05.webp",
+            "logo_scale": 60,
+            "name": "Blinkit",
+            "link": "https://blinkit.com/s/?q=sehatup"
+          }
+        },
+        "platform_TPaidW": {
+          "type": "platform",
+          "settings": {
+            "logo": "shopify://shop_images/Healthmug-06.webp",
+            "logo_scale": 120,
+            "name": "HealthMug",
+            "link": "https://www.healthmug.com/products/sexual-wellness/38?brand=2654"
+          }
+        }
+      },
+      "block_order": [
+        "platform_7KaTRa",
+        "platform_qk7BUm",
+        "platform_x393QN",
+        "platform_FyPMAL",
+        "platform_atjeLj",
+        "platform_TPaidW"
+      ],
+      "settings": {
+        "footer_logo": "shopify://shop_images/New_Logo_Red_and_White_with_tagline_1.webp",
+        "footer_logo_width": 160,
+        "footer_logo_link": "/",
+        "footer_tagline": "India's first integrated digital health clinic. Your trusted partner for authentic Ayurvedic wellness solutions.",
+        "phone_icon": "shopify://shop_images/telephone_1.webp",
+        "phone_number": "+91 93555-39355",
+        "email_icon": "shopify://shop_images/mail.webp",
+        "email": "support@sehatup.com",
+        "address_icon": "shopify://shop_images/location-pin.webp",
+        "address": "C-79, C Block, Sector 2, Noida, Uttar Pradesh 201301",
+        "contact_icon_size": 48,
+        "contact_icon_radius": 50,
+        "contact_icon_bg": "#2a2a2a",
+        "contact_link_color": "#ffffff",
+        "footer_link_color": "#dddddd",
+        "quick_links_title": "Quick Links",
+        "footer_menu": "footer",
+        "support_links_title": "Support",
+        "support_menu": "support_menu",
+        "company_links_title": "Company",
+        "company_menu": "footer-1",
+        "separator_color": "#ffffff",
+        "separator_margin_top": 16,
+        "separator_margin_bottom": 16,
+        "footer_padding_top": 56,
+        "footer_padding_bottom": 40,
+        "stockists_title": "Also available on",
+        "stockists_columns": 6,
+        "stockist_logo_height": 44,
+        "copyright_text": "© 2024 SehatUP. All rights reserved.",
+        "footer_background": "#0f0f0f",
+        "footer_text_color": "#ffffff",
+        "footer_social_icons": "<a href=\"https://www.facebook.com/sehatup/\" target=\"_blank\" rel=\"noopener\" aria-label=\"Facebook\">\n<svg viewbox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M13 3h4v4h-3c-.6 0-1 .4-1 1v2h4l-1 4h-3v7h-4v-7H6v-4h3V8c0-3 2-5 4-5z\"></path></svg></a>\n\n<a href=\"https://www.instagram.com/sehatupofficial/\" target=\"_blank\" rel=\"noopener\" aria-label=\"Instagram\">\n<svg viewbox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm5 5a5 5 0 110 10 5 5 0 010-10zm0 2.2A2.8 2.8 0 1014.8 12 2.8 2.8 0 0012 9.2zM17.5 6.5a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z\"></path></svg></a>\n\n<a href=\"https://www.linkedin.com/company/sehatup\" target=\"_blank\" rel=\"noopener\" aria-label=\"LinkedIn\">\n<svg viewbox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M4 3a2 2 0 100 4 2 2 0 000-4zm-2 6h4v12H2zm7 0h4v2c.7-1.2 2.3-2 4-2 3.3 0 5 2.2 5 6v6h-4v-5.5c0-2-.7-3.3-2.5-3.3-1.7 0-2.5 1.2-2.5 3.3V21H9z\"></path></svg></a>\n\n<a href=\"https://www.youtube.com/@sehatupofficial\" target=\"_blank\" rel=\"noopener\" aria-label=\"YouTube\">\n<svg viewbox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M23 8s-.2-1.6-.8-2.3c-.8-.9-1.7-.9-2.1-1C17.2 4.5 12 4.5 12 4.5s-5.2 0-8.1.2c-.4.1-1.3.1-2.1 1C1.2 6.4 1 8 1 8S.8 9.9.8 11.8v1.4C.8 15.1 1 17 1 17s.2 1.6.8 2.3c.8.9 1.9.9 2.4 1 1.7.2 7.8.2 7.8.2s5.2 0 8.1-.2c.4-.1 1.3-.1 2.1-1 .6-.7.8-2.3.8-2.3s.2-1.9.2-3.8v-1.4C23.2 9.9 23 8 23 8zM9.8 15.2V8.8L15.5 12l-5.7 3.2z\"></path></svg></a>"
+      }
+    }
+  },
+  "order": [
+    "footer"
+  ]
+}

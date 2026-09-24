@@ -1,0 +1,1130 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "blocks_k7CD3w": {
+      "type": "hero-healthcare-banner",
+      "name": "Healthcare hero banner",
+      "settings": {
+        "layout_mode": "background-with-overlay-image",
+        "desktop_width_percent": 100,
+        "background_image": "shopify://shop_images/Frame_11.webp",
+        "background_image_size": "cover",
+        "background_position_x": "center",
+        "background_position_y": "center",
+        "background_overlay_opacity": 100,
+        "background_overlay_color": "#e62020",
+        "background_overlay_strength": 0,
+        "show_white_panel": false,
+        "white_panel_width": 45,
+        "white_panel_color": "#ffffff",
+        "white_panel_opacity": 10,
+        "white_panel_rounded": true,
+        "white_panel_border_radius": 20,
+        "foreground_image": "shopify://shop_images/Doctor_1.webp",
+        "foreground_image_scale": 85,
+        "foreground_image_fit": "contain",
+        "foreground_position_x": "right",
+        "foreground_position_y": "bottom",
+        "foreground_offset_x": 0,
+        "foreground_offset_y": 0,
+        "hide_foreground_mobile": false,
+        "heading": "Struggling with stress, hormones, weight or sexual health?",
+        "subheading_prefix": "Find the real cause in",
+        "subheading_highlight": "60 seconds",
+        "subheading_highlight_color": "#ff4757",
+        "body_text": "<p>India's first digital clinic where doctors from Ayurveda, Homeopathy and Allopathy work together for you.</p>",
+        "content_position": "left",
+        "content_max_width": 1400,
+        "content_text_max_width": 700,
+        "heading_size": 54,
+        "heading_weight": "700",
+        "heading_color": "#ffffff",
+        "subheading_size": 26,
+        "subheading_weight": "500",
+        "subheading_color": "#ffffff",
+        "body_size": 19,
+        "body_color": "#ffffff",
+        "text_shadow_enabled": true,
+        "button_1_text": "Start Free Assessment",
+        "button_1_link": "shopify://pages/health-score-360",
+        "button_1_style": "filled",
+        "button_1_bg_color": "#ff4757",
+        "button_1_text_color": "#ffffff",
+        "button_1_border_color": "#ff4757",
+        "button_1_hover_bg_color": "#e63946",
+        "button_1_hover_text_color": "#ffffff",
+        "button_1_hover_border_color": "#e63946",
+        "show_button_2": true,
+        "enable_doctor_new_tab": true,
+        "button_2_text": "Talk to a Doctor",
+        "button_2_link": "https://wa.me/919355539355?text=Hi, I need assistance",
+        "button_2_style": "outline",
+        "button_2_bg_color": "#ffffff",
+        "button_2_text_color": "#ffffff",
+        "button_2_border_color": "#ffffff",
+        "button_2_hover_bg_color": "#ffffff",
+        "button_2_hover_text_color": "#000000",
+        "button_2_hover_border_color": "#ffffff",
+        "button_layout": "horizontal",
+        "button_font_size": 14,
+        "button_font_weight": "600",
+        "button_padding_vertical": 14,
+        "button_padding_horizontal": 32,
+        "button_border_radius": 50,
+        "button_spacing": 32,
+        "section_min_height": 390,
+        "section_padding_top": 60,
+        "section_padding_bottom": 60,
+        "section_padding_horizontal": 40,
+        "content_spacing": 20,
+        "enable_mobile_overrides": false,
+        "section_min_height_mobile": 600,
+        "section_padding_top_mobile": 20,
+        "section_padding_bottom_mobile": 40,
+        "section_padding_horizontal_mobile": 16,
+        "mobile_content_alignment": "center",
+        "mobile_background_position_x": "center",
+        "mobile_background_position_y": "center"
+      }
+    },
+    "healthcare_fails_BMgEFz": {
+      "type": "Healthcare-Fails",
+      "blocks": {
+        "card_DeVYpB": {
+          "type": "card",
+          "settings": {
+            "image": "shopify://shop_images/1_bee0234f-dba7-4dd8-8903-ec33e47d11d2.webp",
+            "desktop_ratio": "auto",
+            "mobile_ratio": "auto",
+            "badge": "01",
+            "title": "Fragmented Treatment",
+            "text": "Allopathy, ayurveda, homeopathy, a neighbour's remedy. Everyone has an answer and none of them agree.",
+            "card_bg": "#fdf2f4",
+            "color_text": "#4b5573",
+            "badge_bg": "#f9ced9",
+            "badge_fg": "#c0134a"
+          }
+        },
+        "card_8Bf7RJ": {
+          "type": "card",
+          "settings": {
+            "image": "shopify://shop_images/2_c3281ce0-874e-4fa7-8d71-b2910e365070.webp",
+            "desktop_ratio": "auto",
+            "mobile_ratio": "auto",
+            "badge": "02",
+            "title": "Symptom-Focused Approach",
+            "text": "The tablet works for a few days. Then it is back, and so are you, starting the same cycle over.",
+            "card_bg": "#fdf2f4",
+            "color_text": "#4b5573",
+            "badge_bg": "#f9ced9",
+            "badge_fg": "#c0134a"
+          }
+        },
+        "card_3cGmRL": {
+          "type": "card",
+          "settings": {
+            "image": "shopify://shop_images/3_6a24df49-7d9f-4d8b-ab9a-fb6580dd89cd.webp",
+            "desktop_ratio": "auto",
+            "mobile_ratio": "auto",
+            "badge": "03",
+            "title": "Trial-and-Error Prescriptions",
+            "text": "The prescription changes every visit. What you walked in with does not.",
+            "card_bg": "#fdf2f4",
+            "color_text": "#4b5573",
+            "badge_bg": "#f9ced9",
+            "badge_fg": "#c0134a"
+          }
+        }
+      },
+      "block_order": [
+        "card_DeVYpB",
+        "card_8Bf7RJ",
+        "card_3cGmRL"
+      ],
+      "disabled": true,
+      "custom_css": [],
+      "name": "Healthcare Fails Section",
+      "settings": {
+        "heading": "Why Traditional Healthcare",
+        "heading_accent": "Isn't Working for You?",
+        "subheading": "Treating symptoms is easy. Finding the root cause is what matters.",
+        "header_align": "center",
+        "use_theme_fonts": false,
+        "heading_font": "poppins_n7",
+        "body_font": "poppins_n4",
+        "type_scale": 100,
+        "color_section_bg": "#ffffff",
+        "color_title": "#14183c",
+        "color_title_accent": "#ee204a",
+        "color_sub": "#4b5573",
+        "color_arrow": "#ee204a",
+        "color_card_title": "#000000",
+        "desktop_card_layout": "stacked",
+        "auto_number": true,
+        "show_arrows": true,
+        "alternate_sides": false,
+        "media_share": 46,
+        "desktop_fit": "fill",
+        "image_fade": 22,
+        "card_radius": 24,
+        "card_border_width": 1,
+        "color_card_border": "#f7d9df",
+        "card_shadow": false,
+        "hover_lift": true,
+        "card_gap": 36,
+        "container_width": 1440,
+        "padding_top": 64,
+        "padding_bottom": 64
+      }
+    },
+    "floating_product_video_3Gty9A": {
+      "type": "floating-product-video",
+      "name": "Floating video",
+      "settings": {
+        "enable_video": true,
+        "video_source": "link",
+        "video_url": "https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4",
+        "dock_side": "left",
+        "dock_bottom": 32,
+        "cta_label": "Add to cart",
+        "accent_color": "#ee204a"
+      }
+    },
+    "integrated_hLiEX3": {
+      "type": "integrated",
+      "name": "Integrated Care Cards",
+      "settings": {
+        "main_title": "Why sehatUP Integrated Care Works ?",
+        "main_subtitle": "The Power Of Three Medical Systems Working Together",
+        "icon_layout": "vertical",
+        "icon_align_vertical": "flex-start",
+        "card1_bg_image": "shopify://shop_images/Rectangle_17.webp",
+        "card1_icon": "shopify://shop_images/AYURVEDA_ELEMENTS-01_1.webp",
+        "card1_box_bg": "#d4f4dd",
+        "card1_title": "Ayurveda",
+        "card1_description": "Overall wellness, lifestyle balance and long-term healing",
+        "card2_bg_image": "shopify://shop_images/Rectangle_17_1.webp",
+        "card2_icon": "shopify://shop_images/HOMEOPATHY_ELEMENTS-01_1.webp",
+        "card2_box_bg": "#fef3e8",
+        "card2_title": "Homeopathy",
+        "card2_description": "Deep root-cause treatment with minimal side effects",
+        "card3_bg_image": "shopify://shop_images/Rectangle_17_2.webp",
+        "card3_icon": "shopify://shop_images/MODERN_MEDICINE_ELEMENTS-01_1.webp",
+        "card3_box_bg": "#fef0f0",
+        "card3_title": "Modern Medicine",
+        "card3_description": "Immediate symptomatic relief + accurate diagnosis",
+        "strip_text_before": "Together, they give you a complete",
+        "strip_text_highlight": "360° care plan",
+        "strip_text_after": "that no single system can offer alone.",
+        "strip_show_bg": true,
+        "strip_bg_color": "#f5f5f5",
+        "strip_show_border": false,
+        "strip_border_color": "#ff6b6b",
+        "strip_alignment": "center",
+        "strip_text_color": "#1d1d1d",
+        "strip_highlight_color": "#ee204a",
+        "strip_highlight_weight": "700",
+        "strip_font_size": 16,
+        "mobile_heading_size": 24,
+        "mobile_subtitle_size": 14,
+        "mobile_card_height": 340,
+        "dots_position": "below_cards"
+      }
+    },
+    "how_sehatUP_works_8PPfyF": {
+      "type": "how-sehatUP-works",
+      "blocks": {
+        "step_aYXNtV": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/mobile_quiz.webp",
+            "title": "Know Your Health Score",
+            "text": "A 2 minute check that shows what is off in hormones, stress, digestion and sleep."
+          }
+        },
+        "step_HXyedR": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/ChatGPT_Image_Sep_21_2026_02_23_44_PM.png",
+            "title": "Multi-System Doctor Review",
+            "text": "Doctors from all three systems read your score and history, then agree on one plan."
+          }
+        },
+        "step_narAXe": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/care_kit.png",
+            "title": "Get a Personalized Care Kit",
+            "text": "Medicines, herbs, food and daily routine chosen for your body, delivered home."
+          }
+        },
+        "step_CFHtRn": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/ChatGPT_Image_Sep_21_2026_12_53_24_PM_1.png",
+            "title": "Continuous Monitoring",
+            "text": "Monthly follow-ups, and your plan is adjusted as your body responds."
+          }
+        }
+      },
+      "block_order": [
+        "step_aYXNtV",
+        "step_HXyedR",
+        "step_narAXe",
+        "step_CFHtRn"
+      ],
+      "custom_css": [],
+      "name": "How sehatUP Works",
+      "settings": {
+        "heading_before": "How",
+        "heading_accent": "sehatUP",
+        "heading_after": "Works",
+        "subheading": "Simple steps. Better insights. Healthier you.",
+        "button_label": "Start Your Health Score",
+        "button_link": "shopify://pages/health-score-360",
+        "use_theme_fonts": true,
+        "heading_font": "poppins_n7",
+        "body_font": "poppins_n4",
+        "type_scale": 100,
+        "color_bg": "#ffffff",
+        "color_title": "#1d1d1d",
+        "color_accent": "#ee204a",
+        "color_sub": "#666666",
+        "color_step_title": "#1d1d1d",
+        "color_step_text": "#55555f",
+        "color_disc": "#fde8ec",
+        "color_badge": "#ee204a",
+        "color_badge_text": "#ffffff",
+        "color_button": "#ee204a",
+        "color_button_text": "#ffffff",
+        "container_width": 1320,
+        "padding_top": 40,
+        "padding_bottom": 32
+      }
+    },
+    "condition_we_resolve_rDXjXd": {
+      "type": "condition-we-resolve",
+      "blocks": {
+        "condition_XbeXdt": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "featured",
+            "icon": "shopify://shop_images/Sexual_wellness_icon_01b1fc68-93ee-4ac6-a4a9-c3dc915f6190.webp",
+            "icon_circle": true,
+            "icon_circle_color": "#f12f46",
+            "icon_circle_opacity": 10,
+            "title": "Sexual Wellness",
+            "text": "Performance, Desire, Stamina ",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#fffdf9"
+          }
+        },
+        "condition_NwHx77": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "featured",
+            "icon": "shopify://shop_images/Hormonal_imbalance_icon_5d3415ca-9826-44f6-adc3-d8b0e9be7947.webp",
+            "icon_circle": true,
+            "icon_circle_color": "#f12f46",
+            "icon_circle_opacity": 10,
+            "title": "Hormonal Imbalance",
+            "text": " PCOS, Irregular Cycles, Mood",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#fffdf9"
+          }
+        },
+        "condition_Wdt3RJ": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "featured",
+            "icon": "shopify://shop_images/weight_gain_and_metabolism_icon_aab2fd4e-aa19-4c4b-9eb5-073d292ed982.webp",
+            "icon_circle": true,
+            "icon_circle_color": "#f12f46",
+            "icon_circle_opacity": 10,
+            "title": "Weight Gain & Metabolism",
+            "text": " Belly Fat, Slow Metabolism, Cravings ",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#fffdf9"
+          }
+        },
+        "condition_EtRQVw": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "normal",
+            "icon": "shopify://shop_images/Stress_and_Anxiety_icon_13ffd9e5-2418-459d-a7c9-b2edf2c23d7a.webp",
+            "icon_circle": false,
+            "icon_circle_color": "#f12f46",
+            "icon_circle_opacity": 10,
+            "title": "Stress & Anxiety",
+            "text": "Restlessness, Overthinking, Tension ",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#ff4a7a"
+          }
+        },
+        "condition_tNL83T": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "normal",
+            "icon": "shopify://shop_images/sleep_issues_icon_48054615-cf04-4f6e-ab58-effadb39535c.webp",
+            "icon_circle": false,
+            "icon_circle_color": "#f12f46",
+            "icon_circle_opacity": 10,
+            "title": "Sleep Issues",
+            "text": "Trouble Sleeping, Light Sleep, Restlessness  ",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#ff4a7a"
+          }
+        },
+        "condition_wEbUEh": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "normal",
+            "icon": "shopify://shop_images/Digestion_and_bloating_icon_6a511e65-b47a-405f-bfb8-f89c9594db1e.webp",
+            "icon_circle": false,
+            "icon_circle_color": "#f12f46",
+            "icon_circle_opacity": 10,
+            "title": "Digestion & Bloating",
+            "text": "Gas, Acidity, Constipation ",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#ff4a7a"
+          }
+        },
+        "condition_e8ftBF": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "normal",
+            "icon": "shopify://shop_images/Low_energy_and_fatigue_icon_c06e6f1a-1fce-46a6-8410-54cd86c2714b.webp",
+            "icon_circle": false,
+            "icon_circle_color": "#f12f46",
+            "icon_circle_opacity": 10,
+            "title": "Low Energy & Fatigue",
+            "text": "Tiredness, Weakness, Low Drive  ",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#ff4a7a"
+          }
+        },
+        "condition_EqhTA7": {
+          "type": "condition",
+          "settings": {
+            "layout_type": "normal",
+            "icon": "shopify://shop_images/Immunity_icon_027895aa-6dad-48bd-9e84-4f346d366481.webp",
+            "icon_circle": false,
+            "icon_circle_color": "#f5f5f5",
+            "icon_circle_opacity": 100,
+            "title": "Immunity",
+            "text": "Frequent Cold, Low Resistance  ",
+            "title_font_size": 16,
+            "title_font_weight": "600",
+            "title_font_style": "normal",
+            "title_color": "#111111",
+            "text_font_size": 14,
+            "text_font_weight": "400",
+            "text_font_style": "normal",
+            "text_color": "#555555",
+            "bg_color": "#ff4a7a"
+          }
+        }
+      },
+      "block_order": [
+        "condition_XbeXdt",
+        "condition_NwHx77",
+        "condition_Wdt3RJ",
+        "condition_EtRQVw",
+        "condition_tNL83T",
+        "condition_wEbUEh",
+        "condition_e8ftBF",
+        "condition_EqhTA7"
+      ],
+      "name": "Conditions We Solve",
+      "settings": {
+        "heading": "Conditions we Solve",
+        "title_font_size": 36,
+        "title_font_weight": "600",
+        "title_color": "#1d1d1d",
+        "title_alignment": "center",
+        "title_letter_spacing": 0,
+        "description": "We don't guess. We diagnose your symptoms, lifestyle, and body signals to create a personalized, doctor-guided treatment plan using Homeopathy + Ayurveda + Modern Medicine.",
+        "paragraph_font_size": 15,
+        "paragraph_color": "#1d1d1d",
+        "paragraph_line_height": 1.6,
+        "background": "#ffffff",
+        "padding_top": 80,
+        "padding_bottom": 80,
+        "show_cta_section": true,
+        "cta_text": "Not sure what to choose?",
+        "cta_text_size": 19,
+        "cta_text_weight": "500",
+        "cta_text_color": "#1d1d1d",
+        "cta_button_text": "Take a 2-min Health Score Quiz",
+        "cta_button_url": "shopify://pages/health-score-360",
+        "cta_button_bg": "#f12f46",
+        "cta_button_color": "#ffffff",
+        "cta_button_text_size": 12,
+        "cta_button_text_weight": "600",
+        "cta_button_padding_vertical": 12,
+        "cta_button_padding_horizontal": 24,
+        "cta_button_border_radius": 50,
+        "cta_button_show_arrow": true,
+        "cta_bg_color": "#ffffff",
+        "cta_border_radius": 16,
+        "cta_padding_vertical": 36,
+        "cta_padding_horizontal": 20,
+        "cta_margin_top": 0,
+        "show_explore_button": true,
+        "explore_button_text": "Explore Solution",
+        "explore_button_url": "",
+        "explore_button_bg": "#ffffff",
+        "explore_button_color": "#000000",
+        "explore_button_text_size": 16,
+        "explore_button_text_weight": "500",
+        "explore_button_padding_vertical": 14,
+        "explore_button_padding_horizontal": 36,
+        "explore_button_border_radius": 50,
+        "explore_button_border_width": 1,
+        "explore_button_border_color": "#dddddd",
+        "explore_button_margin_top": 20
+      }
+    },
+    "doctors_section_eV8zLp": {
+      "type": "doctors-section",
+      "blocks": {
+        "doctor_XFKRFN": {
+          "type": "doctor",
+          "settings": {
+            "image": "shopify://shop_images/Dr_Devika.webp",
+            "speciality": "Psychology",
+            "name": "Ms. Devika Chugh",
+            "qualification": "Counselling Psychologist",
+            "experience": "5 years experience"
+          }
+        },
+        "doctor_xeJF8V": {
+          "type": "doctor",
+          "settings": {
+            "image": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "speciality": "Ayurveda",
+            "name": "Dr. Jayant Kumar",
+            "qualification": "BAMS ( Ayurveda )",
+            "experience": "5 years experience"
+          }
+        },
+        "doctor_rTUez8": {
+          "type": "doctor",
+          "settings": {
+            "image": "shopify://shop_images/Dr_Shefali.webp",
+            "speciality": "Homeopathy",
+            "name": "Dr. Shefali Chhicholia",
+            "qualification": "BHMS, MD-Homeopathy",
+            "experience": "5 years experience"
+          }
+        }
+      },
+      "block_order": [
+        "doctor_XFKRFN",
+        "doctor_xeJF8V",
+        "doctor_rTUez8"
+      ],
+      "custom_css": [],
+      "name": "Medical Experts",
+      "settings": {
+        "heading": "Meet Our Medical Experts",
+        "section_bg": "#ffffff",
+        "max_width": 1400,
+        "heading_size": 32,
+        "heading_weight": "600",
+        "heading_color": "#1a1a1a",
+        "grid_max_width": 1100,
+        "grid_gap": 32,
+        "card_width": 280,
+        "image_width": 300,
+        "image_height": 300,
+        "image_radius": 24,
+        "image_fit": "contain",
+        "image_position": "top",
+        "text_spacing": 12,
+        "name_size": 22,
+        "name_color": "#1a1a1a",
+        "qual_size": 14,
+        "qual_color": "#555555",
+        "exp_size": 14,
+        "exp_color": "#777777",
+        "padding_top": 8,
+        "padding_bottom": 64
+      }
+    },
+    "doctor_designed_kits_Wb6YeW": {
+      "type": "doctor-designed-kits",
+      "blocks": {
+        "kit_NgckGf": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row1",
+            "card_width": 60,
+            "card_bg": "#eeeeee",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Stress & Sleep Balance Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For calmness, focus and restful sleep.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "/pages/combos-3#stress-n-sleep-kit",
+            "combined_image": "shopify://shop_images/Stress_sleep_kit.webp",
+            "image_width": 390,
+            "image_height": 310,
+            "image_position_x": 25,
+            "image_scale_1165": 75,
+            "image_scale_1024": 70,
+            "image_scale_900": 80
+          }
+        },
+        "kit_N7cebx": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row1",
+            "card_width": 57,
+            "card_bg": "#f4f4f4",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Women’s Hormone Balance Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For mood swings, period issues and PCOS support.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "https://www.sehatup.com/pages/combos-3#hormone-kit",
+            "combined_image": "shopify://shop_images/women_Hormonal_balance.webp",
+            "image_width": 320,
+            "image_height": 380,
+            "image_position_x": 25,
+            "image_scale_1165": 75,
+            "image_scale_1024": 70,
+            "image_scale_900": 80
+          }
+        },
+        "kit_zXJzM6": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row2",
+            "card_width": 47,
+            "card_bg": "#d6e2f5",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Men’s Performance Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For stamina, confidence and daily energy.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "shopify://products/p-e-e-d-integrated-kit",
+            "combined_image": "shopify://shop_images/Man_performance_copy.webp",
+            "image_width": 300,
+            "image_height": 320,
+            "image_position_x": 15,
+            "image_scale_1165": 80,
+            "image_scale_1024": 75,
+            "image_scale_900": 100
+          }
+        },
+        "kit_HrArxC": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row2",
+            "card_width": 66,
+            "card_bg": "#ffd3d3",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Weight Management Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For metabolism, appetite control and healthy fat-burning.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "/pages/combos-3#weight-loss-kit",
+            "combined_image": "shopify://shop_images/Weight_management_kit_copy.webp",
+            "image_width": 410,
+            "image_height": 480,
+            "image_position_x": 30,
+            "image_scale_1165": 75,
+            "image_scale_1024": 70,
+            "image_scale_900": 80
+          }
+        }
+      },
+      "block_order": [
+        "kit_NgckGf",
+        "kit_N7cebx",
+        "kit_zXJzM6",
+        "kit_HrArxC"
+      ],
+      "name": "Doctor-Designed Care Kits",
+      "settings": {
+        "heading": "Doctor-Designed Care Kits",
+        "padding_top": 24,
+        "padding_bottom": 80
+      }
+    },
+    "homepage_judgeme_reviews_8V3nxk": {
+      "type": "homepage-judgeme-reviews",
+      "disabled": true,
+      "name": "Homepage Reviews – Judge.me",
+      "settings": {
+        "enable_section": true,
+        "heading": "What Our Customers Say",
+        "heading_align": "center",
+        "heading_color": "#111111",
+        "section_bg": "#ffffff",
+        "card_bg": "#ffffff",
+        "text_color": "#222222",
+        "star_color": "#f5a623",
+        "scroll_speed": 30,
+        "max_width": 1200,
+        "padding_y": 80
+      }
+    },
+    "trust_certification_BaEkdL": {
+      "type": "trust-certification",
+      "blocks": {
+        "certification_4CRPmA": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "certification_8XPPAH": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "certification_U68aaH": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "certification_4CRPmA",
+        "certification_8XPPAH",
+        "certification_U68aaH"
+      ],
+      "name": "Trust certifications",
+      "settings": {
+        "heading": "Why People Trust Us",
+        "heading_size": 28,
+        "heading_color": "#222222",
+        "container_width": 1200,
+        "logo_max_width": 140,
+        "label_font_size": 14,
+        "label_color": "#333333",
+        "enable_scroll": true,
+        "scroll_speed": 30,
+        "background_color": "#ffffff",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "margin_top": 0,
+        "margin_bottom": 0
+      }
+    },
+    "statistics_section_GGBRCg": {
+      "type": "statistics-section",
+      "name": "Impact statistics",
+      "settings": {
+        "heading": "Real People. Real Progress.",
+        "heading_size": 48,
+        "heading_size_mobile": 24,
+        "heading_spacing": 20,
+        "stat_1_enabled": true,
+        "stat_1_value": "40%",
+        "stat_1_label": "Better sleep",
+        "stat_2_enabled": true,
+        "stat_2_value": "30%",
+        "stat_2_label": "Improved energy",
+        "stat_3_enabled": true,
+        "stat_3_value": "25%",
+        "stat_3_label": "Reduced stress",
+        "stat_4_enabled": true,
+        "stat_4_value": "Better",
+        "stat_4_label": "Digestion, stamina and hormonal balance",
+        "value_size": 40,
+        "label_size": 16,
+        "value_spacing": 16,
+        "value_size_mobile": 32,
+        "label_size_mobile": 13,
+        "container_width": 1200,
+        "column_gap": 40,
+        "column_gap_mobile": 0,
+        "row_gap_mobile": 0,
+        "padding_top": 30,
+        "padding_bottom": 20,
+        "padding_top_mobile": 50,
+        "padding_bottom_mobile": 50,
+        "background_color": "#1c1c1c",
+        "heading_color": "#ffffff",
+        "accent_color": "#ff3333",
+        "label_color": "#ffffff"
+      }
+    },
+    "1769660995835d317d": {
+      "type": "apps",
+      "blocks": {
+        "judge_me_reviews_featured_carousel_Px4cxH": {
+          "type": "shopify://apps/judge-me-reviews/blocks/featured_carousel/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "maxwidth": 1483
+          }
+        }
+      },
+      "block_order": [
+        "judge_me_reviews_featured_carousel_Px4cxH"
+      ],
+      "settings": {
+        "include_margins": true
+      }
+    },
+    "featured_in_custom_D9EbdA": {
+      "type": "featured-in-custom",
+      "blocks": {
+        "logo_L9Lck6": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Bw_healthcare-01.webp",
+            "name": "",
+            "link": "https://www.bwhealthcareworld.com/article/health-tech-startup-sehatup-launches-india%E2%80%99s-first-integrated-digital-health-clinic-536987"
+          }
+        },
+        "logo_QAm76L": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/The_week-01.webp",
+            "name": "",
+            "link": "https://www.theweek.in/news/sci-tech/2024/10/22/india-s-first-integrated-digital-clinic-sehatup-aims-to-deliver-.html"
+          }
+        },
+        "logo_Jharff": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/United_news_of_india-01.webp",
+            "name": "",
+            "link": "https://web.archive.org/web/20250118230824/https://www.uniindia.com/~/health-startup-sehatup-launches-integrated-digital-health-clinic/Business%20Economy/news/3310240.html"
+          }
+        },
+        "logo_xEQpyr": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Silicon_india-01.webp",
+            "name": "",
+            "link": "https://www.siliconindia.com/news/sehatup-launches-india-s-first-integrated-digital-health-clinic-nwid-47297.html"
+          }
+        }
+      },
+      "block_order": [
+        "logo_L9Lck6",
+        "logo_QAm76L",
+        "logo_Jharff",
+        "logo_xEQpyr"
+      ],
+      "name": "Featured in",
+      "settings": {
+        "heading": "Featured In",
+        "heading_size": 28,
+        "heading_color": "#2b2c2d",
+        "logo_max_width": 140,
+        "logo_spacing": 40,
+        "logo_opacity": 100,
+        "grayscale_amount": 0,
+        "scroll_speed": 30,
+        "pause_on_hover": true,
+        "tunnel_scale": 30,
+        "hover_zoom": 12,
+        "tunnel_fade": 55,
+        "background_color": "#ffffff",
+        "max_width": 1200,
+        "padding_top": 60,
+        "padding_bottom": 20
+      }
+    },
+    "product_faq_E43Gdi": {
+      "type": "product-faq",
+      "blocks": {
+        "faq_aRqCW3": {
+          "type": "faq",
+          "settings": {
+            "question": "How can I start my care plan?",
+            "answer": "<p>After your purchase, our doctors will conduct a comprehensive evaluation of your concerns, medical history, and lifestyle to customize the plan to meet your specific needs.</p>"
+          }
+        },
+        "faq_zJydFN": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my information confidential?",
+            "answer": "<p>Confidentiality and clarity are our priorities. Your data is held in strict confidence, and the information you share will solely be utilized for transparent communication and to deliver effective care.</p>"
+          }
+        },
+        "faq_KNcXU4": {
+          "type": "faq",
+          "settings": {
+            "question": "Are the products safe?",
+            "answer": "<p>Our products are approved by AYUSH. All our products are formulated by experts and are safe to use, and free from harmful chemicals.</p>"
+          }
+        },
+        "faq_WCKbh4": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my treatment plan customized to my needs?",
+            "answer": "<p>The plans provided offer a glimpse of what you can anticipate in your customized plan, but every individual's needs vary, and our doctors excel in leading you toward your unique journey to well-being.</p>"
+          }
+        },
+        "faq_QKUGTj": {
+          "type": "faq",
+          "settings": {
+            "question": "Do I have to pay for doctor consultation?",
+            "answer": "<p>Your doctor consultation is included at no additional cost with your care plan.</p>"
+          }
+        },
+        "faq_Ddc4X7": {
+          "type": "faq",
+          "settings": {
+            "question": "Are medications part of the program?",
+            "answer": "<p>Depending on the diagnosis, our doctors/nutritionists may prescribe medications as part of the treatment plan.<br/>These are selected based on individual needs and may include supplements, prescriptions, or other suitable options.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_aRqCW3",
+        "faq_zJydFN",
+        "faq_KNcXU4",
+        "faq_WCKbh4",
+        "faq_QKUGTj",
+        "faq_Ddc4X7"
+      ],
+      "name": "Product FAQ",
+      "settings": {
+        "heading": "Frequently Asked Questions",
+        "single_open": true,
+        "reserve_space": false,
+        "enable_schema": true,
+        "heading_size": 28,
+        "max_width": 1100,
+        "padding_top": 104,
+        "padding_bottom": 60,
+        "item_padding": 20,
+        "border_radius": 8,
+        "question_size": 16,
+        "answer_size": 15,
+        "background_color": "#ffffff",
+        "item_background": "#ffffff",
+        "border_color": "#e5e5e5",
+        "heading_color": "#1d1d1d",
+        "question_color": "#1d1d1d",
+        "answer_color": "#666666",
+        "him_q1": "Who is the For Him range designed for?",
+        "him_a1": "<p>Designed for men looking to support testosterone, energy, and performance naturally.</p>",
+        "him_q2": "Are these products safe for daily use?",
+        "him_a2": "<p>Yes, all products are clinically formulated and safe for daily use as directed.</p>",
+        "him_q3": "How soon will I see results?",
+        "him_a3": "<p>Most users notice improvements within 4–6 weeks of consistent use.</p>",
+        "her_q1": "Who is the For Her range designed for?",
+        "her_a1": "<p>Designed for women seeking hormonal balance, skin health, and sustained energy.</p>",
+        "her_q2": "Are these safe during pregnancy?",
+        "her_a2": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>",
+        "her_q3": "Can I take these with other supplements?",
+        "her_a3": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>"
+      }
+    },
+    "featured_blog_Vywbak": {
+      "type": "featured-blog",
+      "name": "t:sections.featured-blog.presets.name",
+      "settings": {
+        "blog": "news",
+        "heading": "<strong>Blogs</strong>",
+        "heading_size": "h2",
+        "columns_desktop": 3,
+        "show_image": true,
+        "show_excerpt": true,
+        "show_date": true,
+        "show_view_all": true,
+        "view_all_text": "Read All Blogs",
+        "card_radius": 16,
+        "padding_top": 12,
+        "padding_bottom": 80
+      }
+    },
+    "17707185038a27a139": {
+      "type": "healthcare-cta-banner",
+      "settings": {
+        "layout_mode": "overlay_foreground",
+        "container_width": 1600,
+        "content_vertical_align": "center",
+        "content_width": 50,
+        "bg_position_x": 50,
+        "bg_position_y": 50,
+        "bg_position_x_mobile": 50,
+        "bg_position_y_mobile": 50,
+        "enable_parallax": false,
+        "parallax_speed": 30,
+        "show_overlay": true,
+        "overlay_gradient": "linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.2) 100%)",
+        "overlay_opacity": 50,
+        "panel_bg_color": "#ffffff",
+        "panel_padding": 50,
+        "panel_border_radius": 8,
+        "panel_shadow_opacity": 15,
+        "panel_shadow_y": 10,
+        "panel_shadow_blur": 30,
+        "heading": "Struggling with stress, hormones, weight or sexual health?",
+        "heading_font": "montserrat_n4",
+        "heading_size_desktop": 48,
+        "heading_size_mobile": 28,
+        "heading_line_height": 1.2,
+        "heading_color": "#2b3845",
+        "heading_spacing": 20,
+        "subheading": "Find the real cause in 60 seconds",
+        "accent_text": "60 seconds",
+        "accent_color": "#ee204a",
+        "subheading_font": "montserrat_n4",
+        "subheading_size_desktop": 24,
+        "subheading_size_mobile": 18,
+        "subheading_line_height": 1.4,
+        "subheading_color": "#2b3845",
+        "subheading_spacing": 24,
+        "body_text": "<p>Take our quick assessment to discover personalized wellness solutions tailored to your unique health needs.</p>",
+        "body_size_desktop": 16,
+        "body_size_mobile": 14,
+        "body_line_height": 1.6,
+        "body_color": "#2b3845",
+        "body_spacing": 32,
+        "text_align": "left",
+        "show_buttons": true,
+        "button_primary_label": "Take assessment",
+        "button_primary_link": "",
+        "button_primary_bg": "#ee204a",
+        "button_primary_text_color": "#ffffff",
+        "button_primary_hover_bg": "#d01d42",
+        "button_primary_hover_text": "#ffffff",
+        "show_button_secondary": true,
+        "button_secondary_label": "Learn more",
+        "button_secondary_link": "",
+        "button_secondary_bg": "rgba(0,0,0,0)",
+        "button_secondary_text_color": "#2b3845",
+        "button_secondary_border": "#2b3845",
+        "button_secondary_hover_bg": "#2b3845",
+        "button_secondary_hover_text": "#ffffff",
+        "button_secondary_hover_border": "#2b3845",
+        "button_text_size_desktop": 16,
+        "button_text_size_mobile": 14,
+        "button_padding_desktop": 14,
+        "button_padding_mobile": 10,
+        "button_border_radius": 6,
+        "button_border_width": 2,
+        "button_font_weight": 600,
+        "button_gap": 16,
+        "show_foreground_image": false,
+        "foreground_size_desktop": 500,
+        "foreground_size_mobile": 250,
+        "foreground_position_x": 10,
+        "foreground_position_y": 50,
+        "foreground_vertical_align": "center",
+        "foreground_horizontal_align": "center",
+        "foreground_border_radius": 8,
+        "hide_foreground_mobile": false,
+        "section_padding_top": 80,
+        "section_padding_bottom": 80,
+        "section_padding_horizontal": 40,
+        "enable_scroll_animations": true
+      }
+    }
+  },
+  "order": [
+    "blocks_k7CD3w",
+    "healthcare_fails_BMgEFz",
+    "floating_product_video_3Gty9A",
+    "integrated_hLiEX3",
+    "how_sehatUP_works_8PPfyF",
+    "condition_we_resolve_rDXjXd",
+    "doctors_section_eV8zLp",
+    "doctor_designed_kits_Wb6YeW",
+    "homepage_judgeme_reviews_8V3nxk",
+    "trust_certification_BaEkdL",
+    "statistics_section_GGBRCg",
+    "1769660995835d317d",
+    "featured_in_custom_D9EbdA",
+    "product_faq_E43Gdi",
+    "featured_blog_Vywbak",
+    "17707185038a27a139"
+  ]
+}

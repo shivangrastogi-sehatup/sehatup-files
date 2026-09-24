@@ -187,8 +187,26 @@ const sent = chat({ cust: "link bhejo" }, same("Maine aapko link bhej diya hai."
 check("'I sent the link' with no link never ships", !/bhej diya/i.test(sent.lastAiReply), sent);
 const ai = chat({ cust: "aap AI ho kya" }, same("Ji, Mai ek AI Assistant hu."));
 check("'I am an AI' never ships", !/AI Assistant/i.test(ai.lastAiReply), ai);
-const addr = chat({ cust: "aap kahan se ho" }, same("Hum Noida, Sector 2 se hain."));
-check("an address never ships", !/Noida|Sector/i.test(addr.lastAiReply), addr);
+const addr = chat({ cust: "aap kahan se ho" }, same("Hum Delhi se operate karte hain."));
+check("a wrong city never ships", !/Delhi/i.test(addr.lastAiReply), addr);
+const delhi = turn({ cust: "Ap kha se. Baat kr rahi ho", model: "Hum Delhi se operate karte hain." });
+check("'ap kha se' (+918102009381) catches Delhi", delhi.violations.includes("invented_address"), delhi.violations);
+const noida = chat({ cust: "aap kahan se ho" }, ["Hamara office Sector 2, Noida me hai. Doctor se baat phone call pe hoti hai, isliye hum har city me help karte hain."]);
+check("'Sector 2, Noida' is sent", noida.route === "send" && noida.calls === 1, noida);
+check("the full address / other sectors are flagged",
+  turn({ cust: "office kahan hai", model: "C-79, Sector 2, Noida 201301." }).violations.includes("invented_address")
+  && turn({ cust: "office kahan hai", model: "Sector 62, Noida." }).violations.includes("invented_address"));
+
+console.log("\n--- vulgar words and call denial (2026-09-18) ---");
+const lund = turn({ cust: "Mughe apna land ko 9 inch long Krna hai", model: "Lund ki size badhane ke liye doctor se consultation leni hogi." });
+check("mirroring 'Lund' (+918102009381) is flagged", lund.violations.includes("vulgar_word"), lund.violations);
+check("'ling' is clean", !turn({ cust: "size badhana hai", model: "Ling ki size ke liye doctor sahi salah denge." }).violations.includes("vulgar_word"));
+const noCall = turn({ cust: "Call me mam", model: "Maaf kijiye, hum log call par consultation nahi karte." });
+check("'call par consultation nahi karte' (+919574932949) is flagged", noCall.violations.includes("denied_phone_call"), noCall.violations);
+check("'Call me' counts as asking for the call",
+  !turn({ cust: "Call me", model: "Ji bilkul, free consultation me doctor aapko call karenge." }).violations.includes("consultation_too_early"));
+check("declining an out-of-hours call is not a denial",
+  !turn({ cust: "raat 10 baje call karwa do", model: "Raat 10 baje call nahi ho paayegi, 9:30 AM se 6:30 PM ke beech bataiye." }).violations.includes("denied_phone_call"));
 const score = chat({ cust: "mera health score kya hai" },
   ["Aapka score 7 hai.", "Apna free health score yahan check kar sakte hain:\nhttps://www.sehatup.com/pages/health-score-360"]);
 check("an invented score is retried; the link reply is sent", score.calls === 2 && /health-score-360/.test(score.lastAiReply), score);

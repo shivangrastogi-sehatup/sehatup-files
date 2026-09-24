@@ -5,8 +5,9 @@
   Styling matches the approved Claude Design mockups 1a to 1e / 2a to 2d exactly
   (dialog 920px, panel 350px). Palette comes from the theme index.json.
 
-  Writes to Firebase Firestore (project sehatup-f96b5). Config is hardcoded
-  in the script, NOT in the schema. The writer adapter reuses window.db when
+  Writes to Firebase Firestore (project sehatup-f96b5) and, when
+  SHEET_WEBAPP_URL is set, to the leads Google Sheet via lead-popup-sheet.gs.
+  Config is hardcoded in the script, NOT in the schema. The writer adapter reuses window.db when
   the questionnaire pages have already booted the v9 compat SDK.
 
   Install: Sections > add `lead-capture-popup.liquid`, add it from the theme
@@ -933,6 +934,32 @@
     };
     var SDK_VERSION = '10.13.0';
 
+    /* ------------------------------------------------------------------
+       Google Sheet, hardcoded like Firebase above. Paste the Apps Script
+       Web App URL (ends in /exec). Empty = Firestore only, as before.
+       ------------------------------------------------------------------ */
+    var SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwgnBEWGeCH7ax6DQ_x8LogtcsDHg8LmD26JvQU9oRHaA3Jz7ID2DgzurEt1SUuD_0b6Q/exec';
+
+    /* Resolves true once the request has left the browser, false when there
+       is no URL or the network failed. Never rejects.
+       no-cors + text/plain is the only way to POST to Apps Script from a
+       storefront: any other content type triggers a CORS preflight that Apps
+       Script cannot answer. The price is an opaque response, so "sent" is the
+       most this side can know; the script itself is what guarantees the row. */
+    function sendToSheet(lead) {
+      if (!SHEET_WEBAPP_URL) return Promise.resolve(false);
+      return fetch(SHEET_WEBAPP_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        keepalive: true,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(lead)
+      }).then(function () { return true; }, function (err) {
+        console.error('[lead-popup] sheet write failed:', err);
+        return false;
+      });
+    }
+
     var collectionName = root.dataset.firestoreCollection || 'popup_leads';
     var delay = parseFloat(root.dataset.delay || '12') * 1000;
     var scrollPct = parseFloat(root.dataset.scrollPercent || '0');
@@ -1348,8 +1375,6 @@
       btnLabel.textContent = 'Sending…';
 
       try {
-        var fb = await getWriter();
-
         // Where this visitor originally came from, captured on their FIRST page view by
         // the sehatup-attribution snippet rather than read off the URL here. That
         // distinction is the whole point: someone clicks a UTM-tagged ad, lands on a
@@ -1364,7 +1389,7 @@
           if (window.SehatUpAttribution) attribution = window.SehatUpAttribution.fields();
         } catch (e) { /* attribution must never block a lead from being saved */ }
 
-        await fb.add(collectionName, Object.assign({
+        var lead = Object.assign({
           name: name,
           phone: phone,
           email: email,
@@ -1376,12 +1401,27 @@
           sectionId: '{{ section.id }}',
           pageTemplate: root.dataset.template || '',
           pageUrl: window.location.href,
-          referrer: document.referrer || '',
-          // Mirrors the questionnaire engine: serverTimestamp for ordering,
-          // a client Date for immediate local reads.
-          timestamp: fb.stamp(),
-          createdAt: new Date()
-        }, attribution));
+          referrer: document.referrer || ''
+        }, attribution);
+
+        // Firestore and the Google Sheet are written in parallel, and the lead
+        // counts as saved if EITHER one takes it. One store being down must not
+        // throw away a customer's number that the other one already has.
+        var results = await Promise.allSettled([
+          getWriter().then(function (fb) {
+            return fb.add(collectionName, Object.assign({}, lead, {
+              // Mirrors the questionnaire engine: serverTimestamp for ordering,
+              // a client Date for immediate local reads.
+              timestamp: fb.stamp(),
+              createdAt: new Date()
+            }));
+          }),
+          sendToSheet(lead)
+        ]);
+        var savedToFirestore = results[0].status === 'fulfilled';
+        var savedToSheet = results[1].status === 'fulfilled' && results[1].value === true;
+        if (!savedToFirestore) console.error('[lead-popup] Firestore write failed:', results[0].reason);
+        if (!savedToFirestore && !savedToSheet) throw results[0].reason;
 
         // Mockup 1e: the form is REPLACED by the success card, not annotated
         // underneath it. Let the form animate out first, then swap.

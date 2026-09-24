@@ -1,0 +1,16 @@
+The attached image is the current homepage banner of an Indian digital health clinic. Create a new banner photograph that keeps the same setting and mood but replaces the people. Output only the photograph: no website header, no text, no buttons, no logos drawn on top.
+
+Setting (keep from the attached image): a bright, modern, premium Indian clinic interior, warm neutral walls, soft wooden slat panel on the right, a few framed certificates on the wall and on a low white counter, soft natural daylight from the left, calm and clean. The wall behind the doctors is plain and softly lit, with no readable text or logo on it.
+
+The people: three Indian doctors standing together on the right half of the frame, one from each medical system, all between 30 and 45 years old. Nobody elderly, no grey hair.
+- Left: the Ayurveda doctor, a man in a cream kurta with a beige Nehru jacket, a stethoscope around his neck.
+- Centre, slightly forward: the Homeopathy doctor, a woman in a white doctor's coat over a simple saree or kurta, hair neatly tied back.
+- Right: the Allopathy doctor, a man in a white doctor's coat over a light blue shirt and navy tie, a stethoscope around his neck.
+
+Confidence: they look like a team the viewer can trust completely. Upright posture, shoulders back, feet planted, looking straight into the camera with a calm, warm, closed-mouth smile. The centre doctor has her arms folded; the other two stand with hands relaxed or loosely clasped in front. Natural skin texture, real faces, professional and approachable, not stiff and not model-like.
+
+Composition: a wide landscape banner, about 2.6 to 1 (for example 2600 by 1000 pixels). The three doctors fill the right 45 percent of the frame, seen from the knees up, eye level, sharp focus. The left 55 percent is calm, softly blurred clinic background with no people and no clutter, slightly darker, so white headline text can sit on top of it and stay readable. Nothing important near the top or bottom edges.
+
+Style: real commercial photography, shot on a 50mm lens at f/2.8, soft even light, gentle depth of field, true colours with warm neutrals. Not an illustration, not 3D, not plastic or over-smoothed skin, no extra fingers or distorted hands.
+
+No text, no letters, no logos, no watermark anywhere in the image.

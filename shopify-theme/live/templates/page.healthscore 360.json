@@ -1,0 +1,684 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "17697712806fa21863": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_2d5d353_pMCDp8": {
+          "type": "ai_gen_block_2d5d353",
+          "settings": {
+            "container_max_width": 1300,
+            "section_background_color": "#ffffff",
+            "section_padding_top": 60,
+            "section_padding_bottom": 44,
+            "heading": "Know More About Your Body Than Your Mirror Can Tell",
+            "subheading": "A quick 2-minute check to understand what your body really needs — and how to fix it.",
+            "text_alignment": "center",
+            "heading_size": 28,
+            "heading_color": "#000000",
+            "heading_margin_bottom": 8,
+            "subheading_size": 10,
+            "subheading_color": "#666666",
+            "header_spacing": 28,
+            "card_gap": 24,
+            "card_padding": 24,
+            "card_border_radius": 16,
+            "card_content_gap": 20,
+            "card_shadow_vertical": 4,
+            "card_shadow_blur": 40,
+            "card_shadow_opacity": 0.1,
+            "image_border_radius": 12,
+            "card_1_image": "shopify://shop_images/Rectangle_19.webp",
+            "card_1_bg_color": "#f8e7f0",
+            "card_1_button_1_text": "Period Care",
+            "card_1_button_1_link": "shopify://pages/womens-wellness-questionnaire",
+            "card_1_button_1_bg_color": "#000000",
+            "card_1_button_1_text_color": "#ffffff",
+            "card_1_button_1_hover_bg_color": "#333333",
+            "card_1_button_2_text": "Weight Management",
+            "card_1_button_2_link": "shopify://pages/womens-weight-questionnaire",
+            "card_1_button_2_text_color": "#000000",
+            "card_1_button_2_border_color": "#000000",
+            "card_1_button_2_hover_bg_color": "#ee204a",
+            "card_1_button_2_hover_text_color": "#ffffff",
+            "card_1_button_2_hover_border_color": "#ee204a",
+            "card_2_image": "shopify://shop_images/Rectangle_19_1.webp",
+            "card_2_bg_color": "#e7f3f8",
+            "card_2_button_1_text": "Sexual Health",
+            "card_2_button_1_link": "shopify://pages/mens-health-questionnaire",
+            "card_2_button_1_bg_color": "#000000",
+            "card_2_button_1_text_color": "#ffffff",
+            "card_2_button_1_hover_bg_color": "#333333",
+            "card_2_button_2_text": "Weight Management",
+            "card_2_button_2_link": "shopify://pages/mens-weight-questionnaire",
+            "card_2_button_2_text_color": "#000000",
+            "card_2_button_2_border_color": "#000000",
+            "card_2_button_2_hover_bg_color": "#ee204a",
+            "card_2_button_2_hover_text_color": "#ffffff",
+            "card_2_button_2_hover_border_color": "#ee204a",
+            "button_gap": 12,
+            "button_padding_vertical": 10,
+            "button_padding_horizontal": 20,
+            "button_border_radius": 40,
+            "button_font_size": 14
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_2d5d353_pMCDp8"
+      ],
+      "settings": {}
+    },
+    "1769771514fca70115": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_c0d51e7_8QwpDU": {
+          "type": "ai_gen_block_c0d51e7",
+          "settings": {
+            "main_heading": "What Is Health Score 360?",
+            "main_heading_size": 28,
+            "main_heading_color": "#262626",
+            "heading_bottom_spacing": 40,
+            "card_1_icon": "shopify://shop_images/weight_gain_and_metabolism_icon_aab2fd4e-aa19-4c4b-9eb5-073d292ed982.webp",
+            "card_1_title": "Weight",
+            "card_1_description": "Track metabolism, energy levels, and weight patterns for optimized health.",
+            "card_2_icon": "shopify://shop_images/Sexual_wellness_icon_01b1fc68-93ee-4ac6-a4a9-c3dc915f6190.webp",
+            "card_2_title": "Sexual Wellness",
+            "card_2_description": "Track metabolism, energy levels, and weight patterns for optimized health.",
+            "card_3_icon": "shopify://shop_images/Hormonal_imbalance_icon_5d3415ca-9826-44f6-adc3-d8b0e9be7947.webp",
+            "card_3_title": "Period Care",
+            "card_3_description": "Monitor cycle health, PMS signals, and hormonal patterns.",
+            "cards_per_row_desktop": 3,
+            "cards_per_row_tablet": 3,
+            "card_gap": 30,
+            "cards_bottom_spacing": 50,
+            "card_background_color": "#ffe2e2",
+            "card_border_radius": 16,
+            "card_padding": 30,
+            "enable_card_hover": true,
+            "card_shadow_vertical": 4,
+            "card_shadow_blur": 10,
+            "card_shadow_opacity": 0.1,
+            "icon_size": 45,
+            "icon_bottom_spacing": 20,
+            "card_title_size": 18,
+            "card_title_color": "#262626",
+            "title_bottom_spacing": 15,
+            "card_description_size": 12,
+            "card_description_color": "#666666",
+            "subheading": "Health Score 360: Your Complete Wellness Guide",
+            "accent_text": "360:",
+            "accent_color": "#ff0000",
+            "subheading_size": 18,
+            "subheading_color": "#262626",
+            "subheading_bottom_spacing": 10,
+            "body_text": "<p>Most health issues don’t appear overnight. Your body gives signals long before the problem becomes serious. Health Score 360 helps you read those signals. It’s a simple wellness quiz that calculates your current health status based on your answers. Your score reflects how you’re doing in the areas that truly matter- weight, hormones, metabolism, energy, sexual wellness, and menstrual health. Perfect for anyone who wants clarity before symptoms hit.<br/><br/></p>",
+            "body_text_size": 12,
+            "body_text_color": "#666666",
+            "text_alignment": "center",
+            "container_max_width": 1300,
+            "section_padding_top": 70,
+            "section_padding_bottom": 60,
+            "section_background_color": "#f9f9f9",
+            "desktop_width_percent": 100
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_c0d51e7_8QwpDU"
+      ],
+      "settings": {}
+    },
+    "floating_product_video_NTRyRV": {
+      "type": "floating-product-video",
+      "name": "Floating video",
+      "settings": {
+        "enable_video": true,
+        "video_source": "link",
+        "video_url": "https://cdn.shopify.com/videos/c/o/v/53611d8a344742d7bfaf26c825ddd5ae.mp4",
+        "dock_side": "left",
+        "dock_bottom": 32,
+        "cta_label": "Add to cart",
+        "accent_color": "#ee204a"
+      }
+    },
+    "how_sehat_up_works_paByAt": {
+      "type": "how-sehatUP-works",
+      "blocks": {
+        "step_YfhQXg": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/mobile_quiz.webp",
+            "title": "Know Your Health Score",
+            "text": "A quick assessment that reveals issues in hormones, stress, digestion, sleep and lifestyle."
+          }
+        },
+        "step_Pi9Bfa": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/ChatGPT_Image_Sep_21_2026_02_23_44_PM.png",
+            "title": "Multi-System Doctor Review",
+            "text": "Doctors from Ayurveda, Homeopathy and Allopathy analyse your score and medical history together - combining immediate relief, lifestyle correction and root-cause treatment."
+          }
+        },
+        "step_haF43q": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/care_kit.png",
+            "title": "Get a Personalized Care Kit",
+            "text": "Custom medicines, herbs, nutrition and lifestyle - designed specifically for your body."
+          }
+        },
+        "step_bfh6rk": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/ChatGPT_Image_Sep_21_2026_12_53_24_PM_1.png",
+            "title": "Continuous Monitoring",
+            "text": "Monthly follow-ups + plan adjustments based on your body's response."
+          }
+        }
+      },
+      "block_order": [
+        "step_YfhQXg",
+        "step_Pi9Bfa",
+        "step_haF43q",
+        "step_bfh6rk"
+      ],
+      "custom_css": [],
+      "name": "How sehatUP Works",
+      "settings": {
+        "heading_before": "How",
+        "heading_accent": "sehatUP",
+        "heading_after": "Works",
+        "subheading": "Simple steps. Better insights. Healthier you.",
+        "button_label": "Start Your Health Score",
+        "button_link": "shopify://pages/health-score-360",
+        "use_theme_fonts": false,
+        "heading_font": "poppins_n7",
+        "body_font": "poppins_n4",
+        "type_scale": 100,
+        "color_bg": "#fff8f9",
+        "color_title": "#000000",
+        "color_accent": "#ee204a",
+        "color_sub": "#4b5573",
+        "color_step_title": "#000000",
+        "color_step_text": "#4b5573",
+        "color_disc": "#fde8ec",
+        "color_badge": "#ee204a",
+        "color_badge_text": "#ffffff",
+        "color_button": "#ee204a",
+        "color_button_text": "#ffffff",
+        "container_width": 1320,
+        "padding_top": 40,
+        "padding_bottom": 32
+      }
+    },
+    "1770008905758367d4": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_caa21f1_WJH6xN": {
+          "type": "ai_gen_block_caa21f1",
+          "settings": {
+            "max_width": 1200,
+            "diagram_position": "left",
+            "column_gap": 20,
+            "mobile_row_gap": 40,
+            "desktop_width_percent": 100,
+            "section_padding_top": 0,
+            "section_padding_bottom": 0,
+            "section_padding_horizontal": 80,
+            "heading": "Why It Matters",
+            "paragraph_1": "Most people wait for symptoms to get 'serious' before acting. That's the biggest mistake.",
+            "paragraph_2": "Health Score 360 helps you understand early signals related to",
+            "content_alignment": "left",
+            "mobile_alignment": "center",
+            "heading_size": 28,
+            "text_size": 14,
+            "heading_spacing": 10,
+            "paragraph_spacing": 10,
+            "tags_top_spacing": 15,
+            "background_color": "#ffffff",
+            "heading_color": "#262626",
+            "text_color": "#262626",
+            "custom_diagram_image": "shopify://shop_images/Frame_70.webp",
+            "center_circle_text": "360 PLAN",
+            "center_circle_color": "#ff4444",
+            "center_circle_border_color": "#cc0000",
+            "center_text_color": "#ffffff",
+            "icon_bg_color": "#f0f0f0",
+            "icon_border_color": "#cccccc",
+            "icon_color": "#333333",
+            "connector_color": "#999999",
+            "tag_spacing": 10,
+            "tag_padding_vertical": 8,
+            "tag_padding_horizontal": 16,
+            "tag_border_radius": 20,
+            "tag_text_size": 14,
+            "enable_tag_hover": true,
+            "tag_1_text": "Metabolism",
+            "tag_1_bg": "#e8f5e9",
+            "tag_1_text_color": "#000000",
+            "tag_2_text": "Hormonal imbalance",
+            "tag_2_bg": "#f5f5dc",
+            "tag_2_text_color": "#000000",
+            "tag_3_text": "Stress",
+            "tag_3_bg": "#e8e4f3",
+            "tag_3_text_color": "#000000",
+            "tag_4_text": "Sleep",
+            "tag_4_bg": "#ffe4e1",
+            "tag_4_text_color": "#000000",
+            "tag_5_text": "Weight fluctuations",
+            "tag_5_bg": "#fffacd",
+            "tag_5_text_color": "#000000",
+            "tag_6_text": "Sexual performance",
+            "tag_6_bg": "#e0f2f1",
+            "tag_6_text_color": "#000000",
+            "tag_7_text": "Period irregularities",
+            "tag_7_bg": "#fce4ec",
+            "tag_7_text_color": "#000000"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_caa21f1_WJH6xN"
+      ],
+      "settings": {}
+    },
+    "176977220871fe049a": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_74def45_hXnjG3": {
+          "type": "ai_gen_block_74def45",
+          "settings": {
+            "desktop_width_percent": 100,
+            "section_background_color": "#ffffff",
+            "container_max_width": 1300,
+            "section_padding_top": 60,
+            "section_padding_bottom": 25,
+            "main_heading": "Made Separately for Men and Women",
+            "main_heading_size": 36,
+            "heading_color": "#000000",
+            "subheading": "Your body, hormones, lifestyle, and risks are different - so your quiz should be too",
+            "subheading_size": 16,
+            "subheading_color": "#666666",
+            "subheading_spacing": 15,
+            "header_spacing": 40,
+            "card_gap": 30,
+            "cards_top_spacing": 20,
+            "card_padding": 30,
+            "card_border_radius": 16,
+            "card_shadow_horizontal": 0,
+            "card_shadow_vertical": 4,
+            "card_shadow_blur": 12,
+            "card_shadow_opacity": 0.1,
+            "icon_background_color": "#dc3545",
+            "icon_size": 60,
+            "icon_image_size": 35,
+            "icon_border_radius": 8,
+            "icon_spacing": 20,
+            "card_title_size": 18,
+            "card_title_color": "#000000",
+            "title_spacing": 20,
+            "list_item_size": 14,
+            "list_item_color": "#333333",
+            "bullet_color": "#dc3545",
+            "list_item_spacing": 12,
+            "list_spacing": 25,
+            "button_background_color": "#000000",
+            "button_text_color": "#ffffff",
+            "button_hover_background_color": "#333333",
+            "button_hover_text_color": "#ffffff",
+            "button_font_size": 15,
+            "button_padding_vertical": 12,
+            "button_padding_horizontal": 30,
+            "button_border_radius": 24,
+            "card_1_icon_image": "shopify://shop_images/material-symbols_quiz-outline-rounded_1.webp",
+            "card_1_title": "Men's Health Quiz",
+            "card_1_background_color": "#f8d7da",
+            "card_1_list_items": "Metabolism\nHormones\nSexual wellness\nPerformance\nEnergy",
+            "card_1_button_text": "Take a Quiz",
+            "card_1_button_link": "",
+            "card_1_button_action_type": "scroll",
+            "card_1_scroll_id": "shopify-block-AQXdJTGdlNlF4aS9QN__ai_gen_block_2d5d353_pMCDp8",
+            "card_2_icon_image": "shopify://shop_images/material-symbols_quiz-outline-rounded_1.webp",
+            "card_2_title": "Women's Health Quiz",
+            "card_2_background_color": "#d1ecf1",
+            "card_2_list_items": "Cycle health\nPMS\nHormonal patterns\nPCOS signals\nWeight triggers",
+            "card_2_button_text": "Take a Quiz",
+            "card_2_button_link": "",
+            "card_2_button_action_type": "scroll",
+            "card_2_scroll_id": "shopify-block-AQXdJTGdlNlF4aS9QN__ai_gen_block_2d5d353_pMCDp8"
+          },
+          "blocks": {}
+        },
+        "ai_gen_block_18a2918_ix8PnH": {
+          "type": "ai_gen_block_18a2918",
+          "settings": {
+            "section_heading": "Your Privacy Comes First",
+            "section_bg_color": "#ffffff",
+            "container_max_width": 900,
+            "section_padding_top": 60,
+            "section_padding_bottom": 60,
+            "section_padding_horizontal": 20,
+            "heading_alignment": "center",
+            "heading_color": "#262626",
+            "heading_size": 32,
+            "heading_weight": 700,
+            "heading_margin_bottom": 20,
+            "columns_desktop": 3,
+            "columns_tablet": 2,
+            "grid_gap": 30,
+            "block_padding": 30,
+            "block_border_radius": 25,
+            "block_border_thickness": 0,
+            "block_border_color": "#fff9f9",
+            "icon_size": 40,
+            "icon_color": "#262626",
+            "icon_margin_bottom": 20,
+            "icon_content_gap": 20,
+            "icon_left_width": 25,
+            "title_color": "#262626",
+            "title_size": 20,
+            "title_weight": 600,
+            "title_margin_bottom": 10,
+            "description_color": "#666666",
+            "description_size": 15,
+            "description_weight": 400,
+            "tagline_text": "",
+            "tagline_alignment": "center",
+            "tagline_color": "#262626",
+            "tagline_size": 14,
+            "tagline_weight": 700,
+            "tagline_margin_top": 0,
+            "feature_1_enabled": true,
+            "feature_1_icon": "shopify://shop_images/mage_file-3_1.webp",
+            "feature_1_title": "",
+            "feature_1_description": "<p>All your answers are encrypted.</p>",
+            "feature_1_layout": "icon-top",
+            "feature_1_alignment": "left",
+            "feature_2_enabled": true,
+            "feature_2_icon": "shopify://shop_images/fluent_people-team-16-regular_1.webp",
+            "feature_2_title": "",
+            "feature_2_description": "<p>No team member can see your data without consent.</p>",
+            "feature_2_layout": "icon-top",
+            "feature_2_alignment": "left",
+            "feature_3_enabled": true,
+            "feature_3_icon": "shopify://shop_images/ion_bar-chart-outline_1.webp",
+            "feature_3_title": "",
+            "feature_3_description": "<p>Your report is shared only with you. Your health is personal - we keep it that way.</p>",
+            "feature_3_layout": "icon-top",
+            "feature_3_alignment": "left",
+            "feature_4_enabled": false,
+            "feature_4_title": "",
+            "feature_4_description": "<p>Add your feature description here.</p>",
+            "feature_4_layout": "icon-top",
+            "feature_4_alignment": "left",
+            "feature_5_enabled": false,
+            "feature_5_title": "",
+            "feature_5_description": "<p>Add your feature description here.</p>",
+            "feature_5_layout": "icon-top",
+            "feature_5_alignment": "center",
+            "feature_6_enabled": false,
+            "feature_6_title": "",
+            "feature_6_description": "<p>Add your feature description here.</p>",
+            "feature_6_layout": "icon-top",
+            "feature_6_alignment": "center"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_74def45_hXnjG3",
+        "ai_gen_block_18a2918_ix8PnH"
+      ],
+      "settings": {}
+    },
+    "integrated_AzUHbM": {
+      "type": "integrated",
+      "custom_css": [],
+      "name": "Integrated Care Cards",
+      "settings": {
+        "main_title": "Our Integrated Treatment System",
+        "main_subtitle": "We combine three proven medical sciences to fix the root cause instead of masking symptoms.",
+        "icon_layout": "vertical",
+        "icon_align_vertical": "flex-start",
+        "card1_bg_image": "shopify://shop_images/Rectangle_17.webp",
+        "card1_icon": "shopify://shop_images/AYURVEDA_ELEMENTS-01_1.webp",
+        "card1_box_bg": "#e6ffe4",
+        "card1_title": "Ayurveda",
+        "card1_description": "Hormonal & metabolic balance",
+        "card2_bg_image": "shopify://shop_images/Rectangle_17_1.webp",
+        "card2_icon": "shopify://shop_images/HOMEOPATHY_ELEMENTS-01_1.webp",
+        "card2_box_bg": "#fff2f5",
+        "card2_title": "Homeopathy",
+        "card2_description": "Personalized, long-lasting healing",
+        "card3_bg_image": "shopify://shop_images/Rectangle_17_2.webp",
+        "card3_icon": "shopify://shop_images/MODERN_MEDICINE_ELEMENTS-01_1.webp",
+        "card3_box_bg": "#fff4e4",
+        "card3_title": "Allopathy",
+        "card3_description": "Evidence-led diagnostics & fast relief",
+        "strip_text_before": "Each plan blends the best of all three - so you get results that are fast, safe, and sustainable.",
+        "strip_text_highlight": "",
+        "strip_text_after": "",
+        "strip_show_bg": false,
+        "strip_bg_color": "#f5f5f5",
+        "strip_show_border": false,
+        "strip_border_color": "#ff6b6b",
+        "strip_alignment": "center",
+        "strip_text_color": "#333333",
+        "strip_highlight_color": "#ff2e2e",
+        "strip_highlight_weight": "600",
+        "strip_font_size": 16,
+        "mobile_heading_size": 24,
+        "mobile_subtitle_size": 14,
+        "mobile_card_height": 380,
+        "dots_position": "below_text"
+      }
+    },
+    "1769773909614181d6": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_50bb1ee_czHPcY": {
+          "type": "ai_gen_block_50bb1ee",
+          "settings": {
+            "enable_background_color": true,
+            "background_image": "shopify://shop_images/Group_1.webp",
+            "image_opacity": 20,
+            "enable_gradient": true,
+            "background_gradient": "radial-gradient(rgba(29, 29, 29, 0), rgba(29, 29, 29, 1) 100%)",
+            "overlay_opacity": 0,
+            "show_pattern": true,
+            "padding_top": 70,
+            "padding_bottom": 70,
+            "content_max_width": 1100,
+            "text_alignment": "center",
+            "heading": "The Goal of Health Score 360",
+            "heading_color": "#ffffff",
+            "heading_size": 28,
+            "heading_line_height": 1.2,
+            "heading_spacing": 8,
+            "subheading": "Your body is always talking. This tool helps you finally listen.",
+            "subheading_color": "#e0e0e0",
+            "subheading_size": 16,
+            "subheading_line_height": 1.4,
+            "subheading_spacing": 8,
+            "body_text": "<p>Your body is always talking. This tool helps you finally listen.<br/>Whether you want to improve energy, lose weight, regulate your cycle, or understand sexual performance - this score gives you a starting point.</p><p>For a better tomorrow, start today.</p>",
+            "body_color": "#cccccc",
+            "body_size": 16,
+            "body_line_height": 1.6,
+            "body_spacing": 0,
+            "tagline": "",
+            "tagline_color": "#b0b0b0",
+            "tagline_size": 16,
+            "tagline_line_height": 1.5,
+            "tagline_spacing": 28,
+            "button_text": "Start the Quiz",
+            "button_link": "",
+            "button_action_type": "scroll",
+            "button_scroll_id": "shopify-block-AQXdJTGdlNlF4aS9QN__ai_gen_block_2d5d353_pMCDp8",
+            "button_bg_color": "#ee204a",
+            "button_text_color": "#ffffff",
+            "button_hover_bg_color": "#f23259",
+            "button_hover_text_color": "#ffffff",
+            "button_font_size": 18,
+            "button_padding_vertical": 16,
+            "button_padding_horizontal": 40,
+            "button_border_radius": 30,
+            "button_full_width_mobile": true
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_50bb1ee_czHPcY"
+      ],
+      "settings": {}
+    },
+    "featured_in_custom_8wkE6P": {
+      "type": "featured-in-custom",
+      "blocks": {
+        "logo_36UmaY": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Bw_healthcare-01.webp",
+            "name": "",
+            "link": ""
+          }
+        },
+        "logo_BJW6U3": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/The_week-01.webp",
+            "name": "",
+            "link": ""
+          }
+        },
+        "logo_rBJCRQ": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/United_news_of_india-01.webp",
+            "name": "",
+            "link": ""
+          }
+        },
+        "logo_qBkEgj": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Silicon_india-01.webp",
+            "name": "",
+            "link": ""
+          }
+        }
+      },
+      "block_order": [
+        "logo_36UmaY",
+        "logo_BJW6U3",
+        "logo_rBJCRQ",
+        "logo_qBkEgj"
+      ],
+      "name": "Featured in",
+      "settings": {
+        "heading": "sehatUP in the News",
+        "heading_size": 28,
+        "heading_color": "#2b2c2d",
+        "logo_max_width": 140,
+        "logo_spacing": 40,
+        "logo_opacity": 100,
+        "grayscale_amount": 0,
+        "scroll_speed": 30,
+        "pause_on_hover": true,
+        "tunnel_scale": 30,
+        "hover_zoom": 12,
+        "tunnel_fade": 55,
+        "background_color": "#ffffff",
+        "max_width": 1200,
+        "padding_top": 60,
+        "padding_bottom": 68
+      }
+    },
+    "1769774876af247713": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_3504a79_LzRyNx": {
+          "type": "ai_gen_block_3504a79",
+          "disabled": true,
+          "settings": {
+            "container_max_width": 1150,
+            "banner_background": "#f12f46",
+            "banner_background_gradient": "",
+            "banner_border_radius": 60,
+            "banner_padding_vertical": 60,
+            "banner_padding_horizontal": 60,
+            "overlay_color": "#000000",
+            "overlay_opacity": 0.3,
+            "enable_border": false,
+            "border_thickness": 2,
+            "border_color": "#ffffff",
+            "enable_shadow": true,
+            "shadow_vertical": 8,
+            "shadow_blur": 24,
+            "shadow_opacity": 0.2,
+            "text_alignment": "center",
+            "content_spacing": 20,
+            "heading": "Take Control of Your Health in 2 Minutes",
+            "heading_color": "#ffffff",
+            "heading_size": 32,
+            "heading_weight": 700,
+            "heading_max_width": 1100,
+            "subheading": "Your personalized report is just a few answers away.",
+            "subheading_color": "#ffffff",
+            "subheading_size": 16,
+            "subheading_weight": 400,
+            "subheading_max_width": 500,
+            "button_text": "Start the Quiz",
+            "button_action_type": "scroll",
+            "button_scroll_id": "shopify-block-AQXdJTGdlNlF4aS9QN__ai_gen_block_2d5d353_pMCDp8",
+            "button_link": "",
+            "button_background": "#000000",
+            "button_hover_background": "#1a1a1a",
+            "button_text_color": "#ffffff",
+            "button_hover_text_color": "#ffffff",
+            "button_font_size": 16,
+            "button_font_weight": 600,
+            "button_border_radius": 50,
+            "button_padding_vertical": 16,
+            "button_padding_horizontal": 40,
+            "button_width": "auto",
+            "button_min_width": 200,
+            "section_padding_top": 60,
+            "section_padding_bottom": 60,
+            "desktop_width_percent": 100
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_3504a79_LzRyNx"
+      ],
+      "settings": {}
+    }
+  },
+  "order": [
+    "17697712806fa21863",
+    "1769771514fca70115",
+    "floating_product_video_NTRyRV",
+    "how_sehat_up_works_paByAt",
+    "1770008905758367d4",
+    "176977220871fe049a",
+    "integrated_AzUHbM",
+    "1769773909614181d6",
+    "featured_in_custom_8wkE6P",
+    "1769774876af247713"
+  ]
+}

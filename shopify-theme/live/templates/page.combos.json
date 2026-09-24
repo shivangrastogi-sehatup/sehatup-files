@@ -1,0 +1,719 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "blocks_UL93Vq": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_1a1cde1_AXf6jr": {
+          "type": "ai_gen_block_1a1cde1",
+          "settings": {
+            "layout_mode": "background-with-overlay-image",
+            "desktop_width_percent": 100,
+            "background_image": "shopify://shop_images/Frame_135.webp",
+            "background_image_size": "cover",
+            "background_position_x": "center",
+            "background_position_y": "center",
+            "background_overlay_opacity": 100,
+            "background_overlay_color": "#000000",
+            "background_overlay_strength": 0,
+            "show_white_panel": false,
+            "white_panel_width": 45,
+            "white_panel_color": "#ffffff",
+            "white_panel_opacity": 95,
+            "white_panel_rounded": true,
+            "white_panel_border_radius": 20,
+            "foreground_image": "shopify://shop_images/ChatGPT_Image_Jan_24_2026_10_19_58_PM_1_copy.webp",
+            "foreground_image_scale": 100,
+            "foreground_image_fit": "contain",
+            "foreground_position_x": "right",
+            "foreground_position_y": "bottom",
+            "foreground_offset_x": 5,
+            "foreground_offset_y": 0,
+            "hide_foreground_mobile": true,
+            "heading": "Save More. Perform Better.",
+            "subheading_prefix": "",
+            "subheading_highlight": "",
+            "subheading_highlight_color": "#ff4757",
+            "body_text": "<p>Doctor-crafted combos designed to give faster results in sexual wellness, weight loss & daily energy - while saving up to 45%.<br/><br/></p>",
+            "content_position": "left",
+            "content_max_width": 1400,
+            "content_text_max_width": 600,
+            "heading_size": 36,
+            "heading_weight": "700",
+            "heading_color": "#ffffff",
+            "subheading_size": 20,
+            "subheading_weight": "500",
+            "subheading_color": "#ffffff",
+            "body_size": 15,
+            "body_color": "#ffffff",
+            "text_shadow_enabled": true,
+            "button_1_text": "Start Free Assessment",
+            "button_1_link": "shopify://pages/health-score-360",
+            "button_1_style": "filled",
+            "button_1_bg_color": "#000000",
+            "button_1_text_color": "#ffffff",
+            "button_1_border_color": "#000000",
+            "button_1_hover_bg_color": "#001128",
+            "button_1_hover_text_color": "#ffffff",
+            "button_1_hover_border_color": "#000000",
+            "show_button_2": false,
+            "enable_doctor_new_tab": true,
+            "button_2_text": "Talk to a Doctor",
+            "button_2_link": "",
+            "button_2_style": "outline",
+            "button_2_bg_color": "#ffffff",
+            "button_2_text_color": "#ffffff",
+            "button_2_border_color": "#ffffff",
+            "button_2_hover_bg_color": "#ffffff",
+            "button_2_hover_text_color": "#000000",
+            "button_2_hover_border_color": "#ffffff",
+            "button_layout": "horizontal",
+            "button_font_size": 15,
+            "button_font_weight": "600",
+            "button_padding_vertical": 14,
+            "button_padding_horizontal": 32,
+            "button_border_radius": 50,
+            "button_spacing": 32,
+            "section_min_height": 370,
+            "section_padding_top": 60,
+            "section_padding_bottom": 60,
+            "section_padding_horizontal": 40,
+            "content_spacing": 20,
+            "enable_mobile_overrides": false,
+            "section_min_height_mobile": 600,
+            "section_padding_top_mobile": 40,
+            "section_padding_bottom_mobile": 40,
+            "section_padding_horizontal_mobile": 20,
+            "mobile_content_alignment": "center",
+            "mobile_background_position_x": "center",
+            "mobile_background_position_y": "center"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_1a1cde1_AXf6jr"
+      ],
+      "name": "Healthcare hero banner",
+      "settings": {}
+    },
+    "how_sehat_up_works_wihXYf": {
+      "type": "how-sehatUP-works",
+      "blocks": {
+        "step_CBhPBP": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/mobile_quiz.webp",
+            "title": "Know Your Health Score",
+            "text": "A quick assessment that reveals issues in hormones, stress, digestion, sleep and lifestyle."
+          }
+        },
+        "step_m6Qc9z": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/ChatGPT_Image_Sep_21_2026_02_23_44_PM.png",
+            "title": "Multi-System Doctor Review",
+            "text": "Doctors from Ayurveda, Homeopathy and Allopathy analyse your score and medical history together - combining immediate relief, lifestyle correction and root-cause treatment."
+          }
+        },
+        "step_BFrCWH": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/care_kit.png",
+            "title": "Get a Personalized Care Kit",
+            "text": "Custom medicines, herbs, nutrition and lifestyle - designed specifically for your body."
+          }
+        },
+        "step_EiEW3L": {
+          "type": "step",
+          "settings": {
+            "image": "shopify://shop_images/ChatGPT_Image_Sep_21_2026_12_53_24_PM_1.png",
+            "title": "Continuous Monitoring",
+            "text": "Monthly follow-ups + plan adjustments based on your body's response."
+          }
+        }
+      },
+      "block_order": [
+        "step_CBhPBP",
+        "step_m6Qc9z",
+        "step_BFrCWH",
+        "step_EiEW3L"
+      ],
+      "disabled": true,
+      "custom_css": [],
+      "name": "How sehatUP Works",
+      "settings": {
+        "heading_before": "How sehatUP",
+        "heading_accent": "",
+        "heading_after": "Works",
+        "subheading": "Simple steps. Better insights. Healthier you.",
+        "button_label": "Start Your Health Score",
+        "button_link": "shopify://pages/health-score-360",
+        "use_theme_fonts": false,
+        "heading_font": "poppins_n7",
+        "body_font": "poppins_n4",
+        "type_scale": 100,
+        "color_bg": "#fff8f9",
+        "color_title": "#000000",
+        "color_accent": "#ee204a",
+        "color_sub": "#4b5573",
+        "color_step_title": "#000000",
+        "color_step_text": "#4b5573",
+        "color_disc": "#fde8ec",
+        "color_badge": "#ee204a",
+        "color_badge_text": "#ffffff",
+        "color_button": "#ee204a",
+        "color_button_text": "#ffffff",
+        "container_width": 1320,
+        "padding_top": 40,
+        "padding_bottom": 32
+      }
+    },
+    "healthcare_fails_NYtiKG": {
+      "type": "Healthcare-Fails",
+      "blocks": {
+        "card_wy8GFn": {
+          "type": "card",
+          "settings": {
+            "desktop_ratio": "auto",
+            "mobile_ratio": "auto",
+            "badge": "01",
+            "title": "Sexual Wellness Packs",
+            "text": "Allopathy, ayurveda, homeopathy, a neighbour's remedy. Everyone has an answer and none of them agree.",
+            "card_bg": "#fdf2f4",
+            "color_text": "#4b5573",
+            "badge_bg": "#f9ced9",
+            "badge_fg": "#c0134a"
+          }
+        },
+        "card_Vw8FEi": {
+          "type": "card",
+          "settings": {
+            "desktop_ratio": "auto",
+            "mobile_ratio": "auto",
+            "badge": "01",
+            "title": "Weight Loss Packs",
+            "text": "Allopathy, ayurveda, homeopathy, a neighbour's remedy. Everyone has an answer and none of them agree.",
+            "card_bg": "#fdf2f4",
+            "color_text": "#4b5573",
+            "badge_bg": "#f9ced9",
+            "badge_fg": "#c0134a"
+          }
+        },
+        "card_yUXW3N": {
+          "type": "card",
+          "settings": {
+            "desktop_ratio": "auto",
+            "mobile_ratio": "auto",
+            "badge": "01",
+            "title": "Energy & Performance Packs",
+            "text": "Allopathy, ayurveda, homeopathy, a neighbour's remedy. Everyone has an answer and none of them agree.",
+            "card_bg": "#fdf2f4",
+            "color_text": "#4b5573",
+            "badge_bg": "#f9ced9",
+            "badge_fg": "#c0134a"
+          }
+        }
+      },
+      "block_order": [
+        "card_wy8GFn",
+        "card_Vw8FEi",
+        "card_yUXW3N"
+      ],
+      "disabled": true,
+      "name": "Healthcare Fails Carousel",
+      "settings": {
+        "heading": "Choose Your Goal",
+        "heading_accent": "Isn't Working for You?",
+        "subheading": "Treating symptoms is easy. Finding the root cause is what matters.",
+        "header_align": "center",
+        "use_theme_fonts": false,
+        "heading_font": "poppins_n7",
+        "body_font": "poppins_n4",
+        "type_scale": 100,
+        "color_section_bg": "#ffffff",
+        "color_title": "#000000",
+        "color_title_accent": "#ee204a",
+        "color_sub": "#4b5573",
+        "color_arrow": "#ee204a",
+        "color_card_title": "#000000",
+        "desktop_card_layout": "stacked",
+        "auto_number": true,
+        "show_arrows": true,
+        "alternate_sides": false,
+        "media_share": 46,
+        "desktop_fit": "fill",
+        "image_fade": 22,
+        "card_radius": 24,
+        "card_border_width": 1,
+        "color_card_border": "#f7d9df",
+        "card_shadow": false,
+        "hover_lift": true,
+        "card_gap": 36,
+        "container_width": 1440,
+        "padding_top": 64,
+        "padding_bottom": 64
+      }
+    },
+    "triple_system_below_LDDn6J": {
+      "type": "triple-system-below",
+      "blocks": {
+        "text_kRakqR": {
+          "type": "text",
+          "settings": {
+            "badge_text": "Save up to 45% ",
+            "custom_icon": "<svg width=\"30\" height=\"30\" viewbox=\"0 0 30 30\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M25 16.2496C25 22.4996 20.625 25.6246 15.425 27.4371C15.1527 27.5294 14.8569 27.5249 14.5875 27.4246C9.375 25.6246 5 22.4996 5 16.2496V7.49959C5 7.16806 5.1317 6.85012 5.36612 6.6157C5.60054 6.38128 5.91848 6.24959 6.25 6.24959C8.75 6.24959 11.875 4.74959 14.05 2.84959C14.3148 2.62333 14.6517 2.49902 15 2.49902C15.3483 2.49902 15.6852 2.62333 15.95 2.84959C18.1375 4.76209 21.25 6.24959 23.75 6.24959C24.0815 6.24959 24.3995 6.38128 24.6339 6.6157C24.8683 6.85012 25 7.16806 25 7.49959V16.2496Z\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n<path d=\"M11.25 15L13.75 17.5L18.75 12.5\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n</svg>",
+            "icon_color": "#2e7d32"
+          }
+        },
+        "text_gzYKed": {
+          "type": "text",
+          "settings": {
+            "badge_text": "Faster results with targeted pairings ",
+            "custom_icon": "<svg width=\"30\" height=\"30\" viewbox=\"0 0 30 30\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M25 16.2496C25 22.4996 20.625 25.6246 15.425 27.4371C15.1527 27.5294 14.8569 27.5249 14.5875 27.4246C9.375 25.6246 5 22.4996 5 16.2496V7.49959C5 7.16806 5.1317 6.85012 5.36612 6.6157C5.60054 6.38128 5.91848 6.24959 6.25 6.24959C8.75 6.24959 11.875 4.74959 14.05 2.84959C14.3148 2.62333 14.6517 2.49902 15 2.49902C15.3483 2.49902 15.6852 2.62333 15.95 2.84959C18.1375 4.76209 21.25 6.24959 23.75 6.24959C24.0815 6.24959 24.3995 6.38128 24.6339 6.6157C24.8683 6.85012 25 7.16806 25 7.49959V16.2496Z\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n<path d=\"M11.25 15L13.75 17.5L18.75 12.5\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n</svg>",
+            "icon_color": "#2e7d32"
+          }
+        },
+        "text_jynrJC": {
+          "type": "text",
+          "settings": {
+            "badge_text": "More effective than single products",
+            "custom_icon": "<svg width=\"30\" height=\"30\" viewbox=\"0 0 30 30\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M25 16.2496C25 22.4996 20.625 25.6246 15.425 27.4371C15.1527 27.5294 14.8569 27.5249 14.5875 27.4246C9.375 25.6246 5 22.4996 5 16.2496V7.49959C5 7.16806 5.1317 6.85012 5.36612 6.6157C5.60054 6.38128 5.91848 6.24959 6.25 6.24959C8.75 6.24959 11.875 4.74959 14.05 2.84959C14.3148 2.62333 14.6517 2.49902 15 2.49902C15.3483 2.49902 15.6852 2.62333 15.95 2.84959C18.1375 4.76209 21.25 6.24959 23.75 6.24959C24.0815 6.24959 24.3995 6.38128 24.6339 6.6157C24.8683 6.85012 25 7.16806 25 7.49959V16.2496Z\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n<path d=\"M11.25 15L13.75 17.5L18.75 12.5\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n</svg>",
+            "icon_color": "#2e7d32"
+          }
+        },
+        "text_6ejBGE": {
+          "type": "text",
+          "settings": {
+            "badge_text": "3-system support: Allopathy + Ayurveda + Homeopathy",
+            "custom_icon": "<svg width=\"30\" height=\"30\" viewbox=\"0 0 30 30\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M25 16.2496C25 22.4996 20.625 25.6246 15.425 27.4371C15.1527 27.5294 14.8569 27.5249 14.5875 27.4246C9.375 25.6246 5 22.4996 5 16.2496V7.49959C5 7.16806 5.1317 6.85012 5.36612 6.6157C5.60054 6.38128 5.91848 6.24959 6.25 6.24959C8.75 6.24959 11.875 4.74959 14.05 2.84959C14.3148 2.62333 14.6517 2.49902 15 2.49902C15.3483 2.49902 15.6852 2.62333 15.95 2.84959C18.1375 4.76209 21.25 6.24959 23.75 6.24959C24.0815 6.24959 24.3995 6.38128 24.6339 6.6157C24.8683 6.85012 25 7.16806 25 7.49959V16.2496Z\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n<path d=\"M11.25 15L13.75 17.5L18.75 12.5\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n</svg>",
+            "icon_color": "#2e7d32"
+          }
+        },
+        "text_4TXyxM": {
+          "type": "text",
+          "settings": {
+            "badge_text": "Treat symptoms + root causes at the same time",
+            "custom_icon": "<svg width=\"30\" height=\"30\" viewbox=\"0 0 30 30\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M25 16.2496C25 22.4996 20.625 25.6246 15.425 27.4371C15.1527 27.5294 14.8569 27.5249 14.5875 27.4246C9.375 25.6246 5 22.4996 5 16.2496V7.49959C5 7.16806 5.1317 6.85012 5.36612 6.6157C5.60054 6.38128 5.91848 6.24959 6.25 6.24959C8.75 6.24959 11.875 4.74959 14.05 2.84959C14.3148 2.62333 14.6517 2.49902 15 2.49902C15.3483 2.49902 15.6852 2.62333 15.95 2.84959C18.1375 4.76209 21.25 6.24959 23.75 6.24959C24.0815 6.24959 24.3995 6.38128 24.6339 6.6157C24.8683 6.85012 25 7.16806 25 7.49959V16.2496Z\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n<path d=\"M11.25 15L13.75 17.5L18.75 12.5\" stroke=\"#129900\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>\n</svg>",
+            "icon_color": "#2e7d32"
+          }
+        }
+      },
+      "block_order": [
+        "text_kRakqR",
+        "text_gzYKed",
+        "text_jynrJC",
+        "text_6ejBGE",
+        "text_4TXyxM"
+      ],
+      "name": "sehatUP Trust Strip",
+      "settings": {
+        "container_max_width": 1200,
+        "section_padding_top": 50,
+        "section_padding_bottom": 50,
+        "section_bg_color": "#f5f5f5",
+        "main_heading": "WHY OUR COMBOS WORK",
+        "main_heading_size": 42,
+        "main_heading_weight": "700",
+        "main_heading_color": "#1d1d1d",
+        "main_heading_spacing": 20,
+        "top_heading": "Our doctors carefully pair products that work better together:",
+        "top_heading_size": 18,
+        "top_heading_weight": "400",
+        "top_heading_color": "#6b6f6b",
+        "badge_bg_color": "#ffffff",
+        "badge_text_color": "#2e2e2e",
+        "badge_gap": 16,
+        "badge_font_size": 15,
+        "badge_font_weight": "500",
+        "badge_padding_vertical": 12,
+        "badge_padding_horizontal": 24,
+        "badge_border_radius": 50,
+        "icon_size": 20,
+        "bottom_text": "This Isn't Alternative Medicine. This Is Complete Medicine.",
+        "bottom_text_size": 22,
+        "bottom_text_weight": "600",
+        "bottom_text_color": "#1d1d1d"
+      }
+    },
+    "blocks_zmHc43": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_1595750_jrhfQR": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "mens-performance-kit",
+            "scroll_offset": 100,
+            "collection": "mens-performance-kit",
+            "pinned_products": [],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#ffffff",
+            "products_count": 8,
+            "heading": " Energy & Performance Packs",
+            "description": "Daily stamina & mind focus.",
+            "show_sidebar": false,
+            "sidebar_title": "Sexual Wellness",
+            "sidebar_paragraph": "For stronger erections, better control & peak performance.",
+            "view_all_url": "",
+            "view_all_text": "View All",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": true,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#f12f46",
+            "cart_btn_hover_bg": "#f12f46",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        },
+        "ai_gen_block_1595750_RF7xcF": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "stress-n-sleep-kit",
+            "scroll_offset": 100,
+            "collection": "stress-and-sleeep-kits",
+            "pinned_products": [],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#ffffff",
+            "products_count": 8,
+            "heading": "Stress and Sleep Management Kits",
+            "description": "For better sleep and calm mind.",
+            "show_sidebar": false,
+            "sidebar_title": "Sexual Wellness",
+            "sidebar_paragraph": "For better sleep and calm mind.",
+            "view_all_url": "",
+            "view_all_text": "View All",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": false,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#f12f46",
+            "cart_btn_hover_bg": "#f12f46",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        },
+        "ai_gen_block_1595750_rDqhVd": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "weight-loss-kit",
+            "scroll_offset": 100,
+            "collection": "weight-loss-packs",
+            "pinned_products": [],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#fffdf4",
+            "products_count": 8,
+            "heading": " Weight Loss Packs",
+            "description": "Safely increase metabolism & burn fat.",
+            "show_sidebar": false,
+            "sidebar_title": "Sexual Wellness",
+            "sidebar_paragraph": "For stronger erections, better control & peak performance.",
+            "view_all_url": "",
+            "view_all_text": "View All",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": false,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#f12f46",
+            "cart_btn_hover_bg": "#262626",
+            "cart_btn_hover_text": "#f12f46",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_1595750_jrhfQR",
+        "ai_gen_block_1595750_RF7xcF",
+        "ai_gen_block_1595750_rDqhVd"
+      ],
+      "settings": {}
+    },
+    "blocks_3XzanK": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_1595750_gY7XwC": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "hormone-Kit",
+            "scroll_offset": 100,
+            "collection": "hormone-balance-kit",
+            "pinned_products": [],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#ffffff",
+            "products_count": 8,
+            "heading": "Women’s Hormone Balance Kit",
+            "description": "For mood swings, period issues and PCOS support.",
+            "show_sidebar": false,
+            "sidebar_title": "Sexual Wellness",
+            "sidebar_paragraph": "For better sleep and calm mind.",
+            "view_all_url": "",
+            "view_all_text": "View All",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": false,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#f12f46",
+            "cart_btn_hover_bg": "#f12f46",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_1595750_gY7XwC"
+      ],
+      "settings": {}
+    },
+    "177011464766066399": {
+      "type": "_blocks",
+      "settings": {}
+    },
+    "blocks_BDGpMx": {
+      "type": "_blocks",
+      "name": "Collection showcase",
+      "settings": {}
+    },
+    "blocks_KwBQAh": {
+      "type": "_blocks",
+      "name": "Collection showcase",
+      "settings": {}
+    },
+    "trust_certification_PmXFq7": {
+      "type": "trust-certification",
+      "blocks": {
+        "certification_Dra3wH": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "certification_ecURUD": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "certification_wrXqpP": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "certification_Dra3wH",
+        "certification_ecURUD",
+        "certification_wrXqpP"
+      ],
+      "name": "Trust certifications",
+      "settings": {
+        "heading": "Why People Trust Us",
+        "heading_size": 28,
+        "heading_color": "#222222",
+        "container_width": 1200,
+        "logo_max_width": 140,
+        "label_font_size": 14,
+        "label_color": "#333333",
+        "enable_scroll": true,
+        "scroll_speed": 30,
+        "background_color": "#ffffff",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "margin_top": 0,
+        "margin_bottom": 0
+      }
+    },
+    "product_faq_rb9afc": {
+      "type": "product-faq",
+      "blocks": {
+        "faq_UihQ8d": {
+          "type": "faq",
+          "settings": {
+            "question": "How can I start my care plan?",
+            "answer": "<p>After your purchase, our doctors will conduct a comprehensive evaluation of your concerns, medical history, and lifestyle to customize the plan to meet your specific needs.</p>"
+          }
+        },
+        "faq_rV6rBK": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my information confidential?",
+            "answer": "<p>Confidentiality and clarity are our priorities. Your data is held in strict confidence, and the information you share will solely be utilized for transparent communication and to deliver effective care.</p>"
+          }
+        },
+        "faq_48qNFz": {
+          "type": "faq",
+          "settings": {
+            "question": "Are the products safe?",
+            "answer": "<p>Our products are approved by AYUSH. All our products are formulated by experts and are safe to use, and free from harmful chemicals.</p>"
+          }
+        },
+        "faq_dNp9Uq": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my treatment plan customized to my needs?",
+            "answer": "<p>The plans provided offer a glimpse of what you can anticipate in your customized plan, but every individual's needs vary, and our doctors excel in leading you toward your unique journey to well-being.</p>"
+          }
+        },
+        "faq_fhPWwT": {
+          "type": "faq",
+          "settings": {
+            "question": "Do I have to pay for doctor consultation?",
+            "answer": "<p>Your doctor consultation is included at no additional cost with your care plan.</p>"
+          }
+        },
+        "faq_937GHG": {
+          "type": "faq",
+          "settings": {
+            "question": "Are medications part of the program?",
+            "answer": "<p>Depending on the diagnosis, our doctors/nutritionists may prescribe medications as part of the treatment plan.<br/>These are selected based on individual needs and may include supplements, prescriptions, or other suitable options.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_UihQ8d",
+        "faq_rV6rBK",
+        "faq_48qNFz",
+        "faq_dNp9Uq",
+        "faq_fhPWwT",
+        "faq_937GHG"
+      ],
+      "name": "Product FAQ",
+      "settings": {
+        "heading": "Frequently Asked Questions",
+        "single_open": true,
+        "reserve_space": false,
+        "enable_schema": true,
+        "heading_size": 28,
+        "max_width": 1100,
+        "padding_top": 60,
+        "padding_bottom": 104,
+        "item_padding": 20,
+        "border_radius": 8,
+        "question_size": 16,
+        "answer_size": 15,
+        "background_color": "#ffffff",
+        "item_background": "#ffffff",
+        "border_color": "#e5e5e5",
+        "heading_color": "#1d1d1d",
+        "question_color": "#1d1d1d",
+        "answer_color": "#666666",
+        "him_q1": "Who is the For Him range designed for?",
+        "him_a1": "<p>Designed for men looking to support testosterone, energy, and performance naturally.</p>",
+        "him_q2": "Are these products safe for daily use?",
+        "him_a2": "<p>Yes, all products are clinically formulated and safe for daily use as directed.</p>",
+        "him_q3": "How soon will I see results?",
+        "him_a3": "<p>Most users notice improvements within 4–6 weeks of consistent use.</p>",
+        "her_q1": "Who is the For Her range designed for?",
+        "her_a1": "<p>Designed for women seeking hormonal balance, skin health, and sustained energy.</p>",
+        "her_q2": "Are these safe during pregnancy?",
+        "her_a2": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>",
+        "her_q3": "Can I take these with other supplements?",
+        "her_a3": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>"
+      }
+    }
+  },
+  "order": [
+    "blocks_UL93Vq",
+    "how_sehat_up_works_wihXYf",
+    "healthcare_fails_NYtiKG",
+    "triple_system_below_LDDn6J",
+    "blocks_zmHc43",
+    "blocks_3XzanK",
+    "177011464766066399",
+    "blocks_BDGpMx",
+    "blocks_KwBQAh",
+    "trust_certification_PmXFq7",
+    "product_faq_rb9afc"
+  ]
+}

@@ -1,0 +1,274 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "custom_title_block": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% assign product_title = product.title %}\n\n{% assign is_combo = false %}\n{% for collection in product.collections %}\n {% if collection.handle == 'combos' %}\n {% assign is_combo = true %}\n {% break %}\n {% endif %}\n{% endfor %}\n\n{% if product_title contains \"-\" and is_combo %}\n {% assign title_parts = product_title | split: \"-\" %}\n <div class=\"combo-title-wrapper\">\n <h1 class=\"main-title\">{{ title_parts.first | strip }}</h1>\n <p class=\"tagline\">{{ title_parts.last | strip }}</p>\n </div>\n{% else %}\n <h1>{{ product.title }}</h1>\n{% endif %}\n\n<style>\n.combo-title-wrapper .main-title {\n font-size: clamp(22px, 5vw, 32px);\n margin-bottom: 5px; \n line-height: 1.2;\n margin-top: 0;\n}\n\n.combo-title-wrapper .tagline {\n font-size: clamp(13px, 3vw, 16px); \n color: #777; \n font-weight: 500;\n margin-top: 0;\n}\n\n.combo-title-wrapper {\n margin-bottom: 15px;\n}\n\n.product-form__input .main-title { margin-top: 0; }\n</style>"
+          }
+        },
+        "judge_me_reviews_preview_badge_ECFCMJ": {
+          "type": "shopify://apps/judge-me-reviews/blocks/preview_badge/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {}
+        },
+        "price_MRLXxf": {
+          "type": "price",
+          "settings": {}
+        },
+        "custom_liquid_9fx6JB": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% assign allowed_products = \"10802787844399,10736696459567\" | split: \",\" %}\n\n{% assign current_id = product.id | append: \"\" %}\n\n{% if allowed_products contains current_id %}\n\n<div class=\"payment-info-box\">\n <div class=\"payment-box-wrapper\">\n <h3 class=\"payment-box-heading\">Payment Options</h3>\n\n <ul class=\"payment-points\">\n <li>✔ Cash on Delivery Available (COD)</li>\n <li>✔ Prepaid Payment Accepted</li>\n </ul>\n </div>\n</div>\n\n<style>\n.payment-info-box {\n margin: 20px 0;\n}\n\n.payment-box-wrapper {\n background: #eef7ff;\n padding: 15px 18px;\n border-radius: 10px;\n border-left: 5px solid #007bff;\n font-family: Arial, sans-serif;\n}\n\n.payment-box-heading {\n font-size: 17px;\n font-weight: 700;\n margin-bottom: 6px;\n color: #222;\n}\n\n.payment-points {\n margin: 0;\n padding: 0;\n list-style: none;\n}\n\n.payment-points li {\n font-size: 15px;\n font-weight: 600;\n margin-bottom: 4px;\n color: #333;\n}\n</style>\n\n{% endif %}"
+          }
+        },
+        "custom_liquid_yNNGTw": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% if product and product.handle == 'aloezy-intimate-foam-wash' %}\n<section class=\"flat10-banner\">\n <div class=\"flat10-inner\">\n <div class=\"flat10-left\">\n <div class=\"flat10-tag\"> INTRODUCTORY OFFER</div>\n <h2>Flat 10% OFF on Aloezy</h2>\n <p>Use coupon code <strong>FLAT10</strong> at checkout. Valid only on this product.</p>\n\n <div class=\"flat10-code-box\" onclick=\"navigator.clipboard && navigator.clipboard.writeText('FLAT10')\">\n <span class=\"flat10-label\">Coupon Code</span>\n <span class=\"flat10-code\">FLAT10</span>\n <span class=\"flat10-copy\">Tap to copy</span>\n </div>\n\n <small class=\"flat10-note\">*Discount applies at checkout after you enter the code.</small>\n </div>\n </div>\n</section>\n\n<style>\n.flat10-banner{\n margin:24px 0;\n padding:18px 20px;\n border-radius:12px;\n background:linear-gradient(135deg,#ffd5e5,#f3e5ff);\n border:1px solid rgba(0,0,0,0.06);\n}\n.flat10-inner{\n display:flex;\n align-items:flex-start;\n gap:16px;\n}\n.flat10-tag{\n display:inline-block;\n padding:4px 10px;\n border-radius:999px;\n background:#ff3366;\n color:#fff;\n font-size:11px;\n font-weight:700;\n letter-spacing:.03em;\n margin-bottom:6px;\n}\n.flat10-left h2{\n font-size:20px;\n margin:0 0 6px;\n}\n.flat10-left p{\n margin:0 0 10px;\n font-size:14px;\n}\n.flat10-code-box{\n display:inline-flex;\n align-items:center;\n gap:10px;\n padding:10px 14px;\n border-radius:999px;\n background:#fff;\n border:1px dashed #ff3366;\n cursor:pointer;\n user-select:none;\n}\n.flat10-label{\n font-size:11px;\n text-transform:uppercase;\n color:#777;\n}\n.flat10-code{\n font-weight:800;\n letter-spacing:.08em;\n}\n.flat10-copy{\n font-size:11px;\n color:#555;\n}\n.flat10-note{\n display:block;\n margin-top:6px;\n font-size:11px;\n color:#666;\n}\n@media(max-width:768px){\n .flat10-inner{flex-direction:column;}\n}\n</style>\n{% endif %}"
+          }
+        },
+        "rating_QMgLja": {
+          "type": "rating",
+          "disabled": true,
+          "settings": {}
+        },
+        "custom_liquid_3c8K67": {
+          "type": "custom_liquid",
+          "disabled": true,
+          "settings": {
+            "custom_liquid": "<div class=\"abc\">\n <h1>Hurry Up! 🔥 Last Chance⚡Limited Inventory</h1>\n</div>\n\n<style>\n.abc {\n padding: 20px;\n text-align: center;\n}\n\n.abc h1 {\n color: #ff4444;\n background: linear-gradient(45deg, #000, #333);\n padding: 5px 10px;\n border-radius: 60px;\n margin: 10px auto;\n display: inline-block;\n font-size: 1.1em;\n font-weight: bold;\n text-shadow: 2px 2px 4px rgba(0,0,0,0.5);\n animation: pulse 2s infinite, bounce 4s infinite;\n box-shadow: 0 10px 30px rgba(255,68,68,0.4);\n}\n\n@keyframes pulse {\n 0%, 100% { transform: scale(1); }\n 0% { transform: scale(1.01); }\n}\n\n@keyframes bounce {\n 0%, 20%, 50%, 80%, 100% { transform: translateY(0); }\n 40% { transform: translateY(-15px); }\n 60% { transform: translateY(-8px); }\n}\n</style>"
+          }
+        },
+        "description_TKFgtA": {
+          "type": "description",
+          "disabled": true,
+          "settings": {}
+        },
+        "variant_picker_DtmceM": {
+          "type": "variant_picker",
+          "settings": {
+            "picker_type": "button",
+            "swatch_shape": "circle"
+          }
+        },
+        "custom_liquid_PqGrnk": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "<div class=\"product-highlights\">\n <div class=\"highlight\">\n <div class=\"icon\">\n <img src=\"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/free-delivery-01.png?v=1740122765\" alt=\"Free Shipping\">\n </div>\n <p>Free Shipping</p>\n </div>\n\n <div class=\"highlight\">\n <div class=\"icon\">\n <img src=\"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/fast-delivery-01.png?v=1740120887\" alt=\"Fast Delivery\">\n </div>\n <p>Fast Delivery</p>\n </div>\n\n <div class=\"highlight\">\n <div class=\"icon\">\n <img src=\"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/100_natural-01.png?v=1740122766\" alt=\"100% Natural\">\n </div>\n <p>100% Natural</p>\n </div>\n</div>\n\n<style>\n.product-highlights {\n display: flex;\n justify-content: space-around;\n align-items: center;\n background: #f9f9f9;\n padding: 15px;\n border-radius: 10px;\n margin-top: 20px;\n flex-wrap: wrap;\n}\n\n.highlight {\n display: flex;\n flex-direction: column;\n align-items: center;\n text-align: center;\n width: 100px;\n margin: 10px;\n}\n\n.icon img {\n width: 65px;\n height: 65px;\n transition: transform 0.3s ease, filter 0.3s ease;\n}\n\n.highlight:hover .icon img {\n transform: scale(1.1);\n}\n\n.highlight p {\n font-size: 14px;\n font-weight: bold;\n color: #333;\n}\n\n/* --- Mobile view fix --- */\n@media (max-width: 768px) {\n .product-highlights {\n flex-wrap: nowrap;\n justify-content: space-between;\n padding: 8px 5px;\n gap: 8px;\n }\n\n .highlight {\n width: 70px;\n margin: 0;\n }\n\n .icon img {\n width: 40px;\n height: 40px;\n }\n\n .highlight p {\n font-size: 12px;\n }\n}\n</style>"
+          }
+        },
+        "custom_liquid_HbNX9H": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": ""
+          }
+        },
+        "quantity_selector_nEyjrx": {
+          "type": "quantity_selector",
+          "settings": {}
+        },
+        "custom_liquid_prepaid_badge": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% if product.id == 10478503625007 %}\n\n<div class=\"prepaid-badge-one-line\">\n  <span class=\"gift\">🎁</span>\n  <span class=\"text\">\n    <strong>Prepaid Offer:</strong>\n    <span class=\"free-pill\">FREE</span>\n    Ashwagandha Sample (30 Tabs)\n  </span>\n</div>\n\n<style>\n.prepaid-badge-one-line{\n  margin:18px 0;\n  padding:14px 18px;\n  border:2px dashed #ff3b30;\n  border-radius:14px;\n  background:#fff7f5;\n  display:flex;\n  align-items:center;\n  gap:12px;\n  font-size:16px;\n  font-weight:600;\n  line-height:1.4;\n}\n\n.prepaid-badge-one-line .gift{\n  font-size:24px;\n}\n\n.free-pill{\n  background:#ff3b30;\n  color:#fff;\n  padding:4px 10px;\n  border-radius:6px;\n  font-size:13px;\n  font-weight:800;\n  margin:0 6px;\n}\n\n@media(max-width:768px){\n  .prepaid-badge-one-line{\n    font-size:14px;\n    padding:12px 14px;\n  }\n}\n</style>\n\n{% endif %}"
+          }
+        },
+        "buy_buttons_fJiYAW": {
+          "type": "buy_buttons",
+          "settings": {
+            "show_dynamic_checkout": true,
+            "show_gift_card_recipient": true
+          }
+        }
+      },
+      "block_order": [
+        "custom_title_block",
+        "judge_me_reviews_preview_badge_ECFCMJ",
+        "price_MRLXxf",
+        "custom_liquid_9fx6JB",
+        "custom_liquid_yNNGTw",
+        "rating_QMgLja",
+        "custom_liquid_3c8K67",
+        "description_TKFgtA",
+        "variant_picker_DtmceM",
+        "custom_liquid_PqGrnk",
+        "custom_liquid_HbNX9H",
+        "quantity_selector_nEyjrx",
+        "custom_liquid_prepaid_badge",
+        "buy_buttons_fJiYAW"
+      ],
+      "settings": {
+        "enable_sticky_info": true,
+        "color_scheme": "scheme-1",
+        "media_size": "small",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "gallery_layout": "thumbnail_slider",
+        "media_position": "left",
+        "image_zoom": "lightbox",
+        "mobile_thumbnails": "show",
+        "hide_variants": true,
+        "enable_video_looping": false,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "custom_popup_products_GKEGkz": {
+      "type": "custom-popup-products",
+      "name": "Zencal Toast Popup",
+      "settings": {
+        "product_handle": "vitamin-d3k2",
+        "message": "🔥 Pay online and get 15 gm of Slimtox tea free.",
+        "first_delay": 2,
+        "hide_after": 15,
+        "repeat_after": 6,
+        "tint_color": "#3d9e5f",
+        "bottom": 90,
+        "left": 25
+      }
+    },
+    "custom_liquid_Dga3P9": {
+      "type": "custom-liquid",
+      "disabled": true,
+      "settings": {
+        "custom_liquid": "{% render 'key-ingredients' %}",
+        "color_scheme": "scheme-1",
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    },
+    "custom-product-details": {
+      "type": "custom-product-details",
+      "disabled": true,
+      "settings": {}
+    },
+    "177036186402be30ce": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_2531cf1_UT3Uf3": {
+          "type": "ai_gen_block_2531cf1",
+          "settings": {
+            "tabs_alignment": "center",
+            "content_alignment": "left",
+            "show_scrollbar": false,
+            "horizontal_margin": 40,
+            "horizontal_margin_mobile": 16,
+            "padding_top": 36,
+            "padding_bottom": 36,
+            "enable_list_icons": true,
+            "list_icon_style": "checkmark",
+            "custom_svg_icon": "",
+            "list_icon_color": "#e11d48",
+            "ingredient_card_bg": "#f9fafb",
+            "ingredient_card_border": "#e5e7eb",
+            "ingredient_card_radius": 8,
+            "ingredient_title_color": "#111827",
+            "tab_1_enable": true,
+            "tab_1_label": "Description",
+            "tab_1_delimiter": "description",
+            "tab_1_description": "",
+            "tab_2_enable": true,
+            "tab_2_label": "Benefits",
+            "tab_2_delimiter": "benefits",
+            "tab_2_description": "",
+            "tab_3_enable": true,
+            "tab_3_label": "Ingredients",
+            "tab_3_delimiter": "ingredients",
+            "tab_3_description": "",
+            "tab_4_enable": true,
+            "tab_4_label": "How To Use",
+            "tab_4_delimiter": "how_to_use",
+            "tab_4_description": "",
+            "tab_5_enable": false,
+            "tab_5_label": "Safety & Disclaimer",
+            "tab_5_delimiter": "safety",
+            "tab_5_description": "",
+            "tab_6_enable": false,
+            "tab_6_label": "Details",
+            "tab_6_delimiter": "details",
+            "tab_6_description": "",
+            "active_tab_color": "#e11d48"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_2531cf1_UT3Uf3"
+      ],
+      "settings": {}
+    },
+    "custom_liquid_ezxNEr": {
+      "type": "custom-liquid",
+      "name": "t:sections.custom-liquid.presets.name",
+      "settings": {
+        "custom_liquid": "<section class=\"product-info-container\">\n\n <!-- ✅ Tabs (Same for Desktop & Mobile) -->\n <div class=\"product-tabs\">\n <button class=\"tab-link active\" onclick=\"openTab(event, 'Description')\">Description</button>\n <button class=\"tab-link\" onclick=\"openTab(event, 'Benefits')\">Benefits</button>\n <button class=\"tab-link\" onclick=\"openTab(event, 'HowToUse')\">How to Use</button>\n </div>\n\n <!-- ✅ Tab Content -->\n <div id=\"Description\" class=\"tab-content active\">\n {% if product.description contains '[details]' %}\n {{ product.description | split: '[details]' | first | replace: '<img', '<img class=\"responsive-img\"' }}\n {% else %}\n {{ product.description | replace: '<img', '<img class=\"responsive-img\"' }}\n {% endif %}\n </div>\n\n <div id=\"Benefits\" class=\"tab-content\">\n {% if product.description contains '[benefits]' and product.description contains '[/benefits]' %}\n {{ product.description | split: '[benefits]' | last | split: '[/benefits]' | first | replace: '<img', '<img class=\"responsive-img\"' }}\n {% endif %}\n </div>\n\n <div id=\"HowToUse\" class=\"tab-content\">\n {% if product.description contains '[how_to_use]' and product.description contains '[/how_to_use]' %}\n {{ product.description | split: '[how_to_use]' | last | split: '[/how_to_use]' | first | replace: '<img', '<img class=\"responsive-img\"' }}\n {% endif %}\n </div>\n\n</section>\n\n<script>\n// ✅ Tabs Function (Works on Desktop & Mobile both)\nfunction openTab(evt, tabName) {\n let tabcontent = document.getElementsByClassName(\"tab-content\");\n for (let i = 0; i < tabcontent.length; i++) {\n tabcontent[i].classList.remove(\"active\");\n }\n let tablinks = document.getElementsByClassName(\"tab-link\");\n for (let i = 0; i < tablinks.length; i++) {\n tablinks[i].classList.remove(\"active\");\n }\n document.getElementById(tabName).classList.add(\"active\");\n evt.currentTarget.classList.add(\"active\");\n}\n</script>\n\n<style>\n:root {\n /* ✅ Default (Desktop) paddings */\n --desktop-padding-left: 7%;\n --desktop-padding-right: 7px;\n\n\n\n /* ✅ Mobile paddings */\n --mobile-padding-left: 15px;\n --mobile-padding-right: 15px;\nfont-family: sans-serif !important;\n}\n\n.product-info-container {\n max-width: 1200px;\n padding: 20px;\n font-family: sans-serif !important;\n}\n\n/* ✅ Tabs */\n.product-tabs {\n display: flex;\n justify-content: center;\n gap: 0px;\n border-bottom: 2px solid #eee;\n}\n.tab-link {\n background: none;\n border: none;\n padding: 12px 18px;\n cursor: pointer;\n font-size: 20px;\n font-weight: 600;\n color: #666;\n transition: all 0.3s ease;\n}\n.tab-link.active {\n color: #d32f2f;\n border-bottom: 3px solid #d32f2f;\n}\n.tab-link:hover {\n color: #d32f2f;\n}\n\n/* ✅ Tab Content */\n.tab-content {\n display: none;\n padding: 20px 10px;\n padding-left: var(--desktop-padding-left);\n padding-right: var(--desktop-padding-right);\n animation: fadeEffect 0.3s;\n}\n.tab-content.active {\n display: block;\n}\n\n/* ✅ Responsive (Tabs same in mobile) */\n@media (max-width: 768px) {\n .product-tabs {\n flex-wrap: wrap;\n justify-content: flex-start;\n }\n .tab-link {\n font-size: 15px;\n padding: 10px 14px;\n }\n .tab-content {\n padding-left: var(--mobile-padding-left);\n padding-right: var(--mobile-padding-right);\n }\n}\n\n@keyframes fadeEffect {\n from {opacity: 0;}\n to {opacity: 1;}\n}\n</style>",
+        "color_scheme": "",
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    },
+    "1766470057d2da360d": {
+      "type": "_blocks",
+      "settings": {}
+    },
+    "176458370003ed2528": {
+      "type": "apps",
+      "blocks": {
+        "judge_me_reviews_review_widget_zDwk7x": {
+          "type": "shopify://apps/judge-me-reviews/blocks/review_widget/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "review_data": "sample_data",
+            "max_width": 1200,
+            "show_shop_reviews": false,
+            "empty_state": "empty_widget"
+          }
+        }
+      },
+      "block_order": [
+        "judge_me_reviews_review_widget_zDwk7x"
+      ],
+      "settings": {
+        "include_margins": true
+      }
+    },
+    "17453847438705599e": {
+      "type": "apps",
+      "blocks": {
+        "fether_widget_block_JqaPVT": {
+          "type": "shopify://apps/fether-frequently-bought/blocks/widget-block/f96a0d1a-35b8-40ef-ad54-1cb7fb011e11",
+          "disabled": true,
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "fether_widget_block_JqaPVT"
+      ],
+      "disabled": true,
+      "settings": {
+        "include_margins": false
+      }
+    }
+  },
+  "order": [
+    "main",
+    "custom_popup_products_GKEGkz",
+    "custom_liquid_Dga3P9",
+    "custom-product-details",
+    "177036186402be30ce",
+    "custom_liquid_ezxNEr",
+    "1766470057d2da360d",
+    "176458370003ed2528",
+    "17453847438705599e"
+  ]
+}

@@ -1,0 +1,666 @@
+{% doc %}
+  @prompt
+    Create a flexible A+ content section that reads from product metafields (custom.a_content_block) and dynamically renders different layout types. The section should:
+    
+    1. Loop through metafield entries sorted by order field
+    2. Support three layout types based on layout_type field:
+       - "full_width": Single full-width image with optional text overlay
+       - "three_column": Three benefit cards in a grid with images, headings, and descriptions
+       - "two_column": Two-column grid layout
+    
+    3. Image sizing and responsiveness:
+       - Desktop (large screens): Images centered with auto left/right margins, max-width container
+       - Laptop/tablet: Images take full width and maintain aspect ratio
+       - Mobile: Images resize smoothly to cover full width while maintaining aspect ratio
+       - Height: Automatic based on image aspect ratio, with optional manual height override setting
+    
+    4. Full-width blocks should include:
+       - Image from metafield image_1
+       - Optional heading and description overlay with customizable position
+       - Text overlay with semi-transparent background option
+    
+    5. Three-column grid blocks should:
+       - Display image_1, image_2, image_3 side-by-side on desktop
+       - Show 2 columns on tablet
+       - Stack vertically on mobile
+       - Support headings and rich text descriptions from metafield
+       - Equal height cards with proper spacing
+    
+    6. Two-column blocks similar to three-column but with 2 images
+    
+    7. Section settings for:
+       - Container max-width for large screens
+       - Spacing between blocks
+       - Default background and text colors
+       - Typography options
+    
+    8. Block-level settings override for:
+       - Custom height (optional, defaults to auto)
+       - Background color
+       - Text color and alignment
+       - Padding and margins
+    
+    The design should be premium wellness brand aesthetic with clean spacing, smooth responsive transitions, and professional typography. Images should always maintain quality and proper aspect ratios across all devices.
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% liquid
+  assign a_content = product.metafields.custom.a_content_block.value
+  assign sorted_blocks = a_content | sort: 'order'
+%}
+
+{% style %}
+  .ai-a-plus-content-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+  }
+
+  .ai-a-plus-content__container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.container_max_width }}px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .ai-a-plus-content__block-{{ ai_gen_id }} {
+    margin-bottom: {{ block.settings.block_spacing }}px;
+  }
+
+  .ai-a-plus-content__block-{{ ai_gen_id }}:last-child {
+    margin-bottom: 0;
+  }
+
+  .ai-a-plus-full-width-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: {{ block.settings.image_border_radius }}px;
+  }
+
+  .ai-a-plus-full-width__image-{{ ai_gen_id }} {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+  }
+
+  .ai-a-plus-full-width__overlay-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: var(--ai-overlay-align-{{ ai_gen_id }});
+    justify-content: var(--ai-overlay-justify-{{ ai_gen_id }});
+    padding: 40px;
+  }
+
+  .ai-a-plus-full-width__text-wrapper-{{ ai_gen_id }} {
+    max-width: 600px;
+    text-align: var(--ai-text-align-{{ ai_gen_id }});
+  }
+
+  .ai-a-plus-full-width__text-bg-{{ ai_gen_id }} {
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 30px;
+    border-radius: {{ block.settings.text_box_border_radius }}px;
+  }
+
+  .ai-a-plus-full-width__heading-{{ ai_gen_id }} {
+    font-family: {{ block.settings.heading_font.family }}, {{ block.settings.heading_font.fallback_families }};
+    font-weight: {{ block.settings.heading_font.weight }};
+    font-size: {{ block.settings.heading_size }}px;
+    line-height: 1.2;
+    margin: 0 0 16px 0;
+    color: var(--ai-text-color-{{ ai_gen_id }});
+  }
+
+  .ai-a-plus-full-width__description-{{ ai_gen_id }} {
+    font-family: {{ block.settings.body_font.family }}, {{ block.settings.body_font.fallback_families }};
+    font-weight: {{ block.settings.body_font.weight }};
+    font-size: {{ block.settings.body_size }}px;
+    line-height: 1.6;
+    margin: 0;
+    color: var(--ai-text-color-{{ ai_gen_id }});
+  }
+
+  .ai-a-plus-grid-{{ ai_gen_id }} {
+    display: grid;
+    gap: {{ block.settings.grid_gap }}px;
+  }
+
+  .ai-a-plus-grid--three-{{ ai_gen_id }} {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ai-a-plus-grid--two-{{ ai_gen_id }} {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ai-a-plus-card-{{ ai_gen_id }} {
+    background-color: {{ block.settings.card_background }};
+    border-radius: {{ block.settings.card_border_radius }}px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .ai-a-plus-card-{{ ai_gen_id }}:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .ai-a-plus-card__image-wrapper-{{ ai_gen_id }} {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .ai-a-plus-card__image-{{ ai_gen_id }} {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+  }
+
+  .ai-a-plus-card__content-{{ ai_gen_id }} {
+    padding: {{ block.settings.card_padding }}px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ai-a-plus-card__heading-{{ ai_gen_id }} {
+    font-family: {{ block.settings.heading_font.family }}, {{ block.settings.heading_font.fallback_families }};
+    font-weight: {{ block.settings.heading_font.weight }};
+    font-size: {{ block.settings.card_heading_size }}px;
+    line-height: 1.3;
+    margin: 0 0 12px 0;
+    color: {{ block.settings.card_text_color }};
+  }
+
+  .ai-a-plus-card__description-{{ ai_gen_id }} {
+    font-family: {{ block.settings.body_font.family }}, {{ block.settings.body_font.fallback_families }};
+    font-weight: {{ block.settings.body_font.weight }};
+    font-size: {{ block.settings.card_body_size }}px;
+    line-height: 1.6;
+    margin: 0;
+    color: {{ block.settings.card_text_color }};
+  }
+
+  .ai-a-plus-card__description-{{ ai_gen_id }} p {
+    margin: 0 0 12px 0;
+  }
+
+  .ai-a-plus-card__description-{{ ai_gen_id }} p:last-child {
+    margin-bottom: 0;
+  }
+
+  .ai-a-plus-empty-state-{{ ai_gen_id }} {
+    background-color: #f9f9f9;
+    border: 2px dashed #d1d1d1;
+    border-radius: 8px;
+    padding: 60px 40px;
+    text-align: center;
+    color: #666;
+  }
+
+  .ai-a-plus-empty-state__title-{{ ai_gen_id }} {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: #333;
+  }
+
+  .ai-a-plus-empty-state__text-{{ ai_gen_id }} {
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-a-plus-grid--three-{{ ai_gen_id }} {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ai-a-plus-full-width__overlay-{{ ai_gen_id }} {
+      padding: 30px;
+    }
+
+    .ai-a-plus-full-width__heading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.heading_size }}px * 0.85);
+    }
+
+    .ai-a-plus-full-width__description-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.body_size }}px * 0.9);
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-a-plus-content__container-{{ ai_gen_id }} {
+      padding: 0 16px;
+    }
+
+    .ai-a-plus-grid--three-{{ ai_gen_id }},
+    .ai-a-plus-grid--two-{{ ai_gen_id }} {
+      grid-template-columns: 1fr;
+    }
+
+    .ai-a-plus-full-width__overlay-{{ ai_gen_id }} {
+      padding: 20px;
+    }
+
+    .ai-a-plus-full-width__text-bg-{{ ai_gen_id }} {
+      padding: 20px;
+    }
+
+    .ai-a-plus-full-width__heading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.heading_size }}px * 0.7);
+    }
+
+    .ai-a-plus-full-width__description-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.body_size }}px * 0.85);
+    }
+
+    .ai-a-plus-card__heading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.card_heading_size }}px * 0.9);
+    }
+
+    .ai-a-plus-card__description-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.card_body_size }}px * 0.9);
+    }
+  }
+{% endstyle %}
+
+<div class="ai-a-plus-content-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-a-plus-content__container-{{ ai_gen_id }}">
+    {% if sorted_blocks.size > 0 %}
+      {% for content_block in sorted_blocks %}
+        {% liquid
+          assign layout_type = content_block.layout_type
+          assign custom_height = content_block.custom_height
+          assign bg_color = content_block.background_color | default: block.settings.default_background
+          assign text_color = content_block.text_color | default: block.settings.default_text_color
+          assign text_align = content_block.text_alignment | default: 'center'
+          assign overlay_position = content_block.overlay_position | default: 'center'
+        %}
+
+        <div class="ai-a-plus-content__block-{{ ai_gen_id }}">
+          {% if layout_type == 'full_width' %}
+            {% liquid
+              case overlay_position
+                when 'top_left'
+                  assign align_items = 'flex-start'
+                  assign justify_content = 'flex-start'
+                when 'top_center'
+                  assign align_items = 'flex-start'
+                  assign justify_content = 'center'
+                when 'top_right'
+                  assign align_items = 'flex-start'
+                  assign justify_content = 'flex-end'
+                when 'center_left'
+                  assign align_items = 'center'
+                  assign justify_content = 'flex-start'
+                when 'center'
+                  assign align_items = 'center'
+                  assign justify_content = 'center'
+                when 'center_right'
+                  assign align_items = 'center'
+                  assign justify_content = 'flex-end'
+                when 'bottom_left'
+                  assign align_items = 'flex-end'
+                  assign justify_content = 'flex-start'
+                when 'bottom_center'
+                  assign align_items = 'flex-end'
+                  assign justify_content = 'center'
+                when 'bottom_right'
+                  assign align_items = 'flex-end'
+                  assign justify_content = 'flex-end'
+                else
+                  assign align_items = 'center'
+                  assign justify_content = 'center'
+              endcase
+            %}
+
+            <div
+              class="ai-a-plus-full-width-{{ ai_gen_id }}"
+              style="
+                --ai-overlay-align-{{ ai_gen_id }}: {{ align_items }};
+                --ai-overlay-justify-{{ ai_gen_id }}: {{ justify_content }};
+                --ai-text-align-{{ ai_gen_id }}: {{ text_align }};
+                --ai-text-color-{{ ai_gen_id }}: {{ text_color }};
+                background-color: {{ bg_color }};
+                {% if custom_height and custom_height > 0 %}height: {{ custom_height }}px;{% endif %}
+              "
+            >
+              {% if content_block.image_1 %}
+                <img
+                  src="{{ content_block.image_1 | image_url: width: 2000 }}"
+                  alt="{{ content_block.heading | default: 'A+ Content' | escape }}"
+                  loading="lazy"
+                  class="ai-a-plus-full-width__image-{{ ai_gen_id }}"
+                  {% if custom_height and custom_height > 0 %}
+                    style="height: {{ custom_height }}px; object-fit: cover;"
+                  {% endif %}
+                >
+              {% endif %}
+
+              {% if content_block.heading != blank or content_block.description != blank %}
+                <div class="ai-a-plus-full-width__overlay-{{ ai_gen_id }}">
+                  <div class="ai-a-plus-full-width__text-wrapper-{{ ai_gen_id }}">
+                    {% if block.settings.show_text_background %}
+                      <div class="ai-a-plus-full-width__text-bg-{{ ai_gen_id }}">
+                    {% endif %}
+                        {% if content_block.heading != blank %}
+                          <h2 class="ai-a-plus-full-width__heading-{{ ai_gen_id }}">
+                            {{ content_block.heading }}
+                          </h2>
+                        {% endif %}
+                        {% if content_block.description != blank %}
+                          <div class="ai-a-plus-full-width__description-{{ ai_gen_id }}">
+                            {{ content_block.description }}
+                          </div>
+                        {% endif %}
+                    {% if block.settings.show_text_background %}
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+
+          {% elsif layout_type == 'three_column' %}
+            <div
+              class="ai-a-plus-grid-{{ ai_gen_id }} ai-a-plus-grid--three-{{ ai_gen_id }}"
+              style="background-color: {{ bg_color }};"
+            >
+              {% for i in (1..3) %}
+                {% liquid
+                  assign image_key = 'image_' | append: i
+                  assign heading_key = 'heading_' | append: i
+                  assign description_key = 'description_' | append: i
+                  assign card_image = content_block[image_key]
+                  assign card_heading = content_block[heading_key]
+                  assign card_description = content_block[description_key]
+                %}
+
+                {% if card_image != blank or card_heading != blank or card_description != blank %}
+                  <div class="ai-a-plus-card-{{ ai_gen_id }}">
+                    {% if card_image %}
+                      <div class="ai-a-plus-card__image-wrapper-{{ ai_gen_id }}">
+                        <img
+                          src="{{ card_image | image_url: width: 800 }}"
+                          alt="{{ card_heading | default: 'Benefit' | escape }}"
+                          loading="lazy"
+                          class="ai-a-plus-card__image-{{ ai_gen_id }}"
+                        >
+                      </div>
+                    {% endif %}
+
+                    {% if card_heading != blank or card_description != blank %}
+                      <div class="ai-a-plus-card__content-{{ ai_gen_id }}">
+                        {% if card_heading != blank %}
+                          <h3 class="ai-a-plus-card__heading-{{ ai_gen_id }}">
+                            {{ card_heading }}
+                          </h3>
+                        {% endif %}
+                        {% if card_description != blank %}
+                          <div class="ai-a-plus-card__description-{{ ai_gen_id }}">
+                            {{ card_description }}
+                          </div>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+          {% elsif layout_type == 'two_column' %}
+            <div
+              class="ai-a-plus-grid-{{ ai_gen_id }} ai-a-plus-grid--two-{{ ai_gen_id }}"
+              style="background-color: {{ bg_color }};"
+            >
+              {% for i in (1..2) %}
+                {% liquid
+                  assign image_key = 'image_' | append: i
+                  assign heading_key = 'heading_' | append: i
+                  assign description_key = 'description_' | append: i
+                  assign card_image = content_block[image_key]
+                  assign card_heading = content_block[heading_key]
+                  assign card_description = content_block[description_key]
+                %}
+
+                {% if card_image != blank or card_heading != blank or card_description != blank %}
+                  <div class="ai-a-plus-card-{{ ai_gen_id }}">
+                    {% if card_image %}
+                      <div class="ai-a-plus-card__image-wrapper-{{ ai_gen_id }}">
+                        <img
+                          src="{{ card_image | image_url: width: 1000 }}"
+                          alt="{{ card_heading | default: 'Feature' | escape }}"
+                          loading="lazy"
+                          class="ai-a-plus-card__image-{{ ai_gen_id }}"
+                        >
+                      </div>
+                    {% endif %}
+
+                    {% if card_heading != blank or card_description != blank %}
+                      <div class="ai-a-plus-card__content-{{ ai_gen_id }}">
+                        {% if card_heading != blank %}
+                          <h3 class="ai-a-plus-card__heading-{{ ai_gen_id }}">
+                            {{ card_heading }}
+                          </h3>
+                        {% endif %}
+                        {% if card_description != blank %}
+                          <div class="ai-a-plus-card__description-{{ ai_gen_id }}">
+                            {{ card_description }}
+                          </div>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="ai-a-plus-empty-state-{{ ai_gen_id }}">
+        <h3 class="ai-a-plus-empty-state__title-{{ ai_gen_id }}">A+ Content Ready</h3>
+        <p class="ai-a-plus-empty-state__text-{{ ai_gen_id }}">
+          Add A+ content blocks to this product using the <strong>custom.a_content_block</strong> metafield.<br>
+          Configure layout types, images, headings, and descriptions to create rich product content.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "A+ content",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Container"
+    },
+    {
+      "type": "range",
+      "id": "container_max_width",
+      "label": "Max width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1400
+    },
+    {
+      "type": "range",
+      "id": "block_spacing",
+      "label": "Spacing between blocks",
+      "min": 20,
+      "max": 100,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "font_picker",
+      "id": "heading_font",
+      "label": "Heading font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 24,
+      "max": 72,
+      "step": 2,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "font_picker",
+      "id": "body_font",
+      "label": "Body font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "body_size",
+      "label": "Body size",
+      "min": 14,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Full-width blocks"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_text_background",
+      "label": "Show text background",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "image_border_radius",
+      "label": "Image border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "text_box_border_radius",
+      "label": "Text box border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "header",
+      "content": "Grid blocks"
+    },
+    {
+      "type": "range",
+      "id": "grid_gap",
+      "label": "Gap between cards",
+      "min": 12,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "color",
+      "id": "card_background",
+      "label": "Card background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "card_text_color",
+      "label": "Card text color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Card border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Card padding",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "card_heading_size",
+      "label": "Card heading size",
+      "min": 16,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "card_body_size",
+      "label": "Card body size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "header",
+      "content": "Default colors"
+    },
+    {
+      "type": "color",
+      "id": "default_background",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "default_text_color",
+      "label": "Text",
+      "default": "#262626"
+    }
+  ],
+  "presets": [
+    {
+      "name": "A+ content"
+    }
+  ],
+  "tag": null
+}
+{% endschema %}

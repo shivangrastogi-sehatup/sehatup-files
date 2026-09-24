@@ -1,0 +1,257 @@
+{% if section.settings.enable_section %}
+
+<section
+  class="hm-jdgm-reviews"
+  style="
+    background: {{ section.settings.section_bg }};
+    padding: {{ section.settings.padding_y }}px 20px;
+  "
+>
+  <div
+    class="hm-jdgm-container"
+    style="max-width: {{ section.settings.max_width }}px;"
+  >
+
+    {% if section.settings.heading != blank %}
+      <h2
+        class="hm-jdgm-heading {{ section.settings.heading_align }}"
+        style="color: {{ section.settings.heading_color }};"
+      >
+        {{ section.settings.heading }}
+      </h2>
+    {% endif %}
+
+    <!-- ===============================
+         HIDDEN JUDGE.ME DATA SOURCE
+         =============================== -->
+    <div class="hm-jdgm-hidden">
+      <!-- Shop Reviews Widget (OFFICIAL) -->
+      <div
+        class="jdgm-widget jdgm-shop-reviews"
+        data-widget="shop_reviews"
+        data-auto-install="false">
+      </div>
+    </div>
+
+    <!-- ===============================
+         CUSTOM SCROLLER UI
+         =============================== -->
+    <div class="hm-jdgm-scroller">
+
+      {% for row in (1..2) %}
+        <div class="hm-jdgm-row">
+          <div
+            class="hm-jdgm-track"
+            data-row="{{ row }}"
+            style="animation-duration: {{ section.settings.scroll_speed }}s;"
+          >
+            {% for i in (1..12) %}
+              <div
+                class="hm-jdgm-card"
+                style="
+                  background: {{ section.settings.card_bg }};
+                  color: {{ section.settings.text_color }};
+                "
+              >
+                <img class="hm-jdgm-img" alt="" />
+
+                <div class="hm-jdgm-content">
+                  <div
+                    class="hm-jdgm-stars"
+                    style="color: {{ section.settings.star_color }};"
+                  >
+                    ★★★★★
+                  </div>
+
+                  <div class="hm-jdgm-text skeleton"></div>
+                  <div class="hm-jdgm-name skeleton"></div>
+                  <div class="hm-jdgm-product skeleton"></div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+
+    </div>
+  </div>
+</section>
+
+<style>
+.hm-jdgm-hidden { display:none; }
+
+.hm-jdgm-heading {
+  margin-bottom: 36px;
+  font-weight: 600;
+}
+.hm-jdgm-heading.center { text-align:center; }
+.hm-jdgm-heading.left { text-align:left; }
+.hm-jdgm-heading.right { text-align:right; }
+
+.hm-jdgm-scroller {
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  gap:28px;
+}
+
+.hm-jdgm-row { overflow:hidden; }
+
+.hm-jdgm-track {
+  display:flex;
+  gap:20px;
+  width:max-content;
+  animation:hm-scroll linear infinite;
+}
+
+.hm-jdgm-card {
+  width:340px;
+  padding:18px;
+  border-radius:14px;
+  display:flex;
+  gap:14px;
+  box-shadow:0 10px 25px rgba(0,0,0,.06);
+}
+
+.hm-jdgm-img {
+  width:64px;
+  height:64px;
+  border-radius:10px;
+  object-fit:cover;
+  background:#eee;
+  flex-shrink:0;
+}
+
+.hm-jdgm-stars {
+  font-size:14px;
+  letter-spacing:1px;
+}
+
+.hm-jdgm-text {
+  font-size:14px;
+  line-height:1.45;
+  margin:8px 0;
+}
+
+.hm-jdgm-name {
+  font-size:12px;
+  font-weight:500;
+}
+
+.hm-jdgm-product {
+  font-size:12px;
+  opacity:.6;
+}
+
+.skeleton {
+  background:linear-gradient(90deg,#eee,#f5f5f5,#eee);
+  background-size:200% 100%;
+  animation:skeleton 1.2s infinite;
+  border-radius:6px;
+  min-height:14px;
+}
+
+@keyframes skeleton {
+  from { background-position:0%; }
+  to { background-position:200%; }
+}
+
+@keyframes hm-scroll {
+  from { transform:translateX(0); }
+  to { transform:translateX(-50%); }
+}
+
+@media (max-width:768px) {
+  .hm-jdgm-card { width:260px; }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  function waitForJudgeMe() {
+    if (
+      window.jdgm &&
+      window.jdgm.reviewData &&
+      window.jdgm.reviewData.reviews
+    ) {
+      initReviews(window.jdgm.reviewData.reviews);
+    } else {
+      setTimeout(waitForJudgeMe, 500);
+    }
+  }
+
+  function initReviews(reviews) {
+    if (!reviews.length) return;
+
+    const cards = document.querySelectorAll(".hm-jdgm-card");
+
+    cards.forEach((card, index) => {
+      const r = reviews[index % reviews.length];
+      if (!r) return;
+
+      /* Image */
+      const img = card.querySelector(".hm-jdgm-img");
+      if (r.product_image) {
+        img.src = r.product_image;
+        img.alt = r.product_title || "";
+      }
+
+      /* Stars */
+      card.querySelector(".hm-jdgm-stars").innerHTML =
+        "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
+
+      /* Review text */
+      const text = card.querySelector(".hm-jdgm-text");
+      text.classList.remove("skeleton");
+      text.innerText = r.body;
+
+      /* Name */
+      const name = card.querySelector(".hm-jdgm-name");
+      name.classList.remove("skeleton");
+      name.innerText = r.reviewer_name || "Verified Buyer";
+
+      /* Product */
+      const product = card.querySelector(".hm-jdgm-product");
+      product.classList.remove("skeleton");
+      product.innerText = r.product_title || "";
+    });
+  }
+
+  waitForJudgeMe();
+});
+</script>
+
+
+{% endif %}
+
+{% schema %}
+{
+  "name": "(Judge.me – DOM)",
+  "settings": [
+    { "type": "checkbox", "id": "enable_section", "label": "Enable section", "default": true },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What Our Customers Say" },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "default": "center",
+      "options": [
+        { "value": "center", "label": "Center" },
+        { "value": "left", "label": "Left" },
+        { "value": "right", "label": "Right" }
+      ]
+    },
+    { "type": "color", "id": "heading_color", "label": "Heading color", "default": "#111111" },
+    { "type": "color", "id": "section_bg", "label": "Section background", "default": "#ffffff" },
+    { "type": "color", "id": "card_bg", "label": "Card background", "default": "#ffffff" },
+    { "type": "color", "id": "text_color", "label": "Text color", "default": "#222222" },
+    { "type": "color", "id": "star_color", "label": "Star color", "default": "#f5a623" },
+    { "type": "range", "id": "scroll_speed", "label": "Scroll speed (seconds)", "min": 10, "max": 60, "step": 2, "default": 30 },
+    { "type": "range", "id": "max_width", "label": "Max width", "min": 900, "max": 1600, "step": 50, "default": 1200 },
+    { "type": "range", "id": "padding_y", "label": "Vertical padding", "min": 40, "max": 120, "step": 10, "default": 80 }
+  ],
+  "presets": [
+    { "name": "Homepage Reviews – Judge.me (DOM)", "category": "Social Proof" }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,579 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-page",
+      "disabled": true,
+      "settings": {
+        "padding_top": 28,
+        "padding_bottom": 28
+      }
+    },
+    "blocks_pGGnd6": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_1a1cde1_hXrmWC": {
+          "type": "ai_gen_block_1a1cde1",
+          "settings": {
+            "layout_mode": "background-with-overlay-image",
+            "desktop_width_percent": 100,
+            "background_image": "shopify://shop_images/Frame_133.webp",
+            "background_image_size": "cover",
+            "background_position_x": "center",
+            "background_position_y": "center",
+            "background_overlay_opacity": 100,
+            "background_overlay_color": "#000000",
+            "background_overlay_strength": 0,
+            "show_white_panel": false,
+            "white_panel_width": 45,
+            "white_panel_color": "#ffffff",
+            "white_panel_opacity": 95,
+            "white_panel_rounded": true,
+            "white_panel_border_radius": 20,
+            "foreground_image": "shopify://shop_images/Frame_242.webp",
+            "foreground_image_scale": 100,
+            "foreground_image_fit": "contain",
+            "foreground_position_x": "right",
+            "foreground_position_y": "bottom",
+            "foreground_offset_x": 5,
+            "foreground_offset_y": 0,
+            "hide_foreground_mobile": true,
+            "heading": "Having problems with exertion, hormonal issues, weight issues?",
+            "subheading_prefix": "",
+            "subheading_highlight": "",
+            "subheading_highlight_color": "#ff4757",
+            "body_text": "<p>The first virtual clinic of India on which the<br/>doctors specializing in Ayurveda, Allopathy and Homeopathy strive collectively<br/>to provide effective remedial solutions for your health problems.</p>",
+            "content_position": "left",
+            "content_max_width": 1400,
+            "content_text_max_width": 600,
+            "heading_size": 48,
+            "heading_weight": "700",
+            "heading_color": "#ffffff",
+            "subheading_size": 24,
+            "subheading_weight": "500",
+            "subheading_color": "#ffffff",
+            "body_size": 16,
+            "body_color": "#ffffff",
+            "text_shadow_enabled": true,
+            "button_1_text": "Start Free Assessment",
+            "button_1_link": "shopify://pages/health-score-360",
+            "button_1_style": "filled",
+            "button_1_bg_color": "#000000",
+            "button_1_text_color": "#ffffff",
+            "button_1_border_color": "#000000",
+            "button_1_hover_bg_color": "#464e46",
+            "button_1_hover_text_color": "#ffffff",
+            "button_1_hover_border_color": "#000000",
+            "show_button_2": true,
+            "enable_doctor_new_tab": true,
+            "button_2_text": "Talk to a Doctor",
+            "button_2_link": "https://wa.me/919355539355?text=Hi, I need assistance",
+            "button_2_style": "outline",
+            "button_2_bg_color": "#ffffff",
+            "button_2_text_color": "#ffffff",
+            "button_2_border_color": "#ffffff",
+            "button_2_hover_bg_color": "#ffffff",
+            "button_2_hover_text_color": "#000000",
+            "button_2_hover_border_color": "#ffffff",
+            "button_layout": "horizontal",
+            "button_font_size": 16,
+            "button_font_weight": "600",
+            "button_padding_vertical": 14,
+            "button_padding_horizontal": 32,
+            "button_border_radius": 50,
+            "button_spacing": 32,
+            "section_min_height": 430,
+            "section_padding_top": 60,
+            "section_padding_bottom": 60,
+            "section_padding_horizontal": 40,
+            "content_spacing": 20,
+            "enable_mobile_overrides": false,
+            "section_min_height_mobile": 500,
+            "section_padding_top_mobile": 40,
+            "section_padding_bottom_mobile": 40,
+            "section_padding_horizontal_mobile": 20,
+            "mobile_content_alignment": "center",
+            "mobile_background_position_x": "center",
+            "mobile_background_position_y": "center"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_1a1cde1_hXrmWC"
+      ],
+      "name": "Healthcare hero banner",
+      "settings": {}
+    },
+    "177011795365099f7c": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_9e53ff5_7c3D9N": {
+          "type": "ai_gen_block_9e53ff5",
+          "settings": {
+            "section_bg_color": "#ffffff",
+            "content_max_width": 1200,
+            "section_padding_top": 50,
+            "section_padding_bottom": 50,
+            "heading": "What problems do you need help with today?",
+            "heading_size": 36,
+            "heading_weight": 600,
+            "heading_color": "#262626",
+            "heading_alignment": "center",
+            "heading_to_subheading_spacing": 15,
+            "subheading": "",
+            "subheading_size": 16,
+            "subheading_weight": 400,
+            "subheading_color": "#666666",
+            "subheading_alignment": "center",
+            "subheading_to_pills_spacing": 35,
+            "pills_alignment": "center",
+            "pills_gap": 10,
+            "pills_bottom_spacing": 0,
+            "pill_padding_vertical": 7,
+            "pill_padding_horizontal": 12,
+            "pill_bg_color": "#f4f4f4",
+            "pill_text_color": "#262626",
+            "pill_border_color": "#d1d1d1",
+            "pill_border_thickness": 1,
+            "pill_radius": 24,
+            "pill_font_size": 14,
+            "pill_font_weight": 500,
+            "pill_letter_spacing": 0,
+            "pill_1_enabled": true,
+            "pill_1_text": "Irregular periods",
+            "pill_2_enabled": true,
+            "pill_2_text": "Painful cramps & PMS",
+            "pill_3_enabled": true,
+            "pill_3_text": "Heavy or missed periods",
+            "pill_4_enabled": true,
+            "pill_4_text": "Period bloating",
+            "pill_5_enabled": true,
+            "pill_5_text": "PCOS / PCOD",
+            "pill_6_enabled": true,
+            "pill_6_text": "Unwanted facial hair",
+            "pill_7_enabled": true,
+            "pill_7_text": "Trouble losing weight",
+            "pill_8_enabled": true,
+            "pill_8_text": "Stubborn belly fat",
+            "pill_9_enabled": false,
+            "pill_9_text": "",
+            "pill_10_enabled": false,
+            "pill_10_text": "",
+            "pill_11_enabled": false,
+            "pill_11_text": "",
+            "pill_12_enabled": false,
+            "pill_12_text": "",
+            "mobile_pills_layout": "wrap"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_9e53ff5_7c3D9N"
+      ],
+      "settings": {}
+    },
+    "177011846057cacb94": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_8cb2b28_4kActg": {
+          "type": "ai_gen_block_8cb2b28",
+          "settings": {
+            "section_heading": "Pick up your products according to the sections",
+            "section_background_color": "#ffffff",
+            "content_max_width": 800,
+            "section_padding_top": 60,
+            "section_padding_bottom": 60,
+            "heading_size": 36,
+            "heading_weight": "700",
+            "heading_color": "#000000",
+            "heading_alignment": "center",
+            "heading_spacing": 40,
+            "cards_per_row_desktop": "4",
+            "cards_per_row_tablet": "3",
+            "cards_per_row_mobile": "2",
+            "card_gap": 30,
+            "card_alignment": "center",
+            "mobile_scroll_behavior": "grid",
+            "image_size": 100,
+            "mobile_image_size": 80,
+            "hover_effect": "lift",
+            "text_spacing": 20,
+            "text_alignment": "center",
+            "title_size": 22,
+            "mobile_title_size": 16,
+            "title_weight": "600",
+            "title_color": "#000000",
+            "description_spacing": 10,
+            "description_size": 14,
+            "mobile_description_size": 13,
+            "description_color": "#666666",
+            "description_line_height": 1.5,
+            "mobile_heading_size": 28,
+            "scroll_offset": 80,
+            "scroll_duration": 800,
+            "card_1_enabled": true,
+            "card_1_image": "shopify://shop_images/for_her_period_care.webp",
+            "card_1_bg_color": "#ffb6c1",
+            "card_1_border_color": "#ffb6c1",
+            "card_1_border_width": 0,
+            "card_1_title": "Care for the menstrual problems",
+            "card_1_description": "You get suitable comfort for cramps, flow management, PCOS problem and hormonal disbalances.",
+            "card_1_scroll_behavior": "scroll",
+            "card_1_section_id": "shopify-block-Aa21WenRra2dsRjI4W__ai_gen_block_1595750_9bRLFq",
+            "card_1_link": "",
+            "card_2_enabled": true,
+            "card_2_image": "shopify://shop_images/for_her_weight_loss.webp",
+            "card_2_bg_color": "#2c3e50",
+            "card_2_border_color": "#2c3e50",
+            "card_2_border_width": 0,
+            "card_2_title": "Weight Control",
+            "card_2_description": "Metabolism help, appetite management and effective burning of fats.",
+            "card_2_scroll_behavior": "scroll",
+            "card_2_section_id": "shopify-block-ATGhueWZlckFudU9sU__ai_gen_block_1595750_bxpAzP",
+            "card_2_link": "",
+            "card_3_enabled": false,
+            "card_3_bg_color": "#87ceeb",
+            "card_3_border_color": "#87ceeb",
+            "card_3_border_width": 0,
+            "card_3_title": "Wellness",
+            "card_3_description": "Support for overall health and vitality",
+            "card_3_scroll_behavior": "navigate",
+            "card_3_section_id": "",
+            "card_3_link": "",
+            "card_4_enabled": false,
+            "card_4_bg_color": "#98d8c8",
+            "card_4_border_color": "#98d8c8",
+            "card_4_border_width": 0,
+            "card_4_title": "Nutrition",
+            "card_4_description": "Essential vitamins and minerals for daily health",
+            "card_4_scroll_behavior": "navigate",
+            "card_4_section_id": "",
+            "card_4_link": "",
+            "card_5_enabled": false,
+            "card_5_bg_color": "#f6ad55",
+            "card_5_border_color": "#f6ad55",
+            "card_5_border_width": 0,
+            "card_5_title": "Energy",
+            "card_5_description": "Natural energy boosters for active lifestyles",
+            "card_5_scroll_behavior": "navigate",
+            "card_5_section_id": "",
+            "card_5_link": "",
+            "card_6_enabled": false,
+            "card_6_bg_color": "#b794f4",
+            "card_6_border_color": "#b794f4",
+            "card_6_border_width": 0,
+            "card_6_title": "Sleep",
+            "card_6_description": "Natural sleep support for restful nights",
+            "card_6_scroll_behavior": "navigate",
+            "card_6_section_id": "",
+            "card_6_link": "",
+            "card_7_enabled": false,
+            "card_7_bg_color": "#fc8181",
+            "card_7_border_color": "#fc8181",
+            "card_7_border_width": 0,
+            "card_7_title": "Immunity",
+            "card_7_description": "Strengthen your natural defenses",
+            "card_7_scroll_behavior": "navigate",
+            "card_7_section_id": "",
+            "card_7_link": "",
+            "card_8_enabled": false,
+            "card_8_bg_color": "#68d391",
+            "card_8_border_color": "#68d391",
+            "card_8_border_width": 0,
+            "card_8_title": "Digestion",
+            "card_8_description": "Support for healthy gut and digestive wellness",
+            "card_8_scroll_behavior": "navigate",
+            "card_8_section_id": "",
+            "card_8_link": ""
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_8cb2b28_4kActg"
+      ],
+      "settings": {}
+    },
+    "1770282965640a6b95": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_1595750_9bRLFq": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "period-care-products",
+            "scroll_offset": 100,
+            "collection": "period-care",
+            "pinned_products": [],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#ffffff",
+            "products_count": 8,
+            "heading": "Period Care",
+            "description": "Support for periods, hormones and PCOS balance",
+            "show_sidebar": false,
+            "sidebar_title": "Sexual wellness",
+            "sidebar_paragraph": "For stronger erections, better control & peak performance.",
+            "view_all_url": "",
+            "view_all_text": "View All",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": true,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#ee204a",
+            "cart_btn_hover_bg": "#ee204a",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        },
+        "ai_gen_block_1595750_bxpAzP": {
+          "type": "ai_gen_block_1595750",
+          "settings": {
+            "anchor_id": "",
+            "scroll_offset": 100,
+            "collection": "weight-for-her",
+            "pinned_products": [],
+            "show_pinned_badge": false,
+            "pinned_badge_text": "Bestseller",
+            "section_bg_color": "#fffbf7",
+            "products_count": 8,
+            "heading": "Weight Management",
+            "description": "Support for metabolism, appetite control and sustainable weight loss.",
+            "show_sidebar": false,
+            "sidebar_title": "Sexual Wellness",
+            "sidebar_paragraph": "For stronger erections, better control & peak performance.",
+            "view_all_url": "",
+            "view_all_text": "View All",
+            "layout_mode": "scroll",
+            "products_per_row": 4,
+            "button_text": "Add to Cart",
+            "show_sale_badge": true,
+            "badge_format": "percentage",
+            "sidebar_bg_color": "#f9f9f9",
+            "sidebar_title_color": "#2b3845",
+            "sidebar_text_color": "#666666",
+            "view_all_text_color": "#262626",
+            "view_all_border_color": "#262626",
+            "view_all_hover_bg": "#262626",
+            "view_all_hover_text": "#ffffff",
+            "heading_color": "#000000",
+            "text_color": "#262626",
+            "card_background": "#ffffff",
+            "price_color": "#1d1d1d",
+            "sale_price_color": "#1d1d1d",
+            "cart_btn_text_color": "#ee204a",
+            "cart_btn_border_color": "#ee204a",
+            "cart_btn_hover_bg": "#ee204a",
+            "cart_btn_hover_text": "#ffffff",
+            "badge_background": "#ff4444",
+            "badge_text_color": "#ffffff",
+            "pinned_badge_background": "#2b3845",
+            "pinned_badge_text_color": "#ffffff",
+            "button_background": "#b7aca2"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_1595750_9bRLFq",
+        "ai_gen_block_1595750_bxpAzP"
+      ],
+      "settings": {}
+    },
+    "1770273844785dc3a4": {
+      "type": "_blocks",
+      "settings": {}
+    },
+    "177027615606c041fc": {
+      "type": "_blocks",
+      "settings": {}
+    },
+    "blocks_PMCNnD": {
+      "type": "_blocks",
+      "name": "Collection showcase",
+      "settings": {}
+    },
+    "blocks_Lp4Aqa": {
+      "type": "_blocks",
+      "name": "Collection showcase",
+      "settings": {}
+    },
+    "trust_certification_dbXFdQ": {
+      "type": "trust-certification",
+      "blocks": {
+        "certification_B8iAyt": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "certification_KG4j4d": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "certification_3kz3FP": {
+          "type": "certification",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "certification_B8iAyt",
+        "certification_KG4j4d",
+        "certification_3kz3FP"
+      ],
+      "name": "Trust certifications",
+      "settings": {
+        "heading": "Why People Trust Us",
+        "heading_size": 28,
+        "heading_color": "#222222",
+        "container_width": 1200,
+        "logo_max_width": 140,
+        "label_font_size": 14,
+        "label_color": "#333333",
+        "enable_scroll": true,
+        "scroll_speed": 30,
+        "background_color": "#ffffff",
+        "padding_top": 48,
+        "padding_bottom": 48,
+        "margin_top": 0,
+        "margin_bottom": 0
+      }
+    },
+    "product_faq_ggXzzx": {
+      "type": "product-faq",
+      "blocks": {
+        "faq_dHUB6q": {
+          "type": "faq",
+          "settings": {
+            "question": "How can I start my care plan?",
+            "answer": "<p>After your purchase, our doctors will conduct a comprehensive evaluation of your concerns, medical history, and lifestyle to customize the plan to meet your specific needs.</p>"
+          }
+        },
+        "faq_jDp38w": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my information confidential?",
+            "answer": "<p>Confidentiality and clarity are our priorities. Your data is held in strict confidence, and the information you share will solely be utilized for transparent communication and to deliver effective care.</p>"
+          }
+        },
+        "faq_6wCDPj": {
+          "type": "faq",
+          "settings": {
+            "question": "Are the products safe?",
+            "answer": "<p>Our products are approved by AYUSH. All our products are formulated by experts and are safe to use, and free from harmful chemicals.</p>"
+          }
+        },
+        "faq_akhRWt": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my treatment plan customized to my needs?",
+            "answer": "<p>The plans provided offer a glimpse of what you can anticipate in your customized plan, but every individual's needs vary, and our doctors excel in leading you toward your unique journey to well-being.</p>"
+          }
+        },
+        "faq_nDc7DJ": {
+          "type": "faq",
+          "settings": {
+            "question": "Do I have to pay for doctor consultation?",
+            "answer": "<p>Your doctor consultation is included at no additional cost with your care plan.</p>"
+          }
+        },
+        "faq_AUVRnG": {
+          "type": "faq",
+          "settings": {
+            "question": "Are medications part of the program?",
+            "answer": "<p>Depending on the diagnosis, our doctors/nutritionists may prescribe medications as part of the treatment plan.<br/>These are selected based on individual needs and may include supplements, prescriptions, or other suitable options.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_dHUB6q",
+        "faq_jDp38w",
+        "faq_6wCDPj",
+        "faq_akhRWt",
+        "faq_nDc7DJ",
+        "faq_AUVRnG"
+      ],
+      "name": "Product FAQ",
+      "settings": {
+        "heading": "Frequently Asked Questions",
+        "single_open": true,
+        "reserve_space": false,
+        "enable_schema": true,
+        "heading_size": 28,
+        "max_width": 1100,
+        "padding_top": 60,
+        "padding_bottom": 104,
+        "item_padding": 20,
+        "border_radius": 8,
+        "question_size": 16,
+        "answer_size": 15,
+        "background_color": "#ffffff",
+        "item_background": "#ffffff",
+        "border_color": "#e5e5e5",
+        "heading_color": "#1d1d1d",
+        "question_color": "#1d1d1d",
+        "answer_color": "#666666",
+        "him_q1": "Who is the For Him range designed for?",
+        "him_a1": "<p>Designed for men looking to support testosterone, energy, and performance naturally.</p>",
+        "him_q2": "Are these products safe for daily use?",
+        "him_a2": "<p>Yes, all products are clinically formulated and safe for daily use as directed.</p>",
+        "him_q3": "How soon will I see results?",
+        "him_a3": "<p>Most users notice improvements within 4–6 weeks of consistent use.</p>",
+        "her_q1": "Who is the For Her range designed for?",
+        "her_a1": "<p>Designed for women seeking hormonal balance, skin health, and sustained energy.</p>",
+        "her_q2": "Are these safe during pregnancy?",
+        "her_a2": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>",
+        "her_q3": "Can I take these with other supplements?",
+        "her_a3": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>"
+      }
+    }
+  },
+  "order": [
+    "main",
+    "blocks_pGGnd6",
+    "177011795365099f7c",
+    "177011846057cacb94",
+    "1770282965640a6b95",
+    "1770273844785dc3a4",
+    "177027615606c041fc",
+    "blocks_PMCNnD",
+    "blocks_Lp4Aqa",
+    "trust_certification_dbXFdQ",
+    "product_faq_ggXzzx"
+  ]
+}

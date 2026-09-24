@@ -1,0 +1,165 @@
+FOUR PROMPTS FOR THE "CONDITIONS WE SOLVE" SECTION
+Each prompt is self-contained. Use one at a time. Nothing is attached, so the
+generator has no existing layout to copy.
+
+
+=====================================================================
+SHARED BRIEF (already written into each prompt below, repeated here for you)
+=====================================================================
+Brand: sehatUP, an Indian integrated health clinic that combines Ayurveda,
+Homeopathy and Modern Medicine. Audience: Indian adults, 25 to 50, browsing
+on a phone or laptop, who are not sure whether their problem is "a real
+condition" or just life. The job of this section: in one glance, the reader
+must find their own problem in the list and believe it is treatable here.
+
+Colour: white and off-white base, near-black #1d1d1d for headings, grey
+#55555f for body text, pale pink #fdf4f6 as a quiet surface, crimson #ee204a
+as a spot accent used two or three times in the whole section at most.
+Never a red section. No gradients, no glows, no drop shadows under every box.
+
+Type: one geometric sans (Poppins-like). Bold headings, regular body,
+sentence case. No all-caps labels, no tracked-out eyebrow text.
+
+Text to set exactly:
+  Heading: Conditions we Solve
+  Subtitle: We don't guess. We read your symptoms, your lifestyle and your
+  body signals, then build a doctor-guided plan from Homeopathy, Ayurveda
+  and Modern Medicine.
+  Sexual Wellness - Performance, Desire, Stamina
+  Hormonal Imbalance - PCOS, Irregular Cycles, Mood
+  Weight Gain and Metabolism - Belly Fat, Slow Metabolism, Cravings
+  Stress and Anxiety - Restlessness, Overthinking, Tension
+  Sleep Issues - Trouble Sleeping, Light Sleep, Restlessness
+  Digestion and Bloating - Gas, Acidity, Constipation
+  Low Energy and Fatigue - Tiredness, Weakness, Low Drive
+  Immunity - Frequent Cold, Low Resistance
+  Button: Take a 2-minute Health Score Quiz
+Spell "sehatUP" exactly: one word, lowercase s, capital UP.
+No other words anywhere. No browser frames, no cursors, no watermarks.
+
+
+=====================================================================
+PROMPT A - THE BODY MAP
+=====================================================================
+Design one desktop web section as a single flat image, 2400 by 1500 pixels,
+on a white background.
+
+The section is built around one calm, simplified human figure drawn in line
+art, standing centred, filling most of the height. The figure is neutral and
+non-clinical: soft continuous lines in near-black #1d1d1d on a pale pink
+#fdf4f6 oval that sits behind it. Not a muscle chart, not an anatomy
+diagram, no organs on show, no skeleton.
+
+Eight short labels sit around the figure, four on the left and four on the
+right, each joined to the part of the body it belongs to by a thin hairline
+with a small dot where it touches: sexual wellness low, hormonal imbalance
+and immunity mid-torso, weight gain and metabolism at the waist, digestion
+at the stomach, stress and anxiety and sleep at the head, low energy across
+the chest. Each label is a bold condition name in #1d1d1d with its three
+symptoms underneath in grey #55555f at about half the size.
+
+Heading and subtitle sit above the figure, centred, with the heading large.
+The quiz button sits below the figure, centred: a crimson #ee204a pill with
+white bold text. Crimson appears only on that button and on the small
+connector dots. Everything else is ink, grey and pale pink.
+
+Generous white space. Nothing is boxed. This design has no cards at all.
+
+[paste the SHARED BRIEF colour, type and text blocks here]
+
+
+=====================================================================
+PROMPT B - THE QUIET INDEX
+=====================================================================
+Design one desktop web section as a single flat image, 2400 by 1400 pixels,
+on an off-white background.
+
+The eight conditions are set as a strict two-column index, four rows on the
+left and four on the right, separated by a single vertical hairline down the
+middle. Each row is one line of hairline rule, then the condition name in
+bold #1d1d1d at a large, confident size, with its three symptoms on the same
+line pushed to the right edge of its column in grey #55555f. Rows are tall
+and airy, like a well-set contents page in a book.
+
+To the left of each condition name sits one small icon, 32px, drawn in a
+single consistent line weight in #1d1d1d, never filled, never in a circle:
+a crescent for sleep, a leaf for digestion, a spark for energy, a shield for
+immunity, a wave for stress, a scale for weight, a cycle arrow for hormones,
+a heart for sexual wellness. All eight icons must look like one family drawn
+by one hand.
+
+Heading and subtitle sit top left, left aligned, not centred, with the
+subtitle in a column no wider than 55 characters. The quiz button sits at
+the bottom right of the index, aligned to the right column: a crimson
+#ee204a pill with white bold text. That button is the only crimson in the
+image, apart from one thin crimson rule under the heading.
+
+Editorial and restrained. No cards, no rounded boxes, no shadows.
+
+[paste the SHARED BRIEF colour, type and text blocks here]
+
+
+=====================================================================
+PROMPT C - EIGHT ILLUSTRATED TILES
+=====================================================================
+Design one desktop web section as a single flat image, 2400 by 1600 pixels,
+on a white background.
+
+Eight tiles in a four by two grid, all exactly the same size, generous gaps
+between them, corners rounded to about 20px. Each tile has a pale pink
+#fdf4f6 surface, no border and no shadow. Inside each tile, in this order
+top to bottom: a small illustration, the condition name in bold #1d1d1d, and
+its three symptoms in grey #55555f.
+
+The illustrations are the point of this design. Each is a small three
+dimensional style object on a soft circular pink base, warm and friendly,
+the kind of clay-render object used in modern health apps: a moon and pillow
+for sleep, a bowl and leaf for digestion, a battery half filled for low
+energy, a shield with a tick for immunity, a knotted string coming loose for
+stress, a tape measure around a soft round shape for weight, a cycle of two
+arrows for hormones, two overlapping hearts for sexual wellness. One
+consistent palette across all eight: cream, warm sand, soft navy #14183c and
+one crimson #ee204a detail in each. No photographs, no faces, no stock
+illustration people.
+
+Heading and subtitle centred above the grid. Below the grid, a single wide
+pale pink bar holding the line "Not sure which one is yours?" on the left
+and the crimson quiz button on the right.
+
+[paste the SHARED BRIEF colour, type and text blocks here]
+
+
+=====================================================================
+PROMPT D - SYMPTOM TO PLAN
+=====================================================================
+Design one desktop web section as a single flat image, 2400 by 1500 pixels,
+on a white background.
+
+The section reads left to right as one sentence. On the left, a tall pale
+pink #fdf4f6 panel titled with the heading and subtitle. In the middle, the
+eight conditions stacked as eight slim rows, each row a name in bold
+#1d1d1d with its symptoms beneath in grey #55555f, and a small line icon at
+the left of each. On the right, one single card, taller than the rows and
+clearly the destination: a white card with a thin crimson #ee204a border
+holding a simple drawing of three prescription slips fanned out, labelled
+Ayurveda, Homeopathy and Allopathy in small text.
+
+Thin grey hairlines run from every one of the eight rows to the right and
+converge into the left edge of that one card, so the eye sees eight problems
+arriving at one plan. The convergence is the memorable moment of the design,
+so keep everything else quiet.
+
+The quiz button sits underneath the card on the right: a crimson pill with
+white bold text. Crimson appears only on the card border, the convergence
+point and the button.
+
+[paste the SHARED BRIEF colour, type and text blocks here]
+
+
+=====================================================================
+NOTES
+=====================================================================
+A and D explain something; B and C are faster to read. If the goal is
+"one glance, points drilled in", C is the safest and B is the most grown up.
+A is the one people remember, and it is also the one an image model is most
+likely to get wrong, so try it first and judge the figure carefully.

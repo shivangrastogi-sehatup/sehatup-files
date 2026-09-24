@@ -1,0 +1,80 @@
+<section class="healthscore-360 page-width">
+  {% for block in section.blocks %}
+    {% case block.type %}
+
+      {% when 'heading' %}
+        <h1 {{ block.shopify_attributes }}>
+          {{ block.settings.text }}
+        </h1>
+
+      {% when 'text' %}
+        <p {{ block.shopify_attributes }}>
+          {{ block.settings.text }}
+        </p>
+
+      {% when 'button' %}
+        <a
+          {{ block.shopify_attributes }}
+          href="{{ block.settings.link }}"
+          class="button"
+        >
+          {{ block.settings.label }}
+        </a>
+
+    {% endcase %}
+  {% endfor %}
+</section>
+
+{% schema %}
+{
+  "name": "HealthScore 360",
+  "blocks": [
+    {
+      "type": "heading",
+      "name": "Heading",
+      "settings": [
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Heading text",
+          "default": "HealthScore 360"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "Text",
+          "default": "A complete 360° view of your health."
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "name": "Button",
+      "settings": [
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Button label",
+          "default": "Check your score"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Button link"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "HealthScore 360"
+    }
+  ]
+}
+{% endschema %}

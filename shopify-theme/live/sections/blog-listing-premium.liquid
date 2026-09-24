@@ -1,0 +1,1459 @@
+{% comment %}
+  Premium blog listing - SECTION version.
+
+  Converted from the theme-block original (block.settings -> section.settings).
+  Drop this in as sections/blog-listing-premium.liquid and add it to the blog
+  template.
+
+  Fixes applied on top of the generated original:
+
+  1. PAGINATION SEQUENCE. Page 1 is /blogs/news, never /blogs/news?page=1.
+     Shopify's paginate.previous.url and parts[0].url both emit ?page=1, which
+     is a duplicate of the canonical URL and is what breaks the rel prev/next
+     chain for crawlers. Both now fall back to request.path for page 1.
+  2. OVERFLOW PAGES. Shopify serves ?page=99 as a 200 with an empty list, so
+     crawlers can walk forever. Past the last page we now noindex and show a
+     way back instead of a blank grid.
+  3. IMAGES. height="auto" is invalid HTML and guarantees layout shift; real
+     intrinsic dimensions plus a srcset go out instead. alt falls back to the
+     post title rather than rendering empty.
+  4. Deleted the lazy-loading web component: its whole body was `img.src =
+     img.src`, a no-op. loading="lazy" already does the job.
+{% endcomment %}
+
+{% assign ai_gen_id = section.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-blog-listing-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    background-color: #ffffff;
+  }
+
+  .ai-blog-hero-{{ ai_gen_id }} {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    {% if section.settings.hero_background_image %}
+      background-image: url('{{ section.settings.hero_background_image | image_url: width: 2000 }}');
+      background-size: cover;
+      background-position: center;
+    {% elsif section.settings.hero_background_gradient != blank %}
+      background: {{ section.settings.hero_background_gradient }};
+    {% else %}
+      background-color: {{ section.settings.hero_background_color }};
+    {% endif %}
+  }
+
+  .ai-blog-hero-overlay-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    {% if section.settings.hero_overlay_type == 'gradient' %}
+      background: linear-gradient(180deg, rgba(0,0,0,{{ section.settings.hero_overlay_opacity }}) 0%, rgba(0,0,0,0) 100%);
+    {% else %}
+      background-color: rgba(0,0,0,{{ section.settings.hero_overlay_opacity }});
+    {% endif %}
+    z-index: 1;
+  }
+
+  {% comment %}
+    Hero and grid share one max-width AND one horizontal padding, so a
+    left-aligned hero title sits on exactly the same vertical line as the first
+    card. Changing the padding in one place without the other is what made the
+    heading look shifted.
+  {% endcomment %}
+  .ai-blog-hero-content-{{ ai_gen_id }},
+  .ai-blog-main-{{ ai_gen_id }} {
+    max-width: {{ section.settings.max_content_width }}px;
+    margin: 0 auto;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .ai-blog-hero-content-{{ ai_gen_id }} {
+    position: relative;
+    z-index: 2;
+    padding-top: {{ section.settings.hero_padding_top }}px;
+    padding-bottom: {{ section.settings.hero_padding_bottom }}px;
+    text-align: {{ section.settings.hero_text_alignment }};
+  }
+
+  .ai-blog-hero-title-{{ ai_gen_id }} {
+    font-size: {{ section.settings.hero_title_size }}px;
+    font-weight: {{ section.settings.hero_title_weight }};
+    color: {{ section.settings.hero_title_color }};
+    margin: 0 0 16px;
+    line-height: 1.2;
+  }
+
+  .ai-blog-hero-description-{{ ai_gen_id }} {
+    font-size: {{ section.settings.hero_description_size }}px;
+    color: {{ section.settings.hero_description_color }};
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .ai-blog-hero-description-{{ ai_gen_id }} > p:first-child { margin-top: 0; }
+  .ai-blog-hero-description-{{ ai_gen_id }} > p:last-child { margin-bottom: 0; }
+
+  .ai-blog-main-{{ ai_gen_id }} {
+    padding-top: {{ section.settings.section_padding_top }}px;
+    padding-bottom: {{ section.settings.section_padding_bottom }}px;
+    display: flex;
+    gap: 40px;
+    {% if section.settings.layout_style == 'with-sidebar' %}
+      flex-direction: row;
+    {% else %}
+      flex-direction: column;
+    {% endif %}
+  }
+
+  .ai-blog-content-{{ ai_gen_id }} {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ai-blog-sidebar-{{ ai_gen_id }} {
+    width: 280px;
+    flex-shrink: 0;
+  }
+
+  .ai-blog-grid-{{ ai_gen_id }} {
+    display: grid;
+    gap: {{ section.settings.grid_gap }}px;
+    {% if section.settings.layout_style == 'list' %}
+      grid-template-columns: 1fr;
+    {% else %}
+      grid-template-columns: repeat({{ section.settings.columns_desktop }}, minmax(0, 1fr));
+    {% endif %}
+  }
+
+  .ai-blog-card-{{ ai_gen_id }} {
+    background-color: {{ section.settings.card_background_color }};
+    border-radius: {{ section.settings.card_border_radius }}px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    {% if section.settings.card_shadow_opacity > 0 %}
+      box-shadow: 0 {{ section.settings.card_shadow_vertical }}px {{ section.settings.card_shadow_blur }}px rgba(0,0,0,{{ section.settings.card_shadow_opacity }});
+    {% endif %}
+    display: flex;
+    {% if section.settings.layout_style == 'list' %}
+      flex-direction: row;
+      gap: 24px;
+    {% else %}
+      flex-direction: column;
+      height: 100%;
+    {% endif %}
+  }
+
+  .ai-blog-card-{{ ai_gen_id }}:hover {
+    {% if section.settings.hover_effect == 'lift' %}
+      transform: translateY(-8px);
+      box-shadow: 0 12px 24px rgba(0,0,0,{{ section.settings.card_shadow_opacity | times: 1.5 }});
+    {% elsif section.settings.hover_effect == 'scale' %}
+      transform: scale(1.02);
+    {% endif %}
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-blog-card-{{ ai_gen_id }},
+    .ai-blog-card-image-{{ ai_gen_id }} {
+      transition: none;
+    }
+    .ai-blog-card-{{ ai_gen_id }}:hover {
+      transform: none;
+    }
+  }
+
+  .ai-blog-card-image-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    overflow: hidden;
+    background-color: #f4f2f0;
+    {% if section.settings.layout_style == 'list' %}
+      width: 300px;
+      flex-shrink: 0;
+    {% else %}
+      width: 100%;
+    {% endif %}
+    {% if section.settings.image_aspect_ratio == '16-9' %}
+      aspect-ratio: 16 / 9;
+    {% elsif section.settings.image_aspect_ratio == '4-3' %}
+      aspect-ratio: 4 / 3;
+    {% elsif section.settings.image_aspect_ratio == '1-1' %}
+      aspect-ratio: 1 / 1;
+    {% elsif section.settings.image_aspect_ratio == 'portrait' %}
+      aspect-ratio: 3 / 4;
+    {% endif %}
+  }
+
+  .ai-blog-card-image-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: {{ section.settings.image_object_fit }};
+    transition: transform 0.5s ease;
+  }
+
+  .ai-blog-card-{{ ai_gen_id }}:hover .ai-blog-card-image-{{ ai_gen_id }} {
+    {% if section.settings.image_hover_effect == 'zoom' %}
+      transform: scale(1.1);
+    {% endif %}
+  }
+
+  .ai-blog-card-image-overlay-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    {% if section.settings.image_overlay_type == 'gradient' %}
+      background: linear-gradient(180deg, rgba(0,0,0,{{ section.settings.image_overlay_opacity }}) 0%, rgba(0,0,0,0) 100%);
+    {% elsif section.settings.image_overlay_type == 'solid' %}
+      background-color: rgba(0,0,0,{{ section.settings.image_overlay_opacity }});
+    {% endif %}
+  }
+
+  .ai-blog-card-content-{{ ai_gen_id }} {
+    padding: {{ section.settings.card_padding }}px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .ai-blog-card-meta-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: {{ section.settings.meta_font_size }}px;
+    color: {{ section.settings.meta_text_color }};
+  }
+
+  .ai-blog-card-author-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ai-blog-card-author-avatar-{{ ai_gen_id }} {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: {{ section.settings.accent_color }};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .ai-blog-card-tags-{{ ai_gen_id }} {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .ai-blog-card-tag-{{ ai_gen_id }} {
+    background-color: {{ section.settings.tag_background_color }};
+    color: {{ section.settings.tag_text_color }};
+    padding: 4px 12px;
+    border-radius: {{ section.settings.tag_border_radius }}px;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .ai-blog-card-title-{{ ai_gen_id }} {
+    font-size: {{ section.settings.card_title_size }}px;
+    font-weight: {{ section.settings.card_title_weight }};
+    color: {{ section.settings.card_title_color }};
+    margin: 0;
+    line-height: 1.3;
+    {% comment %}
+      Titles clamp to a fixed number of lines so a long headline cannot push
+      one card's button below its neighbours'.
+    {% endcomment %}
+    display: -webkit-box;
+    -webkit-line-clamp: {{ section.settings.title_max_lines }};
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .ai-blog-card-title-link-{{ ai_gen_id }} {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+
+  .ai-blog-card-title-link-{{ ai_gen_id }}:hover {
+    color: {{ section.settings.accent_color }};
+  }
+
+  .ai-blog-card-excerpt-{{ ai_gen_id }} {
+    font-size: {{ section.settings.excerpt_font_size }}px;
+    color: {{ section.settings.excerpt_text_color }};
+    line-height: 1.6;
+    margin: 0;
+    flex: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: {{ section.settings.excerpt_max_lines }};
+    -webkit-box-orient: vertical;
+  }
+
+  .ai-blog-card-footer-{{ ai_gen_id }} {
+    margin-top: auto;
+    padding-top: 8px;
+  }
+
+  .ai-blog-card-button-{{ ai_gen_id }} {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: {{ section.settings.button_border_radius }}px;
+    font-size: {{ section.settings.button_font_size }}px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    {% if section.settings.button_style == 'filled' %}
+      background-color: {{ section.settings.button_background_color }};
+      color: {{ section.settings.button_text_color }};
+      border: none;
+    {% elsif section.settings.button_style == 'outline' %}
+      background-color: transparent;
+      color: {{ section.settings.button_background_color }};
+      border: 2px solid {{ section.settings.button_background_color }};
+    {% else %}
+      background-color: transparent;
+      color: {{ section.settings.button_background_color }};
+      border: none;
+      padding: 0;
+    {% endif %}
+  }
+
+  .ai-blog-card-button-{{ ai_gen_id }}:hover {
+    {% if section.settings.button_style == 'filled' %}
+      background-color: {{ section.settings.button_hover_color }};
+      color: {{ section.settings.button_text_color }};
+    {% elsif section.settings.button_style == 'outline' %}
+      background-color: {{ section.settings.button_background_color }};
+      color: {{ section.settings.button_text_color }};
+    {% else %}
+      color: {{ section.settings.button_hover_color }};
+    {% endif %}
+  }
+
+  .ai-blog-empty-{{ ai_gen_id }} {
+    padding: 48px 0;
+    font-size: 16px;
+    color: {{ section.settings.excerpt_text_color }};
+  }
+
+  .ai-blog-pagination-{{ ai_gen_id }} {
+    margin-top: 60px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    {% if section.settings.pagination_alignment == 'left' %}
+      justify-content: flex-start;
+    {% elsif section.settings.pagination_alignment == 'center' %}
+      justify-content: center;
+    {% else %}
+      justify-content: flex-end;
+    {% endif %}
+  }
+
+  .ai-blog-pagination-button-{{ ai_gen_id }} {
+    padding: 10px 20px;
+    border-radius: {{ section.settings.pagination_border_radius }}px;
+    background-color: {{ section.settings.pagination_button_bg }};
+    color: {{ section.settings.pagination_button_text }};
+    border: 1px solid {{ section.settings.pagination_button_border }};
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .ai-blog-pagination-button-{{ ai_gen_id }}:hover:not(.disabled) {
+    background-color: {{ section.settings.pagination_button_hover_bg }};
+    color: {{ section.settings.pagination_button_hover_text }};
+  }
+
+  .ai-blog-pagination-button-{{ ai_gen_id }}.active {
+    background-color: {{ section.settings.pagination_active_bg }};
+    color: {{ section.settings.pagination_active_text }};
+    border-color: {{ section.settings.pagination_active_bg }};
+  }
+
+  .ai-blog-pagination-button-{{ ai_gen_id }}.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .ai-blog-sidebar-section-{{ ai_gen_id }} {
+    margin-bottom: 32px;
+  }
+
+  .ai-blog-sidebar-title-{{ ai_gen_id }} {
+    font-size: 18px;
+    font-weight: 600;
+    color: {{ section.settings.card_title_color }};
+    margin: 0 0 16px;
+  }
+
+  .ai-blog-sidebar-list-{{ ai_gen_id }} {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ai-blog-sidebar-link-{{ ai_gen_id }} {
+    color: {{ section.settings.excerpt_text_color }};
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s ease;
+    display: block;
+  }
+
+  .ai-blog-sidebar-link-{{ ai_gen_id }}:hover {
+    color: {{ section.settings.accent_color }};
+  }
+
+  @media screen and (max-width: 1200px) {
+    .ai-blog-grid-{{ ai_gen_id }} {
+      {% if section.settings.layout_style != 'list' %}
+        grid-template-columns: repeat({{ section.settings.columns_tablet }}, minmax(0, 1fr));
+      {% endif %}
+    }
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-blog-main-{{ ai_gen_id }} {
+      flex-direction: column;
+    }
+
+    .ai-blog-sidebar-{{ ai_gen_id }} {
+      width: 100%;
+    }
+
+    .ai-blog-hero-title-{{ ai_gen_id }} {
+      font-size: calc({{ section.settings.hero_title_size }}px * 0.7);
+    }
+
+    .ai-blog-hero-description-{{ ai_gen_id }} {
+      font-size: calc({{ section.settings.hero_description_size }}px * 0.9);
+    }
+
+    {% comment %} A 300px image column leaves nothing for text on a tablet. {% endcomment %}
+    .ai-blog-card-image-wrapper-{{ ai_gen_id }} {
+      {% if section.settings.layout_style == 'list' %}
+        width: 220px;
+      {% endif %}
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-blog-grid-{{ ai_gen_id }} {
+      {% if section.settings.layout_style != 'list' %}
+        grid-template-columns: repeat({{ section.settings.columns_mobile }}, minmax(0, 1fr));
+      {% endif %}
+    }
+
+    .ai-blog-card-{{ ai_gen_id }} {
+      {% if section.settings.layout_style == 'list' %}
+        flex-direction: column;
+        gap: 0;
+        height: 100%;
+      {% endif %}
+    }
+
+    .ai-blog-card-image-wrapper-{{ ai_gen_id }} {
+      {% if section.settings.layout_style == 'list' %}
+        width: 100%;
+      {% endif %}
+    }
+
+    .ai-blog-card-title-{{ ai_gen_id }} {
+      font-size: calc({{ section.settings.card_title_size }}px * 0.85);
+    }
+
+    .ai-blog-hero-content-{{ ai_gen_id }} {
+      padding: {{ section.settings.hero_padding_top | times: 0.6 }}px 16px {{ section.settings.hero_padding_bottom | times: 0.6 }}px;
+    }
+
+    .ai-blog-main-{{ ai_gen_id }} {
+      padding: {{ section.settings.section_padding_top | times: 0.6 }}px 16px {{ section.settings.section_padding_bottom | times: 0.6 }}px;
+    }
+
+    .ai-blog-pagination-{{ ai_gen_id }} {
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .ai-blog-pagination-button-{{ ai_gen_id }} {
+      padding: 10px 16px;
+    }
+  }
+
+  {% comment %} Below ~400px two columns stop being readable whatever the setting says. {% endcomment %}
+  @media screen and (max-width: 400px) {
+    .ai-blog-grid-{{ ai_gen_id }} {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+{% endstyle %}
+
+<div class="ai-blog-listing-{{ ai_gen_id }}">
+  {% if section.settings.show_hero %}
+    <div class="ai-blog-hero-{{ ai_gen_id }}">
+      {% if section.settings.hero_overlay_opacity > 0 and section.settings.hero_overlay_type != 'none' %}
+        <div class="ai-blog-hero-overlay-{{ ai_gen_id }}"></div>
+      {% endif %}
+      <div class="ai-blog-hero-content-{{ ai_gen_id }}">
+        {% if section.settings.hero_title != blank %}
+          <h1 class="ai-blog-hero-title-{{ ai_gen_id }}">{{ section.settings.hero_title }}</h1>
+        {% endif %}
+        {% if section.settings.hero_description != blank %}
+          <div class="ai-blog-hero-description-{{ ai_gen_id }}">{{ section.settings.hero_description }}</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="ai-blog-main-{{ ai_gen_id }}">
+    <div class="ai-blog-content-{{ ai_gen_id }}">
+      {% paginate blog.articles by section.settings.posts_per_page %}
+
+        {%- comment -%}
+          Page 1 must be the bare blog URL. ?page=1 renders identical content at
+          a second URL and breaks the prev/next sequence.
+          request.path rather than blog.url so /tagged/ views keep their filter.
+        {%- endcomment -%}
+        {%- assign first_page_url = request.path -%}
+
+        {%- if blog.articles.size == 0 -%}
+          {%- comment -%}
+            Shopify answers ?page=99 with a 200 and an empty list, so this is
+            also the overflow case.
+            ponytail: a body-level robots meta is a pragmatic fallback, not the
+            spec-correct spot. Move it to theme.liquid's <head> if a crawler
+            ignores it here.
+          {%- endcomment -%}
+          <meta name="robots" content="noindex, follow">
+          <p class="ai-blog-empty-{{ ai_gen_id }}">
+            No posts on this page.
+            <a href="{{ first_page_url }}" class="ai-blog-card-title-link-{{ ai_gen_id }}">Back to the first page</a>
+          </p>
+        {%- else -%}
+
+        <div class="ai-blog-grid-{{ ai_gen_id }}">
+          {% for article in blog.articles %}
+            <article class="ai-blog-card-{{ ai_gen_id }}">
+              {% if section.settings.show_featured_image and article.image %}
+                <div class="ai-blog-card-image-wrapper-{{ ai_gen_id }}">
+                  <img
+                    src="{{ article.image | image_url: width: 800 }}"
+                    {%- comment -%}
+                      Keep this on ONE line. Shopify's storefront renderer
+                      rewrites srcset and mangles the value if it contains raw
+                      newlines - it emitted srcset=",,," with the URLs spilled
+                      outside the attribute.
+                    {%- endcomment %}
+                    srcset="{{ article.image | image_url: width: 400 }} 400w, {{ article.image | image_url: width: 600 }} 600w, {{ article.image | image_url: width: 800 }} 800w, {{ article.image | image_url: width: 1200 }} 1200w"
+                    sizes="(max-width: 749px) 100vw, (max-width: 1200px) 50vw, {{ section.settings.max_content_width | divided_by: section.settings.columns_desktop }}px"
+                    alt="{{ article.image.alt | default: article.title | escape }}"
+                    width="{{ article.image.width }}"
+                    height="{{ article.image.height }}"
+                    loading="lazy"
+                    decoding="async"
+                    class="ai-blog-card-image-{{ ai_gen_id }}"
+                  >
+                  {% if section.settings.image_overlay_opacity > 0 and section.settings.image_overlay_type != 'none' %}
+                    <div class="ai-blog-card-image-overlay-{{ ai_gen_id }}"></div>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              <div class="ai-blog-card-content-{{ ai_gen_id }}">
+                <h2 class="ai-blog-card-title-{{ ai_gen_id }}">
+                  <a href="{{ article.url }}" class="ai-blog-card-title-link-{{ ai_gen_id }}">
+                    {{ article.title }}
+                  </a>
+                </h2>
+
+                {% if section.settings.show_author or section.settings.show_date or section.settings.show_read_time %}
+                  <div class="ai-blog-card-meta-{{ ai_gen_id }}">
+                    {% if section.settings.show_author %}
+                      <div class="ai-blog-card-author-{{ ai_gen_id }}">
+                        {% if section.settings.show_author_avatar %}
+                          <div class="ai-blog-card-author-avatar-{{ ai_gen_id }}" aria-hidden="true">
+                            {{ article.author | slice: 0 | upcase }}
+                          </div>
+                        {% endif %}
+                        <span>{{ article.author }}</span>
+                      </div>
+                    {% endif %}
+
+                    {% if section.settings.show_date %}
+                      <time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">
+                        {{ article.published_at | date: section.settings.date_format }}
+                      </time>
+                    {% endif %}
+
+                    {% if section.settings.show_read_time %}
+                      {% assign word_count = article.content | strip_html | split: ' ' | size %}
+                      {% assign read_time = word_count | divided_by: 200 %}
+                      {% if read_time < 1 %}
+                        {% assign read_time = 1 %}
+                      {% endif %}
+                      <span>{{ read_time }} min read</span>
+                    {% endif %}
+                  </div>
+                {% endif %}
+
+                {% if section.settings.show_excerpt %}
+                  <p class="ai-blog-card-excerpt-{{ ai_gen_id }}">
+                    {%- comment -%}
+                      strip_newlines because hand-written excerpts carry blank
+                      lines that render as a gap in the middle of the card.
+                    {%- endcomment -%}
+                    {%- if article.excerpt != blank -%}
+                      {{ article.excerpt | strip_html | strip_newlines | truncatewords: section.settings.excerpt_word_count }}
+                    {%- else -%}
+                      {{ article.content | strip_html | strip_newlines | truncatewords: section.settings.excerpt_word_count }}
+                    {%- endif -%}
+                  </p>
+                {% endif %}
+
+                {% if section.settings.show_tags and article.tags.size > 0 %}
+                  <div class="ai-blog-card-tags-{{ ai_gen_id }}">
+                    {% for tag in article.tags limit: 3 %}
+                      <span class="ai-blog-card-tag-{{ ai_gen_id }}">{{ tag }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
+                {% if section.settings.show_read_more %}
+                  <div class="ai-blog-card-footer-{{ ai_gen_id }}">
+                    <a
+                      href="{{ article.url }}"
+                      class="ai-blog-card-button-{{ ai_gen_id }}"
+                      aria-label="{{ section.settings.button_text | strip_html }}: {{ article.title | escape }}"
+                    >
+                      {{ section.settings.button_text }}
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 12L10 8L6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </a>
+                  </div>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+
+        {% if paginate.pages > 1 %}
+          <nav class="ai-blog-pagination-{{ ai_gen_id }}" role="navigation" aria-label="Pagination">
+            {% if paginate.previous %}
+              {%- if paginate.current_page == 2 -%}
+                {%- assign prev_url = first_page_url -%}
+              {%- else -%}
+                {%- assign prev_url = paginate.previous.url -%}
+              {%- endif -%}
+              <a href="{{ prev_url }}" rel="prev" class="ai-blog-pagination-button-{{ ai_gen_id }}">
+                Previous
+              </a>
+            {% else %}
+              <span class="ai-blog-pagination-button-{{ ai_gen_id }} disabled">Previous</span>
+            {% endif %}
+
+            {% if section.settings.show_page_numbers %}
+              {% for part in paginate.parts %}
+                {% if part.is_link %}
+                  {%- comment -%}
+                    part.title comes back as a number in some Shopify versions
+                    and a string in others, and Liquid's == does not coerce.
+                    Check both rather than guess.
+                  {%- endcomment -%}
+                  {%- if part.title == 1 or part.title == '1' -%}
+                    {%- assign part_url = first_page_url -%}
+                  {%- else -%}
+                    {%- assign part_url = part.url -%}
+                  {%- endif -%}
+                  <a href="{{ part_url }}" class="ai-blog-pagination-button-{{ ai_gen_id }}" aria-label="Page {{ part.title }}">
+                    {{ part.title }}
+                  </a>
+                {% else %}
+                  {% if part.title == paginate.current_page %}
+                    <span class="ai-blog-pagination-button-{{ ai_gen_id }} active" aria-current="page">{{ part.title }}</span>
+                  {% else %}
+                    <span class="ai-blog-pagination-button-{{ ai_gen_id }}">{{ part.title }}</span>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+
+            {% if paginate.next %}
+              <a href="{{ paginate.next.url }}" rel="next" class="ai-blog-pagination-button-{{ ai_gen_id }}">
+                Next
+              </a>
+            {% else %}
+              <span class="ai-blog-pagination-button-{{ ai_gen_id }} disabled">Next</span>
+            {% endif %}
+          </nav>
+        {% endif %}
+
+        {%- endif -%}
+      {% endpaginate %}
+    </div>
+
+    {% if section.settings.layout_style == 'with-sidebar' %}
+      <aside class="ai-blog-sidebar-{{ ai_gen_id }}">
+        {% if section.settings.show_recent_posts %}
+          <div class="ai-blog-sidebar-section-{{ ai_gen_id }}">
+            <h2 class="ai-blog-sidebar-title-{{ ai_gen_id }}">Recent posts</h2>
+            <ul class="ai-blog-sidebar-list-{{ ai_gen_id }}">
+              {% for article in blog.articles limit: 5 %}
+                <li>
+                  <a href="{{ article.url }}" class="ai-blog-sidebar-link-{{ ai_gen_id }}">
+                    {{ article.title }}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        {% if section.settings.show_all_tags and blog.all_tags.size > 0 %}
+          <div class="ai-blog-sidebar-section-{{ ai_gen_id }}">
+            <h2 class="ai-blog-sidebar-title-{{ ai_gen_id }}">Tags</h2>
+            <div class="ai-blog-card-tags-{{ ai_gen_id }}">
+              {% for tag in blog.all_tags %}
+                <a href="{{ blog.url }}/tagged/{{ tag | handle }}" class="ai-blog-card-tag-{{ ai_gen_id }}">
+                  {{ tag }}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </aside>
+    {% endif %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Premium blog listing",
+  "tag": "section",
+  "class": "ai-blog-section",
+  "enabled_on": {
+    "templates": ["blog"]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Hero section"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_hero",
+      "label": "Show hero section",
+      "default": true
+    },
+    {
+      "type": "inline_richtext",
+      "id": "hero_title",
+      "label": "Title",
+      "default": "Our Blog"
+    },
+    {
+      "type": "richtext",
+      "id": "hero_description",
+      "label": "Description",
+      "default": "<p>Discover wellness insights, tips, and stories</p>"
+    },
+    {
+      "type": "select",
+      "id": "hero_text_alignment",
+      "label": "Text alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "image_picker",
+      "id": "hero_background_image",
+      "label": "Background image"
+    },
+    {
+      "type": "color",
+      "id": "hero_background_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color_background",
+      "id": "hero_background_gradient",
+      "label": "Background gradient"
+    },
+    {
+      "type": "select",
+      "id": "hero_overlay_type",
+      "label": "Overlay type",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "solid", "label": "Solid" },
+        { "value": "gradient", "label": "Gradient" }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "hero_overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "hero_title_size",
+      "label": "Title size",
+      "min": 24,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "hero_title_weight",
+      "label": "Title weight",
+      "min": 300,
+      "max": 900,
+      "step": 100,
+      "default": 700
+    },
+    {
+      "type": "color",
+      "id": "hero_title_color",
+      "label": "Title color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "hero_description_size",
+      "label": "Description size",
+      "min": 14,
+      "max": 28,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "color",
+      "id": "hero_description_color",
+      "label": "Description color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_top",
+      "label": "Top padding",
+      "min": 20,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "hero_padding_bottom",
+      "label": "Bottom padding",
+      "min": 20,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_style",
+      "label": "Layout style",
+      "options": [
+        { "value": "grid", "label": "Grid" },
+        { "value": "list", "label": "List" },
+        { "value": "with-sidebar", "label": "Grid with sidebar" }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "range",
+      "id": "max_content_width",
+      "label": "Max content width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1400
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Top padding",
+      "min": 20,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Bottom padding",
+      "min": 20,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "posts_per_page",
+      "label": "Posts per page",
+      "min": 6,
+      "max": 24,
+      "step": 3,
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Grid settings"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "Columns on desktop",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "columns_tablet",
+      "label": "Columns on tablet",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "Columns on mobile",
+      "options": [
+        { "value": "1", "label": "1" },
+        { "value": "2", "label": "2" }
+      ],
+      "default": "1"
+    },
+    {
+      "type": "range",
+      "id": "grid_gap",
+      "label": "Grid gap",
+      "min": 12,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "color",
+      "id": "card_background_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Padding",
+      "min": 12,
+      "max": 48,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_opacity",
+      "label": "Shadow opacity",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "default": 0.1
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_vertical",
+      "label": "Shadow vertical offset",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_blur",
+      "label": "Shadow blur",
+      "min": 0,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "select",
+      "id": "hover_effect",
+      "label": "Hover effect",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "lift", "label": "Lift" },
+        { "value": "scale", "label": "Scale" }
+      ],
+      "default": "lift"
+    },
+    {
+      "type": "header",
+      "content": "Image settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_featured_image",
+      "label": "Show featured image",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "image_aspect_ratio",
+      "label": "Aspect ratio",
+      "options": [
+        { "value": "16-9", "label": "16:9" },
+        { "value": "4-3", "label": "4:3" },
+        { "value": "1-1", "label": "1:1" },
+        { "value": "portrait", "label": "Portrait (3:4)" }
+      ],
+      "default": "16-9"
+    },
+    {
+      "type": "select",
+      "id": "image_object_fit",
+      "label": "Object fit",
+      "options": [
+        { "value": "cover", "label": "Cover" },
+        { "value": "contain", "label": "Contain" }
+      ],
+      "default": "cover"
+    },
+    {
+      "type": "select",
+      "id": "image_hover_effect",
+      "label": "Hover effect",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "zoom", "label": "Zoom" }
+      ],
+      "default": "zoom"
+    },
+    {
+      "type": "select",
+      "id": "image_overlay_type",
+      "label": "Overlay type",
+      "options": [
+        { "value": "none", "label": "None" },
+        { "value": "solid", "label": "Solid" },
+        { "value": "gradient", "label": "Gradient" }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "image_overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "default": 0.2
+    },
+    {
+      "type": "header",
+      "content": "Content display"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_author",
+      "label": "Show author",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_author_avatar",
+      "label": "Show author avatar",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_date",
+      "label": "Show date",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "date_format",
+      "label": "Date format",
+      "default": "%B %d, %Y"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_read_time",
+      "label": "Show read time",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_tags",
+      "label": "Show tags",
+      "info": "Off by default. Tags render under the excerpt, never above the title.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_excerpt",
+      "label": "Show excerpt",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "excerpt_word_count",
+      "label": "Excerpt word count",
+      "min": 10,
+      "max": 100,
+      "step": 5,
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "excerpt_max_lines",
+      "label": "Excerpt max lines",
+      "min": 2,
+      "max": 10,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "checkbox",
+      "id": "show_read_more",
+      "label": "Show read more button",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "range",
+      "id": "card_title_size",
+      "label": "Title size",
+      "min": 16,
+      "max": 36,
+      "step": 2,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "range",
+      "id": "card_title_weight",
+      "label": "Title weight",
+      "min": 400,
+      "max": 900,
+      "step": 100,
+      "default": 600
+    },
+    {
+      "type": "range",
+      "id": "title_max_lines",
+      "label": "Title max lines",
+      "info": "Clamping titles keeps every Read more button on the same line.",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "color",
+      "id": "card_title_color",
+      "label": "Title color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "excerpt_font_size",
+      "label": "Excerpt size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "color",
+      "id": "excerpt_text_color",
+      "label": "Excerpt color",
+      "default": "#797068"
+    },
+    {
+      "type": "range",
+      "id": "meta_font_size",
+      "label": "Meta text size",
+      "min": 11,
+      "max": 16,
+      "step": 1,
+      "unit": "px",
+      "default": 13
+    },
+    {
+      "type": "color",
+      "id": "meta_text_color",
+      "label": "Meta text color",
+      "default": "#797068"
+    },
+    {
+      "type": "header",
+      "content": "Tags style"
+    },
+    {
+      "type": "color",
+      "id": "tag_background_color",
+      "label": "Background",
+      "default": "#c2b7ac"
+    },
+    {
+      "type": "color",
+      "id": "tag_text_color",
+      "label": "Text",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "tag_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Button style"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "button_text",
+      "label": "Text",
+      "default": "Read more"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "Style",
+      "options": [
+        { "value": "filled", "label": "Filled" },
+        { "value": "outline", "label": "Outline" },
+        { "value": "text", "label": "Text only" }
+      ],
+      "default": "filled"
+    },
+    {
+      "type": "color",
+      "id": "button_background_color",
+      "label": "Background",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "button_hover_color",
+      "label": "Hover background",
+      "default": "#797068"
+    },
+    {
+      "type": "range",
+      "id": "button_font_size",
+      "label": "Font size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "button_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 6
+    },
+    {
+      "type": "header",
+      "content": "Pagination"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_page_numbers",
+      "label": "Show page numbers",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "pagination_alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "color",
+      "id": "pagination_button_bg",
+      "label": "Button background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "pagination_button_text",
+      "label": "Button text",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "pagination_button_border",
+      "label": "Button border",
+      "default": "#c2b7ac"
+    },
+    {
+      "type": "color",
+      "id": "pagination_button_hover_bg",
+      "label": "Hover background",
+      "default": "#c2b7ac"
+    },
+    {
+      "type": "color",
+      "id": "pagination_button_hover_text",
+      "label": "Hover text",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "pagination_active_bg",
+      "label": "Active background",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "pagination_active_text",
+      "label": "Active text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "pagination_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 6
+    },
+    {
+      "type": "header",
+      "content": "Sidebar"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_recent_posts",
+      "label": "Show recent posts",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_all_tags",
+      "label": "Show all tags",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent",
+      "default": "#ee204a"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Premium blog listing"
+    }
+  ]
+}
+{% endschema %}

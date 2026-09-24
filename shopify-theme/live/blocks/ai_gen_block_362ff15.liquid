@@ -1,0 +1,523 @@
+{% doc %}
+  @prompt
+    Create a custom reviews carousel section that fetches real customer reviews from Judge.me API and displays them in two horizontal rows that auto-scroll infinitely to the left. Use Judge.me API token "Qf7R596VZIKGu4saNqJ9kvcF-w4" to fetch reviews from their public API endpoint. Each review card should display: customer profile image (or placeholder if none), star rating visualization, customer name, and review text. Include JavaScript to fetch reviews on page load from Judge.me API, handle the response data, and populate the carousel dynamically. The section should have smooth continuous scrolling animation that loops seamlessly and pauses on hover. Make it fully responsive and accessible. Include theme editor settings for: API token field (pre-filled), scroll speed control, number of reviews to display, card styling options (padding, border radius, shadows), and color customization for background, text, and star ratings. Use premium healthcare brand aesthetic with clean, modern design.
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-reviews-carousel-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    background-color: {{ block.settings.background_color }};
+    padding: {{ block.settings.section_padding }}px 0;
+    overflow: hidden;
+  }
+
+  .ai-reviews-carousel__container-{{ ai_gen_id }} {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .ai-reviews-carousel__heading-{{ ai_gen_id }} {
+    text-align: center;
+    margin: 0 0 40px;
+    font-size: 32px;
+    color: {{ block.settings.text_color }};
+  }
+
+  .ai-reviews-carousel__track-wrapper-{{ ai_gen_id }} {
+    display: flex;
+    flex-direction: column;
+    gap: {{ block.settings.row_gap }}px;
+  }
+
+  .ai-reviews-carousel__track-{{ ai_gen_id }} {
+    display: flex;
+    gap: {{ block.settings.card_gap }}px;
+    animation: ai-reviews-scroll-{{ ai_gen_id }} {{ block.settings.scroll_speed }}s linear infinite;
+    will-change: transform;
+  }
+
+  .ai-reviews-carousel__track-{{ ai_gen_id }}:hover {
+    animation-play-state: paused;
+  }
+
+  .ai-reviews-carousel__track-{{ ai_gen_id }}--reverse {
+    animation-direction: reverse;
+  }
+
+  @keyframes ai-reviews-scroll-{{ ai_gen_id }} {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .ai-reviews-carousel__card-{{ ai_gen_id }} {
+    flex: 0 0 {{ block.settings.card_width }}px;
+    background-color: {{ block.settings.card_background }};
+    border-radius: {{ block.settings.card_border_radius }}px;
+    padding: {{ block.settings.card_padding }}px;
+    box-shadow: {{ block.settings.card_shadow_horizontal }}px {{ block.settings.card_shadow_vertical }}px {{ block.settings.card_shadow_blur }}px rgba(0, 0, 0, {{ block.settings.card_shadow_opacity | divided_by: 100.0 }});
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ai-reviews-carousel__header-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ai-reviews-carousel__avatar-{{ ai_gen_id }} {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: {{ block.settings.text_color | color_modify: 'alpha', 0.1 }};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-reviews-carousel__avatar-{{ ai_gen_id }} img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ai-reviews-carousel__avatar-placeholder-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    color: {{ block.settings.text_color }};
+  }
+
+  .ai-reviews-carousel__info-{{ ai_gen_id }} {
+    flex-grow: 1;
+  }
+
+  .ai-reviews-carousel__name-{{ ai_gen_id }} {
+    font-weight: 600;
+    color: {{ block.settings.text_color }};
+    margin: 0 0 4px;
+    font-size: 14px;
+  }
+
+  .ai-reviews-carousel__stars-{{ ai_gen_id }} {
+    display: flex;
+    gap: 2px;
+  }
+
+  .ai-reviews-carousel__star-{{ ai_gen_id }} {
+    width: 16px;
+    height: 16px;
+    color: {{ block.settings.star_color }};
+  }
+
+  .ai-reviews-carousel__star-{{ ai_gen_id }}--empty {
+    color: {{ block.settings.text_color | color_modify: 'alpha', 0.2 }};
+  }
+
+  .ai-reviews-carousel__text-{{ ai_gen_id }} {
+    color: {{ block.settings.text_color }};
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .ai-reviews-carousel__date-{{ ai_gen_id }} {
+    font-size: 12px;
+    color: {{ block.settings.text_color | color_modify: 'alpha', 0.6 }};
+    margin-top: 8px;
+  }
+
+  .ai-reviews-carousel__loading-{{ ai_gen_id }} {
+    text-align: center;
+    padding: 60px 20px;
+    color: {{ block.settings.text_color }};
+  }
+
+  .ai-reviews-carousel__error-{{ ai_gen_id }} {
+    text-align: center;
+    padding: 60px 20px;
+    color: #d82c0d;
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-reviews-carousel__card-{{ ai_gen_id }} {
+      flex: 0 0 280px;
+    }
+
+    .ai-reviews-carousel__heading-{{ ai_gen_id }} {
+      font-size: 24px;
+      margin-bottom: 24px;
+    }
+  }
+{% endstyle %}
+
+<reviews-carousel-{{ ai_gen_id }}
+  class="ai-reviews-carousel-{{ ai_gen_id }}"
+  data-api-token="{{ block.settings.api_token }}"
+  data-review-count="{{ block.settings.review_count }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="ai-reviews-carousel__container-{{ ai_gen_id }}">
+    {% if block.settings.heading != blank %}
+      <h2 class="ai-reviews-carousel__heading-{{ ai_gen_id }}">{{ block.settings.heading }}</h2>
+    {% endif %}
+
+    <div class="ai-reviews-carousel__loading-{{ ai_gen_id }}" data-loading>
+      Loading reviews...
+    </div>
+
+    <div class="ai-reviews-carousel__error-{{ ai_gen_id }}" data-error style="display: none;">
+      Unable to load reviews. Please check your API token.
+    </div>
+
+    <div class="ai-reviews-carousel__track-wrapper-{{ ai_gen_id }}" data-carousel style="display: none;">
+      <div class="ai-reviews-carousel__track-{{ ai_gen_id }}" data-track-1></div>
+      <div class="ai-reviews-carousel__track-{{ ai_gen_id }} ai-reviews-carousel__track-{{ ai_gen_id }}--reverse" data-track-2></div>
+    </div>
+  </div>
+</reviews-carousel-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class ReviewsCarousel{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.apiToken = this.dataset.apiToken;
+        this.reviewCount = parseInt(this.dataset.reviewCount) || 20;
+        this.loadingEl = this.querySelector('[data-loading]');
+        this.errorEl = this.querySelector('[data-error]');
+        this.carouselEl = this.querySelector('[data-carousel]');
+        this.track1 = this.querySelector('[data-track-1]');
+        this.track2 = this.querySelector('[data-track-2]');
+      }
+
+      connectedCallback() {
+        this.fetchReviews();
+      }
+
+      async fetchReviews() {
+        if (!this.apiToken) {
+          this.showError();
+          return;
+        }
+
+        try {
+          const shopDomain = window.Shopify.shop;
+          const response = await fetch(
+            `https://judge.me/api/v1/reviews?api_token=${this.apiToken}&shop_domain=${shopDomain}&per_page=${this.reviewCount}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch reviews');
+          }
+
+          const data = await response.json();
+          
+          if (data.reviews && data.reviews.length > 0) {
+            this.renderReviews(data.reviews);
+          } else {
+            this.showError('No reviews found');
+          }
+        } catch (error) {
+          console.error('Error fetching reviews:', error);
+          this.showError();
+        }
+      }
+
+      renderReviews(reviews) {
+        const reviewsHtml = reviews.map(review => this.createReviewCard(review)).join('');
+        
+        this.track1.innerHTML = reviewsHtml + reviewsHtml;
+        this.track2.innerHTML = reviewsHtml + reviewsHtml;
+
+        this.loadingEl.style.display = 'none';
+        this.carouselEl.style.display = 'flex';
+      }
+
+      createReviewCard(review) {
+        const initials = this.getInitials(review.reviewer.name || 'Anonymous');
+        const stars = this.createStars(review.rating);
+        const date = this.formatDate(review.created_at);
+        const avatarHtml = review.reviewer.profile_picture_url
+          ? `<img src="${review.reviewer.profile_picture_url}" alt="${review.reviewer.name}" loading="lazy">`
+          : `<div class="ai-reviews-carousel__avatar-placeholder-{{ ai_gen_id }}">${initials}</div>`;
+
+        return `
+          <div class="ai-reviews-carousel__card-{{ ai_gen_id }}">
+            <div class="ai-reviews-carousel__header-{{ ai_gen_id }}">
+              <div class="ai-reviews-carousel__avatar-{{ ai_gen_id }}">
+                ${avatarHtml}
+              </div>
+              <div class="ai-reviews-carousel__info-{{ ai_gen_id }}">
+                <div class="ai-reviews-carousel__name-{{ ai_gen_id }}">${this.escapeHtml(review.reviewer.name || 'Anonymous')}</div>
+                <div class="ai-reviews-carousel__stars-{{ ai_gen_id }}">
+                  ${stars}
+                </div>
+              </div>
+            </div>
+            <p class="ai-reviews-carousel__text-{{ ai_gen_id }}">${this.escapeHtml(review.body || review.title || '')}</p>
+            <div class="ai-reviews-carousel__date-{{ ai_gen_id }}">${date}</div>
+          </div>
+        `;
+      }
+
+      createStars(rating) {
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+          const starClass = i <= rating 
+            ? 'ai-reviews-carousel__star-{{ ai_gen_id }}'
+            : 'ai-reviews-carousel__star-{{ ai_gen_id }} ai-reviews-carousel__star-{{ ai_gen_id }}--empty';
+          
+          starsHtml += `
+            <svg class="${starClass}" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+            </svg>
+          `;
+        }
+        return starsHtml;
+      }
+
+      getInitials(name) {
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+      }
+
+      formatDate(dateString) {
+        const date = new Date(dateString);
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+      }
+
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      showError(message) {
+        this.loadingEl.style.display = 'none';
+        this.errorEl.style.display = 'block';
+        if (message) {
+          this.errorEl.textContent = message;
+        }
+      }
+    }
+
+    customElements.define('reviews-carousel-{{ ai_gen_id }}', ReviewsCarousel{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Reviews carousel",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Judge.me API"
+    },
+    {
+      "type": "text",
+      "id": "api_token",
+      "label": "API token",
+      "default": "Qf7R596VZIKGu4saNqJ9kvcF-w4"
+    },
+    {
+      "type": "range",
+      "id": "review_count",
+      "min": 10,
+      "max": 50,
+      "step": 5,
+      "label": "Number of reviews",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "What our customers say"
+    },
+    {
+      "type": "header",
+      "content": "Carousel settings"
+    },
+    {
+      "type": "range",
+      "id": "scroll_speed",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "s",
+      "label": "Scroll speed",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "row_gap",
+      "min": 10,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "label": "Row gap",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "min": 10,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "label": "Card gap",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "range",
+      "id": "card_width",
+      "min": 250,
+      "max": 400,
+      "step": 10,
+      "unit": "px",
+      "label": "Card width",
+      "default": 320
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "min": 15,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "label": "Card padding",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "label": "Card border radius",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_horizontal",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Shadow horizontal",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_vertical",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Shadow vertical",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_blur",
+      "min": 0,
+      "max": 30,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow blur",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_opacity",
+      "min": 0,
+      "max": 30,
+      "step": 5,
+      "unit": "%",
+      "label": "Shadow opacity",
+      "default": 10
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "card_background",
+      "label": "Card background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "star_color",
+      "label": "Star rating",
+      "default": "#FFB800"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "section_padding",
+      "min": 20,
+      "max": 100,
+      "step": 10,
+      "unit": "px",
+      "label": "Section padding",
+      "default": 60
+    }
+  ],
+  "presets": [
+    {
+      "name": "Reviews carousel"
+    }
+  ]
+}
+{% endschema %}

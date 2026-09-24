@@ -1,0 +1,395 @@
+<section class="ic-section">
+  <div class="ic-container">
+
+    <h2 class="ic-heading">{{ section.settings.heading }}</h2>
+    <p class="ic-subheading">{{ section.settings.subheading }}</p>
+
+    <div class="ic-grid">
+
+      <!-- AYURVEDA -->
+      <div class="ic-card ic-card-large">
+        <img src="{{ section.settings.left_image | img_url: '1200x' }}" alt="">
+        <div class="ic-info-card">
+          <div class="ic-info-icon">
+            <img src="{{ section.settings.left_icon | img_url: '80x' }}" alt="">
+          </div>
+          <div class="ic-info-text">
+            <h4>{{ section.settings.left_title }}</h4>
+            <p>{{ section.settings.left_desc }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- HOMEOPATHY -->
+      <div class="ic-card">
+        <img src="{{ section.settings.right_top_image | img_url: '800x' }}" alt="">
+        <div class="ic-info-card">
+          <div class="ic-info-icon">
+            <img src="{{ section.settings.right_top_icon | img_url: '80x' }}" alt="">
+          </div>
+          <div class="ic-info-text">
+            <h4>{{ section.settings.right_top_title }}</h4>
+            <p>{{ section.settings.right_top_desc }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALLOPATHY -->
+      <div class="ic-card">
+        <img src="{{ section.settings.right_bottom_image | img_url: '800x' }}" alt="">
+        <div class="ic-info-card">
+          <div class="ic-info-icon">
+            <img src="{{ section.settings.right_bottom_icon | img_url: '80x' }}" alt="">
+          </div>
+          <div class="ic-info-text">
+            <h4>{{ section.settings.right_bottom_title }}</h4>
+            <p>{{ section.settings.right_bottom_desc }}</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ic-bottom-note ic-bottom-note--{{ section.settings.bottom_note_alignment }} {% if section.settings.show_border %}ic-bottom-note--bordered{% endif %}">
+      {{ section.settings.bottom_note_text_before }}
+      <span class="ic-highlight">{{ section.settings.bottom_note_highlight }}</span>
+      {{ section.settings.bottom_note_text_after }}
+    </div>
+
+  </div>
+</section>
+
+<style>
+.ic-section {
+  padding: 80px 20px;
+  background: #f6f7f9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+}
+
+.ic-container {
+  max-width: 1100px;
+  margin: auto;
+}
+
+.ic-heading {
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.ic-subheading {
+  font-size: 13px;
+  color: #777;
+  margin-bottom: 45px;
+}
+
+.ic-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  grid-template-rows: repeat(2, 250px);
+  gap: 22px;
+}
+
+.ic-card {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.ic-card-large {
+  grid-row: span 2;
+}
+
+.ic-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* FLOATING INFO CARD (IMAGE STYLE) */
+.ic-info-card {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 320px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.15);
+}
+
+.ic-info-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #f2f3f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ic-info-icon img {
+  width: 26px;
+  height: 26px;
+  left: 10px;
+}
+
+.ic-info-text h4 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.ic-info-text p {
+  font-size: 12px;
+  margin: 2px 0 0;
+  color: #555;
+  line-height: 1.4;
+}
+
+/* BOTTOM NOTE STYLES */
+.ic-bottom-note {
+  margin-top: 45px;
+  padding: 16px;
+  font-size: {{ section.settings.bottom_note_font_size }}px;
+  color: {{ section.settings.bottom_note_color }};
+  line-height: 1.6;
+}
+
+.ic-bottom-note--bordered {
+  border: 1px solid {{ section.settings.border_color }};
+  border-radius: 10px;
+}
+
+.ic-bottom-note--left {
+  text-align: left;
+}
+
+.ic-bottom-note--center {
+  text-align: center;
+}
+
+.ic-bottom-note--right {
+  text-align: right;
+}
+
+.ic-highlight {
+  color: {{ section.settings.highlight_color }};
+  font-weight: {{ section.settings.highlight_font_weight }};
+}
+
+@media (max-width: 768px) {
+  .ic-grid {
+    grid-template-columns: 1fr;
+  }
+  .ic-card,
+  .ic-card-large {
+    height: 220px;
+  }
+}
+</style>
+
+{% schema %}
+{
+  "name": "Integrated Care",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Why Integrated Care Works"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "The Power Of Three Medical Systems Working Together"
+    },
+
+    {
+      "type": "header",
+      "content": "Ayurveda"
+    },
+    {
+      "type": "image_picker",
+      "id": "left_image",
+      "label": "Ayurveda Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "left_icon",
+      "label": "Ayurveda Icon"
+    },
+    {
+      "type": "text",
+      "id": "left_title",
+      "label": "Ayurveda Title",
+      "default": "Ayurveda"
+    },
+    {
+      "type": "text",
+      "id": "left_desc",
+      "label": "Ayurveda Description",
+      "default": "Overall wellness, lifestyle balance and long-term healing"
+    },
+
+    {
+      "type": "header",
+      "content": "Homeopathy"
+    },
+    {
+      "type": "image_picker",
+      "id": "right_top_image",
+      "label": "Homeopathy Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "right_top_icon",
+      "label": "Homeopathy Icon"
+    },
+    {
+      "type": "text",
+      "id": "right_top_title",
+      "label": "Homeopathy Title",
+      "default": "Homeopathy"
+    },
+    {
+      "type": "text",
+      "id": "right_top_desc",
+      "label": "Homeopathy Description",
+      "default": "Deep root-cause treatment with minimal side effects"
+    },
+
+    {
+      "type": "header",
+      "content": "Allopathy"
+    },
+    {
+      "type": "image_picker",
+      "id": "right_bottom_image",
+      "label": "Allopathy Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "right_bottom_icon",
+      "label": "Allopathy Icon"
+    },
+    {
+      "type": "text",
+      "id": "right_bottom_title",
+      "label": "Allopathy Title",
+      "default": "Allopathy"
+    },
+    {
+      "type": "text",
+      "id": "right_bottom_desc",
+      "label": "Allopathy Description",
+      "default": "Immediate symptomatic relief + accurate diagnosis"
+    },
+
+    {
+      "type": "header",
+      "content": "Bottom Note Settings"
+    },
+    {
+      "type": "text",
+      "id": "bottom_note_text_before",
+      "label": "Text Before Highlight",
+      "default": "Together, They Give You A"
+    },
+    {
+      "type": "text",
+      "id": "bottom_note_highlight",
+      "label": "Highlighted Text",
+      "default": "Complete 360° Care Plan"
+    },
+    {
+      "type": "text",
+      "id": "bottom_note_text_after",
+      "label": "Text After Highlight",
+      "default": "That No Single System Can Offer Alone."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_border",
+      "label": "Show Border",
+      "default": false
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border Color",
+      "default": "#ff6b6b"
+    },
+    {
+      "type": "select",
+      "id": "bottom_note_alignment",
+      "label": "Text Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "color",
+      "id": "bottom_note_color",
+      "label": "Normal Text Color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "highlight_color",
+      "label": "Highlighted Text Color",
+      "default": "#ff2e2e"
+    },
+    {
+      "type": "select",
+      "id": "highlight_font_weight",
+      "label": "Highlighted Text Weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "600",
+          "label": "Semi-Bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "range",
+      "id": "bottom_note_font_size",
+      "label": "Font Size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    }
+  ],
+  "presets": [
+    {
+      "name": "Integrated Care"
+    }
+  ]
+}
+{% endschema %}

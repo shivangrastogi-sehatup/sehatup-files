@@ -1,0 +1,153 @@
+{% assign uid = section.id | replace: '_', '' | downcase %}
+
+<style>
+.ic-wrap-{{uid}}{
+  max-width: {{ section.settings.container_max_width }}px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+.ic-header-{{uid}}{
+  text-align:center;
+  margin-bottom:48px;
+}
+
+.ic-grid-{{uid}}{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+}
+
+.ic-card-{{uid}}{
+  position:relative;
+  border-radius:24px;
+  overflow:hidden;
+  min-height:420px;
+}
+
+.ic-large-{{uid}}{
+  grid-row:span 2;
+}
+
+.ic-img-{{uid}}{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transform:scale(var(--zoom,1));
+  object-position:var(--posx,50%) var(--posy,50%);
+  transition:transform .4s ease;
+}
+
+.ic-float-{{uid}}{
+  position:absolute;
+  right:24px;
+  bottom:24px;
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);
+  max-width:280px;
+}
+
+.ic-float-{{uid}} img{
+  width:40px;
+  margin-bottom:10px;
+}
+
+@media(max-width:768px){
+  .ic-grid-{{uid}}{
+    grid-template-columns:1fr;
+  }
+  .ic-large-{{uid}}{
+    grid-row:span 1;
+  }
+}
+</style>
+
+<div class="ic-wrap-{{uid}}">
+
+  <div class="ic-header-{{uid}}">
+    <h2>{{ section.settings.main_title }}</h2>
+    <p>{{ section.settings.main_subtitle }}</p>
+  </div>
+
+  <div class="ic-grid-{{uid}}">
+
+    {% for i in (1..3) %}
+      {% assign bg = 'card' | append:i | append:'_bg_image' %}
+      {% assign icon = 'card' | append:i | append:'_icon' %}
+      {% assign title = 'card' | append:i | append:'_title' %}
+      {% assign desc = 'card' | append:i | append:'_description' %}
+      {% assign box = 'card' | append:i | append:'_box_bg' %}
+      {% assign zoom = 'card' | append:i | append:'_zoom' %}
+      {% assign posx = 'card' | append:i | append:'_posx' %}
+      {% assign posy = 'card' | append:i | append:'_posy' %}
+
+      <div class="ic-card-{{uid}} {% if i == 1 %}ic-large-{{uid}}{% endif %}">
+        {% if section.settings[bg] %}
+          <img
+            src="{{ section.settings[bg] | image_url: width:1600 }}"
+            class="ic-img-{{uid}}"
+            style="--zoom:{{section.settings[zoom]}}; --posx:{{section.settings[posx]}}%; --posy:{{section.settings[posy]}}%;"
+            loading="lazy">
+        {% endif %}
+
+        <div class="ic-float-{{uid}}" style="background:{{section.settings[box]}}">
+          {% if section.settings[icon] %}
+            <img src="{{ section.settings[icon] | image_url: width:60 }}">
+          {% endif %}
+          <h3>{{ section.settings[title] }}</h3>
+          <p>{{ section.settings[desc] }}</p>
+        </div>
+      </div>
+
+    {% endfor %}
+
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Integrated care bento",
+  "settings": [
+
+    { "type":"range","id":"container_max_width","label":"Container width","min":900,"max":1600,"step":50,"default":1200 },
+
+    { "type":"text","id":"main_title","label":"Title","default":"Why Integrated Care Works"},
+    { "type":"text","id":"main_subtitle","label":"Subtitle","default":"The Power Of Three Medical Systems Working Together"},
+
+    { "type":"header","content":"Card 1 (Ayurveda - Large)"},
+    { "type":"image_picker","id":"card1_bg_image","label":"Background image"},
+    { "type":"image_picker","id":"card1_icon","label":"Icon"},
+    { "type":"text","id":"card1_title","label":"Title","default":"Ayurveda"},
+    { "type":"textarea","id":"card1_description","label":"Description","default":"Overall wellness, lifestyle balance and long-term healing"},
+    { "type":"color","id":"card1_box_bg","label":"Box background","default":"#d4f1d4"},
+    { "type":"range","id":"card1_zoom","label":"Image zoom","min":1,"max":2,"step":0.1,"default":1.2},
+    { "type":"range","id":"card1_posx","label":"Image X position","min":0,"max":100,"step":5,"default":50},
+    { "type":"range","id":"card1_posy","label":"Image Y position","min":0,"max":100,"step":5,"default":50},
+
+    { "type":"header","content":"Card 2 (Homeopathy)"},
+    { "type":"image_picker","id":"card2_bg_image","label":"Background image"},
+    { "type":"image_picker","id":"card2_icon","label":"Icon"},
+    { "type":"text","id":"card2_title","label":"Title","default":"Homeopathy"},
+    { "type":"textarea","id":"card2_description","label":"Description","default":"Deep root-cause treatment with minimal side effects"},
+    { "type":"color","id":"card2_box_bg","label":"Box background","default":"#ffd4e5"},
+    { "type":"range","id":"card2_zoom","label":"Image zoom","min":1,"max":2,"step":0.1,"default":1.2},
+    { "type":"range","id":"card2_posx","label":"Image X position","min":0,"max":100,"step":5,"default":50},
+    { "type":"range","id":"card2_posy","label":"Image Y position","min":0,"max":100,"step":5,"default":50},
+
+    { "type":"header","content":"Card 3 (Allopathy)"},
+    { "type":"image_picker","id":"card3_bg_image","label":"Background image"},
+    { "type":"image_picker","id":"card3_icon","label":"Icon"},
+    { "type":"text","id":"card3_title","label":"Title","default":"Allopathy"},
+    { "type":"textarea","id":"card3_description","label":"Description","default":"Immediate symptomatic relief + accurate diagnosis"},
+    { "type":"color","id":"card3_box_bg","label":"Box background","default":"#f5e6d3"},
+    { "type":"range","id":"card3_zoom","label":"Image zoom","min":1,"max":2,"step":0.1,"default":1.2},
+    { "type":"range","id":"card3_posx","label":"Image X position","min":0,"max":100,"step":5,"default":50},
+    { "type":"range","id":"card3_posy","label":"Image Y position","min":0,"max":100,"step":5,"default":50}
+
+  ],
+  "presets":[{"name":"Integrated care bento"}]
+}
+{% endschema %}

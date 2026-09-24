@@ -1,0 +1,522 @@
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+{% liquid
+  assign a_content = product.metafields.custom.a_content_block.value
+  assign has_content = false
+  if a_content != blank and a_content.size > 0
+    assign has_content = true
+  endif
+%}
+
+{% style %}
+.ai-aplus-content-{{ ai_gen_id }}{display:block;width:100%}
+.ai-aplus-container-{{ ai_gen_id }}{max-width:{{ block.settings.container_max_width }}px;margin:0 auto;padding:0 5rem}
+.ai-aplus-block-{{ ai_gen_id }}{margin-bottom:{{ block.settings.block_spacing }}px}
+.ai-aplus-block-{{ ai_gen_id }}:last-child{margin-bottom:0}
+.ai-aplus-full-width-{{ ai_gen_id }}{position:relative;width:100%;overflow:hidden;border-radius:{{ block.settings.image_border_radius }}px}
+.ai-aplus-full-width-image-{{ ai_gen_id }}{width:100%;height:auto;display:block;object-fit:cover}
+.ai-aplus-image-desktop-{{ ai_gen_id }}{display:block}
+.ai-aplus-image-mobile-{{ ai_gen_id }}{display:none}
+.ai-aplus-overlay-heading-{{ ai_gen_id }}{font-size:clamp(14px,1.9vw,50px);font-weight:600;margin:0 0 12px;line-height:1.2}
+.ai-aplus-full-width-description-{{ ai_gen_id }}{font-size:clamp(14px,1.5vw,20px);line-height:1.6;margin-bottom:20px;font-weight:400}
+.ai-aplus-full-width-description-{{ ai_gen_id }} p{margin:0 0 12px;font-weight:400}
+.ai-aplus-full-width-description-{{ ai_gen_id }} p:last-child{margin-bottom:0}
+.ai-aplus-full-width-description-{{ ai_gen_id }} strong,.ai-aplus-full-width-description-{{ ai_gen_id }} b{font-weight:600}
+.ai-aplus-full-width-description-{{ ai_gen_id }} em,.ai-aplus-full-width-description-{{ ai_gen_id }} i{font-style:italic}
+.ai-aplus-full-width-description-{{ ai_gen_id }} ul,.ai-aplus-full-width-description-{{ ai_gen_id }} ol{margin:8px 0;padding-left:20px}
+.ai-aplus-full-width-description-{{ ai_gen_id }} li{margin-bottom:4px}
+.ai-aplus-grid-{{ ai_gen_id }}{display:grid;gap:{{ block.settings.grid_gap }}px;grid-template-columns:repeat(3,1fr)}
+.ai-aplus-grid-two-{{ ai_gen_id }}{grid-template-columns:repeat(2,1fr)}
+.ai-aplus-card-{{ ai_gen_id }}{background-color:{{ block.settings.card_background }};border-radius:{{ block.settings.card_border_radius }}px;overflow:hidden;display:flex;flex-direction:column;height:100%;transition:transform .3s ease,box-shadow .3s ease}
+.ai-aplus-card-{{ ai_gen_id }}:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.ai-aplus-card-image-wrapper-{{ ai_gen_id }}{width:100%;overflow:hidden;aspect-ratio:1/1}
+.ai-aplus-card-image-{{ ai_gen_id }}{width:100%;height:100%;object-fit:cover;display:block}
+.ai-aplus-card-content-{{ ai_gen_id }}{padding:24px;flex-grow:1;display:flex;flex-direction:column}
+.ai-aplus-card-heading-{{ ai_gen_id }}{font-size:{{ block.settings.card_heading_size }}px;font-weight:600;margin:0 0 12px;color:{{ block.settings.card_text_color }};line-height:1.3}
+.ai-aplus-card-description-{{ ai_gen_id }}{font-size:{{ block.settings.card_text_size }}px;line-height:1.6;color:{{ block.settings.card_text_color }};margin:0;font-weight:400}
+.ai-aplus-card-description-{{ ai_gen_id }} p{margin:0 0 12px;font-weight:400}
+.ai-aplus-card-description-{{ ai_gen_id }} p:last-child{margin-bottom:0}
+.ai-aplus-card-description-{{ ai_gen_id }} strong,.ai-aplus-card-description-{{ ai_gen_id }} b{font-weight:600}
+.ai-aplus-card-description-{{ ai_gen_id }} em,.ai-aplus-card-description-{{ ai_gen_id }} i{font-style:italic}
+.ai-aplus-card-description-{{ ai_gen_id }} ul,.ai-aplus-card-description-{{ ai_gen_id }} ol{margin:8px 0;padding-left:20px}
+.ai-aplus-card-description-{{ ai_gen_id }} li{margin-bottom:4px}
+.ai-aplus-card-description-{{ ai_gen_id }} a{color:inherit;text-decoration:underline}
+
+/* ── CAROUSEL ── */
+.ai-aplus-carousel-{{ ai_gen_id }}{position:relative;width:100%;overflow:hidden;border-radius:{{ block.settings.image_border_radius }}px;line-height:0;touch-action:pan-y}
+.ai-aplus-carousel-track-{{ ai_gen_id }}{display:flex;width:100%;transition:transform .4s ease;will-change:transform}
+.ai-aplus-slide-{{ ai_gen_id }}{min-width:100%;width:100%;position:relative;flex-shrink:0;flex-grow:0;line-height:0;box-sizing:border-box}
+.ai-aplus-slide-img-desktop-{{ ai_gen_id }}{width:100%;height:auto;display:block;object-fit:cover;vertical-align:top}
+.ai-aplus-slide-img-mobile-{{ ai_gen_id }}{width:100%;height:auto;display:none;object-fit:cover;vertical-align:top}
+
+
+.ai-aplus-slide-video-{{ ai_gen_id }}{width:100%;height:auto;display:block}
+.ai-aplus-slide-caption-{{ ai_gen_id }}{position:absolute;bottom:48px;left:0;width:100%;text-align:center;font-size:14px;padding:8px 16px;margin:0;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);line-height:1.4;box-sizing:border-box;z-index:1}
+.ai-aplus-prev-{{ ai_gen_id }},.ai-aplus-next-{{ ai_gen_id }}{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;font-size:28px;padding:8px 14px;cursor:pointer;z-index:2;border-radius:4px;line-height:1;transition:background .2s}
+.ai-aplus-prev-{{ ai_gen_id }}:hover,.ai-aplus-next-{{ ai_gen_id }}:hover{background:rgba(0,0,0,.7)}
+.ai-aplus-prev-{{ ai_gen_id }}{left:10px}
+.ai-aplus-next-{{ ai_gen_id }}{right:10px}
+.ai-aplus-dots-{{ ai_gen_id }}{position:absolute;bottom:14px;left:0;width:100%;display:flex;justify-content:center;gap:8px;z-index:2;padding:0;margin:0;list-style:none}
+.ai-aplus-dot-{{ ai_gen_id }}{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.5);cursor:pointer;transition:background .3s,transform .2s;border:1px solid rgba(255,255,255,0.6);display:inline-block}
+.ai-aplus-dot-{{ ai_gen_id }}.active{background:#fff;transform:scale(1.2)}
+
+/* ── VIDEO ── */
+.ai-aplus-video-wrapper-{{ ai_gen_id }}{width:100%}
+.ai-aplus-video-container-{{ ai_gen_id }}{position:relative;width:100%;overflow:hidden;border-radius:{{ block.settings.image_border_radius }}px;background:#000;line-height:0}
+.ai-aplus-video-{{ ai_gen_id }}{display:block;width:100%;height:auto;position:relative;z-index:1;cursor:pointer}
+.ai-aplus-video-thumb-{{ ai_gen_id }}{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:2;display:block;cursor:pointer;transition:opacity 0.3s ease}
+.ai-aplus-video-thumb-{{ ai_gen_id }}.hidden{opacity:0;pointer-events:none}
+.ai-aplus-yt-wrapper-{{ ai_gen_id }}{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:{{ block.settings.image_border_radius }}px}
+.ai-aplus-yt-iframe-{{ ai_gen_id }}{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
+
+/* ── RESPONSIVE ── */
+@media screen and (max-width:989px){
+  .ai-aplus-grid-{{ ai_gen_id }}{grid-template-columns:repeat(2,1fr)}
+}
+@media screen and (max-width:749px){
+  .ai-aplus-image-desktop-{{ ai_gen_id }}{display:none}
+  .ai-aplus-image-mobile-{{ ai_gen_id }}{display:block}
+  /* Carousel mobile image swap */
+  .ai-aplus-slide-img-desktop-{{ ai_gen_id }}{display:none}
+  .ai-aplus-slide-img-mobile-{{ ai_gen_id }}{display:block}
+  .ai-aplus-grid-{{ ai_gen_id }},.ai-aplus-grid-two-{{ ai_gen_id }}{grid-template-columns:1fr}
+  .ai-aplus-container-{{ ai_gen_id }}{padding:0 16px}
+  .ai-aplus-card-content-{{ ai_gen_id }}{padding:20px}
+  .ai-aplus-card-heading-{{ ai_gen_id }}{font-size:calc({{ block.settings.card_heading_size }}px * .9)}
+  .ai-aplus-prev-{{ ai_gen_id }},.ai-aplus-next-{{ ai_gen_id }}{font-size:20px;padding:6px 10px}
+}
+{% endstyle %}
+
+{% if has_content %}
+<div class="ai-aplus-content-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-aplus-container-{{ ai_gen_id }}">
+    {% assign sorted_content = a_content | sort: 'order' %}
+
+    {% for item in sorted_content %}
+      {% liquid
+        assign layout_type = item.layout_type
+        assign bg_color = item.background_color
+        assign text_color = item.text_color
+        assign custom_height = item.custom_height
+        assign heading_tag = item.heading_type | default: 'h2' | downcase
+      %}
+
+      <div class="ai-aplus-block-{{ ai_gen_id }}"{% if bg_color != blank %} style="background-color:{{ bg_color }};padding:{{ block.settings.block_padding }}px;border-radius:{{ block.settings.image_border_radius }}px;"{% endif %}>
+
+        {% comment %}── FULL WIDTH ──{% endcomment %}
+        {% if layout_type == 'full_width' %}
+          <div class="ai-aplus-full-width-{{ ai_gen_id }}">
+            {% if item.heading != blank %}
+              <{{ heading_tag }} class="ai-aplus-overlay-heading-{{ ai_gen_id }}" style="color:{{ text_color | default: block.settings.card_text_color }};margin:20px 0;text-align:{{ item.position | default: 'center' }};">{{ item.heading }}</{{ heading_tag }}>
+            {% endif %}
+            {% if item.image_1 != blank %}
+              <img src="{{ item.image_1 | image_url: width: 1600 }}"
+                   alt="{{ item.heading | default: 'Feature' | escape }}"
+                   class="ai-aplus-full-width-image-{{ ai_gen_id }} ai-aplus-image-desktop-{{ ai_gen_id }}"
+                   loading="lazy" width="{{ item.image_1.width }}" height="{{ item.image_1.height }}"
+                   {% if custom_height != blank and custom_height > 0 %}style="height:{{ custom_height }}px;object-fit:cover;"{% endif %}>
+            {% endif %}
+            {% if item.image_1_mobile != blank %}
+              <img src="{{ item.image_1_mobile | image_url: width: 800 }}"
+                   alt="{{ item.heading | default: 'Feature' | escape }}"
+                   class="ai-aplus-full-width-image-{{ ai_gen_id }} ai-aplus-image-mobile-{{ ai_gen_id }}"
+                   loading="lazy"
+                   {% if custom_height != blank and custom_height > 0 %}style="height:{{ custom_height }}px;object-fit:cover;"{% endif %}>
+            {% elsif item.image_1 != blank %}
+              <img src="{{ item.image_1 | image_url: width: 800 }}"
+                   alt="{{ item.heading | default: 'Feature' | escape }}"
+                   class="ai-aplus-full-width-image-{{ ai_gen_id }} ai-aplus-image-mobile-{{ ai_gen_id }}"
+                   loading="lazy"
+                   {% if custom_height != blank and custom_height > 0 %}style="height:{{ custom_height }}px;object-fit:cover;"{% endif %}>
+            {% endif %}
+            {% if item.description != blank %}
+              <div class="ai-aplus-full-width-description-{{ ai_gen_id }}" style="color:{{ text_color | default: block.settings.card_text_color }};margin-top:20px;text-align:{{ item.position | default: 'center' }};">
+                {{ item.description | metafield_tag }}
+              </div>
+            {% endif %}
+          </div>
+
+        {% comment %}── VIDEO ──{% endcomment %}
+        {% elsif layout_type == 'video' %}
+          <div class="ai-aplus-video-wrapper-{{ ai_gen_id }}">
+            {% if item.heading != blank %}
+              <{{ heading_tag }} class="ai-aplus-overlay-heading-{{ ai_gen_id }}" style="color:{{ text_color | default: block.settings.card_text_color }};text-align:{{ item.position | default: 'center' }};margin-bottom:16px;line-height:1.3;display:block;">
+                {{ item.heading }}
+              </{{ heading_tag }}>
+            {% endif %}
+
+            {% if item.video_url != blank and item.video_url contains 'youtu' %}
+              {% if item.video_url contains 'youtu.be' %}
+                {% assign yt_id = item.video_url | split: '/' | last | split: '?' | first %}
+              {% else %}
+                {% assign yt_id = item.video_url | split: 'v=' | last | split: '&' | first %}
+              {% endif %}
+              <div class="ai-aplus-yt-wrapper-{{ ai_gen_id }}">
+                <iframe class="ai-aplus-yt-iframe-{{ ai_gen_id }}"
+                        data-src="https://www.youtube.com/embed/{{ yt_id }}?rel=0&modestbranding=1"
+                        title="{{ item.heading | escape }}"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+              </div>
+
+            {% elsif item.video_file != blank %}
+              {% assign vf = item.video_file %}
+              {% assign vf_src = vf.sources.first.url %}
+              {% if vf_src == blank %}{% assign vf_src = vf | file_url %}{% endif %}
+
+              {% assign poster_url = '' %}
+              {% if item.video_thumbnail != blank %}
+                {% assign poster_url = item.video_thumbnail | image_url: width: 1600 %}
+              {% elsif vf.preview_image != blank %}
+                {% assign poster_url = vf.preview_image | image_url: width: 1600 %}
+              {% elsif item.image_1 != blank %}
+                {% assign poster_url = item.image_1 | image_url: width: 1600 %}
+              {% endif %}
+
+              {% if vf_src != blank %}
+                <div class="ai-aplus-video-container-{{ ai_gen_id }}">
+                  <video class="ai-aplus-video-{{ ai_gen_id }}"
+                         preload="none"
+                         playsinline
+                         controls>
+                    {% if vf.sources.size > 0 %}
+                      {% for source in vf.sources %}
+                        <source src="{{ source.url }}" type="{{ source.mime_type }}">
+                      {% endfor %}
+                    {% else %}
+                      <source src="{{ vf_src }}" type="video/mp4">
+                    {% endif %}
+                  </video>
+                  {% if poster_url != blank %}
+                    <img src="{{ poster_url }}"
+                         alt="{{ item.heading | default: 'Video thumbnail' | escape }}"
+                         class="ai-aplus-video-thumb-{{ ai_gen_id }}"
+                         loading="eager">
+                  {% endif %}
+                </div>
+              {% else %}
+                <p style="text-align:center;padding:20px;color:{{ text_color | default: block.settings.card_text_color }};">⏳ Video is processing, please check back shortly.</p>
+              {% endif %}
+            {% endif %}
+
+            {% if item.description != blank %}
+              <div class="ai-aplus-full-width-description-{{ ai_gen_id }}" style="color:{{ text_color | default: block.settings.card_text_color }};margin-top:16px;text-align:{{ item.position | default: 'center' }};">
+                {{ item.description | metafield_tag }}
+              </div>
+            {% endif %}
+          </div>
+
+        {% comment %}── CAROUSEL ──{% endcomment %}
+        {% elsif layout_type == 'carousel' %}
+          {% assign slide_count = 0 %}
+          {% for i in (1..5) %}
+            {% assign si = 'slide_' | append: i | append: '_image' %}
+            {% assign sv = 'slide_' | append: i | append: '_video' %}
+            {% if item[si] != blank or item[sv] != blank %}
+              {% assign slide_count = slide_count | plus: 1 %}
+            {% endif %}
+          {% endfor %}
+
+          {% if item.heading != blank %}
+            <{{ heading_tag }} class="ai-aplus-overlay-heading-{{ ai_gen_id }}" style="color:{{ text_color | default: block.settings.card_text_color }};text-align:{{ item.position | default: 'center' }};margin-bottom:16px;display:block;line-height:1.3;">
+              {{ item.heading }}
+            </{{ heading_tag }}>
+          {% endif %}
+
+          <div class="ai-aplus-carousel-{{ ai_gen_id }}">
+            <div class="ai-aplus-carousel-track-{{ ai_gen_id }}">
+              {% for i in (1..5) %}
+                {% assign si  = 'slide_' | append: i | append: '_image' %}
+                {% assign sim = 'slide_' | append: i | append: '_image_mobile' %}
+                {% assign sv  = 'slide_' | append: i | append: '_video' %}
+                {% assign sc  = 'slide_' | append: i | append: '_caption' %}
+                {% assign s_img     = item[si] %}
+                {% assign s_img_mob = item[sim] %}
+                {% assign s_vid     = item[sv] %}
+                {% assign s_cap     = item[sc] %}
+                {% if s_img != blank or s_vid != blank %}
+                  <div class="ai-aplus-slide-{{ ai_gen_id }}">
+                    {% if s_vid != blank %}
+                      <video class="ai-aplus-slide-video-{{ ai_gen_id }}"
+                             preload="none" playsinline muted loop controls
+                             {% if s_img != blank %}poster="{{ s_img | image_url: width: 1200 }}"{% elsif s_vid.preview_image != blank %}poster="{{ s_vid.preview_image | image_url: width: 1200 }}"{% endif %}>
+                        {% for source in s_vid.sources %}
+                          <source src="{{ source.url }}" type="{{ source.mime_type }}">
+                        {% endfor %}
+                      </video>
+                    {% elsif s_img != blank %}
+                      {% comment %} Desktop image {% endcomment %}
+                      <img src="{{ s_img | image_url: width: 1200 }}"
+                           alt="{{ s_cap | default: item.heading | escape }}"
+                           class="ai-aplus-slide-img-desktop-{{ ai_gen_id }}"
+                           loading="lazy"
+                           width="{{ s_img.width }}"
+                           height="{{ s_img.height }}">
+                      {% comment %} Mobile image — use mobile if available, else fall back to desktop {% endcomment %}
+                      {% if s_img_mob != blank %}
+                        <img src="{{ s_img_mob | image_url: width: 800 }}"
+                             alt="{{ s_cap | default: item.heading | escape }}"
+                             class="ai-aplus-slide-img-mobile-{{ ai_gen_id }}"
+                             loading="lazy"
+                             width="{{ s_img_mob.width }}"
+                             height="{{ s_img_mob.height }}">
+                      {% else %}
+                        <img src="{{ s_img | image_url: width: 800 }}"
+                             alt="{{ s_cap | default: item.heading | escape }}"
+                             class="ai-aplus-slide-img-mobile-{{ ai_gen_id }}"
+                             loading="lazy"
+                             width="{{ s_img.width }}"
+                             height="{{ s_img.height }}">
+                      {% endif %}
+                    {% endif %}
+                    {% if s_cap != blank %}
+                      <p class="ai-aplus-slide-caption-{{ ai_gen_id }}">{{ s_cap }}</p>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            {% if slide_count > 1 %}
+              <button class="ai-aplus-prev-{{ ai_gen_id }}" aria-label="Previous">&#8249;</button>
+              <button class="ai-aplus-next-{{ ai_gen_id }}" aria-label="Next">&#8250;</button>
+              <div class="ai-aplus-dots-{{ ai_gen_id }}">
+                {% for i in (1..slide_count) %}
+                  <span class="ai-aplus-dot-{{ ai_gen_id }}{% if forloop.first %} active{% endif %}"></span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+        {% comment %}── THREE COLUMN ──{% endcomment %}
+        {% elsif layout_type == 'three_column' %}
+          {% if item.heading != blank %}
+            <{{ heading_tag }} class="ai-aplus-overlay-heading-{{ ai_gen_id }}" style="color:{{ text_color | default: block.settings.card_text_color }};text-align:{{ item.position | default: 'center' }};margin-bottom:24px;display:block;">{{ item.heading }}</{{ heading_tag }}>
+          {% endif %}
+          <div class="ai-aplus-grid-{{ ai_gen_id }}">
+            {% for i in (1..3) %}
+              {% assign ci = 'image_' | append: i %}
+              {% assign c_img = item[ci] %}
+              {% if c_img != blank %}
+                <div class="ai-aplus-card-{{ ai_gen_id }}">
+                  <div class="ai-aplus-card-image-wrapper-{{ ai_gen_id }}">
+                    <img src="{{ c_img | image_url: width: 600 }}" alt="{{ item.heading | escape }}" class="ai-aplus-card-image-{{ ai_gen_id }}" loading="lazy">
+                  </div>
+                  {% if item.description != blank %}
+                    <div class="ai-aplus-card-content-{{ ai_gen_id }}">
+                      <div class="ai-aplus-card-description-{{ ai_gen_id }}">{{ item.description | metafield_tag }}</div>
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+        {% comment %}── TWO COLUMN ──{% endcomment %}
+        {% elsif layout_type == 'two_column' %}
+          {% if item.heading != blank %}
+            <{{ heading_tag }} class="ai-aplus-overlay-heading-{{ ai_gen_id }}" style="color:{{ text_color | default: block.settings.card_text_color }};text-align:{{ item.position | default: 'center' }};margin-bottom:24px;display:block;">{{ item.heading }}</{{ heading_tag }}>
+          {% endif %}
+          <div class="ai-aplus-grid-{{ ai_gen_id }} ai-aplus-grid-two-{{ ai_gen_id }}">
+            {% for i in (1..2) %}
+              {% assign ci = 'image_' | append: i %}
+              {% assign c_img = item[ci] %}
+              {% if c_img != blank %}
+                <div class="ai-aplus-card-{{ ai_gen_id }}">
+                  <div class="ai-aplus-card-image-wrapper-{{ ai_gen_id }}">
+                    <img src="{{ c_img | image_url: width: 800 }}" alt="{{ item.heading | escape }}" class="ai-aplus-card-image-{{ ai_gen_id }}" loading="lazy">
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function(){
+
+  // ── CAROUSEL ──
+  document.querySelectorAll('[class*="ai-aplus-carousel-"]').forEach(function(c){
+    var t = c.querySelector('[class*="ai-aplus-carousel-track-"]');
+    if(!t) return;
+    var slides = Array.from(t.children);
+    if(slides.length < 2) return;
+    var idx = 0;
+    var dots = Array.from(c.querySelectorAll('[class*="ai-aplus-dot-"]'));
+    var prev = c.querySelector('[class*="ai-aplus-prev-"]');
+    var next = c.querySelector('[class*="ai-aplus-next-"]');
+
+    function goTo(n){
+      idx = (n + slides.length) % slides.length;
+      t.style.transform = 'translateX(-' + idx * 100 + '%)';
+      dots.forEach(function(d,i){ d.classList.toggle('active', i === idx); });
+      var v = slides[idx].querySelector('video');
+      if(v && v.readyState === 0) v.load();
+    }
+
+    if(prev) prev.addEventListener('click', function(){ goTo(idx-1); });
+    if(next) next.addEventListener('click', function(){ goTo(idx+1); });
+    dots.forEach(function(d,i){ d.addEventListener('click', function(){ goTo(i); }); });
+
+    // ── TOUCH swipe (mobile) ──
+    var touchStartX = 0;
+    var touchStartY = 0;
+    t.addEventListener('touchstart', function(e){
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, {passive:true});
+    t.addEventListener('touchend', function(e){
+      var dx = touchStartX - e.changedTouches[0].clientX;
+      var dy = touchStartY - e.changedTouches[0].clientY;
+      // Only trigger if horizontal swipe is dominant
+      if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40){
+        goTo(dx > 0 ? idx+1 : idx-1);
+      }
+    }, {passive:true});
+
+    // ── MOUSE DRAG (desktop) ──
+    var mouseStartX = 0;
+    var isDragging = false;
+    var dragMoved = false;
+    t.addEventListener('mousedown', function(e){
+      mouseStartX = e.clientX;
+      isDragging = true;
+      dragMoved = false;
+      t.style.cursor = 'grabbing';
+      t.style.transition = 'none';
+    });
+    window.addEventListener('mousemove', function(e){
+      if(!isDragging) return;
+      var diff = e.clientX - mouseStartX;
+      if(Math.abs(diff) > 5) dragMoved = true;
+      // Live drag preview
+      t.style.transform = 'translateX(calc(-' + idx * 100 + '% + ' + diff + 'px))';
+    });
+    window.addEventListener('mouseup', function(e){
+      if(!isDragging) return;
+      isDragging = false;
+      t.style.cursor = '';
+      t.style.transition = 'transform .4s ease';
+      var diff = e.clientX - mouseStartX;
+      if(dragMoved && Math.abs(diff) > 60){
+        goTo(diff < 0 ? idx+1 : idx-1);
+      } else {
+        // Snap back
+        t.style.transform = 'translateX(-' + idx * 100 + '%)';
+      }
+    });
+
+    // ── TWO-FINGER TRACKPAD horizontal scroll ──
+    var wheelAccum = 0;
+    var wheelTimer = null;
+    c.addEventListener('wheel', function(e){
+      // Only intercept horizontal scroll
+      if(Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      wheelAccum += e.deltaX;
+      clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(function(){
+        if(Math.abs(wheelAccum) > 40){
+          goTo(wheelAccum > 0 ? idx+1 : idx-1);
+        }
+        wheelAccum = 0;
+      }, 80);
+    }, {passive:false});
+  });
+
+
+  // ── LAZY LOAD YouTube iframes ──
+  if('IntersectionObserver' in window){
+    var iObs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          var el = e.target;
+          var src = el.getAttribute('data-src');
+          if(src){ el.src = src; el.removeAttribute('data-src'); }
+          iObs.unobserve(el);
+        }
+      });
+    }, {rootMargin:'200px'});
+    document.querySelectorAll('iframe[data-src]').forEach(function(el){ iObs.observe(el); });
+  }
+
+  // ── A+ VIDEO: thumbnail overlay + play button + native controls ──
+  document.querySelectorAll('video[class*="ai-aplus-video-"]').forEach(function(video){
+
+    var container = video.parentElement;
+    var thumb = container.querySelector('[class*="ai-aplus-video-thumb-"]');
+
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:auto;cursor:pointer;transition:opacity 0.25s ease;';
+    var playBtn = document.createElement('div');
+    playBtn.style.cssText = 'width:72px;height:72px;border-radius:50%;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;';
+    playBtn.innerHTML = '<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><polygon points="10,6 28,16 10,26" fill="white"/></svg>';
+    overlay.appendChild(playBtn);
+    container.appendChild(overlay);
+
+    function startPlay(){
+      if(thumb) thumb.classList.add('hidden');
+      overlay.style.opacity = '0';
+      overlay.style.pointerEvents = 'none';
+      video.play();
+    }
+
+    overlay.addEventListener('click', startPlay);
+    if(thumb) thumb.addEventListener('click', startPlay);
+
+    video.addEventListener('pause', function(){
+      overlay.style.opacity = '1';
+      overlay.style.pointerEvents = 'auto';
+    });
+    video.addEventListener('play', function(){
+      overlay.style.opacity = '0';
+      overlay.style.pointerEvents = 'none';
+    });
+    video.addEventListener('ended', function(){
+      overlay.style.opacity = '1';
+      overlay.style.pointerEvents = 'auto';
+    });
+
+    if('IntersectionObserver' in window){
+      var vObs = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){
+            e.target.querySelectorAll('source[data-src]').forEach(function(s){
+              s.src = s.getAttribute('data-src');
+              s.removeAttribute('data-src');
+            });
+            if(e.target.readyState === 0) e.target.load();
+            vObs.unobserve(e.target);
+          }
+        });
+      }, {rootMargin:'300px'});
+      vObs.observe(video);
+    }
+  });
+
+})();
+</script>
+
+{% schema %}
+{
+  "name": "A+ Content",
+  "settings": [
+    {"type":"range","id":"container_max_width","label":"Max Width","min":600,"max":1600,"step":20,"default":1200},
+    {"type":"range","id":"block_spacing","label":"Block Spacing","min":0,"max":120,"step":4,"default":40},
+    {"type":"range","id":"block_padding","label":"Block Padding","min":0,"max":80,"step":4,"default":24},
+    {"type":"range","id":"grid_gap","label":"Grid Gap","min":0,"max":60,"step":5,"default":20},
+    {"type":"range","id":"image_border_radius","label":"Border Radius","min":0,"max":40,"step":2,"default":8},
+    {"type":"range","id":"card_border_radius","label":"Card Border Radius","min":0,"max":40,"step":2,"default":8},
+    {"type":"range","id":"card_heading_size","label":"Card Heading Size","min":12,"max":40,"step":1,"default":18},
+    {"type":"range","id":"card_text_size","label":"Card Text Size","min":12,"max":24,"step":1,"default":14},
+    {"type":"color","id":"card_background","label":"Card Background","default":"#ffffff"},
+    {"type":"color","id":"card_text_color","label":"Card Text Color","default":"#1a1a1a"}
+  ]
+}
+{% endschema %}

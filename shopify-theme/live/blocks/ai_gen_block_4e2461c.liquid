@@ -1,0 +1,1237 @@
+{% doc %}
+  @prompt
+    Create a responsive product information tabs section with dynamic content pulled from product metafields or description.
+    
+    Layout structure:
+    - Horizontal tab navigation:
+      * Benefits (active/selected with underline)
+      * Ingredients
+      * How To Use
+      * Safety And Disclaimer
+    - Tab content area below:
+      * Heading: "Why Women Love Aloezy"
+      * List of benefits with green checkmark icons:
+        - "Maintains natural intimate pH balance"
+        - "Gently removes sweat, odor & buildup"
+        - "Prevents dryness, itchiness & irritation"
+        - "Safe and gentle for daily use"
+        - "Keeps you feeling fresh, clean & confident all day"
+    
+    Requirements:
+    - Fully responsive layout:
+      * Desktop: horizontal tabs, full-width content area
+      * Tablet: horizontal tabs with adjusted spacing
+      * Mobile: tabs scroll horizontally or stack, content full-width
+    - Settings schema to customize:
+      * Product source: product picker to pull dynamic data
+      * Data source options:
+        - Product metafields (custom metafield definitions)
+        - Product description (parse HTML/markdown)
+        - Manual content entry (fallback)
+      * Tab settings (repeatable blocks):
+        - Tab label/title
+        - Tab content source: metafield key, description section, or manual
+        - Tab icon (optional)
+        - Tab order/position
+      * Tab navigation styling:
+        - Active tab color and underline
+        - Inactive tab color
+        - Tab typography (size, weight)
+        - Tab spacing and padding
+        - Underline/border style and color
+        - Hover effects
+      * Content area settings:
+        - Content heading (optional)
+        - Content typography (size, weight, color, line height)
+        - List item styling
+        - Checkmark icon: upload or built-in, color, size
+        - Content padding and spacing
+        - Background color
+      * Metafield mapping:
+        - Benefits metafield key
+        - Ingredients metafield key
+        - How to use metafield key
+        - Safety disclaimer metafield key
+      * Description parsing:
+        - HTML tag identifiers (h2, h3, specific classes)
+        - Section delimiters
+        - List formatting preservation
+      * Typography controls:
+        - Heading font size, weight, color
+        - Body text font size, color, line height
+        - List item spacing
+      * Icon settings:
+        - Checkmark icon color (green default)
+        - Icon size and position
+        - Custom icon upload option
+      * Layout options:
+        - Tab alignment (left, center, right)
+        - Content max-width
+        - Section padding
+        - Mobile tab behavior (scroll or stack)
+      * Spacing controls: tab spacing, content padding, list item gaps
+      * Mobile-specific: tab layout, font sizes, icon sizes
+    - Tabs should be clickable to switch content
+    - Active tab should have visual indicator (underline/border)
+    - Smooth transition when switching tabs
+    - Content should support rich text formatting
+    - List items with green checkmark icons, left-aligned
+    - Support for 3-6 tabs
+    - Parse product description for structured content (headings, lists)
+    - Support for product metafields (custom fields)
+    - Fallback to manual content if metafields not available
+    - Clean, organized presentation
+    - Mobile: tabs scroll horizontally or wrap, content full-width
+    - Accessible keyboard navigation for tabs
+    - Optional: accordion style on mobile instead of tabs
+    - Optional: deep linking to specific tabs via URL hash
+    - Optional: default tab selection setting
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-product-tabs-{{ ai_gen_id }} {
+    display: block;
+    width: {{ block.settings.desktop_width_percent }}%;
+    max-width: {{ block.settings.content_max_width }}px;
+    margin: 0 auto;
+    padding: {{ block.settings.section_padding_top }}px {{ block.settings.section_padding_horizontal }}px {{ block.settings.section_padding_bottom }}px;
+    background-color: {{ block.settings.background_color }};
+  }
+
+  .ai-product-tabs__nav-{{ ai_gen_id }} {
+    display: flex;
+    gap: {{ block.settings.tab_spacing }}px;
+    border-bottom: {{ block.settings.tab_border_thickness }}px solid {{ block.settings.tab_border_color }};
+    margin-bottom: {{ block.settings.content_spacing }}px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    justify-content: {{ block.settings.tab_alignment }};
+  }
+
+  .ai-product-tabs__nav-{{ ai_gen_id }}::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ai-product-tabs__tab-{{ ai_gen_id }} {
+    background: none;
+    border: none;
+    padding: {{ block.settings.tab_padding_vertical }}px {{ block.settings.tab_padding_horizontal }}px;
+    cursor: pointer;
+    font-size: {{ block.settings.tab_font_size }}px;
+    font-weight: {{ block.settings.tab_font_weight }};
+    color: {{ block.settings.tab_inactive_color }};
+    white-space: nowrap;
+    position: relative;
+    transition: color 0.3s ease;
+    font-family: {{ block.settings.tab_font.family }}, {{ block.settings.tab_font.fallback_families }};
+    font-weight: {{ block.settings.tab_font.weight }};
+  }
+
+  .ai-product-tabs__tab-{{ ai_gen_id }}:hover {
+    color: {{ block.settings.tab_hover_color }};
+  }
+
+  .ai-product-tabs__tab-{{ ai_gen_id }}.active {
+    color: {{ block.settings.tab_active_color }};
+  }
+
+  .ai-product-tabs__tab-{{ ai_gen_id }}::after {
+    content: '';
+    position: absolute;
+    bottom: calc(-1 * {{ block.settings.tab_border_thickness }}px);
+    left: 0;
+    right: 0;
+    height: {{ block.settings.tab_underline_thickness }}px;
+    background-color: {{ block.settings.tab_active_underline_color }};
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+
+  .ai-product-tabs__tab-{{ ai_gen_id }}.active::after {
+    transform: scaleX(1);
+  }
+
+  .ai-product-tabs__content-{{ ai_gen_id }} {
+    display: none;
+    padding: {{ block.settings.content_padding }}px;
+  }
+
+  .ai-product-tabs__content-{{ ai_gen_id }}.active {
+    display: block;
+  }
+
+  .ai-product-tabs__heading-{{ ai_gen_id }} {
+    font-size: {{ block.settings.heading_font_size }}px;
+    font-weight: {{ block.settings.heading_font_weight }};
+    color: {{ block.settings.heading_color }};
+    margin: 0 0 {{ block.settings.heading_spacing }}px 0;
+    font-family: {{ block.settings.heading_font.family }}, {{ block.settings.heading_font.fallback_families }};
+    font-weight: {{ block.settings.heading_font.weight }};
+  }
+
+  .ai-product-tabs__text-{{ ai_gen_id }} {
+    font-size: {{ block.settings.body_font_size }}px;
+    color: {{ block.settings.body_color }};
+    line-height: {{ block.settings.body_line_height }};
+    font-family: {{ block.settings.body_font.family }}, {{ block.settings.body_font.fallback_families }};
+    font-weight: {{ block.settings.body_font.weight }};
+  }
+
+  .ai-product-tabs__list-{{ ai_gen_id }} {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .ai-product-tabs__list-item-{{ ai_gen_id }} {
+    display: flex;
+    align-items: flex-start;
+    gap: {{ block.settings.icon_spacing }}px;
+    margin-bottom: {{ block.settings.list_item_spacing }}px;
+    font-size: {{ block.settings.body_font_size }}px;
+    color: {{ block.settings.body_color }};
+    line-height: {{ block.settings.body_line_height }};
+  }
+
+  .ai-product-tabs__icon-{{ ai_gen_id }} {
+    flex-shrink: 0;
+    width: {{ block.settings.icon_size }}px;
+    height: {{ block.settings.icon_size }}px;
+    margin-top: 2px;
+  }
+
+  .ai-product-tabs__icon-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    fill: {{ block.settings.icon_color }};
+  }
+
+  .ai-product-tabs__empty-state-{{ ai_gen_id }} {
+    padding: 40px 20px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-product-tabs-{{ ai_gen_id }} {
+      width: 100%;
+      padding: {{ block.settings.mobile_section_padding }}px {{ block.settings.mobile_section_padding_horizontal }}px;
+    }
+
+    .ai-product-tabs__nav-{{ ai_gen_id }} {
+      gap: {{ block.settings.mobile_tab_spacing }}px;
+      {% if block.settings.mobile_tab_layout == 'scroll' %}
+        justify-content: flex-start;
+      {% elsif block.settings.mobile_tab_layout == 'stack' %}
+        flex-direction: column;
+        border-bottom: none;
+      {% endif %}
+    }
+
+    .ai-product-tabs__tab-{{ ai_gen_id }} {
+      font-size: {{ block.settings.mobile_tab_font_size }}px;
+      padding: {{ block.settings.mobile_tab_padding }}px {{ block.settings.mobile_tab_padding_horizontal }}px;
+      {% if block.settings.mobile_tab_layout == 'stack' %}
+        width: 100%;
+        text-align: left;
+        border-bottom: 1px solid {{ block.settings.tab_border_color }};
+      {% endif %}
+    }
+
+    .ai-product-tabs__heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.mobile_heading_font_size }}px;
+    }
+
+    .ai-product-tabs__text-{{ ai_gen_id }},
+    .ai-product-tabs__list-item-{{ ai_gen_id }} {
+      font-size: {{ block.settings.mobile_body_font_size }}px;
+    }
+
+    .ai-product-tabs__icon-{{ ai_gen_id }} {
+      width: {{ block.settings.mobile_icon_size }}px;
+      height: {{ block.settings.mobile_icon_size }}px;
+    }
+  }
+{% endstyle %}
+
+<product-tabs-{{ ai_gen_id }} class="ai-product-tabs-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-product-tabs__nav-{{ ai_gen_id }}" role="tablist">
+    {% for i in (1..6) %}
+      {% liquid
+        assign tab_enabled_key = 'tab_' | append: i | append: '_enabled'
+        assign tab_label_key = 'tab_' | append: i | append: '_label'
+        assign tab_enabled = block.settings[tab_enabled_key]
+        assign tab_label = block.settings[tab_label_key]
+      %}
+      {% if tab_enabled and tab_label != blank %}
+        <button
+          class="ai-product-tabs__tab-{{ ai_gen_id }} {% if forloop.first %}active{% endif %}"
+          role="tab"
+          aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+          aria-controls="ai-product-tabs-panel-{{ ai_gen_id }}-{{ i }}"
+          id="ai-product-tabs-tab-{{ ai_gen_id }}-{{ i }}"
+          data-tab-index="{{ i }}"
+        >
+          {{ tab_label }}
+        </button>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="ai-product-tabs__panels-{{ ai_gen_id }}">
+    {% for i in (1..6) %}
+      {% liquid
+        assign tab_enabled_key = 'tab_' | append: i | append: '_enabled'
+        assign tab_label_key = 'tab_' | append: i | append: '_label'
+        assign tab_heading_key = 'tab_' | append: i | append: '_heading'
+        assign tab_content_source_key = 'tab_' | append: i | append: '_content_source'
+        assign tab_metafield_key = 'tab_' | append: i | append: '_metafield_key'
+        assign tab_manual_content_key = 'tab_' | append: i | append: '_manual_content'
+        
+        assign tab_enabled = block.settings[tab_enabled_key]
+        assign tab_label = block.settings[tab_label_key]
+        assign tab_heading = block.settings[tab_heading_key]
+        assign tab_content_source = block.settings[tab_content_source_key]
+        assign tab_metafield_key = block.settings[tab_metafield_key]
+        assign tab_manual_content = block.settings[tab_manual_content_key]
+        
+        assign content_to_display = ''
+        
+        if tab_content_source == 'metafield' and tab_metafield_key != blank
+          assign metafield_value = product.metafields.custom[tab_metafield_key]
+          if metafield_value != blank
+            assign content_to_display = metafield_value
+          else
+            assign content_to_display = tab_manual_content
+          endif
+        elsif tab_content_source == 'description'
+          assign content_to_display = product.description
+        else
+          assign content_to_display = tab_manual_content
+        endif
+      %}
+      
+      {% if tab_enabled and tab_label != blank %}
+        <div
+          class="ai-product-tabs__content-{{ ai_gen_id }} {% if forloop.first %}active{% endif %}"
+          role="tabpanel"
+          aria-labelledby="ai-product-tabs-tab-{{ ai_gen_id }}-{{ i }}"
+          id="ai-product-tabs-panel-{{ ai_gen_id }}-{{ i }}"
+          tabindex="0"
+        >
+          {% if tab_heading != blank %}
+            <h3 class="ai-product-tabs__heading-{{ ai_gen_id }}">{{ tab_heading }}</h3>
+          {% endif %}
+
+          {% if content_to_display != blank %}
+            {% if content_to_display.type == 'list.single_line_text_field' %}
+              <ul class="ai-product-tabs__list-{{ ai_gen_id }}">
+                {% for item in content_to_display.value %}
+                  <li class="ai-product-tabs__list-item-{{ ai_gen_id }}">
+                    <span class="ai-product-tabs__icon-{{ ai_gen_id }}">
+                      {% if block.settings.custom_icon != blank %}
+                        <img src="{{ block.settings.custom_icon | image_url: width: 100 }}" alt="" loading="lazy">
+                      {% else %}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                        </svg>
+                      {% endif %}
+                    </span>
+                    <span>{{ item }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="ai-product-tabs__text-{{ ai_gen_id }}">
+                {{ content_to_display }}
+              </div>
+            {% endif %}
+          {% else %}
+            <div class="ai-product-tabs__empty-state-{{ ai_gen_id }}">
+              No content available for this tab. Add content in the block settings.
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</product-tabs-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class ProductTabs{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.tabs = this.querySelectorAll('.ai-product-tabs__tab-{{ ai_gen_id }}');
+        this.panels = this.querySelectorAll('.ai-product-tabs__content-{{ ai_gen_id }}');
+      }
+
+      connectedCallback() {
+        this.setupTabs();
+        this.handleDeepLinking();
+      }
+
+      setupTabs() {
+        this.tabs.forEach((tab, index) => {
+          tab.addEventListener('click', () => this.switchTab(index));
+          tab.addEventListener('keydown', (e) => this.handleKeyboard(e, index));
+        });
+      }
+
+      switchTab(index) {
+        this.tabs.forEach((tab, i) => {
+          const isActive = i === index;
+          tab.classList.toggle('active', isActive);
+          tab.setAttribute('aria-selected', isActive);
+        });
+
+        this.panels.forEach((panel, i) => {
+          panel.classList.toggle('active', i === index);
+        });
+
+        const tabIndex = this.tabs[index].dataset.tabIndex;
+        if (window.history.replaceState) {
+          window.history.replaceState(null, null, '#tab-' + tabIndex);
+        }
+      }
+
+      handleKeyboard(e, currentIndex) {
+        let newIndex = currentIndex;
+
+        if (e.key === 'ArrowRight') {
+          newIndex = currentIndex + 1 >= this.tabs.length ? 0 : currentIndex + 1;
+        } else if (e.key === 'ArrowLeft') {
+          newIndex = currentIndex - 1 < 0 ? this.tabs.length - 1 : currentIndex - 1;
+        } else if (e.key === 'Home') {
+          newIndex = 0;
+        } else if (e.key === 'End') {
+          newIndex = this.tabs.length - 1;
+        } else {
+          return;
+        }
+
+        e.preventDefault();
+        this.tabs[newIndex].focus();
+        this.switchTab(newIndex);
+      }
+
+      handleDeepLinking() {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#tab-')) {
+          const tabNumber = parseInt(hash.replace('#tab-', ''));
+          const tabIndex = Array.from(this.tabs).findIndex(tab => 
+            parseInt(tab.dataset.tabIndex) === tabNumber
+          );
+          if (tabIndex !== -1) {
+            this.switchTab(tabIndex);
+          }
+        }
+      }
+    }
+
+    customElements.define('product-tabs-{{ ai_gen_id }}', ProductTabs{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Product information tabs",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "content_max_width",
+      "label": "Content max width",
+      "min": 600,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "select",
+      "id": "tab_alignment",
+      "label": "Tab alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "flex-start"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "section_padding_horizontal",
+      "label": "Horizontal padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "content_spacing",
+      "label": "Content spacing",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "content_padding",
+      "label": "Content padding",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Tab navigation"
+    },
+    {
+      "type": "font_picker",
+      "id": "tab_font",
+      "label": "Font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "tab_font_size",
+      "label": "Font size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "select",
+      "id": "tab_font_weight",
+      "label": "Font weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "500"
+    },
+    {
+      "type": "color",
+      "id": "tab_active_color",
+      "label": "Active color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "tab_inactive_color",
+      "label": "Inactive color",
+      "default": "#666666"
+    },
+    {
+      "type": "color",
+      "id": "tab_hover_color",
+      "label": "Hover color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "tab_active_underline_color",
+      "label": "Active underline color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "tab_underline_thickness",
+      "label": "Underline thickness",
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "unit": "px",
+      "default": 2
+    },
+    {
+      "type": "color",
+      "id": "tab_border_color",
+      "label": "Border color",
+      "default": "#e0e0e0"
+    },
+    {
+      "type": "range",
+      "id": "tab_border_thickness",
+      "label": "Border thickness",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "tab_spacing",
+      "label": "Tab spacing",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "tab_padding_vertical",
+      "label": "Vertical padding",
+      "min": 8,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "tab_padding_horizontal",
+      "label": "Horizontal padding",
+      "min": 0,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Content typography"
+    },
+    {
+      "type": "font_picker",
+      "id": "heading_font",
+      "label": "Heading font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "heading_font_size",
+      "label": "Heading size",
+      "min": 16,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "select",
+      "id": "heading_font_weight",
+      "label": "Heading weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "heading_spacing",
+      "label": "Heading spacing",
+      "min": 10,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "font_picker",
+      "id": "body_font",
+      "label": "Body font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "body_font_size",
+      "label": "Body size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "color",
+      "id": "body_color",
+      "label": "Body color",
+      "default": "#333333"
+    },
+    {
+      "type": "range",
+      "id": "body_line_height",
+      "label": "Line height",
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.6
+    },
+    {
+      "type": "header",
+      "content": "List styling"
+    },
+    {
+      "type": "range",
+      "id": "list_item_spacing",
+      "label": "Item spacing",
+      "min": 8,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon size",
+      "min": 12,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "icon_spacing",
+      "label": "Icon spacing",
+      "min": 6,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Icon color",
+      "default": "#4caf50"
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_icon",
+      "label": "Custom icon"
+    },
+    {
+      "type": "header",
+      "content": "Mobile settings"
+    },
+    {
+      "type": "select",
+      "id": "mobile_tab_layout",
+      "label": "Tab layout",
+      "options": [
+        {
+          "value": "scroll",
+          "label": "Scroll horizontally"
+        },
+        {
+          "value": "stack",
+          "label": "Stack vertically"
+        }
+      ],
+      "default": "scroll"
+    },
+    {
+      "type": "range",
+      "id": "mobile_section_padding",
+      "label": "Section padding",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "mobile_section_padding_horizontal",
+      "label": "Horizontal padding",
+      "min": 10,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "mobile_tab_spacing",
+      "label": "Tab spacing",
+      "min": 10,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "mobile_tab_font_size",
+      "label": "Tab font size",
+      "min": 12,
+      "max": 18,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "mobile_tab_padding",
+      "label": "Tab padding",
+      "min": 8,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "mobile_tab_padding_horizontal",
+      "label": "Tab horizontal padding",
+      "min": 0,
+      "max": 30,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "mobile_heading_font_size",
+      "label": "Heading size",
+      "min": 16,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "mobile_body_font_size",
+      "label": "Body size",
+      "min": 12,
+      "max": 18,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "mobile_icon_size",
+      "label": "Icon size",
+      "min": 12,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Tab 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_1_enabled",
+      "label": "Enable tab",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_1_label",
+      "label": "Tab label",
+      "default": "Benefits"
+    },
+    {
+      "type": "text",
+      "id": "tab_1_heading",
+      "label": "Content heading",
+      "default": "Why Women Love This Product"
+    },
+    {
+      "type": "select",
+      "id": "tab_1_content_source",
+      "label": "Content source",
+      "options": [
+        {
+          "value": "metafield",
+          "label": "Product metafield"
+        },
+        {
+          "value": "description",
+          "label": "Product description"
+        },
+        {
+          "value": "manual",
+          "label": "Manual content"
+        }
+      ],
+      "default": "manual"
+    },
+    {
+      "type": "text",
+      "id": "tab_1_metafield_key",
+      "label": "Metafield key"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_1_manual_content",
+      "label": "Manual content",
+      "default": "<p>Add your product benefits here.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Tab 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_2_enabled",
+      "label": "Enable tab",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_2_label",
+      "label": "Tab label",
+      "default": "Ingredients"
+    },
+    {
+      "type": "text",
+      "id": "tab_2_heading",
+      "label": "Content heading",
+      "default": "Ingredients"
+    },
+    {
+      "type": "select",
+      "id": "tab_2_content_source",
+      "label": "Content source",
+      "options": [
+        {
+          "value": "metafield",
+          "label": "Product metafield"
+        },
+        {
+          "value": "description",
+          "label": "Product description"
+        },
+        {
+          "value": "manual",
+          "label": "Manual content"
+        }
+      ],
+      "default": "manual"
+    },
+    {
+      "type": "text",
+      "id": "tab_2_metafield_key",
+      "label": "Metafield key"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_2_manual_content",
+      "label": "Manual content",
+      "default": "<p>Add your product ingredients here.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Tab 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_3_enabled",
+      "label": "Enable tab",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_3_label",
+      "label": "Tab label",
+      "default": "How To Use"
+    },
+    {
+      "type": "text",
+      "id": "tab_3_heading",
+      "label": "Content heading",
+      "default": "How To Use"
+    },
+    {
+      "type": "select",
+      "id": "tab_3_content_source",
+      "label": "Content source",
+      "options": [
+        {
+          "value": "metafield",
+          "label": "Product metafield"
+        },
+        {
+          "value": "description",
+          "label": "Product description"
+        },
+        {
+          "value": "manual",
+          "label": "Manual content"
+        }
+      ],
+      "default": "manual"
+    },
+    {
+      "type": "text",
+      "id": "tab_3_metafield_key",
+      "label": "Metafield key"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_3_manual_content",
+      "label": "Manual content",
+      "default": "<p>Add usage instructions here.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Tab 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_4_enabled",
+      "label": "Enable tab",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_4_label",
+      "label": "Tab label",
+      "default": "Safety And Disclaimer"
+    },
+    {
+      "type": "text",
+      "id": "tab_4_heading",
+      "label": "Content heading",
+      "default": "Safety And Disclaimer"
+    },
+    {
+      "type": "select",
+      "id": "tab_4_content_source",
+      "label": "Content source",
+      "options": [
+        {
+          "value": "metafield",
+          "label": "Product metafield"
+        },
+        {
+          "value": "description",
+          "label": "Product description"
+        },
+        {
+          "value": "manual",
+          "label": "Manual content"
+        }
+      ],
+      "default": "manual"
+    },
+    {
+      "type": "text",
+      "id": "tab_4_metafield_key",
+      "label": "Metafield key"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_4_manual_content",
+      "label": "Manual content",
+      "default": "<p>Add safety information and disclaimers here.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Tab 5"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_5_enabled",
+      "label": "Enable tab",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "tab_5_label",
+      "label": "Tab label"
+    },
+    {
+      "type": "text",
+      "id": "tab_5_heading",
+      "label": "Content heading"
+    },
+    {
+      "type": "select",
+      "id": "tab_5_content_source",
+      "label": "Content source",
+      "options": [
+        {
+          "value": "metafield",
+          "label": "Product metafield"
+        },
+        {
+          "value": "description",
+          "label": "Product description"
+        },
+        {
+          "value": "manual",
+          "label": "Manual content"
+        }
+      ],
+      "default": "manual"
+    },
+    {
+      "type": "text",
+      "id": "tab_5_metafield_key",
+      "label": "Metafield key"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_5_manual_content",
+      "label": "Manual content"
+    },
+    {
+      "type": "header",
+      "content": "Tab 6"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_6_enabled",
+      "label": "Enable tab",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "tab_6_label",
+      "label": "Tab label"
+    },
+    {
+      "type": "text",
+      "id": "tab_6_heading",
+      "label": "Content heading"
+    },
+    {
+      "type": "select",
+      "id": "tab_6_content_source",
+      "label": "Content source",
+      "options": [
+        {
+          "value": "metafield",
+          "label": "Product metafield"
+        },
+        {
+          "value": "description",
+          "label": "Product description"
+        },
+        {
+          "value": "manual",
+          "label": "Manual content"
+        }
+      ],
+      "default": "manual"
+    },
+    {
+      "type": "text",
+      "id": "tab_6_metafield_key",
+      "label": "Metafield key"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_6_manual_content",
+      "label": "Manual content"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product information tabs"
+    }
+  ]
+}
+{% endschema %}

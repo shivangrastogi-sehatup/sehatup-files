@@ -1,0 +1,142 @@
+{% comment %}
+  SehatUP visitor attribution
+  ----------------------------------------------------------------------------
+  Captures where a visitor came from, ONCE, at the moment they arrive - so a lead
+  who browses three pages before filling the popup still carries the ad that
+  brought them.
+
+  INSTALL
+  1. Online Store -> Themes -> Edit code
+  2. Snippets -> Add a new snippet -> name it  sehatup-attribution
+  3. Paste this file in and Save
+  4. Layout -> theme.liquid, INSIDE <head>, as early as you can put it - ideally
+     right after the opening <head> tag, before any other script:
+       {% raw %}{% render 'sehatup-attribution' %}{% endraw %}
+  5. Save.
+
+  WHY IN THE THEME AND NOT A CUSTOM PIXEL
+  Shopify's Web Pixels run in a sandboxed iframe with their own isolated storage.
+  Anything a custom pixel writes to localStorage cannot be read by the theme, so
+  the lead popup would always read an empty object. This has to run in the page.
+
+  WHY IN <head> AND NOT DEFERRED
+  It must run before the visitor can click through to another page. A deferred
+  script can lose the UTM if they navigate quickly.
+
+  NO COOKIES, NO NETWORK CALLS. It only reads the URL and writes localStorage.
+{% endcomment %}
+
+<script>
+(function () {
+  'use strict';
+
+  var FIRST = 'sehatup_attr_first';
+  var LAST  = 'sehatup_attr_last';
+  var UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+  function read(key) {
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode */ }
+  }
+
+  function hostOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
+  }
+
+  /**
+   * A readable source label even when the marketer forgot the UTMs.
+   *
+   * This matters more here than it looks: 90% of leads arrive with no referrer at
+   * all, because Meta and Instagram in-app browsers strip it and WhatsApp sends
+   * none. When that happens the click ids are the only surviving evidence of a
+   * paid click, so they are treated as a first-class signal, not a fallback.
+   */
+  function deriveSource(params, referrer) {
+    var utmSource = params.get('utm_source');
+    if (utmSource) return utmSource.toLowerCase();
+
+    if (params.get('fbclid')) return 'meta';
+    if (params.get('gclid') || params.get('gbraid') || params.get('wbraid')) return 'google';
+    if (params.get('ttclid')) return 'tiktok';
+
+    var host = hostOf(referrer);
+    if (!host) return 'direct';
+    if (/(^|\.)(facebook|instagram|fb|l\.instagram)\./.test(host + '.')) return 'meta';
+    if (/(^|\.)google\./.test(host + '.')) return 'google-organic';
+    if (/whatsapp|wa\.me|l\.wl\.co/.test(host)) return 'whatsapp';
+    if (/(^|\.)(youtube|youtu\.be)\./.test(host + '.')) return 'youtube';
+    if (host.indexOf('sehatup.com') !== -1) return 'internal';
+    return host;
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var referrer = document.referrer || '';
+
+  var touch = {
+    source: deriveSource(params, referrer),
+    landing_page: window.location.pathname,
+    referrer: referrer,
+    referrer_host: hostOf(referrer),
+    at: new Date().toISOString()
+  };
+  UTM.forEach(function (k) { touch[k] = params.get(k) || ''; });
+  // Click ids are kept raw as well - they are what lets you reconcile a lead
+  // against the ad platform's own reporting later.
+  ['gclid', 'fbclid', 'ttclid', 'gbraid', 'wbraid'].forEach(function (k) {
+    if (params.get(k)) touch[k] = params.get(k);
+  });
+
+  var hasSignal = UTM.some(function (k) { return touch[k]; }) ||
+                  touch.gclid || touch.fbclid || touch.ttclid ||
+                  (touch.referrer_host && touch.referrer_host.indexOf('sehatup.com') === -1);
+
+  // FIRST touch is written once and never overwritten - it answers "which ad
+  // originally found this person", which is what you pay for. LAST touch moves
+  // every time a new campaign brings them back, and answers "what closed them".
+  // Storing only one of the two throws away half the question; Shopify itself
+  // reports both for a reason.
+  if (hasSignal) {
+    if (!read(FIRST)) write(FIRST, touch);
+    write(LAST, touch);
+  } else if (!read(FIRST)) {
+    write(FIRST, touch);   // genuinely direct, and worth recording as such
+  }
+
+  window.SehatUpAttribution = {
+    first: function () { return read(FIRST) || null; },
+    last:  function () { return read(LAST) || read(FIRST) || null; },
+
+    /** Flat object ready to merge into a lead record. */
+    fields: function () {
+      var f = read(FIRST) || {};
+      var l = read(LAST) || f;
+      return {
+        // Deliberately NOT called "source". The lead popup already writes
+        // source: 'lead_popup' to record which form captured the lead, and merging a
+        // second "source" over it would destroy that and confuse every report built on it.
+        traffic_source: f.source || 'direct',
+        utm_source: f.utm_source || '',
+        utm_medium: f.utm_medium || '',
+        utm_campaign: f.utm_campaign || '',
+        utm_content: f.utm_content || '',
+        utm_term: f.utm_term || '',
+        landing_page: f.landing_page || '',
+        referrer: f.referrer || '',
+        gclid: f.gclid || '',
+        fbclid: f.fbclid || '',
+        first_seen_at: f.at || '',
+        last_traffic_source: l.source || '',
+        last_utm_campaign: l.utm_campaign || '',
+        attributed_page: window.location.pathname
+      };
+    },
+
+    /** Clears stored attribution. Only for testing. */
+    reset: function () {
+      try { localStorage.removeItem(FIRST); localStorage.removeItem(LAST); } catch (e) {}
+    }
+  };
+})();
+</script>

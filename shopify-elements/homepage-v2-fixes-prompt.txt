@@ -1,0 +1,65 @@
+Revise "SehatUP Homepage v2" in place. Keep the content, the real links, the uploaded images and the responsive preview toolbar. The page works but looks plain and template-like. Make these changes section by section.
+
+GLOBAL
+- Remove every small all-caps label above headings (like "INDIA'S FIRST INTEGRATED DIGITAL CLINIC", "HOW IT WORKS", "AYURVEDA"). Use normal sentence case, or nothing.
+- Bigger, more confident type on laptop and 4K: headings up to about 64px in the hero and 44px for section headings; body text 18px. Keep 17px minimum on mobile.
+- Colours: black #000000 for the top bar and the footer, crimson #ee204a for buttons and highlights, pink #fde8ec and its lighter tints for backgrounds, navy #14183c only for text. No navy backgrounds anywhere.
+- Every section must look different from the one before it. No two sections in a row with the same layout.
+- On mobile, long lists become horizontal swipe rows with scroll snap and a peek of the next card, so the page is shorter.
+
+1. TOP BAR
+- Black background, white text, one single line at every width. On mobile, show one message at a time and rotate through the three every 3 seconds with a soft fade (paused under reduced motion). No wrapping onto two lines.
+
+2. HEADER
+- Sticky at the top. When the page scrolls, it gets a thin bottom border and slightly smaller padding.
+- On laptop and larger, add a small crimson "Start free assessment" button at the right end of the header.
+
+3. HERO
+- Headline larger and tighter. Remove the eyebrow label above it.
+- Directly under the two buttons, a quiet trust row with the three real badge images (AYUSH approved, GMP certified, Verified doctors) at small size.
+- The photo sits on a large soft pink circle. Add one small floating white card over the photo's lower corner that says "3 doctors. 1 care plan." (no numbers other than these).
+- On mobile the "Start free assessment" button must be visible in the first screen without scrolling. Put a compact version of the photo below the buttons.
+
+4. "ONE SYSTEM TREATS ONE PART OF YOU" SECTION
+- Right now it is a thin block of text with three tiny boxes and a lot of empty space. Rebuild it as a two-column section on laptop: left, the heading and the short paragraph; right, the uploaded integrated_approach.png image, large.
+- Replace the three tiny boxes with three clear rows, each with a small crimson icon, the system name in bold (Ayurveda, Homeopathy, Modern medicine) and its one line.
+- End with the line "Together they give you one 360 care plan" set large, as the section's closing statement.
+
+5. HOW IT WORKS
+- Keep the four step images and the drawing connector line on laptop.
+- On mobile, make it a vertical timeline: a crimson line down the left, the numbered circles on the line, the image and text to the right of each number.
+- Remove the eyebrow label.
+
+6. PICK WHAT IS TROUBLING YOU
+- The three columns of pill buttons look like a form. Replace them with two large side-by-side panels, "For women" and "For men", each with its uploaded photo (women_Hormonal_balance.webp and Man_performance_copy.webp) at the top and its four concerns as tappable rows underneath, each row with a small static chevron at the right and a hover highlight.
+- "For everyone" concerns become one row of chips under the two panels.
+- On mobile the two panels stack.
+
+7. DOCTORS
+- The portrait cards are far too tall. Make them compact: a square photo on a pink background, name, qualification, experience, and a small tag with the doctor's system (for example "Ayurveda", "Homeopathy", "Psychology").
+- 3 across on laptop, a horizontal swipe row on mobile.
+- Use only the real names and qualifications already on the page. Do not add doctors.
+
+8. CARE KITS
+- 4 across on laptop (2 on tablet, swipe row on mobile). Each card: product image on top on a pink background, kit name, one line, "View kit" button. All four cards the same height with the button aligned at the bottom.
+- No prices unless they are supplied.
+
+9. TRUST + FEATURED IN
+- Combine "Why people trust us" and "Featured in" into one calm band: the three badges on the left, the four press logos on the right, logos in greyscale that turn to full colour on hover.
+
+10. PROGRESS NUMBERS
+- Turn the stats band off (showStats false) until the numbers have a source.
+
+11. FAQ
+- On laptop, two columns: heading and a short line with the WhatsApp "Talk to a doctor" link on the left, the accordion on the right. Only one answer open at a time.
+
+12. BLOGS
+- Keep three cards but give each a pink top area with the blog's first word or topic set large, so they do not look like empty boxes. Swipe row on mobile.
+
+13. FINAL CALL TO ACTION
+- A bold full-width crimson band with white text: "Take the first step in 2 minutes" and a white button "Start free assessment" with crimson text.
+
+14. FOOTER
+- Black background to match the top bar. White logo version or the logo on a white chip. Keep all links and details.
+
+Keep all existing motion (reveals, connector drawing, hover lifts, FAQ animation, sticky mobile bar) and keep prefers-reduced-motion support. After the changes, check every preview width (4K, 1440, 768, 390, 320) for overflow, wrapping and cut-off text, and fix what you find.

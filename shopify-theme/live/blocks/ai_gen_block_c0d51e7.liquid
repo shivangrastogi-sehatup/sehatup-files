@@ -1,0 +1,767 @@
+{% doc %}
+  @prompt
+    Create a responsive "What Is Health Score 360?" informational section with three feature cards and descriptive text block.
+    
+    Layout structure:
+    - Main heading: "What Is Health Score 360?"
+    - Three cards in a row (desktop/tablet) or stacked (mobile):
+      
+    Card 1 (pink background):
+    - Icon: dumbbell/weight icon
+    - Title: "Weight"
+    - Description: "Track metabolism, energy levels, and weight patterns for optimized health."
+    
+    Card 2 (pink background):
+    - Icon: wellness/meditation icon
+    - Title: "Sexual Wellness"
+    - Description: "Track metabolism, energy levels, and weight patterns for optimized health."
+    
+    Card 3 (pink background):
+    - Icon: period care icon
+    - Title: "Period Care"
+    - Description: "Monitor cycle health, PMS signals, and hormonal patterns."
+    
+    Below cards:
+    - Subheading: "Health Score 360: Your Complete Wellness Guide" (with "360:" in red/accent color)
+    - Paragraph text explaining the health score concept
+    
+    Requirements:
+    - Fully responsive (desktop: 3 columns, tablet: 3 columns or 2+1, mobile: stacked)
+    - Settings schema to customize:
+      * Main heading text
+      * Number of feature cards (blocks)
+      * For each card: icon/image upload, title, description text, background color
+      * Subheading text with color accent control
+      * Body paragraph text
+      * Card styling: border radius, padding, shadow
+      * Typography: font sizes for headings, titles, body text
+      * Spacing controls: section padding, card gaps, text spacing
+      * Color pickers: card backgrounds, text colors, accent color
+      * Layout options: cards per row on desktop/tablet
+    - Cards should have soft rounded corners and subtle backgrounds
+    - Icons should be centered above titles
+    - Mobile: full-width cards with proper spacing
+    - Include hover effects on cards (optional)
+    - Max-width container for desktop, centered layout
+    - Flexible block system to add/remove/reorder cards
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-health-score-section-{{ ai_gen_id }} {
+    display: block;
+    width: {{ block.settings.desktop_width_percent }}%;
+    padding: {{ block.settings.section_padding_top }}px 20px {{ block.settings.section_padding_bottom }}px;
+    background-color: {{ block.settings.section_background_color }};
+  }
+
+  .ai-health-score-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.container_max_width }}px;
+    margin: 0 auto;
+  }
+
+  .ai-health-score-main-heading-{{ ai_gen_id }} {
+    font-size: clamp(24px,3.4vw,64px);
+    color: {{ block.settings.main_heading_color }};
+    text-align: {{ block.settings.text_alignment }};
+    margin: 0 0 {{ block.settings.heading_bottom_spacing }}px;
+    font-weight: 600;
+  }
+
+  .ai-health-score-cards-wrapper-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: repeat({{ block.settings.cards_per_row_desktop }}, 1fr);
+    gap: {{ block.settings.card_gap }}px;
+    margin-bottom: {{ block.settings.cards_bottom_spacing }}px;
+  }
+
+  .ai-health-score-card-{{ ai_gen_id }} {
+    background: {{ block.settings.card_background_color }};
+    background: linear-gradient(176deg,rgba(255, 226, 226, 1) 0%, rgba(255, 255, 255, 1) 100%);
+    border-radius: {{ block.settings.card_border_radius }}px;
+    padding: {{ block.settings.card_padding }}px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 {{ block.settings.card_shadow_vertical }}px {{ block.settings.card_shadow_blur }}px rgba(0, 0, 0, {{ block.settings.card_shadow_opacity }});
+  }
+
+  {% if block.settings.enable_card_hover %}
+    .ai-health-score-card-{{ ai_gen_id }}:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 {{ block.settings.card_shadow_vertical | plus: 4 }}px {{ block.settings.card_shadow_blur | plus: 4 }}px rgba(0, 0, 0, {{ block.settings.card_shadow_opacity | times: 1.5 | at_most: 1 }});
+    }
+  {% endif %}
+
+  .ai-health-score-card-icon-{{ ai_gen_id }} {
+    width: {{ block.settings.icon_size }}px;
+    height: {{ block.settings.icon_size }}px;
+    margin: 0 auto {{ block.settings.icon_bottom_spacing }}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-health-score-card-icon-{{ ai_gen_id }} img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .ai-health-score-card-icon-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ai-health-score-card-title-{{ ai_gen_id }} {
+    font-size: clamp(14px, 2.4vw, 35px);
+    color: {{ block.settings.card_title_color }};
+    margin: 0 0 {{ block.settings.title_bottom_spacing }}px;
+    font-weight: 600;
+  }
+
+  .ai-health-score-card-description-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1.2vw, 20px);
+    color: {{ block.settings.card_description_color }};
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .ai-health-score-text-content-{{ ai_gen_id }} {
+    text-align: {{ block.settings.text_alignment }};
+    padding: 30px;
+    border-radius: 20px;
+    background: #F0F0F0;
+  }
+
+  .ai-health-score-subheading-{{ ai_gen_id }} {
+    font-size: clamp(14px, 2.4vw, 35px);
+    color: {{ block.settings.subheading_color }};
+    margin: 0 0 {{ block.settings.subheading_bottom_spacing }}px;
+    font-weight: 600;
+  }
+
+  .ai-health-score-accent-{{ ai_gen_id }} {
+    color: {{ block.settings.accent_color }};
+  }
+
+  .ai-health-score-body-text-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1.2vw, 20px);
+    color: {{ block.settings.body_text_color }};
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-health-score-cards-wrapper-{{ ai_gen_id }} {
+      grid-template-columns: repeat({{ block.settings.cards_per_row_tablet }}, 1fr);
+    }
+
+    .ai-health-score-main-heading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.main_heading_size }}px * 0.85);
+    }
+
+    .ai-health-score-subheading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.subheading_size }}px * 0.85);
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-health-score-section-{{ ai_gen_id }} {
+      padding: {{ block.settings.section_padding_top | times: 0.7 }}px 16px {{ block.settings.section_padding_bottom | times: 0.7 }}px;
+    }
+
+    .ai-health-score-cards-wrapper-{{ ai_gen_id }} {
+      grid-template-columns: 1fr;
+    }
+
+    .ai-health-score-main-heading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.main_heading_size }}px * 0.7);
+    }
+
+    .ai-health-score-subheading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.subheading_size }}px * 0.7);
+    }
+
+    .ai-health-score-card-{{ ai_gen_id }} {
+      padding: {{ block.settings.card_padding | times: 0.8 }}px;
+    }
+  }
+{% endstyle %}
+
+<health-score-section-{{ ai_gen_id }} class="ai-health-score-section-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-health-score-container-{{ ai_gen_id }}">
+    {% if block.settings.main_heading != blank %}
+      <h2 class="ai-health-score-main-heading-{{ ai_gen_id }}">
+        {{ block.settings.main_heading }}
+      </h2>
+    {% endif %}
+
+    <div class="ai-health-score-cards-wrapper-{{ ai_gen_id }}">
+      <div class="ai-health-score-card-{{ ai_gen_id }}">
+        {% if block.settings.card_1_icon != blank %}
+          <div class="ai-health-score-card-icon-{{ ai_gen_id }}">
+            <img
+              src="{{ block.settings.card_1_icon | image_url: width: 200 }}"
+              alt="{{ block.settings.card_1_title | escape }}"
+              loading="lazy"
+              width="200"
+              height="200"
+            >
+          </div>
+        {% else %}
+          <div class="ai-health-score-card-icon-{{ ai_gen_id }}">
+            {{ 'image' | placeholder_svg_tag }}
+          </div>
+        {% endif %}
+
+        {% if block.settings.card_1_title != blank %}
+          <h3 class="ai-health-score-card-title-{{ ai_gen_id }}">
+            {{ block.settings.card_1_title }}
+          </h3>
+        {% endif %}
+
+        {% if block.settings.card_1_description != blank %}
+          <p class="ai-health-score-card-description-{{ ai_gen_id }}">
+            {{ block.settings.card_1_description }}
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="ai-health-score-card-{{ ai_gen_id }}">
+        {% if block.settings.card_2_icon != blank %}
+          <div class="ai-health-score-card-icon-{{ ai_gen_id }}">
+            <img
+              src="{{ block.settings.card_2_icon | image_url: width: 200 }}"
+              alt="{{ block.settings.card_2_title | escape }}"
+              loading="lazy"
+              width="200"
+              height="200"
+            >
+          </div>
+        {% else %}
+          <div class="ai-health-score-card-icon-{{ ai_gen_id }}">
+            {{ 'image' | placeholder_svg_tag }}
+          </div>
+        {% endif %}
+
+        {% if block.settings.card_2_title != blank %}
+          <h3 class="ai-health-score-card-title-{{ ai_gen_id }}">
+            {{ block.settings.card_2_title }}
+          </h3>
+        {% endif %}
+
+        {% if block.settings.card_2_description != blank %}
+          <p class="ai-health-score-card-description-{{ ai_gen_id }}">
+            {{ block.settings.card_2_description }}
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="ai-health-score-card-{{ ai_gen_id }}">
+        {% if block.settings.card_3_icon != blank %}
+          <div class="ai-health-score-card-icon-{{ ai_gen_id }}">
+            <img
+              src="{{ block.settings.card_3_icon | image_url: width: 200 }}"
+              alt="{{ block.settings.card_3_title | escape }}"
+              loading="lazy"
+              width="200"
+              height="200"
+            >
+          </div>
+        {% else %}
+          <div class="ai-health-score-card-icon-{{ ai_gen_id }}">
+            {{ 'image' | placeholder_svg_tag }}
+          </div>
+        {% endif %}
+
+        {% if block.settings.card_3_title != blank %}
+          <h3 class="ai-health-score-card-title-{{ ai_gen_id }}">
+            {{ block.settings.card_3_title }}
+          </h3>
+        {% endif %}
+
+        {% if block.settings.card_3_description != blank %}
+          <p class="ai-health-score-card-description-{{ ai_gen_id }}">
+            {{ block.settings.card_3_description }}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="ai-health-score-text-content-{{ ai_gen_id }}">
+      {% if block.settings.subheading != blank %}
+        <h3 class="ai-health-score-subheading-{{ ai_gen_id }}">
+          {% assign subheading_parts = block.settings.subheading | split: block.settings.accent_text %}
+          {% if subheading_parts.size > 1 %}
+            {{ subheading_parts[0] }}<span class="ai-health-score-accent-{{ ai_gen_id }}">{{ block.settings.accent_text }}</span>{{ subheading_parts[1] }}
+          {% else %}
+            {{ block.settings.subheading }}
+          {% endif %}
+        </h3>
+      {% endif %}
+
+      {% if block.settings.body_text != blank %}
+        <div class="ai-health-score-body-text-{{ ai_gen_id }}">
+          {{ block.settings.body_text }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</health-score-section-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class HealthScoreSection{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        this.init();
+      }
+
+      init() {
+        const cards = this.querySelectorAll('.ai-health-score-card-{{ ai_gen_id }}');
+        cards.forEach((card, index) => {
+          card.style.animationDelay = `${index * 0.1}s`;
+        });
+      }
+    }
+
+    customElements.define('health-score-section-{{ ai_gen_id }}', HealthScoreSection{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Health Score 360 info",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Main heading"
+    },
+    {
+      "type": "text",
+      "id": "main_heading",
+      "label": "Heading text",
+      "default": "What Is Health Score 360?"
+    },
+    {
+      "type": "range",
+      "id": "main_heading_size",
+      "min": 20,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "label": "Heading size",
+      "default": 36
+    },
+    {
+      "type": "color",
+      "id": "main_heading_color",
+      "label": "Heading color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "heading_bottom_spacing",
+      "min": 10,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "label": "Bottom spacing",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Card 1"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_1_icon",
+      "label": "Icon"
+    },
+    {
+      "type": "text",
+      "id": "card_1_title",
+      "label": "Title",
+      "default": "Weight"
+    },
+    {
+      "type": "textarea",
+      "id": "card_1_description",
+      "label": "Description",
+      "default": "Track metabolism, energy levels, and weight patterns for optimized health."
+    },
+    {
+      "type": "header",
+      "content": "Card 2"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_2_icon",
+      "label": "Icon"
+    },
+    {
+      "type": "text",
+      "id": "card_2_title",
+      "label": "Title",
+      "default": "Sexual Wellness"
+    },
+    {
+      "type": "textarea",
+      "id": "card_2_description",
+      "label": "Description",
+      "default": "Track metabolism, energy levels, and weight patterns for optimized health."
+    },
+    {
+      "type": "header",
+      "content": "Card 3"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_3_icon",
+      "label": "Icon"
+    },
+    {
+      "type": "text",
+      "id": "card_3_title",
+      "label": "Title",
+      "default": "Period Care"
+    },
+    {
+      "type": "textarea",
+      "id": "card_3_description",
+      "label": "Description",
+      "default": "Monitor cycle health, PMS signals, and hormonal patterns."
+    },
+    {
+      "type": "header",
+      "content": "Cards layout"
+    },
+    {
+      "type": "range",
+      "id": "cards_per_row_desktop",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "label": "Cards per row (desktop)",
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "cards_per_row_tablet",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "label": "Cards per row (tablet)",
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Gap between cards",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "cards_bottom_spacing",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Bottom spacing",
+      "default": 50
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "color",
+      "id": "card_background_color",
+      "label": "Background color",
+      "default": "#FFE5EC"
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Border radius",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "min": 15,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Padding",
+      "default": 30
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_card_hover",
+      "label": "Enable hover effect",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_vertical",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "label": "Shadow vertical offset",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_blur",
+      "min": 0,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "label": "Shadow blur",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_opacity",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "label": "Shadow opacity",
+      "default": 0.1
+    },
+    {
+      "type": "header",
+      "content": "Card icon"
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "min": 30,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "label": "Icon size",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "icon_bottom_spacing",
+      "min": 5,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "label": "Bottom spacing",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Card title"
+    },
+    {
+      "type": "range",
+      "id": "card_title_size",
+      "min": 14,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "label": "Title size",
+      "default": 20
+    },
+    {
+      "type": "color",
+      "id": "card_title_color",
+      "label": "Title color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "title_bottom_spacing",
+      "min": 5,
+      "max": 30,
+      "step": 5,
+      "unit": "px",
+      "label": "Bottom spacing",
+      "default": 15
+    },
+    {
+      "type": "header",
+      "content": "Card description"
+    },
+    {
+      "type": "range",
+      "id": "card_description_size",
+      "min": 2,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Description size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "card_description_color",
+      "label": "Description color",
+      "default": "#666666"
+    },
+    {
+      "type": "header",
+      "content": "Bottom text content"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Health Score 360: Your Complete Wellness Guide"
+    },
+    {
+      "type": "text",
+      "id": "accent_text",
+      "label": "Accent text (to highlight)",
+      "default": "360:"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent color",
+      "default": "#FF0000"
+    },
+    {
+      "type": "range",
+      "id": "subheading_size",
+      "min": 16,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Subheading size",
+      "default": 24
+    },
+    {
+      "type": "color",
+      "id": "subheading_color",
+      "label": "Subheading color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "subheading_bottom_spacing",
+      "min": 10,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "label": "Bottom spacing",
+      "default": 20
+    },
+    {
+      "type": "richtext",
+      "id": "body_text",
+      "label": "Body text",
+      "default": "<p>Track your complete wellness journey with our comprehensive health scoring system. Monitor key health metrics, understand patterns, and make informed decisions for better health outcomes.</p>"
+    },
+    {
+      "type": "range",
+      "id": "body_text_size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Body text size",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "body_text_color",
+      "label": "Body text color",
+      "default": "#666666"
+    },
+    {
+      "type": "header",
+      "content": "Section layout"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "container_max_width",
+      "min": 800,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "label": "Container max width",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "min": 20,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "label": "Top padding",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "min": 20,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "label": "Bottom padding",
+      "default": 60
+    },
+    {
+      "type": "color",
+      "id": "section_background_color",
+      "label": "Background color",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    }
+  ],
+  "presets": [
+    {
+      "name": "Health Score 360 info"
+    }
+  ]
+}
+{% endschema %}

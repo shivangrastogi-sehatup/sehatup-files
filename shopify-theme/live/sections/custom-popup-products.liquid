@@ -1,0 +1,184 @@
+{% if product.handle == section.settings.product_handle %}
+  <style>
+    .zencal-toast{
+      position: fixed;
+      bottom: {{ section.settings.bottom }}px;
+      left: {{ section.settings.left }}px;
+      max-width: 340px;
+      width: calc(100% - 40px);
+      padding:18px 22px;
+      border-radius:16px;
+
+      /* ✅ HEX + ALPHA (bulletproof) */
+      background: {{ section.settings.tint_color }}2E;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+
+      border: 1px solid {{ section.settings.tint_color }}59;
+      box-shadow: 0 12px 40px {{ section.settings.tint_color }}40;
+
+      color:#111;
+      font-size:14px;
+      z-index:9999;
+
+      opacity:0;
+      visibility:hidden;
+      transform: translateY(30px);
+      transition:
+        opacity .45s cubic-bezier(.22,.61,.36,1),
+        transform .45s cubic-bezier(.22,.61,.36,1),
+        visibility .45s;
+    }
+
+    .zencal-toast.show{
+      opacity:1;
+      visibility:visible;
+      transform: translateY(0);
+    }
+
+    .zencal-toast.hide{
+      opacity:0;
+      transform: translateY(25px);
+      visibility:hidden;
+    }
+
+    .zencal-toast:hover{
+      transform: translateY(-4px);
+      box-shadow:0 18px 55px {{ section.settings.tint_color }}66;
+    }
+  </style>
+
+  <div id="zencalToast" class="zencal-toast">
+    <div class="zencal-toast-header">
+      <div>{{ section.settings.message }}</div>
+      <div id="zencalClose" class="zencal-toast-close">✕</div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function(){
+      const el = document.getElementById("zencalToast");
+      const closeBtn = document.getElementById("zencalClose");
+
+      let dismissed = false;
+      let hover = false;
+      let hideTimer;
+
+      function showToast(){
+        if(dismissed) return;
+        el.classList.add("show");
+
+        hideTimer = setTimeout(()=>{
+          if(!hover){
+            el.classList.remove("show");
+          }
+        }, {{ section.settings.hide_after }}000);
+      }
+
+      function startCycle(){
+        setTimeout(showToast, {{ section.settings.first_delay }}000);
+        setInterval(showToast, {{ section.settings.repeat_after }}000);
+      }
+
+      el.addEventListener("mouseenter", ()=>{
+        hover = true;
+        clearTimeout(hideTimer);
+      });
+
+      el.addEventListener("mouseleave", ()=>{
+        hover = false;
+        hideTimer = setTimeout(()=>{
+          el.classList.remove("show");
+        }, 2000);
+      });
+
+      closeBtn.addEventListener("click", ()=>{
+        dismissed = true;
+        el.style.display = "none";
+      });
+
+      startCycle();
+    });
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Zencal Toast Popup",
+  "settings": [
+    {
+      "type": "text",
+      "id": "product_handle",
+      "label": "Product handle (where to show)",
+      "default": "vitamin-d3k2"
+    },
+    {
+      "type": "textarea",
+      "id": "message",
+      "label": "Popup message",
+      "default": "🔥 Pay online and get 15 gm of Slimtox tea free."
+    },
+    {
+      "type": "range",
+      "id": "first_delay",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "s",
+      "label": "First show delay",
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "hide_after",
+      "min": 3,
+      "max": 15,
+      "step": 1,
+      "unit": "s",
+      "label": "Hide after",
+      "default": 5
+    },
+    {
+      "type": "range",
+      "id": "repeat_after",
+      "min": 6,
+      "max": 30,
+      "step": 2,
+      "unit": "s",
+      "label": "Repeat every",
+      "default": 10
+    },
+    {
+      "type": "color",
+      "id": "tint_color",
+      "label": "Toast Tint Color",
+      "default": "#22c55e"
+    },
+    {
+      "type": "range",
+      "id": "bottom",
+      "min": 40,
+      "max": 140,
+      "step": 5,
+      "unit": "px",
+      "label": "Bottom Position",
+      "default": 90
+    },
+    {
+      "type": "range",
+      "id": "left",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Left Position",
+      "default": 25
+    }
+  ],
+  "presets": [
+    {
+      "name": "Zencal Toast Popup"
+    }
+  ]
+}
+{% endschema %}
