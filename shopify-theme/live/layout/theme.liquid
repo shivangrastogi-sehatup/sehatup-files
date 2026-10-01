@@ -29,7 +29,13 @@
       {{ page_title }}
       {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
       {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}
-      {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+      {%- comment -%}
+        The store name is the legal name ("SEHATUP WELLNESS PRIVATE LIMITED"),
+        which made every title on the site end in it and run past what Google
+        shows. Append the brand instead, and only when the title lacks it.
+      {%- endcomment -%}
+      {%- assign title_lc = page_title | downcase -%}
+      {%- unless title_lc contains 'sehatup' %} &ndash; sehatUP{% endunless -%}
     </title>
 
     {% if page_description %}

@@ -1,0 +1,788 @@
+{%- comment -%}
+  Health Score 360 scrollytelling section.
+
+  The section is several screens tall; inside it a one-screen stage stays
+  stuck to the viewport (position: sticky) while the scroll position drives a
+  GSAP timeline: overview -> Weight (both waists) -> Sexual Wellness (him) ->
+  Period Care (her) -> back to the overview, then the page scrolls on.
+
+  The photo is clean; the dots, lines and cards are HTML/SVG on top, so they
+  can fade one at a time and be moved from the theme editor (x/y in percent
+  of the photo). Without GSAP, or with "reduce motion" on, it renders as a
+  plain photo with the three cards underneath.
+{%- endcomment -%}
+
+{%- liquid
+  assign img = section.settings.image
+  assign ar = 1.5
+  if img != blank
+    assign ar = img.aspect_ratio
+  endif
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #hss-{{ section.id }} {
+    --hss-text: #1d1d1d;
+    --hss-muted: #555;
+    position: relative;
+    background: #f6efe7;
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  /* ---- Static layout (no JS / reduced motion) ------------------------- */
+  #hss-{{ section.id }} .hss__stage { position: relative; }
+  #hss-{{ section.id }} .hss__cam { position: relative; width: 100%; }
+  #hss-{{ section.id }} .hss__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  #hss-{{ section.id }} .hss__head {
+    position: absolute;
+    left: 5%;
+    top: 11%;
+    max-width: 29%;
+  }
+  #hss-{{ section.id }} .hss__heading {
+    margin: 0 0 12px;
+    font: 800 clamp(28px, 3.7vw, 58px)/1.05 'Montserrat', sans-serif;
+    color: var(--hss-text);
+    letter-spacing: -.02em;
+  }
+  #hss-{{ section.id }} .hss__sub {
+    margin: 0;
+    font: 400 clamp(14px, 1.3vw, 19px)/1.5 'Montserrat', sans-serif;
+    color: var(--hss-muted);
+  }
+  #hss-{{ section.id }} .hss__cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 24px 6%;
+  }
+  #hss-{{ section.id }} .hss__card {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: 0 10px 30px rgba(29, 29, 29, .08);
+  }
+  /* Fills while the card is held, so every bit of scroll shows progress. */
+  #hss-{{ section.id }} .hss__bar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: var(--hss-accent);
+    transform: scaleX(0); transform-origin: 0 50%;
+  }
+  #hss-{{ section.id }} .hss__num {
+    display: block;
+    font: 300 34px/1 'Montserrat', sans-serif;
+    color: var(--hss-accent);
+    margin-bottom: 10px;
+  }
+  #hss-{{ section.id }} .hss__card h3 {
+    margin: 0 0 6px;
+    font: 700 22px/1.2 'Montserrat', sans-serif;
+    color: var(--hss-text);
+  }
+  #hss-{{ section.id }} .hss__card p {
+    margin: 0;
+    font: 400 15px/1.5 'Montserrat', sans-serif;
+    color: var(--hss-muted);
+  }
+
+  /* Dots stay the same size on screen however far the camera zooms:
+     --s is the camera scale, set by the script. */
+  #hss-{{ section.id }} .hss__dot {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    background: var(--hss-accent);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, .9);
+    transform: scale(calc(1 / var(--s, 1)));
+  }
+  #hss-{{ section.id }} .hss__dot::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 2px solid var(--hss-accent);
+    animation: hss-pulse-{{ section.id }} 1.8s ease-out infinite;
+  }
+  @keyframes hss-pulse-{{ section.id }} {
+    from { transform: scale(1); opacity: .9; }
+    to   { transform: scale(2.6); opacity: 0; }
+  }
+
+  #hss-{{ section.id }} .hss__lines,
+  #hss-{{ section.id }} .hss__scrim,
+  #hss-{{ section.id }} .hss__hint { display: none; }
+
+  /* ---- Live (scroll-driven) layout ------------------------------------ */
+  #hss-{{ section.id }}.is-live { height: 330vh; } /* 230vh of scroll drives the story */
+  #hss-{{ section.id }}.is-live .hss__stage {
+    position: sticky;
+    /* --hss-top: the theme's sticky header height, set by the script, so the
+       stage pins just below it rather than underneath it. */
+    top: var(--hss-top, 0px);
+    height: calc(100vh - var(--hss-top, 0px));
+    height: calc(100svh - var(--hss-top, 0px));
+    overflow: hidden;
+    perspective: 1400px;
+  }
+  #hss-{{ section.id }}.is-live .hss__tilt {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  #hss-{{ section.id }}.is-live .hss__cam {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  #hss-{{ section.id }}.is-live .hss__lines {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+  #hss-{{ section.id }}.is-live .hss__lines line {
+    stroke: var(--hss-text);
+    stroke-width: 1.2;
+  }
+  /* Calms the photo behind whichever card is showing, so a face under the
+     card does not fight with the text. Faded in and out by the script. */
+  #hss-{{ section.id }}.is-live .hss__scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(90deg, rgba(246, 239, 231, .92) 0%, rgba(246, 239, 231, .75) 30%, rgba(246, 239, 231, 0) 50%);
+  }
+  #hss-{{ section.id }}.is-live .hss__head { z-index: 3; }
+  #hss-{{ section.id }}.is-live .hss__cards { padding: 0; display: block; }
+  #hss-{{ section.id }}.is-live .hss__card {
+    position: absolute;
+    z-index: 3;
+    left: 6%;
+    top: 50%;
+    width: min(360px, 30vw);
+    margin-top: -90px;
+    padding: 26px 28px;
+    background: rgba(255, 255, 255, .94);
+    opacity: 0;
+    visibility: hidden;
+  }
+  #hss-{{ section.id }}.is-live .hss__card--right { left: auto; right: 6%; }
+  #hss-{{ section.id }}.is-live .hss__scrim--right { transform: scaleX(-1); }
+  #hss-{{ section.id }}.is-live .hss__num { font-size: 44px; }
+  #hss-{{ section.id }}.is-live .hss__card h3 { font-size: 26px; }
+  /* Legibility over the photo: a soft glow of the wall colour behind the
+     heading block (fades out, no box edge), darker text, and a light pill
+     behind the scroll hint. */
+  #hss-{{ section.id }}.is-live .hss__head { isolation: isolate; }
+  #hss-{{ section.id }}.is-live .hss__head::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -60px -90px -70px -140px;
+    background: radial-gradient(ellipse at 40% 50%, rgba(248, 243, 237, .92) 0%, rgba(248, 243, 237, .75) 40%, rgba(248, 243, 237, 0) 72%);
+    pointer-events: none;
+  }
+  #hss-{{ section.id }}.is-live .hss__sub { color: #3a3a3a; font-weight: 500; }
+  /* Scroll hint: one slim pill, the word and a small bouncing chevron. */
+  #hss-{{ section.id }}.is-live .hss__hint.hss__hint {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px 8px 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .78);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    box-shadow: 0 2px 10px rgba(29, 29, 29, .08);
+    color: #3a3a3a;
+    font-size: 10.5px;
+  }
+  #hss-{{ section.id }}.is-live .hss__hint.hss__hint::after {
+    width: 6px; height: 6px; margin: -3px 0 0;
+    background: none;
+    border-right: 1.6px solid #3a3a3a; border-bottom: 1.6px solid #3a3a3a;
+    transform: rotate(45deg);
+    animation: hss-chev-{{ section.id }} 1.6s ease-in-out infinite;
+  }
+  @keyframes hss-chev-{{ section.id }} {
+    0%, 100% { transform: translateY(0) rotate(45deg); opacity: 1; }
+    50% { transform: translateY(3px) rotate(45deg); opacity: .5; }
+  }
+  @media (prefers-reduced-motion: reduce) { #hss-{{ section.id }}.is-live .hss__hint.hss__hint::after { animation: none; } }
+  #hss-{{ section.id }}.is-live .hss__hint {
+    display: block;
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    font: 600 11px/1 'Montserrat', sans-serif;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--hss-muted);
+  }
+  #hss-{{ section.id }}.is-live .hss__hint::after {
+    content: "";
+    display: block;
+    width: 1px;
+    height: 26px;
+    margin: 8px auto 0;
+    background: var(--hss-muted);
+    animation: hss-hint-{{ section.id }} 1.6s ease-in-out infinite;
+    transform-origin: top;
+  }
+  @keyframes hss-hint-{{ section.id }} {
+    0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(0); transform-origin: bottom; }
+  }
+
+  /* ---- Mobile --------------------------------------------------------- */
+  @media (max-width: 749px) {
+    #hss-{{ section.id }} .hss__head { position: static; max-width: none; padding: 32px 16px 20px; }
+    #hss-{{ section.id }} .hss__cards { grid-template-columns: 1fr; padding: 20px 16px 32px; }
+    #hss-{{ section.id }}.is-live { height: 300vh; }
+    #hss-{{ section.id }}.is-live .hss__stage { background: linear-gradient(180deg, #dcd0c4 0%, #e6dbd0 50%, #d9c9b9 100%); }
+    #hss-{{ section.id }}.is-live .hss__img {
+      -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+      mask-image: linear-gradient(180deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+    }
+    #hss-{{ section.id }}.is-live .hss__head { position: absolute; left: 0; right: 0; top: 0; padding: 28px 18px 0; }
+    /* Top, not bottom: the bottom corners belong to the floating video
+       bubble and the chat button, which covered the card there. */
+    #hss-{{ section.id }}.is-live .hss__card {
+      left: 16px;
+      right: 16px;
+      top: 14px;
+      bottom: auto;
+      width: auto;
+      margin: 0;
+      padding: 18px 20px;
+    }
+    #hss-{{ section.id }}.is-live .hss__card--right { left: 16px; right: 16px; }
+    #hss-{{ section.id }}.is-live .hss__scrim--right { transform: none; }
+    #hss-{{ section.id }}.is-live .hss__scrim { background: linear-gradient(180deg, rgba(246, 239, 231, .92) 0%, rgba(246, 239, 231, 0) 34%); }
+    #hss-{{ section.id }}.is-live .hss__num { font-size: 30px; margin-bottom: 6px; }
+    #hss-{{ section.id }}.is-live .hss__card h3 { font-size: 21px; }
+    #hss-{{ section.id }}.is-live .hss__card p { font-size: 14px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #hss-{{ section.id }} .hss__dot::after { animation: none; }
+  }
+  /* Big screens: bigger heading and cards (no zoom here, the camera maths
+     reads real pixel sizes). */
+  @media (min-width: 1920px) {
+    #hss-{{ section.id }} .hss__heading { font-size: clamp(58px, 3.4vw, 120px); }
+    #hss-{{ section.id }} .hss__sub { font-size: clamp(19px, 1.05vw, 34px); }
+    #hss-{{ section.id }}.is-live .hss__card { width: min(26vw, 760px); padding: clamp(26px, 1.6vw, 52px) clamp(28px, 1.8vw, 56px); margin-top: calc(-1 * clamp(90px, 5vw, 170px)); border-radius: clamp(14px, .8vw, 26px); }
+    #hss-{{ section.id }}.is-live .hss__num { font-size: clamp(44px, 2.4vw, 84px); }
+    #hss-{{ section.id }}.is-live .hss__card h3 { font-size: clamp(26px, 1.45vw, 50px); }
+    #hss-{{ section.id }}.is-live .hss__card p { font-size: clamp(15px, .85vw, 28px); }
+    #hss-{{ section.id }} .hss__dot { width: clamp(14px, .7vw, 26px); height: clamp(14px, .7vw, 26px); margin: calc(-1 * clamp(7px, .35vw, 13px)) 0 0 calc(-1 * clamp(7px, .35vw, 13px)); }
+  }
+
+  /* Lenis base CSS. The theme sets scroll-behavior: smooth on <html>, which
+     fights Lenis (both smoothing the same scroll), so it is off while Lenis
+     runs. Lenis' usual '.lenis-stopped { overflow: hidden }' is left out on
+     purpose: the lead popup already locks <body>, and hiding <html> as well
+     turns <body> into its own scroll box, which unsticks this stage. */
+  html.lenis, html.lenis body { height: auto; }
+  html.lenis { scroll-behavior: auto !important; }
+  .lenis [data-lenis-prevent] { overscroll-behavior: contain; }
+</style>
+
+<section
+  id="hss-{{ section.id }}"
+  class="hss"
+  data-hss
+  data-ar="{{ ar }}"
+  data-intro-top="{{ section.settings.intro_top | default: 23 }}"
+  data-eyes="{{ section.settings.eyes_him | default: 34 }},{{ section.settings.eyes_her | default: 38 }}"
+  style="--hss-accent: {{ section.settings.accent_color }};"
+>
+  <div class="hss__stage">
+    <div class="hss__tilt">
+      <div class="hss__cam" style="aspect-ratio: {{ ar }};">
+        {%- if img != blank -%}
+          <img
+            class="hss__img"
+            src="{{ img | image_url: width: 1600 }}"
+            srcset="{{ img | image_url: width: 900 }} 900w,
+                    {{ img | image_url: width: 1600 }} 1600w,
+                    {{ img | image_url: width: 2400 }} 2400w,
+                    {{ img | image_url: width: 3200 }} 3200w"
+            sizes="(max-width: 749px) 250vw, 150vw"
+            alt="{{ img.alt | default: 'A man and a woman, the two people Health Score 360 is made for' | escape }}"
+            {% if section.index <= 2 %}loading="eager" fetchpriority="high"{% else %}loading="lazy"{% endif %}
+            decoding="async"
+            width="{{ img.width }}"
+            height="{{ img.height }}"
+          >
+        {%- else -%}
+          {%- comment -%} Packaged photo when no Photo is picked: 4K 3:2 (3840x2560), AI upscale blended 55/45 with the original plus fine grain so skin keeps its real texture. {%- endcomment -%}
+          <img
+            class="hss__img"
+            src="{{ 'hs360-couple-v3-4k.webp' | asset_url }}"
+            alt="A man and a woman, the two people Health Score 360 is made for"
+            {% if section.index <= 2 %}loading="eager" fetchpriority="high"{% else %}loading="lazy"{% endif %}
+            decoding="async"
+            width="3840"
+            height="2560"
+          >
+        {%- endif -%}
+
+        <span class="hss__dot" data-for="w" style="left: {{ section.settings.w_x }}%; top: {{ section.settings.w_y }}%;"></span>
+        <span class="hss__dot" data-for="w" style="left: {{ section.settings.w_x2 }}%; top: {{ section.settings.w_y2 }}%;"></span>
+        <span class="hss__dot" data-for="s" style="left: {{ section.settings.s_x }}%; top: {{ section.settings.s_y }}%;"></span>
+        <span class="hss__dot" data-for="p" style="left: {{ section.settings.p_x }}%; top: {{ section.settings.p_y }}%;"></span>
+      </div>
+    </div>
+
+    <div class="hss__scrim" aria-hidden="true"></div>
+    <svg class="hss__lines" aria-hidden="true"></svg>
+
+    <div class="hss__head">
+      <h2 class="hss__heading">{{ section.settings.heading }}</h2>
+      {%- if section.settings.subheading != blank -%}
+        <p class="hss__sub">{{ section.settings.subheading }}</p>
+      {%- endif -%}
+    </div>
+
+    <div class="hss__cards">
+      <div class="hss__card" data-card="w">
+        <span class="hss__num">01</span>
+        <h3>{{ section.settings.w_title }}</h3>
+        <p>{{ section.settings.w_text }}</p>
+      </div>
+      <div class="hss__card hss__card--right" data-card="s">
+        <span class="hss__num">02</span>
+        <h3>{{ section.settings.s_title }}</h3>
+        <p>{{ section.settings.s_text }}</p>
+      </div>
+      <div class="hss__card" data-card="p">
+        <span class="hss__num">03</span>
+        <h3>{{ section.settings.p_title }}</h3>
+        <p>{{ section.settings.p_text }}</p>
+      </div>
+    </div>
+
+    <div class="hss__hint" aria-hidden="true">Scroll</div>
+  </div>
+</section>
+
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js" defer></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    var root = document.getElementById('hss-{{ section.id }}');
+    if (!root || root.dataset.hssBooted === '1') return;
+    if (!window.gsap || !window.ScrollTrigger) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    root.dataset.hssBooted = '1';
+    gsap.registerPlugin(ScrollTrigger);
+    root.classList.add('is-live');
+
+    /* Smooth wheel scrolling. A mouse wheel moves the page in ~100px jumps,
+       which made the scrubbed animation stutter (and, with scrub lag, drift
+       out of step with the page). Lenis turns the wheel into one continuous
+       glide and drives ScrollTrigger from GSAP's own ticker. Touch scrolling
+       is left native. One instance per page, shared if another section
+       already made it. */
+    var lenis = window.sehatLenis;
+    if (!lenis && window.Lenis) {
+      // wheelMultiplier: each wheel scroll travels 1.6x the browser default;
+      // lerp .13: smooth glide, but responsive enough not to feel floaty.
+      // virtualScroll runs every wheel input past the 'governors' sections
+      // register (below), so a section can cap how fast the page moves through it.
+      var govs = window.sehatScrollGovs = window.sehatScrollGovs || [];
+      lenis = window.sehatLenis = new Lenis({
+        lerp: .13, wheelMultiplier: 1.6, allowNestedScroll: true,
+        virtualScroll: function (d) { for (var i = 0; i < govs.length; i++) govs[i](d); }
+      });
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
+      gsap.ticker.lagSmoothing(0);
+      // The lead popup locks the page with body overflow: hidden, which does
+      // not stop programmatic scrolling, so Lenis would scroll the page behind
+      // it. Pause Lenis whenever the body is locked.
+      new MutationObserver(function () {
+        if (document.body.style.overflow === 'hidden') lenis.stop(); else lenis.start();
+      }).observe(document.body, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    var AR = parseFloat(root.dataset.ar) || 1.5;
+    // Eye line of each person in the photo (fraction of its height). Framing is
+    // full bleed and may crop hair, foreheads or legs like a film close-up,
+    // but never through the eyes: each shot keeps a little forehead above them.
+    var EYES = (root.dataset.eyes || '24,32').split(',').map(function (v) { return parseFloat(v) / 100; });
+    var BROW = .06;   // how much of the face above the eyes stays in frame
+    var HIM_TOP = EYES[0] - BROW, HER_TOP = EYES[1] - BROW;
+    var INTRO_TOP = (parseFloat(root.dataset.introTop) || 0) / 100;
+    // How far each card's slow push-in goes (fraction of the visible width).
+    var PUSH = .95;
+    var stage = root.querySelector('.hss__stage');
+    var tilt = root.querySelector('.hss__tilt');
+    var cam = root.querySelector('.hss__cam');
+    var svg = root.querySelector('.hss__lines');
+    var head = root.querySelector('.hss__head');
+    var hint = root.querySelector('.hss__hint');
+    var scrim = root.querySelector('.hss__scrim');
+    var cards = {};
+    root.querySelectorAll('[data-card]').forEach(function (c) { cards[c.dataset.card] = c; });
+    var dots = { w: [], s: [], p: [] };
+    root.querySelectorAll('.hss__dot').forEach(function (d) { dots[d.dataset.for].push(d); });
+
+    /* Layout is measured once (and on resize / ScrollTrigger refresh), never
+       inside the animation loop: reading sizes right after writing transforms
+       forces a synchronous layout every frame, which is what makes scroll
+       animations stutter on mid-range phones. */
+    var L = {};
+    var header = document.querySelector('.section-header');
+    function measure() {
+      var hp = header ? getComputedStyle(header).position : '';
+      // offsetHeight, not the header's on-screen bottom: at the top of the page an
+      // announcement bar sits above it, but once stuck the header is all that remains.
+      L.top = (hp === 'sticky' || hp === 'fixed') ? header.offsetHeight : 0;
+      root.style.setProperty('--hss-top', L.top + 'px');
+      L.vw = stage.clientWidth; L.vh = stage.clientHeight; L.m = L.vw < 750;
+      // The photo is laid out at the size of the deepest zoom and only ever
+      // scaled DOWN. Scaling a layer up stretches its already-drawn pixels
+      // (blurry); scaling down from a larger drawing stays sharp.
+      var sh = shots(), zmin = Math.min(sh.all.z, sh.w.z, sh.s.z, sh.p.z) * PUSH;
+      L.full = L.m ? L.vw / zmin : Math.max(L.vw / zmin, L.vh * AR);
+      // Cap the drawing at ~4096 real pixels wide: the photo has fewer than
+      // that, so a bigger drawing adds no detail, only graphics memory.
+      var base = L.m ? L.vw : Math.max(L.vw, L.vh * AR);
+      L.full = Math.max(base, Math.min(L.full, 4096 / (window.devicePixelRatio || 1)));
+      L.cards = {};
+      Object.keys(cards).forEach(function (k) {
+        var c = cards[k];
+        L.cards[k] = { x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight, right: c.classList.contains('hss__card--right') };
+      });
+    }
+    function mobile() { return L.m; }
+    function dotPos(d) { return { x: parseFloat(d.style.left) / 100, y: parseFloat(d.style.top) / 100 }; }
+    function mid(list) {
+      var a = list.map(dotPos);
+      return { x: a.reduce(function (s, p) { return s + p.x; }, 0) / a.length, y: a.reduce(function (s, p) { return s + p.y; }, 0) / a.length };
+    }
+
+    /* A camera state: which point of the photo (x, y in 0..1) sits at the
+       stage's focus spot, how much of the photo's width is visible (z), a
+       small 3D tilt (r, in degrees), and the band that must stay on screen on
+       desktop: from t (just above the eyes) down to b (just below the dots). */
+    function shots() {
+      var m = mobile();
+      var w = mid(dots.w), s = dotPos(dots.s[0]), p = dotPos(dots.p[0]);
+      var wLow = Math.max.apply(null, dots.w.map(function (d) { return dotPos(d).y; }));
+      var top = Math.min(HIM_TOP, HER_TOP);
+      return {
+        // fx: where the subject sits across the screen on desktop, opposite
+        // the side its card is on.
+        // Desktop overview: the top of the screen sits intro_top % down the
+        // photo (the setting), so a short screen shows heads with room above
+        // and a taller one simply shows more below. k = 0: no framing rules.
+        all: m ? { x: .51, y: .5, z: .52, r: 0, fx: .5, t: top, b: top, k: 0 }
+               : { x: .5, y: INTRO_TOP + (L.vh * .5) / (Math.max(L.vw, L.vh * AR) / AR), z: 1, r: 0, fx: .5, t: top, b: top, k: 0 },
+        w: { x: w.x, y: w.y - .16, z: m ? .5 : .74, r: 0, fx: .62, t: top, b: wLow + .05, k: 1 },
+        s: { x: s.x, y: s.y - (m ? .04 : .1), z: m ? .36 : .5, r: 5, fx: .36, t: HIM_TOP, b: s.y + .05, k: 1 },
+        p: { x: p.x, y: p.y - (m ? .2 : .22), z: m ? .36 : .74, r: -5, fx: .64, t: HER_TOP, b: p.y + .05, k: 1 }
+      };
+    }
+
+    measure();
+    var camState = Object.assign({}, shots().all);
+
+    function render() {
+      var vw = L.vw, vh = L.vh, m = L.m;
+      // Desktop: the photo always covers the stage. Phone: a tall screen would
+      // crop a landscape photo down to one person, so the photo keeps its width
+      // and floats between the heading and the card, fading into the wall colour.
+      var full = L.full;
+      if (cam._w !== full) { cam._w = full; cam.style.width = full + 'px'; }
+      // Desktop: a short, wide screen cannot show a deep zoom from eyes to
+      // dots, so the zoom eases off just enough for that band to fit.
+      var PAD = 14, span = camState.b - camState.t, z = camState.z;
+      var k = camState.k == null ? 1 : camState.k;
+      if (!m && span > 0) z += k * Math.max(0, vw * span / ((vh - 2 * PAD) * AR) - z);
+      var W = m ? vw / z : Math.max(vw / z, vh * AR), H = W / AR, s = W / full;
+      var fx = vw * (m ? .5 : camState.fx), fy = vh * (m ? .58 : .5);
+      var x = Math.min(0, Math.max(vw - W, fx - camState.x * W));
+      var y = fy - camState.y * H;
+      if (!m) {
+        var y0 = y;
+        y = Math.max(y, vh - PAD - camState.b * H);   // the dots stay above the bottom edge
+        y = Math.min(y, PAD - camState.t * H);         // the eyes stay below the top edge
+        y = y0 + k * (y - y0);
+      }
+      y = H >= vh ? Math.min(0, Math.max(vh - H, y)) : Math.max(0, Math.min(vh - H, y));
+      cam.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) scale(' + s + ')';
+      cam.style.setProperty('--s', s);
+      tilt.style.transform = 'rotateY(' + camState.r + 'deg)';
+      drawLines(x, y, W, H);
+    }
+
+    // One thin line from each visible card to each of its dots. The <line>
+    // elements are made once; each frame only moves their endpoints.
+    var NS = 'http://www.w3.org/2000/svg', lines = [];
+    Object.keys(dots).forEach(function (k) {
+      dots[k].forEach(function (d) {
+        var ln = document.createElementNS(NS, 'line');
+        ln.setAttribute('opacity', '0');
+        svg.appendChild(ln);
+        lines.push({ k: k, el: ln, p: dotPos(d), shown: false });
+      });
+    });
+    // Where a point of the tilted layer lands on screen: rotateY(r) about the
+    // stage centre, seen through the stage's 1400px perspective.
+    function project(X, Y) {
+      var cx = L.vw / 2, cy = L.vh / 2, a = camState.r * Math.PI / 180;
+      var dx = X - cx, z = -dx * Math.sin(a), f = 1400 / (1400 - z);
+      return [cx + dx * Math.cos(a) * f, cy + (Y - cy) * f];
+    }
+    function drawLines(camX, camY, W, H) {
+      lines.forEach(function (ln) {
+        var card = cards[ln.k], op = parseFloat(card.style.opacity) || 0, t = draw[ln.k];
+        if (op < .02 || t < .01) {
+          if (ln.shown) { ln.el.setAttribute('opacity', '0'); ln.shown = false; }
+          return;
+        }
+        var c = L.cards[ln.k], sc = gsap.getProperty(card, 'scale'), cy = gsap.getProperty(card, 'y');
+        var ax = L.m ? c.x + c.w / 2 : (c.right ? c.x + c.w / 2 * (1 - sc) : c.x + c.w / 2 * (1 + sc));
+        var ay = L.m ? c.y + c.h / 2 * (1 + sc) + cy : c.y + c.h / 2 + cy;
+        var d = project(camX + ln.p.x * W, camY + ln.p.y * H);
+        ln.el.setAttribute('x1', d[0] + (ax - d[0]) * t);
+        ln.el.setAttribute('y1', d[1] + (ay - d[1]) * t);
+        ln.el.setAttribute('x2', d[0]);
+        ln.el.setAttribute('y2', d[1]);
+        ln.el.setAttribute('opacity', op);
+        ln.shown = true;
+      });
+    }
+
+    function shot(key) {
+      return {
+        x: function () { return shots()[key].x; },
+        y: function () { return shots()[key].y; },
+        z: function () { return shots()[key].z; },
+        r: function () { return shots()[key].r; },
+        fx: function () { return shots()[key].fx; },
+        t: function () { return shots()[key].t; },
+        b: function () { return shots()[key].b; },
+        k: function () { return shots()[key].k; }
+      };
+    }
+    var draw = { w: 0, s: 0, p: 0 };
+    var cardOut = { autoAlpha: 0, y: -28, scale: .98, filter: 'blur(8px)', duration: .45, ease: 'power2.in' };
+    // Adds one card's arrival at time t: card, then its lines, then its text.
+    function arrive(k, t) {
+      tl.fromTo(cards[k], { autoAlpha: 0, y: 36, scale: .96, filter: 'blur(10px)' },
+                          { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .5, ease: 'power3.out' }, t);
+      tl.fromTo(cards[k].querySelectorAll('.hss__num, h3, p'), { autoAlpha: 0, y: 14 },
+                { autoAlpha: 1, y: 0, duration: .35, stagger: .07, ease: 'power2.out' }, t + .12);
+      var o = {}; o[k] = 1;
+      tl.to(draw, Object.assign({ duration: .45, ease: 'power2.inOut' }, o), t + .15);
+    }
+    function leave(k, t) {
+      var o = {}; o[k] = 0;
+      tl.to(draw, Object.assign({ duration: .3, ease: 'power2.in' }, o), t);
+      tl.to(cards[k], cardOut, t + .05);
+    }
+    var allDots = root.querySelectorAll('.hss__dot');
+    function focusDots(key) { return { opacity: function (i, el) { return el.dataset.for === key ? 1 : .2; }, duration: .4 }; }
+
+    gsap.set(Object.values(cards), { autoAlpha: 0 });
+
+    var tl = gsap.timeline({
+      defaults: { ease: 'power2.inOut' },
+      onUpdate: render,
+      scrollTrigger: {
+        trigger: root,
+        start: function () { return 'top ' + (L.top || 0) + 'px'; },
+        end: 'bottom bottom',
+        // A short trail behind the scroll: silky, but still under the finger.
+        scrub: .35,
+        invalidateOnRefresh: true
+      }
+    });
+
+    // Each step: camera moves (.9), card arrives (.5), is held to be read
+    // (HOLD), leaves. The hold used to be ~.35 of a 1.45 step, so 01-02-03
+    // flicked past; now each card sits still for most of its step.
+    // O holds the overview once the stage pins, so Weight lands on the same
+    // beat as the steps after it instead of arriving early.
+    var O = .3, HOLD = 1.6, ARRIVE = .3, STEP = ARRIVE + HOLD + .1;
+    function camT(i) { return O + .2 + i * STEP; }    // camera starts moving to step i
+    function inT(i) { return camT(i) + ARRIVE; }           // card i arrives
+    function outT(i) { return inT(i) + HOLD; }        // card i leaves
+    tl.to({}, { duration: .2 })                                                   // overview beat
+      .to(camState, { z: function () { return shots().all.z * .97; }, duration: O + .2, ease: 'none' }, 0) // slow push-in, so the first scroll moves too
+      .to(head, { y: -10, duration: O + .2, ease: 'none' }, 0)                     // heading drifts up as the story starts
+      .to(hint, { autoAlpha: 0, duration: .2 }, O + .1)
+      .to(head, { autoAlpha: 0, y: -20, duration: .35 }, O + .2)
+      .to(camState, Object.assign({ duration: .9 }, shot('w')), camT(0))
+      .to(allDots, focusDots('w'), camT(0) + .2)
+      .to(scrim, { opacity: 1, duration: .35 }, O + .6)
+
+      .to(camState, Object.assign({ duration: .9 }, shot('s')), camT(1))
+      .to(allDots, focusDots('s'), camT(1) + .2)
+      .set(scrim, { className: 'hss__scrim hss__scrim--right' }, camT(1) + .25)
+
+      .to(camState, Object.assign({ duration: .9 }, shot('p')), camT(2))
+      .to(allDots, focusDots('p'), camT(2) + .2)
+      .set(scrim, { className: 'hss__scrim' }, camT(2) + .25)
+
+      .to(camState, Object.assign({ duration: .9 }, shot('all')), camT(3))
+      .to(scrim, { opacity: 0, duration: .35 }, camT(3))
+      .to(allDots, { opacity: 1, duration: .35 }, camT(3) + .35)
+      .to(head, { autoAlpha: 1, y: 0, duration: .35 }, camT(3) + .5)
+      .to({}, { duration: .2 });                                                  // settle before the page moves on
+    arrive('w', inT(0)); leave('w', outT(0));
+    arrive('s', inT(1)); leave('s', outT(1));
+    arrive('p', inT(2)); leave('p', outT(2));
+
+    // While a card is held something keeps moving with the scroll, so no
+    // scroll ever looks dead: the camera pushes slowly in on the person, the
+    // card drifts up a touch and its line fills. Each runs from the end of the
+    // camera move to the start of the next one, so motion never stops.
+    ['w', 's', 'p'].forEach(function (k, i) {
+      var from = camT(i) + .9, to = camT(i + 1);
+      var bar = document.createElement('span');
+      bar.className = 'hss__bar'; bar.setAttribute('aria-hidden', 'true');
+      cards[k].appendChild(bar);
+      tl.to(camState, { z: function () { return shots()[k].z * PUSH; }, duration: to - from, ease: 'none' }, from)
+        .to(cards[k], { y: -18, duration: outT(i) - (inT(i) + .5), ease: 'none' }, inT(i) + .5)
+        .fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: outT(i) - (inT(i) + .5), ease: 'none' }, inT(i) + .5);
+    });
+
+    /* ---- Scroll-linked, Apple style ---------------------------------------
+       Every bit of scroll moves the story by that much, forwards or back, so
+       the visitor's own finger drives it. The only help: if they stop mid-
+       transition, it eases to the nearest card, so none is left half-faded.
+       That settle never fights the visitor; any new scroll or touch wins. */
+    var st = tl.scrollTrigger;
+
+    /* Speed limit through the story (the 'weight' Apple's sections have). A
+       hard wheel flick used to cross the whole section in ~20 frames, so a
+       fast visitor saw almost nothing. Here the smooth scroll may never run
+       more than 150px ahead of where the page is, which caps it at ~900px/s
+       inside the story: normal scrolling is untouched (a wheel click is
+       ~160px and is let through), only racing is slowed to watchable. */
+    // 150 (~900px/s) felt like slow motion to a fast scroller; 300 at lerp .13
+    // is ~2400px/s: racing stays fast, only the most extreme flicks are trimmed.
+    var MAX_AHEAD = 300;
+    (window.sehatScrollGovs || []).push(function (d) {
+      if (!lenis) return;
+      var y = lenis.animatedScroll;
+      if (y < st.start || y > st.end - 1) return;          // only while pinned
+      // A fast scroll arrives with the target already far past the section.
+      // Clamping only the new input would let it coast through on that lead,
+      // so the delta may go negative: it pulls the target back to the cap.
+      var ahead = lenis.targetScroll - y;
+      if (d.deltaY > 0) d.deltaY = Math.min(d.deltaY, MAX_AHEAD - ahead);
+      else d.deltaY = Math.max(d.deltaY, -MAX_AHEAD - ahead);
+    });
+    // Places the story may rest: the overview, each card's hold, the end.
+    // Stopping inside one leaves it there (the scroll is the visitor's);
+    // stopping mid-transition (a card half faded) eases to the nearest edge.
+    var rests = [[0, 0], [inT(0) + .5, outT(0)], [inT(1) + .5, outT(1)], [inT(2) + .5, outT(2)], [tl.duration() - .15, tl.duration()]];
+    function stopY(t) { return st.start + (t / tl.duration()) * (st.end - st.start); }
+    var settling = false;
+    if (lenis) {
+      ScrollTrigger.addEventListener('scrollEnd', function () {
+        var y = window.scrollY;
+        if (settling || y <= st.start + 2 || y >= st.end - 2 || document.body.style.overflow === 'hidden') return;
+        var best = null;
+        for (var r = 0; r < rests.length; r++) {
+          var a = stopY(rests[r][0]), b = stopY(rests[r][1]);
+          if (y >= a - 2 && y <= b + 2) return;               // resting place: leave it
+          [a, b].forEach(function (sy) { if (best === null || Math.abs(sy - y) < Math.abs(best - y)) best = sy; });
+        }
+        if (Math.abs(best - y) < 6) return;
+        settling = true;
+        lenis.scrollTo(best, {
+          duration: .8,
+          easing: function (t) { return 1 - Math.pow(1 - t, 3); },
+          onComplete: function () { settling = false; }
+        });
+      });
+      // A finger landing on the screen takes over from the settle at once.
+      window.addEventListener('touchstart', function () {
+        if (settling) { settling = false; lenis.scrollTo(window.scrollY, { immediate: true, force: true }); }
+      }, { passive: true });
+    }
+
+    measure();
+    render();
+    window.addEventListener('resize', function () { measure(); render(); });
+    ScrollTrigger.addEventListener('refresh', function () { measure(); render(); });
+    var img = cam.querySelector('img');
+    if (img && !img.complete) img.addEventListener('load', function () { ScrollTrigger.refresh(); });
+
+    // Keep trigger positions right while the page above/below is still
+    // loading ('load' never fires on this page, so ScrollTrigger's own
+    // re-measure never runs). One shared watcher per page, debounced.
+    if ('ResizeObserver' in window && !window.sehatRefreshWatch) {
+      var lastH = 0, rt = null;
+      window.sehatRefreshWatch = new ResizeObserver(function () {
+        var h = document.body.scrollHeight;
+        if (Math.abs(h - lastH) < 2) return;
+        lastH = h; clearTimeout(rt);
+        rt = setTimeout(function () { ScrollTrigger.refresh(); }, 400);
+      });
+      window.sehatRefreshWatch.observe(document.body);
+    }
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Health Score scroll story",
+  "tag": "div",
+  "class": "section-health-score-scroll",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Photo",
+      "info": "Optional. A packaged photo is built in. If you replace it, use a clean landscape photo with no text, and re-place the dots below."
+    },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What Is Health Score 360?" },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "One check that reads your whole body, not just one symptom" },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" },
+    { "type": "header", "content": "01 Weight" },
+    { "type": "text", "id": "w_title", "label": "Title", "default": "Weight" },
+    { "type": "textarea", "id": "w_text", "label": "Text", "default": "Metabolism, energy and weight patterns" },
+    { "type": "range", "id": "intro_top", "label": "Opening view: where the photo starts (%)", "info": "How far down the photo the top of the screen sits in the opening view. Lower = more room above the heads.", "min": 0, "max": 40, "step": 1, "default": 23 },
+    { "type": "range", "id": "eyes_him", "label": "His eye line, down the photo (%)", "info": "Shots may crop hair or legs but never the eyes. Re-measure when the photo changes.", "min": 0, "max": 80, "step": 1, "default": 34 },
+    { "type": "range", "id": "eyes_her", "label": "Her eye line, down the photo (%)", "min": 0, "max": 80, "step": 1, "default": 38 },
+    { "type": "range", "id": "w_x", "label": "Dot on her, across (%)", "min": 0, "max": 100, "step": 1, "default": 42 },
+    { "type": "range", "id": "w_y", "label": "Dot on her, down (%)", "min": 0, "max": 100, "step": 1, "default": 66 },
+    { "type": "range", "id": "w_x2", "label": "Dot on him, across (%)", "min": 0, "max": 100, "step": 1, "default": 59 },
+    { "type": "range", "id": "w_y2", "label": "Dot on him, down (%)", "min": 0, "max": 100, "step": 1, "default": 64 },
+    { "type": "header", "content": "02 Sexual Wellness" },
+    { "type": "text", "id": "s_title", "label": "Title", "default": "Sexual Wellness" },
+    { "type": "textarea", "id": "s_text", "label": "Text", "default": "Hormones, stamina and performance" },
+    { "type": "range", "id": "s_x", "label": "Dot, across (%)", "min": 0, "max": 100, "step": 1, "default": 58 },
+    { "type": "range", "id": "s_y", "label": "Dot, down (%)", "min": 0, "max": 100, "step": 1, "default": 53 },
+    { "type": "header", "content": "03 Period Care" },
+    { "type": "text", "id": "p_title", "label": "Title", "default": "Period Care" },
+    { "type": "textarea", "id": "p_text", "label": "Text", "default": "Cycle health, PMS and hormonal balance" },
+    { "type": "range", "id": "p_x", "label": "Dot, across (%)", "min": 0, "max": 100, "step": 1, "default": 43 },
+    { "type": "range", "id": "p_y", "label": "Dot, down (%)", "min": 0, "max": 100, "step": 1, "default": 72 }
+  ],
+  "presets": [{ "name": "Health Score scroll story" }]
+}
+{% endschema %}

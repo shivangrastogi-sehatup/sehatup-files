@@ -1,0 +1,669 @@
+{%- comment -%}
+  sehatUP header: sticky bar with the logo, the main menu and search / account /
+  cart. Menu items with sub-links open a panel
+  (tinted teal for "For Him", rose for "For Her") with a person photo and the
+  free-check prompt. Below 1100px the menu moves into a slide-in drawer.
+
+  The wrapper keeps the class "section-header": the scroll story and the phone
+  journey measure it to pin themselves just below the header.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign menu = linklists[s.menu]
+  assign cta_url = s.cta_link | default: '/pages/health-score-360'
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #shopify-section-{{ section.id }} { position: sticky; top: 0; z-index: 40; margin: 0; }
+  #sh-{{ section.id }} {
+    --sh-text: #1d1d1d;
+    --sh-muted: #5c5c5c;
+    --sh-ink: {{ s.accent_color | color_darken: 8 }};
+    --sh-h: 60px;
+    --sh-ease: cubic-bezier(.16, 1, .3, 1);
+    position: relative;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--sh-text);
+  }
+  #sh-{{ section.id }} *, #sh-{{ section.id }} *::before, #sh-{{ section.id }} *::after { box-sizing: border-box; }
+  #sh-{{ section.id }} ul { list-style: none; margin: 0; padding: 0; }
+  #sh-{{ section.id }} a { color: inherit; text-decoration: none; }
+  #sh-{{ section.id }} button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+  /* ---- Bar ------------------------------------------------------------ */
+  #sh-{{ section.id }} .sh__bar {
+    position: relative;
+    z-index: 2;
+    height: var(--sh-h);
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 0 clamp(16px, 3vw, 48px);
+    background: rgba(255, 255, 255, .96);
+    border-bottom: 1px solid transparent;
+    transition: background-color .3s ease, border-color .3s ease, box-shadow .3s ease;
+  }
+  @supports (backdrop-filter: blur(1px)) {
+    #sh-{{ section.id }} .sh__bar { background: rgba(255, 255, 255, .82); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); }
+  }
+  #sh-{{ section.id }}.is-scrolled .sh__bar { border-bottom-color: rgba(29, 29, 29, .07); box-shadow: 0 8px 30px rgba(29, 29, 29, .06); }
+
+  #sh-{{ section.id }} .sh__logo { display: inline-flex; align-items: center; flex: none; }
+  #sh-{{ section.id }} .sh__logo img { width: var(--sh-logo); height: auto; display: block; }
+  #sh-{{ section.id }} .sh__logo-text { font-weight: 800; font-size: 22px; }
+
+  /* ---- Menu ----------------------------------------------------------- */
+  #sh-{{ section.id }} .sh__nav { flex: 1; display: flex; justify-content: center; }
+  #sh-{{ section.id }} .sh__menu { display: flex; align-items: center; gap: 4px; }
+  #sh-{{ section.id }} .sh__item { position: relative; display: flex; align-items: center; }
+  #sh-{{ section.id }} .sh__link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font: 600 14.5px/1 'Montserrat', sans-serif;
+    letter-spacing: .01em;
+    transition: color .2s ease, background-color .2s ease;
+  }
+  #sh-{{ section.id }} .sh__item--parent .sh__link { padding-right: 2px; }
+  /* Underline that grows from the centre. */
+  #sh-{{ section.id }} .sh__link::after {
+    content: "";
+    position: absolute;
+    left: 12px; right: 12px; bottom: 5px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--sh-ink);
+    transform: scaleX(0);
+    transition: transform .35s var(--sh-ease);
+  }
+  #sh-{{ section.id }} .sh__item--parent .sh__link::after { right: 2px; }
+  #sh-{{ section.id }} .sh__link:hover,
+  #sh-{{ section.id }} .sh__link.is-active { color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__link:hover::after,
+  #sh-{{ section.id }} .sh__link.is-active::after { transform: scaleX(1); }
+  #sh-{{ section.id }} .sh__caret {
+    width: 26px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--sh-muted);
+    transition: transform .3s var(--sh-ease), color .2s ease;
+  }
+  #sh-{{ section.id }} .sh__item:hover .sh__caret,
+  #sh-{{ section.id }} .sh__caret[aria-expanded="true"] { color: var(--sh-ink); transform: rotate(180deg); }
+
+  /* ---- Dropdown panel ------------------------------------------------- */
+  #sh-{{ section.id }} .sh__panel {
+    --p1: #ffffff; --p2: #f6f2ef;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    padding-top: 14px; /* hover bridge between the link and the panel */
+    transform: translate(-50%, 8px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .35s var(--sh-ease), visibility 0s linear .25s;
+  }
+  #sh-{{ section.id }} .sh__panel--her { --p1: #fff4f6; --p2: #fbd9e1; }
+  #sh-{{ section.id }} .sh__panel--him { --p1: #f0faf8; --p2: #cdeee9; }
+  #sh-{{ section.id }} .sh__item.is-open .sh__panel {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transform: translate(-50%, 0);
+    transition: opacity .25s ease, transform .35s var(--sh-ease), visibility 0s;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #sh-{{ section.id }} .sh__item--parent:hover .sh__panel {
+      opacity: 1; visibility: visible; pointer-events: auto;
+      transform: translate(-50%, 0);
+      transition: opacity .25s ease .08s, transform .35s var(--sh-ease) .08s, visibility 0s .08s;
+    }
+  }
+  #sh-{{ section.id }} .sh__panel-in {
+    display: flex;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 24px 60px rgba(29, 29, 29, .14), 0 0 0 1px rgba(29, 29, 29, .04);
+  }
+  #sh-{{ section.id }} .sh__panel-links { width: 250px; padding: 12px 8px 10px 10px; display: flex; flex-direction: column; }
+  #sh-{{ section.id }} .sh__eyebrow { margin: 0 0 10px; font: 700 11.5px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--sh-muted); }
+  #sh-{{ section.id }} .sh__panel-links li a {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 12px;
+    margin: 0 -12px;
+    border-radius: 12px;
+    font: 600 15px/1.2 'Montserrat', sans-serif;
+    transition: background-color .2s ease, color .2s ease;
+  }
+  #sh-{{ section.id }} .sh__panel-links li a span { color: var(--sh-ink); opacity: 0; transform: translateX(-6px); transition: opacity .2s ease, transform .3s var(--sh-ease); }
+  #sh-{{ section.id }} .sh__panel-links li a:hover { background: var(--p1); color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__panel-links li a:hover span { opacity: 1; transform: none; }
+  #sh-{{ section.id }} .sh__all {
+    margin-top: auto; padding-top: 14px;
+    font: 700 13px/1 'Montserrat', sans-serif; color: var(--sh-ink) !important;
+    text-decoration: underline !important; text-underline-offset: 4px;
+  }
+  #sh-{{ section.id }} .sh__promo {
+    position: relative;
+    width: 260px;
+    min-height: 250px;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, .8) 0, transparent 55%), linear-gradient(150deg, var(--p1), var(--p2));
+  }
+  #sh-{{ section.id }} .sh__promo-img {
+    position: absolute; right: -6px; top: 10px;
+    height: 112%; width: auto; max-width: none;
+    transition: transform .6s var(--sh-ease);
+    transform-origin: 50% 100%;
+  }
+  #sh-{{ section.id }} .sh__promo:hover .sh__promo-img { transform: scale(1.05); }
+  #sh-{{ section.id }} .sh__promo-txt {
+    position: relative; z-index: 1;
+    margin: 10px; padding: 14px;
+    display: flex; flex-direction: column; gap: 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .92);
+    box-shadow: 0 6px 20px rgba(29, 29, 29, .08);
+    width: calc(100% - 20px);
+  }
+  #sh-{{ section.id }} .sh__promo-k { font: 700 11px/1 'Montserrat', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__promo-h { font: 700 15px/1.3 'Montserrat', sans-serif; }
+  #sh-{{ section.id }} .sh__promo-btn { font: 700 13px/1 'Montserrat', sans-serif; color: var(--sh-ink); }
+
+  /* ---- Right side ----------------------------------------------------- */
+  #sh-{{ section.id }} .sh__tools { display: flex; align-items: center; gap: 4px; flex: none; }
+  #sh-{{ section.id }} .sh__icon {
+    position: relative;
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    transition: background-color .2s ease, color .2s ease;
+  }
+  /* Hover tint only on mouse devices: on phones a tapped icon would keep it. */
+  @media (hover: hover) and (pointer: fine) {
+    #sh-{{ section.id }} .sh__icon:hover { background: #f6f0ec; color: var(--sh-ink); }
+  }
+  #sh-{{ section.id }} .sh__icon[aria-expanded="true"] { background: #f6f0ec; color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__count {
+    position: absolute; top: 5px; right: 3px;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px;
+    background: var(--sh-ink); color: #fff;
+    font: 700 10.5px/1 'Montserrat', sans-serif;
+    box-shadow: 0 0 0 2px #fff;
+  }
+  #sh-{{ section.id }} .sh__burger { display: none; }
+
+  #sh-{{ section.id }} :is(a, button, summary):focus-visible { outline: 2px solid var(--sh-ink); outline-offset: 2px; }
+
+  /* ---- Search bar ----------------------------------------------------- */
+  #sh-{{ section.id }} .sh__search {
+    position: absolute; left: 0; right: 0; top: 100%;
+    padding: 14px clamp(16px, 3vw, 48px) 18px;
+    background: #fff;
+    box-shadow: 0 18px 40px rgba(29, 29, 29, .1);
+    animation: sh-drop-{{ section.id }} .3s var(--sh-ease);
+  }
+  #sh-{{ section.id }} .sh__search[hidden] { display: none; }
+  @keyframes sh-drop-{{ section.id }} { from { opacity: 0; transform: translateY(-8px); } }
+  #sh-{{ section.id }} .sh__search-row { max-width: 780px; margin: 0 auto; display: flex; align-items: center; gap: 8px; }
+  #sh-{{ section.id }} .sh__search-x { flex: none; }
+  #sh-{{ section.id }} .sh__search-form {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 10px;
+    height: 52px; padding: 0 6px 0 18px;
+    border-radius: 999px;
+    background: #faf6f3;
+    border: 1.5px solid #eee4de;
+    color: var(--sh-muted);
+  }
+  #sh-{{ section.id }} .sh__search-form:focus-within { border-color: var(--sh-ink); background: #fff; }
+  #sh-{{ section.id }} .sh__search-form input[type="search"] {
+    flex: 1; min-width: 0; height: 100%;
+    border: 0; outline: 0; background: none; box-shadow: none;
+    font: 500 16px/1 'Montserrat', sans-serif; color: var(--sh-text);
+  }
+  /* One close button is enough: hide the browser's own clear cross. */
+  #sh-{{ section.id }} .sh__search-form input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+  /* Clear-text button, shown once something is typed. */
+  #sh-{{ section.id }} .sh__search-clear {
+    flex: none; width: 26px; height: 26px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #e9e1dc; color: #4a4a4a; transition: background-color .2s ease, color .2s ease;
+  }
+  #sh-{{ section.id }} .sh__search-clear[hidden] { display: none; }
+  #sh-{{ section.id }} .sh__search-clear:hover { background: var(--sh-ink); color: #fff; }
+  #sh-{{ section.id }} .sh__search-go {
+    height: 40px; padding: 0 18px; border-radius: 999px;
+    background: var(--sh-ink); color: #fff; font: 700 13.5px/1 'Montserrat', sans-serif;
+  }
+
+  /* Product suggestions while typing. */
+  #sh-{{ section.id }} .sh__results { max-width: 780px; margin: 0 auto; padding-right: 52px; }
+  #sh-{{ section.id }} .sh__results:empty { display: none; }
+  #sh-{{ section.id }} .sh__results ul { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-top: 14px; }
+  #sh-{{ section.id }} .sh__res {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px; border-radius: 14px;
+    transition: background-color .2s ease;
+  }
+  #sh-{{ section.id }} .sh__res:hover, #sh-{{ section.id }} .sh__res:focus-visible { background: #faf6f3; }
+  #sh-{{ section.id }} .sh__res img { width: 56px; height: 56px; flex: none; border-radius: 10px; object-fit: cover; background: #f4f1ee; }
+  #sh-{{ section.id }} .sh__res-t { font: 600 14px/1.3 'Montserrat', sans-serif; color: var(--sh-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #sh-{{ section.id }} .sh__res-p { display: block; margin-top: 4px; font: 700 13px/1 'Montserrat', sans-serif; color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__res-p s { margin-left: 6px; font-weight: 500; color: #8a8a8a; }
+  #sh-{{ section.id }} .sh__res-none { margin: 16px 4px 0; font: 500 14px/1.4 'Montserrat', sans-serif; color: var(--sh-muted); }
+  #sh-{{ section.id }} .sh__res-all { display: inline-block; margin: 12px 8px 0; font: 700 13.5px/1 'Montserrat', sans-serif; color: var(--sh-ink) !important; text-decoration: underline !important; text-underline-offset: 4px; }
+  @media (max-width: 749px) {
+    #sh-{{ section.id }} .sh__search { padding: 10px 12px 14px; max-height: calc(100vh - var(--sh-h)); overflow-y: auto; }
+    #sh-{{ section.id }} .sh__search-row { gap: 4px; }
+    #sh-{{ section.id }} .sh__search-form { height: 48px; padding-left: 14px; }
+    #sh-{{ section.id }} .sh__search-go { padding: 0 14px; }
+    #sh-{{ section.id }} .sh__results { padding-right: 0; }
+    #sh-{{ section.id }} .sh__results ul { grid-template-columns: 1fr; }
+  }
+
+  /* ---- Drawer (phones / tablets) -------------------------------------- */
+  #sh-{{ section.id }} .sh__drawer {
+    position: fixed; inset: 0 auto 0 0;
+    width: min(88vw, 400px); max-width: none; height: 100%; max-height: none;
+    margin: 0; padding: 0; border: 0;
+    background: #fff; color: var(--sh-text);
+    overflow-y: auto; overscroll-behavior: contain;
+    transform: translateX(-100%);
+    transition: transform .4s var(--sh-ease);
+  }
+  #sh-{{ section.id }} .sh__drawer[open].is-in { transform: none; }
+  #sh-{{ section.id }} .sh__drawer::backdrop { background: rgba(20, 16, 14, 0); transition: background-color .3s ease; }
+  #sh-{{ section.id }} .sh__drawer.is-in::backdrop { background: rgba(20, 16, 14, .45); }
+  #sh-{{ section.id }} .sh__drawer-in { min-height: 100%; display: flex; flex-direction: column; padding: 14px 20px 24px; }
+  #sh-{{ section.id }} .sh__drawer-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  #sh-{{ section.id }} .sh__drawer-top img { width: 130px; height: auto; display: block; }
+  #sh-{{ section.id }} .sh__dcta {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 18px;
+    border-radius: 18px;
+    background: radial-gradient(circle at 85% 20%, rgba(255, 255, 255, .7) 0, transparent 50%), linear-gradient(120deg, #fde2e7, #d9f0ee);
+  }
+  #sh-{{ section.id }} .sh__dcta > span:first-child { display: flex; flex-direction: column; gap: 7px; }
+  #sh-{{ section.id }} .sh__dcta-h { font: 700 17px/1.3 'Montserrat', sans-serif; }
+  #sh-{{ section.id }} .sh__dcta-go {
+    flex: none; width: 40px; height: 40px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--sh-ink); color: #fff; font-size: 18px;
+  }
+  #sh-{{ section.id }} .sh__dmenu { margin-top: 10px !important; }
+  #sh-{{ section.id }} .sh__dmenu > li { border-bottom: 1px solid #f0e9e4; }
+  #sh-{{ section.id }} .sh__dmenu > li > a,
+  #sh-{{ section.id }} .sh__dmenu summary {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 17px 2px;
+    font: 700 18px/1.2 'Montserrat', sans-serif;
+    list-style: none; cursor: pointer;
+  }
+  #sh-{{ section.id }} .sh__dmenu summary::-webkit-details-marker { display: none; }
+  #sh-{{ section.id }} .sh__dmenu summary svg { color: var(--sh-muted); transition: transform .3s var(--sh-ease); }
+  #sh-{{ section.id }} .sh__dmenu details[open] summary svg { transform: rotate(180deg); color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__dmenu details ul { padding: 0 0 14px 2px; }
+  #sh-{{ section.id }} .sh__dmenu details li a { display: block; padding: 11px 14px; border-radius: 10px; font: 600 15.5px/1.2 'Montserrat', sans-serif; color: #3a3a3a; }
+  #sh-{{ section.id }} .sh__dmenu details li a:hover { background: #faf6f3; color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__dmenu .sh__dall { color: var(--sh-ink) !important; font-weight: 700 !important; }
+  #sh-{{ section.id }} .sh__dmenu [aria-current="page"] { color: var(--sh-ink); }
+  #sh-{{ section.id }} .sh__dfoot { margin-top: auto; padding-top: 22px; display: flex; flex-wrap: wrap; gap: 10px; }
+  #sh-{{ section.id }} .sh__dfoot a {
+    flex: 1 1 auto; text-align: center;
+    padding: 13px 16px; border-radius: 999px;
+    border: 1.5px solid #eadfd8;
+    font: 700 14px/1 'Montserrat', sans-serif;
+  }
+  #sh-{{ section.id }} .sh__dfoot a:last-child { background: #1d1d1d; border-color: #1d1d1d; color: #fff; }
+
+  /* ---- Breakpoints ---------------------------------------------------- */
+  /* Laptops a notch narrower than the full menu: tighter spacing. */
+  @media (max-width: 1279px) {
+    #sh-{{ section.id }} .sh__bar { gap: 16px; }
+    #sh-{{ section.id }} .sh__link { padding: 0 9px; font-size: 14px; }
+  }
+  /* Under 1100: burger + centred logo, menu in the drawer. */
+  @media (max-width: 1099px) {
+    #sh-{{ section.id }} { --sh-h: 56px; }
+    #sh-{{ section.id }} .sh__bar { gap: 6px; padding: 0 8px; }
+    #sh-{{ section.id }} .sh__nav { display: none; }
+    #sh-{{ section.id }} .sh__burger { display: inline-flex; }
+    #sh-{{ section.id }} .sh__logo { position: absolute; left: 50%; transform: translateX(-50%); }
+    #sh-{{ section.id }} .sh__bar > .sh__logo img { width: min(var(--sh-logo), 128px); }
+    #sh-{{ section.id }} .sh__tools { margin-left: auto; gap: 0; }
+    #sh-{{ section.id }} .sh__account { display: none; }
+  }
+  /* Tablets have room for the account icon. */
+  @media (min-width: 750px) and (max-width: 1099px) {
+    #sh-{{ section.id }} .sh__bar { padding: 0 16px; }
+    #sh-{{ section.id }} .sh__account { display: inline-flex; }
+  }
+
+  /* Big screens follow the page sections, which scale with zoom steps. */
+  @media (min-width: 1920px) { #sh-{{ section.id }} { zoom: 1.12; } }
+  @media (min-width: 2560px) { #sh-{{ section.id }} { zoom: 1.4; } }
+  @media (min-width: 3200px) { #sh-{{ section.id }} { zoom: 1.75; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    #sh-{{ section.id }} *, #sh-{{ section.id }} *::before, #sh-{{ section.id }} *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="sh" id="sh-{{ section.id }}" data-sh style="--sh-accent: {{ s.accent_color }}; --sh-logo: {{ s.logo_width }}px;">
+  <header class="sh__bar" role="banner">
+    <button type="button" class="sh__icon sh__burger" data-sh-open aria-label="Open menu" aria-controls="sh-drawer-{{ section.id }}">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+
+    <a href="{{ routes.root_url }}" class="sh__logo" aria-label="{{ shop.name | escape }} home">
+      {%- if settings.logo != blank -%}
+        {{ settings.logo | image_url: width: 400 | image_tag: alt: shop.name, width: s.logo_width, height: nil, loading: 'eager', fetchpriority: 'high', sizes: '160px', widths: '160, 240, 320, 400' }}
+      {%- else -%}
+        <span class="sh__logo-text">{{ shop.name }}</span>
+      {%- endif -%}
+    </a>
+
+    <nav class="sh__nav" aria-label="Main">
+      <ul class="sh__menu">
+        {%- for link in menu.links -%}
+          {%- liquid
+            assign tone = ''
+            if link.handle contains 'him'
+              assign tone = 'him'
+            elsif link.handle contains 'her'
+              assign tone = 'her'
+            endif
+          -%}
+          <li class="sh__item{% if link.links.size > 0 %} sh__item--parent{% endif %}">
+            <a href="{{ link.url }}" class="sh__link{% if link.active or link.child_active %} is-active{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title }}</a>
+            {%- if link.links.size > 0 -%}
+              <button type="button" class="sh__caret" aria-expanded="false" aria-controls="sh-p-{{ section.id }}-{{ forloop.index }}" aria-label="{{ link.title | escape }} menu">
+                <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div class="sh__panel{% if tone != blank %} sh__panel--{{ tone }}{% endif %}" id="sh-p-{{ section.id }}-{{ forloop.index }}">
+                <div class="sh__panel-in">
+                  <div class="sh__panel-links">
+                    <p class="sh__eyebrow">{{ link.title }}</p>
+                    <ul>
+                      {%- for child in link.links -%}
+                        <li><a href="{{ child.url }}"{% if child.active %} aria-current="page"{% endif %}>{{ child.title }}<span aria-hidden="true">&rarr;</span></a></li>
+                      {%- endfor -%}
+                    </ul>
+                    <a class="sh__all" href="{{ link.url }}">View all {{ link.title }}</a>
+                  </div>
+                  {%- if tone != blank -%}
+                    {%- liquid
+                      if tone == 'him'
+                        assign pimg = s.him_image
+                      else
+                        assign pimg = s.her_image
+                      endif
+                    -%}
+                    <a class="sh__promo" href="{{ cta_url }}">
+                      {%- if pimg != blank -%}
+                        {{ pimg | image_url: width: 500 | image_tag: alt: '', loading: 'lazy', class: 'sh__promo-img', sizes: '220px', widths: '300, 500' }}
+                      {%- endif -%}
+                      <span class="sh__promo-txt">
+                        <span class="sh__promo-k">{{ s.promo_kicker }}</span>
+                        <span class="sh__promo-h">{{ s.promo_heading }}</span>
+                        <span class="sh__promo-btn">{{ s.cta_text }} <span aria-hidden="true">&rarr;</span></span>
+                      </span>
+                    </a>
+                  {%- endif -%}
+                </div>
+              </div>
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+    </nav>
+
+    <div class="sh__tools">
+      <button type="button" class="sh__icon" data-sh-search aria-label="Search" aria-expanded="false" aria-controls="sh-search-{{ section.id }}">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      {%- if shop.customer_accounts_enabled -%}
+        <a class="sh__icon sh__account" href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}" aria-label="{% if customer %}Your account{% else %}Log in{% endif %}">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+      {%- endif -%}
+      <a class="sh__icon sh__cart" href="{{ routes.cart_url }}" id="cart-icon-bubble" aria-label="Cart, {{ cart.item_count }} item{% if cart.item_count != 1 %}s{% endif %}">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8L5 8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        {%- if cart.item_count > 0 -%}<span class="sh__count">{{ cart.item_count }}</span>{%- endif -%}
+      </a>
+    </div>
+  </header>
+
+  <div class="sh__search" id="sh-search-{{ section.id }}" hidden data-suggest-url="{{ routes.predictive_search_url }}.json">
+    <div class="sh__search-row">
+    <form action="{{ routes.search_url }}" method="get" role="search" class="sh__search-form">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="search" name="q" placeholder="{{ s.search_placeholder | escape }}" aria-label="Search" autocomplete="off">
+      <input type="hidden" name="options[prefix]" value="last">
+      <button type="button" class="sh__search-clear" data-sh-clear aria-label="Clear search" hidden>
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </button>
+      <button type="submit" class="sh__search-go">Search</button>
+    </form>
+    <button type="button" class="sh__icon sh__search-x" data-sh-search-close aria-label="Close search">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    </div>
+    <div class="sh__results" aria-live="polite"></div>
+  </div>
+
+  {%- comment -%} Phones and tablets: the menu in a slide-in drawer (a native dialog: focus trap and Esc for free). {%- endcomment -%}
+  <dialog class="sh__drawer" id="sh-drawer-{{ section.id }}" aria-label="Menu">
+    <div class="sh__drawer-in">
+      <div class="sh__drawer-top">
+        <a href="{{ routes.root_url }}" class="sh__logo" aria-label="{{ shop.name | escape }} home">
+          {%- if settings.logo != blank -%}{{ settings.logo | image_url: width: 320 | image_tag: alt: shop.name, width: 130, height: nil, loading: 'lazy' }}{%- else -%}{{ shop.name }}{%- endif -%}
+        </a>
+        <button type="button" class="sh__icon" data-sh-close aria-label="Close menu">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      {%- if s.promo_heading != blank -%}
+        <a class="sh__dcta" href="{{ cta_url }}">
+          <span>
+            <span class="sh__promo-k">{{ s.promo_kicker }}</span>
+            <span class="sh__dcta-h">{{ s.promo_heading }}</span>
+          </span>
+          <span class="sh__dcta-go" aria-hidden="true">&rarr;</span>
+        </a>
+      {%- endif -%}
+
+      <ul class="sh__dmenu">
+        {%- for link in menu.links -%}
+          <li>
+            {%- if link.links.size > 0 -%}
+              <details{% if link.child_active %} open{% endif %}>
+                <summary>{{ link.title }}<svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+                <ul>
+                  {%- for child in link.links -%}<li><a href="{{ child.url }}">{{ child.title }}</a></li>{%- endfor -%}
+                  <li><a href="{{ link.url }}" class="sh__dall">View all {{ link.title }}</a></li>
+                </ul>
+              </details>
+            {%- else -%}
+              <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title }}</a>
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+
+      <div class="sh__dfoot">
+        {%- if shop.customer_accounts_enabled -%}
+          <a href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}">{% if customer %}Your account{% else %}Log in{% endif %}</a>
+        {%- endif -%}
+        {%- if s.whatsapp != blank -%}
+          <a href="https://wa.me/{{ s.whatsapp | remove: '+' | remove: ' ' }}" target="_blank" rel="noopener">Chat on WhatsApp</a>
+        {%- endif -%}
+      </div>
+    </div>
+  </dialog>
+</div>
+
+
+<script>
+  (function () {
+    var root = document.getElementById('sh-{{ section.id }}');
+    if (!root || root.dataset.shBooted === '1') return;
+    root.dataset.shBooted = '1';
+
+    // Shadow and hairline once the page has moved.
+    var scrolled = null;
+    function onScroll() {
+      var now = window.scrollY > 4;
+      if (now !== scrolled) { scrolled = now; root.classList.toggle('is-scrolled', now); }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // Dropdowns: hover opens them on mouse devices (CSS); the caret button
+    // opens them for keyboard and touch. One open at a time.
+    var items = root.querySelectorAll('.sh__item--parent');
+    function closeAll(except) {
+      items.forEach(function (it) {
+        if (it === except) return;
+        it.classList.remove('is-open');
+        it.querySelector('.sh__caret').setAttribute('aria-expanded', 'false');
+      });
+    }
+    items.forEach(function (it) {
+      var btn = it.querySelector('.sh__caret');
+      btn.addEventListener('click', function () {
+        var open = !it.classList.contains('is-open');
+        closeAll(it);
+        it.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', String(open));
+      });
+      it.addEventListener('focusout', function (e) { if (!it.contains(e.relatedTarget)) { it.classList.remove('is-open'); btn.setAttribute('aria-expanded', 'false'); } });
+    });
+    /* Anything outside the header closes the search bar and dropdowns: a tap
+       or click (capture phase, so page widgets that stop clicks can't block it),
+       focus moving away, or a click into an embedded widget such as the chat
+       bubble (the window loses focus). */
+    function outside() { closeAll(); closeSearch(); }
+    document.addEventListener('pointerdown', function (e) { if (!root.contains(e.target)) outside(); }, true);
+    document.addEventListener('focusin', function (e) { if (!root.contains(e.target)) outside(); });
+    window.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement && document.activeElement.tagName === 'IFRAME') outside(); }, 0); });
+
+    // Search bar under the header.
+    var sBtn = root.querySelector('[data-sh-search]');
+    var sBox = root.querySelector('.sh__search');
+    var sInput = sBox.querySelector('input[type="search"]');
+    var sRes = sBox.querySelector('.sh__results');
+    function closeSearch() { if (sBox.hidden) return; sBox.hidden = true; sBtn.setAttribute('aria-expanded', 'false'); }
+    sBox.querySelector('[data-sh-search-close]').addEventListener('click', function () { closeSearch(); sBtn.blur(); });
+
+    // Suggestions: Shopify's predictive search, a short pause after typing,
+    // older requests cancelled so a slow answer never overwrites a newer one.
+    var timer, ctrl;
+    function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML.replace(/"/g, '&quot;'); }
+    function rs(v) { var n = parseFloat(v); return isNaN(n) ? '' : 'Rs. ' + Math.round(n).toLocaleString('en-IN'); }
+    function img(u) { if (!u) return ''; return u + (u.indexOf('?') < 0 ? '?' : '&') + 'width=120'; }
+    function suggest() {
+      var q = sInput.value.trim();
+      if (ctrl) ctrl.abort();
+      if (q.length < 2) { sRes.innerHTML = ''; return; }
+      ctrl = window.AbortController ? new AbortController() : null;
+      var url = sBox.dataset.suggestUrl + '?q=' + encodeURIComponent(q) +
+        '&resources[type]=product&resources[limit]=6&resources[options][unavailable_products]=last';
+      fetch(url, ctrl ? { signal: ctrl.signal } : {}).then(function (r) { return r.json(); }).then(function (data) {
+        var list = (data.resources && data.resources.results && data.resources.results.products) || [];
+        if (!list.length) { sRes.innerHTML = '<p class="sh__res-none">No products found for \u201c' + esc(q) + '\u201d. Try period, weight or stamina.</p>'; return; }
+        var all = '<a class="sh__res-all" href="' + sBox.querySelector('form').getAttribute('action') + '?q=' + encodeURIComponent(q) + '">See all results for \u201c' + esc(q) + '\u201d</a>';
+        sRes.innerHTML = '<ul>' + list.map(function (p) {
+          var was = parseFloat(p.compare_at_price_max) > parseFloat(p.price) ? '<s>' + rs(p.compare_at_price_max) + '</s>' : '';
+          return '<li><a class="sh__res" href="' + esc(p.url) + '">' +
+            (p.image ? '<img src="' + esc(img(p.image)) + '" alt="" loading="lazy" width="56" height="56">' : '') +
+            '<span><span class="sh__res-t">' + esc(p.title) + '</span><span class="sh__res-p">' + rs(p.price) + was + '</span></span></a></li>';
+        }).join('') + '</ul>' + all;
+      }).catch(function () {});
+    }
+    var sClear = sBox.querySelector('[data-sh-clear]');
+    function syncClear() { sClear.hidden = !sInput.value; }
+    sClear.addEventListener('click', function () {
+      sInput.value = ''; syncClear();
+      clearTimeout(timer); if (ctrl) ctrl.abort(); sRes.innerHTML = '';
+      sInput.focus();
+    });
+    sInput.addEventListener('input', function () { syncClear(); clearTimeout(timer); timer = setTimeout(suggest, 220); });
+    sBtn.addEventListener('click', function () {
+      if (!sBox.hidden) { closeSearch(); return; }
+      closeAll();
+      sBox.hidden = false;
+      sBtn.setAttribute('aria-expanded', 'true');
+      sBox.querySelector('input[type="search"]').focus();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var open = root.querySelector('.sh__item.is-open .sh__caret');
+      closeAll();
+      if (!sBox.hidden) { closeSearch(); sBtn.focus({ focusVisible: false }); }
+      else if (open) open.focus();
+    });
+
+    // Drawer: a native modal dialog. Locking body scroll also pauses the
+    // page's smooth scroll (it watches body overflow).
+    var drawer = root.querySelector('.sh__drawer');
+    var burger = root.querySelector('[data-sh-open]');
+    function openDrawer() {
+      if (typeof drawer.showModal !== 'function') { window.location.href = '/search'; return; }
+      closeSearch();
+      drawer.showModal();
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(function () { requestAnimationFrame(function () { drawer.classList.add('is-in'); }); });
+    }
+    function closeDrawer() {
+      if (!drawer.open) return;
+      drawer.classList.remove('is-in');
+      setTimeout(function () { drawer.close(); }, 320);
+    }
+    burger.addEventListener('click', openDrawer);
+    root.querySelector('[data-sh-close]').addEventListener('click', closeDrawer);
+    drawer.addEventListener('click', function (e) { if (e.target === drawer) closeDrawer(); }); // backdrop
+    drawer.addEventListener('cancel', function (e) { e.preventDefault(); closeDrawer(); });     // Esc
+    drawer.addEventListener('close', function () { drawer.classList.remove('is-in'); document.body.style.overflow = ''; burger.focus(); });
+    // Tablet rotated to desktop width while open.
+    window.matchMedia('(min-width: 1100px)').addEventListener('change', function (m) { if (m.matches) closeDrawer(); });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "sehatUP header",
+  "tag": "div",
+  "class": "section-header",
+  "enabled_on": { "groups": ["header"] },
+  "settings": [
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" },
+    { "type": "range", "id": "logo_width", "label": "Logo width", "min": 90, "max": 220, "step": 2, "unit": "px", "default": 140 },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#d81f48" },
+    { "type": "header", "content": "Free check prompt (dropdowns and phone menu)" },
+    { "type": "text", "id": "cta_text", "label": "Link text", "default": "Take the free check" },
+    { "type": "url", "id": "cta_link", "label": "Link", "info": "Defaults to the Health Score 360 page." },
+    { "type": "text", "id": "promo_kicker", "label": "Small label", "default": "Free 2-minute check" },
+    { "type": "text", "id": "promo_heading", "label": "Heading", "default": "Not sure where to start? Check your health score." },
+    { "type": "image_picker", "id": "her_image", "label": "For Her photo (transparent PNG)" },
+    { "type": "image_picker", "id": "him_image", "label": "For Him photo (transparent PNG)" },
+    { "type": "header", "content": "Other" },
+    { "type": "text", "id": "search_placeholder", "label": "Search placeholder", "default": "Search for period care, weight, stamina..." },
+    { "type": "text", "id": "whatsapp", "label": "WhatsApp number (with country code)", "default": "919355539355" }
+  ],
+  "presets": [{ "name": "sehatUP header" }]
+}
+{% endschema %}

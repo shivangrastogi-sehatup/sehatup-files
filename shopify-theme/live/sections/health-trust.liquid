@@ -1,0 +1,147 @@
+{%- comment -%}
+  Trust strip + real reviews.
+
+  Four short promises (editable, since each one must be true for the
+  business), then an app-block slot for Judge.me's own Featured Carousel,
+  so the reviews are the store's real, moderated Judge.me reviews and stay
+  in sync by themselves. No review text is ever hardcoded here.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #htr-{{ section.id }} { --htr-text: #1d1d1d; --htr-muted: #5c5c5c; --htr-accent: {{ s.accent_color }}; background: #fff; font-family: 'Montserrat', sans-serif; color: var(--htr-text); }
+  #htr-{{ section.id }} .htr__inner { max-width: 1160px; margin: 0 auto; padding: 48px 24px 72px; }
+  #htr-{{ section.id }} .htr__head { text-align: center; max-width: 640px; margin: 0 auto 36px; }
+  #htr-{{ section.id }} .htr__heading { color: var(--htr-text); margin: 0 0 12px; font: 800 clamp(28px, 3.4vw, 46px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #htr-{{ section.id }} .htr__sub { margin: 0; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--htr-muted); }
+
+  #htr-{{ section.id }} .htr__strip {
+    list-style: none; margin: 0 0 48px; padding: 22px 26px; border-radius: 22px; background: #faf7f5;
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px;
+  }
+  #htr-{{ section.id }} .htr__item { display: flex; align-items: center; gap: 14px; }
+  #htr-{{ section.id }} .htr__icon { flex: none; width: 26px; height: 26px; color: var(--htr-accent); }
+  #htr-{{ section.id }} .htr__icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #htr-{{ section.id }} .htr__txt { display: grid; gap: 3px; }
+  #htr-{{ section.id }} .htr__txt b { font: 700 15px/1.2 'Montserrat', sans-serif; }
+  #htr-{{ section.id }} .htr__txt small { font: 400 12.5px/1.35 'Montserrat', sans-serif; color: var(--htr-muted); }
+
+  #htr-{{ section.id }} .htr__rating {
+    display: inline-flex; align-items: center; gap: 8px; margin: 16px 0 0; padding: 8px 16px; border-radius: 999px;
+    background: #faf7f5; font: 600 14px/1 'Montserrat', sans-serif; color: var(--htr-text);
+  }
+  #htr-{{ section.id }} .htr__rating[hidden] { display: none; }
+  #htr-{{ section.id }} .htr__rating i { font-style: normal; color: #f5a623; letter-spacing: 1px; }
+  /* The rating now sits in our header; Judge.me's own title row would repeat it. */
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-title-and-link { display: none !important; }
+
+  @media (max-width: 1023px) {
+    #htr-{{ section.id }} .htr__strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 749px) {
+    #htr-{{ section.id }} .htr__inner { padding: 32px 16px 48px; }
+    #htr-{{ section.id }} .htr__heading { font-size: 28px; }
+    #htr-{{ section.id }} .htr__sub { font-size: 14.5px; }
+    #htr-{{ section.id }} .htr__strip { padding: 18px 16px; gap: 16px 12px; margin-bottom: 32px; border-radius: 18px; }
+    #htr-{{ section.id }} .htr__item { gap: 10px; align-items: flex-start; }
+    #htr-{{ section.id }} .htr__icon { width: 22px; height: 22px; }
+    #htr-{{ section.id }} .htr__txt b { font-size: 13.5px; }
+    #htr-{{ section.id }} .htr__txt small { font-size: 11.5px; }
+  }
+
+  /* Big screens: scale the whole section in proportion, so 1920-3840px
+     monitors get a page sized for them instead of a 1200px island. */
+  @media (min-width: 1680px) { #htr-{{ section.id }} .htr__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #htr-{{ section.id }} .htr__inner { zoom: 1.25; } }
+  @media (min-width: 2240px) { #htr-{{ section.id }} .htr__inner { zoom: 1.45; } }
+  @media (min-width: 2560px) { #htr-{{ section.id }} .htr__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #htr-{{ section.id }} .htr__inner { zoom: 2; } }
+  @media (min-width: 3840px) { #htr-{{ section.id }} .htr__inner { zoom: 2.4; } }
+</style>
+
+<section id="htr-{{ section.id }}" class="htr">
+  <span id="reviews" class="sh-anchor" style="display:block;position:relative;top:-90px;height:0;visibility:hidden" aria-hidden="true"></span>
+  <div class="htr__inner">
+    <div class="htr__head">
+      <h2 class="htr__heading">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="htr__sub">{{ s.subheading }}</p>{%- endif -%}
+      <p class="htr__rating" data-rating hidden></p>
+    </div>
+
+    <ul class="htr__strip">
+      {%- for i in (1..4) -%}
+        {%- capture k_t -%}trust_{{ i }}{%- endcapture -%}
+        {%- capture k_d -%}trust_{{ i }}_text{%- endcapture -%}
+        {%- if s[k_t] != blank -%}
+          <li class="htr__item">
+            <span class="htr__icon" aria-hidden="true">
+              {%- case i -%}
+                {%- when 1 -%}<svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/></svg>
+                {%- when 2 -%}<svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                {%- when 3 -%}<svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>
+                {%- else -%}<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4M18 10v4"/></svg>
+              {%- endcase -%}
+            </span>
+            <span class="htr__txt"><b>{{ s[k_t] }}</b>{%- if s[k_d] != blank -%}<small>{{ s[k_d] }}</small>{%- endif -%}</span>
+          </li>
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+
+    <div class="htr__reviews">
+      {%- for block in section.blocks -%}
+        {%- render block -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+
+<script>
+  // Live rating from the Judge.me carousel in this section (the store-wide
+  // average and count), shown once Judge.me has rendered it. Never invented:
+  // if Judge.me does not render, the line stays hidden.
+  (function () {
+    var root = document.getElementById('htr-{{ section.id }}');
+    if (!root) return;
+    var out = root.querySelector('[data-rating]'), tries = 0;
+    (function look() {
+      var r = root.querySelector('.htr__reviews .jdgm-all-reviews-rating[data-score]');
+      var c = root.querySelector('.htr__reviews .jdgm-all-reviews-rating-wrapper');
+      var score = r && parseFloat(r.getAttribute('data-score'));
+      var count = c && (c.textContent.match(/\d+/) || [])[0];
+      if (score && count) {
+        out.innerHTML = '<i>★★★★★</i>' + score.toFixed(1) + ' from ' + count + ' reviews';
+        out.hidden = false;
+      } else if (++tries < 40) setTimeout(look, 500);
+    })();
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Trust and reviews",
+  "tag": "div",
+  "class": "section-health-trust",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Real people. Real results." },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Honest reviews from customers who took the first step." },
+    { "type": "color", "id": "accent_color", "label": "Icon colour", "default": "#ee204a" },
+    { "type": "header", "content": "Promises (only keep what is true)" },
+    { "type": "text", "id": "trust_1", "label": "Promise 1", "default": "Free" },
+    { "type": "text", "id": "trust_1_text", "label": "Promise 1 detail", "default": "The Health Score costs nothing" },
+    { "type": "text", "id": "trust_2", "label": "Promise 2", "default": "100% private" },
+    { "type": "text", "id": "trust_2_text", "label": "Promise 2 detail", "default": "Only your doctor sees your answers" },
+    { "type": "text", "id": "trust_3", "label": "Promise 3", "default": "Discreet packaging" },
+    { "type": "text", "id": "trust_3_text", "label": "Promise 3 detail", "default": "A plain box, nothing printed on it" },
+    { "type": "text", "id": "trust_4", "label": "Promise 4", "default": "Just ₹50 to confirm" },
+    { "type": "text", "id": "trust_4_text", "label": "Promise 4 detail", "default": "Pay the rest on delivery, or pay in full online" }
+  ],
+  "blocks": [{ "type": "@app" }],
+  "presets": [{ "name": "Trust and reviews" }]
+}
+{% endschema %}

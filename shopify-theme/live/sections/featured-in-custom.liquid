@@ -329,7 +329,22 @@
       cache.push({ el: nodes[i], mid: nodes[i].offsetLeft + nodes[i].offsetWidth / 2 });
     }
 
+    // Off screen, the loop stops completely. It used to run every frame
+    // forever, restyling every logo ~60 times a second while the visitor was
+    // scrolling somewhere else entirely, which cost the whole page smoothness.
+    if (!wrap._ftrIO && 'IntersectionObserver' in window) {
+      wrap._ftrIO = new IntersectionObserver(function (en) {
+        wrap._ftrOn = en[0].isIntersecting;
+        if (wrap._ftrOn && !depthRaf) depthRaf = requestAnimationFrame(wrap._ftrFrame);
+      });
+      wrap._ftrIO.observe(wrap);
+    }
+    // startDepth runs again on resize with fresh positions; the observer must
+    // restart the newest loop, not the one it was created with.
+    wrap._ftrFrame = frame;
+
     function frame() {
+      if (wrap._ftrIO && !wrap._ftrOn) { depthRaf = null; return; }
       var w = wrap.clientWidth;
       if (w) {
         // Where the track has got to, taken from the animation's own progress.

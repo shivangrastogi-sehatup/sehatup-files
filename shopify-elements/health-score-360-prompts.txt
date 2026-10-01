@@ -1,0 +1,73 @@
+HEALTH SCORE 360 PAGE - IMAGE PROMPTS
+Page: /pages/health-score-360, rebuilt section by section.
+
+=====================================================================
+SECTION 1 - HERO: "Know More About Your Body Than Your Mirror Can Tell"
+Two cards side by side: WOMAN (Period Care / Weight Management) and
+MAN (Sexual Health / Weight Management). Buttons sit BELOW the image,
+so the image carries no text.
+
+6 variations. Each is a matched PAIR: generate the woman and the man with
+the same variation so the two cards look like one set.
+
+Every image: landscape 4:3, 1600 x 1200 pixels. One person, centred,
+framed from mid-thigh or waist up, a little space above the head. Indian,
+28 to 38 years old. Soft light from the left. Real commercial photography,
+not an illustration, not 3D, natural skin texture, no plastic skin, no
+extra or distorted fingers. No text, no letters, no logos, no watermark.
+=====================================================================
+
+V1  Blush studio (closest to the brand, safest pick)
+
+WOMAN
+A photograph of one Indian woman, about 30, standing against a seamless blush pink studio paper backdrop that fades slightly lighter towards the edges. She wears a raspberry red cotton kurta top, hair open and softly waved, small gold stud earrings. Body turned slightly to the left, face towards the camera, a warm, relaxed, closed-mouth smile, one hand resting lightly at her waist. Framed from the waist up, centred, a little space above her head. Landscape 4:3, 1600 by 1200 pixels. Soft daylight from the left, gentle shadow on the backdrop, sharp focus, 85mm lens. Real commercial photography, natural skin texture. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no logos, no watermark.
+
+MAN
+A photograph of one Indian man, about 32, standing against a seamless blush pink studio paper backdrop that fades slightly lighter towards the edges. He wears a crisp white linen shirt, sleeves rolled to the forearm, short neat hair, a trimmed short beard. Body turned slightly to the right, face towards the camera, a calm, confident, closed-mouth smile, hands loosely in his trouser pockets. Framed from the waist up, centred, a little space above his head. Landscape 4:3, 1600 by 1200 pixels. Soft daylight from the left, gentle shadow on the backdrop, sharp focus, 85mm lens. Real commercial photography, natural skin texture. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no logos, no watermark.
+
+---------------------------------------------------------------------
+V2  The mirror (ties straight to the headline)
+
+WOMAN
+A photograph of one Indian woman, about 30, in a bright, minimal bedroom with warm white walls. She stands beside a large round wall mirror with a thin brass frame, her body turned towards the mirror and her face turned back over her shoulder to the camera with a thoughtful, gentle smile. Her soft reflection is visible in the mirror, slightly out of focus. She wears a dusty rose cotton co-ord set, hair tied in a low bun. Framed from the waist up, the mirror on the left third, her on the right two thirds. Landscape 4:3, 1600 by 1200 pixels. Soft morning daylight from the left through a sheer curtain. Real lifestyle photography, 50mm lens, shallow depth of field. Natural skin texture, not an illustration, not 3D, no extra fingers. No text, no logos, no watermark.
+
+MAN
+A photograph of one Indian man, about 32, in a bright, minimal bedroom with warm white walls. He stands beside a large round wall mirror with a thin brass frame, his body turned towards the mirror and his face turned back to the camera with a calm, slightly curious half smile. His soft reflection is visible in the mirror, slightly out of focus. He wears a plain heather grey t-shirt, short neat hair, a trimmed beard. Framed from the waist up, the mirror on the right third, him on the left two thirds. Landscape 4:3, 1600 by 1200 pixels. Soft morning daylight from the left through a sheer curtain. Real lifestyle photography, 50mm lens, shallow depth of field. Natural skin texture, not an illustration, not 3D, no extra fingers. No text, no logos, no watermark.
+
+---------------------------------------------------------------------
+V3  Real morning at home (candid, relatable)
+
+WOMAN
+A candid photograph of one Indian woman, about 30, sitting on a light sofa by a window in a warm, lived-in Indian apartment, holding a ceramic mug of tea in both hands. She looks towards the camera with a soft, natural smile, as if she just looked up. Oversized cream knit top, hair loosely clipped up. Green plants and a woven cushion softly blurred behind her. Framed from the waist up, centred. Landscape 4:3, 1600 by 1200 pixels. Warm morning sunlight from the left, gentle haze. Real lifestyle photography, 35mm lens, shallow depth of field, true warm colours. Natural skin texture, not an illustration, not 3D, no extra fingers. No text, no logos, no watermark.
+
+MAN
+A candid photograph of one Indian man, about 32, standing at a small kitchen counter in a warm, lived-in Indian apartment, holding a glass of water, just back from a morning walk. He looks towards the camera with an easy, natural smile. Navy blue polo t-shirt, short neat hair, trimmed beard. A window, a fruit bowl and plants softly blurred behind him. Framed from the waist up, centred. Landscape 4:3, 1600 by 1200 pixels. Warm morning sunlight from the left, gentle haze. Real lifestyle photography, 35mm lens, shallow depth of field, true warm colours. Natural skin texture, not an illustration, not 3D, no extra fingers. No text, no logos, no watermark.
+
+---------------------------------------------------------------------
+V4  Calm clinic (trust, medical)
+
+WOMAN
+A photograph of one Indian woman, about 30, sitting upright in a light oak chair in a bright, modern, empty consultation room: warm white walls, light wood slat panelling, one green plant, everything behind her softly out of focus. She wears a soft lavender kurta, hair neatly tied back, hands resting together in her lap, looking into the camera with a calm, reassured, closed-mouth smile, like a patient who feels heard. Framed from mid-thigh up, centred. Landscape 4:3, 1600 by 1200 pixels. Soft daylight from the left. Real commercial photography, 85mm lens, shallow depth of field. Natural skin texture, not an illustration, not 3D, no extra fingers. No doctor in frame, no text, no logos, no watermark.
+
+MAN
+A photograph of one Indian man, about 32, sitting upright in a light oak chair in a bright, modern, empty consultation room: warm white walls, light wood slat panelling, one green plant, everything behind him softly out of focus. He wears a light blue oxford shirt, short neat hair, trimmed beard, forearms resting on his knees, leaning slightly forward, looking into the camera with a calm, reassured, closed-mouth smile, like a patient who feels heard. Framed from mid-thigh up, centred. Landscape 4:3, 1600 by 1200 pixels. Soft daylight from the left. Real commercial photography, 85mm lens, shallow depth of field. Natural skin texture, not an illustration, not 3D, no extra fingers. No doctor in frame, no text, no logos, no watermark.
+
+---------------------------------------------------------------------
+V5  Outdoor golden hour (energy, active)
+
+WOMAN
+A photograph of one Indian woman, about 30, standing on a leafy rooftop terrace in an Indian city at golden hour, potted plants and a soft city skyline blurred far behind her. She wears a coral athleisure top with a light open overshirt, hair in a high ponytail, a yoga mat rolled under one arm, laughing lightly towards the camera. Framed from the waist up, centred. Landscape 4:3, 1600 by 1200 pixels. Warm low sunlight from the left with a soft rim light on her hair. Real lifestyle photography, 85mm lens, creamy background blur. Natural skin texture, not an illustration, not 3D, no extra fingers. No text, no logos, no watermark.
+
+MAN
+A photograph of one Indian man, about 32, standing in a green city park in India at golden hour, trees and a walking path blurred far behind him. He wears a charcoal athletic t-shirt, short neat hair, trimmed beard, a small towel over one shoulder after a jog, smiling easily towards the camera. Framed from the waist up, centred. Landscape 4:3, 1600 by 1200 pixels. Warm low sunlight from the left with a soft rim light on his shoulder. Real lifestyle photography, 85mm lens, creamy background blur. Natural skin texture, not an illustration, not 3D, no extra fingers. No text, no logos, no watermark.
+
+---------------------------------------------------------------------
+V6  Colour-block cut-out (modern, graphic, most flexible)
+Transparent PNG people. The card supplies the colour: e.g. soft rose
+#fde2e7 for her, pale teal #d9f0ee for him, or the brand red gradient.
+
+WOMAN
+A photograph of one Indian woman, about 30, on a fully transparent background (PNG with alpha channel, no backdrop, no floor, no shadow). She wears a raspberry red fitted top and high-waisted cream trousers, hair open and sleek. Standing at a slight angle, one hand touching her collarbone, looking into the camera with a confident, warm, closed-mouth smile. Framed from mid-thigh up: the bottom edge cuts cleanly straight across, a little space above her head, centred. Landscape 4:3, 1600 by 1200 pixels. Soft even studio light from the left, clean edges around the hair. Real commercial photography, 85mm lens, natural skin texture. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no logos, no watermark.
+
+MAN
+A photograph of one Indian man, about 32, on a fully transparent background (PNG with alpha channel, no backdrop, no floor, no shadow). He wears a white t-shirt under an open deep teal overshirt, short neat hair, trimmed beard. Standing at a slight angle, arms loosely folded, looking into the camera with a confident, easy, closed-mouth smile. Framed from mid-thigh up: the bottom edge cuts cleanly straight across, a little space above his head, centred. Landscape 4:3, 1600 by 1200 pixels. Soft even studio light from the left, clean edges around the hair. Real commercial photography, 85mm lens, natural skin texture. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no logos, no watermark.

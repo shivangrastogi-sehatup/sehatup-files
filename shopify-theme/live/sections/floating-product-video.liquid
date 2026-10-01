@@ -57,118 +57,7 @@
 
 {%- if fpv_show -%}
 
-<div
-  class="fpv"
-  id="{{ fpv_id }}"
-  data-fpv
-  data-side="{{ fpv_side }}"
-  data-money-format="{{ shop.money_format | escape }}"
->
-
-  <div class="fpv__dock" data-fpv-dock>
-    <div class="fpv__dock-inner">
-      <button type="button" class="fpv__dock-open" data-fpv-open aria-label="{{ fpv_label | escape }}">
-        <video class="fpv__dock-video" muted loop playsinline preload="metadata" aria-hidden="true">
-          <source src="{{ fpv_video }}" type="video/mp4">
-        </video>
-      </button>
-      <button type="button" class="fpv__dock-dismiss" data-fpv-dismiss aria-label="Hide this video">&#215;</button>
-    </div>
-  </div>
-
-  <div class="fpv__overlay" data-fpv-overlay hidden>
-    <div class="fpv__backdrop" data-fpv-close></div>
-
-    <div class="fpv__stage" role="dialog" aria-modal="true" aria-label="{{ fpv_label | escape }}">
-      <video class="fpv__video" data-fpv-video playsinline loop preload="none">
-        <source src="{{ fpv_video }}" type="video/mp4">
-      </video>
-
-      <div
-        class="fpv__progress"
-        data-fpv-progress
-        role="slider"
-        aria-label="Video progress"
-        aria-orientation="horizontal"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow="0"
-        tabindex="0"
-      >
-        <span class="fpv__progress-fill" data-fpv-fill></span>
-        <span class="fpv__progress-knob" data-fpv-knob></span>
-      </div>
-
-      <div class="fpv__top">
-        <button type="button" class="fpv__icon" data-fpv-close aria-label="Close video">
-          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        </button>
-
-        <div class="fpv__top-right">
-          <button type="button" class="fpv__icon" data-fpv-sound aria-label="Unmute" aria-pressed="false">
-            <svg class="fpv__ico-muted" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M17 9l4 6M21 9l-4 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <svg class="fpv__ico-loud" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </button>
-          <button type="button" class="fpv__icon" data-fpv-playpause aria-label="Pause">
-            <svg class="fpv__ico-pause" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-            <svg class="fpv__ico-play" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
-          </button>
-        </div>
-      </div>
-
-      {%- if fpv_has_card -%}
-      <div class="fpv__card">
-        <div class="fpv__card-head">
-          {%- if product.featured_image != blank -%}
-            <img class="fpv__thumb" src="{{ product.featured_image | image_url: width: 120 }}" alt="" width="60" height="60" loading="lazy">
-          {%- endif -%}
-          <div class="fpv__meta">
-            <span class="fpv__title">{{ product.title }}</span>
-            <span class="fpv__price" data-fpv-price>{{ product.selected_or_first_available_variant.price | money }}</span>
-          </div>
-        </div>
-
-        <div class="fpv__buy">
-          {%- if product.variants.size > 1 -%}
-            <select class="fpv__select" data-fpv-variant aria-label="Choose an option">
-              {%- for variant in product.variants -%}
-                <option value="{{ variant.id }}" {% unless variant.available %}disabled{% endunless %}>
-                  {{ variant.title }}{% unless variant.available %} (sold out){% endunless %}
-                </option>
-              {%- endfor -%}
-            </select>
-          {%- else -%}
-            <input type="hidden" data-fpv-variant value="{{ product.selected_or_first_available_variant.id }}">
-          {%- endif -%}
-
-          <div class="fpv__qty">
-            <button type="button" data-fpv-qty="-1" aria-label="Decrease quantity">&#8722;</button>
-            <input type="text" inputmode="numeric" value="1" data-fpv-qty-input aria-label="Quantity">
-            <button type="button" data-fpv-qty="1" aria-label="Increase quantity">&#43;</button>
-          </div>
-        </div>
-
-        <button type="button" class="fpv__atc" data-fpv-atc>
-          <span class="fpv__spinner" aria-hidden="true"></span>
-          <span data-fpv-atc-label>{{ fpv_cta_label }}</span>
-        </button>
-        <p class="fpv__status" data-fpv-status role="status" aria-live="polite"></p>
-      </div>
-      {%- endif -%}
-    </div>
-  </div>
-</div>
-
-{%- if fpv_has_card -%}
-<script type="application/json" data-fpv-variants>
-[
-  {%- for v in product.variants -%}
-    {"id": {{ v.id }}, "price": {{ v.price }}, "available": {{ v.available }}}{%- unless forloop.last -%},{%- endunless -%}
-  {%- endfor -%}
-]
-</script>
-{%- endif -%}
-
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
 <style>
   #{{ fpv_id }} {
     --fpv-accent: {{ fpv_accent }};
@@ -240,6 +129,20 @@
     transition: box-shadow .22s ease;
   }
   #{{ fpv_id }} .fpv__dock-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #{{ fpv_id }} .fpv__dock-play {
+    position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px;
+    border-radius: 50%; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+  }
+  #{{ fpv_id }} .fpv__dock-play::after {
+    content: ""; position: absolute; left: 12px; top: 9px;
+    border-left: 9px solid {{ fpv_accent }}; border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+  }
+  #{{ fpv_id }} .fpv__dock-open::after {
+    content: ""; position: absolute; inset: -2px; border-radius: 14px; border: 2px solid {{ fpv_accent }};
+    opacity: 0; animation: fpv-ring-{{ section.id }} 2.6s ease-out 3s infinite; pointer-events: none;
+  }
+  @keyframes fpv-ring-{{ section.id }} { 0% { opacity: .8; transform: scale(1); } 70%, 100% { opacity: 0; transform: scale(1.12); } }
+  @media (prefers-reduced-motion: reduce) { #{{ fpv_id }} .fpv__dock-open::after { animation: none; } }
 
   @media (hover: hover) and (pointer: fine) {
     #{{ fpv_id }} .fpv__dock:hover .fpv__dock-inner {
@@ -249,6 +152,30 @@
       box-shadow: 0 16px 34px rgba(0, 0, 0, .34);
     }
   }
+
+  /* Playing inside the bubble: it grows to a watchable size, the play glyph
+     and pulse ring go, and an expand button appears for the big player. */
+  #{{ fpv_id }} .fpv__dock { transition: width .38s cubic-bezier(.16, 1, .3, 1); }
+  #{{ fpv_id }} .fpv__dock[data-playing] { width: 176px; }
+  #{{ fpv_id }} .fpv__dock[data-playing] .fpv__dock-play,
+  #{{ fpv_id }} .fpv__dock[data-playing] .fpv__dock-open::after { display: none; }
+  #{{ fpv_id }} .fpv__dock-expand {
+    position: absolute; top: 8px; left: 8px; z-index: 2; width: 32px; height: 32px; padding: 0;
+    display: none; align-items: center; justify-content: center;
+    border: 0; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; cursor: pointer;
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  #{{ fpv_id }} .fpv__dock[data-playing] .fpv__dock-expand { display: inline-flex; }
+  #{{ fpv_id }} .fpv__dock-expand:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  #{{ fpv_id }} .fpv__dock-paused {
+    position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+    border-radius: 50%; background: rgba(255, 255, 255, .9); display: none; pointer-events: none;
+  }
+  #{{ fpv_id }} .fpv__dock-paused::after {
+    content: ""; position: absolute; left: 17px; top: 13px;
+    border-left: 13px solid {{ fpv_accent }}; border-top: 9px solid transparent; border-bottom: 9px solid transparent;
+  }
+  #{{ fpv_id }} .fpv__dock[data-playing="paused"] .fpv__dock-paused { display: block; }
 
   #{{ fpv_id }} .fpv__dock-dismiss {
     position: absolute;
@@ -537,6 +464,7 @@
     }
     #{{ fpv_id }} .fpv__top { padding-top: calc(26px + env(safe-area-inset-top)); }
     #{{ fpv_id }} .fpv__dock { bottom: {{ fpv_bottom | minus: 12 }}px; left: 12px; width: 78px; }
+    #{{ fpv_id }} .fpv__dock[data-playing] { width: 138px; }
     /* vertical drags still scroll the page; horizontal ones are ours */
     #{{ fpv_id }} .fpv__dock { touch-action: pan-y; }
     #{{ fpv_id }} .fpv__dock[data-dragging] { cursor: grabbing; }
@@ -553,6 +481,141 @@
     #{{ fpv_id }} .fpv__atc { transition: none; }
   }
 </style>
+
+<div
+  class="fpv"
+  id="{{ fpv_id }}"
+  data-fpv
+  data-side="{{ fpv_side }}"
+  data-money-format="{{ shop.money_format | escape }}"
+>
+
+  <div class="fpv__dock" data-fpv-dock{% if section.settings.show_after_hero %} hidden data-wait-hero{% endif %}>
+    <div class="fpv__dock-inner">
+      <button type="button" class="fpv__dock-open" data-fpv-open aria-label="{{ fpv_label | escape }}">
+        {%- comment -%}
+          The dock is ~74px wide. It used to autoplay the full video on a loop,
+          which streamed the whole file (12.5 MB on the Health Score page) on
+          every visit, opened or not. Now it shows the first frame only, unless
+          a small preview clip is set, which is the only thing that autoplays.
+          The full video still loads only when the player is opened.
+        {%- endcomment -%}
+        {%- assign fpv_preview = section.settings.dock_preview_url | strip -%}
+        {%- if fpv_preview != blank -%}
+          <video class="fpv__dock-video" muted loop playsinline preload="none" aria-hidden="true" data-fpv-dock-autoplay>
+            <source src="{{ fpv_preview }}" type="video/mp4">
+          </video>
+        {%- else -%}
+          <video class="fpv__dock-video" muted playsinline preload="metadata" aria-hidden="true">
+            <source src="{{ fpv_video }}#t=0.1" type="video/mp4">
+          </video>
+          <span class="fpv__dock-play" aria-hidden="true"></span>
+        {%- endif -%}
+      </button>
+      <button type="button" class="fpv__dock-dismiss" data-fpv-dismiss aria-label="Hide this video">&#215;</button>
+      <button type="button" class="fpv__dock-expand" data-fpv-expand aria-label="Watch larger">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="fpv__dock-paused" aria-hidden="true"></span>
+    </div>
+  </div>
+
+  <div class="fpv__overlay" data-fpv-overlay hidden>
+    <div class="fpv__backdrop" data-fpv-close></div>
+
+    <div class="fpv__stage" role="dialog" aria-modal="true" aria-label="{{ fpv_label | escape }}">
+      <video class="fpv__video" data-fpv-video playsinline loop preload="none">
+        <source src="{{ fpv_video }}" type="video/mp4">
+      </video>
+
+      <div
+        class="fpv__progress"
+        data-fpv-progress
+        role="slider"
+        aria-label="Video progress"
+        aria-orientation="horizontal"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+        tabindex="0"
+      >
+        <span class="fpv__progress-fill" data-fpv-fill></span>
+        <span class="fpv__progress-knob" data-fpv-knob></span>
+      </div>
+
+      <div class="fpv__top">
+        <button type="button" class="fpv__icon" data-fpv-close aria-label="Close video">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+
+        <div class="fpv__top-right">
+          <button type="button" class="fpv__icon" data-fpv-sound aria-label="Unmute" aria-pressed="false">
+            <svg class="fpv__ico-muted" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M17 9l4 6M21 9l-4 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg class="fpv__ico-loud" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" class="fpv__icon" data-fpv-playpause aria-label="Pause">
+            <svg class="fpv__ico-pause" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            <svg class="fpv__ico-play" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+          </button>
+          <button type="button" class="fpv__icon" data-fpv-full aria-label="Watch full screen">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      {%- if fpv_has_card -%}
+      <div class="fpv__card">
+        <div class="fpv__card-head">
+          {%- if product.featured_image != blank -%}
+            <img class="fpv__thumb" src="{{ product.featured_image | image_url: width: 120 }}" alt="" width="60" height="60" loading="lazy">
+          {%- endif -%}
+          <div class="fpv__meta">
+            <span class="fpv__title">{{ product.title }}</span>
+            <span class="fpv__price" data-fpv-price>{{ product.selected_or_first_available_variant.price | money }}</span>
+          </div>
+        </div>
+
+        <div class="fpv__buy">
+          {%- if product.variants.size > 1 -%}
+            <select class="fpv__select" data-fpv-variant aria-label="Choose an option">
+              {%- for variant in product.variants -%}
+                <option value="{{ variant.id }}" {% unless variant.available %}disabled{% endunless %}>
+                  {{ variant.title }}{% unless variant.available %} (sold out){% endunless %}
+                </option>
+              {%- endfor -%}
+            </select>
+          {%- else -%}
+            <input type="hidden" data-fpv-variant value="{{ product.selected_or_first_available_variant.id }}">
+          {%- endif -%}
+
+          <div class="fpv__qty">
+            <button type="button" data-fpv-qty="-1" aria-label="Decrease quantity">&#8722;</button>
+            <input type="text" inputmode="numeric" value="1" data-fpv-qty-input aria-label="Quantity">
+            <button type="button" data-fpv-qty="1" aria-label="Increase quantity">&#43;</button>
+          </div>
+        </div>
+
+        <button type="button" class="fpv__atc" data-fpv-atc>
+          <span class="fpv__spinner" aria-hidden="true"></span>
+          <span data-fpv-atc-label>{{ fpv_cta_label }}</span>
+        </button>
+        <p class="fpv__status" data-fpv-status role="status" aria-live="polite"></p>
+      </div>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+
+{%- if fpv_has_card -%}
+<script type="application/json" data-fpv-variants>
+[
+  {%- for v in product.variants -%}
+    {"id": {{ v.id }}, "price": {{ v.price }}, "available": {{ v.available }}}{%- unless forloop.last -%},{%- endunless -%}
+  {%- endfor -%}
+]
+</script>
+{%- endif -%}
+
 
 <script>
   (function () {
@@ -581,7 +644,7 @@
     catch (e) { try { variants = JSON.parse(document.querySelector('[data-fpv-variants]').textContent); } catch (e2) { variants = []; } }
 
     var dockDismissed = false;
-    var dockVideo = $('.fpv__dock-video');
+    var dockVideo = $('[data-fpv-dock-autoplay]');   // only a small preview clip autoplays
     var dockReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     var dockPlaying = false;
@@ -616,15 +679,20 @@
 
     var lastFocused = null;
 
-    function openPlayer() {
+    function openPlayer(startAt, withSound) {
       if (!overlay.hidden) return;
       lastFocused = document.activeElement;
       overlay.hidden = false;
       dock.hidden = true;
       lockScroll();
       setStatus('');
-      video.muted = true;
+      video.muted = !withSound;
       syncSound();
+      if (startAt > 0) {
+        // The big player has not loaded yet: seek once it knows its length.
+        if (video.readyState >= 1) video.currentTime = startAt;
+        else video.addEventListener('loadedmetadata', function () { video.currentTime = startAt; }, { once: true });
+      }
       var p = video.play();
       if (p && p.catch) p.catch(function () { syncPlay(); });
       syncPlay();
@@ -634,6 +702,10 @@
     function closePlayer() {
       if (overlay.hidden) return;
       video.pause();
+      if (inlinePlay && video.currentTime > 0) {
+        try { bubbleVid.currentTime = video.currentTime; } catch (e) {}
+        dock.setAttribute('data-playing', 'paused');
+      }
       stopTracking();
       overlay.hidden = true;
       unlockScroll();
@@ -641,11 +713,42 @@
         dock.removeAttribute('data-leaving');
         dock.setAttribute('data-return', 'true');
       }
-      dock.hidden = dockDismissed || atFooter;
+      dock.hidden = dockDismissed || atFooter || waitHero;
       if (lastFocused && lastFocused.focus) lastFocused.focus({ preventScroll: true });
     }
 
-    $('[data-fpv-open]').addEventListener('click', openPlayer);
+    /* Tapping the bubble plays the video right there (it grows to a watchable
+       size, sound on, since the tap allows it); tapping again pauses. The
+       expand button opens the big player at the same second. A small preview
+       clip, when one is set, keeps the old behaviour: tap opens the player. */
+    var bubbleVid = $('.fpv__dock-video');
+    var inlinePlay = !!bubbleVid && !dockVideo;
+    var expandBtn = $('[data-fpv-expand]');
+
+    function bubblePlay() {
+      bubbleVid.muted = false;
+      bubbleVid.loop = true;
+      var p = bubbleVid.play(); if (p && p.catch) p.catch(function () { bubbleVid.muted = true; bubbleVid.play(); });
+      dock.setAttribute('data-playing', 'true');
+    }
+    function bubblePause() {
+      bubbleVid.pause();
+      dock.setAttribute('data-playing', 'paused');
+    }
+
+    $('[data-fpv-open]').addEventListener('click', function () {
+      if (!inlinePlay) { openPlayer(); return; }
+      if (bubbleVid.paused) bubblePlay(); else bubblePause();
+    });
+
+    if (expandBtn) expandBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var at = bubbleVid ? bubbleVid.currentTime : 0;
+      var wasHeard = bubbleVid && !bubbleVid.paused && !bubbleVid.muted;
+      if (bubbleVid) bubbleVid.pause();
+      dock.removeAttribute('data-playing');
+      openPlayer(at, wasHeard || true);
+    });
     root.querySelectorAll('[data-fpv-close]').forEach(function (el) {
       el.addEventListener('click', closePlayer);
     });
@@ -765,6 +868,27 @@
 
     var atFooter = false;
 
+    /* Optional: keep the bubble out of the way until the visitor has scrolled
+       past the first section, so it never covers the page's main choice. */
+    var waitHero = dock.hasAttribute('data-wait-hero');
+    (function () {
+      if (!waitHero) return;
+      var first = document.querySelector('main .shopify-section, #MainContent .shopify-section');
+      function reveal() {
+        if (!waitHero) return;
+        waitHero = false;
+        if (dockDismissed || atFooter || !overlay.hidden) return;
+        dock.setAttribute('data-return', 'true');
+        dock.hidden = false;
+      }
+      if (!first || !('IntersectionObserver' in window)) { reveal(); return; }
+      var io = new IntersectionObserver(function (en) {
+        // Gone above the viewport = scrolled past it.
+        if (!en[0].isIntersecting && en[0].boundingClientRect.top < 0) { io.disconnect(); reveal(); }
+      }, { threshold: 0 });
+      io.observe(first);
+    })();
+
     function findFooter() {
       try {
         var footers = document.querySelectorAll(
@@ -795,7 +919,7 @@
     function showAfterFooter() {
       if (!atFooter) return;
       atFooter = false;
-      if (dockDismissed || !overlay.hidden) return;
+      if (dockDismissed || !overlay.hidden || waitHero) return;
       dock.removeAttribute('data-leaving');
       if (!dockReduceMotion) dock.setAttribute('data-return', 'true');
       dock.hidden = false;
@@ -850,6 +974,33 @@
 
     playBtn.addEventListener('click', togglePlay);
     soundBtn.addEventListener('click', function () { video.muted = !video.muted; syncSound(); });
+
+    // Full screen. The first play stays inline in the player; this button takes
+    // the video full screen with sound and the browser's own controls (seek,
+    // pause, exit). iPhone Safari only allows video full screen through its
+    // native player (webkitEnterFullscreen); everything else uses the standard
+    // Fullscreen API on the video element.
+    var fullBtn = $('[data-fpv-full]');
+    function inFull() { return document.fullscreenElement === video || document.webkitFullscreenElement === video; }
+    function leftFull() {
+      video.controls = false;
+      syncSound(); syncPlay();
+    }
+    if (fullBtn) {
+      fullBtn.addEventListener('click', function () {
+        video.muted = false;
+        syncSound();
+        var p = video.play(); if (p && p.catch) p.catch(function () {});
+        video.controls = true;
+        if (video.requestFullscreen) video.requestFullscreen().catch(function () { video.controls = false; });
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+        else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+        else video.controls = false;
+      });
+      document.addEventListener('fullscreenchange', function () { if (!inFull()) leftFull(); });
+      document.addEventListener('webkitfullscreenchange', function () { if (!inFull()) leftFull(); });
+      video.addEventListener('webkitendfullscreen', leftFull);   // iPhone native player closed
+    }
     video.addEventListener('play', syncPlay);
     video.addEventListener('pause', syncPlay);
     video.addEventListener('click', togglePlay);
@@ -1058,6 +1209,19 @@
         }
       ],
       "default": "product"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_after_hero",
+      "label": "Show the bubble only after the first section",
+      "info": "Keeps it from covering the top of the page. It slides in once the visitor scrolls past the first section.",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "dock_preview_url",
+      "label": "Small preview clip for the bubble (optional)",
+      "info": "A 2-3 second, small (under 1 MB) mp4 that loops in the bubble. Leave empty to show a still frame instead; the full video then loads only when someone opens it."
     },
     {
       "type": "text",

@@ -19,36 +19,29 @@ var SHEET_ID = '19z8Pti-3pk3M3MCzjU_iLWGc2zqNIcwOlGgvCMIv64g';
 var TIME_ZONE = 'Asia/Kolkata';
 var TS_FORMAT = 'dd-mmm-yyyy hh:mm';
 
-// [payload key, column header]. Order here = column order in the sheet.
-// Any key the popup sends that is not listed gets its own column at the end,
-// so new attribution fields never get dropped.
+// [payload key, column header]. Order here = column order in the sheet, and
+// this list is the whole sheet: anything else the popup sends is ignored.
+// A header added here later is inserted next to its neighbour automatically,
+// and rows already in the sheet just get a blank cell there.
 var COLUMNS = [
   ['_receivedAt', 'Timestamp'],
   ['name', 'Name'],
   ['phone', 'Phone'],
   ['age', 'Age'],
+  ['gender', 'Gender'],
   ['city', 'City'],
+  ['_remarks', 'Remarks'], // filled in by hand, the popup never sends it
   ['email', 'Email'],
   ['_consulted', 'Consulted'],
   ['status', 'Status'],
   ['source', 'Form'],
   ['traffic_source', 'Traffic Source'],
-  ['utm_source', 'UTM Source'],
-  ['utm_medium', 'UTM Medium'],
-  ['utm_campaign', 'UTM Campaign'],
-  ['utm_content', 'UTM Content'],
-  ['utm_term', 'UTM Term'],
   ['landing_page', 'Landing Page'],
   ['pageUrl', 'Page URL'],
   ['pageTemplate', 'Page Template'],
   ['attributed_page', 'Attributed Page'],
   ['referrer', 'Referrer'],
-  ['first_seen_at', 'First Seen At'],
-  ['last_traffic_source', 'Last Traffic Source'],
-  ['last_utm_campaign', 'Last UTM Campaign'],
-  ['gclid', 'gclid'],
-  ['fbclid', 'fbclid'],
-  ['sectionId', 'Section ID']
+  ['last_traffic_source', 'Last Traffic Source']
 ];
 
 function doPost(e) {
@@ -59,7 +52,7 @@ function doPost(e) {
     if (!lead.name || !lead.phone) return reply({ ok: false, error: 'name and phone required' });
 
     var sheet = getSheet();
-    var headers = ensureHeaders(sheet, lead);
+    var headers = ensureHeaders(sheet);
     var keyByHeader = {};
     COLUMNS.forEach(function (c) { keyByHeader[c[1]] = c[0]; });
 
@@ -102,7 +95,7 @@ function doGet() {
 // formatting to every row already in the sheet.
 function setup() {
   var sheet = getSheet();
-  formatColumns(sheet, ensureHeaders(sheet, {}));
+  formatColumns(sheet, ensureHeaders(sheet));
 }
 
 function getSheet() {
@@ -111,21 +104,23 @@ function getSheet() {
   return ss.getSheets()[0];
 }
 
-// Writes the header row on first use, appends a column for any unknown key,
-// and (re)applies formatting. Returns the header row as it now stands.
-function ensureHeaders(sheet, lead) {
+// Writes the header row on first use, inserts any COLUMNS header the sheet is
+// missing right after its neighbour (so old rows stay aligned and just get a
+// blank cell), and (re)applies formatting. Returns the header row as it stands.
+function ensureHeaders(sheet) {
   var lastCol = sheet.getLastColumn();
   var headers = lastCol ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].filter(String) : [];
-  var fresh = headers.length === 0;
-  if (fresh) headers = COLUMNS.map(function (c) { return c[1]; });
+  var changed = headers.length === 0;
 
-  var known = {};
-  COLUMNS.forEach(function (c) { known[c[0]] = true; });
-  Object.keys(lead).forEach(function (k) {
-    if (!known[k] && k.charAt(0) !== '_' && headers.indexOf(k) === -1) headers.push(k);
+  COLUMNS.forEach(function (c, i) {
+    if (headers.indexOf(c[1]) !== -1) return;
+    var at = i ? headers.indexOf(COLUMNS[i - 1][1]) + 1 : 0;
+    if (at < headers.length) sheet.insertColumnBefore(at + 1);
+    headers.splice(at, 0, c[1]);
+    changed = true;
   });
 
-  if (fresh || headers.length !== lastCol) {
+  if (changed) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers])
       .setFontWeight('bold').setBackground('#1d1d1d').setFontColor('#ffffff');
     sheet.setFrozenRows(1);

@@ -1,4 +1,4 @@
-{% assign ai_gen_id = section.id | replace: '_', '' | downcase %}
+{% assign ai_gen_id = section.id | replace: '_', '' | replace: '-', '' | downcase %}
 
 {%- liquid
   assign fg_scale = section.settings.foreground_image_scale | default: 100
@@ -262,12 +262,17 @@
           bottom: {{ fg_oy }}%;
         {% endif %}
         transform: translate({{ fg_tx }}, {{ fg_ty }});
+        /* Full hero height, so the image can be capped at it below instead of
+           spilling past the top and getting cut off by overflow: hidden. */
+        height: 100%;
+        display: flex;
+        align-items: {% if fg_y == 'top' %}flex-start{% elsif fg_y == 'center' %}center{% else %}flex-end{% endif %};
       }
 
       .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img {
         /* Scales with the hero, which now grows on large screens. */
         height: calc(max({{ section.settings.section_min_height }}px, 62svh) * {{ fg_scale }} / 100);
-        max-height: calc(900px * {{ fg_scale }} / 100);
+        max-height: 100%;
         width: auto;
         object-fit: {{ section.settings.foreground_image_fit }};
         object-position: bottom center;
@@ -331,6 +336,8 @@
     @media (max-width: 1040px) {
       .ai-healthcare-hero-{{ ai_gen_id }} {
         max-width: 100%;
+        /* Text + stacked image can be taller than 900px; don't clip the photo. */
+        max-height: none;
       }
 
       .ai-healthcare-hero__container-{{ ai_gen_id }} {
@@ -412,6 +419,7 @@
           top: auto;
           bottom: auto;
           transform: none;
+          height: auto;
           margin: 20px auto 0 auto;
           display: flex;
           justify-content: center;
@@ -419,13 +427,23 @@
         {% endif %}
       }
 
+      /* The hero PNGs are wide 16:9 canvases with the person + product on one
+         side. A square crop anchored to that side drops the empty half, so the
+         subject fills the phone width, centred, with the product label readable. */
       .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img {
         height: auto;
-        /* Keeps the doctors' faces in view instead of cropping through them. */
-        max-height: clamp(220px, 34svh, 340px);
-        width: auto;
-        max-width: 100%;
-        object-position: top center;
+        max-height: none;
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+        {% if section.settings.mobile_crop_foreground %}
+          aspect-ratio: 1 / 1;
+          object-fit: cover;
+          object-position: {{ fg_x }} bottom;
+        {% else %}
+          object-fit: contain;
+          object-position: center bottom;
+        {% endif %}
       }
     }
 
@@ -448,9 +466,40 @@
       }
 
       .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img {
-        max-height: clamp(280px, 40svh, 420px);
+        max-width: 520px;
       }
     }
+{% if section.settings.split_layout and section.settings.layout_mode == 'background-with-overlay-image' and section.settings.foreground_image %}
+    @media (min-width: 1041px) {
+      .ai-healthcare-hero__content-{{ ai_gen_id }} {
+        max-width: min({{ section.settings.content_text_max_width }}px, calc(50% - 40px));
+      }
+
+      .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} {
+        top: 0;
+        bottom: 0;
+        left: auto;
+        right: 0;
+        width: 50%;
+        height: 100%;
+        transform: none;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 24px 24px 0;
+        box-sizing: border-box;
+      }
+
+      .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img {
+        width: auto;
+        height: {{ fg_scale | at_most: 100 }}%;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center bottom;
+      }
+    }
+  {% endif %}
 {% endstyle %}
 
 <healthcare-hero-{{ ai_gen_id }} class="ai-healthcare-hero-{{ ai_gen_id }}" {{ section.shopify_attributes }}>
@@ -543,7 +592,14 @@
   {% if section.settings.layout_mode == 'background-with-overlay-image' and section.settings.foreground_image %}
     <div class="ai-healthcare-hero__foreground-image-{{ ai_gen_id }}">
       <img
-        src="{{ section.settings.foreground_image | image_url: width: 1000 }}"
+        src="{{ section.settings.foreground_image | image_url: width: 1200 }}"
+        srcset="
+          {{ section.settings.foreground_image | image_url: width: 800 }} 800w,
+          {{ section.settings.foreground_image | image_url: width: 1200 }} 1200w,
+          {{ section.settings.foreground_image | image_url: width: 1600 }} 1600w,
+          {{ section.settings.foreground_image | image_url: width: 2000 }} 2000w
+        "
+        sizes="(max-width: 1040px) min(100vw, 600px), 50vw"
         alt="{{ section.settings.foreground_image.alt | escape }}"
         loading="eager"
         width="{{ section.settings.foreground_image.width }}"
@@ -872,6 +928,20 @@
       "id": "hide_foreground_mobile",
       "label": "Hide on mobile",
       "info": "Below 1040px. Untick to show it stacked under the text.",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "split_layout",
+      "label": "Side-by-side on desktop",
+      "info": "Text takes the left half and the image fills the right half, so they never overlap. Image size then works as a % of the hero height (max 100%).",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_crop_foreground",
+      "label": "Crop to subject on mobile",
+      "info": "For wide cut-out images with the person/product on one side: shows a square crop from that side (uses the horizontal position above) so it fills the phone width.",
       "default": false
     },
     {

@@ -132,12 +132,89 @@
         "margin_bottom": 0,
         "padding_top": 4,
         "padding_bottom": 0
+      },
+      "disabled": true
+    },
+    "sehat_header": {
+      "type": "sehat-header",
+      "settings": {
+        "menu": "main-menu",
+        "logo_width": 140,
+        "accent_color": "#d81f48",
+        "her_image": "shopify://shop_images/ChatGPT_Image_Sep_30_2026_12_13_52_PM.png",
+        "him_image": "shopify://shop_images/healthscrore-men.png"
       }
+    },
+    "sehat_trust_bar": {
+      "type": "sehat-trust-bar",
+      "blocks": {
+        "msg_1": {
+          "type": "message",
+          "settings": {
+            "icon": "truck",
+            "text": "Free shipping on prepaid orders",
+            "link": "",
+            "laptop": false
+          }
+        },
+        "msg_2": {
+          "type": "message",
+          "settings": {
+            "icon": "wallet",
+            "text": "Pay just ₹50 now, the rest on delivery",
+            "link": "/pages/health-score-360#faq",
+            "laptop": true
+          }
+        },
+        "msg_3": {
+          "type": "message",
+          "settings": {
+            "icon": "star",
+            "text": "Rated [rating]★ by [count] customers",
+            "link": "/pages/health-score-360#reviews",
+            "laptop": true
+          }
+        },
+        "msg_4": {
+          "type": "message",
+          "settings": {
+            "icon": "doctor",
+            "text": "Verified doctors",
+            "link": "",
+            "laptop": false
+          }
+        },
+        "msg_5": {
+          "type": "message",
+          "settings": {
+            "icon": "spark",
+            "text": "Free Health Score 360 check",
+            "link": "/pages/health-score-360",
+            "laptop": true
+          }
+        }
+      },
+      "block_order": [
+        "msg_2",
+        "msg_3",
+        "msg_5",
+        "msg_1",
+        "msg_4"
+      ],
+      "settings": {
+        "bg": "#2a2220",
+        "fg": "#fbf4f0",
+        "accent": "#f6b8c4",
+        "speed": 4
+      },
+      "disabled": true
     }
   },
   "order": [
+    "sehat_trust_bar",
     "announcement_bar_xQxqR7",
     "17697673087ba76e8c",
+    "sehat_header",
     "header"
   ]
 }

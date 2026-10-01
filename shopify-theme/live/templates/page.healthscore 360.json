@@ -9,11 +9,350 @@
  */
 {
   "sections": {
+    "health_check_cards_BqwqFe": {
+      "type": "health-check-cards",
+      "blocks": {
+        "card_mBPpXp": {
+          "type": "card",
+          "settings": {
+            "label": "For Her",
+            "person_image": "shopify://shop_images/ChatGPT_Image_Sep_30_2026_12_13_52_PM.png",
+            "color_from": "#fff0f3",
+            "color_to": "#fbd3dc",
+            "glow_color": "#ffffff",
+            "button_1_text": "Period Care",
+            "button_1_link": "shopify://pages/womens-wellness-questionnaire",
+            "button_2_text": "Weight Management",
+            "button_2_link": "shopify://pages/womens-weight-questionnaire"
+          }
+        },
+        "card_dYC8X8": {
+          "type": "card",
+          "settings": {
+            "label": "For Him",
+            "person_image": "shopify://shop_images/healthscrore-men.png",
+            "color_from": "#eefaf8",
+            "color_to": "#c6ebe6",
+            "glow_color": "#ffffff",
+            "button_1_text": "Sexual Health",
+            "button_1_link": "shopify://pages/mens-health-questionnaire",
+            "button_2_text": "Weight Management",
+            "button_2_link": "shopify://pages/mens-weight-questionnaire"
+          }
+        }
+      },
+      "block_order": [
+        "card_mBPpXp",
+        "card_dYC8X8"
+      ],
+      "name": "Health check cards",
+      "settings": {
+        "heading": "Know More About Your Body Than Your Mirror Can Tell",
+        "subheading": "A quick 2-minute check for periods, PCOS, weight, stamina and sexual health, to understand what your body really needs.",
+        "points": "Free check, Takes 2 minutes, Verified doctors",
+        "heading_tag": "h1",
+        "text_alignment": "center",
+        "accent_color": "#ee204a",
+        "padding_top": 56,
+        "padding_bottom": 56
+      }
+    },
+    "health_score_scroll_ezJnyU": {
+      "type": "health-score-scroll",
+      "name": "Health Score scroll story",
+      "settings": {
+        "heading": "What Is Health Score 360?",
+        "subheading": "One check that reads your hormones, metabolism, stamina and cycle health, not just one symptom.",
+        "accent_color": "#ee204a",
+        "w_title": "Weight",
+        "w_text": "Metabolism, energy and weight patterns",
+        "intro_top": 23,
+        "eyes_him": 34,
+        "eyes_her": 38,
+        "w_x": 42,
+        "w_y": 66,
+        "w_x2": 59,
+        "w_y2": 64,
+        "s_title": "Sexual Wellness",
+        "s_text": "Hormones, stamina and performance",
+        "s_x": 58,
+        "s_y": 53,
+        "p_title": "Period Care",
+        "p_text": "Cycle health, PMS and hormonal balance",
+        "p_x": 43,
+        "p_y": 72
+      }
+    },
+    "health_journey_hj01": {
+      "type": "health-journey",
+      "settings": {
+        "eyebrow": "What happens after you start",
+        "accent_color": "#ee204a",
+        "heading": "From your first tap to feeling better",
+        "day_1": "Today",
+        "title_1": "Take your Health Score",
+        "text_1": "Free. No sign-up. Simple, honest questions about your body.",
+        "day_2": "Within 24 hours",
+        "title_2": "A doctor calls you",
+        "text_2": "Ayurveda, Homeopathy and Allopathy doctors review your score together, in Hindi or English.",
+        "call_image": "shopify://shop_images/Dr_Shefali.webp",
+        "call_name": "sehatUP Doctor",
+        "review_line": "Your score is reviewed by 3 doctors",
+        "doctor_1_image": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+        "doctor_1_label": "Ayurveda",
+        "doctor_2_image": "shopify://shop_images/Dr_Shefali.webp",
+        "doctor_2_label": "Homeopathy",
+        "doctor_3_label": "Allopathy",
+        "day_3": "Day 3 to 5",
+        "title_3": "Your kit arrives",
+        "text_3": "In a plain box. Nobody knows what is inside. Confirm with just ₹50 and pay the rest on delivery, or pay in full online.",
+        "pay_line": "₹50 paid · rest on delivery",
+        "day_4": "Every month",
+        "title_4": "Your plan keeps improving",
+        "text_4": "A WhatsApp check-in each month. Most people notice first changes in 4 to 6 weeks, and your plan changes as your body responds.",
+        "chat_q": "Day 30: how is your sleep now?",
+        "chat_a": "Much better, thank you!"
+      }
+    },
+    "health_signs_hsg01": {
+      "type": "health-signs",
+      "settings": {
+        "heading": "Signs your body is asking for help",
+        "subheading": "Tap the ones you feel, from irregular periods and PCOS signs to low stamina and stubborn weight. We will point you to the right check.",
+        "accent_color": "#ee204a",
+        "her_label": "For Her",
+        "her_group_1": "Periods are irregular or skipped\nPainful periods or heavy bleeding\nMood swings before periods\nAcne or unwanted facial hair\nHair fall that will not stop",
+        "her_link_1": "shopify://pages/womens-wellness-questionnaire",
+        "her_group_2": "Weight that will not move\nBelly fat despite diet and exercise\nTired even after sleeping\nConstant sugar cravings",
+        "her_link_2": "shopify://pages/womens-weight-questionnaire",
+        "him_label": "For Him",
+        "him_group_1": "Low stamina\nFinishing too early\nErections not as strong as before\nLow desire lately\nStress affecting performance",
+        "him_link_1": "shopify://pages/mens-health-questionnaire",
+        "him_group_2": "Belly fat that will not go\nWeight gain after 30\nTired all day, low energy\nPoor sleep",
+        "him_link_2": "shopify://pages/mens-weight-questionnaire",
+        "zero_line": "Tap what you feel",
+        "zero_sub": "Your answers stay on your phone.",
+        "one_line": "1 sign picked",
+        "many_line": "[n] signs picked",
+        "picked_sub": "Let's check what is behind them.",
+        "button_zero": "Take the free check",
+        "button_picked": "Check what is behind these",
+        "note": "Free. Private. No sign-up."
+      }
+    },
+    "health_doctors_hdr01": {
+      "type": "health-doctors",
+      "blocks": {
+        "doc_ayur": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "system": "Ayurveda",
+            "name": "Dr. Jayant Kumar",
+            "degree": "",
+            "role": "Looks for what is behind your symptoms.",
+            "tone": "sand"
+          }
+        },
+        "doc_homeo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Shefali.webp",
+            "system": "Homeopathy",
+            "name": "Dr. Shefali Chhicholia",
+            "degree": "",
+            "role": "Gentle support for long-term balance.",
+            "tone": "rose"
+          }
+        },
+        "doc_allo": {
+          "type": "doctor",
+          "settings": {
+            "system": "Allopathy",
+            "name": "",
+            "degree": "",
+            "role": "Quick relief when you need it.",
+            "tone": "teal"
+          }
+        }
+      },
+      "block_order": [
+        "doc_ayur",
+        "doc_homeo",
+        "doc_allo"
+      ],
+      "settings": {
+        "eyebrow": "Who reviews your Health Score",
+        "heading": "Three doctors. One plan for you.",
+        "subheading": "An Ayurveda, a Homeopathy and an Allopathy doctor review your score together, so your plan for hormonal balance, weight or sexual wellness uses the best of all three.",
+        "footnote": "Talk to them in Hindi or English, on a call that suits you.",
+        "accent_color": "#ee204a"
+      }
+    },
+    "health_kits_hkt01": {
+      "type": "health-kits",
+      "settings": {
+        "eyebrow": "What your doctor may suggest",
+        "heading": "Our most ordered care kits",
+        "subheading": "Each kit pairs medicines from different systems. Your doctor tells you which one fits you, and what it costs, before you decide.",
+        "products": [
+          "p-e-e-d-integrated-kit",
+          "her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness",
+          "macho-metabolism"
+        ],
+        "first_badge": "Most ordered",
+        "button_label": "View kit",
+        "her_label": "For Her",
+        "him_label": "For Him",
+        "all_label": "See all combos",
+        "all_link": "shopify://pages/combos",
+        "note": "Pay just ₹50 to confirm and the rest on delivery, or pay in full online.",
+        "accent_color": "#ee204a"
+      }
+    },
+    "health_trust_htr01": {
+      "type": "health-trust",
+      "blocks": {
+        "jm_carousel": {
+          "type": "shopify://apps/judge-me-reviews/blocks/featured_carousel/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "maxwidth": 1160
+          }
+        }
+      },
+      "block_order": [
+        "jm_carousel"
+      ],
+      "settings": {
+        "heading": "Real people. Real results.",
+        "subheading": "Honest reviews from customers who took the first step.",
+        "accent_color": "#ee204a",
+        "trust_1": "Free",
+        "trust_1_text": "The Health Score costs nothing",
+        "trust_2": "100% private",
+        "trust_2_text": "Only your doctor sees your answers",
+        "trust_3": "Discreet packaging",
+        "trust_3_text": "A plain box, nothing printed on it",
+        "trust_4": "Just ₹50 to confirm",
+        "trust_4_text": "Pay the rest on delivery, or pay in full online"
+      }
+    },
+    "health_faq_hfq01": {
+      "type": "health-faq",
+      "blocks": {
+        "faq_1": {
+          "type": "question",
+          "settings": {
+            "question": "Is the Health Score really free?",
+            "answer": "<p>Yes. The questionnaire is free and needs no sign-up. You only pay if you decide to order a care kit.</p>"
+          }
+        },
+        "faq_8": {
+          "type": "question",
+          "settings": {
+            "question": "Can Health Score 360 help with PCOS or irregular periods?",
+            "answer": "<p>It helps you spot the signs, like irregular or painful periods, acne, unwanted hair growth and weight changes, and a doctor then goes through them with you. It does not diagnose PCOS on its own; if needed, your doctor will suggest the right tests.</p>"
+          }
+        },
+        "faq_9": {
+          "type": "question",
+          "settings": {
+            "question": "Can it help with low stamina or performance worries?",
+            "answer": "<p>Yes. The men's check covers stamina, energy, stress and performance, and a doctor reviews your answers privately before suggesting anything. Many of these concerns are common and treatable.</p>"
+          }
+        },
+        "faq_2": {
+          "type": "question",
+          "settings": {
+            "question": "What happens after I finish it?",
+            "answer": "<p>A doctor from our team calls you, usually within 24 hours, to go through your answers. You can talk in Hindi or English.</p>"
+          }
+        },
+        "faq_3": {
+          "type": "question",
+          "settings": {
+            "question": "Do I have to buy anything?",
+            "answer": "<p>No. If your doctor suggests a care kit, they tell you what is in it and what it costs before you decide. Most care kits cost between ₹799 and ₹1,699.</p>"
+          }
+        },
+        "faq_10": {
+          "type": "question",
+          "settings": {
+            "question": "How soon will I see results?",
+            "answer": "<p>Most people notice first changes in 4 to 6 weeks. A full plan usually runs 3 months, adjusted at each monthly check-in. Results vary from person to person.</p>"
+          }
+        },
+        "faq_4": {
+          "type": "question",
+          "settings": {
+            "question": "How do I pay for a care kit?",
+            "answer": "<p>Confirm your order with just ₹50 and pay the rest when your kit arrives, or pay the full amount online.</p>"
+          }
+        },
+        "faq_5": {
+          "type": "question",
+          "settings": {
+            "question": "Will anyone know what I ordered?",
+            "answer": "<p>No. Your kit comes in a plain box with nothing printed on it about what is inside, and only your doctor sees your answers.</p>"
+          }
+        },
+        "faq_6": {
+          "type": "question",
+          "settings": {
+            "question": "Is it safe to combine Ayurveda, Homeopathy and Allopathy?",
+            "answer": "<p>Your doctors plan your care together, so the parts of your plan are chosen to work with each other. Always tell your doctor about any medicines you already take.</p>"
+          }
+        },
+        "faq_7": {
+          "type": "question",
+          "settings": {
+            "question": "How long does delivery take?",
+            "answer": "<p>Usually 3 to 5 days, depending on where you live.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_1",
+        "faq_8",
+        "faq_9",
+        "faq_2",
+        "faq_3",
+        "faq_10",
+        "faq_4",
+        "faq_5",
+        "faq_6",
+        "faq_7"
+      ],
+      "settings": {
+        "heading": "Questions people ask before they start",
+        "subheading": "Straight answers about cost, privacy and what happens next.",
+        "contact_text": "Ask us on WhatsApp",
+        "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20Health%20Score%20360",
+        "open_first": true,
+        "reads_heading": "Helpful reads",
+        "read_1_text": "PCOS: natural treatment options",
+        "read_1_link": "/blogs/news/pcos-natural-treatment",
+        "read_2_text": "Irregular periods: causes and natural care",
+        "read_2_link": "/blogs/news/irregular-period-treatment-causes-natural-care",
+        "read_3_text": "Stamina for men: what actually helps",
+        "read_3_link": "/blogs/news/stamina-booster-for-men",
+        "read_4_text": "Weight is not just calories: cortisol, sleep and hormones",
+        "read_4_link": "/blogs/news/weight-isn-t-about-calories-it-s-cortisol-sleep-amp-hormones-too",
+        "shop_1_text": "Shop For Her",
+        "shop_1_link": "shopify://pages/for-her",
+        "shop_2_text": "Shop For Him",
+        "shop_2_link": "shopify://pages/for-him",
+        "shop_3_text": "All combos",
+        "shop_3_link": "shopify://pages/combos",
+        "accent_color": "#ee204a"
+      }
+    },
     "17697712806fa21863": {
       "type": "_blocks",
       "blocks": {
         "ai_gen_block_2d5d353_pMCDp8": {
           "type": "ai_gen_block_2d5d353",
+          "disabled": true,
           "settings": {
             "container_max_width": 1300,
             "section_background_color": "#ffffff",
@@ -76,6 +415,7 @@
       "block_order": [
         "ai_gen_block_2d5d353_pMCDp8"
       ],
+      "disabled": true,
       "settings": {}
     },
     "1769771514fca70115": {
@@ -137,6 +477,7 @@
       "block_order": [
         "ai_gen_block_c0d51e7_8QwpDU"
       ],
+      "disabled": true,
       "settings": {}
     },
     "floating_product_video_NTRyRV": {
@@ -145,6 +486,8 @@
       "settings": {
         "enable_video": true,
         "video_source": "link",
+        "show_after_hero": true,
+        "dock_preview_url": "",
         "video_url": "https://cdn.shopify.com/videos/c/o/v/53611d8a344742d7bfaf26c825ddd5ae.mp4",
         "dock_side": "left",
         "dock_bottom": 32,
@@ -194,6 +537,7 @@
         "step_haF43q",
         "step_bfh6rk"
       ],
+      "disabled": true,
       "custom_css": [],
       "name": "How sehatUP Works",
       "settings": {
@@ -293,6 +637,7 @@
       "block_order": [
         "ai_gen_block_caa21f1_WJH6xN"
       ],
+      "disabled": true,
       "settings": {}
     },
     "176977220871fe049a": {
@@ -442,10 +787,12 @@
         "ai_gen_block_74def45_hXnjG3",
         "ai_gen_block_18a2918_ix8PnH"
       ],
+      "disabled": true,
       "settings": {}
     },
     "integrated_AzUHbM": {
       "type": "integrated",
+      "disabled": true,
       "custom_css": [],
       "name": "Integrated Care Cards",
       "settings": {
@@ -543,6 +890,7 @@
       "block_order": [
         "ai_gen_block_50bb1ee_czHPcY"
       ],
+      "disabled": true,
       "settings": {}
     },
     "featured_in_custom_8wkE6P": {
@@ -607,6 +955,18 @@
         "padding_bottom": 68
       }
     },
+    "health_final_cta_hfc01": {
+      "type": "health-final-cta",
+      "settings": {
+        "heading": "Your body is talking. Start listening.",
+        "subheading": "Free, private, and it takes 2 minutes.",
+        "her_label": "Start for her",
+        "her_link": "shopify://pages/womens-wellness-questionnaire",
+        "him_label": "Start for him",
+        "him_link": "shopify://pages/mens-health-questionnaire",
+        "note": "No sign-up. Your answers stay private."
+      }
+    },
     "1769774876af247713": {
       "type": "_blocks",
       "blocks": {
@@ -666,10 +1026,19 @@
       "block_order": [
         "ai_gen_block_3504a79_LzRyNx"
       ],
+      "disabled": true,
       "settings": {}
     }
   },
   "order": [
+    "health_check_cards_BqwqFe",
+    "health_score_scroll_ezJnyU",
+    "health_journey_hj01",
+    "health_signs_hsg01",
+    "health_doctors_hdr01",
+    "health_kits_hkt01",
+    "health_trust_htr01",
+    "health_faq_hfq01",
     "17697712806fa21863",
     "1769771514fca70115",
     "floating_product_video_NTRyRV",
@@ -679,6 +1048,7 @@
     "integrated_AzUHbM",
     "1769773909614181d6",
     "featured_in_custom_8wkE6P",
+    "health_final_cta_hfc01",
     "1769774876af247713"
   ]
 }

@@ -1,0 +1,91 @@
+{%- comment -%}
+  Final call to action for the Health Score page: one strong line and the
+  same For Her / For Him split as the first section, so the page ends where
+  it started, one tap from the right questionnaire.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #hfc-{{ section.id }} { background: #faf7f5; padding: 24px 24px 88px; font-family: 'Montserrat', sans-serif; }
+  #hfc-{{ section.id }} .hfc__inner {
+    position: relative; overflow: hidden; max-width: 1160px; margin: 0 auto; padding: 84px 32px;
+    border-radius: 28px; background: #1d1d1d; color: #fff; text-align: center;
+  }
+  /* Two soft glows, rose and teal, hinting at For Her and For Him. */
+  #hfc-{{ section.id }} .hfc__inner::before,
+  #hfc-{{ section.id }} .hfc__inner::after {
+    content: ""; position: absolute; width: 520px; height: 520px; border-radius: 50%; filter: blur(80px); opacity: .22; pointer-events: none;
+  }
+  #hfc-{{ section.id }} .hfc__inner::before { left: -160px; bottom: -300px; background: #ee204a; }
+  #hfc-{{ section.id }} .hfc__inner::after { right: -160px; top: -300px; background: #2bb3a3; }
+  /* Explicit colour: the theme's global h2 colour would otherwise win over the
+     inherited white and leave the heading dark-on-dark. */
+  #hfc-{{ section.id }} .hfc__heading { color: #fff; position: relative; margin: 0 auto 14px; max-width: 760px; font: 800 clamp(30px, 4vw, 56px)/1.05 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hfc-{{ section.id }} .hfc__sub { position: relative; margin: 0 auto; max-width: 520px; font: 400 17px/1.55 'Montserrat', sans-serif; color: rgba(255, 255, 255, .72); }
+  #hfc-{{ section.id }} .hfc__btns { position: relative; display: flex; justify-content: center; gap: 14px; margin-top: 36px; flex-wrap: wrap; }
+  #hfc-{{ section.id }} .hfc__btn {
+    display: inline-flex; align-items: center; gap: 12px; min-width: 200px; justify-content: center;
+    padding: 17px 28px; border-radius: 999px; font: 700 16px/1 'Montserrat', sans-serif; text-decoration: none;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  #hfc-{{ section.id }} .hfc__btn span { transition: transform .2s ease; }
+  #hfc-{{ section.id }} .hfc__btn--her { background: #fde2e7; color: #b3123a; }
+  #hfc-{{ section.id }} .hfc__btn--him { background: #d9f0ee; color: #0f6b62; }
+  #hfc-{{ section.id }} .hfc__btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
+  #hfc-{{ section.id }} .hfc__btn:hover span { transform: translateX(3px); }
+  #hfc-{{ section.id }} .hfc__btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  #hfc-{{ section.id }} .hfc__note { position: relative; margin: 22px 0 0; font: 500 13px/1.4 'Montserrat', sans-serif; color: rgba(255, 255, 255, .55); }
+
+  @media (max-width: 749px) {
+    #hfc-{{ section.id }} { padding: 8px 16px 56px; }
+    #hfc-{{ section.id }} .hfc__inner { padding: 52px 20px; border-radius: 22px; }
+    #hfc-{{ section.id }} .hfc__heading { font-size: 30px; }
+    #hfc-{{ section.id }} .hfc__sub { font-size: 15px; }
+    #hfc-{{ section.id }} .hfc__btns { flex-direction: column; align-items: stretch; gap: 10px; margin-top: 28px; }
+    #hfc-{{ section.id }} .hfc__btn { min-width: 0; }
+  }
+
+  /* Big screens: scale the whole section in proportion, so 1920-3840px
+     monitors get a page sized for them instead of a 1200px island. */
+  @media (min-width: 1680px) { #hfc-{{ section.id }} .hfc__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hfc-{{ section.id }} .hfc__inner { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hfc-{{ section.id }} .hfc__inner { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hfc-{{ section.id }} .hfc__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hfc-{{ section.id }} .hfc__inner { zoom: 2; } }
+  @media (min-width: 3840px) { #hfc-{{ section.id }} .hfc__inner { zoom: 2.4; } }
+</style>
+
+<section id="hfc-{{ section.id }}" class="hfc">
+  <div class="hfc__inner">
+    <h2 class="hfc__heading">{{ s.heading }}</h2>
+    {%- if s.subheading != blank -%}<p class="hfc__sub">{{ s.subheading }}</p>{%- endif -%}
+    <div class="hfc__btns">
+      <a class="hfc__btn hfc__btn--her" href="{{ s.her_link | default: '#' }}">{{ s.her_label }}<span aria-hidden="true">&rarr;</span></a>
+      <a class="hfc__btn hfc__btn--him" href="{{ s.him_link | default: '#' }}">{{ s.him_label }}<span aria-hidden="true">&rarr;</span></a>
+    </div>
+    {%- if s.note != blank -%}<p class="hfc__note">{{ s.note }}</p>{%- endif -%}
+  </div>
+</section>
+
+
+{% schema %}
+{
+  "name": "Final call to action",
+  "tag": "div",
+  "class": "section-health-final-cta",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Your body is talking. Start listening." },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Free, private, and it takes 2 minutes." },
+    { "type": "text", "id": "her_label", "label": "For Her button", "default": "Start for her" },
+    { "type": "url", "id": "her_link", "label": "For Her link" },
+    { "type": "text", "id": "him_label", "label": "For Him button", "default": "Start for him" },
+    { "type": "url", "id": "him_link", "label": "For Him link" },
+    { "type": "text", "id": "note", "label": "Small note", "default": "No sign-up. Your answers stay private." }
+  ],
+  "presets": [{ "name": "Final call to action" }]
+}
+{% endschema %}

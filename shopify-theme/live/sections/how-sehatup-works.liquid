@@ -606,7 +606,15 @@
       // One scroll pass drives everything: how far a reading line partway down
       // the screen has travelled from the first number to the last.
       const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      let ticking = false;
+      let ticking = false, lastP = "";
+      // Only while the steps are near the screen: this used to measure and
+      // restyle on every scroll frame anywhere on the page, which forced a
+      // layout per frame and cost other sections' animations their smoothness.
+      let near = true;
+      if ("IntersectionObserver" in window) {
+        new IntersectionObserver(e => { near = e[0].isIntersecting; if (near) progress(); },
+          { rootMargin: "50% 0px" }).observe(list);
+      }
       const progress = () => {
         ticking = false;
         const badges = steps.map(s => s.querySelector(".hsw__badge--rail"));
@@ -614,12 +622,12 @@
         const line = innerHeight * 0.58;
         const mid = b => { const r = b.getBoundingClientRect(); return r.top + r.height / 2; };
         const a = mid(badges[0]), z = mid(badges[badges.length - 1]);
-        const p = still ? 1 : Math.min(1, Math.max(0, (line - a) / Math.max(1, z - a)));
-        list.style.setProperty("--rail-p", p.toFixed(4));
+        const p = (still ? 1 : Math.min(1, Math.max(0, (line - a) / Math.max(1, z - a)))).toFixed(4);
+        if (p !== lastP) { list.style.setProperty("--rail-p", p); lastP = p; }
         badges.forEach((b, i) => steps[i].classList.toggle("is-lit", still || line >= mid(b) - 1));
       };
       addEventListener("scroll", () => {
-        if (ticking) return;
+        if (ticking || !near) return;
         ticking = true;
         requestAnimationFrame(progress);
       }, { passive: true });

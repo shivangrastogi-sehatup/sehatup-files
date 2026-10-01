@@ -1,0 +1,91 @@
+ABOUT US HERO - IMAGE PROMPTS
+Hero: "Healthcare That Finally Makes Sense" (section: Healthcare hero banner, layout "Background with overlay image").
+Background goes in "Background image", the person in "Foreground image" (position right / bottom).
+
+=====================================================================
+PROMPT 1 - BACKGROUND (pick one of 4)
+Every background: landscape 2400 x 1000, no people, no text. The left 55% stays calm for the headline.
+=====================================================================
+
+BG-A  Soft clinic interior (light - keep black text)
+A wide, softly blurred photograph of a bright, modern Indian clinic interior with nobody in it. Warm white walls, light oak wood slat panelling on the right, a potted green plant and a low white counter far in the background, soft natural daylight coming from the left. Everything is out of focus, as if shot at f/1.8 with the focus far in front, so it reads as a calm backdrop rather than a scene. The left 55 percent is the plainest part, an even warm white wall, so black headline text sits on it clearly. Landscape, 2400 by 1000 pixels. Real photography, true warm-neutral colours. No people, no text, no letters, no logos, no watermark.
+
+BG-B  Warm studio gradient (light - keep black text)
+A seamless studio backdrop for a website banner, landscape 2400 by 1000 pixels. A smooth gradient from warm ivory on the left to soft blush pink on the right, with a very faint circular glow behind the right third where a person will later be placed. Subtle paper texture and a gentle vignette at the far edges. It should look like a photographed paper backdrop under soft studio lighting, not a flat digital gradient. Completely empty: no objects, no people, no text, no letters, no logos, no watermark. Clean, premium healthcare brand feel.
+
+BG-C  Three systems, deep tone (dark - switch text to white)
+A wide, dark background for a healthcare brand banner, 2400 by 1000 pixels. Deep navy fading to midnight blue. On the right side only, very soft, heavily out-of-focus shapes: tulsi and ashwagandha leaves, a few small glass homeopathy vials and the curve of a stethoscope, all low contrast, suggesting Ayurveda, Homeopathy and modern medicine together. The left 55 percent is smooth, darker and empty so white headline text stays readable. Soft light from the upper right. Photographic, not an illustration. No people, no text, no letters, no logos, no watermark.
+
+BG-D  Brand-red frosted shapes (light - keep black text)
+A clean, modern website banner background, 2400 by 1000 pixels. Off-white base with large, soft, translucent rounded shapes in pale coral and very light raspberry red layered across the right half, like frosted glass panels catching daylight. Subtle depth, soft shadows and a fine grain so it does not look flat or digital. The left 55 percent stays almost plain off-white for black headline text. No people, no objects, no text, no letters, no logos, no watermark.
+
+=====================================================================
+PROMPT 2 - PERSON (pick one of 4)
+Every person: fully transparent background (PNG with alpha), no floor, no shadow, a clean straight cut at the bottom edge.
+Soft light from the LEFT so it matches the backgrounds.
+=====================================================================
+
+P-1  Woman doctor, modern medicine
+A photograph of one Indian woman doctor, about 32 years old, on a fully transparent background (PNG with alpha channel, no backdrop, no floor, no shadow). White doctor's coat over a soft lavender kurta, a stethoscope around her neck, hair neatly tied back, small stud earrings. She stands angled slightly towards the left of the frame, looking straight into the camera with a warm, confident, closed-mouth smile, arms loosely folded. Framed from the waist up: the bottom edge cuts cleanly straight across her waist, with a little space above her head. Portrait 4:5, 1600 by 2000 pixels, she fills most of the frame. Soft daylight from the left, natural skin texture, sharp focus, real commercial photography on an 85mm lens. Not an illustration, not 3D, no over-smoothed or plastic skin, no extra or distorted fingers. No text, no logos, no watermark.
+
+P-2  Ayurveda doctor, man
+A photograph of one Indian man, an Ayurveda doctor about 40 years old, on a fully transparent background (PNG with alpha channel, no backdrop, no floor, no shadow). Cream cotton kurta with a beige Nehru jacket, a stethoscope around his neck, neatly trimmed short beard, no grey hair. He stands upright, turned slightly towards the left of the frame, hands loosely clasped in front, looking into the camera with a calm, reassuring, closed-mouth smile. Framed from the waist up: the bottom edge cuts cleanly straight across his waist, with a little space above his head. Portrait 4:5, 1600 by 2000 pixels, he fills most of the frame. Soft daylight from the left, natural skin texture, sharp focus, real commercial photography on an 85mm lens. Not an illustration, not 3D, no over-smoothed skin, no extra or distorted fingers. No text, no logos, no watermark.
+
+P-3  The three-system team (wide - turn on "Side-by-side on desktop")
+A photograph of three Indian doctors standing close together, one from each medical system, all between 30 and 45 years old, on a fully transparent background (PNG with alpha channel, no backdrop, no floor, no shadow). Left: the Ayurveda doctor, a man in a cream kurta with a beige Nehru jacket. Centre, slightly forward: the Homeopathy doctor, a woman in a white doctor's coat over a simple kurta, hair tied back, arms folded. Right: the Allopathy doctor, a man in a white doctor's coat over a light blue shirt, stethoscope around his neck. All three look straight into the camera with calm, warm, closed-mouth smiles, upright and relaxed, like a team you can trust. Framed from mid-thigh up: the bottom edge cuts cleanly straight across all three. Landscape 3:2, 2400 by 1600 pixels, the group fills the frame edge to edge with little empty space. Soft daylight from the left, natural skin texture, sharp focus, real commercial photography on a 50mm lens. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no logos, no watermark.
+
+P-4  Digital clinic, doctor with tablet
+A photograph of one Indian man doctor, about 35 years old, on a fully transparent background (PNG with alpha channel, no backdrop, no floor, no shadow). White doctor's coat over a light blue shirt, stethoscope around his neck, short neat hair. He holds a tablet at chest height in his left hand with the screen facing away from the camera, his right hand relaxed, and looks up from it into the camera with a friendly, attentive, closed-mouth smile, as if in the middle of an online consultation. Framed from the waist up: the bottom edge cuts cleanly straight across his waist, with a little space above his head. Portrait 4:5, 1600 by 2000 pixels, he fills most of the frame. Soft daylight from the left, natural skin texture, sharp focus, real commercial photography on an 85mm lens. Not an illustration, not 3D, no over-smoothed skin, no extra or distorted fingers. No text, no logos, no watermark.
+
+=====================================================================
+GRID VERSIONS - 4 variations in one image (to compare quickly)
+Panels are low resolution; regenerate the chosen one alone at full size
+with its single prompt above.
+=====================================================================
+
+GRID 1 - BACKGROUNDS
+One image split into a 2 by 2 grid of four separate website banner backgrounds, separated by thin white gutters, each panel a wide landscape at 2.4 to 1. The whole image is 2400 by 1000 pixels. No people, no text, no letters, no logos, no watermark in any panel. In every panel the left 55 percent is calm and plain so a headline can sit on it, and any detail stays on the right side. Real photography, soft natural light from the left.
+Top left: a softly blurred, empty, bright modern Indian clinic interior, warm white walls, light oak slat panelling on the right, a green plant and a white counter far in the background, everything out of focus.
+Top right: a seamless studio paper backdrop, smooth gradient from warm ivory on the left to soft blush pink on the right, a faint circular glow behind the right third, subtle paper texture.
+Bottom left: deep navy fading to midnight blue, with heavily blurred tulsi and ashwagandha leaves, small glass homeopathy vials and the curve of a stethoscope only on the right, low contrast; the left side dark and empty.
+Bottom right: off-white base with large soft translucent rounded shapes in pale coral and light raspberry red across the right half, like frosted glass catching daylight, fine grain.
+
+GRID 2 - PERSON
+One image split into a 2 by 2 grid of four separate portrait photographs, separated by thin white gutters, each panel a 4 to 5 portrait. The whole image is 1600 by 2000 pixels. Every panel has the same flat, even, light grey studio backdrop with no texture, no floor and no shadow, so the person can be cut out easily. Each person is framed from the waist up (the group from mid-thigh up), the bottom edge cutting straight across, with a little space above the head, filling most of the panel. Everyone is Indian, between 30 and 45 years old, no grey hair, looking straight into the camera with a calm, warm, closed-mouth smile. Soft daylight from the left, natural skin texture, sharp focus, real commercial photography, not an illustration, not 3D, no plastic skin, no extra fingers. No text, no logos, no watermark.
+Top left: a woman doctor about 32, white doctor's coat over a soft lavender kurta, stethoscope around her neck, hair neatly tied back, arms loosely folded.
+Top right: a man, an Ayurveda doctor about 40, cream cotton kurta with a beige Nehru jacket, stethoscope, neatly trimmed short beard, hands loosely clasped in front.
+Bottom left: three doctors standing close together, one from each medical system: a man in a cream kurta and beige Nehru jacket on the left, a woman in a white coat over a simple kurta slightly forward in the centre with arms folded, a man in a white coat over a light blue shirt with a stethoscope on the right.
+Bottom right: a man doctor about 35, white coat over a light blue shirt, stethoscope, holding a tablet at chest height with the screen facing away, looking up from it into the camera as if mid online consultation.
+
+=====================================================================
+COMPLETE SCENES - person + background together (separate later)
+Built for easy separation: the person stands clear on the right with a
+clean outline, nothing in front of them, and a simple background behind
+them that continues, so the cut-out is clean and the gap fills easily.
+=====================================================================
+
+SCENE 1  Clinic + woman doctor (light, black text)
+A wide website hero banner photograph, landscape 2400 by 1000 pixels. A bright, modern Indian clinic interior: warm white walls, light oak wood slat panelling on the far right, a potted green plant and a low white counter far in the background, all softly out of focus, soft natural daylight from the left. On the right side of the frame, filling the area from about 58 to 92 percent of the width, stands one Indian woman doctor about 32 years old: white doctor's coat over a soft lavender kurta, stethoscope around her neck, hair neatly tied back, small stud earrings, arms loosely folded, angled slightly towards the left, looking straight into the camera with a warm, confident, closed-mouth smile. She is framed from the waist up, the bottom edge of the image cutting straight across her waist, her head well below the top edge. She stands clear of everything: nothing in front of her, nothing touching her, the plain blurred wall continuing behind her so her outline is crisp against it. The left 55 percent of the frame is calm, an even warm white wall with no objects, so black headline text can sit on it. Real commercial photography, 85mm lens, she is in sharp focus and the room is softly blurred, natural skin texture, true colours. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no letters, no logos, no watermark.
+
+SCENE 2  Ivory studio + Ayurveda doctor (light, black text)
+A wide website hero banner photograph, landscape 2400 by 1000 pixels, shot in a studio. The backdrop is a seamless paper sweep with a smooth gradient from warm ivory on the left to soft blush pink on the right, subtle paper texture, a faint soft glow behind the person. On the right side of the frame, filling the area from about 58 to 90 percent of the width, stands one Indian man, an Ayurveda doctor about 40 years old: cream cotton kurta with a beige Nehru jacket, stethoscope around his neck, neatly trimmed short beard, no grey hair, hands loosely clasped in front, turned slightly towards the left, looking into the camera with a calm, reassuring, closed-mouth smile. He is framed from the waist up, the bottom edge of the image cutting straight across his waist, his head well below the top edge. No props, no floor visible, no cast shadow on the backdrop; he stands clear with a crisp outline against the plain gradient. The left 55 percent is empty ivory backdrop for black headline text. Soft studio light from the left, natural skin texture, sharp focus, real commercial photography, 85mm lens. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no letters, no logos, no watermark.
+
+SCENE 3  Deep navy + the three-system team (dark, white text)
+A wide website hero banner photograph, landscape 2400 by 1000 pixels. The background is deep navy fading to midnight blue, with very soft, heavily out-of-focus tulsi and ashwagandha leaves and a few small glass homeopathy vials glowing faintly on the far right edge only, low contrast. On the right half of the frame, filling the area from about 50 to 95 percent of the width, three Indian doctors stand close together, one from each medical system, all between 30 and 45 years old: on the left a man, the Ayurveda doctor, in a cream kurta with a beige Nehru jacket; in the centre and slightly forward a woman, the Homeopathy doctor, in a white doctor's coat over a simple kurta, hair tied back, arms folded; on the right a man, the Allopathy doctor, in a white doctor's coat over a light blue shirt with a stethoscope. All three look into the camera with calm, warm, closed-mouth smiles, upright and relaxed, a team you can trust. They are framed from mid-thigh up, the bottom edge of the image cutting straight across all three, heads well below the top edge. Soft light from the upper left makes their white and cream clothes stand out crisply against the dark background, with a gentle rim light on their outlines; nothing in front of them. The left 50 percent is smooth dark navy with nothing in it, for white headline text. Real commercial photography, 50mm lens, sharp focus on the doctors, natural skin texture. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no letters, no logos, no watermark.
+
+SCENE 4  Coral frosted shapes + doctor with tablet (light, black text)
+A wide website hero banner photograph, landscape 2400 by 1000 pixels. The background is off-white with large, soft, translucent rounded shapes in pale coral and very light raspberry red floating behind the right half, like frosted glass panels catching daylight, with a fine grain. On the right side of the frame, filling the area from about 58 to 90 percent of the width, stands one Indian man doctor about 35 years old: white doctor's coat over a light blue shirt, stethoscope around his neck, short neat hair. He holds a tablet at chest height in his left hand with the screen facing away from the camera, his right hand relaxed, and looks up from it into the camera with a friendly, attentive, closed-mouth smile, as if in the middle of an online consultation. He is framed from the waist up, the bottom edge of the image cutting straight across his waist, his head well below the top edge. The coral shapes sit behind him only, never in front, and he stands clear with a crisp outline. The left 55 percent is almost plain off-white for black headline text. Soft daylight from the left, natural skin texture, sharp focus, real commercial photography, 85mm lens. Not an illustration, not 3D, no plastic skin, no extra fingers. No text, no letters, no logos, no watermark.
+
+SEPARATING A SCENE
+1. Person: remove.bg (or Photoshop "Remove background") on the full scene, then crop tight to the person and save as PNG.
+2. Background: in ChatGPT/Photoshop, erase the person (Generative fill / "remove the person and continue the background naturally, keep everything else the same"), save as WebP or JPG.
+3. Or skip separating: upload the whole scene as the Background image only, with no Foreground image. Easier, but on phones the person gets cropped, which is why separating is better.
+
+=====================================================================
+AFTER GENERATING
+=====================================================================
+- If the tool gives a white or grey background instead of real transparency, remove it (remove.bg or Photoshop) and save as PNG. WebP with transparency also works.
+- Theme editor > About Us > Healthcare hero banner:
+  Layout mode = Background with overlay image; Background image = the BG; Foreground image = the person; position Right / Bottom; Image size about 100%.
+- BG-C is dark: set Heading colour and Body colour to white.
+- P-3 (the team) is wide: tick "Side-by-side on desktop" so the text keeps the left half.

@@ -49,197 +49,7 @@
   endif
 -%}
 
-<div
-  id="lead-popup-{{ section.id }}"
-  class="lead-popup"
-  data-lead-popup
-  data-delay="{{ section.settings.popup_delay | default: 0.5 }}"
-  data-scroll-percent="{{ section.settings.scroll_trigger_percent | default: 60 }}"
-  data-max-shows="{{ section.settings.max_shows | default: 2 }}"
-  data-session-key="lead_popup_seen_{{ section.id }}{{ scope_key }}"
-  data-firestore-collection="{{ section.settings.firestore_collection | default: 'popup_leads' }}"
-  data-template="{{ template }}"
-  hidden
->
-  <div class="lead-popup__overlay" data-lead-popup-close></div>
-
-  <div
-    class="lead-popup__dialog{% unless has_image %} lead-popup__dialog--no-image{% endunless %}"
-    role="dialog"
-    aria-modal="true"
-    aria-label="{{ section.settings.popup_heading | escape }}"
-  >
-    <button type="button" class="lead-popup__close" data-lead-popup-close aria-label="Close" title="Close">&#215;</button>
-
-    {%- comment -%}
-      Visual panel: desktop/tablet left column, mobile top band.
-      On mobile the heading moves INTO the band (mockup 2c), so the content
-      header is hidden there and this one takes over.
-    {%- endcomment -%}
-    <div class="lead-popup__visual">
-      {%- if has_image -%}
-        {%- if section.settings.popup_image != blank -%}
-          {%- comment -%} Theme-editor override, full srcset off the uploaded file. {%- endcomment -%}
-          <img
-            class="lead-popup__doctor"
-            src="{{ section.settings.popup_image | image_url: width: 700 }}"
-            srcset="{{ section.settings.popup_image | image_url: width: 400 }} 400w,
-                    {{ section.settings.popup_image | image_url: width: 700 }} 700w,
-                    {{ section.settings.popup_image | image_url: width: 1000 }} 1000w"
-            sizes="(max-width: 767px) 150px, 350px"
-            alt="{{ section.settings.popup_image.alt | default: 'sehatup health advisor' | escape }}"
-            loading="lazy"
-            decoding="async"
-            width="700"
-            height="1050"
-          >
-        {%- else -%}
-          {%- comment -%}
-            Packaged photo. The source is 440px wide, so the srcset stops at
-            440w, because Shopify's CDN does not upscale, and asking for 700w would
-            just re-serve the same pixels under a wider descriptor and mislead
-            the browser's selection.
-          {%- endcomment -%}
-          <img
-            class="lead-popup__doctor"
-            src="{{ doctor_url }}&width=440"
-            srcset="{{ doctor_url }}&width=220 220w,
-                    {{ doctor_url }}&width=330 330w,
-                    {{ doctor_url }}&width=440 440w"
-            sizes="(max-width: 767px) 150px, 350px"
-            alt="sehatup health advisor"
-            loading="lazy"
-            decoding="async"
-            width="440"
-            height="660"
-          >
-        {%- endif -%}
-      {%- endif -%}
-
-      <span class="lead-popup__handle" aria-hidden="true"></span>
-
-      {%- if section.settings.trust_1 != blank or section.settings.trust_2 != blank or section.settings.trust_3 != blank or section.settings.trust_4 != blank -%}
-        <div class="lead-popup__scrim" aria-hidden="true"></div>
-        <div class="lead-popup__trust">
-          {%- if section.settings.trust_1 != blank -%}<span>{{ section.settings.trust_1 }}</span>{%- endif -%}
-          {%- if section.settings.trust_2 != blank -%}<span>{{ section.settings.trust_2 }}</span>{%- endif -%}
-          {%- if section.settings.trust_3 != blank -%}<span>{{ section.settings.trust_3 }}</span>{%- endif -%}
-          {%- if section.settings.trust_4 != blank -%}<span>{{ section.settings.trust_4 }}</span>{%- endif -%}
-        </div>
-      {%- endif -%}
-
-      <div class="lead-popup__band-text">
-        <h2>{{ m_heading }}</h2>
-        {%- if m_sub != blank -%}<p>{{ m_sub }}</p>{%- endif -%}
-      </div>
-    </div>
-
-    <div class="lead-popup__content">
-      <div class="lead-popup__head" data-head>
-        {%- if section.settings.eyebrow != blank -%}
-          <span class="lead-popup__eyebrow">{{ section.settings.eyebrow }}</span>
-        {%- endif -%}
-        <h2 class="lead-popup__heading">{{ section.settings.popup_heading }}</h2>
-        {%- if section.settings.popup_subheading != blank -%}
-          <p class="lead-popup__subheading">{{ section.settings.popup_subheading }}</p>
-        {%- endif -%}
-      </div>
-
-      {%- comment -%}
-        Everything is required except the email address. Errors surface
-        per-field on submit. The button is never disabled as a validation gate.
-      {%- endcomment -%}
-      <form class="lead-popup__form" data-lead-popup-form novalidate>
-        <div class="lead-popup__fields">
-          <div class="lead-popup__field">
-            <label for="lead-name-{{ section.id }}">Full name<span class="lead-popup__req">*</span></label>
-            <input type="text" id="lead-name-{{ section.id }}" name="name" autocomplete="name" placeholder="Enter your full name" required>
-            <p class="lead-popup__error" data-error-for="name"></p>
-          </div>
-
-          <div class="lead-popup__grid lead-popup__grid--phone">
-            <div class="lead-popup__field">
-              <label for="lead-phone-{{ section.id }}">Mobile number<span class="lead-popup__req">*</span></label>
-              <div class="lead-popup__inputgroup" data-group-for="phone">
-                <span class="lead-popup__prefix">+91</span>
-                <input
-                  type="tel"
-                  id="lead-phone-{{ section.id }}"
-                  name="phone"
-                  inputmode="numeric"
-                  autocomplete="tel"
-                  placeholder="10-digit mobile"
-                  required
-                >
-              </div>
-              <p class="lead-popup__error" data-error-for="phone"></p>
-            </div>
-
-            <div class="lead-popup__field">
-              <label for="lead-age-{{ section.id }}">Age<span class="lead-popup__req">*</span></label>
-              <input type="number" id="lead-age-{{ section.id }}" name="age" inputmode="numeric" placeholder="Your age" required>
-              <p class="lead-popup__error" data-error-for="age"></p>
-            </div>
-          </div>
-
-          {%- if section.settings.collect_email -%}
-            <div class="lead-popup__field">
-              <label for="lead-email-{{ section.id }}">
-                Email address<span class="lead-popup__optional">optional</span>
-              </label>
-              <input
-                type="email"
-                id="lead-email-{{ section.id }}"
-                name="email"
-                autocomplete="email"
-                autocapitalize="off"
-                spellcheck="false"
-                placeholder="Enter your email address"
-              >
-              <p class="lead-popup__error" data-error-for="email"></p>
-            </div>
-          {%- endif -%}
-
-          {%- comment -%}
-            One free-text city field. Whatever the customer types is stored
-            verbatim as `city`, with no parsing, no splitting, no guessing.
-          {%- endcomment -%}
-          <div class="lead-popup__field">
-            <label for="lead-city-{{ section.id }}">City<span class="lead-popup__req">*</span></label>
-            <input
-              type="text"
-              id="lead-city-{{ section.id }}"
-              name="city"
-              autocomplete="address-level2"
-              placeholder="Enter your city"
-              required
-            >
-            <p class="lead-popup__error" data-error-for="city"></p>
-          </div>
-        </div>
-
-        <button type="submit" class="lead-popup__submit" data-submit>
-          <span class="lead-popup__spinner" aria-hidden="true"></span>
-          <span data-btn-label>{{ section.settings.button_text | default: 'Get free consultation' }}</span>
-        </button>
-
-        <p class="lead-popup__status" data-lead-popup-status role="status" aria-live="polite"></p>
-
-        {%- if section.settings.consent_text != blank -%}
-          <p class="lead-popup__consent">{{ section.settings.consent_text }}</p>
-        {%- endif -%}
-      </form>
-
-      {%- comment -%} Mockup 1e: the form is replaced, not just annotated. {%- endcomment -%}
-      <div class="lead-popup__success" data-success hidden>
-        <span class="lead-popup__tick" aria-hidden="true">&#10003;</span>
-        <h3>{{ section.settings.success_title | default: "Thanks, we'll call you soon" }}</h3>
-        <p>{{ section.settings.success_message | default: 'One of our doctors will call you on this number within 24 hours.' }}</p>
-      </div>
-    </div>
-  </div>
-</div>
-
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
 <style>
   #lead-popup-{{ section.id }} {
     /* Palette taken from the live theme's index.json so the popup sits in the
@@ -501,7 +311,8 @@
     align-items: baseline;
   }
 
-  #lead-popup-{{ section.id }} .lead-popup__field input {
+  #lead-popup-{{ section.id }} .lead-popup__field input,
+  #lead-popup-{{ section.id }} .lead-popup__field select {
     width: 100%;
     box-sizing: border-box;
     padding: 11px 12px;
@@ -511,6 +322,18 @@
     color: var(--lp-text);
     background: #fff;
   }
+  /* Native arrow swapped for a chevron so the select matches the inputs
+     across browsers; "Select" shows muted like a placeholder until chosen. */
+  #lead-popup-{{ section.id }} .lead-popup__field select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 34px;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23555' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+    cursor: pointer;
+  }
+  #lead-popup-{{ section.id }} .lead-popup__field select:invalid { color: #9ca3af; }
+  #lead-popup-{{ section.id }} .lead-popup__field select option { color: var(--lp-text); }
+  #lead-popup-{{ section.id }} .lead-popup__field select:focus,
   #lead-popup-{{ section.id }} .lead-popup__field input:focus {
     outline: none;
     border-color: var(--lp-accent);
@@ -552,6 +375,7 @@
 
   /* Error state (mockup 1c) */
   #lead-popup-{{ section.id }} .lead-popup__field input[aria-invalid="true"],
+  #lead-popup-{{ section.id }} .lead-popup__field select[aria-invalid="true"],
   #lead-popup-{{ section.id }} .lead-popup__inputgroup[data-invalid="true"] {
     border-color: var(--lp-error);
     box-shadow: 0 0 0 3px rgba(239, 68, 68, .14);
@@ -569,7 +393,9 @@
     padding: 14px 18px;
     border: 0;
     border-radius: 8px;
-    background: var(--lp-accent);
+    /* The darker brand red: white 15px text on the bright #ee204a is 4.25:1,
+       just under the 4.5:1 that small text needs; this is 5.3:1. */
+    background: var(--lp-accent-hover);
     color: #fff;
     font: 600 15px sans-serif;
     cursor: pointer;
@@ -579,7 +405,7 @@
     gap: 9px;
   }
   #lead-popup-{{ section.id }} .lead-popup__submit:hover:not(:disabled) {
-    background: var(--lp-accent-hover);
+    background: #b3123a;
   }
   #lead-popup-{{ section.id }} .lead-popup__submit:active:not(:disabled) { transform: translateY(1px); }
   #lead-popup-{{ section.id }} .lead-popup__submit:focus-visible {
@@ -779,7 +605,8 @@
     #lead-popup-{{ section.id }} .lead-popup__grid { gap: 10px; }
 
     /* Bigger touch targets than desktop. */
-    #lead-popup-{{ section.id }} .lead-popup__field input { padding: 13px 12px; font-size: 15px; }
+    #lead-popup-{{ section.id }} .lead-popup__field input,
+    #lead-popup-{{ section.id }} .lead-popup__field select { padding-top: 13px; padding-bottom: 13px; font-size: 15px; }
     #lead-popup-{{ section.id }} .lead-popup__prefix { padding: 13px 0 13px 12px; font-size: 15px; }
     #lead-popup-{{ section.id }} .lead-popup__inputgroup input { padding: 13px 12px; }
     #lead-popup-{{ section.id }} .lead-popup__submit { padding: 15px 18px; font-size: 15.5px; }
@@ -912,6 +739,211 @@
   }
 </style>
 
+<div
+  id="lead-popup-{{ section.id }}"
+  class="lead-popup"
+  data-lead-popup
+  data-delay="{{ section.settings.popup_delay | default: 0.5 }}"
+  data-scroll-percent="{{ section.settings.scroll_trigger_percent | default: 60 }}"
+  data-max-shows="{{ section.settings.max_shows | default: 2 }}"
+  data-session-key="lead_popup_seen_{{ section.id }}{{ scope_key }}"
+  data-firestore-collection="{{ section.settings.firestore_collection | default: 'popup_leads' }}"
+  data-template="{{ template }}"
+  hidden
+>
+  <div class="lead-popup__overlay" data-lead-popup-close></div>
+
+  <div
+    class="lead-popup__dialog{% unless has_image %} lead-popup__dialog--no-image{% endunless %}"
+    role="dialog"
+    aria-modal="true"
+    aria-label="{{ section.settings.popup_heading | escape }}"
+  >
+    <button type="button" class="lead-popup__close" data-lead-popup-close aria-label="Close" title="Close">&#215;</button>
+
+    {%- comment -%}
+      Visual panel: desktop/tablet left column, mobile top band.
+      On mobile the heading moves INTO the band (mockup 2c), so the content
+      header is hidden there and this one takes over.
+    {%- endcomment -%}
+    <div class="lead-popup__visual">
+      {%- if has_image -%}
+        {%- if section.settings.popup_image != blank -%}
+          {%- comment -%} Theme-editor override, full srcset off the uploaded file. {%- endcomment -%}
+          <img
+            class="lead-popup__doctor"
+            src="{{ section.settings.popup_image | image_url: width: 700 }}"
+            srcset="{{ section.settings.popup_image | image_url: width: 400 }} 400w,
+                    {{ section.settings.popup_image | image_url: width: 700 }} 700w,
+                    {{ section.settings.popup_image | image_url: width: 1000 }} 1000w"
+            sizes="(max-width: 767px) 150px, 350px"
+            alt="{{ section.settings.popup_image.alt | default: 'sehatup health advisor' | escape }}"
+            loading="lazy"
+            decoding="async"
+            width="700"
+            height="1050"
+          >
+        {%- else -%}
+          {%- comment -%}
+            Packaged photo. The source is 440px wide, so the srcset stops at
+            440w, because Shopify's CDN does not upscale, and asking for 700w would
+            just re-serve the same pixels under a wider descriptor and mislead
+            the browser's selection.
+          {%- endcomment -%}
+          <img
+            class="lead-popup__doctor"
+            src="{{ doctor_url }}&width=440"
+            srcset="{{ doctor_url }}&width=220 220w,
+                    {{ doctor_url }}&width=330 330w,
+                    {{ doctor_url }}&width=440 440w"
+            sizes="(max-width: 767px) 150px, 350px"
+            alt="sehatup health advisor"
+            loading="lazy"
+            decoding="async"
+            width="440"
+            height="660"
+          >
+        {%- endif -%}
+      {%- endif -%}
+
+      <span class="lead-popup__handle" aria-hidden="true"></span>
+
+      {%- if section.settings.trust_1 != blank or section.settings.trust_2 != blank or section.settings.trust_3 != blank or section.settings.trust_4 != blank -%}
+        <div class="lead-popup__scrim" aria-hidden="true"></div>
+        <div class="lead-popup__trust">
+          {%- if section.settings.trust_1 != blank -%}<span>{{ section.settings.trust_1 }}</span>{%- endif -%}
+          {%- if section.settings.trust_2 != blank -%}<span>{{ section.settings.trust_2 }}</span>{%- endif -%}
+          {%- if section.settings.trust_3 != blank -%}<span>{{ section.settings.trust_3 }}</span>{%- endif -%}
+          {%- if section.settings.trust_4 != blank -%}<span>{{ section.settings.trust_4 }}</span>{%- endif -%}
+        </div>
+      {%- endif -%}
+
+      <div class="lead-popup__band-text">
+        <h2>{{ m_heading }}</h2>
+        {%- if m_sub != blank -%}<p>{{ m_sub }}</p>{%- endif -%}
+      </div>
+    </div>
+
+    <div class="lead-popup__content">
+      <div class="lead-popup__head" data-head>
+        {%- if section.settings.eyebrow != blank -%}
+          <span class="lead-popup__eyebrow">{{ section.settings.eyebrow }}</span>
+        {%- endif -%}
+        <h2 class="lead-popup__heading">{{ section.settings.popup_heading }}</h2>
+        {%- if section.settings.popup_subheading != blank -%}
+          <p class="lead-popup__subheading">{{ section.settings.popup_subheading }}</p>
+        {%- endif -%}
+      </div>
+
+      {%- comment -%}
+        Everything is required except the email address. Errors surface
+        per-field on submit. The button is never disabled as a validation gate.
+      {%- endcomment -%}
+      <form class="lead-popup__form" data-lead-popup-form novalidate>
+        <div class="lead-popup__fields">
+          <div class="lead-popup__field">
+            <label for="lead-name-{{ section.id }}">Full name<span class="lead-popup__req">*</span></label>
+            <input type="text" id="lead-name-{{ section.id }}" name="name" autocomplete="name" placeholder="Enter your full name" required>
+            <p class="lead-popup__error" data-error-for="name"></p>
+          </div>
+
+          <div class="lead-popup__grid lead-popup__grid--phone">
+            <div class="lead-popup__field">
+              <label for="lead-phone-{{ section.id }}">Mobile number<span class="lead-popup__req">*</span></label>
+              <div class="lead-popup__inputgroup" data-group-for="phone">
+                <span class="lead-popup__prefix">+91</span>
+                <input
+                  type="tel"
+                  id="lead-phone-{{ section.id }}"
+                  name="phone"
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  placeholder="10-digit mobile"
+                  required
+                >
+              </div>
+              <p class="lead-popup__error" data-error-for="phone"></p>
+            </div>
+
+            <div class="lead-popup__field">
+              <label for="lead-age-{{ section.id }}">Age<span class="lead-popup__req">*</span></label>
+              <input type="number" id="lead-age-{{ section.id }}" name="age" inputmode="numeric" placeholder="Your age" required>
+              <p class="lead-popup__error" data-error-for="age"></p>
+            </div>
+          </div>
+
+          {%- if section.settings.collect_email -%}
+            <div class="lead-popup__field">
+              <label for="lead-email-{{ section.id }}">
+                Email address<span class="lead-popup__optional">optional</span>
+              </label>
+              <input
+                type="email"
+                id="lead-email-{{ section.id }}"
+                name="email"
+                autocomplete="email"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="Enter your email address"
+              >
+              <p class="lead-popup__error" data-error-for="email"></p>
+            </div>
+          {%- endif -%}
+
+          {%- comment -%}
+            One free-text city field. Whatever the customer types is stored
+            verbatim as `city`, with no parsing, no splitting, no guessing.
+          {%- endcomment -%}
+          <div class="lead-popup__grid lead-popup__grid--gender">
+            <div class="lead-popup__field">
+              <label for="lead-gender-{{ section.id }}">Gender<span class="lead-popup__req">*</span></label>
+              <select id="lead-gender-{{ section.id }}" name="gender" autocomplete="sex" required>
+                <option value="" selected disabled>Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              <p class="lead-popup__error" data-error-for="gender"></p>
+            </div>
+
+            <div class="lead-popup__field">
+              <label for="lead-city-{{ section.id }}">City<span class="lead-popup__req">*</span></label>
+              <input
+                type="text"
+                id="lead-city-{{ section.id }}"
+                name="city"
+                autocomplete="address-level2"
+                placeholder="Enter your city"
+                required
+              >
+              <p class="lead-popup__error" data-error-for="city"></p>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="lead-popup__submit" data-submit>
+          <span class="lead-popup__spinner" aria-hidden="true"></span>
+          <span data-btn-label>{{ section.settings.button_text | default: 'Get free consultation' }}</span>
+        </button>
+
+        <p class="lead-popup__status" data-lead-popup-status role="status" aria-live="polite"></p>
+
+        {%- if section.settings.consent_text != blank -%}
+          <p class="lead-popup__consent">{{ section.settings.consent_text }}</p>
+        {%- endif -%}
+      </form>
+
+      {%- comment -%} Mockup 1e: the form is replaced, not just annotated. {%- endcomment -%}
+      <div class="lead-popup__success" data-success hidden>
+        <span class="lead-popup__tick" aria-hidden="true">&#10003;</span>
+        <h3>{{ section.settings.success_title | default: "Thanks, we'll call you soon" }}</h3>
+        <p>{{ section.settings.success_message | default: 'One of our doctors will call you on this number within 24 hours.' }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <script>
   (function () {
     var root = document.getElementById('lead-popup-{{ section.id }}');
@@ -938,7 +970,7 @@
        Google Sheet, hardcoded like Firebase above. Paste the Apps Script
        Web App URL (ends in /exec). Empty = Firestore only, as before.
        ------------------------------------------------------------------ */
-    var SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzSyk_ckT7hafspakcSwmseSKx1IC98-31UbpkmOI6pPg7Qq1GCC0cKJvU7WNOxTHx0QQ/exec';
+    var SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbw-5Pky1FEOJb4OdReak1jYLC39toWkAXB_sX3nNWoDUrKc3ZOwW2BcwQiIxjgTLOOpUQ/exec';
 
     /* Resolves true once the request has left the browser, false when there
        is no URL or the network failed. Never rejects.
@@ -1160,6 +1192,7 @@
     var ticking = false;
     var lastClosedAt = 0;
     var REARM_MS = 2000;
+    var rearmTimer = null;
 
     function scrollDepth() {
       var doc = document.documentElement;
@@ -1175,12 +1208,22 @@
       window.requestAnimationFrame(function () {
         ticking = false;
         // shownCount() >= 1 keeps this as the SECOND showing, never the first.
-        if (shownCount() >= 1 && scrollDepth() >= scrollPct) openPopup('scroll');
+        if (!(shownCount() >= 1 && scrollDepth() >= scrollPct)) return;
+        // A fast flick can pass the threshold and stop scrolling inside the
+        // re-arm window. No further scroll event would come to retry, so the
+        // popup waited for the next scroll. Check again when the window ends.
+        var wait = REARM_MS - (Date.now() - lastClosedAt);
+        if (wait > 0) {
+          if (!rearmTimer) rearmTimer = setTimeout(function () { rearmTimer = null; onScroll(); }, wait);
+          return;
+        }
+        openPopup('scroll');
       });
     }
 
     function teardownTriggers() {
       if (timerId) { clearTimeout(timerId); timerId = null; }
+      if (rearmTimer) { clearTimeout(rearmTimer); rearmTimer = null; }
       if (scrollBound) { window.removeEventListener('scroll', onScroll); scrollBound = false; }
     }
 
@@ -1330,6 +1373,7 @@
       var age = parseInt(ageRaw, 10);
       var email = (data.get('email') || '').toString().trim(); // optional
       var city = (data.get('city') || '').toString().trim();
+      var gender = (data.get('gender') || '').toString();
 
       // Collect every problem, then report them together (mockup 1c).
       var errors = [];
@@ -1352,6 +1396,7 @@
         invalid('email', 'Enter a valid email address');
       }
 
+      if (!gender) invalid('gender', 'Please select your gender');
       if (!city) invalid('city', 'City is required');
 
       if (errors.length) {
@@ -1394,6 +1439,7 @@
           phone: phone,
           email: email,
           age: age,
+          gender: gender,
           // Stored exactly as typed, with no parsing into city/state/pincode.
           city: city,
           status: 'new',
@@ -1639,7 +1685,7 @@
     },
     {
       "type": "paragraph",
-      "content": "Name, mobile, age and city are required. City is one free text field. Whatever the customer types is saved exactly as typed."
+      "content": "Name, mobile, age, gender and city are required. City is one free text field. Whatever the customer types is saved exactly as typed."
     },
     {
       "type": "checkbox",

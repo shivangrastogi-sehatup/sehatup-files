@@ -1,0 +1,617 @@
+{%- comment -%}
+  Health journey: "What happens after you start".
+
+  The second act of the Health Score story, deliberately NOT another pinned
+  scroll-jacking section (the scroll story right above already is one).
+  The page scrolls normally: four steps are ordinary text blocks, and on
+  desktop a phone (built in HTML) stays in view beside them. When a step
+  reaches the middle of the screen it lights up and the phone plays it:
+    Today       the quiz, score fills to 72
+    24 hours    a doctor calls, 3 systems review the score
+    Day 3 to 5  delivery tracking, a plain box arrives (Cash on Delivery)
+    Every month WhatsApp check-in, score climbs 72 -> 84
+  A Health Score card travels beside the phone through all four steps.
+  On phones nothing is sticky: each step is its text followed by its own
+  phone screen, which plays when it scrolls into view.
+
+  GSAP + ScrollTrigger are shared with the scroll story if it is on the
+  page, loaded otherwise. Without JS, or with reduced motion, the steps
+  render as a plain list.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #hj-{{ section.id }} {
+    --hj-text: #1d1d1d;
+    --hj-muted: #5c5c5c;
+    --hj-bg: #faf7f5;
+    --hj-rose: #fde2e7;
+    --hj-teal: #d9f0ee;
+    --ph: min(600px, 72vh);
+    background: var(--hj-bg);
+    font-family: 'Montserrat', sans-serif;
+    color: var(--hj-text);
+  }
+
+  /* ---- Static layout (no JS / reduced motion): a plain list ---------- */
+  #hj-{{ section.id }} .hj__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 72px 24px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 48px;
+    align-items: center;
+  }
+  #hj-{{ section.id }} .hj__eyebrow {
+    margin: 0 0 18px;
+    font: 700 12px/1 'Montserrat', sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--hj-ink);
+  }
+  #hj-{{ section.id }} .hj__heading { color: var(--hj-text); margin: 0 0 36px; font: 800 clamp(30px, 3.6vw, 52px)/1.05 'Montserrat', sans-serif; letter-spacing: -.02em; max-width: 520px; }
+  #hj-{{ section.id }} .hj__n { display: block; margin-bottom: 10px; font: 300 44px/1 'Montserrat', sans-serif; color: var(--hj-ink); }
+  #hj-{{ section.id }} .hj__slot { display: none; }
+  #hj-{{ section.id }} .hj__steps { display: grid; gap: 28px; }
+  #hj-{{ section.id }} .hj__day { margin: 0 0 6px; font: 700 13px/1.2 'Montserrat', sans-serif; color: var(--hj-ink); }
+  #hj-{{ section.id }} .hj__title { margin: 0 0 8px; font: 700 clamp(24px, 2.6vw, 38px)/1.1 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #hj-{{ section.id }} .hj__text { margin: 0; max-width: 420px; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--hj-muted); }
+  #hj-{{ section.id }} .hj__chip,
+  #hj-{{ section.id }} .hj__box { display: none; }
+
+  /* ---- The phone (all sizes in em, so it scales from one number) ------ */
+  #hj-{{ section.id }} .hj__visual { position: relative; }
+  #hj-{{ section.id }} .hj__phone {
+    position: relative;
+    height: var(--ph);
+    width: calc(var(--ph) * .49);
+    font-size: calc(var(--ph) / 38);
+    border-radius: 2.6em;
+    background: #111;
+    padding: .55em;
+    box-sizing: border-box;
+    box-shadow: 0 2.4em 4em rgba(29, 29, 29, .18), 0 .4em 1em rgba(29, 29, 29, .12);
+  }
+  #hj-{{ section.id }} .hj__notch {
+    position: absolute; z-index: 3; top: 1.05em; left: 50%;
+    width: 5.2em; height: 1.35em; margin-left: -2.6em;
+    border-radius: 1em; background: #111;
+  }
+  #hj-{{ section.id }} .hj__screen {
+    position: relative; height: 100%;
+    border-radius: 2.1em; overflow: hidden;
+    background: #fff;
+  }
+  #hj-{{ section.id }} .hj__scr {
+    position: absolute; inset: 0;
+    padding: 3.6em 1.3em 1.4em;
+    display: flex; flex-direction: column; gap: .8em;
+    box-sizing: border-box;
+  }
+  #hj-{{ section.id }} .hj__scr:not([data-scr="1"]) { visibility: hidden; opacity: 0; }
+
+  /* 1. Quiz */
+  #hj-{{ section.id }} .hj__quiz-top { display: flex; align-items: center; gap: .7em; font: 600 .75em/1 'Montserrat', sans-serif; color: #6b6b6b; }
+  #hj-{{ section.id }} .hj__quiz-bar { flex: 1; height: .35em; border-radius: 1em; background: #eee; overflow: hidden; }
+  #hj-{{ section.id }} .hj__quiz-bar i { display: block; width: 50%; height: 100%; background: var(--hj-accent); }
+  #hj-{{ section.id }} .hj__quiz-q { margin: .6em 0 .4em; font: 700 1.45em/1.2 'Montserrat', sans-serif; }
+  #hj-{{ section.id }} .hj__opt {
+    padding: .9em 1em; border-radius: .8em; border: 1px solid #eee;
+    font: 500 .95em/1 'Montserrat', sans-serif; color: #333;
+  }
+  #hj-{{ section.id }} .hj__opt--pick { transition: none; }
+  #hj-{{ section.id }} .hj__result {
+    margin-top: auto; padding: 1em; border-radius: 1em; background: #f6f3f1;
+    display: grid; gap: .35em;
+  }
+  #hj-{{ section.id }} .hj__result-label { font: 600 .8em/1 'Montserrat', sans-serif; color: #6b6b6b; }
+  #hj-{{ section.id }} .hj__num { font: 700 2.4em/1 'Montserrat', sans-serif; }
+  #hj-{{ section.id }} .hj__meter { height: .55em; border-radius: 1em; background: #eaeaea; overflow: hidden; }
+  #hj-{{ section.id }} .hj__meter i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--hj-accent); }
+
+  /* 2. Call */
+  #hj-{{ section.id }} .hj__scr--call { background: #2b2b2b; color: #fff; padding: 0; }
+  #hj-{{ section.id }} .hj__call-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+  #hj-{{ section.id }} .hj__call-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,0) 26%, rgba(0,0,0,0) 48%, rgba(0,0,0,.78) 100%); }
+  #hj-{{ section.id }} .hj__call-top { position: relative; padding: 3.4em 1.3em 0; display: grid; gap: .3em; text-align: center; }
+  #hj-{{ section.id }} .hj__call-top b { font: 700 1.15em/1.2 'Montserrat', sans-serif; }
+  #hj-{{ section.id }} .hj__call-top span { font: 500 .8em/1 'Montserrat', sans-serif; opacity: .85; }
+  #hj-{{ section.id }} .hj__call-panel { position: relative; margin-top: auto; padding: 1.2em 1.1em 1.4em; display: grid; gap: .9em; text-align: center; }
+  #hj-{{ section.id }} .hj__call-panel p { margin: 0; font: 600 .85em/1.3 'Montserrat', sans-serif; }
+  #hj-{{ section.id }} .hj__faces { display: flex; justify-content: center; gap: .8em; }
+  #hj-{{ section.id }} .hj__face { display: grid; justify-items: center; gap: .3em; }
+  #hj-{{ section.id }} .hj__face img,
+  #hj-{{ section.id }} .hj__face em {
+    width: 3.2em; height: 3.2em; border-radius: 50%; object-fit: cover; object-position: center top;
+    border: 2px solid #fff; background: #d9d2cb;
+    display: grid; place-items: center; font: 700 1.1em/1 'Montserrat', sans-serif; font-style: normal; color: #555;
+  }
+  #hj-{{ section.id }} .hj__face small { font: 600 .62em/1 'Montserrat', sans-serif; opacity: .9; }
+  #hj-{{ section.id }} .hj__call-btns { display: flex; justify-content: center; gap: 1.4em; }
+  #hj-{{ section.id }} .hj__call-btns span { width: 2.6em; height: 2.6em; border-radius: 50%; background: rgba(255,255,255,.22); }
+  #hj-{{ section.id }} .hj__call-btns .hj__end { background: #e5484d; }
+
+  /* 3. Tracking */
+  #hj-{{ section.id }} .hj__track-title { margin: .4em 0 .2em; font: 700 1.35em/1.2 'Montserrat', sans-serif; }
+  #hj-{{ section.id }} .hj__track { position: relative; list-style: none; margin: .4em 0; padding: 0 0 0 1.6em; display: grid; gap: 1.25em; }
+  #hj-{{ section.id }} .hj__track::before { content: ""; position: absolute; left: .42em; top: .5em; bottom: .5em; width: 2px; background: #e6e6e6; }
+  #hj-{{ section.id }} .hj__track li.hj__track-fill::before { display: none; }
+  #hj-{{ section.id }} .hj__track .hj__track-fill { position: absolute; left: .42em; top: .5em; width: 2px; height: 0; background: var(--hj-accent); }
+  #hj-{{ section.id }} .hj__track li { position: relative; font: 500 .92em/1.2 'Montserrat', sans-serif; color: #767676; }
+  #hj-{{ section.id }} .hj__track li::before { content: ""; position: absolute; left: -1.6em; top: .15em; width: .9em; height: .9em; border-radius: 50%; background: #fff; border: 2px solid #ddd; box-sizing: border-box; }
+  #hj-{{ section.id }} .hj__track li.is-done { color: #333; }
+  #hj-{{ section.id }} .hj__track li.is-done::before { background: var(--hj-accent); border-color: var(--hj-accent); }
+  #hj-{{ section.id }} .hj__track li[data-track-now] { color: var(--hj-text); font-weight: 700; }
+  #hj-{{ section.id }} .hj__pay {
+    margin-top: auto; padding: 1em; border-radius: 1em; background: var(--hj-rose);
+    font: 700 .9em/1.3 'Montserrat', sans-serif; text-align: center; color: #9a1633;
+  }
+
+  /* 4. WhatsApp */
+  #hj-{{ section.id }} .hj__scr--chat { padding: 0; background: #efe7de; }
+  #hj-{{ section.id }} .hj__chat-head { display: flex; align-items: center; gap: .7em; padding: 3.1em 1em .9em; background: #075e54; color: #fff; font: 700 .95em/1 'Montserrat', sans-serif; }
+  #hj-{{ section.id }} .hj__chat-av { width: 2em; height: 2em; border-radius: 50%; background: #25d366; }
+  #hj-{{ section.id }} .hj__chat-body { flex: 1; padding: 1.1em .9em; display: flex; flex-direction: column; gap: .7em; }
+  #hj-{{ section.id }} .hj__msg { margin: 0; max-width: 82%; padding: .7em .85em; border-radius: .9em; font: 500 .88em/1.35 'Montserrat', sans-serif; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+  #hj-{{ section.id }} .hj__msg--in { align-self: flex-start; background: #fff; border-top-left-radius: .2em; }
+  #hj-{{ section.id }} .hj__msg--out { align-self: flex-end; background: #d9fdd3; border-top-right-radius: .2em; }
+  #hj-{{ section.id }} .hj__msg--card { display: grid; gap: .35em; min-width: 62%; }
+  #hj-{{ section.id }} .hj__msg--card span:first-child { font-weight: 600; color: #6b6b6b; font-size: .85em; }
+  #hj-{{ section.id }} .hj__msg--card b { font: 700 1.9em/1 'Montserrat', sans-serif; }
+
+  /* ---- Live layout ------------------------------------------------------ */
+  #hj-{{ section.id }}.is-live .hj__scr { visibility: hidden; opacity: 0; }
+  #hj-{{ section.id }} .hj__chip-k { font: 600 11px/1 'Montserrat', sans-serif; color: #6b6b6b; letter-spacing: .04em; }
+  #hj-{{ section.id }} .hj__chip-n { font: 700 34px/1 'Montserrat', sans-serif; color: var(--hj-text); }
+  #hj-{{ section.id }} .hj__chip-s { display: grid; font: 600 12px/1.2 'Montserrat', sans-serif; color: var(--hj-ink); }
+  #hj-{{ section.id }} .hj__chip-s i { grid-area: 1 / 1; font-style: normal; opacity: 0; }
+  #hj-{{ section.id }} .hj__chip-s i[data-chip="1"] { opacity: 1; }
+  #hj-{{ section.id }}.is-live .hj__chip {
+    display: grid; gap: 4px; position: absolute; z-index: 2;
+    padding: 14px 18px 14px 16px; border-radius: 16px; background: #fff;
+    box-shadow: 0 14px 34px rgba(29, 29, 29, .14);
+  }
+  #hj-{{ section.id }}.is-live .hj__box { display: block; position: absolute; z-index: 1; }
+  #hj-{{ section.id }} .hj__box img { display: block; width: 100%; height: auto; filter: drop-shadow(0 18px 24px rgba(29, 29, 29, .18)); }
+  #hj-{{ section.id }} .hj__box-css {
+    display: block; aspect-ratio: 1.25; border-radius: 6px;
+    background: linear-gradient(180deg, #d9b98f 0 18%, #c9a476 18% 100%);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06), 0 18px 24px rgba(29,29,29,.18);
+    position: relative;
+  }
+  #hj-{{ section.id }} .hj__box-css::after { content: ""; position: absolute; left: 44%; right: 44%; top: 0; height: 30%; background: rgba(255,255,255,.35); }
+
+  /* Desktop: text scrolls, the phone stays in view beside it. */
+  @media (min-width: 750px) {
+    #hj-{{ section.id }}.is-live .hj__inner {
+      grid-template-columns: minmax(0, 460px) auto; justify-content: center;
+      column-gap: calc(var(--ph) * .5); align-items: start; padding-top: 96px; padding-bottom: 24px;
+    }
+    #hj-{{ section.id }}.is-live .hj__steps { gap: 0; }
+    #hj-{{ section.id }}.is-live .hj__step {
+      min-height: 62vh; display: flex; flex-direction: column; justify-content: center;
+      opacity: .4; transition: opacity .45s ease;
+    }
+    #hj-{{ section.id }}.is-live .hj__step.is-active { opacity: 1; }
+    #hj-{{ section.id }}.is-live .hj__title { font-size: clamp(28px, 3vw, 44px); }
+    #hj-{{ section.id }}.is-live .hj__text { font-size: 17px; }
+    #hj-{{ section.id }}.is-live .hj__visual {
+      position: sticky;
+      top: calc(var(--hj-top, 0px) + (100vh - var(--hj-top, 0px) - var(--ph)) / 2);
+      margin: calc(31vh - var(--ph) / 2 + 60px) calc(var(--ph) * .36) 0 0;
+    }
+    #hj-{{ section.id }}.is-live .hj__chip { left: calc(-1 * var(--ph) * .32); top: 22%; }
+    #hj-{{ section.id }}.is-live .hj__box { right: calc(-1 * var(--ph) * .42); bottom: 2%; width: calc(var(--ph) * .42); }
+  }
+
+  /* Phones: nothing sticky. Each step: its text, then its own phone. */
+  @media (max-width: 749px) {
+    #hj-{{ section.id }} { --ph: min(430px, 62svh); }
+    #hj-{{ section.id }} .hj__inner { grid-template-columns: 1fr; gap: 0; padding: 56px 16px 32px; }
+    #hj-{{ section.id }} .hj__heading { font-size: 30px; margin-bottom: 8px; }
+    #hj-{{ section.id }} .hj__n { font-size: 34px; margin-bottom: 6px; }
+    #hj-{{ section.id }}.is-live .hj__visual { display: none; }
+    #hj-{{ section.id }}.is-live .hj__steps { gap: 0; }
+    #hj-{{ section.id }}.is-live .hj__step { padding: 36px 0 12px; }
+    #hj-{{ section.id }}.is-live .hj__title { font-size: 26px; }
+    #hj-{{ section.id }}.is-live .hj__text { font-size: 15px; }
+    #hj-{{ section.id }}.is-live .hj__slot {
+      /* Phone to the left, the score card beside it rather than on the screen. */
+      display: flex; justify-content: flex-start; position: relative; margin-top: 22px;
+    }
+    #hj-{{ section.id }}.is-live .hj__slot .hj__chip { right: 0; top: 16%; padding: 9px 10px; border-radius: 12px; }
+    #hj-{{ section.id }} .hj__slot .hj__chip-n { font-size: 24px; }
+    #hj-{{ section.id }} .hj__slot .hj__chip-s { font-size: 10px; }
+    #hj-{{ section.id }}.is-live .hj__slot .hj__box { right: 0; bottom: 3%; width: calc(var(--ph) * .34); }
+  }
+
+  /* Big screens: everything grows with the screen (no zoom: the sticky phone
+     and the step triggers measure real pixels). */
+  @media (min-width: 1920px) {
+    #hj-{{ section.id }} { --ph: min(68vh, 1500px); }
+    #hj-{{ section.id }}.is-live .hj__inner { max-width: min(78vw, 3000px); grid-template-columns: minmax(0, min(34vw, 1200px)) auto; }
+    #hj-{{ section.id }} .hj__heading { font-size: clamp(52px, 2.9vw, 110px); max-width: none; }
+    #hj-{{ section.id }} .hj__eyebrow { font-size: clamp(12px, .65vw, 22px); }
+    #hj-{{ section.id }} .hj__n { font-size: clamp(44px, 2.3vw, 84px); }
+    #hj-{{ section.id }} .hj__day { font-size: clamp(15px, .8vw, 28px); }
+    #hj-{{ section.id }}.is-live .hj__title { font-size: clamp(44px, 2.3vw, 88px); }
+    #hj-{{ section.id }}.is-live .hj__text { font-size: clamp(17px, .95vw, 32px); max-width: none; }
+    #hj-{{ section.id }}.is-live .hj__chip { padding: clamp(14px, .8vw, 30px) clamp(18px, 1vw, 36px); border-radius: clamp(16px, .9vw, 30px); }
+    #hj-{{ section.id }} .hj__chip-k { font-size: clamp(11px, .6vw, 20px); }
+    #hj-{{ section.id }} .hj__chip-n { font-size: clamp(34px, 1.8vw, 64px); }
+    #hj-{{ section.id }} .hj__chip-s { font-size: clamp(12px, .65vw, 22px); }
+  }
+
+  /* Narrow phones: a slightly smaller phone so the score card fits beside it. */
+  @media (max-width: 374px) {
+    #hj-{{ section.id }} { --ph: min(390px, 58svh); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #hj-{{ section.id }} * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<section id="hj-{{ section.id }}" class="hj" data-hj style="--hj-accent: {{ s.accent_color }}; --hj-ink: {{ s.accent_color | color_darken: 8 }};">
+  <div class="hj__stage">
+    <div class="hj__inner">
+
+      <div class="hj__copy">
+        <p class="hj__eyebrow">{{ s.eyebrow }}</p>
+        {%- if s.heading != blank -%}<h2 class="hj__heading">{{ s.heading }}</h2>{%- endif -%}
+        <div class="hj__steps">
+          {%- for i in (1..4) -%}
+            {%- capture k_day -%}day_{{ i }}{%- endcapture -%}
+            {%- capture k_title -%}title_{{ i }}{%- endcapture -%}
+            {%- capture k_text -%}text_{{ i }}{%- endcapture -%}
+            <div class="hj__step" data-step="{{ i }}">
+              <span class="hj__n" aria-hidden="true">0{{ i }}</span>
+              <p class="hj__day">{{ s[k_day] }}</p>
+              <h3 class="hj__title">{{ s[k_title] }}</h3>
+              <p class="hj__text">{{ s[k_text] }}</p>
+              <div class="hj__slot"></div>
+            </div>
+          {%- endfor -%}
+        </div>
+      </div>
+
+      <div class="hj__visual">
+        <div class="hj__phone">
+          <div class="hj__notch"></div>
+          <div class="hj__screen">
+
+            {%- comment -%} 1. Quiz {%- endcomment -%}
+            <div class="hj__scr hj__scr--quiz" data-scr="1">
+              <div class="hj__quiz-top"><span class="hj__quiz-bar"><i></i></span><span>3/6</span></div>
+              <p class="hj__quiz-q">How has your sleep been lately?</p>
+              <div class="hj__opt">Good</div>
+              <div class="hj__opt hj__opt--pick">Average</div>
+              <div class="hj__opt">Poor</div>
+              <div class="hj__result">
+                <span class="hj__result-label">Your Health Score</span>
+                <b class="hj__num" data-score>0</b>
+                <span class="hj__meter"><i data-meter></i></span>
+              </div>
+            </div>
+
+            {%- comment -%} 2. Doctor call {%- endcomment -%}
+            <div class="hj__scr hj__scr--call" data-scr="2">
+              {%- if s.call_image != blank -%}
+                <img class="hj__call-img" src="{{ s.call_image | image_url: width: 600 }}" alt="" loading="lazy" width="600" height="{{ 600 | divided_by: s.call_image.aspect_ratio | round }}">
+              {%- endif -%}
+              <div class="hj__call-shade"></div>
+              <div class="hj__call-top">
+                <b>{{ s.call_name }}</b>
+                <span data-timer>00:00</span>
+              </div>
+              <div class="hj__call-panel">
+                <p>{{ s.review_line }}</p>
+                <div class="hj__faces">
+                  {%- for i in (1..3) -%}
+                    {%- capture k_img -%}doctor_{{ i }}_image{%- endcapture -%}
+                    {%- capture k_lab -%}doctor_{{ i }}_label{%- endcapture -%}
+                    <span class="hj__face">
+                      {%- if s[k_img] != blank -%}
+                        <img src="{{ s[k_img] | image_url: width: 160 }}" alt="" loading="lazy" width="160" height="160">
+                      {%- else -%}
+                        <em>{{ s[k_lab] | slice: 0 }}</em>
+                      {%- endif -%}
+                      <small>{{ s[k_lab] }}</small>
+                    </span>
+                  {%- endfor -%}
+                </div>
+                <div class="hj__call-btns"><span></span><span class="hj__end"></span><span></span></div>
+              </div>
+            </div>
+
+            {%- comment -%} 3. Delivery tracking {%- endcomment -%}
+            <div class="hj__scr hj__scr--track" data-scr="3">
+              <p class="hj__track-title">Your care kit is on the way</p>
+              <ul class="hj__track">
+                <li class="is-done">Order confirmed</li>
+                <li class="is-done">Packed</li>
+                <li data-track-now>Out for delivery</li>
+                <li>Delivered</li>
+                <li class="hj__track-fill" aria-hidden="true" data-track-fill></li>
+              </ul>
+              <div class="hj__pay">{{ s.pay_line }}</div>
+            </div>
+
+            {%- comment -%} 4. WhatsApp check-in {%- endcomment -%}
+            <div class="hj__scr hj__scr--chat" data-scr="4">
+              <div class="hj__chat-head"><span class="hj__chat-av"></span><b>sehatUP Care</b></div>
+              <div class="hj__chat-body">
+                <p class="hj__msg hj__msg--in" data-msg>{{ s.chat_q }}</p>
+                <p class="hj__msg hj__msg--out" data-msg>{{ s.chat_a }}</p>
+                <div class="hj__msg hj__msg--in hj__msg--card" data-msg>
+                  <span>Health Score</span>
+                  <b><span data-score-old>72</span> &rarr; <span data-score-new>72</span></b>
+                  <span class="hj__meter"><i data-meter-new></i></span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {%- comment -%} The Health Score card that travels through all 4 steps. {%- endcomment -%}
+        <div class="hj__chip" aria-hidden="true">
+          <span class="hj__chip-k">Health Score</span>
+          <b class="hj__chip-n" data-chip-n>72</b>
+          <span class="hj__chip-s">
+            <i data-chip="1">Your starting point</i>
+            <i data-chip="2">Reviewed by 3 doctors</i>
+            <i data-chip="3">Your plan, in the box</i>
+            <i data-chip="4">Progress at your check-in</i>
+          </span>
+        </div>
+
+        <div class="hj__box" aria-hidden="true">
+          {%- if s.box_image != blank -%}
+            <img src="{{ s.box_image | image_url: width: 500 }}" alt="" loading="lazy" width="500" height="{{ 500 | divided_by: s.box_image.aspect_ratio | round }}">
+          {%- else -%}
+            <span class="hj__box-css"></span>
+          {%- endif -%}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<script>
+  (function () {
+    var root = document.getElementById('hj-{{ section.id }}');
+    if (!root || root.dataset.hjBooted === '1') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // Share the scroll story's engine when it is on the page; load it
+    // otherwise. Loading GSAP twice would give two separate tickers.
+    function load(src) {
+      return new Promise(function (ok, fail) {
+        var el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = fail;
+        document.head.appendChild(el);
+      });
+    }
+    function ready() {
+      if (window.gsap && window.ScrollTrigger) return Promise.resolve();
+      var base = 'https://cdn.jsdelivr.net/npm/';
+      return (window.gsap ? Promise.resolve() : load(base + 'gsap@3.13.0/dist/gsap.min.js'))
+        .then(function () { return window.ScrollTrigger ? null : load(base + 'gsap@3.13.0/dist/ScrollTrigger.min.js'); })
+        .then(function () { return window.Lenis ? null : load(base + 'lenis@1.3.26/dist/lenis.min.js'); });
+    }
+    function start() {
+      ready().then(boot, function () { /* stays a static list */ });
+    }
+    // DOMContentLoaded, not load: on this page 'load' never fires (a widget
+    // keeps a request open), so waiting for it left the section static.
+    // ...and only once the section is about 1.5 screens away: booting at page
+    // load re-measured it again and again while everything above was still
+    // loading, which cost ~1.5s of main thread on mid-range phones.
+    function whenNear(cb) {
+      if (!('IntersectionObserver' in window)) return cb();
+      var io = new IntersectionObserver(function (e) {
+        if (e[0].isIntersecting) { io.disconnect(); cb(); }
+      }, { rootMargin: '150% 0px' });
+      io.observe(root);
+    }
+    function go() { whenNear(start); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+
+    function boot() {
+      if (root.dataset.hjBooted === '1') return;
+      root.dataset.hjBooted = '1';
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Smooth wheel scrolling, shared with the scroll story when present.
+      if (!window.sehatLenis && window.Lenis) {
+        var govs = window.sehatScrollGovs = window.sehatScrollGovs || [];
+        var lenis = window.sehatLenis = new Lenis({
+          lerp: .13, wheelMultiplier: 1.6, allowNestedScroll: true,
+          virtualScroll: function (d) { for (var i = 0; i < govs.length; i++) govs[i](d); }
+        });
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
+        gsap.ticker.lagSmoothing(0);
+        new MutationObserver(function () {
+          if (document.body.style.overflow === 'hidden') lenis.stop(); else lenis.start();
+        }).observe(document.body, { attributes: true, attributeFilter: ['style'] });
+      }
+
+      var header = document.querySelector('.section-header');
+      function measure() {
+        var hp = header ? getComputedStyle(header).position : '';
+        root.style.setProperty('--hj-top', ((hp === 'sticky' || hp === 'fixed') ? header.offsetHeight : 0) + 'px');
+      }
+      measure();
+      window.addEventListener('resize', measure);
+      root.classList.add('is-live');
+
+      var steps = root.querySelectorAll('.hj__step');
+      var phone = root.querySelector('.hj__phone');
+      var chip = root.querySelector('.hj__chip');
+      var box = root.querySelector('.hj__box');
+
+      function show(scope, i) {
+        scope.querySelectorAll('.hj__scr').forEach(function (el, k) { gsap.set(el, { autoAlpha: k === i - 1 ? 1 : 0, y: 0, scale: 1 }); });
+      }
+      function chipStatus(c, i) {
+        c.querySelectorAll('[data-chip]').forEach(function (el, k) {
+          gsap.to(el, { opacity: k === i - 1 ? 1 : 0, duration: .25, delay: k === i - 1 ? .15 : 0 });
+        });
+      }
+      function count(el, from, to, dur, at, tl) {
+        var o = { v: from };
+        tl.fromTo(o, { v: from }, { v: to, duration: dur, ease: 'power2.out', onUpdate: function () { el.textContent = Math.round(o.v); } }, at);
+      }
+
+      // What each step does on its phone screen (time-based, ~1-2s).
+      function play(scope, i, chipN, bx) {
+        var tl = gsap.timeline();
+        var $ = function (sel) { return scope.querySelector(sel); };
+        if (i === 1) {
+          tl.fromTo($('.hj__opt--pick'), { backgroundColor: '#ffffff', borderColor: '#eeeeee', color: '#333333' },
+                     { backgroundColor: 'rgba(238, 32, 74, .09)', borderColor: 'rgba(238, 32, 74, .6)', color: '#b3123a', duration: .25 }, .25);
+          tl.fromTo($('[data-meter]'), { width: '0%' }, { width: '72%', duration: 1, ease: 'power2.out' }, .55);
+          count($('[data-score]'), 0, 72, 1, .55, tl);
+        } else if (i === 2) {
+          var t = { v: 0 }, timer = $('[data-timer]');
+          tl.fromTo(t, { v: 0 }, { v: 45, duration: 2.2, ease: 'none', onUpdate: function () { var s = Math.round(t.v); timer.textContent = '00:' + (s < 10 ? '0' : '') + s; } }, 0);
+          tl.fromTo(scope.querySelectorAll('.hj__face'), { autoAlpha: 0, y: 12, scale: .8 }, { autoAlpha: 1, y: 0, scale: 1, duration: .35, stagger: .12, ease: 'back.out(2)' }, .35);
+        } else if (i === 3) {
+          tl.fromTo($('[data-track-fill]'), { height: '0%' }, { height: '52%', duration: .8, ease: 'power1.inOut' }, .2);
+          if (bx) tl.fromTo(bx, { autoAlpha: 0, y: -70, rotation: -8, x: 0 }, { autoAlpha: 1, y: 0, rotation: 0, duration: .6, ease: 'back.out(1.6)' }, .35);
+        } else {
+          tl.fromTo(scope.querySelectorAll('[data-msg]'), { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: .3, stagger: .35, ease: 'power2.out' }, .2);
+          tl.fromTo($('[data-meter-new]'), { width: '72%' }, { width: '84%', duration: .8, ease: 'power2.out' }, 1.05);
+          count($('[data-score-new]'), 72, 84, .8, 1.05, tl);
+          if (chipN) count(chipN, 72, 84, .8, 1.05, tl);
+        }
+        return tl;
+      }
+
+      var mm = gsap.matchMedia();
+
+      // Desktop: steps scroll past, the sticky phone follows the active one.
+      mm.add('(min-width: 750px)', function () {
+        var current = 0, running = null, chipN = chip.querySelector('[data-chip-n]');
+        var scr = phone.querySelectorAll('.hj__scr');
+        show(phone, 1);
+        steps[0].classList.add('is-active');
+        gsap.set(chip, { autoAlpha: 0, x: -16 });
+        gsap.set(box, { autoAlpha: 0 });
+
+        function activate(i) {
+          if (i === current) return;
+          var prev = current; current = i;
+          steps.forEach(function (el, k) { el.classList.toggle('is-active', k === i - 1); });
+          if (prev) gsap.to(scr[prev - 1], { autoAlpha: 0, scale: .97, duration: .3, ease: 'power2.in', overwrite: true });
+          gsap.fromTo(scr[i - 1], { autoAlpha: 0, y: 30, scale: 1 }, { autoAlpha: 1, y: 0, duration: .45, ease: 'power3.out', delay: prev ? .15 : 0, overwrite: true });
+          gsap.to(chip, { autoAlpha: 1, x: 0, duration: .4, ease: 'power3.out' });
+          chipStatus(chip, i);
+          if (i < 4) chipN.textContent = '72';
+          if (i !== 3) gsap.to(box, { autoAlpha: 0, x: 30, duration: .3, ease: 'power2.in', overwrite: true });
+          if (running) running.kill();
+          running = play(phone, i, chipN, i === 3 ? box : null);
+        }
+        steps.forEach(function (el, k) {
+          ScrollTrigger.create({
+            trigger: el, start: 'top 58%', end: 'bottom 58%',
+            onToggle: function (self) { if (self.isActive) activate(k + 1); }
+          });
+        });
+        return function () {
+          if (running) running.kill();
+          steps.forEach(function (el) { el.classList.remove('is-active'); });
+        };
+      });
+
+      // Phones: each step gets its own copy of the phone, played once in view.
+      mm.add('(max-width: 749px)', function () {
+        var made = [];
+        steps.forEach(function (el, k) {
+          var i = k + 1, slot = el.querySelector('.hj__slot');
+          var ph = phone.cloneNode(true), c = chip.cloneNode(true), bx = null;
+          slot.appendChild(ph); slot.appendChild(c); made.push(ph, c);
+          show(ph, i);
+          gsap.set(c, { autoAlpha: 1, x: 0 });
+          c.querySelectorAll('[data-chip]').forEach(function (e, n) { e.style.opacity = n === i - 1 ? 1 : 0; });
+          c.querySelector('[data-chip-n]').textContent = '72';
+          if (i === 3) { bx = box.cloneNode(true); slot.appendChild(bx); made.push(bx); gsap.set(bx, { autoAlpha: 0 }); }
+          ScrollTrigger.create({
+            trigger: slot, start: 'top 78%', once: true,
+            onEnter: function () { play(ph, i, c.querySelector('[data-chip-n]'), bx); }
+          });
+        });
+        return function () { made.forEach(function (n) { n.remove(); }); };
+      });
+
+      ScrollTrigger.addEventListener('refresh', measure);
+      ScrollTrigger.refresh();
+
+      // ScrollTrigger re-measures on window 'load', which never fires on this
+      // page (a widget keeps a request open). As images and sections above load,
+      // the page grows and every trigger ends up too early (748px on desktop).
+      // So re-measure whenever the page height actually changes.
+      if ('ResizeObserver' in window && !window.sehatRefreshWatch) {
+        var lastH = 0, rt = null;
+        window.sehatRefreshWatch = new ResizeObserver(function () {
+          var h = document.body.scrollHeight;
+          if (Math.abs(h - lastH) < 2) return;
+          lastH = h; clearTimeout(rt);
+          rt = setTimeout(function () { ScrollTrigger.refresh(); }, 400);
+        });
+        window.sehatRefreshWatch.observe(document.body);
+      }
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Health journey (phone)",
+  "tag": "div",
+  "class": "section-health-journey",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "What happens after you start" },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "From your first tap to feeling better" },
+    { "type": "header", "content": "1. The check" },
+    { "type": "text", "id": "day_1", "label": "When", "default": "Today" },
+    { "type": "text", "id": "title_1", "label": "Title", "default": "Take your Health Score" },
+    { "type": "textarea", "id": "text_1", "label": "Text", "default": "Free. No sign-up. Simple, honest questions about your body." },
+    { "type": "header", "content": "2. The doctor call" },
+    { "type": "text", "id": "day_2", "label": "When", "default": "Within 24 hours" },
+    { "type": "text", "id": "title_2", "label": "Title", "default": "A doctor calls you" },
+    { "type": "textarea", "id": "text_2", "label": "Text", "default": "Ayurveda, Homeopathy and Allopathy doctors review your score together, in Hindi or English." },
+    { "type": "image_picker", "id": "call_image", "label": "Doctor on the call (portrait)" },
+    { "type": "text", "id": "call_name", "label": "Caller name", "default": "sehatUP Doctor" },
+    { "type": "text", "id": "review_line", "label": "Review line", "default": "Your score is reviewed by 3 doctors" },
+    { "type": "image_picker", "id": "doctor_1_image", "label": "Doctor 1 photo" },
+    { "type": "text", "id": "doctor_1_label", "label": "Doctor 1 system", "default": "Ayurveda" },
+    { "type": "image_picker", "id": "doctor_2_image", "label": "Doctor 2 photo" },
+    { "type": "text", "id": "doctor_2_label", "label": "Doctor 2 system", "default": "Homeopathy" },
+    { "type": "image_picker", "id": "doctor_3_image", "label": "Doctor 3 photo" },
+    { "type": "text", "id": "doctor_3_label", "label": "Doctor 3 system", "default": "Allopathy" },
+    { "type": "header", "content": "3. The kit" },
+    { "type": "text", "id": "day_3", "label": "When", "default": "Day 3 to 5" },
+    { "type": "text", "id": "title_3", "label": "Title", "default": "Your kit arrives" },
+    { "type": "textarea", "id": "text_3", "label": "Text", "default": "In a plain box. Nobody knows what is inside. Confirm with just ₹50 and pay the rest on delivery, or pay in full online." },
+    { "type": "text", "id": "pay_line", "label": "Payment line on the phone", "default": "₹50 paid · rest on delivery" },
+    { "type": "image_picker", "id": "box_image", "label": "Box photo (transparent PNG)", "info": "Leave empty to show a simple drawn box." },
+    { "type": "header", "content": "4. The check-ins" },
+    { "type": "text", "id": "day_4", "label": "When", "default": "Every month" },
+    { "type": "text", "id": "title_4", "label": "Title", "default": "Your plan keeps improving" },
+    { "type": "textarea", "id": "text_4", "label": "Text", "default": "A WhatsApp check-in each month, and your plan changes as your body responds." },
+    { "type": "text", "id": "chat_q", "label": "Doctor's message", "default": "Day 30: how is your sleep now?" },
+    { "type": "text", "id": "chat_a", "label": "Customer's reply", "default": "Much better, thank you!" }
+  ],
+  "presets": [{ "name": "Health journey (phone)" }]
+}
+{% endschema %}

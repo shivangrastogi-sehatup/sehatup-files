@@ -1,0 +1,606 @@
+{%- comment -%}
+  Health check cards: "For Her" / "For Him" cards with a cut-out person.
+
+  The card background is drawn in CSS (gradient, glow, ring, dot grid), so the
+  only image per card is a transparent PNG of the person. At rest the person
+  stands inside the card; on hover (desktop) or when the card scrolls into
+  view (touch screens, which have no hover) they grow up and out of the top
+  edge. The bottom of the person stays clipped to the card's rounded bottom.
+{%- endcomment -%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #hcc-{{ section.id }} {
+    --hcc-text: #1d1d1d;
+    --hcc-muted: #555555;
+    --hcc-radius: 24px;
+    --hcc-h: 340px;
+    --hcc-pop: 1.14;
+    --hcc-ease: cubic-bezier(.16, 1, .3, 1);
+    padding: var(--hcc-pt) 20px var(--hcc-pb);
+    background: radial-gradient(ellipse 50% 70% at 12% 45%, #fdecef 0, transparent 70%), #faf6f3;
+    font-family: 'Montserrat', sans-serif;
+  }
+  #hcc-{{ section.id }} .hcc__inner { max-width: 1200px; margin: 0 auto; }
+
+  #hcc-{{ section.id }} .hcc__head { display: flex; flex-direction: column; gap: 10px; }
+  #hcc-{{ section.id }} .hcc__head--center { align-items: center; text-align: center; }
+  #hcc-{{ section.id }} .hcc__heading {
+    margin: 0;
+    max-width: 640px;
+    font: 700 clamp(26px, 3.2vw, 40px)/1.15 'Montserrat', sans-serif;
+    color: var(--hcc-text);
+    letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+  /* Small reassurance points under the subheading (desktop only). */
+  #hcc-{{ section.id }} .hcc__points { display: none; }
+  #hcc-{{ section.id }} .hcc__sub {
+    margin: 0;
+    max-width: 640px;
+    text-wrap: balance;
+    font: 400 15px/1.55 'Montserrat', sans-serif;
+    color: var(--hcc-muted);
+  }
+
+  /* The top margin is the room the popped heads grow into. */
+  #hcc-{{ section.id }} .hcc__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 60px;
+  }
+
+  #hcc-{{ section.id }} .hcc__card {
+    position: relative;
+    isolation: isolate;
+    min-height: var(--hcc-h);
+    border-radius: var(--hcc-radius);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .06);
+    transition: transform .5s var(--hcc-ease), box-shadow .5s var(--hcc-ease);
+  }
+
+  /* ---- Coded background ------------------------------------------------ */
+  #hcc-{{ section.id }} .hcc__bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 74% 62%, var(--glow) 0, transparent 52%),
+      linear-gradient(135deg, var(--c1) 0%, var(--c2) 100%);
+  }
+  /* Soft ring behind the person. */
+  #hcc-{{ section.id }} .hcc__bg::before {
+    content: "";
+    position: absolute;
+    right: -6%;
+    top: 12%;
+    width: 62%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, .6);
+    box-shadow: inset 0 0 60px rgba(255, 255, 255, .35);
+    transition: transform .7s var(--hcc-ease);
+  }
+  /* Dot grid in the top left corner, faded out with a mask. */
+  #hcc-{{ section.id }} .hcc__bg::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    top: 18px;
+    width: 140px;
+    height: 90px;
+    background-image: radial-gradient(rgba(255, 255, 255, .8) 1.4px, transparent 1.6px);
+    background-size: 14px 14px;
+    -webkit-mask-image: linear-gradient(135deg, #000 20%, transparent 80%);
+    mask-image: linear-gradient(135deg, #000 20%, transparent 80%);
+  }
+
+  /* ---- Person ----------------------------------------------------------
+     Clipped at the card's sides and rounded bottom, but not at the top
+     (the negative top inset), so the head can leave the card. */
+  #hcc-{{ section.id }} .hcc__person {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    clip-path: inset(-60% 0 0 0 round 0 0 var(--hcc-radius) var(--hcc-radius));
+  }
+  #hcc-{{ section.id }} .hcc__person img {
+    position: absolute;
+    right: 6%;
+    bottom: 0;
+    height: 104%;
+    width: auto;
+    max-width: 60%;
+    object-fit: contain;
+    object-position: bottom;
+    transform-origin: 50% 100%;
+    transition: transform .6s var(--hcc-ease), filter .6s var(--hcc-ease);
+  }
+
+  #hcc-{{ section.id }} .hcc__body {
+    position: relative;
+    z-index: 2;
+    width: 50%;
+    min-height: var(--hcc-h);
+    box-sizing: border-box;
+    padding: 36px 0 36px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 22px;
+  }
+  #hcc-{{ section.id }} .hcc__label {
+    margin: 0;
+    font: 700 26px/1.2 'Montserrat', sans-serif;
+    color: var(--hcc-text);
+  }
+  #hcc-{{ section.id }} .hcc__btns {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  #hcc-{{ section.id }} .hcc__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 200px;
+    box-sizing: border-box;
+    padding: 13px 22px;
+    border-radius: 999px;
+    border: 1.5px solid var(--hcc-accent-ink);
+    font: 600 14.5px/1.2 'Montserrat', sans-serif;
+    text-decoration: none;
+    transition: background-color .2s ease, color .2s ease, transform .1s ease;
+  }
+  #hcc-{{ section.id }} .hcc__btn--solid { background: var(--hcc-accent-ink); color: #fff; }
+  #hcc-{{ section.id }} .hcc__btn--solid:hover { background: #b3123a; border-color: #b3123a; }
+  #hcc-{{ section.id }} .hcc__btn--ghost { background: rgba(255, 255, 255, .85); color: var(--hcc-accent-ink); }
+  #hcc-{{ section.id }} .hcc__btn--ghost:hover { background: var(--hcc-accent-ink); color: #fff; }
+  #hcc-{{ section.id }} .hcc__btn:active { transform: translateY(1px); }
+  #hcc-{{ section.id }} .hcc__btn:focus-visible { outline: 2px solid var(--hcc-text); outline-offset: 2px; }
+
+  /* ---- Pop-out ---------------------------------------------------------
+     Hover on pointer devices, .is-pop (set by the script when the card is in
+     view) on touch screens, :focus-within for keyboard users. */
+  @media (hover: hover) and (pointer: fine) {
+    #hcc-{{ section.id }} .hcc__card:hover { transform: translateY(-4px); box-shadow: 0 18px 44px rgba(0, 0, 0, .12); }
+    #hcc-{{ section.id }} .hcc__card:hover .hcc__person img {
+      transform: scale(var(--hcc-pop));
+      filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .18));
+    }
+    #hcc-{{ section.id }} .hcc__card:hover .hcc__bg::before { transform: scale(1.1) rotate(8deg); }
+  }
+  #hcc-{{ section.id }} .hcc__card.is-pop .hcc__person img,
+  #hcc-{{ section.id }} .hcc__card:focus-within .hcc__person img {
+    transform: scale(var(--hcc-pop));
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .18));
+  }
+  #hcc-{{ section.id }} .hcc__card.is-pop .hcc__bg::before,
+  #hcc-{{ section.id }} .hcc__card:focus-within .hcc__bg::before { transform: scale(1.1) rotate(8deg); }
+
+  /* Desktop: headline on the left, two tall portrait cards on the right. Each
+     card is the person in a tinted photo band, then a white panel with the
+     label and two full-width buttons. The photo band takes the height the
+     screen can spare, so everything fits a short laptop (1366x650 of page). */
+  @media (min-width: 900px) {
+    #hcc-{{ section.id }} {
+      --hcc-photo: clamp(210px, calc(100vh - 360px), 370px); --hcc-pop: 1.06;
+      padding-left: clamp(28px, 3.5vw, 48px); padding-right: clamp(28px, 3.5vw, 48px);
+    }
+    #hcc-{{ section.id }} .hcc__inner {
+      max-width: 1240px;
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: clamp(28px, 4vw, 56px);
+      align-items: center;
+    }
+    #hcc-{{ section.id }} .hcc__head { align-items: flex-start; text-align: left; gap: 18px; }
+    #hcc-{{ section.id }} .hcc__heading { font-size: clamp(31px, 3.3vw, 48px); line-height: 1.08; letter-spacing: -.02em; max-width: 11.5em; }
+    #hcc-{{ section.id }} .hcc__sub { font-size: 17px; font-weight: 500; color: #444; max-width: 24em; }
+    #hcc-{{ section.id }} .hcc__points { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+    #hcc-{{ section.id }} .hcc__points li {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 12px 8px 9px; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgba(29, 29, 29, .08);
+      font: 600 13px/1 'Montserrat', sans-serif; color: var(--hcc-text);
+    }
+    #hcc-{{ section.id }} .hcc__points li::before {
+      content: ""; width: 16px; height: 16px; border-radius: 50%; flex: none;
+      background: var(--hcc-accent-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-4.8' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
+    }
+    #hcc-{{ section.id }} .hcc__grid { gap: 20px; margin-top: 40px; }
+    #hcc-{{ section.id }} .hcc__card { min-height: 0; }
+    #hcc-{{ section.id }} .hcc__bg::before { right: -30%; top: 6%; width: 110%; }
+    #hcc-{{ section.id }} .hcc__person { inset: 0 0 auto 0; height: var(--hcc-photo); clip-path: inset(-60% 0 0 0); }
+    #hcc-{{ section.id }} .hcc__person img { left: 0; right: 0; top: 6%; bottom: auto; margin: 0 auto; height: 132%; max-width: none; }
+    #hcc-{{ section.id }} .hcc__body {
+      width: auto; min-height: 0;
+      margin: var(--hcc-photo) 10px 10px;
+      padding: 16px 16px 18px;
+      gap: 10px; align-items: center; text-align: center;
+      background: #fff;
+      border-radius: calc(var(--hcc-radius) - 8px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+    }
+    #hcc-{{ section.id }} .hcc__label { font-size: 20px; }
+    #hcc-{{ section.id }} .hcc__btns { align-items: stretch; gap: 8px; width: 100%; max-width: 230px; }
+    #hcc-{{ section.id }} .hcc__btn { min-width: 0; width: 100%; padding: 10px 10px; font-size: 13.5px; white-space: nowrap; }
+    #hcc-{{ section.id }} .hcc__btn--ghost { background: #fff; }
+  }
+  @media (min-width: 900px) and (max-height: 760px) {
+    #hcc-{{ section.id }} { padding-top: 28px; padding-bottom: 32px; }
+    #hcc-{{ section.id }} .hcc__grid { margin-top: 32px; }
+  }
+
+  /* ---- Mobile: two tiles side by side -----------------------------------
+     Her and Him share one screen. Each tile: the photo in a band at the top
+     (still popping out of the tile's top edge when in view), then the label
+     and two full-width buttons underneath, so text never sits on the photo.
+     Measured: "Weight Management" at 13px is 116px, and a 360px phone leaves
+     ~123px for button text, so it stays on one line down to 360.
+     Tablets and small laptops (up to 1199) use the same tiles, bigger: the
+     side-by-side card only has room from ~1200 up; below that it wrapped
+     'Weight Management' and pushed the buttons onto the photo. */
+  @media (max-width: 899px) {
+    #hcc-{{ section.id }} { --hcc-radius: 18px; --hcc-pop: 1.1; --hcc-photo: 190px; padding-left: 16px; padding-right: 16px; }
+    #hcc-{{ section.id }} .hcc__head { align-items: center; text-align: center; }
+    #hcc-{{ section.id }} .hcc__heading { font-size: 23px; }
+    #hcc-{{ section.id }} .hcc__sub { font-size: 13.5px; }
+    #hcc-{{ section.id }} .hcc__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 44px; }
+    #hcc-{{ section.id }} .hcc__card { min-height: 0; }
+    #hcc-{{ section.id }} .hcc__bg::after { display: none; }
+    #hcc-{{ section.id }} .hcc__bg::before { right: -30%; top: 6%; width: 110%; }
+    #hcc-{{ section.id }} .hcc__person {
+      inset: 0 0 auto 0;
+      height: var(--hcc-photo);
+      clip-path: inset(-60% 0 0 0);
+    }
+    #hcc-{{ section.id }} .hcc__person img {
+      left: 0; right: 0; margin: 0 auto;
+      height: 104%; max-width: 100%;
+    }
+    #hcc-{{ section.id }} .hcc__body {
+      width: 100%; min-height: 0;
+      padding: calc(var(--hcc-photo) + 12px) 6px 8px;
+      gap: 10px; align-items: stretch; text-align: center;
+    }
+    #hcc-{{ section.id }} .hcc__label { font-size: 17px; }
+    #hcc-{{ section.id }} .hcc__btns { align-items: stretch; gap: 8px; }
+    #hcc-{{ section.id }} .hcc__btn { min-width: 0; width: 100%; padding: 10px 8px; font-size: 13px; white-space: nowrap; }
+  }
+  @media (min-width: 750px) and (max-width: 899px) {
+    #hcc-{{ section.id }} { --hcc-photo: 280px; --hcc-radius: 22px; padding-left: 24px; padding-right: 24px; }
+    #hcc-{{ section.id }} .hcc__heading { font-size: 30px; }
+    #hcc-{{ section.id }} .hcc__sub { font-size: 15px; }
+    #hcc-{{ section.id }} .hcc__grid { gap: 18px; margin-top: 64px; }
+    #hcc-{{ section.id }} .hcc__body { padding: calc(var(--hcc-photo) + 16px) 18px 18px; gap: 14px; }
+    #hcc-{{ section.id }} .hcc__label { font-size: 22px; }
+    #hcc-{{ section.id }} .hcc__btn { font-size: 14.5px; padding: 13px 12px; }
+  }
+  /* Under 375 (budget Androids at 360) the 13px label only just fits; a
+     notch smaller keeps a clear margin inside the pill. */
+  @media (max-width: 374px) {
+    #hcc-{{ section.id }} .hcc__btn { font-size: 12px; padding: 10px 4px; }
+  }
+  /* Under 360 (original iPhone SE at 320, Galaxy Fold outer screen): too
+     narrow for two tiles. One card per row, label and buttons first, photo
+     underneath, and no pop-out: a plain, calm card. */
+  @media (max-width: 359px) {
+    #hcc-{{ section.id }} .hcc__grid { grid-template-columns: 1fr; gap: 14px; margin-top: 28px; }
+    #hcc-{{ section.id }} .hcc__body { padding: 18px 16px calc(var(--hcc-photo) + 8px); }
+    #hcc-{{ section.id }} .hcc__btn { font-size: 13px; padding: 11px 8px; }
+    #hcc-{{ section.id }} .hcc__person {
+      inset: auto 0 0 0;
+      clip-path: inset(0 round 0 0 var(--hcc-radius) var(--hcc-radius));
+    }
+    #hcc-{{ section.id }} .hcc__person img { height: 100%; }
+    #hcc-{{ section.id }} .hcc__card,
+    #hcc-{{ section.id }} .hcc__card .hcc__person img,
+    #hcc-{{ section.id }} .hcc__card .hcc__bg::before { transform: none !important; filter: none !important; transition: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #hcc-{{ section.id }} .hcc__card,
+    #hcc-{{ section.id }} .hcc__person img,
+    #hcc-{{ section.id }} .hcc__bg::before { transition: none; }
+  }
+
+  /* Big screens: scale the whole section in proportion, so 1920-3840px
+     monitors get a page sized for them instead of a 1200px island. */
+  @media (min-width: 1680px) { #hcc-{{ section.id }} .hcc__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hcc-{{ section.id }} .hcc__inner { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hcc-{{ section.id }} .hcc__inner { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hcc-{{ section.id }} .hcc__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hcc-{{ section.id }} .hcc__inner { zoom: 2; } }
+  @media (min-width: 3840px) { #hcc-{{ section.id }} .hcc__inner { zoom: 2.4; } }
+</style>
+
+<section
+  id="hcc-{{ section.id }}"
+  class="hcc"
+  data-hcc
+  style="--hcc-accent: {{ section.settings.accent_color }}; --hcc-accent-ink: {{ section.settings.accent_color | color_darken: 8 }}; --hcc-pt: {{ section.settings.padding_top }}px; --hcc-pb: {{ section.settings.padding_bottom }}px;"
+>
+  <div class="hcc__inner">
+    <div class="hcc__head hcc__head--{{ section.settings.text_alignment }}">
+      {%- if section.settings.heading != blank -%}
+        {%- assign hcc_tag = section.settings.heading_tag | default: 'h2' -%}
+        <{{ hcc_tag }} class="hcc__heading">{{ section.settings.heading }}</{{ hcc_tag }}>
+      {%- endif -%}
+      {%- if section.settings.subheading != blank -%}
+        <p class="hcc__sub">{{ section.settings.subheading }}</p>
+      {%- endif -%}
+      {%- if section.settings.points != blank -%}
+        <ul class="hcc__points">
+          {%- assign hcc_points = section.settings.points | split: ',' -%}
+          {%- for p in hcc_points -%}<li>{{ p | strip }}</li>{%- endfor -%}
+        </ul>
+      {%- endif -%}
+    </div>
+
+    <div class="hcc__grid">
+      {%- for block in section.blocks -%}
+        <div
+          class="hcc__card"
+          style="--c1: {{ block.settings.color_from }}; --c2: {{ block.settings.color_to }}; --glow: {{ block.settings.glow_color }};"
+          {{ block.shopify_attributes }}
+        >
+          <div class="hcc__bg" aria-hidden="true"></div>
+
+          {%- if block.settings.person_image != blank -%}
+            <div class="hcc__person" aria-hidden="true">
+              <img
+                src="{{ block.settings.person_image | image_url: width: 700 }}"
+                srcset="{{ block.settings.person_image | image_url: width: 400 }} 400w,
+                        {{ block.settings.person_image | image_url: width: 700 }} 700w,
+                        {{ block.settings.person_image | image_url: width: 1000 }} 1000w"
+                sizes="(max-width: 749px) 60vw, 320px"
+                alt=""
+                {%- comment -%} First sections on a page load their images straight away (they are what the visitor sees first); lower down they stay lazy. {%- endcomment -%}
+                {% if section.index <= 2 %}loading="eager" fetchpriority="high"{% else %}loading="lazy"{% endif %}
+                decoding="async"
+                width="{{ block.settings.person_image.width }}"
+                height="{{ block.settings.person_image.height }}"
+              >
+            </div>
+          {%- endif -%}
+
+          <div class="hcc__body">
+            {%- if block.settings.label != blank -%}
+              <h2 class="hcc__label">{{ block.settings.label }}</h2>
+            {%- endif -%}
+            <div class="hcc__btns">
+              {%- if block.settings.button_1_text != blank -%}
+                <a class="hcc__btn hcc__btn--solid" href="{{ block.settings.button_1_link | default: '#' }}">{{ block.settings.button_1_text }}</a>
+              {%- endif -%}
+              {%- if block.settings.button_2_text != blank -%}
+                <a class="hcc__btn hcc__btn--ghost" href="{{ block.settings.button_2_link | default: '#' }}">{{ block.settings.button_2_text }}</a>
+              {%- endif -%}
+            </div>
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{%- comment -%}
+  When this section is the top of a page (heading set to H1), describe the
+  page for search engines: a MedicalWebPage plus its breadcrumb, linked to the
+  Organization the layout already outputs (#organization). Built from the
+  page's own title, URL and description, so it never drifts out of date.
+{%- endcomment -%}
+{%- if section.settings.heading_tag == 'h1' and template.name == 'page' -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "MedicalWebPage",
+      "@id": {{ canonical_url | append: '#webpage' | json }},
+      "url": {{ canonical_url | json }},
+      "name": {{ page.title | json }},
+      "description": {{ page_description | default: section.settings.subheading | strip_html | json }},
+      "inLanguage": "en-IN",
+      "audience": { "@type": "PatientsAudience" },
+      "isPartOf": { "@id": {{ shop.url | append: '/#website' | json }} },
+      "publisher": { "@id": {{ shop.url | append: '/#organization' | json }} },
+      "breadcrumb": { "@id": {{ canonical_url | append: '#breadcrumb' | json }} }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": {{ canonical_url | append: '#breadcrumb' | json }},
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": {{ shop.url | json }} },
+        { "@type": "ListItem", "position": 2, "name": {{ page.title | json }}, "item": {{ canonical_url | json }} }
+      ]
+    }
+  ]
+}
+</script>
+{%- endif -%}
+
+
+<script>
+  (function () {
+    var root = document.getElementById('hcc-{{ section.id }}');
+    if (!root || root.dataset.hccBooted === '1') return;
+    root.dataset.hccBooted = '1';
+
+    // Touch screens have no hover, so the pop plays when a card is mostly on
+    // screen instead, and settles back when it scrolls away.
+    if (!window.matchMedia('(hover: none)').matches || !('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { e.target.classList.toggle('is-pop', e.isIntersecting); });
+    }, { threshold: 0.6 });
+    root.querySelectorAll('.hcc__card').forEach(function (card) { io.observe(card); });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Health check cards",
+  "tag": "div",
+  "class": "section-health-check-cards",
+  "max_blocks": 2,
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Know More About Your Body Than Your Mirror Can Tell"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "A quick 2-minute check to understand what your body really needs, and how to fix it."
+    },
+    {
+      "type": "text",
+      "id": "points",
+      "label": "Reassurance points (desktop)",
+      "info": "Comma separated, shown as small pills under the subheading.",
+      "default": "Free check, Takes 2 minutes, Verified doctors"
+    },
+    {
+      "type": "select",
+      "id": "heading_tag",
+      "label": "Heading level",
+      "info": "Use H1 when this is the first section of the page (one H1 per page helps Google).",
+      "options": [
+        { "value": "h1", "label": "H1" },
+        { "value": "h2", "label": "H2" }
+      ],
+      "default": "h2"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "Heading alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Button colour",
+      "default": "#ee204a"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    }
+  ],
+  "blocks": [
+    {
+      "type": "card",
+      "name": "Card",
+      "settings": [
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Label",
+          "default": "For Her"
+        },
+        {
+          "type": "image_picker",
+          "id": "person_image",
+          "label": "Person (transparent PNG)",
+          "info": "Portrait, cut at the thighs, transparent background. Pops out of the card on hover."
+        },
+        {
+          "type": "color",
+          "id": "color_from",
+          "label": "Background, top left",
+          "default": "#fff0f3"
+        },
+        {
+          "type": "color",
+          "id": "color_to",
+          "label": "Background, bottom right",
+          "default": "#fbd3dc"
+        },
+        {
+          "type": "color",
+          "id": "glow_color",
+          "label": "Glow behind the person",
+          "default": "#ffffff"
+        },
+        {
+          "type": "text",
+          "id": "button_1_text",
+          "label": "Button 1 text",
+          "default": "Period Care"
+        },
+        {
+          "type": "url",
+          "id": "button_1_link",
+          "label": "Button 1 link"
+        },
+        {
+          "type": "text",
+          "id": "button_2_text",
+          "label": "Button 2 text",
+          "default": "Weight Management"
+        },
+        {
+          "type": "url",
+          "id": "button_2_link",
+          "label": "Button 2 link"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Health check cards",
+      "blocks": [
+        {
+          "type": "card",
+          "settings": {
+            "label": "For Her",
+            "color_from": "#fff0f3",
+            "color_to": "#fbd3dc",
+            "button_1_text": "Period Care",
+            "button_2_text": "Weight Management"
+          }
+        },
+        {
+          "type": "card",
+          "settings": {
+            "label": "For Him",
+            "color_from": "#eefaf8",
+            "color_to": "#c6ebe6",
+            "button_1_text": "Sexual Health",
+            "button_2_text": "Weight Management"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

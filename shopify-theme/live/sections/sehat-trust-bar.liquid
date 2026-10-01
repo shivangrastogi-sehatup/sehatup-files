@@ -1,0 +1,161 @@
+{%- comment -%}
+  Trust bar above the header. Wide screens show every message in one row;
+  narrower screens show one at a time, sliding up every few seconds (paused
+  while touched, hovered or focused). Messages can link somewhere, and
+  "[rating]" / "[count]" are filled from Judge.me's live store rating.
+{%- endcomment -%}
+
+{%- liquid
+  assign jm_rating = shop.metafields.judgeme.all_reviews_rating | default: 0 | times: 1.0 | round: 1
+  assign jm_count = shop.metafields.judgeme.all_reviews_count | default: 0 | times: 1
+-%}
+
+<div class="tb" id="tb-{{ section.id }}" role="region" aria-label="Why shop with us" style="--tb-bg: {{ section.settings.bg }}; --tb-fg: {{ section.settings.fg }}; --tb-accent: {{ section.settings.accent }};">
+  <ul class="tb__list">
+    {%- for block in section.blocks -%}
+      {%- liquid
+        assign b = block.settings
+        assign text = b.text | replace: '[rating]', jm_rating | replace: '[count]', jm_count
+        if b.text contains '[rating]' and jm_count == 0
+          continue
+        endif
+      -%}
+      <li class="tb__item{% if forloop.first %} is-on{% endif %}{% unless b.laptop %} tb__item--wide{% endunless %}" {{ block.shopify_attributes }}>
+        {%- if b.link != blank -%}<a class="tb__msg" href="{{ b.link }}">{%- else -%}<span class="tb__msg">{%- endif -%}
+          <span class="tb__ic" aria-hidden="true">
+            {%- case b.icon -%}
+              {%- when 'truck' -%}<svg viewBox="0 0 24 24"><path d="M3 6.5h11v9H3zM14 9.5h3.6l2.9 3.2v2.8H14"/><circle cx="7" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/></svg>
+              {%- when 'wallet' -%}<svg viewBox="0 0 24 24"><path d="M4 7.5h14.5a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 17.5zM4 7.5l11-3v3"/><path d="M16 13.2h4"/></svg>
+              {%- when 'star' -%}<svg viewBox="0 0 24 24" class="tb__fill"><path d="M12 4.2l2.3 4.8 5.2.7-3.8 3.6.9 5.2L12 16l-4.6 2.5.9-5.2-3.8-3.6 5.2-.7z"/></svg>
+              {%- when 'doctor' -%}<svg viewBox="0 0 24 24"><path d="M6 4v5a4 4 0 0 0 8 0V4M10 13v2.5a4.5 4.5 0 0 0 9 0V13"/><circle cx="19" cy="11" r="2"/></svg>
+              {%- when 'shield' -%}<svg viewBox="0 0 24 24"><path d="M12 3.5l7 2.6v5.4c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6.1z"/><path d="M8.8 12l2.2 2.2 4.2-4.4"/></svg>
+              {%- else -%}<svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/></svg>
+            {%- endcase -%}
+          </span>
+          <span class="tb__t">{{ text }}</span>
+          {%- if b.link != blank -%}<span class="tb__go" aria-hidden="true">&rarr;</span>{%- endif -%}
+        {%- if b.link != blank -%}</a>{%- else -%}</span>{%- endif -%}
+      </li>
+    {%- endfor -%}
+  </ul>
+</div>
+
+<style>
+  #tb-{{ section.id }} {
+    background: var(--tb-bg);
+    color: var(--tb-fg);
+    overflow: hidden; /* never push the page sideways */
+    font: 600 13px/1 'Montserrat', sans-serif;
+    letter-spacing: .01em;
+  }
+  #tb-{{ section.id }} .tb__list {
+    list-style: none; margin: 0 auto; padding: 0 16px;
+    max-width: 1400px; height: 38px;
+    display: flex; align-items: center; justify-content: center; gap: clamp(20px, 2.6vw, 44px);
+  }
+  #tb-{{ section.id }} .tb__msg { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; white-space: nowrap; }
+  #tb-{{ section.id }} .tb__ic svg { display: block; width: 17px; height: 17px; fill: none; stroke: var(--tb-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #tb-{{ section.id }} .tb__ic svg.tb__fill { fill: var(--tb-accent); stroke: none; }
+  #tb-{{ section.id }} .tb__go { opacity: .7; transition: transform .25s ease, opacity .25s ease; }
+  #tb-{{ section.id }} a.tb__msg:hover .tb__go { transform: translateX(3px); opacity: 1; }
+  #tb-{{ section.id }} a.tb__msg:hover .tb__t { text-decoration: underline; text-underline-offset: 3px; }
+  #tb-{{ section.id }} a.tb__msg:focus-visible { outline: 2px solid var(--tb-fg); outline-offset: 3px; border-radius: 4px; }
+  /* Row layouts: a small dot between messages. */
+  #tb-{{ section.id }} .tb__item { display: flex; align-items: center; gap: clamp(20px, 2.6vw, 44px); }
+  #tb-{{ section.id }} .tb__item:not(:first-child)::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--tb-accent); opacity: .55; }
+
+  /* Laptops (1024-1799px): the messages ticked "Show on laptops" side by side
+     (keep those first in the list so the dots line up). */
+  @media (min-width: 1024px) and (max-width: 1799px) {
+    #tb-{{ section.id }} .tb__item--wide { display: none; }
+  }
+
+  /* Tablets and phones: one message at a time, sliding up. */
+  @media (max-width: 1023px) {
+    #tb-{{ section.id }} .tb__list { position: relative; overflow: hidden; height: 36px; }
+    #tb-{{ section.id }} .tb__item {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: translateY(100%);
+      transition: transform .55s cubic-bezier(.16, 1, .3, 1), opacity .4s ease;
+      pointer-events: none;
+    }
+    #tb-{{ section.id }} .tb__item.is-on { opacity: 1; transform: none; pointer-events: auto; }
+    #tb-{{ section.id }} .tb__item.is-off { opacity: 0; transform: translateY(-100%); }
+    #tb-{{ section.id }} .tb__item::before { display: none; }
+  }
+  @media (max-width: 749px) {
+    #tb-{{ section.id }} { font-size: 12.5px; }
+    #tb-{{ section.id }} .tb__list { height: 34px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #tb-{{ section.id }} .tb__item { transition: none !important; }
+  }
+  @media (min-width: 1920px) { #tb-{{ section.id }} { zoom: 1.12; } }
+  @media (min-width: 2560px) { #tb-{{ section.id }} { zoom: 1.4; } }
+  @media (min-width: 3200px) { #tb-{{ section.id }} { zoom: 1.75; } }
+</style>
+
+<script>
+  (function () {
+    var root = document.getElementById('tb-{{ section.id }}');
+    if (!root || root.dataset.tbBooted === '1') return;
+    root.dataset.tbBooted = '1';
+    var items = root.querySelectorAll('.tb__item');
+    if (items.length < 2) return;
+    var mq = window.matchMedia('(max-width: 1023px)');
+    var i = 0, paused = false, timer;
+
+    function step() {
+      if (paused || !mq.matches || document.hidden) return;
+      var cur = items[i];
+      i = (i + 1) % items.length;
+      var next = items[i];
+      // Start the next one just below, then slide both up together.
+      next.style.transition = 'none'; next.classList.remove('is-off', 'is-on');
+      void next.offsetWidth; next.style.transition = '';
+      cur.classList.remove('is-on'); cur.classList.add('is-off');
+      next.classList.add('is-on');
+    }
+    timer = setInterval(step, {{ section.settings.speed | times: 1000 }});
+    ['pointerenter', 'focusin', 'touchstart'].forEach(function (ev) { root.addEventListener(ev, function () { paused = true; }, { passive: true }); });
+    ['pointerleave', 'focusout'].forEach(function (ev) { root.addEventListener(ev, function () { paused = false; }); });
+    root.addEventListener('touchend', function () { setTimeout(function () { paused = false; }, 2500); }, { passive: true });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "sehatUP trust bar",
+  "tag": "div",
+  "class": "section-trust-bar",
+  "enabled_on": { "groups": ["header"] },
+  "max_blocks": 6,
+  "settings": [
+    { "type": "color", "id": "bg", "label": "Background", "default": "#2a2220" },
+    { "type": "color", "id": "fg", "label": "Text", "default": "#fbf4f0" },
+    { "type": "color", "id": "accent", "label": "Icons", "default": "#f6b8c4" },
+    { "type": "range", "id": "speed", "label": "Seconds per message (phones and tablets)", "min": 2, "max": 8, "step": 1, "unit": "s", "default": 4 }
+  ],
+  "blocks": [
+    {
+      "type": "message",
+      "name": "Message",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icon", "default": "shield", "options": [
+          { "value": "truck", "label": "Delivery" },
+          { "value": "wallet", "label": "Payment" },
+          { "value": "star", "label": "Rating" },
+          { "value": "doctor", "label": "Doctor" },
+          { "value": "shield", "label": "Trust" },
+          { "value": "spark", "label": "Highlight" }
+        ] },
+        { "type": "text", "id": "text", "label": "Text", "info": "[rating] and [count] become the live Judge.me store rating and review count.", "default": "Your message" },
+        { "type": "url", "id": "link", "label": "Link (optional)" },
+        { "type": "checkbox", "id": "laptop", "label": "Show on laptops", "info": "Laptops (1024-1799px) show the ticked messages side by side; big screens show all, phones rotate all.", "default": true }
+      ]
+    }
+  ],
+  "presets": [{ "name": "sehatUP trust bar" }]
+}
+{% endschema %}
