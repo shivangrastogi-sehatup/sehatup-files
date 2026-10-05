@@ -1,0 +1,290 @@
+{%- comment -%}
+  "It's common, and it's treatable": tells a visitor he is far from alone,
+  then lets him name his problem and shows how men get past it.
+    1. Figures   large published prevalence figures, each with its source
+    2. Problems  plain-language tiles that jump to the right product shelf
+    3. Steps     the three steps from first question to the parcel
+  Every figure is a block with a source link: only publish what a study says.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign facts = section.blocks | where: 'type', 'fact'
+  assign problems = section.blocks | where: 'type', 'problem'
+  assign steps = section.blocks | where: 'type', 'step'
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #scm-{{ section.id }} {
+    --scm-text: #1d1d1d; --scm-muted: #5f5a56; --scm-line: #e8e0d9; --scm-soft: #f6f0ec;
+    --scm-ink: {{ s.accent_color | color_darken: 8 }};
+    padding: clamp(44px, 6vw, 84px) clamp(16px, 3vw, 48px) clamp(20px, 3vw, 36px);
+    background: #fff; font-family: 'Montserrat', sans-serif; color: var(--scm-text);
+  }
+  #scm-{{ section.id }} * { box-sizing: border-box; }
+  #scm-{{ section.id }} .scm__inner { max-width: 1240px; margin: 0 auto; display: grid; gap: clamp(48px, 6vw, 80px); }
+  #scm-{{ section.id }} .scm__h { margin: 0; font: 800 clamp(26px, 3vw, 40px)/1.1 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #scm-{{ section.id }} .scm__lead { margin: 12px 0 0; max-width: 38em; font: 500 16px/1.6 'Montserrat', sans-serif; color: var(--scm-muted); }
+
+  /* 1. Figures: the loud part of the page. Big red numbers, plain sentences. */
+  #scm-{{ section.id }} .scm__facts { margin-top: 32px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border-top: 2px solid var(--scm-text); }
+  #scm-{{ section.id }} .scm__fact { padding: 26px clamp(16px, 2.6vw, 36px) 0 0; }
+  #scm-{{ section.id }} .scm__fact + .scm__fact { padding-left: clamp(16px, 2.6vw, 36px); border-left: 1px solid var(--scm-line); }
+  #scm-{{ section.id }} .scm__num { display: block; font: 800 clamp(44px, 5.6vw, 80px)/.95 'Montserrat', sans-serif; letter-spacing: -.04em; color: var(--scm-ink); }
+  #scm-{{ section.id }} .scm__fact p { margin: 14px 0 0; max-width: 24em; font: 600 16px/1.5 'Montserrat', sans-serif; }
+  #scm-{{ section.id }} .scm__src { display: inline-block; margin-top: 10px; font: 500 12.5px/1.4 'Montserrat', sans-serif; color: var(--scm-muted); text-decoration: underline; text-underline-offset: 3px; }
+  #scm-{{ section.id }} .scm__close { margin: 30px 0 0; max-width: 46em; font: 600 clamp(17px, 1.6vw, 21px)/1.5 'Montserrat', sans-serif; }
+
+  /* 2. Problems: a photo mosaic. Desktop: the first tile is tall on the
+     left, the second wide across the top right, the last two below it.
+     Tablet: 2 x 2 with the first tile tall. Phone: 2 x 2 small tiles.
+     The words sit on a soft dark fade at the bottom of each photo. */
+  #scm-{{ section.id }} .scm__probs {
+    margin-top: 24px; display: grid; gap: 14px;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .82fr);
+    grid-template-rows: repeat(2, clamp(230px, 22vw, 330px));
+  }
+  #scm-{{ section.id }} .scm__prob:nth-child(1) { grid-column: 1; grid-row: 1 / 3; }
+  #scm-{{ section.id }} .scm__prob:nth-child(2) { grid-column: 2 / 4; grid-row: 1; }
+  #scm-{{ section.id }} .scm__prob:nth-child(3) { grid-column: 2; grid-row: 2; }
+  #scm-{{ section.id }} .scm__prob:nth-child(4) { grid-column: 3; grid-row: 2; }
+  #scm-{{ section.id }} .scm__prob {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 14px;
+    padding: clamp(16px, 2vw, 26px); border-radius: 20px; background: var(--scm-soft);
+    color: var(--scm-text); text-decoration: none;
+  }
+  #scm-{{ section.id }} .scm__prob img {
+    position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover;
+    transition: transform .7s cubic-bezier(.16, 1, .3, 1);
+  }
+  #scm-{{ section.id }} .scm__prob--photo { color: #fff; }
+  #scm-{{ section.id }} .scm__prob--photo::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(180deg, rgba(20, 14, 10, 0) 38%, rgba(20, 14, 10, .45) 62%, rgba(20, 14, 10, .82) 100%);
+  }
+  #scm-{{ section.id }} .scm__prob b { display: block; font: 800 clamp(19px, 1.8vw, 26px)/1.12 'Montserrat', sans-serif; letter-spacing: -.01em; text-wrap: balance; }
+  #scm-{{ section.id }} .scm__prob:nth-child(1) b { font-size: clamp(26px, 2.8vw, 40px); }
+  #scm-{{ section.id }} .scm__prob span { display: block; margin-top: 6px; font: 500 clamp(13px, 1vw, 15px)/1.4 'Montserrat', sans-serif; opacity: .9; }
+  #scm-{{ section.id }} .scm__prob i {
+    flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--scm-ink); color: #fff; font: 700 19px/1 'Montserrat', sans-serif; font-style: normal;
+    transition: transform .3s cubic-bezier(.16, 1, .3, 1);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #scm-{{ section.id }} .scm__prob:hover img { transform: scale(1.04); }
+    #scm-{{ section.id }} .scm__prob:hover i { transform: translateY(3px); }
+  }
+
+  /* 3. Steps: a warm stone panel holding three white cards. Each card shows
+     what the step actually looks like (a question from the check, the
+     doctor, the kit), then the words. Arrows join the cards in order. */
+  #scm-{{ section.id }} .scm__journey { padding: clamp(28px, 4vw, 56px); border-radius: 28px; background: var(--scm-soft); }
+  #scm-{{ section.id }} .scm__journey-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px 32px; flex-wrap: wrap; }
+  #scm-{{ section.id }} .scm__journey-top .scm__lead { margin-top: 10px; }
+  #scm-{{ section.id }} .scm__steps { list-style: none; margin: clamp(24px, 3vw, 40px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(28px, 3.4vw, 48px); counter-reset: scm; }
+  #scm-{{ section.id }} .scm__step {
+    position: relative; counter-increment: scm; display: flex; flex-direction: column;
+    border-radius: 22px; background: #fff; box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 18px 40px rgba(60, 30, 20, .08);
+  }
+  /* Arrow between cards. */
+  #scm-{{ section.id }} .scm__step + .scm__step::after {
+    content: ""; position: absolute; top: 34%; left: calc(-1 * clamp(28px, 3.4vw, 48px) / 2 - 15px); width: 30px; height: 30px; border-radius: 50%;
+    background: var(--scm-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 8h6M8.5 5L11 8l-2.5 3' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
+    box-shadow: 0 0 0 5px var(--scm-soft); z-index: 2;
+  }
+  #scm-{{ section.id }} .scm__vis { position: relative; aspect-ratio: 4 / 3; margin: 10px 10px 0; border-radius: 16px; overflow: hidden; background: linear-gradient(160deg, #fbf7f3, #efe5dd); }
+  #scm-{{ section.id }} .scm__vis > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #scm-{{ section.id }} .scm__vis--product > img { object-fit: cover; }
+  #scm-{{ section.id }} .scm__num {
+    position: absolute; left: 12px; top: 12px; z-index: 1; width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; background: #fff; color: var(--scm-text); font: 800 15px/1 'Montserrat', sans-serif;
+    box-shadow: 0 2px 8px rgba(29, 29, 29, .12);
+  }
+  #scm-{{ section.id }} .scm__num::before { content: counter(scm); }
+  #scm-{{ section.id }} .scm__chip {
+    position: absolute; right: 12px; top: 12px; z-index: 1; display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 12px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px rgba(29, 29, 29, .12);
+    font: 700 12.5px/1 'Montserrat', sans-serif; color: var(--scm-text);
+  }
+  #scm-{{ section.id }} .scm__chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #2fa35a; }
+  /* Step 1 visual: one question card from the check, drawn in the page. */
+  #scm-{{ section.id }} .scm__quiz { position: absolute; left: 50%; top: 50%; width: 74%; transform: translate(-50%, -40%) rotate(-2deg); padding: 12px; border-radius: 14px; background: #fff; box-shadow: 0 12px 30px rgba(60, 30, 20, .14); }
+  #scm-{{ section.id }} .scm__quiz-bar { height: 5px; border-radius: 3px; background: #efe7e1; overflow: hidden; }
+  #scm-{{ section.id }} .scm__quiz-bar i { display: block; width: 40%; height: 100%; background: var(--scm-ink); }
+  #scm-{{ section.id }} .scm__quiz p { margin: 9px 0 8px; font: 700 12.5px/1.3 'Montserrat', sans-serif; }
+  #scm-{{ section.id }} .scm__quiz ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  #scm-{{ section.id }} .scm__quiz li { padding: 6px 9px; border-radius: 9px; border: 1.5px solid #eee5df; font: 600 12px/1.2 'Montserrat', sans-serif; color: var(--scm-muted); }
+  #scm-{{ section.id }} .scm__quiz li.is-on { border-color: var(--scm-ink); background: #fdecef; color: var(--scm-ink); }
+  #scm-{{ section.id }} .scm__step-t { padding: 18px 20px 22px; }
+  #scm-{{ section.id }} .scm__step b { display: block; font: 800 19px/1.25 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #scm-{{ section.id }} .scm__step-t span { display: block; margin-top: 7px; font: 400 14.5px/1.55 'Montserrat', sans-serif; color: var(--scm-muted); }
+  #scm-{{ section.id }} .scm__cta { display: inline-flex; align-items: center; flex: none; min-height: 52px; padding: 0 28px; border-radius: 999px; background: var(--scm-ink); color: #fff; font: 700 15.5px/1 'Montserrat', sans-serif; text-decoration: none; }
+  #scm-{{ section.id }} .scm__cta:hover { background: #b3123a; }
+  #scm-{{ section.id }} :is(.scm__prob, .scm__cta, .scm__src):focus-visible { outline: 2px solid var(--scm-text); outline-offset: 3px; }
+
+  @media (max-width: 899px) {
+    #scm-{{ section.id }} .scm__facts { grid-auto-flow: row; }
+    #scm-{{ section.id }} .scm__fact, #scm-{{ section.id }} .scm__fact + .scm__fact { padding: 22px 0; border-left: 0; }
+    #scm-{{ section.id }} .scm__fact + .scm__fact { border-top: 1px solid var(--scm-line); }
+    /* Tablet: 2 x 2, all tiles the same size. */
+    #scm-{{ section.id }} .scm__probs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: repeat(2, clamp(240px, 42vw, 360px)); gap: 12px; }
+    #scm-{{ section.id }} .scm__prob:nth-child(n) { grid-column: auto; grid-row: auto; }
+    #scm-{{ section.id }} .scm__prob { padding: 16px; border-radius: 16px; gap: 10px; }
+    #scm-{{ section.id }} .scm__prob b, #scm-{{ section.id }} .scm__prob:nth-child(1) b { font-size: clamp(17px, 2.8vw, 24px); }
+    #scm-{{ section.id }} .scm__prob span { font-size: 13px; }
+    #scm-{{ section.id }} .scm__prob i { width: 36px; height: 36px; font-size: 16px; }
+  }
+  @media (max-width: 599px) {
+    /* Phone: one tile per row, wide enough for the words. */
+    #scm-{{ section.id }} .scm__probs { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: 210px; gap: 10px; }
+    #scm-{{ section.id }} .scm__prob:nth-child(1) { grid-row: span 1; }
+    #scm-{{ section.id }} .scm__prob b, #scm-{{ section.id }} .scm__prob:nth-child(1) b { font-size: 21px; }
+    #scm-{{ section.id }} .scm__prob span { font-size: 13.5px; }
+    #scm-{{ section.id }} .scm__prob:nth-child(1) img { object-position: center 22% !important; }
+    #scm-{{ section.id }} .scm__prob:nth-child(3) img { object-position: center 30% !important; }
+    #scm-{{ section.id }} .scm__prob:nth-child(4) img { object-position: center 34% !important; }
+    #scm-{{ section.id }} .scm__journey { padding: 22px 16px; border-radius: 22px; margin: 0 -4px; }
+    #scm-{{ section.id }} .scm__steps { grid-template-columns: minmax(0, 1fr); gap: 34px; }
+    #scm-{{ section.id }} .scm__step + .scm__step::after { top: -32px; left: 50%; margin-left: -15px; transform: rotate(90deg); }
+    #scm-{{ section.id }} .scm__quiz { width: 72%; }
+    #scm-{{ section.id }} .scm__cta { width: 100%; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { #scm-{{ section.id }} * { transition: none !important; } }
+  @media (min-width: 1680px) { #scm-{{ section.id }} .scm__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #scm-{{ section.id }} .scm__inner { zoom: 1.25; } }
+  @media (min-width: 2560px) { #scm-{{ section.id }} .scm__inner { zoom: 1.65; } }
+</style>
+
+<section id="scm-{{ section.id }}" class="scm">
+  <div class="scm__inner">
+    {%- if facts.size > 0 -%}
+      <div>
+        <h2 class="scm__h">{{ s.facts_heading }}</h2>
+        {%- if s.facts_lead != blank -%}<p class="scm__lead">{{ s.facts_lead }}</p>{%- endif -%}
+        <div class="scm__facts">
+          {%- for b in facts -%}
+            <div class="scm__fact" {{ b.shopify_attributes }}>
+              <span class="scm__num">{{ b.settings.figure }}</span>
+              <p>{{ b.settings.text }}</p>
+              {%- if b.settings.source != blank -%}
+                {%- if b.settings.source_link != blank -%}<a class="scm__src" href="{{ b.settings.source_link }}" target="_blank" rel="noopener">{{ b.settings.source }}</a>
+                {%- else -%}<span class="scm__src">{{ b.settings.source }}</span>{%- endif -%}
+              {%- endif -%}
+            </div>
+          {%- endfor -%}
+        </div>
+        {%- if s.facts_close != blank -%}<p class="scm__close">{{ s.facts_close }}</p>{%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- if problems.size > 0 -%}
+      <div>
+        <h2 class="scm__h">{{ s.problems_heading }}</h2>
+        <div class="scm__probs">
+          {%- for b in problems -%}
+            <a class="scm__prob{% if b.settings.image_asset != blank %} scm__prob--photo{% endif %}" href="{{ b.settings.link }}" {{ b.shopify_attributes }}>
+              {%- if b.settings.image_asset != blank -%}
+                <img src="{{ b.settings.image_asset | asset_url }}" alt="" loading="lazy" decoding="async" style="object-position: {{ b.settings.focus }};">
+              {%- endif -%}
+              <div><b>{{ b.settings.title }}</b>{%- if b.settings.text != blank -%}<span>{{ b.settings.text }}</span>{%- endif -%}</div>
+              <i aria-hidden="true">&darr;</i>
+            </a>
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- endif -%}
+
+    {%- if steps.size > 0 -%}
+      <div class="scm__journey">
+        <div class="scm__journey-top">
+          <div>
+            <h2 class="scm__h">{{ s.steps_heading }}</h2>
+            {%- if s.steps_lead != blank -%}<p class="scm__lead">{{ s.steps_lead }}</p>{%- endif -%}
+          </div>
+          {%- if s.cta_text != blank -%}<a class="scm__cta" href="{{ s.cta_link | default: '#' }}">{{ s.cta_text }}</a>{%- endif -%}
+        </div>
+        <ol class="scm__steps">
+          {%- for b in steps -%}
+            {%- assign st = b.settings -%}
+            <li class="scm__step" {{ b.shopify_attributes }}>
+              <div class="scm__vis{% if st.visual == 'product' %} scm__vis--product{% endif %}" aria-hidden="true">
+                <span class="scm__num"></span>
+                {%- case st.visual -%}
+                  {%- when 'quiz' -%}
+                    <div class="scm__quiz">
+                      <div class="scm__quiz-bar"><i></i></div>
+                      <p>{{ st.quiz_question }}</p>
+                      <ul>{%- assign opts = st.quiz_options | split: ',' -%}{%- for o in opts -%}<li{% if forloop.index == 2 %} class="is-on"{% endif %}>{{ o | strip }}</li>{%- endfor -%}</ul>
+                    </div>
+                  {%- when 'product' -%}
+                    {%- if st.product != blank and st.product.featured_image != blank -%}<img src="{{ st.product.featured_image | image_url: width: 600 }}" alt="" loading="lazy" width="600" height="600">{%- endif -%}
+                  {%- else -%}
+                    {%- if st.image != blank -%}<img src="{{ st.image | image_url: width: 700 }}" alt="" loading="lazy" width="700" height="525" style="object-position: center 20%;">{%- endif -%}
+                {%- endcase -%}
+                {%- if st.chip != blank -%}<span class="scm__chip">{{ st.chip }}</span>{%- endif -%}
+              </div>
+              <div class="scm__step-t"><b>{{ st.title }}</b><span>{{ st.text }}</span></div>
+            </li>
+          {%- endfor -%}
+        </ol>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "sehatUP common problems",
+  "tag": "div",
+  "class": "section-sehat-common",
+  "settings": [
+    { "type": "text", "id": "facts_heading", "label": "Figures: heading", "default": "It's far more common than you think." },
+    { "type": "textarea", "id": "facts_lead", "label": "Figures: line under the heading" },
+    { "type": "textarea", "id": "facts_close", "label": "Figures: closing line" },
+    { "type": "text", "id": "problems_heading", "label": "Problems: heading", "default": "What's bothering you?" },
+    { "type": "text", "id": "steps_heading", "label": "Steps: heading", "default": "How men get past it" },
+    { "type": "text", "id": "steps_lead", "label": "Steps: line under the heading" },
+    { "type": "text", "id": "cta_text", "label": "Button under the steps", "default": "Take the free Health Score" },
+    { "type": "url", "id": "cta_link", "label": "Button link" },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#d81f48" }
+  ],
+  "blocks": [
+    { "type": "fact", "name": "Figure", "limit": 3, "settings": [
+      { "type": "text", "id": "figure", "label": "Figure (large)", "default": "1 in 5" },
+      { "type": "textarea", "id": "text", "label": "What it means, in one sentence" },
+      { "type": "text", "id": "source", "label": "Source (shown small)" },
+      { "type": "url", "id": "source_link", "label": "Source link" }
+    ] },
+    { "type": "problem", "name": "Problem tile", "limit": 4, "settings": [
+      { "type": "text", "id": "title", "label": "Problem, in plain words", "default": "Finishing too soon" },
+      { "type": "text", "id": "text", "label": "One line under it" },
+      { "type": "text", "id": "link", "label": "Link", "info": "#name of a shelf on this page.", "default": "#sexual-wellness" },
+      { "type": "text", "id": "image_asset", "label": "Photo (theme asset file name)", "info": "e.g. him-problem-finishing.webp" },
+      { "type": "select", "id": "focus", "label": "Keep this part of the photo in view", "default": "center 25%", "options": [
+        { "value": "center 25%", "label": "Top centre" },
+        { "value": "center center", "label": "Centre" },
+        { "value": "right 30%", "label": "Right" },
+        { "value": "left 30%", "label": "Left" },
+        { "value": "center 40%", "label": "Middle, slightly high" }
+      ] }
+    ] },
+    { "type": "step", "name": "Step", "limit": 3, "settings": [
+      { "type": "text", "id": "title", "label": "Step", "default": "Take the free Health Score" },
+      { "type": "textarea", "id": "text", "label": "One sentence" },
+      { "type": "select", "id": "visual", "label": "Picture", "default": "image", "options": [
+        { "value": "quiz", "label": "A question from the check" },
+        { "value": "image", "label": "Photo" },
+        { "value": "product", "label": "Product photo" }
+      ] },
+      { "type": "text", "id": "quiz_question", "label": "Question (for the check picture)", "default": "How often do you feel tired by evening?" },
+      { "type": "text", "id": "quiz_options", "label": "Answers, comma separated", "default": "Rarely, Most days, Every day" },
+      { "type": "image_picker", "id": "image", "label": "Photo" },
+      { "type": "product", "id": "product", "label": "Product" },
+      { "type": "text", "id": "chip", "label": "Small label on the picture" }
+    ] }
+  ],
+  "presets": [{ "name": "sehatUP common problems" }]
+}
+{% endschema %}

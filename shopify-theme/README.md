@@ -65,6 +65,17 @@ Old sections on the template are disabled, not deleted.
   journey measure. The old Trade header is still in the group, disabled.
 - **Announcement bar**: the original one is back. `sehat-trust-bar.liquid` exists but
   is disabled.
+- **Shared accordion** `assets/sehat-accordion.js`: put `data-sehat-accordion` on the
+  wrapper of a group of `<details>` and load the file with `defer`. Items slide open
+  and shut, one open at a time, with `is-opening` / `is-closing` classes for the
+  section's own fade. Used by the Health Score FAQ and the product fold-outs.
+- **Product page**: `sections/sehat-product.liquid` (gallery left, buy column right;
+  fold-outs come from the `[description]` / `[benefits]` / `[how_to_use]` tags in each
+  product description) and `sections/sehat-kit-items.liquid` ("What's in your kit",
+  shown when a description names two or more other products). The buy buttons are
+  the theme's own `buy-buttons` snippet, so the Shiprocket checkout is unchanged.
+- **For Him page** (`templates/page.for-him.json`): `sehat-audience-hero` (headline, person photo, jump links), three `sehat-shelf` sections (one collection each: for-him, weight-for-him, overall-wellness; each carries an anchor name plus the old menu anchor id so existing menu links still land), then the clinic note, reviews, FAQ and final call to action reused from the other pages.
+- **Product facts** `snippets/sehat-facts.liquid`: kit contents, the short how-to-take line and named ingredients per product handle. Used by the kit section, the shelves and the buy section.
 - **Styles before markup** in every custom section, so pages never flash unstyled.
 - `shopify-elements/lead-capture-popup.liquid` is the same file as
   `sections/lead-popup.liquid`; keep them in sync.

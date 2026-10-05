@@ -1,0 +1,324 @@
+{%- comment -%}
+  Product story: three short parts under the kit items.
+    1. Before you order   a note from the clinic: headline, the doctors'
+                        faces and the live rating on the left; four promises
+                        set as large plain sentences on the right. Same on
+                        every product.
+    2. What to expect   a three-point timeline
+    3. Doctor strip     one slim card with a portrait and a button
+
+  Timeline per product: fill the product metafield custom.what_to_expect
+  (multi-line text, one step per line, written as "When | what happens").
+  A product without it uses this section's timeline blocks.
+  In a promise, [advance] becomes the amount to confirm an order.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign exp_lines = product.metafields.custom.what_to_expect.value | default: '' | strip | newline_to_br | strip_newlines | split: '<br />'
+  assign promises = section.blocks | where: 'type', 'promise'
+  assign jm_rating = shop.metafields.judgeme.all_reviews_rating | default: 0 | times: 1.0 | round: 1
+  assign jm_count = shop.metafields.judgeme.all_reviews_count | default: 0 | times: 1
+  assign adv = s.advance_amount | times: 100 | money_without_trailing_zeros
+  assign exp_blocks = section.blocks | where: 'type', 'step'
+  assign has_exp = false
+  if exp_lines.size > 0 or exp_blocks.size > 0
+    assign has_exp = true
+  endif
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #sps-{{ section.id }} {
+    --sps-text: #1d1d1d; --sps-muted: #555; --sps-line: #eadfd8;
+    --sps-ink: {{ s.accent_color | color_darken: 8 }};
+    padding: 0 clamp(16px, 2vw, 28px) 56px;
+    background: #fff;
+    font-family: 'Montserrat', sans-serif; color: var(--sps-text);
+  }
+  #sps-{{ section.id }} * { box-sizing: border-box; }
+  #sps-{{ section.id }} .sps__inner { max-width: 1160px; margin: 0 auto; display: grid; gap: 48px; }
+  {%- unless template.name == 'product' -%}
+  /* On landing pages the section stands on its own: space above it, and the
+     same width and side margins as the product shelves around it. */
+  #sps-{{ section.id }} { padding: clamp(48px, 6vw, 88px) clamp(16px, 3vw, 48px) clamp(40px, 5vw, 64px); }
+  #sps-{{ section.id }} .sps__inner { max-width: 1240px; }
+  {%- endunless -%}
+  #sps-{{ section.id }} .sps__heading { margin: 0 0 20px; font: 800 clamp(24px, 2.6vw, 34px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; }
+
+  /* Before you order: a note from the clinic. One soft rose panel; the
+     promises are the loud part (large type), everything else is quiet. */
+  #sps-{{ section.id }} .sps__note {
+    display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr); gap: clamp(28px, 5vw, 72px);
+    padding: clamp(28px, 4vw, 56px); border-radius: 18px; background: #f6f0ec;
+  }
+  #sps-{{ section.id }} .sps__note-side { display: flex; flex-direction: column; }
+  #sps-{{ section.id }} .sps__note .sps__heading { margin: 0; font-size: clamp(28px, 3vw, 40px); line-height: 1.08; text-wrap: balance; }
+  #sps-{{ section.id }} .sps__lead { margin: 14px 0 0; max-width: 26em; font: 400 15.5px/1.6 'Montserrat', sans-serif; color: var(--sps-muted); }
+  /* The doctors: real faces, overlapping, with their names. */
+  #sps-{{ section.id }} .sps__docs { margin-top: 32px; display: flex; align-items: center; gap: 14px; }
+  #sps-{{ section.id }} .sps__faces { display: flex; flex: none; }
+  #sps-{{ section.id }} .sps__faces img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; object-position: top; background: #eadfd6; border: 3px solid #f6f0ec; }
+  #sps-{{ section.id }} .sps__faces img + img { margin-left: -16px; }
+  #sps-{{ section.id }} .sps__docs p { margin: 0; font: 500 13.5px/1.45 'Montserrat', sans-serif; color: var(--sps-muted); }
+  #sps-{{ section.id }} .sps__docs b { display: block; font-weight: 700; color: var(--sps-text); }
+  #sps-{{ section.id }} .sps__rated { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(29, 29, 29, .1); font: 500 13.5px/1.4 'Montserrat', sans-serif; color: var(--sps-muted); text-decoration: none; display: block; }
+  #sps-{{ section.id }} .sps__rated b { font: 800 17px/1 'Montserrat', sans-serif; color: var(--sps-text); margin-right: 2px; }
+  #sps-{{ section.id }} .sps__rated i { font-style: normal; color: #f5a623; margin-right: 6px; }
+  #sps-{{ section.id }} a.sps__rated:hover span { text-decoration: underline; text-underline-offset: 3px; }
+  /* The promises. */
+  #sps-{{ section.id }} .sps__promises { list-style: none; margin: 0; padding: 0; }
+  #sps-{{ section.id }} .sps__promise { padding: 22px 0; border-top: 1px solid rgba(29, 29, 29, .1); }
+  #sps-{{ section.id }} .sps__promise:first-child { padding-top: 0; border-top: 0; }
+  #sps-{{ section.id }} .sps__promise { border-top-color: rgba(29, 29, 29, .1); }
+  #sps-{{ section.id }} .sps__rated { border-top-color: rgba(29, 29, 29, .1); }
+  #sps-{{ section.id }} .sps__promise:last-child { padding-bottom: 0; }
+  #sps-{{ section.id }} .sps__promise h3 { margin: 0; font: 800 clamp(21px, 2.1vw, 28px)/1.15 'Montserrat', sans-serif; letter-spacing: -.015em; color: var(--sps-text); }
+  #sps-{{ section.id }} .sps__promise p { margin: 8px 0 0; max-width: 34em; font: 400 15px/1.6 'Montserrat', sans-serif; color: var(--sps-muted); }
+  #sps-{{ section.id }} .sps__promise a { display: inline-block; margin-top: 10px; font: 700 14.5px/1 'Montserrat', sans-serif; color: var(--sps-ink); text-decoration: underline; text-underline-offset: 4px; }
+  #sps-{{ section.id }} :is(.sps__promise a, a.sps__rated):focus-visible { outline: 2px solid var(--sps-text); outline-offset: 3px; border-radius: 4px; }
+  @media (max-width: 849px) {
+    #sps-{{ section.id }} .sps__note { grid-template-columns: minmax(0, 1fr); gap: 26px; padding: 26px 20px; border-radius: 24px; }
+    #sps-{{ section.id }} .sps__docs { margin-top: 22px; }
+    #sps-{{ section.id }} .sps__promise { padding: 18px 0; }
+    #sps-{{ section.id }} .sps__promise p { font-size: 14.5px; }
+  }
+
+  /* What to expect: a line with a dot per step */
+  #sps-{{ section.id }} .sps__exp-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+  #sps-{{ section.id }} .sps__exp-note { margin: 0 0 22px; font: 500 12.5px/1.4 'Montserrat', sans-serif; color: var(--sps-muted); text-align: right; }
+  #sps-{{ section.id }} .sps__steps { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  #sps-{{ section.id }} .sps__step { position: relative; padding: 26px 24px 0 0; }
+  #sps-{{ section.id }} .sps__step::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: var(--sps-line); }
+  #sps-{{ section.id }} .sps__step:last-child::before { right: auto; width: 40%; background: linear-gradient(90deg, var(--sps-line), transparent); }
+  #sps-{{ section.id }} .sps__step::after {
+    content: ""; position: absolute; left: 0; top: 0; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--sps-ink); box-shadow: 0 0 0 4px #eadfd6;
+  }
+  #sps-{{ section.id }} .sps__step b { display: block; font: 700 16px/1.2 'Montserrat', sans-serif; color: var(--sps-ink); }
+  #sps-{{ section.id }} .sps__step span { display: block; margin-top: 6px; max-width: 22em; font: 400 14.5px/1.5 'Montserrat', sans-serif; color: var(--sps-muted); }
+
+  /* A face travels along the timeline with the scroll: glum at the start,
+     smiling by the last step. The line behind it fills in brand red. */
+  #sps-{{ section.id }} .sps__steps { position: relative; --p: 0; }
+  #sps-{{ section.id }} .sps__fill, #sps-{{ section.id }} .sps__face { position: absolute; pointer-events: none; }
+  #sps-{{ section.id }} .sps__fill { left: 0; top: 7px; height: 2px; width: calc(var(--p) * var(--run, 0px)); background: var(--sps-ink); border-radius: 2px; z-index: 1; }
+  #sps-{{ section.id }} .sps__face { left: 0; top: -12px; width: 40px; height: 40px; margin-left: -12px; z-index: 2; transform: translate3d(calc(var(--p) * var(--run, 0px)), 0, 0) rotate(calc((var(--p) - .5) * 10deg)); will-change: transform; }
+  #sps-{{ section.id }} .sps__face svg { display: block; filter: drop-shadow(0 4px 8px rgba(60, 30, 20, .16)); }
+  #sps-{{ section.id }} .sps__face-bg { fill: #fff; stroke: var(--sps-ink); stroke-width: 2; }
+  #sps-{{ section.id }} .sps__eye { fill: var(--sps-text); }
+  #sps-{{ section.id }} .sps__mouth, #sps-{{ section.id }} .sps__brow { fill: none; stroke: var(--sps-text); stroke-width: 2; stroke-linecap: round; }
+  #sps-{{ section.id }} .sps__brow { opacity: calc(1 - var(--p) * 2.2); }
+  #sps-{{ section.id }} .sps__cheek { fill: #f9b9c5; opacity: calc(var(--p) * 1.6 - .6); }
+  @media (max-width: 749px) {
+    /* Upright timeline: the face runs down the line on the left. */
+    #sps-{{ section.id }} .sps__fill { left: 7px; top: 0; width: 2px; height: calc(var(--p) * var(--run, 0px)); }
+    #sps-{{ section.id }} .sps__face { top: 0; margin: -12px 0 0 -12px; transform: translate3d(0, calc(var(--p) * var(--run, 0px)), 0) rotate(calc((var(--p) - .5) * 10deg)); }
+  }
+
+  /* Doctor strip */
+  #sps-{{ section.id }} .sps__doc {
+    display: flex; align-items: center; gap: 22px; padding: 18px 24px; border-radius: 14px; background: #fff; border: 1px solid #e5e3e0;
+  }
+  #sps-{{ section.id }} .sps__doc img { flex: none; width: 76px; height: 76px; border-radius: 50%; object-fit: cover; object-position: top; background: #f1ebe6; }
+  #sps-{{ section.id }} .sps__doc-t { flex: 1; min-width: 0; }
+  #sps-{{ section.id }} .sps__doc-t b { display: block; font: 700 18px/1.3 'Montserrat', sans-serif; }
+  #sps-{{ section.id }} .sps__doc-t span { display: block; margin-top: 4px; font: 400 14.5px/1.5 'Montserrat', sans-serif; color: var(--sps-muted); }
+  #sps-{{ section.id }} .sps__btn {
+    flex: none; padding: 14px 26px; border-radius: 999px; border: 1.5px solid var(--sps-ink); background: #fff; color: var(--sps-ink);
+    font: 700 14.5px/1 'Montserrat', sans-serif; text-decoration: none; transition: background-color .2s ease, color .2s ease;
+  }
+  #sps-{{ section.id }} .sps__btn:hover { background: var(--sps-ink); color: #fff; }
+  #sps-{{ section.id }} .sps__btn:focus-visible { outline: 2px solid var(--sps-text); outline-offset: 2px; }
+
+  @media (max-width: 749px) {
+    #sps-{{ section.id }} { padding-bottom: 40px; }
+    #sps-{{ section.id }} .sps__inner { gap: 36px; }
+    #sps-{{ section.id }} .sps__exp-head { display: block; }
+    #sps-{{ section.id }} .sps__exp-note { text-align: left; margin-top: -10px; }
+    /* The timeline turns upright: the line runs down the left. */
+    #sps-{{ section.id }} .sps__steps { grid-auto-flow: row; }
+    #sps-{{ section.id }} .sps__step { padding: 0 0 24px 32px; }
+    #sps-{{ section.id }} .sps__step::before { left: 7px; right: auto; top: 0; bottom: 0; width: 2px; height: auto; }
+    #sps-{{ section.id }} .sps__step:last-child::before { width: 2px; height: 40%; background: linear-gradient(180deg, var(--sps-line), transparent); }
+    #sps-{{ section.id }} .sps__doc { flex-wrap: wrap; gap: 14px; padding: 18px; }
+    #sps-{{ section.id }} .sps__doc img { width: 60px; height: 60px; }
+    #sps-{{ section.id }} .sps__doc-t { flex-basis: calc(100% - 80px); }
+    #sps-{{ section.id }} .sps__btn { width: 100%; text-align: center; }
+  }
+  @media (min-width: 1680px) { #sps-{{ section.id }} .sps__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #sps-{{ section.id }} .sps__inner { zoom: 1.25; } }
+  @media (min-width: 2560px) { #sps-{{ section.id }} .sps__inner { zoom: 1.65; } }
+</style>
+
+<section id="sps-{{ section.id }}" class="sps">
+  <div class="sps__inner">
+    {%- if promises.size > 0 -%}
+      <div class="sps__note">
+        <div class="sps__note-side">
+          <h2 class="sps__heading">{{ s.note_heading }}</h2>
+          {%- if s.note_text != blank -%}<p class="sps__lead">{{ s.note_text }}</p>{%- endif -%}
+          {%- if s.doc_1 != blank or s.doc_2 != blank -%}
+            <div class="sps__docs">
+              <span class="sps__faces">
+                {%- if s.doc_1 != blank -%}<img src="{{ s.doc_1 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
+                {%- if s.doc_2 != blank -%}<img src="{{ s.doc_2 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
+              </span>
+              <p><b>{{ s.doc_names }}</b>{{ s.doc_caption }}</p>
+            </div>
+          {%- endif -%}
+          {%- if s.show_rating and jm_count > 0 -%}
+            <a class="sps__rated" href="{% if template.name == 'product' %}#judgeme_product_reviews{% else %}#reviews{% endif %}"><b>{{ jm_rating }}</b><i aria-hidden="true">★</i><span>rated by {{ jm_count }} customers across the store</span></a>
+          {%- endif -%}
+        </div>
+        <ul class="sps__promises">
+          {%- for block in promises -%}
+            <li class="sps__promise" {{ block.shopify_attributes }}>
+              <h3>{{ block.settings.lead | replace: '[advance]', adv }}</h3>
+              {%- if block.settings.text != blank -%}<p>{{ block.settings.text | replace: '[advance]', adv }}</p>{%- endif -%}
+              {%- if block.settings.link_label != blank and block.settings.link != blank -%}
+                <a href="{{ block.settings.link }}"{% if block.settings.link contains 'wa.me' %} target="_blank" rel="noopener"{% endif %}>{{ block.settings.link_label }}</a>
+              {%- endif -%}
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+
+    {%- if has_exp -%}
+      <div>
+        <div class="sps__exp-head">
+          <h2 class="sps__heading">{{ s.expect_heading }}</h2>
+          {%- if s.expect_note != blank -%}<p class="sps__exp-note">{{ s.expect_note }}</p>{%- endif -%}
+        </div>
+        <ol class="sps__steps" data-sps-steps>
+          <li class="sps__fill" aria-hidden="true" role="presentation"></li>
+          <li class="sps__face" aria-hidden="true" role="presentation">
+            <svg viewBox="0 0 40 40" width="40" height="40">
+              <circle cx="20" cy="20" r="18" class="sps__face-bg"/>
+              <circle cx="11" cy="24" r="3.4" class="sps__cheek"/><circle cx="29" cy="24" r="3.4" class="sps__cheek"/>
+              <path d="M9.5 14.6l6-2.6" class="sps__brow"/><path d="M30.5 14.6l-6-2.6" class="sps__brow"/>
+              <circle cx="14" cy="17.5" r="1.9" class="sps__eye"/><circle cx="26" cy="17.5" r="1.9" class="sps__eye"/>
+              <path d="M13 29Q20 23 27 29" class="sps__mouth" data-sps-mouth/>
+            </svg>
+          </li>
+          {%- if exp_lines.size > 0 -%}
+            {%- for line in exp_lines -%}
+              {%- assign parts = line | split: '|' -%}
+              {%- if parts[0] == blank -%}{%- continue -%}{%- endif -%}
+              <li class="sps__step"><b>{{ parts[0] | strip | escape }}</b><span>{{ parts[1] | strip | escape }}</span></li>
+            {%- endfor -%}
+          {%- else -%}
+            {%- for block in exp_blocks -%}
+              <li class="sps__step" {{ block.shopify_attributes }}><b>{{ block.settings.title }}</b><span>{{ block.settings.text }}</span></li>
+            {%- endfor -%}
+          {%- endif -%}
+        </ol>
+      </div>
+    {%- endif -%}
+
+    {%- if s.doc_title != blank -%}
+      <div class="sps__doc">
+        {%- if s.doc_photo != blank -%}
+          <img src="{{ s.doc_photo | image_url: width: 200 }}" alt="{{ s.doc_photo.alt | default: 'One of our doctors' | escape }}" loading="lazy" width="76" height="76">
+        {%- endif -%}
+        <div class="sps__doc-t"><b>{{ s.doc_title }}</b>{%- if s.doc_text != blank -%}<span>{{ s.doc_text }}</span>{%- endif -%}</div>
+        {%- if s.doc_button != blank and s.doc_link != blank -%}
+          <a class="sps__btn" href="{{ s.doc_link }}"{% if s.doc_link contains 'wa.me' %} target="_blank" rel="noopener"{% endif %}>{{ s.doc_button }}</a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('sps-{{ section.id }}');
+    var steps = root && root.querySelector('[data-sps-steps]');
+    if (!steps || steps.dataset.spsBooted === '1') return;
+    steps.dataset.spsBooted = '1';
+    var mouth = steps.querySelector('[data-sps-mouth]');
+    var items = steps.querySelectorAll('.sps__step');
+    if (!items.length) return;
+
+    // Mouth: the curve's control point moves from above the corners (frown)
+    // to below them (smile); the corners lift a little on the way.
+    function face(p) {
+      var corner = 30 - p * 5, mid = 24.5 + p * 9.5;   // sad: a gentle downturn, not a scowl
+      mouth.setAttribute('d', 'M13 ' + corner + 'Q20 ' + mid + ' 27 ' + corner);
+      steps.style.setProperty('--p', p.toFixed(3));
+    }
+    function measure() {
+      var last = items[items.length - 1];
+      var upright = window.matchMedia('(max-width: 749px)').matches;
+      steps.style.setProperty('--run', (upright ? last.offsetTop : last.offsetLeft) + 'px');
+    }
+    measure();
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { face(1); window.addEventListener('resize', measure); return; }
+
+    // Progress: 0 when the timeline enters the lower part of the screen,
+    // 1 by the time it reaches the upper third. Works both directions.
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var r = steps.getBoundingClientRect(), vh = window.innerHeight;
+      // Starts once the timeline is clear of the floating video bubble at the bottom left.
+      var from = vh * .62, to = vh * .28;
+      face(Math.min(1, Math.max(0, (from - r.top) / (from - to))));
+    }
+    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+    // Only listen while the section is near the screen.
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (en) {
+        if (en[0].isIntersecting) { window.addEventListener('scroll', onScroll, { passive: true }); update(); }
+        else window.removeEventListener('scroll', onScroll);
+      }, { rootMargin: '20% 0px' }).observe(steps);
+    } else { window.addEventListener('scroll', onScroll, { passive: true }); }
+    window.addEventListener('resize', function () { measure(); update(); });
+    update();
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "sehatUP product story",
+  "tag": "div",
+  "class": "section-sehat-product-story",
+  "settings": [
+    { "type": "header", "content": "Before you order (the clinic's note)" },
+    { "type": "text", "id": "note_heading", "label": "Heading", "default": "Before you order, four things you can count on." },
+    { "type": "textarea", "id": "note_text", "label": "Text", "default": "sehatUP is a clinic, not a supplement shop. This is how we look after an order." },
+    { "type": "image_picker", "id": "doc_1", "label": "Doctor photo 1" },
+    { "type": "image_picker", "id": "doc_2", "label": "Doctor photo 2" },
+    { "type": "text", "id": "doc_names", "label": "Doctor names", "default": "Dr. Jayant Kumar and Dr. Shefali Chhicholia" },
+    { "type": "text", "id": "doc_caption", "label": "Line under the names", "default": "Two of the doctors behind your plan" },
+    { "type": "checkbox", "id": "show_rating", "label": "Show the live store rating", "default": true },
+    { "type": "header", "content": "Timeline and doctor strip" },
+    { "type": "number", "id": "advance_amount", "label": "Advance to confirm an order (Rs.)", "default": 50 },
+    { "type": "paragraph", "content": "Timeline per product: fill the product metafield 'custom.what_to_expect' (multi-line text, one step per line, written as: When | what happens). Products without it use the timeline blocks below." },
+    { "type": "text", "id": "expect_heading", "label": "Heading: timeline", "default": "What to expect" },
+    { "type": "text", "id": "expect_note", "label": "Note beside the timeline", "default": "Results vary from person to person." },
+    { "type": "header", "content": "Doctor strip" },
+    { "type": "image_picker", "id": "doc_photo", "label": "Doctor photo" },
+    { "type": "text", "id": "doc_title", "label": "Title", "default": "A doctor consultation is included with your order." },
+    { "type": "text", "id": "doc_text", "label": "Text", "default": "Our doctors guide you on the right dose and answer your questions." },
+    { "type": "text", "id": "doc_button", "label": "Button text", "default": "Talk to a doctor" },
+    { "type": "url", "id": "doc_link", "label": "Button link" },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#d81f48" }
+  ],
+  "blocks": [
+    { "type": "promise", "name": "Promise", "limit": 5, "settings": [
+      { "type": "text", "id": "lead", "label": "The promise (large)", "info": "[advance] = the advance amount.", "default": "A doctor is part of it." },
+      { "type": "textarea", "id": "text", "label": "One sentence under it", "default": "Your order includes a consultation with one of our doctors, at no extra cost." },
+      { "type": "text", "id": "link_label", "label": "Link text (optional)" },
+      { "type": "url", "id": "link", "label": "Link (optional)" }
+    ] },
+    { "type": "step", "name": "Timeline step", "limit": 4, "settings": [
+      { "type": "text", "id": "title", "label": "When", "default": "Weeks 1 to 2" },
+      { "type": "text", "id": "text", "label": "What happens", "default": "One short line." }
+    ] }
+  ],
+  "presets": [{ "name": "sehatUP product story" }]
+}
+{% endschema %}

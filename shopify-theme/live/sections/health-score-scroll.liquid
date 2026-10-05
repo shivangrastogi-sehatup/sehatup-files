@@ -198,6 +198,52 @@
   }
   #hss-{{ section.id }}.is-live .hss__sub { color: #3a3a3a; font-weight: 500; }
   /* Scroll hint: one slim pill, the word and a small bouncing chevron. */
+  /* Spotlight: the photo dims softly everywhere except around the dots of
+     the step being read. It follows the steps; the photo itself never moves. */
+  #hss-{{ section.id }} .hss__spot, #hss-{{ section.id }} .hss__rail, #hss-{{ section.id }} .hss__idle { display: none; }
+  #hss-{{ section.id }}.is-live .hss__spot {
+    display: block; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at var(--sx, 50%) var(--sy, 50%), rgba(28, 20, 14, 0) 0, rgba(28, 20, 14, 0) var(--sr, 120px), rgba(28, 20, 14, .34) calc(var(--sr, 120px) * 3.2));
+    transition: opacity .35s ease;
+  }
+  /* Where you are: three steps, top right on desktop. Done steps get a tick. */
+  #hss-{{ section.id }}.is-live .hss__rail {
+    display: flex; position: absolute; z-index: 3; right: clamp(16px, 2.4vw, 40px); top: clamp(16px, 2.4vw, 32px);
+    list-style: none; margin: 0; padding: 6px; gap: 4px; border-radius: 999px;
+    background: rgba(255, 255, 255, .72); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    box-shadow: 0 2px 12px rgba(29, 29, 29, .08);
+  }
+  #hss-{{ section.id }}.is-live .hss__rail li {
+    display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px 8px 9px; border-radius: 999px;
+    font: 600 12.5px/1 'Montserrat', sans-serif; color: #6b6560; transition: background-color .3s ease, color .3s ease;
+  }
+  #hss-{{ section.id }}.is-live .hss__rail i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #cfc6bf; transition: background-color .3s ease, border-color .3s ease; }
+  #hss-{{ section.id }}.is-live .hss__rail li.is-on { background: var(--hss-accent); color: #fff; }
+  #hss-{{ section.id }}.is-live .hss__rail li.is-on i { border-color: #fff; background: radial-gradient(circle, #fff 0 3px, transparent 3.5px); }
+  #hss-{{ section.id }}.is-live .hss__rail li.is-done { color: #1d1d1d; }
+  #hss-{{ section.id }}.is-live .hss__rail li.is-done i { border-color: var(--hss-accent); background: var(--hss-accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-4.8' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; }
+  /* When the visitor pauses inside the story: a pill says what comes next. */
+  #hss-{{ section.id }}.is-live .hss__idle {
+    display: flex; align-items: center; gap: 9px; position: absolute; z-index: 4; left: 50%; bottom: 24px;
+    padding: 11px 18px 11px 20px; border-radius: 999px; background: #1d1d1d; color: #fff;
+    font: 600 13.5px/1 'Montserrat', sans-serif; box-shadow: 0 10px 28px rgba(29, 29, 29, .25);
+    opacity: 0; transform: translate(-50%, 12px); pointer-events: none;
+    transition: opacity .35s ease, transform .45s cubic-bezier(.16, 1, .3, 1);
+  }
+  #hss-{{ section.id }}.is-live .hss__idle::after {
+    content: ""; width: 7px; height: 7px; margin-top: -4px; border-right: 2px solid #fff; border-bottom: 2px solid #fff;
+    transform: rotate(45deg); animation: hss-chev-{{ section.id }} 1.4s ease-in-out infinite;
+  }
+  #hss-{{ section.id }}.is-live .hss__idle.is-on { opacity: 1; transform: translate(-50%, 0); }
+  @media (max-width: 749px) {
+    /* Phones: the card is at the top, so the steps become three thin bars at the bottom. */
+    #hss-{{ section.id }}.is-live .hss__rail { top: auto; bottom: 14px; right: 50%; transform: translateX(50%); padding: 0; gap: 6px; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    #hss-{{ section.id }}.is-live .hss__rail li { padding: 0; width: 34px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .6); }
+    #hss-{{ section.id }}.is-live .hss__rail li span, #hss-{{ section.id }}.is-live .hss__rail li i { display: none; }
+    #hss-{{ section.id }}.is-live .hss__rail li.is-on, #hss-{{ section.id }}.is-live .hss__rail li.is-done { background: var(--hss-accent); }
+    #hss-{{ section.id }}.is-live .hss__idle { bottom: 30px; font-size: 13px; padding: 10px 16px 10px 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #hss-{{ section.id }}.is-live .hss__idle::after { animation: none; } }
   #hss-{{ section.id }}.is-live .hss__hint.hss__hint {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 8px 14px 8px 16px;
@@ -307,6 +353,7 @@
   data-hss
   data-ar="{{ ar }}"
   data-intro-top="{{ section.settings.intro_top | default: 23 }}"
+  data-zoom="{% if section.settings.camera_zoom %}on{% else %}off{% endif %}"
   data-eyes="{{ section.settings.eyes_him | default: 34 }},{{ section.settings.eyes_her | default: 38 }}"
   style="--hss-accent: {{ section.settings.accent_color }};"
 >
@@ -348,6 +395,7 @@
       </div>
     </div>
 
+    <div class="hss__spot" aria-hidden="true"></div>
     <div class="hss__scrim" aria-hidden="true"></div>
     <svg class="hss__lines" aria-hidden="true"></svg>
 
@@ -377,6 +425,12 @@
     </div>
 
     <div class="hss__hint" aria-hidden="true">Scroll</div>
+    <ol class="hss__rail" aria-hidden="true">
+      <li data-k="w"><i></i><span>{{ section.settings.w_title }}</span></li>
+      <li data-k="s"><i></i><span>{{ section.settings.s_title }}</span></li>
+      <li data-k="p"><i></i><span>{{ section.settings.p_title }}</span></li>
+    </ol>
+    <div class="hss__idle" aria-hidden="true"><span data-idle-text></span></div>
   </div>
 </section>
 
@@ -431,7 +485,10 @@
     var HIM_TOP = EYES[0] - BROW, HER_TOP = EYES[1] - BROW;
     var INTRO_TOP = (parseFloat(root.dataset.introTop) || 0) / 100;
     // How far each card's slow push-in goes (fraction of the visible width).
-    var PUSH = .95;
+    // Camera off (the default): the photo stays still at the overview; only
+    // the dots, lines and cards animate with the scroll.
+    var NOZOOM = root.dataset.zoom !== 'on';
+    var PUSH = NOZOOM ? 1 : .95;
     var stage = root.querySelector('.hss__stage');
     var tilt = root.querySelector('.hss__tilt');
     var cam = root.querySelector('.hss__cam');
@@ -488,6 +545,11 @@
       var w = mid(dots.w), s = dotPos(dots.s[0]), p = dotPos(dots.p[0]);
       var wLow = Math.max.apply(null, dots.w.map(function (d) { return dotPos(d).y; }));
       var top = Math.min(HIM_TOP, HER_TOP);
+      if (NOZOOM) {
+        var still = m ? { x: .51, y: .5, z: .52, r: 0, fx: .5, t: top, b: top, k: 0 }
+                      : { x: .5, y: INTRO_TOP + (L.vh * .5) / (Math.max(L.vw, L.vh * AR) / AR), z: 1, r: 0, fx: .5, t: top, b: top, k: 0 };
+        return { all: still, w: still, s: still, p: still };
+      }
       return {
         // fx: where the subject sits across the screen on desktop, opposite
         // the side its card is on.
@@ -532,6 +594,36 @@
       cam.style.setProperty('--s', s);
       tilt.style.transform = 'rotateY(' + camState.r + 'deg)';
       drawLines(x, y, W, H);
+      focus(x, y, W, H);
+    }
+
+    // The step being read = the card most visible right now.
+    var spot = root.querySelector('.hss__spot'), railItems = root.querySelectorAll('.hss__rail li');
+    var ORDER = ['w', 's', 'p'], lastKey = null;
+    function activeKey() {
+      var best = '', bo = .35;
+      ORDER.forEach(function (k) { var o = parseFloat(cards[k].style.opacity) || 0; if (o > bo) { bo = o; best = k; } });
+      return best;
+    }
+    function focus(camX, camY, W, H) {
+      var k = activeKey();
+      if (spot) {
+        if (!k) spot.style.opacity = '0';
+        else {
+          var pts = dots[k].map(function (d) { var p = dotPos(d); return project(camX + p.x * W, camY + p.y * H); });
+          var cx = pts.reduce(function (a, p) { return a + p[0]; }, 0) / pts.length;
+          var cy = pts.reduce(function (a, p) { return a + p[1]; }, 0) / pts.length;
+          var spread = pts.length > 1 ? Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]) / 2 : 0;
+          spot.style.setProperty('--sx', cx + 'px'); spot.style.setProperty('--sy', cy + 'px');
+          spot.style.setProperty('--sr', Math.round(Math.max(L.m ? 60 : 110, spread + 70)) + 'px');
+          spot.style.opacity = String(Math.min(1, (parseFloat(cards[k].style.opacity) || 0) * 1.2));
+        }
+      }
+      if (k === lastKey) return;
+      lastKey = k;
+      var ix = ORDER.indexOf(k);
+      railItems.forEach(function (li, i) { li.classList.toggle('is-on', i === ix); li.classList.toggle('is-done', ix > -1 && i < ix); });
+      if (!k && st && st.progress > .9) railItems.forEach(function (li) { li.classList.add('is-done'); });
     }
 
     // One thin line from each visible card to each of its dots. The <line>
@@ -628,7 +720,7 @@
     function inT(i) { return camT(i) + ARRIVE; }           // card i arrives
     function outT(i) { return inT(i) + HOLD; }        // card i leaves
     tl.to({}, { duration: .2 })                                                   // overview beat
-      .to(camState, { z: function () { return shots().all.z * .97; }, duration: O + .2, ease: 'none' }, 0) // slow push-in, so the first scroll moves too
+      .to(camState, { z: function () { return shots().all.z * (NOZOOM ? 1 : .97); }, duration: O + .2, ease: 'none' }, 0) // slow push-in, so the first scroll moves too
       .to(head, { y: -10, duration: O + .2, ease: 'none' }, 0)                     // heading drifts up as the story starts
       .to(hint, { autoAlpha: 0, duration: .2 }, O + .1)
       .to(head, { autoAlpha: 0, y: -20, duration: .35 }, O + .2)
@@ -673,6 +765,21 @@
        transition, it eases to the nearest card, so none is left half-faded.
        That settle never fights the visitor; any new scroll or touch wins. */
     var st = tl.scrollTrigger;
+
+    // Pause inside the story for a moment and a pill says what comes next;
+    // any scroll or touch hides it again.
+    var idleEl = root.querySelector('.hss__idle'), idleText = root.querySelector('[data-idle-text]'), idleT = null;
+    function titleOf(k) { return cards[k].querySelector('h3').textContent.trim(); }
+    function showIdle() {
+      if (!st.isActive || st.progress > .95) return;
+      var k = activeKey(), ix = ORDER.indexOf(k);
+      idleText.textContent = ix < 0 ? (st.progress < .1 ? 'Scroll to see what it checks' : 'Keep scrolling')
+        : ix < ORDER.length - 1 ? 'Next: ' + titleOf(ORDER[ix + 1]) : 'Keep scrolling';
+      idleEl.classList.add('is-on');
+    }
+    function onMove() { idleEl.classList.remove('is-on'); clearTimeout(idleT); idleT = setTimeout(showIdle, 1300); }
+    window.addEventListener('scroll', onMove, { passive: true });
+    window.addEventListener('touchstart', onMove, { passive: true });
 
     /* Speed limit through the story (the 'weight' Apple's sections have). A
        hard wheel flick used to cross the whole section in ~20 frames, so a
@@ -765,6 +872,7 @@
     { "type": "header", "content": "01 Weight" },
     { "type": "text", "id": "w_title", "label": "Title", "default": "Weight" },
     { "type": "textarea", "id": "w_text", "label": "Text", "default": "Metabolism, energy and weight patterns" },
+    { "type": "checkbox", "id": "camera_zoom", "label": "Zoom the photo onto each step", "info": "Off: the photo stays still and only the dots, lines and text animate.", "default": false },
     { "type": "range", "id": "intro_top", "label": "Opening view: where the photo starts (%)", "info": "How far down the photo the top of the screen sits in the opening view. Lower = more room above the heads.", "min": 0, "max": 40, "step": 1, "default": 23 },
     { "type": "range", "id": "eyes_him", "label": "His eye line, down the photo (%)", "info": "Shots may crop hair or legs but never the eyes. Re-measure when the photo changes.", "min": 0, "max": 80, "step": 1, "default": 34 },
     { "type": "range", "id": "eyes_her", "label": "Her eye line, down the photo (%)", "min": 0, "max": 80, "step": 1, "default": 38 },

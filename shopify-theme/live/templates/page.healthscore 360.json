@@ -1028,10 +1028,38 @@
       ],
       "disabled": true,
       "settings": {}
+    },
+    "story_flow": {
+      "type": "sehat-story-flow",
+      "settings": {
+        "heading": "What Is Health Score 360?",
+        "subheading": "One check that reads your hormones, metabolism, stamina and cycle health, not just one symptom.",
+        "w_title": "Weight",
+        "w_text": "Metabolism, energy and weight patterns",
+        "w_x": 42,
+        "w_y": 66,
+        "w_x2": 59,
+        "w_y2": 64,
+        "s_title": "Sexual Wellness",
+        "s_text": "Hormones, stamina and performance",
+        "s_x": 58,
+        "s_y": 53,
+        "p_title": "Period Care",
+        "p_text": "Cycle health, PMS and hormonal balance",
+        "p_x": 43,
+        "p_y": 72,
+        "accent_color": "#ee204a",
+        "image_asset": "hs360-couple-v3-4k.webp",
+        "crop_top": 14,
+        "cta_text": "",
+        "prompt_done": "That's all three. Here's what happens next."
+      },
+      "disabled": true
     }
   },
   "order": [
     "health_check_cards_BqwqFe",
+    "story_flow",
     "health_score_scroll_ezJnyU",
     "health_journey_hj01",
     "health_signs_hsg01",

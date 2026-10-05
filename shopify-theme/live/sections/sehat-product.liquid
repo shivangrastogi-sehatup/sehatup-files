@@ -1,0 +1,565 @@
+{%- comment -%}
+  sehatUP product section: gallery on the left, buy column on the right.
+
+  Built from the Health Score hero's parts (tinted stage card with ring and
+  dots, white tick pills, solid + outline buttons), details left, stage right.
+
+  The Add to cart / checkout buttons come from the theme's own 'buy-buttons'
+  snippet, so the store's checkout app (Shiprocket) keeps working unchanged.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign variant = product.selected_or_first_available_variant
+  assign product_form_id = 'product-form-' | append: section.id
+  assign price = variant.price
+  assign compare = variant.compare_at_price
+  assign saving = 0
+  if compare > price
+    assign saving = compare | minus: price
+    assign saving_pct = saving | times: 100.0 | divided_by: compare | round
+  endif
+  assign advance = s.advance_amount | times: 100
+  assign rest = price | minus: advance
+  assign rating = product.metafields.reviews.rating.value
+  assign rating_count = product.metafields.reviews.rating_count.value | default: 0
+  assign shown_title = product.title | remove: ' - sehatUP' | remove: ' | SehatUP' | remove: ' | sehatUP' | remove: ' - SehatUP'
+  capture fact_ingredients
+    render 'sehat-facts', handle: product.handle, field: 'ingredients'
+  endcapture
+  assign fact_ingredients = fact_ingredients | strip
+  assign tone = 'all'
+  assign hay = product.title | append: ' ' | append: product.type | downcase
+  for c in product.collections
+    assign hay = hay | append: ' ' | append: c.handle
+  endfor
+  if hay contains 'women' or hay contains 'female' or hay contains 'for-her' or hay contains 'period' or hay contains 'menses'
+    assign tone = 'her'
+  elsif hay contains 'for-him' or hay contains 'male' or hay contains 'mens' or hay contains 'men-' or hay contains 'performance'
+    assign tone = 'him'
+  endif
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  /* Built from the Health Score hero's parts: the warm blush background, a
+     tinted stage card with the ring and dot grid, white pills with a raspberry
+     tick, a solid + outline button pair. Soft colour over large areas; the
+     strong colour only on the buy button. */
+  #sp-{{ section.id }} {
+    --sp-text: #1d1d1d;
+    --sp-muted: #555;
+    --sp-line: #eadfd8;
+    --sp-ink: {{ s.accent_color | color_darken: 8 }};
+    --c1: #fbf3e6; --c2: #f1dfc6; --sp-soft: #f8efe2;        /* sand: products for everyone */
+    --sp-radius: 28px;
+    --sp-ease: cubic-bezier(.16, 1, .3, 1);
+    padding: 20px clamp(16px, 2vw, 28px) 60px;
+    background: #faf6f3;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--sp-text);
+  }
+  #sp-{{ section.id }}.sp--her { --c1: #fff0f3; --c2: #fbd3dc; --sp-soft: #fdeef1; }
+  #sp-{{ section.id }}.sp--him { --c1: #eefaf8; --c2: #c6ebe6; --sp-soft: #e9f6f4; }
+  #sp-{{ section.id }} *, #sp-{{ section.id }} *::before, #sp-{{ section.id }} *::after { box-sizing: border-box; }
+  #sp-{{ section.id }} .sp__inner {
+    /* Full width, like a marketplace product page: thumbnails start at the left edge. */
+    max-width: none; margin: 0;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 3.5vw, 56px);
+    align-items: start;
+  }
+  /* ---- Gallery: thumbnails in a column on the left, the photo beside them */
+  #sp-{{ section.id }} .sp__gallery { position: sticky; top: calc(var(--sp-header, 60px) + 16px); display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 12px; align-items: start; }
+  #sp-{{ section.id }} .sp__bg { display: none; }
+  /* The photo never grows taller than the screen, and the details keep a readable width. */
+  @media (min-width: 900px) {
+    /* header + gaps above and below, so the whole photo fits one screen */
+    #sp-{{ section.id }} .sp__track { width: min(100%, calc(100vh - var(--sp-header, 60px) - 40px)); }
+    #sp-{{ section.id }} .sp__info { max-width: 640px; }
+  }
+  #sp-{{ section.id }} .sp__track {
+    display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+    border-radius: 24px; background: #fff; aspect-ratio: 1;
+    box-shadow: 0 10px 30px rgba(60, 30, 20, .08);
+  }
+  #sp-{{ section.id }} .sp__track::-webkit-scrollbar { display: none; }
+  #sp-{{ section.id }} .sp__slide { flex: 0 0 100%; scroll-snap-align: center; }
+  #sp-{{ section.id }} .sp__slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  /* Like a marketplace gallery: the column starts a little below the photo's top edge. */
+  #sp-{{ section.id }} .sp__thumbs { order: -1; display: flex; flex-direction: column; gap: 8px; padding: 44px 2px 2px; }
+  #sp-{{ section.id }} .sp__thumb {
+    flex: none; width: 100%; padding: 0; border: 0; background: #fff; border-radius: 9px; overflow: hidden; cursor: pointer;
+    aspect-ratio: 1; opacity: .75; outline: 1px solid var(--sp-line); outline-offset: 0; box-shadow: none;
+    transition: opacity .2s ease, outline-color .2s ease, transform .3s var(--sp-ease);
+  }
+  #sp-{{ section.id }} .sp__thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  #sp-{{ section.id }} .sp__thumb:hover { opacity: 1; }
+  #sp-{{ section.id }} .sp__thumb[aria-current="true"] { opacity: 1; outline-color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__thumb:focus-visible { opacity: 1; outline-color: var(--sp-text); }
+
+  /* ---- Details ---------------------------------------------------------- */
+  #sp-{{ section.id }} .sp__crumbs { margin: 0 0 16px; font: 500 13px/1.3 'Montserrat', sans-serif; color: var(--sp-muted); }
+  #sp-{{ section.id }} .sp__crumbs a { color: inherit; text-decoration: none; }
+  #sp-{{ section.id }} .sp__crumbs a:hover { color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__title {
+    margin: 0; font: 800 clamp(28px, 3vw, 42px)/1.1 'Montserrat', sans-serif; letter-spacing: -.02em;
+    color: var(--sp-text); text-wrap: balance;
+  }
+  #sp-{{ section.id }} .sp__tagline { margin: 14px 0 0; max-width: 30em; font: 500 16.5px/1.55 'Montserrat', sans-serif; color: #444; }
+  #sp-{{ section.id }} .sp__rating {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+    font: 600 13.5px/1 'Montserrat', sans-serif; color: var(--sp-muted); text-decoration: none;
+  }
+  #sp-{{ section.id }} .sp__stars { position: relative; display: inline-block; font-size: 15px; letter-spacing: 2px; color: #e3d9d1; }
+  #sp-{{ section.id }} .sp__stars i { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: #f5a623; font-style: normal; }
+  #sp-{{ section.id }} .sp__apps { margin-top: 12px; font-size: 13.5px; color: var(--sp-muted); }
+  #sp-{{ section.id }} .sp__apps:empty { display: none; }
+  #sp-{{ section.id }} .sp__apps .jdgm-star { color: #f5a623 !important; font-size: 15px !important; }
+  #sp-{{ section.id }} .sp__apps .jdgm-prev-badge__text { font: 600 13.5px/1 'Montserrat', sans-serif; color: var(--sp-muted); }
+
+  #sp-{{ section.id }} .sp__price { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 22px; }
+  #sp-{{ section.id }} .sp__now { font: 800 34px/1 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__was { font: 500 16px/1 'Montserrat', sans-serif; color: #7a7a7a; }
+  #sp-{{ section.id }} .sp__save { padding: 7px 11px; border-radius: 999px; background: #fde2e7; color: var(--sp-ink); font: 700 13px/1 'Montserrat', sans-serif; }
+  #sp-{{ section.id }} .sp__tax { flex-basis: 100%; font: 500 12.5px/1.3 'Montserrat', sans-serif; color: var(--sp-muted); }
+
+  /* How you pay: a soft rose card with a card icon. */
+  #sp-{{ section.id }} .sp__pay {
+    margin: 18px 0 0; padding: 16px 18px; border-radius: 18px; background: #fde9ed;
+    display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 16px;
+  }
+  #sp-{{ section.id }} .sp__pay svg { grid-row: span 2; width: 34px; height: 34px; fill: none; stroke: var(--sp-ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #sp-{{ section.id }} .sp__pay b { font: 700 17px/1.3 'Montserrat', sans-serif; color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__pay span { font: 500 13.5px/1.4 'Montserrat', sans-serif; color: var(--sp-muted); }
+  #sp-{{ section.id }} .sp__pay span i { font-style: normal; font-weight: 700; color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__pay-note { margin: 8px 2px 0; font: 500 12.5px/1.45 'Montserrat', sans-serif; color: var(--sp-muted); }
+
+  /* Pack choice: compact boxes side by side, not full-width rows. */
+  #sp-{{ section.id }} .sp__variants { margin: 20px 0 0; padding: 0; border: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+  #sp-{{ section.id }} .sp__variants legend { float: left; width: 100%; padding: 0; margin-bottom: 10px; font: 700 14px/1 'Montserrat', sans-serif; }
+  #sp-{{ section.id }} .sp__variant {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 118px; padding: 12px 18px;
+    border-radius: 14px; border: 1.5px solid var(--sp-line); background: #fff;
+    font: 600 14px/1.2 'Montserrat', sans-serif; color: var(--sp-text); text-decoration: none; text-align: center;
+    transition: border-color .2s ease;
+  }
+  #sp-{{ section.id }} .sp__variant span:last-child { font-weight: 700; }
+  #sp-{{ section.id }} .sp__variant:hover { border-color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__variant[aria-current="true"] { border-color: var(--sp-ink); background: #fdecef; }
+  #sp-{{ section.id }} .sp__variant[aria-current="true"] span:last-child { color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__variant.is-out { opacity: .5; }
+
+  /* Buttons: the hero's pair. Outline for Add to cart, solid for checkout. */
+  #sp-{{ section.id }} .sp__buy { margin-top: 20px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+  #sp-{{ section.id }} .sp__qty { display: inline-flex; align-items: center; height: 52px; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgba(29, 29, 29, .1); }
+  #sp-{{ section.id }} .sp__qty button { width: 40px; height: 100%; border: 0; background: none; font: 500 19px/1 'Montserrat', sans-serif; color: var(--sp-text); cursor: pointer; border-radius: 999px; }
+  #sp-{{ section.id }} .sp__qty button:hover { color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__qty input {
+    width: 30px; height: 100%; padding: 0; border: 0; background: none; text-align: center; box-shadow: none;
+    font: 700 15.5px/1 'Montserrat', sans-serif; color: var(--sp-text); -moz-appearance: textfield; appearance: textfield;
+  }
+  #sp-{{ section.id }} .sp__qty input::-webkit-outer-spin-button, #sp-{{ section.id }} .sp__qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  #sp-{{ section.id }} .sp__buttons, #sp-{{ section.id }} .sp__buttons > div, #sp-{{ section.id }} .sp__buttons product-form,
+  #sp-{{ section.id }} .sp__buttons form, #sp-{{ section.id }} .sp__buttons .product-form__buttons { display: contents; }
+  #sp-{{ section.id }} .sp__buttons .product-form__submit {
+    min-height: 52px; margin: 0; border-radius: 999px; border: 1.5px solid var(--sp-ink); background: rgba(255, 255, 255, .85); color: var(--sp-ink);
+    font: 700 15.5px/1 'Montserrat', sans-serif; letter-spacing: 0; box-shadow: none;
+    transition: background-color .2s ease, color .2s ease, transform .1s ease;
+  }
+  #sp-{{ section.id }} .sp__buttons .product-form__submit::before, #sp-{{ section.id }} .sp__buttons .product-form__submit::after { display: none; }
+  #sp-{{ section.id }} .sp__buttons .product-form__submit:hover:not([disabled]) { background: var(--sp-ink); color: #fff; }
+  #sp-{{ section.id }} .sp__buttons .product-form__submit:active { transform: translateY(1px); }
+  #sp-{{ section.id }} .sp__buttons .product-form__submit[disabled] { border-color: #c9c0b9; color: #9a918a; }
+  #sp-{{ section.id }} .sp__buttons .shiprocket-headless,
+  #sp-{{ section.id }} .sp__buttons .shopify-payment-button { grid-column: 1 / -1; margin: 0; }
+  /* The checkout app draws its own button; bring it to the brand colour and shape. */
+  #sp-{{ section.id }} .sp__buttons .shiprocket-headless :is(button, .sr-headless-checkout),
+  #sp-{{ section.id }} .sp__buttons .shopify-payment-button__button {
+    min-height: 54px !important; border-radius: 999px !important; background: var(--sp-ink) !important; background-image: none !important;
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--sp-ink) 26%, transparent) !important; font-family: 'Montserrat', sans-serif !important;
+  }
+  #sp-{{ section.id }} .sp__buttons .product-form__error-message-wrapper { grid-column: 1 / -1; }
+  #sp-{{ section.id }} :is(.sp__qty button, .sp__variant, .sp__rating, .sp__about summary):focus-visible { outline: 2px solid var(--sp-text); outline-offset: 2px; }
+
+  /* Promises: the hero's white pills with a raspberry tick. */
+  #sp-{{ section.id }} .sp__points { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  #sp-{{ section.id }} .sp__points li {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px 9px 10px; border-radius: 999px; background: #fff;
+    box-shadow: 0 1px 4px rgba(29, 29, 29, .08); font: 600 13px/1 'Montserrat', sans-serif; color: var(--sp-text);
+  }
+  #sp-{{ section.id }} .sp__points svg { display: none; }
+  #sp-{{ section.id }} .sp__points li::before {
+    content: ""; width: 16px; height: 16px; border-radius: 50%; flex: none;
+    background: var(--sp-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-4.8' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
+  }
+
+  /* Blocks carried over from the old page, in the same palette. */
+  #sp-{{ section.id }} .sp__slot { margin-top: 20px; font-size: 14px; color: var(--sp-muted); }
+  #sp-{{ section.id }} .sp__slot:empty { display: none; }
+  #sp-{{ section.id }} .sp__slot :is(h1, h2, h3, h4, label, p) { font: 600 14px/1.4 'Montserrat', sans-serif !important; color: var(--sp-text) !important; margin: 0 0 8px !important; }
+  #sp-{{ section.id }} .sp__slot a { color: var(--sp-ink) !important; font-weight: 700; text-underline-offset: 3px; }
+  #sp-{{ section.id }} .sp__slot input { font: 500 14px/1 'Montserrat', sans-serif !important; min-height: 46px; }
+
+  #sp-{{ section.id }} .sp__folds { margin-top: 22px; display: grid; gap: 10px; }
+  #sp-{{ section.id }} .sp__about { border-radius: 16px; background: #fff; box-shadow: 0 1px 4px rgba(29, 29, 29, .07); padding: 0 18px; }
+  #sp-{{ section.id }} .sp__desc :is(h1, h2, h3, h4) { margin: 14px 0 6px; font: 700 15px/1.3 'Montserrat', sans-serif; color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__desc p { margin: 0 0 10px; }
+  #sp-{{ section.id }} .sp__desc ul { margin: 0 0 10px; padding-left: 18px; }
+  #sp-{{ section.id }} .sp__desc strong { color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__about summary {
+    display: flex; justify-content: space-between; align-items: center; padding: 17px 2px; cursor: pointer; list-style: none;
+    font: 700 15.5px/1.2 'Montserrat', sans-serif;
+  }
+  #sp-{{ section.id }} .sp__about summary::-webkit-details-marker { display: none; }
+  #sp-{{ section.id }} .sp__about summary::after {
+    content: ""; width: 9px; height: 9px; margin-right: 4px; border-right: 1.8px solid var(--sp-text); border-bottom: 1.8px solid var(--sp-text);
+    transform: translateY(-3px) rotate(45deg); transition: transform .3s var(--sp-ease);
+  }
+  #sp-{{ section.id }} .sp__about[open] summary::after { transform: translateY(2px) rotate(-135deg); }
+  #sp-{{ section.id }} .sp__desc { padding: 0 2px 12px; font: 400 15px/1.7 'Montserrat', sans-serif; color: #444; }
+  #sp-{{ section.id }} .sp__desc { transition: opacity .3s ease, transform .4s var(--sp-ease); }
+  #sp-{{ section.id }} .sp__about:is(.is-opening, .is-closing) .sp__desc { opacity: 0; transform: translateY(-6px); }
+  #sp-{{ section.id }} .sp__about.is-closing summary::after { transform: translateY(-3px) rotate(45deg); }
+  #sp-{{ section.id }} .sp__desc img { max-width: 100%; height: auto; border-radius: 12px; }
+
+  @media (max-width: 899px) {
+    #sp-{{ section.id }} { padding: 12px 16px 40px; }
+    #sp-{{ section.id }} .sp__inner { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    #sp-{{ section.id }} .sp__gallery { position: static; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    #sp-{{ section.id }} .sp__track { border-radius: 20px; }
+    #sp-{{ section.id }} .sp__thumbs { order: 0; flex-direction: row; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+    #sp-{{ section.id }} .sp__thumb { flex: 0 0 54px; width: 54px; }
+    #sp-{{ section.id }} .sp__crumbs { display: none; }
+    #sp-{{ section.id }} .sp__now { font-size: 30px; }
+  }
+  /* ---- Palette: the store's own colours only. Brand red for buying and
+     small accents, warm stone tints for panels, charcoal for text, white
+     page. Corners are modest, pills only on buttons. These rules sit last
+     on purpose and override the above. */
+  #sp-{{ section.id }}, #sp-{{ section.id }}.sp--him, #sp-{{ section.id }}.sp--her { --sp-line: #e8e0d9; --sp-muted: #5f5a56; --sp-soft: #f6f0ec; --sp-rose-soft: #fdecef; background: #fff; }
+  #sp-{{ section.id }} .sp__track { border-radius: 14px; background: var(--sp-soft); box-shadow: none; }
+  #sp-{{ section.id }} .sp__thumb { border-radius: 8px; }
+  #sp-{{ section.id }} .sp__thumb[aria-current="true"] { outline-color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__now { color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__save { padding: 6px 10px; border-radius: 8px; background: var(--sp-rose-soft); color: var(--sp-ink); font: 700 13.5px/1 'Montserrat', sans-serif; }
+  /* Payment card: warm stone panel, the icon in brand red. */
+  #sp-{{ section.id }} .sp__pay { background: var(--sp-soft); border: 0; border-radius: 14px; }
+  #sp-{{ section.id }} .sp__pay svg { width: 44px; height: 44px; padding: 10px; border-radius: 50%; background: var(--sp-ink); stroke: #fff; }
+  #sp-{{ section.id }} .sp__pay b { color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__pay span { color: var(--sp-muted); }
+  #sp-{{ section.id }} .sp__pay span i { color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__variant { border-radius: 10px; }
+  #sp-{{ section.id }} .sp__variant[aria-current="true"] { border-color: var(--sp-text); background: var(--sp-soft); }
+  #sp-{{ section.id }} .sp__variant[aria-current="true"] span:last-child { color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__qty { box-shadow: none; border: 0; background: var(--sp-soft); }
+  /* Secondary button: outlined in brand red; the solid one below is the main action. */
+  #sp-{{ section.id }} .sp__buttons .product-form__submit { border: 1.5px solid var(--sp-ink); background: #fff; color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__buttons .product-form__submit:hover:not([disabled]) { background: var(--sp-rose-soft); color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__buttons .product-form__submit[disabled] { background: var(--sp-soft); color: #9a918a; }
+  #sp-{{ section.id }} .sp__points li { background: none; box-shadow: none; padding: 0; border-radius: 0; font-weight: 500; color: var(--sp-muted); }
+  #sp-{{ section.id }} .sp__points { gap: 8px 22px; }
+  #sp-{{ section.id }} .sp__points li { color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__points li::before { background-color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__about { border-radius: 0; background: none; box-shadow: none; padding: 0; border-bottom: 1px solid var(--sp-line); }
+  #sp-{{ section.id }} .sp__folds { gap: 0; border-top: 1px solid var(--sp-line); }
+  #sp-{{ section.id }} .sp__slot a { color: var(--sp-ink) !important; }
+  #sp-{{ section.id }} .sp__about summary::after { border-color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__crumbs a:hover { color: var(--sp-ink); }
+  #sp-{{ section.id }} .sp__ingr b { color: var(--sp-text); }
+  #sp-{{ section.id }} .sp__slot :is(button, input[type="submit"]) { background: var(--sp-soft) !important; color: var(--sp-ink) !important; font-weight: 700 !important; }
+  #sp-{{ section.id }} .sp__slot :is(input, button) { border-color: var(--sp-line) !important; }
+  #sp-{{ section.id }} .sp__ingr { margin: 18px 0 0; font: 500 14px/1.5 'Montserrat', sans-serif; color: var(--sp-muted); }
+  #sp-{{ section.id }} .sp__ingr b { display: block; margin-bottom: 2px; font-weight: 700; color: var(--sp-text); }
+
+  /* Phones: buy bar pinned to the bottom of the screen. */
+  #sp-{{ section.id }} .sp__bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: #fff; border-top: 1px solid var(--sp-line); box-shadow: 0 -6px 20px rgba(29, 29, 29, .08);
+  }
+  #sp-{{ section.id }} .sp__bar[hidden] { display: none; }
+  #sp-{{ section.id }} .sp__bar div { flex: 1; min-width: 0; }
+  #sp-{{ section.id }} .sp__bar b { display: block; font: 800 17px/1.1 'Montserrat', sans-serif; }
+  #sp-{{ section.id }} .sp__bar span { display: block; margin-top: 3px; font: 500 12px/1.2 'Montserrat', sans-serif; color: var(--sp-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sp-{{ section.id }} .sp__bar button {
+    flex: none; height: 46px; padding: 0 26px; border: 0; border-radius: 999px; background: var(--sp-ink); color: #fff;
+    font: 700 15px/1 'Montserrat', sans-serif; cursor: pointer;
+  }
+  /* The floating video bubble steps up out of the bar's way. */
+  body.sp-bar-on .fpv__dock { bottom: 84px !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #sp-{{ section.id }} * { transition: none !important; scroll-behavior: auto !important; }
+  }
+  /* Big screens: scale with the rest of the site's sections. */
+  @media (min-width: 1680px) { #sp-{{ section.id }} .sp__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #sp-{{ section.id }} .sp__inner { zoom: 1.25; } }
+  @media (min-width: 2560px) { #sp-{{ section.id }} .sp__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #sp-{{ section.id }} .sp__inner { zoom: 2; } }
+</style>
+
+<section id="sp-{{ section.id }}" class="sp sp--{{ tone }}">
+  <div class="sp__inner">
+    <div class="sp__gallery">
+      <div class="sp__bg" aria-hidden="true"></div>
+      <div class="sp__track" data-sp-track tabindex="0" aria-label="Product photos">
+        {%- for media in product.media -%}
+          <div class="sp__slide">
+            <img
+              src="{{ media.preview_image | image_url: width: 1000 }}"
+              srcset="{{ media.preview_image | image_url: width: 500 }} 500w, {{ media.preview_image | image_url: width: 1000 }} 1000w, {{ media.preview_image | image_url: width: 1600 }} 1600w"
+              sizes="(max-width: 899px) 100vw, 560px"
+              alt="{{ media.alt | default: product.title | escape }}"
+              width="{{ media.preview_image.width }}" height="{{ media.preview_image.height }}"
+              {% if forloop.first %}loading="eager" fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async">
+          </div>
+        {%- endfor -%}
+      </div>
+      {%- if product.media.size > 1 -%}
+        <div class="sp__thumbs">
+          {%- for media in product.media -%}
+            <button type="button" class="sp__thumb" data-sp-thumb aria-label="Photo {{ forloop.index }} of {{ product.media.size }}"{% if forloop.first %} aria-current="true"{% endif %}>
+              <img src="{{ media.preview_image | image_url: width: 160 }}" alt="" loading="lazy" width="80" height="80">
+            </button>
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="sp__info">
+      <nav class="sp__crumbs" aria-label="Breadcrumb"><a href="{{ routes.root_url }}">Home</a> / <a href="{{ s.shop_link | default: routes.all_products_collection_url }}">{{ s.shop_label }}</a></nav>
+      <h1 class="sp__title">{{ shown_title }}</h1>
+      {%- if product.metafields.custom.tagline != blank -%}
+        <p class="sp__tagline">{{ product.metafields.custom.tagline }}</p>
+      {%- endif -%}
+
+      {%- if rating != blank and rating_count >= s.min_reviews -%}
+        {%- assign pct = rating.rating | times: 20 -%}
+        <a class="sp__rating" href="#judgeme_product_reviews" aria-label="Rated {{ rating.rating | round: 1 }} out of 5 from {{ rating_count }} reviews">
+          <span class="sp__stars" aria-hidden="true">★★★★★<i style="width: {{ pct }}%">★★★★★</i></span>
+          <span>{{ rating.rating | round: 1 }}</span>
+          <span>{{ rating_count }} reviews</span>
+        </a>
+      {%- endif -%}
+
+      {%- comment -%} The reviews app's own badge would repeat the stars above, or show a rating built on one or two reviews: left out. {%- endcomment -%}
+
+      <div class="sp__price">
+        <span class="sp__now">{{ price | money_without_trailing_zeros }}</span>
+        {%- if saving > 0 -%}
+          <s class="sp__was"><span class="visually-hidden">Was </span>{{ compare | money_without_trailing_zeros }}</s>
+          <span class="sp__save">{{ saving_pct }}% off</span>
+        {%- endif -%}
+        <span class="sp__tax">{{ s.tax_note }}</span>
+      </div>
+      {%- if advance > 0 and rest > 0 -%}
+        <div class="sp__pay">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5h18v11H3zM3 10h18M6.5 14h4"/></svg>
+          <b>{{ advance | money_without_trailing_zeros }} today to confirm</b>
+          <span><i>+ {{ rest | money_without_trailing_zeros }}</i> when your parcel arrives</span>
+        </div>
+        {%- if s.split_note != blank -%}<p class="sp__pay-note">{{ s.split_note }}</p>{%- endif -%}
+      {%- endif -%}
+
+      {%- comment -%} ponytail: variants reload the page with ?variant=; swap in-place if a multi-variant product ever needs it. {%- endcomment -%}
+      {%- if product.has_only_default_variant == false -%}
+        <fieldset class="sp__variants">
+          <legend>Choose your pack</legend>
+          {%- for v in product.variants -%}
+            <a class="sp__variant{% unless v.available %} is-out{% endunless %}" href="{{ v.url }}"{% if v.id == variant.id %} aria-current="true"{% endif %}>
+              <span>{{ v.title }}</span><span>{{ v.price | money_without_trailing_zeros }}</span>
+            </a>
+          {%- endfor -%}
+        </fieldset>
+      {%- endif -%}
+
+      <div class="sp__buy">
+        <div class="sp__qty">
+          <button type="button" data-sp-qty="-1" aria-label="Decrease quantity">&minus;</button>
+          <input type="number" name="quantity" form="{{ product_form_id }}" value="1" min="1" max="10" inputmode="numeric" aria-label="Quantity">
+          <button type="button" data-sp-qty="1" aria-label="Increase quantity">+</button>
+        </div>
+        <div class="sp__buttons">
+          {%- for block in section.blocks -%}
+            {%- if block.type == 'buy_buttons' -%}
+              {%- render 'buy-buttons', block: block, product: product, product_form_id: product_form_id, section_id: section.id, show_pickup_availability: false -%}
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'custom_liquid' and block.settings.custom_liquid != blank -%}
+          <div class="sp__slot" {{ block.shopify_attributes }}>{{ block.settings.custom_liquid }}</div>
+        {%- endif -%}
+      {%- endfor -%}
+
+      <ul class="sp__points">
+        {%- if s.point_1 != blank -%}<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8l8.5-4 8.5 4v8l-8.5 4-8.5-4zM3.5 8l8.5 4 8.5-4M12 12v8"/></svg>{{ s.point_1 }}</li>{%- endif -%}
+        {%- if s.point_2 != blank -%}<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v5a4 4 0 0 0 8 0V4M10 13v2.5a4.5 4.5 0 0 0 9 0V13"/><circle cx="19" cy="11" r="2"/></svg>{{ s.point_2 }}</li>{%- endif -%}
+        {%- if s.point_3 != blank -%}<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5h11v9H3zM14 9.5h3.6l2.9 3.2v2.8H14"/><circle cx="7" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/></svg>{{ s.point_3 }}</li>{%- endif -%}
+      </ul>
+
+      {%- if fact_ingredients != '' -%}
+        <p class="sp__ingr"><b>Key ingredients</b>{{ fact_ingredients | split: ',' | join: ', ' }}</p>
+      {%- endif -%}
+
+
+      {%- comment -%}
+        Product descriptions here are written in tagged parts:
+        [description]..[/description] [benefits]..[/benefits] [how_to_use]..[/how_to_use].
+        Each part becomes its own fold-out; a description without tags stays one fold-out.
+      {%- endcomment -%}
+      {%- liquid
+        assign d = product.description
+        assign part_about = ''
+        assign part_benefits = ''
+        assign part_use = ''
+        if d contains '[description]'
+          assign part_about = d | split: '[description]' | last | split: '[/description]' | first
+        endif
+        if d contains '[benefits]'
+          assign part_benefits = d | split: '[benefits]' | last | split: '[/benefits]' | first
+        endif
+        if d contains '[how_to_use]'
+          assign part_use = d | split: '[how_to_use]' | last | split: '[/how_to_use]' | first
+        endif
+        assign has_parts = false
+        if part_about != '' or part_benefits != '' or part_use != ''
+          assign has_parts = true
+        endif
+      -%}
+      <div class="sp__folds" data-sehat-accordion>
+        {%- if has_parts -%}
+          {%- if part_about != '' -%}
+            <details class="sp__about" name="sp-{{ section.id }}">
+              <summary>{{ s.description_label }}</summary>
+              <div class="sp__desc rte">{{ part_about }}</div>
+            </details>
+          {%- endif -%}
+          {%- if part_benefits != '' -%}
+            <details class="sp__about" name="sp-{{ section.id }}">
+              <summary>{{ s.benefits_label }}</summary>
+              <div class="sp__desc rte">{{ part_benefits }}</div>
+            </details>
+          {%- endif -%}
+          {%- if part_use != '' -%}
+            <details class="sp__about" name="sp-{{ section.id }}">
+              <summary>{{ s.use_label }}</summary>
+              <div class="sp__desc rte">{{ part_use }}</div>
+            </details>
+          {%- endif -%}
+        {%- elsif d != blank -%}
+          <details class="sp__about" name="sp-{{ section.id }}"{% if s.open_description %} open{% endif %}>
+            <summary>{{ s.description_label }}</summary>
+            <div class="sp__desc rte">{{ d }}</div>
+          </details>
+        {%- endif -%}
+        {%- if s.delivery_text != blank -%}
+          <details class="sp__about" name="sp-{{ section.id }}">
+            <summary>{{ s.delivery_label }}</summary>
+            <div class="sp__desc rte">{{ s.delivery_text }}</div>
+          </details>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+  {%- if variant.available -%}
+    <div class="sp__bar" data-sp-bar hidden>
+      <div><b>{{ price | money_without_trailing_zeros }}</b><span>{{ shown_title }}</span></div>
+      <button type="submit" form="{{ product_form_id }}" name="add">Add to cart</button>
+    </div>
+  {%- endif -%}
+</section>
+
+<script type="application/ld+json">{{ product | structured_data }}</script>
+<script src="{{ 'product-form.js' | asset_url }}" defer="defer"></script>
+<script src="{{ 'sehat-accordion.js' | asset_url }}" defer="defer"></script>
+<script>
+  (function () {
+    var root = document.getElementById('sp-{{ section.id }}');
+    if (!root || root.dataset.spBooted === '1') return;
+    root.dataset.spBooted = '1';
+
+    // Gallery: thumbnails scroll the track; swiping the track updates the thumbnail.
+    var track = root.querySelector('[data-sp-track]');
+    var thumbs = root.querySelectorAll('[data-sp-thumb]');
+    function mark(i) { thumbs.forEach(function (t, k) { if (k === i) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current'); }); }
+    thumbs.forEach(function (t, i) {
+      t.addEventListener('click', function () { track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' }); mark(i); });
+      // Mouse: hovering a thumbnail selects that photo, and it stays selected.
+      t.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { track.scrollTo({ left: i * track.clientWidth, behavior: 'auto' }); mark(i); } });
+    });
+    // The photo sticks just below the site header while the details scroll.
+    var header = document.querySelector('.section-header');
+    if (header) root.style.setProperty('--sp-header', header.offsetHeight + 'px');
+    var raf;
+    track.addEventListener('scroll', function () {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function () { mark(Math.round(track.scrollLeft / track.clientWidth)); });
+    }, { passive: true });
+
+    // Phones: a buy bar slides in at the bottom once the main buttons scroll away.
+    var bar = root.querySelector('[data-sp-bar]'), buy = root.querySelector('.sp__buy');
+    if (bar && buy && 'IntersectionObserver' in window) {
+      var mq = window.matchMedia('(max-width: 899px)');
+      new IntersectionObserver(function (en) {
+        var show = mq.matches && !en[0].isIntersecting && en[0].boundingClientRect.top < 0;
+        bar.hidden = !show;
+        document.body.classList.toggle('sp-bar-on', show);
+      }).observe(buy);
+    }
+
+    // Quantity stepper.
+    var qty = root.querySelector('.sp__qty input');
+    root.querySelectorAll('[data-sp-qty]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = (parseInt(qty.value, 10) || 1) + parseInt(b.dataset.spQty, 10);
+        qty.value = Math.min(parseInt(qty.max, 10) || 10, Math.max(1, v));
+      });
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "sehatUP product",
+  "tag": "div",
+  "class": "section-sehat-product",
+  "enabled_on": { "templates": ["product"] },
+  "settings": [
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#d81f48" },
+    { "type": "text", "id": "shop_label", "label": "Breadcrumb: shop link text", "default": "All kits" },
+    { "type": "url", "id": "shop_link", "label": "Breadcrumb: shop link" },
+    { "type": "header", "content": "Price slip" },
+    { "type": "text", "id": "tax_note", "label": "Line under the price", "default": "Inclusive of all taxes" },
+    { "type": "number", "id": "advance_amount", "label": "Advance to confirm an order (Rs.)", "info": "Shown as 'today' next to the rest 'when your parcel arrives'. 0 hides the payment split.", "default": 50 },
+    { "type": "text", "id": "split_note", "label": "Line under the payment split", "default": "Or pay in full online for free shipping." },
+    { "type": "header", "content": "Rating" },
+    { "type": "range", "id": "min_reviews", "label": "Show the star rating from this many reviews", "min": 1, "max": 30, "step": 1, "default": 5 },
+    { "type": "header", "content": "Assurances" },
+    { "type": "text", "id": "point_1", "label": "Point 1 (parcel icon)", "default": "Plain, unmarked packaging" },
+    { "type": "text", "id": "point_2", "label": "Point 2 (doctor icon)", "default": "Formulated by our doctors" },
+    { "type": "text", "id": "point_3", "label": "Point 3 (delivery icon)", "default": "Free shipping on prepaid orders" },
+    { "type": "header", "content": "Description" },
+    { "type": "text", "id": "description_label", "label": "Heading: about", "default": "What it does" },
+    { "type": "text", "id": "benefits_label", "label": "Heading: benefits", "default": "Benefits" },
+    { "type": "text", "id": "use_label", "label": "Heading: how to use", "default": "How to take it" },
+    { "type": "text", "id": "delivery_label", "label": "Heading: delivery", "default": "Delivery and returns" },
+    { "type": "richtext", "id": "delivery_text", "label": "Delivery and returns text", "info": "Leave empty to hide this fold-out." },
+    { "type": "checkbox", "id": "open_description", "label": "Open by default", "default": false }
+  ],
+  "blocks": [
+    { "type": "@app" },
+    { "type": "buy_buttons", "name": "Buy buttons", "limit": 1, "settings": [
+      { "type": "checkbox", "id": "show_dynamic_checkout", "label": "Show the checkout button", "default": true },
+      { "type": "checkbox", "id": "show_gift_card_recipient", "label": "Gift card recipient form", "default": false }
+    ] },
+    { "type": "custom_liquid", "name": "Custom liquid", "settings": [
+      { "type": "liquid", "id": "custom_liquid", "label": "Liquid" }
+    ] }
+  ],
+  "presets": [{ "name": "sehatUP product", "blocks": [{ "type": "buy_buttons" }] }]
+}
+{% endschema %}

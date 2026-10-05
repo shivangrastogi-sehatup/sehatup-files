@@ -6407,6 +6407,9 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                   // never matches. An expired or non-qualifying code is dropped silently here,
                   // which is exactly what the drift check below is for.
                   discountCodes: orderDiscountCodesToSend.length ? orderDiscountCodesToSend : undefined,
+                  // Price for the real customer, or a once-per-customer code (SEHAT10) they have
+                  // already used passes the test and is then dropped from the live draft.
+                  purchasingEntity: finalCustomerId ? { customerId: `gid://shopify/Customer/${finalCustomerId}` } : undefined,
                 },
               },
             }),
@@ -6448,6 +6451,9 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
         }
       }
 
+      // Codes Shopify refused for this customer (no userError is raised). Checked after the
+      // update below, because the catch there is deliberately non-fatal.
+      let refusedCodes = [];
       // REST API does not support top-level `phone` on draft orders — use GraphQL to set Contact Information
       if (dryRun) { /* nothing to update: no draft was saved */ } else try {
         const gqlInput = { phone: normalizedPhone };
@@ -6494,6 +6500,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
             if (missing.length) {
               // Shopify drops a code it won't honour without raising a userError.
               console.warn('--- DISCOUNT CODES NOT APPLIED ---', missing, 'requested:', orderDiscountCodesToSend);
+              refusedCodes = missing;
             }
             console.log('--- DRAFT REPRICED WITH CODES ---',
               { was: draftRes.total_price, now: repriced.toFixed(2), applied });
@@ -6502,6 +6509,15 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
         }
       } catch (gqlErr) {
         console.warn('--- DRAFT PHONE UPDATE FAILED (non-fatal) ---', gqlErr.message);
+      }
+
+      // Saving anyway would either leave a draft priced differently from the summary, or (active
+      // mode) trip the total-mismatch guard with a drift equal to the code's value. Say why instead.
+      if (refusedCodes.length) {
+        fetch(`/shopify-v2/draft_orders/${draftRes.id}.json`, { method: 'DELETE' }).catch(() => { });
+        throw new Error(`Shopify refused the code ${refusedCodes.join(', ')} for this customer, so nothing was saved. ` +
+          `Usually the customer has already used it (once-per-customer code) or it cannot be combined with another discount. ` +
+          `Untick it / remove it and give the discount as a custom amount instead.`);
       }
 
       // Complete to Active Order if requested
@@ -7556,6 +7572,40 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     if (!opt || opt.valueType == null) {
       alert(`Couldn't resolve the configured Healthscore code "${healthscoreCode}". Check it's active in Shopify.`);
       return;
+    }
+    // Ask Shopify whether THIS customer may use the code. A once-per-customer code they already
+    // used is dropped silently at save time, which surfaced as a "drift" error. No phone yet →
+    // skip; the save-time refusedCodes guard still catches it.
+    const digits = (custPhone || preset?.phone || '').replace(/\D/g, '').slice(-10);
+    if (digits.length === 10) {
+      try {
+        const phone = `+91${digits}`;
+        const customerId = (cust?.id && matchesProfilePhone(cust, phoneKey(phone)))
+          ? cust.id
+          : (await findCustomersByPhone(phone))[0]?.id;
+        if (customerId) {
+          const gid = `gid://shopify/Customer/${customerId}`;
+          const calc = await discountGql(`mutation($input: DraftOrderInput!) {
+            draftOrderCalculate(input: $input) { calculatedDraftOrder { discountCodes } }
+          }`, { input: {
+            purchasingEntity: { customerId: gid },
+            lineItems: [{ title: 'eligibility check', originalUnitPriceWithCurrency: { amount: String(Math.max(subtotal, 1000)), currencyCode: 'INR' }, quantity: 1 }],
+            discountCodes: [opt.code],
+          } });
+          const applied = calc?.draftOrderCalculate?.calculatedDraftOrder?.discountCodes || [];
+          if (!applied.some(c => c.toLowerCase() === opt.code.toLowerCase())) {
+            const prev = await discountGql(`query($q: String!) { orders(first: 1, sortKey: CREATED_AT, reverse: true, query: $q) { nodes { name createdAt } } }`,
+              { q: `discount_code:${opt.code} customer_id:${customerId}` }).catch(() => ({}));
+            const o = prev?.orders?.nodes?.[0];
+            alert(o
+              ? `This customer has already used ${opt.code} on order ${o.name} (${new Date(o.createdAt).toLocaleDateString('en-IN')}). It can be used only once per customer, so Healthscore Lead can't be applied. Give the discount as a custom amount instead.`
+              : `Shopify won't apply ${opt.code} for this customer (usually because they have already used it). Healthscore Lead can't be applied. Give the discount as a custom amount instead.`);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('[Healthscore] eligibility check failed, continuing', e.message);
+      }
     }
     setHealthscoreDisc({ code: opt.code, valueType: opt.valueType, value: opt.value, combines: opt.combines !== false });
     setHealthscoreLead(true);

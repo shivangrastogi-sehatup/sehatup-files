@@ -1,0 +1,122 @@
+{%- comment -%}
+  A product shelf: heading and one line on the left, the products of one
+  collection as cards. Used on the For Him / For Her pages, one shelf per
+  concern. The section carries an anchor name (and, optionally, an older
+  anchor id) so menu links and the hero's jump links land on it.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign col = collections[s.collection]
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #ssf-{{ section.id }} {
+    --ssf-text: #1d1d1d; --ssf-muted: #5f5a56; --ssf-line: #e8e0d9; --ssf-soft: #f6f0ec;
+    --ssf-ink: {{ s.accent_color | color_darken: 8 }};
+    padding: clamp(36px, 5vw, 64px) clamp(16px, 3vw, 48px) 0;
+    background: #fff; font-family: 'Montserrat', sans-serif; color: var(--ssf-text);
+  }
+  #ssf-{{ section.id }} * { box-sizing: border-box; }
+  #ssf-{{ section.id }} .ssf__anchor { display: block; position: relative; top: -84px; height: 0; visibility: hidden; }
+  #ssf-{{ section.id }} .ssf__inner { max-width: 1240px; margin: 0 auto; }
+  #ssf-{{ section.id }} .ssf__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+  #ssf-{{ section.id }} .ssf__heading { margin: 0; font: 800 clamp(24px, 2.8vw, 36px)/1.12 'Montserrat', sans-serif; letter-spacing: -.02em; }
+  #ssf-{{ section.id }} .ssf__sub { margin: 8px 0 0; max-width: 38em; font: 500 15.5px/1.55 'Montserrat', sans-serif; color: var(--ssf-muted); }
+  #ssf-{{ section.id }} .ssf__all { flex: none; font: 700 14.5px/1 'Montserrat', sans-serif; color: var(--ssf-ink); text-decoration: underline; text-underline-offset: 4px; white-space: nowrap; }
+  #ssf-{{ section.id }} .ssf__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+  #ssf-{{ section.id }} .ssf__card { display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+  #ssf-{{ section.id }} .ssf__img { position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 1; background: var(--ssf-soft); }
+  #ssf-{{ section.id }} .ssf__img img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.16, 1, .3, 1); }
+  #ssf-{{ section.id }} .ssf__off { position: absolute; left: 10px; top: 10px; padding: 6px 9px; border-radius: 8px; background: #fff; color: var(--ssf-ink); font: 700 12.5px/1 'Montserrat', sans-serif; }
+  #ssf-{{ section.id }} .ssf__name { margin: 12px 0 0; font: 700 16px/1.3 'Montserrat', sans-serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #ssf-{{ section.id }} .ssf__use { margin: 6px 0 0; font: 400 13.5px/1.45 'Montserrat', sans-serif; color: var(--ssf-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #ssf-{{ section.id }} .ssf__price { margin: auto 0 0; padding-top: 10px; font: 700 16px/1.2 'Montserrat', sans-serif; }
+  #ssf-{{ section.id }} .ssf__price s { margin-left: 6px; font: 400 13.5px/1 'Montserrat', sans-serif; color: var(--ssf-muted); }
+  @media (hover: hover) and (pointer: fine) {
+    #ssf-{{ section.id }} .ssf__card:hover .ssf__img img { transform: scale(1.04); }
+    #ssf-{{ section.id }} .ssf__card:hover .ssf__name { color: var(--ssf-ink); }
+  }
+  #ssf-{{ section.id }} :is(.ssf__card, .ssf__all):focus-visible { outline: 2px solid var(--ssf-text); outline-offset: 4px; border-radius: 14px; }
+  @media (max-width: 899px) {
+    #ssf-{{ section.id }} { padding-right: 0; }
+    #ssf-{{ section.id }} .ssf__head { padding-right: 16px; }
+    #ssf-{{ section.id }} .ssf__grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 12px; padding-right: 16px; }
+    #ssf-{{ section.id }} .ssf__grid::-webkit-scrollbar { display: none; }
+    #ssf-{{ section.id }} .ssf__card { flex: 0 0 62%; scroll-snap-align: start; }
+  }
+  @media (min-width: 600px) and (max-width: 899px) { #ssf-{{ section.id }} .ssf__card { flex-basis: 34%; } }
+  @media (max-width: 599px) {
+    #ssf-{{ section.id }} .ssf__head { display: block; }
+    #ssf-{{ section.id }} .ssf__all { display: inline-block; margin-top: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #ssf-{{ section.id }} .ssf__img img { transition: none; } }
+  @media (min-width: 1680px) { #ssf-{{ section.id }} .ssf__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #ssf-{{ section.id }} .ssf__inner { zoom: 1.25; } }
+  @media (min-width: 2560px) { #ssf-{{ section.id }} .ssf__inner { zoom: 1.65; } }
+</style>
+
+<section id="ssf-{{ section.id }}" class="ssf">
+  {%- if s.anchor != blank -%}<span id="{{ s.anchor | handleize }}" class="ssf__anchor" aria-hidden="true"></span>{%- endif -%}
+  {%- if s.legacy_anchor != blank -%}<span id="{{ s.legacy_anchor | escape }}" class="ssf__anchor" aria-hidden="true"></span>{%- endif -%}
+  <div class="ssf__inner">
+    <div class="ssf__head">
+      <div>
+        <h2 class="ssf__heading">{{ s.heading }}</h2>
+        {%- if s.subheading != blank -%}<p class="ssf__sub">{{ s.subheading }}</p>{%- endif -%}
+      </div>
+      {%- if col != blank and s.all_label != blank and col.products_count > s.limit -%}
+        <a class="ssf__all" href="{{ col.url }}">{{ s.all_label }}</a>
+      {%- endif -%}
+    </div>
+    <div class="ssf__grid">
+      {%- for p in col.products limit: s.limit -%}
+        {%- liquid
+          assign name = p.title | remove: ' - sehatUP' | remove: ' | SehatUP' | remove: ' | sehatUP' | split: ' | ' | first
+          assign v = p.selected_or_first_available_variant
+          capture use
+            render 'sehat-facts', handle: p.handle, field: 'use'
+          endcapture
+          assign use = use | strip
+        -%}
+        <a class="ssf__card" href="{{ p.url }}">
+          <div class="ssf__img">
+            {%- if p.featured_image != blank -%}
+              <img src="{{ p.featured_image | image_url: width: 500 }}" srcset="{{ p.featured_image | image_url: width: 300 }} 300w, {{ p.featured_image | image_url: width: 500 }} 500w" sizes="(max-width: 899px) 62vw, 290px" alt="{{ p.featured_image.alt | default: name | escape }}" loading="lazy" width="500" height="500">
+            {%- endif -%}
+            {%- if v.compare_at_price > v.price -%}
+              <span class="ssf__off">{{ v.compare_at_price | minus: v.price | times: 100.0 | divided_by: v.compare_at_price | round }}% off</span>
+            {%- endif -%}
+          </div>
+          <h3 class="ssf__name">{{ name }}</h3>
+          {%- if s.show_use and use != '' -%}<p class="ssf__use">{{ use }}</p>{%- endif -%}
+          <p class="ssf__price">
+            {{ v.price | money_without_trailing_zeros }}
+            {%- if v.compare_at_price > v.price -%}<s><span class="visually-hidden">Was </span>{{ v.compare_at_price | money_without_trailing_zeros }}</s>{%- endif -%}
+          </p>
+        </a>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "sehatUP product shelf",
+  "tag": "div",
+  "class": "section-sehat-shelf",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Sexual wellness" },
+    { "type": "textarea", "id": "subheading", "label": "One line under it" },
+    { "type": "collection", "id": "collection", "label": "Collection" },
+    { "type": "range", "id": "limit", "label": "Products to show", "min": 2, "max": 8, "step": 1, "default": 4 },
+    { "type": "text", "id": "all_label", "label": "View all link text", "default": "View all" },
+    { "type": "checkbox", "id": "show_use", "label": "Show the short 'how to take it' line", "default": false },
+    { "type": "text", "id": "anchor", "label": "Anchor name", "info": "Jump links use #name, for example #sexual-wellness." },
+    { "type": "text", "id": "legacy_anchor", "label": "Older anchor id (optional)", "info": "Keeps an existing menu link working: paste the part after # from the old link." },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#d81f48" }
+  ],
+  "presets": [{ "name": "sehatUP product shelf" }]
+}
+{% endschema %}

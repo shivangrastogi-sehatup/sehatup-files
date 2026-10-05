@@ -64,8 +64,8 @@
     <h2 class="hfc__heading">{{ s.heading }}</h2>
     {%- if s.subheading != blank -%}<p class="hfc__sub">{{ s.subheading }}</p>{%- endif -%}
     <div class="hfc__btns">
-      <a class="hfc__btn hfc__btn--her" href="{{ s.her_link | default: '#' }}">{{ s.her_label }}<span aria-hidden="true">&rarr;</span></a>
-      <a class="hfc__btn hfc__btn--him" href="{{ s.him_link | default: '#' }}">{{ s.him_label }}<span aria-hidden="true">&rarr;</span></a>
+      {%- if s.her_label != blank -%}<a class="hfc__btn hfc__btn--her" href="{{ s.her_link | default: '#' }}">{{ s.her_label }}<span aria-hidden="true">&rarr;</span></a>{%- endif -%}
+      {%- if s.him_label != blank -%}<a class="hfc__btn hfc__btn--him" href="{{ s.him_link | default: '#' }}">{{ s.him_label }}<span aria-hidden="true">&rarr;</span></a>{%- endif -%}
     </div>
     {%- if s.note != blank -%}<p class="hfc__note">{{ s.note }}</p>{%- endif -%}
   </div>

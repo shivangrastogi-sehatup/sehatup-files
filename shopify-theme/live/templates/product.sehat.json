@@ -1,12 +1,3 @@
-/*
- * ------------------------------------------------------------
- * IMPORTANT: The contents of this file are auto-generated.
- *
- * This file may be updated by the Shopify admin theme editor
- * or related systems. Please exercise caution as any changes
- * made to this file may be overwritten.
- * ------------------------------------------------------------
- */
 {
   "sections": {
     "main": {
@@ -18,6 +9,10 @@
             "show_dynamic_checkout": true,
             "show_gift_card_recipient": false
           }
+        },
+        "judge_me_reviews_preview_badge_ECFCMJ": {
+          "type": "shopify://apps/judge-me-reviews/blocks/preview_badge/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {}
         },
         "custom_liquid_B8N6j8": {
           "type": "custom_liquid",
@@ -34,6 +29,7 @@
       },
       "block_order": [
         "buy",
+        "judge_me_reviews_preview_badge_ECFCMJ",
         "custom_liquid_B8N6j8",
         "custom_liquid_hNBnRJ"
       ],
@@ -127,8 +123,7 @@
             "tab_6_description": "",
             "active_tab_color": "#e11d48"
           },
-          "blocks": {},
-          "disabled": true
+          "blocks": {}
         },
         "ai_gen_block_2ad666c_BMjYej": {
           "type": "ai_gen_block_2ad666c",
@@ -264,8 +259,7 @@
       ],
       "settings": {
         "include_margins": true
-      },
-      "disabled": true
+      }
     },
     "ugc_videos_VHMarE": {
       "type": "ugc_videos",
@@ -387,8 +381,7 @@
         "her_a2": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>",
         "her_q3": "Can I take these with other supplements?",
         "her_a3": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>"
-      },
-      "disabled": true
+      }
     },
     "17453847438705599e": {
       "type": "apps",
@@ -406,269 +399,10 @@
       "settings": {
         "include_margins": false
       }
-    },
-    "kit_items": {
-      "type": "sehat-kit-items",
-      "settings": {}
-    },
-    "sehat_faq": {
-      "type": "health-faq",
-      "blocks": {
-        "faq_4": {
-          "type": "question",
-          "settings": {
-            "question": "How do I pay for a care kit?",
-            "answer": "<p>Confirm your order with just ₹50 and pay the rest when your kit arrives, or pay the full amount online.</p>"
-          }
-        },
-        "faq_5": {
-          "type": "question",
-          "settings": {
-            "question": "Will anyone know what I ordered?",
-            "answer": "<p>No. Your kit comes in a plain box with nothing printed on it about what is inside, and only your doctor sees your answers.</p>"
-          }
-        },
-        "faq_7": {
-          "type": "question",
-          "settings": {
-            "question": "How long does delivery take?",
-            "answer": "<p>Usually 3 to 5 days, depending on where you live.</p>"
-          }
-        }
-      },
-      "block_order": [
-        "faq_4",
-        "faq_5",
-        "faq_7"
-      ],
-      "settings": {
-        "heading": "Questions about this product",
-        "subheading": "Straight answers before you order.",
-        "contact_text": "Ask us on WhatsApp",
-        "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20a%20product",
-        "open_first": true,
-        "shop_1_text": "Shop For Her",
-        "shop_1_link": "shopify://pages/for-her",
-        "shop_2_text": "Shop For Him",
-        "shop_2_link": "shopify://pages/for-him",
-        "shop_3_text": "All combos",
-        "shop_3_link": "shopify://pages/combos",
-        "accent_color": "#ee204a"
-      }
-    },
-    "sehat_reviews": {
-      "type": "sehat-reviews",
-      "blocks": {
-        "judge_me_reviews_review_widget_zDwk7x": {
-          "type": "shopify://apps/judge-me-reviews/blocks/review_widget/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
-          "settings": {
-            "review_data": "sample_data",
-            "max_width": 1200,
-            "show_shop_reviews": false,
-            "empty_state": "empty_widget"
-          }
-        }
-      },
-      "block_order": [
-        "judge_me_reviews_review_widget_zDwk7x"
-      ],
-      "settings": {}
-    },
-    "sehat_doctors": {
-      "type": "health-doctors",
-      "blocks": {
-        "doc_ayur": {
-          "type": "doctor",
-          "settings": {
-            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
-            "system": "Ayurveda",
-            "name": "Dr. Jayant Kumar",
-            "degree": "",
-            "role": "Looks for what is behind your symptoms.",
-            "tone": "sand"
-          }
-        },
-        "doc_homeo": {
-          "type": "doctor",
-          "settings": {
-            "photo": "shopify://shop_images/Dr_Shefali.webp",
-            "system": "Homeopathy",
-            "name": "Dr. Shefali Chhicholia",
-            "degree": "",
-            "role": "Gentle support for long-term balance.",
-            "tone": "rose"
-          }
-        },
-        "doc_allo": {
-          "type": "doctor",
-          "settings": {
-            "system": "Allopathy",
-            "name": "",
-            "degree": "",
-            "role": "Quick relief when you need it.",
-            "tone": "teal"
-          }
-        }
-      },
-      "block_order": [
-        "doc_ayur",
-        "doc_homeo",
-        "doc_allo"
-      ],
-      "settings": {
-        "eyebrow": "Doctor consultation included",
-        "heading": "The doctors behind your order",
-        "subheading": "Every order includes a consultation with our doctors at no extra cost. They look at your health and habits and adjust the plan to suit you.",
-        "footnote": "Talk to them in Hindi or English, on a call that suits you.",
-        "accent_color": "#ee204a"
-      },
-      "disabled": true
-    },
-    "sehat_story": {
-      "type": "sehat-product-story",
-      "blocks": {
-        "st1": {
-          "type": "step",
-          "settings": {
-            "title": "Week 1",
-            "text": "You start your routine and speak to your doctor."
-          }
-        },
-        "st2": {
-          "type": "step",
-          "settings": {
-            "title": "Weeks 4 to 6",
-            "text": "Most people notice the first changes."
-          }
-        },
-        "st3": {
-          "type": "step",
-          "settings": {
-            "title": "Month 3",
-            "text": "A full plan usually runs three months, adjusted at each check-in."
-          }
-        },
-        "p1": {
-          "type": "promise",
-          "settings": {
-            "lead": "A doctor is part of it.",
-            "text": "Your order includes a consultation with one of our doctors, at no extra cost. They can adjust the plan to suit you."
-          }
-        },
-        "p2": {
-          "type": "promise",
-          "settings": {
-            "lead": "[advance] to confirm.",
-            "text": "You pay the rest only when the parcel is in your hands. Or pay in full online and shipping is free."
-          }
-        },
-        "p3": {
-          "type": "promise",
-          "settings": {
-            "lead": "Nobody else will know.",
-            "text": "It arrives in a plain box with nothing printed on the outside, and what you tell us stays with your doctor."
-          }
-        },
-        "p4": {
-          "type": "promise",
-          "settings": {
-            "lead": "Ask before you buy.",
-            "text": "Not sure it is right for you? Message us and get an answer first.",
-            "link_label": "Chat with us on WhatsApp",
-            "link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20before%20I%20order"
-          }
-        }
-      },
-      "block_order": [
-        "p1",
-        "p2",
-        "p3",
-        "p4",
-        "st1",
-        "st2",
-        "st3"
-      ],
-      "settings": {
-        "doc_photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
-        "doc_link": "https://wa.me/919355539355?text=Hi%2C%20I%20would%20like%20to%20talk%20to%20a%20doctor",
-        "doc_1": "shopify://shop_images/Dr_Jayant_Kumar.webp",
-        "doc_2": "shopify://shop_images/Dr_Shefali.webp"
-      }
-    },
-    "sehat_featured": {
-      "type": "featured-in-custom",
-      "blocks": {
-        "logo_36UmaY": {
-          "type": "logo",
-          "settings": {
-            "logo": "shopify://shop_images/Bw_healthcare-01.webp",
-            "name": "",
-            "link": ""
-          }
-        },
-        "logo_BJW6U3": {
-          "type": "logo",
-          "settings": {
-            "logo": "shopify://shop_images/The_week-01.webp",
-            "name": "",
-            "link": ""
-          }
-        },
-        "logo_rBJCRQ": {
-          "type": "logo",
-          "settings": {
-            "logo": "shopify://shop_images/United_news_of_india-01.webp",
-            "name": "",
-            "link": ""
-          }
-        },
-        "logo_qBkEgj": {
-          "type": "logo",
-          "settings": {
-            "logo": "shopify://shop_images/Silicon_india-01.webp",
-            "name": "",
-            "link": ""
-          }
-        }
-      },
-      "block_order": [
-        "logo_36UmaY",
-        "logo_BJW6U3",
-        "logo_rBJCRQ",
-        "logo_qBkEgj"
-      ],
-      "name": "Featured in",
-      "settings": {
-        "heading": "sehatUP in the News",
-        "heading_size": 28,
-        "heading_color": "#2b2c2d",
-        "logo_max_width": 140,
-        "logo_spacing": 40,
-        "logo_opacity": 100,
-        "grayscale_amount": 0,
-        "scroll_speed": 30,
-        "pause_on_hover": true,
-        "tunnel_scale": 30,
-        "hover_zoom": 12,
-        "tunnel_fade": 55,
-        "background_color": "#ffffff",
-        "max_width": 1200,
-        "padding_top": 60,
-        "padding_bottom": 68
-      }
-    },
-    "sehat_related": {
-      "type": "sehat-related",
-      "settings": {}
     }
   },
   "order": [
     "main",
-    "kit_items",
-    "sehat_related",
-    "sehat_story",
-    "sehat_featured",
-    "sehat_doctors",
     "floating_product_video_rpficc",
     "custom_popup_products_GKEGkz",
     "custom_liquid_Dga3P9",
@@ -676,10 +410,8 @@
     "177036186402be30ce",
     "1771396014c5d19f82",
     "1770390070cc0f4688",
-    "sehat_reviews",
     "176458370003ed2528",
     "ugc_videos_VHMarE",
-    "sehat_faq",
     "product_faq_YazkWm",
     "17453847438705599e"
   ]
