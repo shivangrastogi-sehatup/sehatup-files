@@ -33,7 +33,7 @@
     --sps-text: #1d1d1d; --sps-muted: #555; --sps-line: #eadfd8;
     --sps-ink: {{ s.accent_color | color_darken: 8 }};
     padding: 0 clamp(16px, 2vw, 28px) 56px;
-    background: #fff;
+    background: {{ s.section_bg | default: '#ffffff' }};
     font-family: 'Montserrat', sans-serif; color: var(--sps-text);
   }
   #sps-{{ section.id }} * { box-sizing: border-box; }
@@ -50,7 +50,7 @@
      promises are the loud part (large type), everything else is quiet. */
   #sps-{{ section.id }} .sps__note {
     display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr); gap: clamp(28px, 5vw, 72px);
-    padding: clamp(28px, 4vw, 56px); border-radius: 18px; background: #f6f0ec;
+    padding: clamp(28px, 4vw, 56px); border-radius: 18px; background: {% if s.section_bg == blank or s.section_bg == '#ffffff' %}#f6f0ec{% else %}#fff{% endif %};
   }
   #sps-{{ section.id }} .sps__note-side { display: flex; flex-direction: column; }
   #sps-{{ section.id }} .sps__note .sps__heading { margin: 0; font-size: clamp(28px, 3vw, 40px); line-height: 1.08; text-wrap: balance; }
@@ -158,11 +158,12 @@
         <div class="sps__note-side">
           <h2 class="sps__heading">{{ s.note_heading }}</h2>
           {%- if s.note_text != blank -%}<p class="sps__lead">{{ s.note_text }}</p>{%- endif -%}
-          {%- if s.doc_1 != blank or s.doc_2 != blank -%}
+          {%- if s.doc_1 != blank or s.doc_2 != blank or s.doc_3 != blank -%}
             <div class="sps__docs">
               <span class="sps__faces">
                 {%- if s.doc_1 != blank -%}<img src="{{ s.doc_1 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
                 {%- if s.doc_2 != blank -%}<img src="{{ s.doc_2 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
+                {%- if s.doc_3 != blank -%}<img src="{{ s.doc_3 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
               </span>
               <p><b>{{ s.doc_names }}</b>{{ s.doc_caption }}</p>
             </div>
@@ -286,11 +287,13 @@
   "tag": "div",
   "class": "section-sehat-product-story",
   "settings": [
+    { "type": "color", "id": "section_bg", "label": "Section background", "default": "#ffffff" },
     { "type": "header", "content": "Before you order (the clinic's note)" },
     { "type": "text", "id": "note_heading", "label": "Heading", "default": "Before you order, four things you can count on." },
     { "type": "textarea", "id": "note_text", "label": "Text", "default": "sehatUP is a clinic, not a supplement shop. This is how we look after an order." },
     { "type": "image_picker", "id": "doc_1", "label": "Doctor photo 1" },
     { "type": "image_picker", "id": "doc_2", "label": "Doctor photo 2" },
+    { "type": "image_picker", "id": "doc_3", "label": "Doctor photo 3" },
     { "type": "text", "id": "doc_names", "label": "Doctor names", "default": "Dr. Jayant Kumar and Dr. Shefali Chhicholia" },
     { "type": "text", "id": "doc_caption", "label": "Line under the names", "default": "Two of the doctors behind your plan" },
     { "type": "checkbox", "id": "show_rating", "label": "Show the live store rating", "default": true },

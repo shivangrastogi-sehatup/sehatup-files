@@ -1,0 +1,41 @@
+{%- comment -%}
+  Faces + trust line + stars. Used by lm-hero and hero-healthcare-banner.
+  render 'trust-proof', s: section.settings, color: '#fff', ring: 'rgba(255,255,255,.9)'
+  Reads s.trust_text, s.rating, s.trust_initials, s.trust_count (0-5), s.avatar_1..avatar_5.
+{%- endcomment -%}
+{%- if s.trust_text != blank -%}
+  {%- assign n = s.trust_count | default: 3 -%}
+  {%- assign letters = s.trust_initials | split: ',' -%}
+  <style>
+    .tp { display: inline-flex; align-items: center; gap: 14px; margin-top: 24px; text-align: left; color: var(--tp-c, #1d1d1d); }
+    .tp__avs { display: flex; flex: none; }
+    .tp__avs i { box-sizing: border-box; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; border: 2.5px solid var(--tp-ring, #fbf8f6); font-size: 16px; font-weight: 800; font-style: normal; line-height: 1; color: #fff; background: #d81f48; }
+    .tp__avs i:nth-child(3n + 2) { background: #1d1d1d; }
+    .tp__avs i:nth-child(3n) { background: #8a5a4a; }
+    .tp__avs i + i { margin-left: -12px; }
+    .tp__avs i.has-img { background: #f6f0ec; }
+    .tp__avs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .tp__t b { display: block; font-size: 16px; font-weight: 700; line-height: 1.3; }
+    .tp__t span { display: block; margin-top: 3px; font-size: 14px; font-weight: 600; line-height: 1.2; color: color-mix(in srgb, var(--tp-c, #1d1d1d) 72%, transparent); }
+    .tp__t span i { font-style: normal; font-size: 16px; letter-spacing: 2px; color: #f5a623; }
+  </style>
+  <div class="tp" style="{% if color != blank %}--tp-c: {{ color }};{% endif %}{% if ring != blank %} --tp-ring: {{ ring }};{% endif %}">
+    {%- if n > 0 -%}
+      <span class="tp__avs" aria-hidden="true">
+        {%- for i in (1..n) -%}
+          {%- assign ak = 'avatar_' | append: i -%}
+          {%- assign letter = letters[forloop.index0] | strip | slice: 0 -%}
+          {%- if s[ak] != blank -%}
+            <i class="has-img">{{ s[ak] | image_url: width: 400, height: 400, crop: 'center' | image_tag: alt: '', loading: 'eager', width: 42, height: 42, widths: '120, 200, 300, 400', sizes: '42px' }}</i>
+          {%- elsif letter != blank -%}
+            <i>{{ letter }}</i>
+          {%- endif -%}
+        {%- endfor -%}
+      </span>
+    {%- endif -%}
+    <span class="tp__t">
+      <b>{{ s.trust_text }}</b>
+      {%- if s.rating != blank -%}<span><i aria-hidden="true">★★★★★</i> ({{ s.rating }}/5)</span>{%- endif -%}
+    </span>
+  </div>
+{%- endif -%}

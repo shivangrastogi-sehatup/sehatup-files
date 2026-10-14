@@ -65,7 +65,18 @@
     chips: ((script && script.dataset.chips) ||
       'Weight loss ke liye kya lu?|Periods ki problem hai|Free consultation kaise hoti hai?|Delivery kitne din me?')
       .split('|').filter(Boolean),
+    // The unread-message teaser. After teaserDelay a "1" badge lands on the launcher
+    // with a short hello above it, then a "2" with a few popular questions to tap.
+    // It replaces the greeting pill (one attention grab, not two). data-teaser="0"
+    // goes back to the pill.
+    teaser: (script && script.dataset.teaser) !== '0',
+    teaserDelay: Math.max(0, parseInt((script && script.dataset.teaserDelay) || '5000', 10) || 0),
+    teaserHello: (script && script.dataset.teaserHello) || 'Namaste! Main sehatUP Mitra hu.',
+    teaserAsk: (script && script.dataset.teaserAsk) || 'Log aksar ye puchte hain. Tap karke puchiye:',
+    teaserChips: [],
   };
+  CONFIG.teaserChips = ((script && script.dataset.teaserChips) || CONFIG.chips.slice(0, 3).join('|'))
+    .split('|').filter(Boolean).slice(0, 3);
 
   // An absent data-api is a misconfigured install and must fail loudly. An empty one is
   // deliberate: it resolves /api/chat against the current origin, which is what the
@@ -79,7 +90,8 @@
   // One attention grab, not two. A ring pulsing around a launcher that is also
   // unfurling a greeting reads as a widget shouting over itself, so the greeting
   // wins and the pulse stands down. Set data-tip="0" to go back to the ring.
-  if (CONFIG.tip) CONFIG.pulse = 0;
+  if (CONFIG.teaser) CONFIG.tip = false;
+  if (CONFIG.tip || CONFIG.teaser) CONFIG.pulse = 0;
 
   var STORAGE_KEY = 'sehatup_chat_v1';
   var state = loadState();
@@ -169,6 +181,8 @@
     input: root.querySelector('.input'),
     send: root.querySelector('.send'),
     chips: root.querySelector('.chips'),
+    teaser: root.querySelector('.teaser'),
+    badge: root.querySelector('.badge'),
   };
 
   /* -------------------------------------------------------------- render */
@@ -400,8 +414,47 @@
     tipTimer = window.setTimeout(hideTip, CONFIG.tipHold);
   }
 
+  /* ------------------------------------------------------------- teaser
+
+     Reads like messages waiting: a "1" badge and a hello, then a "2" and the
+     popular questions. Same once-per-scope rule and same "never to someone
+     already chatting" guard as the pill. Dismissing it keeps the badge, so the
+     launcher still says there is something to read. */
+  var teaserTimers = [];
+
+  function setBadge(n) {
+    if (!el.badge) return;
+    el.badge.textContent = String(n);
+    el.badge.classList.remove('on');
+    void el.badge.offsetWidth;            // restart the pop for the second count
+    el.badge.classList.add('on');
+  }
+
+  function hideTeaser(keepBadge) {
+    teaserTimers.forEach(window.clearTimeout);
+    teaserTimers = [];
+    if (el.teaser) el.teaser.classList.remove('show');
+    if (!keepBadge && el.badge) el.badge.classList.remove('on');
+  }
+
+  function showTeaser() {
+    if (!el.teaser) return;
+    if (state.opened || state.messages.length) return;
+    if (atFooter) { tipDeferred = true; return; }
+    if (tipAlreadyShown()) return;
+    var msgs = el.teaser.querySelectorAll('.tmsg');
+    el.teaser.classList.add('show');
+    setBadge(1);
+    msgs[0].classList.add('show');
+    teaserTimers.push(window.setTimeout(function () {
+      setBadge(2);
+      if (msgs[1]) msgs[1].classList.add('show');
+    }, 1500));
+  }
+
   function open() {
     hideTip();
+    hideTeaser(false);
     el.panel.classList.add('show');
     el.launcher.classList.add('hidden');
     el.launcher.setAttribute('aria-expanded', 'true');
@@ -594,6 +647,15 @@
     el.tip.addEventListener('click', open);
     window.setTimeout(showTip, CONFIG.tipDelay);
   }
+  if (el.teaser) {
+    el.teaser.addEventListener('click', function (e) {
+      if (e.target.closest('.teaser__x')) { hideTeaser(true); return; }
+      var q = e.target.closest('.tchip');
+      if (q) { open(); send(q.textContent); return; }
+      if (e.target.closest('.tmsg')) open();
+    });
+    window.setTimeout(showTeaser, CONFIG.teaserDelay);
+  }
   el.close.addEventListener('click', close);
 
   /* ------------------------------------------------- step aside for the footer
@@ -629,6 +691,7 @@
     if (atFooter) return;
     atFooter = true;
     hideTip();                       // the greeting pill sits in the same corner
+    hideTeaser(true);
     if (panelOpen()) return;
     if (lessMotion) { el.launcher.setAttribute('data-away', 'gone'); return; }
     el.launcher.setAttribute('data-away', 'leaving');
@@ -657,7 +720,7 @@
   function playDeferredTip() {
     if (!tipDeferred || atFooter) return;
     tipDeferred = false;
-    showTip();
+    if (el.teaser) showTeaser(); else showTip();
   }
 
   // Closing the chat while the footer is on screen must not drop the launcher
@@ -806,11 +869,29 @@
         '</div>'
       : '';
 
+    var teaser = CONFIG.teaser
+      ? '<div class="teaser">' +
+          '<button class="teaser__x" type="button" aria-label="Dismiss">' +
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+          '</button>' +
+          '<div class="tmsg" role="button" tabindex="0">' + esc(CONFIG.teaserHello) + '</div>' +
+          '<div class="tmsg">' + esc(CONFIG.teaserAsk) +
+            '<div class="tchips">' +
+              CONFIG.teaserChips.map(function (c) {
+                return '<button class="tchip" type="button">' + esc(c) + '</button>';
+              }).join('') +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      : '';
+
     return '' +
       tip +
+      teaser +
       '<button class="launcher' + (CONFIG.icon && CONFIG.iconFull ? ' launcher--art' : '') + '" type="button" aria-expanded="false" aria-label="Chat with ' + esc(CONFIG.title) + '">' +
         icon +
         (CONFIG.pulse > 0 ? '<span class="pulse"></span>' : '') +
+        (CONFIG.teaser ? '<span class="badge" aria-hidden="true"></span>' : '') +
       '</button>' +
 
       '<section class="panel" role="dialog" aria-label="' + esc(CONFIG.title) + ' chat">' +
@@ -869,9 +950,9 @@
   --ink: #241a1e;
   --muted: #7c6f74;
   --faint: #a49a9e;
-  --paper: #faf7f6;
+  --paper: #f8f4f1;
   --panel: #ffffff;
-  --rule: #ece3e5;
+  --rule: #ebe3de;
   --gap-bottom: ${CONFIG.bottom};
   --gap-right: ${CONFIG.right};
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -890,6 +971,9 @@
   box-shadow: 0 6px 16px rgba(69,16,31,.16), 0 12px 40px rgba(69,16,31,.14);
   transition: transform .24s cubic-bezier(.2,.8,.3,1), box-shadow .24s, opacity .18s;
 }
+.launcher { animation: launcher-float 3.4s ease-in-out infinite; }
+@keyframes launcher-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+.launcher.hidden, .launcher[data-away] { animation-name: none; }
 .launcher:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(69,16,31,.2), 0 18px 50px rgba(69,16,31,.18); }
 .launcher:active { transform: translateY(0) scale(.97); }
 .launcher.hidden { opacity: 0; pointer-events: none; transform: scale(.7); }
@@ -909,6 +993,51 @@
 @keyframes launcher-back { from { opacity: 0; transform: translateX(140%) scale(.94); } to { opacity: 1; transform: translateX(0) scale(1); } }
 .launcher[data-away="leaving"]   { animation: launcher-away .34s cubic-bezier(.6,0,.78,0) both; }
 .launcher[data-away="returning"] { animation: launcher-back .38s cubic-bezier(.18,.9,.28,1.06) both; }
+
+/* Unread badge on the launcher */
+.badge {
+  position: absolute; top: -3px; right: -3px; min-width: 21px; height: 21px; padding: 0 6px;
+  border-radius: 11px; border: 2px solid #fff; background: #1d1d1d; color: #fff;
+  font-size: 11.5px; font-weight: 700; line-height: 17px; text-align: center;
+  opacity: 0; transform: scale(.4); pointer-events: none;
+}
+.badge.on { animation: badge-pop .42s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes badge-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+
+/* Teaser messages above the launcher */
+.teaser {
+  position: fixed; right: var(--gap-right); bottom: calc(var(--gap-bottom) + 72px);
+  z-index: 2147482999; width: min(296px, calc(100vw - 32px));
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  pointer-events: none;
+}
+.teaser.show { pointer-events: auto; }
+.teaser__x {
+  width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid var(--rule);
+  background: var(--panel); color: var(--muted); cursor: pointer; display: grid; place-items: center;
+  box-shadow: 0 2px 8px rgba(40,20,25,.08); opacity: 0; transition: opacity .25s ease;
+}
+.teaser.show .teaser__x { opacity: 1; }
+.teaser__x:hover { color: var(--ink); }
+.tmsg {
+  max-width: 100%; padding: 12px 14px; border-radius: 16px 16px 6px 16px;
+  background: var(--panel); border: 1px solid var(--rule); color: var(--ink);
+  font-size: 14px; line-height: 1.45; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(40,20,25,.08), 0 14px 40px rgba(40,20,25,.10);
+  transform-origin: bottom right; display: none;
+}
+/* A keyframe, not a transition: the message goes from display:none to shown,
+   and transitions do not run across that. */
+.teaser.show .tmsg.show { display: block; animation: tmsg-in .42s cubic-bezier(.2,.9,.25,1) both; }
+@keyframes tmsg-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+.tchips { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.tchip {
+  font: inherit; font-size: 13px; font-weight: 500; text-align: left; padding: 9px 12px;
+  border-radius: 10px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+  cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+}
+.tchip:hover { border-color: var(--brand); color: var(--brand-deep); background: var(--panel); }
+.tchip:focus-visible, .teaser__x:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 /* Out of the layout entirely once it has left, so it cannot be tabbed to or
    clicked through while it is parked off-screen. */
 .launcher[data-away="gone"] { display: none; }
@@ -1009,13 +1138,13 @@
      clamp, so the panel earns extra height on a tall screen rather than leaving
      it empty, and gives it up on a short one before max-height has to intervene. */
   --panel-gap-top: 24px;
-  height: clamp(380px, 74vh, 680px);
-  height: clamp(380px, 74dvh, 680px);
+  height: clamp(420px, 66vh, 580px);
+  height: clamp(420px, 66dvh, 580px);
   max-height: calc(100vh - var(--gap-bottom) - var(--panel-gap-top));
   max-height: calc(100dvh - var(--gap-bottom) - var(--panel-gap-top));
   background: var(--panel); border-radius: 20px;
   border: 1px solid var(--rule);
-  box-shadow: 0 2px 8px rgba(69,16,31,.06), 0 24px 70px -14px rgba(120,12,40,.34);
+  box-shadow: 0 2px 8px rgba(40,20,25,.06), 0 24px 64px -16px rgba(40,20,25,.24);
   display: flex; flex-direction: column; overflow: hidden;
   opacity: 0; transform: translateY(12px) scale(.985); pointer-events: none;
   transition: opacity .22s ease, transform .28s cubic-bezier(.2,.8,.3,1);
@@ -1028,36 +1157,36 @@
    gradient is two stops of one hue, so it reads as depth rather than decoration. */
 .head {
   display: flex; align-items: center; gap: 12px;
-  padding: 15px 16px; color: #fff;
-  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-sink) 100%);
+  padding: 14px 16px; color: var(--ink);
+  background: var(--panel); border-bottom: 1px solid var(--rule);
 }
 /* The avatar is itself a crimson mark, so on a crimson header it needs its own white
    ground or it dissolves into the band. contain + padding + border-box gives it one. */
 .av { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; flex: 0 0 auto;
       background: #fff; padding: 2px; box-sizing: border-box;
-      box-shadow: 0 2px 6px rgba(69,16,31,.24); }
+      box-shadow: 0 0 0 1px var(--rule); }
 .av.fallback { display: grid; place-items: center; padding: 0;
-      background: rgba(255,255,255,.18); color: #fff;
+      background: var(--brand-tint); color: var(--brand-deep);
       font-weight: 700; font-size: 15px; letter-spacing: .02em; }
 .who { flex: 1; min-width: 0; }
 .who strong { display: block; font-size: 16px; font-weight: 700; letter-spacing: -.015em; }
 /* status as a micro-label, not body text - it is metadata, and should read like it */
 .who span { display: flex; align-items: center; gap: 6px; margin-top: 2px;
       font-size: 10.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
-      color: rgba(255,255,255,.82); }
+      color: var(--muted); }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80;
        box-shadow: 0 0 0 3px rgba(74,222,128,.3); }
-.close { background: transparent; border: 0; color: rgba(255,255,255,.7); cursor: pointer;
+.close { background: transparent; border: 0; color: var(--muted); cursor: pointer;
          width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
          transition: background .15s, color .15s; }
-.close:hover { background: rgba(255,255,255,.12); color: #fff; }
-.close:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.close:hover { background: var(--paper); color: var(--ink); }
+.close:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 
 /* log */
 .log { flex: 1; overflow-y: auto; overscroll-behavior: contain;
-       padding: 18px 16px 8px; background: var(--brand-wash); }
+       padding: 18px 16px 8px; background: var(--paper); }
 .log::-webkit-scrollbar { width: 5px; }
-.log::-webkit-scrollbar-thumb { background: var(--brand-ring); border-radius: 3px; }
+.log::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
 .log::-webkit-scrollbar-track { background: transparent; }
 
 .row { display: flex; flex-direction: column; margin-bottom: 14px; max-width: 86%; }
@@ -1076,8 +1205,7 @@
 .row.bot .bubble { background: var(--panel); border: 1px solid var(--rule);
                    border-bottom-left-radius: 6px; color: var(--ink);
                    box-shadow: 0 1px 2px rgba(69,16,31,.05); }
-.row.user .bubble { background: var(--brand); color: #fff; border-bottom-right-radius: 6px;
-                    box-shadow: 0 2px 8px -2px var(--brand-ring); }
+.row.user .bubble { background: var(--brand-tint); color: var(--ink); border-bottom-right-radius: 6px; }
 
 /* one calm breath, not three bouncing balls */
 .typing { display: flex; gap: 5px; align-items: center; padding: 15px 16px; }
@@ -1166,12 +1294,12 @@
 /* chips - these are the opening questions, so they have to look answerable. Grey on
    white read as disabled. They stay white against the blush log rather than filling
    with tint, which would put a second field of pink under a pink header. */
-.chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 16px 12px; background: var(--brand-wash); }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 16px 12px; background: var(--paper); }
 .chips[hidden] { display: none; }
 .chip { font: inherit; font-size: 12.5px; font-weight: 500; padding: 7px 13px; border-radius: 999px;
-        border: 1px solid var(--brand-ring); background: var(--panel); color: var(--brand-deep);
+        border: 1px solid var(--rule); background: var(--panel); color: var(--ink);
         cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
-.chip:hover { background: var(--brand-tint); border-color: var(--brand); }
+.chip:hover { border-color: var(--brand); color: var(--brand-deep); }
 .chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 /* composer */
@@ -1183,7 +1311,7 @@
          transition: border-color .15s, background .15s; }
 .input::placeholder { color: var(--faint); }
 .input:focus { outline: none; border-color: var(--brand); background: var(--panel);
-               box-shadow: 0 0 0 3px var(--brand-ring); }
+               box-shadow: 0 0 0 3px var(--brand-tint); }
 .input:disabled { opacity: .55; }
 .send { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; border: 0;
         background: var(--brand); color: #fff; cursor: pointer;
@@ -1203,12 +1331,15 @@
   .launcher { width: 54px; height: 54px; }
   .tip { height: 54px; padding-right: 54px; max-width: 54px; border-radius: 27px; }
   .tip.show { max-width: calc(100vw - 32px); }
+  .teaser { right: 16px; bottom: calc(var(--gap-bottom) + 66px); }
   .tip__in { padding-left: 18px; }
   .row { max-width: 90%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse { animation: none; }
+  .pulse, .launcher { animation: none; }
+  .badge.on { animation: none; opacity: 1; transform: none; }
+  .teaser.show .tmsg.show { animation: none; }
   /* Still appears and still leaves, it just does not perform the unfurl. */
   .tip { transition: opacity .2s ease; }
   .tip__in { transition: none; transform: none; opacity: 1; }

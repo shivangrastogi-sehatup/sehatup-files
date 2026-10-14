@@ -1,0 +1,111 @@
+{%- liquid
+  assign s = section.settings
+  assign concerns = s.concerns | newline_to_br | split: '<br />'
+  assign times = s.times | newline_to_br | split: '<br />'
+-%}
+<section id="book" class="lp-sec lp-sec--{{ s.tone }}" style="--lp-iw: {{ s.img_width }}%; --lp-ih: {{ s.img_height }}%;">
+  <div class="lp-wrap lp-book">
+    <div class="lp-book__left">
+      <h2 class="lp-book__h">{{ s.heading }}{% if s.highlight != blank %} <span class="lp-hl">{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lp-book__sub">{{ s.subheading }}</p>{%- endif -%}
+      {%- if s.trust != blank -%}
+        <ul class="lp-trust">
+          {%- assign items = s.trust | newline_to_br | split: '<br />' -%}
+          {%- for t in items -%}
+            {%- assign p = t | strip | split: '|' -%}
+            {%- assign ic = p[1] | default: 'check' | strip -%}
+            {%- if p[0] != blank -%}<li><span class="lp-trust__ic">{% render 'lp-icon', name: ic %}</span>{{ p[0] | strip }}</li>{%- endif -%}
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+      {%- if s.image != blank or s.image_asset != blank -%}
+        <div class="lp-book__img">{%- if s.image != blank -%}{{ s.image | image_url: width: 1000 | image_tag: loading: 'lazy', widths: '500, 800, 1000', sizes: '(max-width: 860px) 100vw, 560px', alt: s.image.alt }}{%- else -%}<img src="{{ s.image_asset | asset_url }}" alt="{{ s.image_name | escape }}" loading="lazy" width="900" height="1392">{%- endif -%}{%- if s.image_name != blank -%}<span class="lp-book__cap"><b>{{ s.image_name }}</b>{%- if s.image_note != blank -%}<span>{{ s.image_note }}</span>{%- endif -%}</span>{%- endif -%}</div>
+      {%- endif -%}
+    </div>
+
+    <div class="lp-form" id="book-form" data-lp-form data-source="{{ s.source | escape }}" data-gender="{% unless s.gender == 'none' %}{{ s.gender }}{% endunless %}" data-collection="popup_leads"{% if s.sheet_url != blank %} data-sheet="{{ s.sheet_url | strip | escape }}"{% endif %} data-redirect="{{ s.thanks_url | default: '/pages/booking-confirmed' | escape }}">
+      <div class="lp-form__body">
+        <h3 class="lp-form__h">{{ s.form_heading }}</h3>
+        {%- if s.form_sub != blank -%}<p class="lp-form__sub">{{ s.form_sub }}</p>{%- endif -%}
+        {%- if s.show_timer -%}
+          <p class="lp-timer__label">{{ s.timer_label }}</p>
+          <div class="lp-timer" data-lp-timer>
+            <div><b data-h>00</b><span>Hours</span></div>
+            <div><b data-m>00</b><span>Minutes</span></div>
+            <div><b data-s>00</b><span>Seconds</span></div>
+          </div>
+        {%- endif -%}
+        <form novalidate>
+          <div class="lp-fields">
+            <div class="lp-field">
+              <label for="lp-name-{{ section.id }}">Full name</label>
+              <input id="lp-name-{{ section.id }}" name="name" autocomplete="name" placeholder="Your name" required>
+            </div>
+            <div class="lp-field">
+              <label for="lp-phone-{{ section.id }}">Phone number</label>
+              <div class="lp-phone"><span>+91</span><input id="lp-phone-{{ section.id }}" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="10-digit mobile" required></div>
+            </div>
+            <div class="lp-field">
+              <label for="lp-age-{{ section.id }}">Age</label>
+              <input id="lp-age-{{ section.id }}" name="age" type="number" inputmode="numeric" min="15" max="90" placeholder="Your age">
+            </div>
+            <div class="lp-field">
+              <label for="lp-concern-{{ section.id }}">Primary concern</label>
+              <select id="lp-concern-{{ section.id }}" name="concern">
+                <option value="">Choose one</option>
+                {%- for c in concerns -%}{%- assign c = c | strip -%}{%- if c != blank -%}<option>{{ c }}</option>{%- endif -%}{%- endfor -%}
+              </select>
+            </div>
+            <div class="lp-field lp-field--full">
+              <label for="lp-time-{{ section.id }}">Preferred consultation time</label>
+              <select id="lp-time-{{ section.id }}" name="time">
+                <option value="">Any time</option>
+                {%- for t in times -%}{%- assign t = t | strip -%}{%- if t != blank -%}<option>{{ t }}</option>{%- endif -%}{%- endfor -%}
+              </select>
+            </div>
+          </div>
+          <button class="lp-btn lp-btn--block" type="submit">{{ s.button }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+          <p class="lp-form__err" role="alert"></p>
+          <p class="lp-form__privacy">{% render 'lp-icon', name: 'lock' %}{{ s.privacy }}</p>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "LP book a consultation",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Consult With a Doctor" },
+    { "type": "text", "id": "highlight", "label": "Heading ending in colour", "default": "for FREE" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "textarea", "id": "trust", "label": "Trust points (Text|icon, one per line)", "info": "Icons: doctor, plan, shield, chat, lock, check" },
+    { "type": "image_picker", "id": "image", "label": "Doctor photo" },
+    { "type": "text", "id": "image_asset", "label": "Or a theme file name", "info": "Used when no photo is picked, e.g. lm-doctor.webp from the theme assets." },
+    { "type": "text", "id": "image_name", "label": "Name on the photo (optional)" },
+    { "type": "text", "id": "image_note", "label": "Line under the name (optional)" },
+    { "type": "header", "content": "Form" },
+    { "type": "text", "id": "form_heading", "label": "Form heading", "default": "Book Your Free Slot" },
+    { "type": "text", "id": "form_sub", "label": "Form line", "default": "Limited consultation slots available." },
+    { "type": "checkbox", "id": "show_timer", "label": "Show countdown to midnight", "default": true },
+    { "type": "text", "id": "timer_label", "label": "Countdown label", "default": "Today's free slots close in" },
+    { "type": "textarea", "id": "concerns", "label": "Concern options (one per line)" },
+    { "type": "textarea", "id": "times", "label": "Time options (one per line)", "default": "Morning (9 am to 12 pm)\nAfternoon (12 pm to 4 pm)\nEvening (4 pm to 8 pm)" },
+    { "type": "text", "id": "button", "label": "Button", "default": "Book My Free Doctor Consultation" },
+    { "type": "text", "id": "privacy", "label": "Line under the button", "default": "Your information is private and secure." },
+    { "type": "text", "id": "source", "label": "Lead source (for the CRM)", "default": "landing_page" },
+    { "type": "text", "id": "sheet_url", "label": "Google Sheet (Apps Script) URL", "info": "Paste the Web App /exec link. Each booking is added as a row. Empty = the default sheet." },
+    { "type": "url", "id": "thanks_url", "label": "After booking, go to", "info": "The thank-you page. Empty goes to /pages/booking-confirmed." },
+    { "type": "select", "id": "gender", "label": "Gender saved with the lead", "options": [ { "value": "none", "label": "Not set" }, { "value": "female", "label": "Female" }, { "value": "male", "label": "Male" } ], "default": "none" },
+    { "type": "select", "id": "tone", "label": "Background", "options": [
+      { "value": "sage", "label": "Sage" }, { "value": "blush", "label": "Blush" }, { "value": "cream", "label": "Cream" }, { "value": "white", "label": "White" }
+    ], "default": "sage" },
+    {"type":"header","content":"Doctor photo size (landing pages)"},
+    {"type":"range","id":"img_width","label":"Photo width","min":30,"max":60,"step":2,"unit":"%","default":46},
+    {"type":"range","id":"img_height","label":"Photo height","min":60,"max":110,"step":2,"unit":"%","default":94}
+  ],
+  "presets": [{ "name": "LP book a consultation" }]
+}
+{% endschema %}

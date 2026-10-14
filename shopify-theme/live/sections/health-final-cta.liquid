@@ -10,7 +10,7 @@
 
 {%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
 <style>
-  #hfc-{{ section.id }} { background: #faf7f5; padding: 24px 24px 88px; font-family: 'Montserrat', sans-serif; }
+  #hfc-{{ section.id }} { background: {{ s.section_bg | default: '#faf7f5' }}; padding: 24px 24px 88px; font-family: 'Montserrat', sans-serif; }
   #hfc-{{ section.id }} .hfc__inner {
     position: relative; overflow: hidden; max-width: 1160px; margin: 0 auto; padding: 84px 32px;
     border-radius: 28px; background: #1d1d1d; color: #fff; text-align: center;
@@ -78,6 +78,7 @@
   "tag": "div",
   "class": "section-health-final-cta",
   "settings": [
+    { "type": "color", "id": "section_bg", "label": "Section background", "default": "#faf7f5" },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Your body is talking. Start listening." },
     { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Free, private, and it takes 2 minutes." },
     { "type": "text", "id": "her_label", "label": "For Her button", "default": "Start for her" },

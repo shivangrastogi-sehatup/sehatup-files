@@ -2,7 +2,7 @@
   "It's common, and it's treatable": tells a visitor he is far from alone,
   then lets him name his problem and shows how men get past it.
     1. Figures   large published prevalence figures, each with its source
-    2. Problems  plain-language tiles that jump to the right product shelf
+    2. Problems  a thinking man with four thought cards that jump to the right shelf
     3. Steps     the three steps from first question to the parcel
   Every figure is a block with a source link: only publish what a study says.
 {%- endcomment -%}
@@ -17,69 +17,103 @@
 {%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
 <style>
   #scm-{{ section.id }} {
-    --scm-text: #1d1d1d; --scm-muted: #5f5a56; --scm-line: #e8e0d9; --scm-soft: #f6f0ec;
+    --scm-text: #1d1d1d; --scm-muted: #5f5a56; --scm-line: #e8e0d9; --scm-soft: #f6f0ec; --scm-tint: #f6c3cd; --scm-off: #ddd3cb;
     --scm-ink: {{ s.accent_color | color_darken: 8 }};
-    padding: clamp(44px, 6vw, 84px) clamp(16px, 3vw, 48px) clamp(20px, 3vw, 36px);
+    padding: clamp(48px, 6vw, 88px) clamp(16px, 3vw, 48px) clamp(24px, 3vw, 40px);
     background: #fff; font-family: 'Montserrat', sans-serif; color: var(--scm-text);
   }
   #scm-{{ section.id }} * { box-sizing: border-box; }
-  #scm-{{ section.id }} .scm__inner { max-width: 1240px; margin: 0 auto; display: grid; gap: clamp(48px, 6vw, 80px); }
-  #scm-{{ section.id }} .scm__h { margin: 0; font: 800 clamp(26px, 3vw, 40px)/1.1 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
-  #scm-{{ section.id }} .scm__lead { margin: 12px 0 0; max-width: 38em; font: 500 16px/1.6 'Montserrat', sans-serif; color: var(--scm-muted); }
+  #scm-{{ section.id }} .scm__inner { max-width: 1240px; margin: 0 auto; display: grid; gap: clamp(56px, 7vw, 96px); }
+  #scm-{{ section.id }} .scm__h { margin: 0; font: 800 clamp(28px, 3.2vw, 44px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #scm-{{ section.id }} .scm__lead { margin: 14px 0 0; max-width: 36em; font: 500 16px/1.6 'Montserrat', sans-serif; color: var(--scm-muted); }
 
-  /* 1. Figures: the loud part of the page. Big red numbers, plain sentences. */
-  #scm-{{ section.id }} .scm__facts { margin-top: 32px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border-top: 2px solid var(--scm-text); }
-  #scm-{{ section.id }} .scm__fact { padding: 26px clamp(16px, 2.6vw, 36px) 0 0; }
-  #scm-{{ section.id }} .scm__fact + .scm__fact { padding-left: clamp(16px, 2.6vw, 36px); border-left: 1px solid var(--scm-line); }
-  #scm-{{ section.id }} .scm__num { display: block; font: 800 clamp(44px, 5.6vw, 80px)/.95 'Montserrat', sans-serif; letter-spacing: -.04em; color: var(--scm-ink); }
-  #scm-{{ section.id }} .scm__fact p { margin: 14px 0 0; max-width: 24em; font: 600 16px/1.5 'Montserrat', sans-serif; }
-  #scm-{{ section.id }} .scm__src { display: inline-block; margin-top: 10px; font: 500 12.5px/1.4 'Montserrat', sans-serif; color: var(--scm-muted); text-decoration: underline; text-underline-offset: 3px; }
-  #scm-{{ section.id }} .scm__close { margin: 30px 0 0; max-width: 46em; font: 600 clamp(17px, 1.6vw, 21px)/1.5 'Montserrat', sans-serif; }
+  /* 1. Figures. Words on the left, two stat cards on the right. Each card
+     names the problem, shows the figure big, says it in plain words, then
+     Kept short. */
+  #scm-{{ section.id }} .scm__top { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+  #scm-{{ section.id }} .scm__close { margin: 22px 0 0; max-width: 30em; font: 600 16px/1.6 'Montserrat', sans-serif; color: var(--scm-text); }
+  #scm-{{ section.id }} .scm__close a { color: var(--scm-ink); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; white-space: nowrap; }
+  #scm-{{ section.id }} .scm__close a:hover { text-decoration-thickness: 2.5px; }
+  #scm-{{ section.id }} .scm__facts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; }
+  #scm-{{ section.id }} .scm__fact { display: flex; flex-direction: column; padding: clamp(20px, 2vw, 26px); border-radius: 22px; background: #fbf8f6; border: 1px solid #efe7e2; }
+  /* Second card a touch warmer, so the two read as two problems without loud colour. */
+  #scm-{{ section.id }} .scm__fact:nth-child(2) { background: #fcf6f7; border-color: #f3e6e8; }
+  #scm-{{ section.id }} .scm__issue { display: flex; align-items: center; gap: 10px; font: 800 16px/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #scm-{{ section.id }} .scm__ico { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--scm-ink); box-shadow: 0 4px 12px rgba(60, 30, 20, .08); }
+  #scm-{{ section.id }} .scm__ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #scm-{{ section.id }} .scm__fig { display: block; margin-top: 16px; font: 800 clamp(34px, 3.4vw, 48px)/1 'Montserrat', sans-serif; letter-spacing: -.04em; color: var(--scm-ink); white-space: nowrap; }
+  #scm-{{ section.id }} .scm__fact p { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid rgba(29, 29, 29, .07); font: 500 14px/1.5 'Montserrat', sans-serif; color: var(--scm-muted); }
+  #scm-{{ section.id }} .scm__fact p b { font-weight: 700; color: var(--scm-text); }
+  #scm-{{ section.id }} .scm__src { display: inline-block; margin-top: auto; padding-top: 10px; font: 500 11.5px/1.4 'Montserrat', sans-serif; color: var(--scm-muted); text-decoration: underline; text-decoration-color: rgba(95, 90, 86, .4); text-underline-offset: 3px; }
 
-  /* 2. Problems: a photo mosaic. Desktop: the first tile is tall on the
-     left, the second wide across the top right, the last two below it.
-     Tablet: 2 x 2 with the first tile tall. Phone: 2 x 2 small tiles.
-     The words sit on a soft dark fade at the bottom of each photo. */
-  #scm-{{ section.id }} .scm__probs {
-    margin-top: 24px; display: grid; gap: 14px;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .82fr);
-    grid-template-rows: repeat(2, clamp(230px, 22vw, 330px));
-  }
-  #scm-{{ section.id }} .scm__prob:nth-child(1) { grid-column: 1; grid-row: 1 / 3; }
-  #scm-{{ section.id }} .scm__prob:nth-child(2) { grid-column: 2 / 4; grid-row: 1; }
-  #scm-{{ section.id }} .scm__prob:nth-child(3) { grid-column: 2; grid-row: 2; }
-  #scm-{{ section.id }} .scm__prob:nth-child(4) { grid-column: 3; grid-row: 2; }
+  /* 2. Problems: "the things he never says". A thinking man in the middle
+     of a stone panel, four small thought cards around him joined to his head
+     by faint dotted lines. Each card jumps to its shelf. Below 1000px the
+     cards drop into a 2 x 2 grid under the photo and the lines go. */
+  #scm-{{ section.id }} .scm__h--c { text-align: center; }
+  #scm-{{ section.id }} .scm__lead--c { margin-left: auto; margin-right: auto; text-align: center; }
+  #scm-{{ section.id }} .scm__think { position: relative; margin-top: 26px; height: clamp(440px, 42vw, 560px); border-radius: 28px; background: var(--scm-soft); overflow: hidden; }
+  #scm-{{ section.id }} .scm__man { position: absolute; left: 50%; bottom: 0; z-index: 1; height: 92%; transform: translateX(-50%); pointer-events: none; }
+  #scm-{{ section.id }} .scm__man img { display: block; height: 100%; width: auto; max-width: none; }
+  #scm-{{ section.id }} .scm__lines { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; }
+  #scm-{{ section.id }} .scm__lines > path { fill: none; stroke: var(--scm-ink); stroke-opacity: .35; stroke-width: 1.6; stroke-dasharray: 1 7; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  #scm-{{ section.id }} .scm__thoughts { list-style: none; margin: 0; padding: 0; }
+  #scm-{{ section.id }} .scm__thought { position: absolute; z-index: 2; width: clamp(230px, 24%, 290px); }
+  #scm-{{ section.id }} .scm__thought:nth-child(1) { left: 5%; top: 13%; }
+  #scm-{{ section.id }} .scm__thought:nth-child(2) { left: 3%; top: 56%; }
+  #scm-{{ section.id }} .scm__thought:nth-child(3) { right: 5%; top: 13%; }
+  #scm-{{ section.id }} .scm__thought:nth-child(4) { right: 3%; top: 56%; }
   #scm-{{ section.id }} .scm__prob {
-    position: relative; isolation: isolate; overflow: hidden;
-    display: flex; align-items: flex-end; justify-content: space-between; gap: 14px;
-    padding: clamp(16px, 2vw, 26px); border-radius: 20px; background: var(--scm-soft);
-    color: var(--scm-text); text-decoration: none;
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 18px;
+    background: #fff; border: 1.5px solid transparent; color: var(--scm-text); text-decoration: none;
+    box-shadow: 0 10px 30px rgba(60, 30, 20, .08);
+    transition: transform .3s cubic-bezier(.16, 1, .3, 1), border-color .25s ease, box-shadow .3s ease;
   }
-  #scm-{{ section.id }} .scm__prob img {
-    position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover;
-    transition: transform .7s cubic-bezier(.16, 1, .3, 1);
+  #scm-{{ section.id }} .scm__prob-i { flex: none; width: 30px; height: 30px; display: grid; place-items: center; color: var(--scm-ink); }
+  #scm-{{ section.id }} .scm__prob-i img { width: 28px; height: 28px; object-fit: contain; }
+  #scm-{{ section.id }} .scm__prob-i svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #scm-{{ section.id }} .scm__prob-t { flex: 1; min-width: 0; }
+  #scm-{{ section.id }} .scm__prob b { display: block; font: 800 16px/1.25 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #scm-{{ section.id }} .scm__prob-t span { display: block; margin-top: 3px; font: 500 13px/1.4 'Montserrat', sans-serif; color: var(--scm-muted); }
+  /* While the panel is on screen (.is-live, set by the script): a soft red
+     light travels round every card's border, each a little out of step, and
+     the dotted lines flow from his head out to the cards. */
+  @property --scm-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  #scm-{{ section.id }} .scm__prob { position: relative; }
+  #scm-{{ section.id }} .scm__prob::before {
+    content: ""; position: absolute; inset: -1.5px; padding: 1.5px; border-radius: inherit; pointer-events: none;
+    background: conic-gradient(from var(--scm-a), rgba(238, 32, 74, 0) 0 55%, rgba(238, 32, 74, .9) 80%, rgba(238, 32, 74, 0) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity: 0; transition: opacity .6s ease;
   }
-  #scm-{{ section.id }} .scm__prob--photo { color: #fff; }
-  #scm-{{ section.id }} .scm__prob--photo::before {
-    content: ""; position: absolute; inset: 0; z-index: -1;
-    background: linear-gradient(180deg, rgba(20, 14, 10, 0) 38%, rgba(20, 14, 10, .45) 62%, rgba(20, 14, 10, .82) 100%);
-  }
-  #scm-{{ section.id }} .scm__prob b { display: block; font: 800 clamp(19px, 1.8vw, 26px)/1.12 'Montserrat', sans-serif; letter-spacing: -.01em; text-wrap: balance; }
-  #scm-{{ section.id }} .scm__prob:nth-child(1) b { font-size: clamp(26px, 2.8vw, 40px); }
-  #scm-{{ section.id }} .scm__prob span { display: block; margin-top: 6px; font: 500 clamp(13px, 1vw, 15px)/1.4 'Montserrat', sans-serif; opacity: .9; }
-  #scm-{{ section.id }} .scm__prob i {
-    flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
-    background: var(--scm-ink); color: #fff; font: 700 19px/1 'Montserrat', sans-serif; font-style: normal;
-    transition: transform .3s cubic-bezier(.16, 1, .3, 1);
-  }
+  #scm-{{ section.id }} .scm__think.is-live .scm__prob::before { opacity: 1; animation: scm-border-{{ section.id }} 4s linear infinite; }
+  #scm-{{ section.id }} .scm__think.is-live .scm__thought:nth-child(2) .scm__prob::before { animation-delay: -1s; }
+  #scm-{{ section.id }} .scm__think.is-live .scm__thought:nth-child(3) .scm__prob::before { animation-delay: -2s; }
+  #scm-{{ section.id }} .scm__think.is-live .scm__thought:nth-child(4) .scm__prob::before { animation-delay: -3s; }
+  @keyframes scm-border-{{ section.id }} { to { --scm-a: 360deg; } }
+  #scm-{{ section.id }} .scm__think.is-live .scm__lines > path { animation: scm-flow-{{ section.id }} 1.2s linear infinite; }
+  @keyframes scm-flow-{{ section.id }} { to { stroke-dashoffset: -16; } }
   @media (hover: hover) and (pointer: fine) {
-    #scm-{{ section.id }} .scm__prob:hover img { transform: scale(1.04); }
-    #scm-{{ section.id }} .scm__prob:hover i { transform: translateY(3px); }
+    #scm-{{ section.id }} .scm__prob:hover { transform: translateY(-3px); border-color: var(--scm-ink); box-shadow: 0 16px 36px rgba(60, 30, 20, .12); }
+  }
+  /* "Tap here" as a small red pill button, the arrow inside a hollow ring,
+     so each card reads as something to press. */
+  #scm-{{ section.id }} .scm__tap-foot { display: flex; width: fit-content; align-items: center; gap: 8px; margin-top: 12px; padding: 6px 10px 6px 14px; border-radius: 999px; background: #ee204a; color: #fff; font: 700 12.5px/1 'Montserrat', sans-serif; font-style: normal; box-shadow: 0 6px 14px -6px rgba(216, 31, 72, .6); transition: background-color .25s ease, box-shadow .25s ease; }
+  #scm-{{ section.id }} .scm__tap-ring { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; }
+  #scm-{{ section.id }} .scm__tap-foot svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+  #scm-{{ section.id }} .scm__prob:hover .scm__tap-foot { background: #d81f48; box-shadow: 0 8px 18px -6px rgba(216, 31, 72, .7); }
+  #scm-{{ section.id }} .scm__prob:hover .scm__tap-foot svg { transform: translateX(3px); }
+  /* "Tap here" arrow keeps nudging while the panel is on screen. */
+  #scm-{{ section.id }} .scm__think.is-live .scm__tap-foot svg { animation: scm-nudge-{{ section.id }} 1.3s ease-in-out infinite; }
+  @keyframes scm-nudge-{{ section.id }} { 0%, 100% { transform: translateX(-1px); } 50% { transform: translateX(3px); } }
+  @media (prefers-reduced-motion: reduce) {
+    #scm-{{ section.id }} .scm__think.is-live .scm__prob::before,
+    #scm-{{ section.id }} .scm__think.is-live .scm__lines > path,
+    #scm-{{ section.id }} .scm__think.is-live .scm__tap-foot svg { animation: none; }
   }
 
-  /* 3. Steps: a warm stone panel holding three white cards. Each card shows
-     what the step actually looks like (a question from the check, the
-     doctor, the kit), then the words. Arrows join the cards in order. */
+  /* 3. Steps: a warm stone panel holding three white cards joined by arrows. */
   #scm-{{ section.id }} .scm__journey { padding: clamp(28px, 4vw, 56px); border-radius: 28px; background: var(--scm-soft); }
   #scm-{{ section.id }} .scm__journey-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px 32px; flex-wrap: wrap; }
   #scm-{{ section.id }} .scm__journey-top .scm__lead { margin-top: 10px; }
@@ -88,7 +122,6 @@
     position: relative; counter-increment: scm; display: flex; flex-direction: column;
     border-radius: 22px; background: #fff; box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 18px 40px rgba(60, 30, 20, .08);
   }
-  /* Arrow between cards. */
   #scm-{{ section.id }} .scm__step + .scm__step::after {
     content: ""; position: absolute; top: 34%; left: calc(-1 * clamp(28px, 3.4vw, 48px) / 2 - 15px); width: 30px; height: 30px; border-radius: 50%;
     background: var(--scm-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 8h6M8.5 5L11 8l-2.5 3' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px no-repeat;
@@ -96,20 +129,18 @@
   }
   #scm-{{ section.id }} .scm__vis { position: relative; aspect-ratio: 4 / 3; margin: 10px 10px 0; border-radius: 16px; overflow: hidden; background: linear-gradient(160deg, #fbf7f3, #efe5dd); }
   #scm-{{ section.id }} .scm__vis > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  #scm-{{ section.id }} .scm__vis--product > img { object-fit: cover; }
-  #scm-{{ section.id }} .scm__num {
+  #scm-{{ section.id }} .scm__no {
     position: absolute; left: 12px; top: 12px; z-index: 1; width: 34px; height: 34px; border-radius: 50%;
     display: grid; place-items: center; background: #fff; color: var(--scm-text); font: 800 15px/1 'Montserrat', sans-serif;
     box-shadow: 0 2px 8px rgba(29, 29, 29, .12);
   }
-  #scm-{{ section.id }} .scm__num::before { content: counter(scm); }
+  #scm-{{ section.id }} .scm__no::before { content: counter(scm); }
   #scm-{{ section.id }} .scm__chip {
     position: absolute; right: 12px; top: 12px; z-index: 1; display: inline-flex; align-items: center; gap: 7px;
     padding: 8px 12px; border-radius: 999px; background: #fff; box-shadow: 0 4px 14px rgba(29, 29, 29, .12);
     font: 700 12.5px/1 'Montserrat', sans-serif; color: var(--scm-text);
   }
-  #scm-{{ section.id }} .scm__chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #2fa35a; }
-  /* Step 1 visual: one question card from the check, drawn in the page. */
+  #scm-{{ section.id }} .scm__chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--scm-ink); }
   #scm-{{ section.id }} .scm__quiz { position: absolute; left: 50%; top: 50%; width: 74%; transform: translate(-50%, -40%) rotate(-2deg); padding: 12px; border-radius: 14px; background: #fff; box-shadow: 0 12px 30px rgba(60, 30, 20, .14); }
   #scm-{{ section.id }} .scm__quiz-bar { height: 5px; border-radius: 3px; background: #efe7e1; overflow: hidden; }
   #scm-{{ section.id }} .scm__quiz-bar i { display: block; width: 40%; height: 100%; background: var(--scm-ink); }
@@ -124,27 +155,22 @@
   #scm-{{ section.id }} .scm__cta:hover { background: #b3123a; }
   #scm-{{ section.id }} :is(.scm__prob, .scm__cta, .scm__src):focus-visible { outline: 2px solid var(--scm-text); outline-offset: 3px; }
 
-  @media (max-width: 899px) {
-    #scm-{{ section.id }} .scm__facts { grid-auto-flow: row; }
-    #scm-{{ section.id }} .scm__fact, #scm-{{ section.id }} .scm__fact + .scm__fact { padding: 22px 0; border-left: 0; }
-    #scm-{{ section.id }} .scm__fact + .scm__fact { border-top: 1px solid var(--scm-line); }
-    /* Tablet: 2 x 2, all tiles the same size. */
-    #scm-{{ section.id }} .scm__probs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: repeat(2, clamp(240px, 42vw, 360px)); gap: 12px; }
-    #scm-{{ section.id }} .scm__prob:nth-child(n) { grid-column: auto; grid-row: auto; }
-    #scm-{{ section.id }} .scm__prob { padding: 16px; border-radius: 16px; gap: 10px; }
-    #scm-{{ section.id }} .scm__prob b, #scm-{{ section.id }} .scm__prob:nth-child(1) b { font-size: clamp(17px, 2.8vw, 24px); }
-    #scm-{{ section.id }} .scm__prob span { font-size: 13px; }
-    #scm-{{ section.id }} .scm__prob i { width: 36px; height: 36px; font-size: 16px; }
+  @media (max-width: 999px) {
+    #scm-{{ section.id }} .scm__top { grid-template-columns: minmax(0, 1fr); }
+    #scm-{{ section.id }} .scm__think { height: auto; padding: 0 20px 20px; }
+    #scm-{{ section.id }} .scm__man { position: relative; left: auto; transform: none; height: clamp(240px, 46vw, 360px); margin: 0 auto; width: max-content; }
+    #scm-{{ section.id }} .scm__lines { display: none; }
+    #scm-{{ section.id }} .scm__thoughts { position: relative; z-index: 2; margin-top: -24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #scm-{{ section.id }} .scm__thought:nth-child(n) { position: static; width: auto; }
   }
   @media (max-width: 599px) {
-    /* Phone: one tile per row, wide enough for the words. */
-    #scm-{{ section.id }} .scm__probs { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: 210px; gap: 10px; }
-    #scm-{{ section.id }} .scm__prob:nth-child(1) { grid-row: span 1; }
-    #scm-{{ section.id }} .scm__prob b, #scm-{{ section.id }} .scm__prob:nth-child(1) b { font-size: 21px; }
-    #scm-{{ section.id }} .scm__prob span { font-size: 13.5px; }
-    #scm-{{ section.id }} .scm__prob:nth-child(1) img { object-position: center 22% !important; }
-    #scm-{{ section.id }} .scm__prob:nth-child(3) img { object-position: center 30% !important; }
-    #scm-{{ section.id }} .scm__prob:nth-child(4) img { object-position: center 34% !important; }
+    #scm-{{ section.id }} .scm__facts { grid-auto-flow: row; gap: 12px; }
+    #scm-{{ section.id }} .scm__fact { padding: 18px; border-radius: 18px; }
+    #scm-{{ section.id }} .scm__think { padding: 0 12px 12px; border-radius: 22px; }
+    #scm-{{ section.id }} .scm__prob { padding: 12px; gap: 10px; border-radius: 14px; }
+    #scm-{{ section.id }} .scm__prob b { font-size: 14px; }
+    #scm-{{ section.id }} .scm__prob-t span { display: none; }
+    #scm-{{ section.id }} .scm__tap-foot { margin-top: 8px; padding: 5px 8px 5px 12px; gap: 4px; font-size: 11.5px; } #scm-{{ section.id }} .scm__tap-ring { width: 19px; height: 19px; }
     #scm-{{ section.id }} .scm__journey { padding: 22px 16px; border-radius: 22px; margin: 0 -4px; }
     #scm-{{ section.id }} .scm__steps { grid-template-columns: minmax(0, 1fr); gap: 34px; }
     #scm-{{ section.id }} .scm__step + .scm__step::after { top: -32px; left: 50%; margin-left: -15px; transform: rotate(90deg); }
@@ -160,14 +186,40 @@
 <section id="scm-{{ section.id }}" class="scm">
   <div class="scm__inner">
     {%- if facts.size > 0 -%}
-      <div>
-        <h2 class="scm__h">{{ s.facts_heading }}</h2>
-        {%- if s.facts_lead != blank -%}<p class="scm__lead">{{ s.facts_lead }}</p>{%- endif -%}
+      <div class="scm__top">
+        <div>
+          <h2 class="scm__h">{{ s.facts_heading }}</h2>
+          {%- if s.facts_lead != blank -%}<p class="scm__lead">{{ s.facts_lead }}</p>{%- endif -%}
+          {%- if s.facts_close != blank -%}<p class="scm__close">{{ s.facts_close }}{% if s.cta_text != blank %} <a href="{{ s.cta_link | default: '#' }}">{{ s.cta_text }}</a>{% endif %}</p>{%- endif -%}
+        </div>
         <div class="scm__facts">
           {%- for b in facts -%}
+            {%- liquid
+              # "18 to 55%" -> lo 18, hi 55. The range bar only shows for percentage figures.
+              assign lo = 0
+              assign hi = 0
+              if b.settings.figure contains '%'
+                assign parts = b.settings.figure | remove: '%' | split: 'to'
+                assign lo = parts.first | strip | plus: 0
+                assign hi = parts.last | strip | plus: 0
+              endif
+            -%}
             <div class="scm__fact" {{ b.shopify_attributes }}>
-              <span class="scm__num">{{ b.settings.figure }}</span>
-              <p>{{ b.settings.text }}</p>
+              {%- if b.settings.issue != blank -%}
+                <div class="scm__issue">
+                  {%- if b.settings.icon != 'none' -%}
+                    <span class="scm__ico" aria-hidden="true">
+                      {%- if b.settings.icon == 'timer' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 2.5h5M19 6.5l-1.5 1.5"/></svg>
+                      {%- elsif b.settings.icon == 'calendar' -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><circle cx="12" cy="15" r="2"/></svg>
+                      {%- elsif b.settings.icon == 'balance' -%}<svg viewBox="0 0 24 24"><path d="M12 4v16M7 20h10M5 8h14"/><path d="M5 8l-2.5 6a2.5 2.5 0 0 0 5 0zM19 8l-2.5 6a2.5 2.5 0 0 0 5 0z"/></svg>
+                      {%- else -%}<svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/><path d="M3.5 12h4l1.5-2.5 2.5 5 1.5-2.5h7.5"/></svg>{%- endif -%}
+                    </span>
+                  {%- endif -%}
+                  <span>{{ b.settings.issue }}</span>
+                </div>
+              {%- endif -%}
+              <span class="scm__fig">{{ b.settings.figure }}</span>
+              <p>{%- if hi > 0 -%}<b>{% if lo != hi %}Between {{ lo }} and {{ hi }}{% else %}{{ hi }}{% endif %} of every 100 {{ s.facts_people | default: 'Indian men' }}</b> {% endif -%}{{ b.settings.text }}</p>
               {%- if b.settings.source != blank -%}
                 {%- if b.settings.source_link != blank -%}<a class="scm__src" href="{{ b.settings.source_link }}" target="_blank" rel="noopener">{{ b.settings.source }}</a>
                 {%- else -%}<span class="scm__src">{{ b.settings.source }}</span>{%- endif -%}
@@ -175,23 +227,45 @@
             </div>
           {%- endfor -%}
         </div>
-        {%- if s.facts_close != blank -%}<p class="scm__close">{{ s.facts_close }}</p>{%- endif -%}
       </div>
     {%- endif -%}
 
     {%- if problems.size > 0 -%}
       <div>
-        <h2 class="scm__h">{{ s.problems_heading }}</h2>
-        <div class="scm__probs">
-          {%- for b in problems -%}
-            <a class="scm__prob{% if b.settings.image_asset != blank %} scm__prob--photo{% endif %}" href="{{ b.settings.link }}" {{ b.shopify_attributes }}>
-              {%- if b.settings.image_asset != blank -%}
-                <img src="{{ b.settings.image_asset | asset_url }}" alt="" loading="lazy" decoding="async" style="object-position: {{ b.settings.focus }};">
-              {%- endif -%}
-              <div><b>{{ b.settings.title }}</b>{%- if b.settings.text != blank -%}<span>{{ b.settings.text }}</span>{%- endif -%}</div>
-              <i aria-hidden="true">&darr;</i>
-            </a>
-          {%- endfor -%}
+        <h2 class="scm__h scm__h--c">{{ s.problems_heading }}</h2>
+        {%- if s.problems_lead != blank -%}<p class="scm__lead scm__lead--c">{{ s.problems_lead }}</p>{%- endif -%}
+        <div class="scm__think">
+          {%- if s.problems_image != blank -%}
+            <svg class="scm__lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M29 21 Q42 18 55 30"/><path d="M27 63 Q42 50 55 30"/><path d="M71 21 Q62 18 55 30"/><path d="M73 63 Q64 50 55 30"/>
+            </svg>
+            <div class="scm__man">{{ s.problems_image | image_url: width: 1400 | image_tag: loading: 'lazy', widths: '600, 900, 1200, 1400', sizes: '(max-width: 999px) 80vw, 620px', alt: '' }}</div>
+          {%- endif -%}
+          <ul class="scm__thoughts">
+            {%- for b in problems -%}
+              <li class="scm__thought" {{ b.shopify_attributes }}>
+                <a class="scm__prob" href="{{ b.settings.link }}">
+                  <span class="scm__prob-i" aria-hidden="true">
+                    {%- if b.settings.icon_image != blank -%}
+                      {{ b.settings.icon_image | image_url: width: 120 | image_tag: loading: 'lazy', alt: '' }}
+                    {%- else -%}
+                      {%- case b.settings.icon -%}
+                        {%- when 'timer' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 2.5h5M19 6.5l-1.5 1.5"/></svg>
+                        {%- when 'pulse' -%}<svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/><path d="M3.5 12h4l1.5-2.5 2.5 5 1.5-2.5h7.5"/></svg>
+                        {%- when 'calendar' -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><circle cx="12" cy="15" r="2"/></svg>
+                        {%- when 'balance' -%}<svg viewBox="0 0 24 24"><path d="M12 4v16M7 20h10M5 8h14"/><path d="M5 8l-2.5 6a2.5 2.5 0 0 0 5 0zM19 8l-2.5 6a2.5 2.5 0 0 0 5 0z"/></svg>
+                        {%- when 'bolt' -%}<svg viewBox="0 0 24 24"><path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/></svg>
+                        {%- else -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8.5 9a5 5 0 0 1 7 0M12 9l1.5-2"/></svg>
+                      {%- endcase -%}
+                    {%- endif -%}
+                  </span>
+                  <span class="scm__prob-t"><b>{{ b.settings.title }}</b>{%- if b.settings.text != blank -%}<span>{{ b.settings.text }}</span>{%- endif -%}
+                    <em class="scm__tap-foot">Tap here<i class="scm__tap-ring"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></i></em>
+                  </span>
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
         </div>
       </div>
     {%- endif -%}
@@ -209,8 +283,8 @@
           {%- for b in steps -%}
             {%- assign st = b.settings -%}
             <li class="scm__step" {{ b.shopify_attributes }}>
-              <div class="scm__vis{% if st.visual == 'product' %} scm__vis--product{% endif %}" aria-hidden="true">
-                <span class="scm__num"></span>
+              <div class="scm__vis" aria-hidden="true">
+                <span class="scm__no"></span>
                 {%- case st.visual -%}
                   {%- when 'quiz' -%}
                     <div class="scm__quiz">
@@ -234,6 +308,43 @@
   </div>
 </section>
 
+<script>
+  /* While the panel is on screen (.is-live) the borders and dotted lines
+     animate. The lines are drawn from his head to the four cards, measured
+     live so they land on the cards at any width. */
+  (function () {
+    var stage = document.querySelector('#scm-{{ section.id }} .scm__think');
+    if (!stage) return;
+    var svg = stage.querySelector('.scm__lines');
+    var img = stage.querySelector('.scm__man img');
+    var cards = stage.querySelectorAll('.scm__prob');
+
+    function layout() {
+      if (!svg || !img || getComputedStyle(svg).display === 'none') return;
+      var s = stage.getBoundingClientRect(), m = img.getBoundingClientRect();
+      if (!m.width) return;
+      // Head: a little right of centre and high in the cut-out.
+      var hx = m.left - s.left + m.width * 0.6, hy = m.top - s.top + m.height * 0.28;
+      svg.setAttribute('viewBox', '0 0 ' + s.width + ' ' + s.height);
+      var dotted = svg.querySelectorAll(':scope > path');
+      for (var i = 0; i < cards.length; i++) {
+        var r = cards[i].getBoundingClientRect();
+        var left = r.left + r.width / 2 < m.left + m.width / 2;
+        var ex = (left ? r.right : r.left) - s.left, ey = r.top - s.top + r.height / 2;
+        if (dotted[i]) dotted[i].setAttribute('d', 'M' + hx + ' ' + hy + ' Q' + ((hx + ex) / 2) + ' ' + (Math.min(hy, ey) - 30) + ' ' + ex + ' ' + ey);
+      }
+    }
+
+    var t;
+    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(layout, 150); });
+    if (img && !img.complete) img.addEventListener('load', layout, { once: true });
+    layout();
+
+    if (!('IntersectionObserver' in window)) { stage.classList.add('is-live'); return; }
+    new IntersectionObserver(function (e) { stage.classList.toggle('is-live', e[0].isIntersecting); }).observe(stage);
+  })();
+</script>
+
 {% schema %}
 {
   "name": "sehatUP common problems",
@@ -241,9 +352,12 @@
   "class": "section-sehat-common",
   "settings": [
     { "type": "text", "id": "facts_heading", "label": "Figures: heading", "default": "It's far more common than you think." },
+    { "type": "text", "id": "facts_people", "label": "Figures: who they are about", "default": "Indian men", "info": "Shown as: Between 18 and 55 of every 100 Indian men" },
     { "type": "textarea", "id": "facts_lead", "label": "Figures: line under the heading" },
     { "type": "textarea", "id": "facts_close", "label": "Figures: closing line" },
     { "type": "text", "id": "problems_heading", "label": "Problems: heading", "default": "What's bothering you?" },
+    { "type": "text", "id": "problems_lead", "label": "Problems: line under the heading" },
+    { "type": "image_picker", "id": "problems_image", "label": "Problems: person in the middle", "info": "Transparent PNG or WebP cut-out, waist up." },
     { "type": "text", "id": "steps_heading", "label": "Steps: heading", "default": "How men get past it" },
     { "type": "text", "id": "steps_lead", "label": "Steps: line under the heading" },
     { "type": "text", "id": "cta_text", "label": "Button under the steps", "default": "Take the free Health Score" },
@@ -252,6 +366,14 @@
   ],
   "blocks": [
     { "type": "fact", "name": "Figure", "limit": 3, "settings": [
+      { "type": "text", "id": "issue", "label": "Problem this figure is about", "info": "Shown as a red label at the top, e.g. Finishing too soon" },
+      { "type": "select", "id": "icon", "label": "Icon next to the problem", "default": "none", "options": [
+        { "value": "none", "label": "None" },
+        { "value": "timer", "label": "Timer" },
+        { "value": "pulse", "label": "Heart pulse" },
+        { "value": "calendar", "label": "Calendar" },
+        { "value": "balance", "label": "Balance" }
+      ] },
       { "type": "text", "id": "figure", "label": "Figure (large)", "default": "1 in 5" },
       { "type": "textarea", "id": "text", "label": "What it means, in one sentence" },
       { "type": "text", "id": "source", "label": "Source (shown small)" },
@@ -261,7 +383,16 @@
       { "type": "text", "id": "title", "label": "Problem, in plain words", "default": "Finishing too soon" },
       { "type": "text", "id": "text", "label": "One line under it" },
       { "type": "text", "id": "link", "label": "Link", "info": "#name of a shelf on this page.", "default": "#sexual-wellness" },
-      { "type": "text", "id": "image_asset", "label": "Photo (theme asset file name)", "info": "e.g. him-problem-finishing.webp" },
+      { "type": "image_picker", "id": "icon_image", "label": "Icon image", "info": "Used instead of the built-in icon below." },
+      { "type": "select", "id": "icon", "label": "Icon", "default": "scale", "options": [
+        { "value": "timer", "label": "Timer" },
+        { "value": "pulse", "label": "Heart pulse" },
+        { "value": "bolt", "label": "Energy bolt" },
+        { "value": "scale", "label": "Weighing scale" },
+        { "value": "calendar", "label": "Calendar" },
+        { "value": "balance", "label": "Balance" }
+      ] },
+      { "type": "text", "id": "image_asset", "label": "Photo (theme asset file name)", "info": "Not shown in this layout. Kept for older layouts." },
       { "type": "select", "id": "focus", "label": "Keep this part of the photo in view", "default": "center 25%", "options": [
         { "value": "center 25%", "label": "Top centre" },
         { "value": "center center", "label": "Centre" },

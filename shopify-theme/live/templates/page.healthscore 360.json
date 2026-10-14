@@ -9,6 +9,90 @@
  */
 {
   "sections": {
+    "health_score_glance_hsg01": {
+      "type": "health-score-glance",
+      "settings": {
+        "heading": "What Is Health Score 360?",
+        "subheading": "One free check that reads your hormones, metabolism, stamina and cycle health, not just one symptom.",
+        "switch_label": "Who is the check for?",
+        "her_label": "For Her",
+        "him_label": "For Him",
+        "her_hint": "Periods, PCOS signs, weight and hormones, read together.",
+        "him_hint": "Stamina, performance, weight and energy, read together.",
+        "button": "Take the free check",
+        "her_link": "shopify://pages/womens-wellness-questionnaire",
+        "him_link": "shopify://pages/mens-health-questionnaire",
+        "note": "Free. Private. No sign-up.",
+        "her_photo": "shopify://shop_images/ChatGPT_Image_Sep_30_2026_12_13_52_PM.png",
+        "him_photo": "shopify://shop_images/healthscrore-men.png",
+        "her_nodes": "Weight|Metabolism, energy and weight patterns\nPeriod care|Cycle health, PMS and hormonal balance\nEnergy|How rested and active you feel",
+        "him_nodes": "Weight|Metabolism, energy and weight patterns\nSexual wellness|Hormones, stamina and performance\nEnergy|How rested and active you feel",
+        "accent_color": "#ee204a"
+      }
+    },
+    "health_check_doors_hcd01": {
+      "type": "health-check-doors",
+      "blocks": {
+        "her_period": {
+          "type": "quiz",
+          "settings": {
+            "who": "her",
+            "icon": "cycle",
+            "title": "Period care",
+            "text": "Cycle, cramps, PMS and PCOS signs",
+            "link": "shopify://pages/womens-wellness-questionnaire"
+          }
+        },
+        "her_weight": {
+          "type": "quiz",
+          "settings": {
+            "who": "her",
+            "icon": "scale",
+            "title": "Weight management",
+            "text": "Weight, cravings, energy and hormones",
+            "link": "shopify://pages/womens-weight-questionnaire"
+          }
+        },
+        "him_sexual": {
+          "type": "quiz",
+          "settings": {
+            "who": "him",
+            "icon": "heart",
+            "title": "Sexual health",
+            "text": "Stamina, performance and desire",
+            "link": "shopify://pages/mens-health-questionnaire"
+          }
+        },
+        "him_weight": {
+          "type": "quiz",
+          "settings": {
+            "who": "him",
+            "icon": "scale",
+            "title": "Weight management",
+            "text": "Weight, belly fat, energy and sleep",
+            "link": "shopify://pages/mens-weight-questionnaire"
+          }
+        }
+      },
+      "block_order": [
+        "her_period",
+        "her_weight",
+        "him_sexual",
+        "him_weight"
+      ],
+      "settings": {
+        "badge": "100% free",
+        "heading": "Free Health Score quizzes",
+        "subheading": "2 minutes. A few questions. A free doctor call after.",
+        "her_title": "For women",
+        "her_cutout": "shopify://shop_images/Thoughtful_Woman_in_Ivory_Tee.webp",
+        "her_face": "shopify://shop_images/Thoughtful_Upward_Studio_Portrait.webp",
+        "him_title": "For men",
+        "him_cutout": "shopify://shop_images/Thoughtful_Man_in_Cream_T-Shirt.webp",
+        "him_face": "shopify://shop_images/Thoughtful_Studio_Portrait_of_a_Smiling_Man.webp",
+        "accent_color": "#ee204a"
+      }
+    },
     "health_check_cards_BqwqFe": {
       "type": "health-check-cards",
       "blocks": {
@@ -17,6 +101,7 @@
           "settings": {
             "label": "For Her",
             "person_image": "shopify://shop_images/ChatGPT_Image_Sep_30_2026_12_13_52_PM.png",
+            "tags": "Periods, PCOS signs, Weight",
             "color_from": "#fff0f3",
             "color_to": "#fbd3dc",
             "glow_color": "#ffffff",
@@ -31,8 +116,9 @@
           "settings": {
             "label": "For Him",
             "person_image": "shopify://shop_images/healthscrore-men.png",
-            "color_from": "#eefaf8",
-            "color_to": "#c6ebe6",
+            "tags": "Stamina, Performance, Energy",
+            "color_from": "#f8f3ef",
+            "color_to": "#e9dfd7",
             "glow_color": "#ffffff",
             "button_1_text": "Sexual Health",
             "button_1_link": "shopify://pages/mens-health-questionnaire",
@@ -45,11 +131,13 @@
         "card_mBPpXp",
         "card_dYC8X8"
       ],
+      "disabled": true,
       "name": "Health check cards",
       "settings": {
         "heading": "Know More About Your Body Than Your Mirror Can Tell",
         "subheading": "A quick 2-minute check for periods, PCOS, weight, stamina and sexual health, to understand what your body really needs.",
         "points": "Free check, Takes 2 minutes, Verified doctors",
+        "cue_text": "See what the check reads",
         "heading_tag": "h1",
         "text_alignment": "center",
         "accent_color": "#ee204a",
@@ -59,6 +147,7 @@
     },
     "health_score_scroll_ezJnyU": {
       "type": "health-score-scroll",
+      "disabled": true,
       "name": "Health Score scroll story",
       "settings": {
         "heading": "What Is Health Score 360?",
@@ -66,6 +155,7 @@
         "accent_color": "#ee204a",
         "w_title": "Weight",
         "w_text": "Metabolism, energy and weight patterns",
+        "camera_zoom": false,
         "intro_top": 23,
         "eyes_him": 34,
         "eyes_her": 38,
@@ -149,9 +239,8 @@
             "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
             "system": "Ayurveda",
             "name": "Dr. Jayant Kumar",
-            "degree": "",
-            "role": "Looks for what is behind your symptoms.",
-            "tone": "sand"
+            "degree": "BAMS (Ayurveda), 5 years experience",
+            "role": "Looks for the root cause behind your symptoms."
           }
         },
         "doc_homeo": {
@@ -160,31 +249,30 @@
             "photo": "shopify://shop_images/Dr_Shefali.webp",
             "system": "Homeopathy",
             "name": "Dr. Shefali Chhicholia",
-            "degree": "",
-            "role": "Gentle support for long-term balance.",
-            "tone": "rose"
+            "degree": "BHMS, MD (Homeopathy), 5 years experience",
+            "role": "Gentle, long-term support for hormonal balance."
           }
         },
         "doc_allo": {
           "type": "doctor",
           "settings": {
-            "system": "Allopathy",
-            "name": "",
-            "degree": "",
-            "role": "Quick relief when you need it.",
-            "tone": "teal"
+            "photo": "shopify://shop_images/Dr_Devika.webp",
+            "system": "Psychology",
+            "name": "Ms. Devika Chugh",
+            "degree": "Counselling Psychologist, 5 years experience",
+            "role": "Helps with stress, mood and worries that affect your health."
           }
         }
       },
       "block_order": [
-        "doc_ayur",
         "doc_homeo",
+        "doc_ayur",
         "doc_allo"
       ],
       "settings": {
         "eyebrow": "Who reviews your Health Score",
-        "heading": "Three doctors. One plan for you.",
-        "subheading": "An Ayurveda, a Homeopathy and an Allopathy doctor review your score together, so your plan for hormonal balance, weight or sexual wellness uses the best of all three.",
+        "heading": "Three experts. One plan for you.",
+        "subheading": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your score together, so your plan cares for your body and your mind.",
         "footnote": "Talk to them in Hindi or English, on a call that suits you.",
         "accent_color": "#ee204a"
       }
@@ -329,15 +417,6 @@
         "contact_text": "Ask us on WhatsApp",
         "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20Health%20Score%20360",
         "open_first": true,
-        "reads_heading": "Helpful reads",
-        "read_1_text": "PCOS: natural treatment options",
-        "read_1_link": "/blogs/news/pcos-natural-treatment",
-        "read_2_text": "Irregular periods: causes and natural care",
-        "read_2_link": "/blogs/news/irregular-period-treatment-causes-natural-care",
-        "read_3_text": "Stamina for men: what actually helps",
-        "read_3_link": "/blogs/news/stamina-booster-for-men",
-        "read_4_text": "Weight is not just calories: cortisol, sleep and hormones",
-        "read_4_link": "/blogs/news/weight-isn-t-about-calories-it-s-cortisol-sleep-amp-hormones-too",
         "shop_1_text": "Shop For Her",
         "shop_1_link": "shopify://pages/for-her",
         "shop_2_text": "Shop For Him",
@@ -486,7 +565,6 @@
       "settings": {
         "enable_video": true,
         "video_source": "link",
-        "show_after_hero": true,
         "dock_preview_url": "",
         "video_url": "https://cdn.shopify.com/videos/c/o/v/53611d8a344742d7bfaf26c825ddd5ae.mp4",
         "dock_side": "left",
@@ -1028,38 +1106,12 @@
       ],
       "disabled": true,
       "settings": {}
-    },
-    "story_flow": {
-      "type": "sehat-story-flow",
-      "settings": {
-        "heading": "What Is Health Score 360?",
-        "subheading": "One check that reads your hormones, metabolism, stamina and cycle health, not just one symptom.",
-        "w_title": "Weight",
-        "w_text": "Metabolism, energy and weight patterns",
-        "w_x": 42,
-        "w_y": 66,
-        "w_x2": 59,
-        "w_y2": 64,
-        "s_title": "Sexual Wellness",
-        "s_text": "Hormones, stamina and performance",
-        "s_x": 58,
-        "s_y": 53,
-        "p_title": "Period Care",
-        "p_text": "Cycle health, PMS and hormonal balance",
-        "p_x": 43,
-        "p_y": 72,
-        "accent_color": "#ee204a",
-        "image_asset": "hs360-couple-v3-4k.webp",
-        "crop_top": 14,
-        "cta_text": "",
-        "prompt_done": "That's all three. Here's what happens next."
-      },
-      "disabled": true
     }
   },
   "order": [
+    "health_score_glance_hsg01",
+    "health_check_doors_hcd01",
     "health_check_cards_BqwqFe",
-    "story_flow",
     "health_score_scroll_ezJnyU",
     "health_journey_hj01",
     "health_signs_hsg01",

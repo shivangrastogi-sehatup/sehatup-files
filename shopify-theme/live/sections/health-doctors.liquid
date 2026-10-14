@@ -1,8 +1,9 @@
 {%- comment -%}
-  Meet your doctors: one doctor per system (Ayurveda, Homeopathy, Allopathy)
-  who review the Health Score together. Real photos, names and degrees come
-  from the blocks; an empty photo shows a quiet initial instead of a stock
-  face, and an empty degree is simply left out (never invented).
+  Meet the experts who review the Health Score together. Real photos, names
+  and degrees come from the blocks; an empty photo shows a quiet initial
+  instead of a stock face, and an empty degree is simply left out (never
+  invented). Every photo sits on the same plain stone backdrop, so the three
+  people read as one team.
   Desktop: three columns. Phones: a native swipe row with the next card
   peeking in (CSS scroll-snap, no script).
 {%- endcomment -%}
@@ -15,45 +16,45 @@
 <style>
   #hdr-{{ section.id }} {
     --hdr-text: #1d1d1d; --hdr-muted: #5c5c5c; --hdr-accent: {{ s.accent_color | color_darken: 8 }};
-    background: #faf7f5; font-family: 'Montserrat', sans-serif; color: var(--hdr-text);
+    --hdr-stone: #f3ece6;
+    background: {{ s.background | default: '#faf7f5' }}; font-family: 'Montserrat', sans-serif; color: var(--hdr-text);
   }
-  #hdr-{{ section.id }} .hdr__inner { max-width: 1160px; margin: 0 auto; padding: 88px 24px 80px; }
-  #hdr-{{ section.id }} .hdr__head { max-width: 640px; margin-bottom: 44px; }
+  #hdr-{{ section.id }} .hdr__inner { max-width: 1160px; margin: 0 auto; padding: {{ s.padding_top | default: 88 }}px 24px {{ s.padding_bottom | default: 80 }}px; }
+  #hdr-{{ section.id }} .hdr__head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
   #hdr-{{ section.id }} .hdr__eyebrow { margin: 0 0 14px; font: 700 12px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--hdr-accent); }
-  #hdr-{{ section.id }} .hdr__heading { color: var(--hdr-text); margin: 0 0 12px; font: 800 clamp(28px, 3.4vw, 46px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
-  #hdr-{{ section.id }} .hdr__sub { margin: 0; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--hdr-muted); }
+  #hdr-{{ section.id }} .hdr__heading { color: var(--hdr-text); margin: 0 0 14px; font: 800 clamp(28px, 3.4vw, 46px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hdr-{{ section.id }} .hdr__sub { margin: 0 auto; max-width: 600px; font: 400 16px/1.6 'Montserrat', sans-serif; color: var(--hdr-muted); text-wrap: pretty; }
 
-  #hdr-{{ section.id }} .hdr__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+  #hdr-{{ section.id }} .hdr__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
   #hdr-{{ section.id }} .hdr__card {
-    --tone: #f1ebe5; --ink: #7a5b3a;
-    display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; background: #fff;
+    display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; background: #fff;
     box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 12px 32px rgba(29, 29, 29, .06);
     transition: transform .35s cubic-bezier(.16, 1, .3, 1), box-shadow .35s ease;
   }
-  #hdr-{{ section.id }} .hdr__card--sand { --tone: #f1ebe5; --ink: #7a5b3a; }
-  #hdr-{{ section.id }} .hdr__card--rose { --tone: #fde2e7; --ink: #b3123a; }
-  #hdr-{{ section.id }} .hdr__card--teal { --tone: #d9f0ee; --ink: #0f6b62; }
   @media (hover: hover) and (pointer: fine) {
     #hdr-{{ section.id }} .hdr__card:hover { transform: translateY(-6px); box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 22px 44px rgba(29, 29, 29, .1); }
   }
   #hdr-{{ section.id }} .hdr__photo {
-    position: relative; aspect-ratio: 4 / 3.6; background: var(--tone);
+    position: relative; aspect-ratio: 1 / 1; background: var(--hdr-stone);
     display: grid; place-items: end center; overflow: hidden;
   }
   #hdr-{{ section.id }} .hdr__photo img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
-  #hdr-{{ section.id }} .hdr__initial {
-    align-self: center; font: 300 96px/1 'Montserrat', sans-serif; color: var(--ink); opacity: .45;
-  }
+  #hdr-{{ section.id }} .hdr__initial { align-self: center; font: 300 96px/1 'Montserrat', sans-serif; color: var(--hdr-muted); opacity: .35; }
   #hdr-{{ section.id }} .hdr__body { padding: 22px 24px 26px; display: grid; gap: 6px; }
-  #hdr-{{ section.id }} .hdr__system { margin: 0; font: 700 11.5px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
-  #hdr-{{ section.id }} .hdr__name { margin: 4px 0 0; font: 700 21px/1.2 'Montserrat', sans-serif; }
-  #hdr-{{ section.id }} .hdr__degree { margin: 0; font: 600 13px/1.3 'Montserrat', sans-serif; color: var(--hdr-muted); }
-  #hdr-{{ section.id }} .hdr__role { margin: 6px 0 0; font: 400 15px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
-  #hdr-{{ section.id }} .hdr__foot { margin: 34px 0 0; font: 500 14.5px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
+  #hdr-{{ section.id }} .hdr__name { margin: 0; font: 700 21px/1.2 'Montserrat', sans-serif; color: var(--hdr-text); }
+  #hdr-{{ section.id }} .hdr__degree { margin: 0; font: 600 13px/1.4 'Montserrat', sans-serif; color: var(--hdr-muted); }
+  #hdr-{{ section.id }} .hdr__role { margin: 8px 0 0; padding-top: 12px; border-top: 1px solid #eee6e0; font: 400 15px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
+  #hdr-{{ section.id }} .hdr__cta { margin-top: 36px; display: flex; justify-content: center; }
+  #hdr-{{ section.id }} .hdr__btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 30px; border-radius: 999px; background: var(--hdr-accent); color: #fff; font: 700 15.5px/1 'Montserrat', sans-serif; text-decoration: none; box-shadow: 0 12px 26px -10px rgba(216, 31, 72, .55); transition: transform .2s ease, background-color .2s ease; }
+  #hdr-{{ section.id }} .hdr__btn:hover { transform: translateY(-2px); background: {{ s.accent_color | color_darken: 16 }}; }
+  #hdr-{{ section.id }} .hdr__btn:focus-visible { outline: 2px solid var(--hdr-text); outline-offset: 3px; }
+  #hdr-{{ section.id }} .hdr__btn svg { width: 19px; height: 19px; fill: currentColor; }
+  #hdr-{{ section.id }} .hdr__cta + .hdr__foot { margin-top: 14px; }
+  #hdr-{{ section.id }} .hdr__foot { margin: 36px 0 0; text-align: center; font: 500 14.5px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
 
   /* Phones: swipe row, next card peeking in. */
   @media (max-width: 749px) {
-    #hdr-{{ section.id }} .hdr__inner { padding: 56px 0 52px; }
+    #hdr-{{ section.id }} .hdr__inner { padding: {{ s.padding_top | default: 88 | times: 0.64 | round }}px 0 {{ s.padding_bottom | default: 80 | times: 0.65 | round }}px; }
     #hdr-{{ section.id }} .hdr__head { padding: 0 16px; margin-bottom: 26px; }
     #hdr-{{ section.id }} .hdr__heading { font-size: 28px; }
     #hdr-{{ section.id }} .hdr__sub { font-size: 14.5px; }
@@ -65,6 +66,8 @@
     #hdr-{{ section.id }} .hdr__card { flex: 0 0 78%; scroll-snap-align: start; }
     #hdr-{{ section.id }} .hdr__name { font-size: 19px; }
     #hdr-{{ section.id }} .hdr__role { font-size: 14px; }
+    #hdr-{{ section.id }} .hdr__cta { margin-top: 18px; padding: 0 16px; }
+    #hdr-{{ section.id }} .hdr__btn { width: 100%; justify-content: center; }
     #hdr-{{ section.id }} .hdr__foot { padding: 0 16px; margin-top: 18px; font-size: 13.5px; }
   }
   @media (prefers-reduced-motion: reduce) { #hdr-{{ section.id }} .hdr__card { transition: none; } }
@@ -90,7 +93,7 @@
     <div class="hdr__row">
       {%- for block in section.blocks -%}
         {%- assign b = block.settings -%}
-        <article class="hdr__card hdr__card--{{ b.tone }}" {{ block.shopify_attributes }}>
+        <article class="hdr__card" {{ block.shopify_attributes }}>
           <div class="hdr__photo">
             {%- if b.photo != blank -%}
               <img src="{{ b.photo | image_url: width: 700 }}"
@@ -102,7 +105,6 @@
             {%- endif -%}
           </div>
           <div class="hdr__body">
-            <p class="hdr__system">{{ b.system }}</p>
             {%- if b.name != blank -%}<h3 class="hdr__name">{{ b.name }}</h3>{%- endif -%}
             {%- if b.degree != blank -%}<p class="hdr__degree">{{ b.degree }}</p>{%- endif -%}
             {%- if b.role != blank -%}<p class="hdr__role">{{ b.role }}</p>{%- endif -%}
@@ -111,6 +113,14 @@
       {%- endfor -%}
     </div>
 
+    {%- if s.button != blank -%}
+      <div class="hdr__cta">
+        <a class="hdr__btn" href="{{ s.button_link | default: '#' }}"{% if s.button_link contains 'wa.me' %} target="_blank" rel="noopener"{% endif %}>
+          {%- if s.button_link contains 'wa.me' -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>{%- endif -%}
+          {{ s.button }}
+        </a>
+      </div>
+    {%- endif -%}
     {%- if s.footnote != blank -%}<p class="hdr__foot">{{ s.footnote }}</p>{%- endif -%}
   </div>
 </section>
@@ -124,9 +134,14 @@
   "max_blocks": 4,
   "settings": [
     { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Who reviews your Health Score" },
-    { "type": "text", "id": "heading", "label": "Heading", "default": "Three doctors. One plan for you." },
-    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "An Ayurveda, a Homeopathy and an Allopathy doctor look at your score together, so your plan uses the best of all three." },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Three experts. One plan for you." },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your score together, so your plan cares for your body and your mind." },
     { "type": "text", "id": "footnote", "label": "Line under the cards", "default": "Talk to them in Hindi or English, on a call that suits you." },
+    { "type": "text", "id": "button", "label": "Button", "info": "Leave empty for no button." },
+    { "type": "url", "id": "button_link", "label": "Button link", "info": "A wa.me link shows the WhatsApp icon." },
+    { "type": "color", "id": "background", "label": "Background", "default": "#faf7f5" },
+    { "type": "range", "id": "padding_top", "label": "Space above", "min": 16, "max": 120, "step": 4, "unit": "px", "default": 88 },
+    { "type": "range", "id": "padding_bottom", "label": "Space below", "min": 16, "max": 120, "step": 4, "unit": "px", "default": 80 },
     { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
   ],
   "blocks": [
@@ -134,23 +149,20 @@
       "type": "doctor",
       "name": "Doctor",
       "settings": [
-        { "type": "image_picker", "id": "photo", "label": "Photo", "info": "A real photo of the doctor. Empty shows the first letter of the system." },
+        { "type": "image_picker", "id": "photo", "label": "Photo", "info": "A real photo of the expert. Empty shows the first letter of the system." },
         { "type": "text", "id": "system", "label": "System", "default": "Ayurveda" },
         { "type": "text", "id": "name", "label": "Name" },
-        { "type": "text", "id": "degree", "label": "Degree / experience", "info": "e.g. BAMS, 8 years. Leave empty rather than guess." },
-        { "type": "text", "id": "role", "label": "What they do for you", "default": "Looks for what is behind your symptoms." },
-        { "type": "select", "id": "tone", "label": "Card colour", "options": [
-          { "value": "sand", "label": "Sand" }, { "value": "rose", "label": "Rose" }, { "value": "teal", "label": "Teal" }
-        ], "default": "sand" }
+        { "type": "text", "id": "degree", "label": "Degree / experience", "info": "e.g. BAMS, 5 years experience. Leave empty rather than guess." },
+        { "type": "text", "id": "role", "label": "What they do for you", "default": "Looks for the root cause behind your symptoms." }
       ]
     }
   ],
   "presets": [{
     "name": "Meet the doctors",
     "blocks": [
-      { "type": "doctor", "settings": { "system": "Ayurveda", "role": "Looks for what is behind your symptoms.", "tone": "sand" } },
-      { "type": "doctor", "settings": { "system": "Homeopathy", "role": "Gentle support for long-term balance.", "tone": "rose" } },
-      { "type": "doctor", "settings": { "system": "Allopathy", "role": "Quick relief when you need it.", "tone": "teal" } }
+      { "type": "doctor", "settings": { "system": "Ayurveda", "role": "Looks for the root cause behind your symptoms." } },
+      { "type": "doctor", "settings": { "system": "Homeopathy", "role": "Gentle, long-term support for balance." } },
+      { "type": "doctor", "settings": { "system": "Psychology", "role": "Helps with stress, mood and worries that affect your health." } }
     ]
   }]
 }

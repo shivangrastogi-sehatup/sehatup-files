@@ -39,6 +39,57 @@
   /* The rating now sits in our header; Judge.me's own title row would repeat it. */
   #htr-{{ section.id }} .htr__reviews .jdgm-carousel-title-and-link { display: none !important; }
 
+  /* Judge.me carousel, restyled from the outside. The app sizes each item and
+     slides the row with transforms, so item widths are left alone: the card
+     look is a ::before inset inside each item, the gutters live in padding. */
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-wrapper { width: auto; margin: 0 -10px; padding: 0; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__item-container,
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__item-wrapper { height: auto !important; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item {
+    position: relative; isolation: isolate; display: inline-flex; flex-direction: column; vertical-align: top;
+    height: 264px; padding: 24px 34px 22px; white-space: normal; text-align: left;
+  }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item::before {
+    content: ""; position: absolute; inset: 0 10px; z-index: -1; border-radius: 20px;
+    background: #faf7f5; border: 1px solid #efe7e2;
+  }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__product-image {
+    position: absolute; top: 22px; right: 32px; width: 56px; height: 56px; margin: 0;
+    border-radius: 14px; object-fit: cover; background: #fff; font-size: 0; color: transparent; overflow: hidden; box-shadow: 0 4px 12px rgba(60, 30, 20, .08);
+  }
+  /* Judge.me lazy-loads these from data-src, so only hide an image that has no photo at all. */
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__product-image:not([src]):not([data-src]),
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__product-image[src=""][data-src=""] { display: none; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__review-wrapper { display: flex; flex-direction: column; flex: 1; width: 100%; height: auto; padding: 0; min-height: 0; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__review { height: auto; flex: 1; min-height: 0; overflow: hidden; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__review-rating { padding-right: 64px; margin-bottom: 14px; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item .jdgm-star { color: #f5a623 !important; font-size: 15px; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__review-title { padding-right: 64px; margin-bottom: 6px; font: 700 16px/1.35 'Montserrat', sans-serif !important; color: var(--htr-text); }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__review-body,
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__review-body p { margin: 0; font: 400 14px/1.55 'Montserrat', sans-serif !important; color: var(--htr-muted); }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__reviewer-name-wrapper {
+    display: flex; align-items: baseline; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #ebe3dd; width: auto;
+  }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__reviewer-name { flex: none; font: 700 13px/1.3 'Montserrat', sans-serif; color: var(--htr-text); }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__product { flex: 1; min-width: 0; height: auto !important; max-height: none !important; line-height: 1.3; text-decoration: none; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__product-title { font: 600 12.5px/1.3 'Montserrat', sans-serif; color: var(--htr-accent); }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__product-title::before { content: "on "; color: var(--htr-muted); font-weight: 500; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__timestamp { display: none; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__arrows { margin-top: 24px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__left-arrow,
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__right-arrow {
+    width: 44px; height: 44px; margin: 0; border-radius: 50%; border: 1.5px solid #e8e0d9; background-color: #fff;
+    background-position: center; transform: none !important; display: grid; place-items: center; cursor: pointer; transition: border-color .2s ease;
+  }
+  /* Our own chevrons: the app ships its arrows without a visible icon here. */
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__left-arrow::before,
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__right-arrow::before {
+    content: "" !important; display: block; width: 9px; height: 9px; border: solid var(--htr-text); border-width: 2px 2px 0 0; transform: translateX(-2px) rotate(45deg);
+  }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__left-arrow::before { transform: translateX(2px) rotate(-135deg); }
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__left-arrow:hover,
+  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__right-arrow:hover { border-color: var(--htr-accent); }
+
   @media (max-width: 1023px) {
     #htr-{{ section.id }} .htr__strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
@@ -72,6 +123,7 @@
       <p class="htr__rating" data-rating hidden></p>
     </div>
 
+    {%- if s.trust_1 != blank or s.trust_2 != blank or s.trust_3 != blank or s.trust_4 != blank -%}
     <ul class="htr__strip">
       {%- for i in (1..4) -%}
         {%- capture k_t -%}trust_{{ i }}{%- endcapture -%}
@@ -91,11 +143,17 @@
         {%- endif -%}
       {%- endfor -%}
     </ul>
+    {%- endif -%}
 
     <div class="htr__reviews">
-      {%- for block in section.blocks -%}
-        {%- render block -%}
-      {%- endfor -%}
+      {%- comment -%} Picked products: only their reviews (shared snippet). Otherwise the Judge.me app block. {%- endcomment -%}
+      {%- if s.review_products != blank -%}
+        {%- render 'sehat-jm-reviews', products: s.review_products, min: s.min_rating, max: 18, uid: section.id, hide: s.review_hide -%}
+      {%- else -%}
+        {%- for block in section.blocks -%}
+          {%- render block -%}
+        {%- endfor -%}
+      {%- endif -%}
     </div>
   </div>
 </section>
@@ -131,6 +189,9 @@
     { "type": "text", "id": "heading", "label": "Heading", "default": "Real people. Real results." },
     { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Honest reviews from customers who took the first step." },
     { "type": "color", "id": "accent_color", "label": "Icon colour", "default": "#ee204a" },
+    { "type": "product_list", "id": "review_products", "label": "Only reviews of these products", "limit": 20, "info": "Leave empty to use the Judge.me carousel block." },
+    { "type": "range", "id": "min_rating", "label": "Lowest star rating to show", "min": 1, "max": 5, "step": 1, "default": 4 },
+    { "type": "text", "id": "review_hide", "label": "Hide reviews containing", "info": "Words or phrases, comma separated. A review that contains any of them is skipped." },
     { "type": "header", "content": "Promises (only keep what is true)" },
     { "type": "text", "id": "trust_1", "label": "Promise 1", "default": "Free" },
     { "type": "text", "id": "trust_1_text", "label": "Promise 1 detail", "default": "The Health Score costs nothing" },

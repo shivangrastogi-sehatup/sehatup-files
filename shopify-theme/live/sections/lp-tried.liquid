@@ -1,0 +1,75 @@
+{%- comment -%}
+  "Tried everything?" Two columns on a stone band: the point on the left (heading,
+  one line, link to the form), three compact cards on the right. Each card shows
+  the product cut-out and its own small curve (shape, time labels and caption per
+  card) showing how short-lived or weak the relief is. Qualitative, no numbers. Photo from the block image, or a theme asset.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<section id="tried" class="lp-tried-sec">
+  <div class="lp-wrap lp-tried-grid">
+    <div class="lp-tried-copy">
+      <h2 class="lp-tried-h">{{ s.heading }}{% if s.highlight != blank %} <span class="lp-hl">{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lp-tried-sub">{{ s.subheading }}</p>{%- endif -%}
+      {%- if s.link_text != blank -%}
+        <a class="lp-tried-link" href="#book">{{ s.link_text }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+      {%- endif -%}
+    </div>
+    <div class="lp-tried">
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        <div class="lp-tried__card" {{ block.shopify_attributes }}>
+          <p class="lp-tried__label">{{ b.label }}</p>
+          <div class="lp-tried__img">
+            {%- if b.image != blank -%}
+              {{ b.image | image_url: width: 700 | image_tag: loading: 'lazy', widths: '300, 500, 700', sizes: '(max-width: 860px) 60vw, 240px', alt: b.label }}
+            {%- elsif b.asset != blank -%}
+              <img src="{{ b.asset | asset_url }}" alt="{{ b.label | escape }}" loading="lazy" width="1536" height="1024">
+            {%- else -%}
+              <div class="lp-ph">Photo</div>
+            {%- endif -%}
+          </div>
+          <div class="lp-tried__fade" aria-hidden="true">
+            <svg viewBox="0 0 200 44" preserveAspectRatio="none">
+              <defs><linearGradient id="lpfade-{{ block.id }}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ee204a"/><stop offset=".45" stop-color="#ee204a"/><stop offset="1" stop-color="#cfc4ba"/></linearGradient></defs>
+              {%- case b.curve -%}{%- when 'flat' -%}{%- assign d = 'M2 34 C 50 33, 120 35, 198 34' -%}{%- when 'slow' -%}{%- assign d = 'M2 40 C 50 40, 70 20, 100 20 S 150 34, 198 38' -%}{%- else -%}{%- assign d = 'M2 40 C 18 40, 26 4, 44 4 S 70 40, 198 40' -%}{%- endcase -%}
+              <path d="{{ d }}" fill="none" stroke="url(#lpfade-{{ block.id }})" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+            </svg>
+            <div class="lp-tried__days"><span>{{ b.axis_start }}</span><span>{{ b.axis_end }}</span></div>
+          </div>
+          {%- if b.note != blank -%}<p class="lp-tried__note">{{ b.note }}</p>{%- endif -%}
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "LP tried everything",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Tried everything?" },
+    { "type": "text", "id": "highlight", "label": "Heading ending in red" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading", "default": "They calm the symptom for a while. The cause stays." },
+    { "type": "text", "id": "link_text", "label": "Link to the booking form", "default": "sehatUP treats the root cause" },
+    { "type": "select", "id": "tone", "label": "Background (not used)", "options": [
+      { "value": "white", "label": "White" }, { "value": "stone", "label": "Warm stone" }, { "value": "blush", "label": "Blush" }
+    ], "default": "stone" }
+  ],
+  "blocks": [
+    { "type": "item", "name": "Item", "settings": [
+      { "type": "image_picker", "id": "image", "label": "Photo (transparent cut-out works best)" },
+      { "type": "text", "id": "asset", "label": "Theme asset image (used when Photo is empty)" },
+      { "type": "text", "id": "label", "label": "Label", "default": "Allopathy" },
+      { "type": "select", "id": "curve", "label": "Curve shape", "options": [ { "value": "spike", "label": "Quick spike, quick drop" }, { "value": "slow", "label": "Small slow rise, fades" }, { "value": "flat", "label": "Almost flat" } ], "default": "spike" },
+      { "type": "text", "id": "axis_start", "label": "Curve start label", "default": "Hour 0" },
+      { "type": "text", "id": "axis_end", "label": "Curve end label", "default": "Hour 12" },
+      { "type": "text", "id": "note", "label": "Caption under the curve", "default": "Works for a few hours, then wears off" },
+      { "type": "select", "id": "tone", "label": "Card colour (not used)", "options": [
+        { "value": "white", "label": "White" }, { "value": "blush", "label": "Blush" }, { "value": "sage", "label": "Sage" }
+      ], "default": "white" }
+    ] }
+  ],
+  "presets": [{ "name": "LP tried everything" }]
+}
+{% endschema %}

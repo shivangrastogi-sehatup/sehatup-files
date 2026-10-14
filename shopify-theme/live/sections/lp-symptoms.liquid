@@ -1,0 +1,95 @@
+{%- comment -%}
+  "Do any of these sound like you?" Display-only photo cards (square still-life
+  photo, label under it). No photo falls back to the line icon. Story cards show
+  only once they have a photo. Optional button below.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<section id="symptoms" class="lp-sym-sec lp-sec--{{ s.tone }}">
+  <div class="lp-wrap">
+    <div class="lp-sym-head">
+      <h2 class="lp-sym-h">{{ s.heading }}{% if s.highlight != blank %} <span class="lp-hl">{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lp-sym-sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+    <div class="lp-sym-row" data-lp-scroller>
+      <button type="button" class="lp-sym-arrow lp-sym-arrow--prev" data-dir="-1" aria-label="Previous"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg></button>
+    <div class="lp-symptoms">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'symptom' -%}
+          <div class="lp-sym" {{ block.shopify_attributes }}>
+            <span class="lp-sym__media">
+              {%- if block.settings.image != blank -%}
+                {{ block.settings.image | image_url: width: 600 | image_tag: loading: 'lazy', widths: '300, 450, 600', sizes: '(max-width: 860px) 46vw, 280px', alt: '' }}
+              {%- else -%}
+                <span class="lp-sym__icon">{% render 'lp-icon', name: block.settings.icon %}</span>
+              {%- endif -%}
+            </span>
+            <span class="lp-sym__label">{{ block.settings.label }}</span>
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+      <button type="button" class="lp-sym-arrow lp-sym-arrow--next" data-dir="1" aria-label="Next"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg></button>
+    </div>
+
+    {%- assign has_story = false -%}
+    {%- for block in section.blocks -%}{%- if block.type == 'story' and block.settings.image != blank -%}{%- assign has_story = true -%}{%- endif -%}{%- endfor -%}
+    {%- if has_story -%}
+      <div class="lp-stories">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'story' and block.settings.image != blank -%}
+            <div class="lp-story" {{ block.shopify_attributes }}>
+              <div class="lp-story__img">
+                {%- if block.settings.image != blank -%}{{ block.settings.image | image_url: width: 700 | image_tag: loading: 'lazy', alt: '' }}{%- else -%}<div class="lp-ph">Photo</div>{%- endif -%}
+              </div>
+              <p class="lp-story__t">{{ block.settings.text }}{% if block.settings.highlight != blank %} <span class="lp-hl">{{ block.settings.highlight }}</span>{% endif %}</p>
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    {%- if s.button != blank -%}
+      <div class="lp-sym-foot">
+        <a class="lp-sym-cta" href="#book"><span data-base="{{ s.button | escape }}">{{ s.button }}</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+        {%- if s.note != blank -%}<p class="lp-sym-note">{{ s.note }}</p>{%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "LP symptoms",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Do any of these sound like you?" },
+    { "type": "text", "id": "highlight", "label": "Heading ending in red" },
+    { "type": "text", "id": "subheading", "label": "Line under the heading", "default": "Tap the ones you feel." },
+    { "type": "text", "id": "button", "label": "Button (goes to the booking form)", "default": "Talk to a Doctor for Free" },
+    { "type": "text", "id": "button_selected", "label": "Button after tapping ([n] = how many)", "default": "Talk to a doctor about these [n]" },
+    { "type": "text", "id": "note", "label": "Small line under the button", "default": "Nothing is saved until you book." },
+    { "type": "select", "id": "icon_style", "label": "Icon colour (cards without a photo)", "options": [ { "value": "rose", "label": "Red" }, { "value": "green", "label": "Charcoal" } ], "default": "rose" },
+    { "type": "select", "id": "tone", "label": "Background", "options": [
+      { "value": "white", "label": "White" }, { "value": "stone", "label": "Warm stone" }, { "value": "blush", "label": "Blush" }
+    ], "default": "white" }
+  ],
+  "blocks": [
+    { "type": "symptom", "name": "Symptom", "settings": [
+      { "type": "text", "id": "label", "label": "Label", "default": "Weight Gain" },
+      { "type": "image_picker", "id": "image", "label": "Photo (square)" },
+      { "type": "select", "id": "icon", "label": "Icon (used when there is no photo)", "options": [
+        { "value": "scale", "label": "Weight scale" }, { "value": "face", "label": "Face" }, { "value": "mood", "label": "Mood" }, { "value": "hair", "label": "Hair" },
+        { "value": "sparkle", "label": "Skin / acne" }, { "value": "drop", "label": "Drop" }, { "value": "calendar", "label": "Calendar / periods" }, { "value": "flame", "label": "Flame / desire" },
+        { "value": "heart", "label": "Heart" }, { "value": "link", "label": "Link / weak" }, { "value": "clock", "label": "Clock / timing" }, { "value": "sliders", "label": "Control" },
+        { "value": "brain", "label": "Mind / anxiety" }, { "value": "user", "label": "Person / confidence" }, { "value": "battery", "label": "Battery / fatigue" }
+      ], "default": "scale" }
+    ] },
+    { "type": "story", "name": "Story card", "settings": [
+      { "type": "image_picker", "id": "image", "label": "Photo" },
+      { "type": "text", "id": "text", "label": "Text", "default": "Is your low performance causing" },
+      { "type": "text", "id": "highlight", "label": "Text ending in red", "default": "chronic stress?" }
+    ] }
+  ],
+  "presets": [{ "name": "LP symptoms" }]
+}
+{% endschema %}

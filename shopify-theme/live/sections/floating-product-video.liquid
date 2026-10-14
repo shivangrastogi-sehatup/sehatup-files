@@ -490,7 +490,7 @@
   data-money-format="{{ shop.money_format | escape }}"
 >
 
-  <div class="fpv__dock" data-fpv-dock{% if section.settings.show_after_hero %} hidden data-wait-hero{% endif %}>
+  <div class="fpv__dock" data-fpv-dock hidden data-wait-hero>
     <div class="fpv__dock-inner">
       <button type="button" class="fpv__dock-open" data-fpv-open aria-label="{{ fpv_label | escape }}">
         {%- comment -%}
@@ -868,12 +868,13 @@
 
     var atFooter = false;
 
-    /* Optional: keep the bubble out of the way until the visitor has scrolled
-       past the first section, so it never covers the page's main choice. */
+    /* Keep the bubble out of the way until the visitor has scrolled past the
+       first section, so it never covers the hero; then it slides in. */
     var waitHero = dock.hasAttribute('data-wait-hero');
     (function () {
       if (!waitHero) return;
-      var first = document.querySelector('main .shopify-section, #MainContent .shopify-section');
+      // Skip this section itself, in case it sits first in the template.
+      var first = document.querySelector('main .shopify-section:not(.fpv-section), #MainContent .shopify-section:not(.fpv-section)');
       function reveal() {
         if (!waitHero) return;
         waitHero = false;
@@ -1182,7 +1183,7 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Floats a short video in the corner. Tapping it opens a full player."
+      "content": "Floats a short video in the corner. It slides in once the visitor scrolls past the first section. Tapping it plays the video."
     },
     {
       "type": "checkbox",
@@ -1209,13 +1210,6 @@
         }
       ],
       "default": "product"
-    },
-    {
-      "type": "checkbox",
-      "id": "show_after_hero",
-      "label": "Show the bubble only after the first section",
-      "info": "Keeps it from covering the top of the page. It slides in once the visitor scrolls past the first section.",
-      "default": false
     },
     {
       "type": "text",

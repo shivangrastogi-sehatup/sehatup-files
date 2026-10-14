@@ -1,0 +1,90 @@
+{%- comment -%}
+  "Why do thousands trust sehatUP?" Calm and plain: the reasons in three
+  columns with a thin red line icon each, and one line underneath with the
+  doctors' faces and the trust number. Certificates are a separate strip.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<section class="lm-sec" style="--lm-ti: {{ s.icon_size }}px;">
+  <div class="lm-wrap">
+    <div class="lm-head">
+      <h2 class="lm-h2">{{ s.heading }}{% if s.highlight != blank %} <span class="lm-mark">{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lm-sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+    <ul class="lm-why3{% if section.blocks.size == 4 %} lm-why3--4{% endif %}"{% if s.animate %} data-lm-anim{% endif %}>
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        <li {{ block.shopify_attributes }}>
+          <span class="lm-why3__ic" aria-hidden="true">
+          {%- case b.icon -%}
+          {%- when 'chart' -%}<svg viewBox="0 0 24 24"><path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/></svg>
+          {%- when 'heart' -%}<svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/></svg>
+            {%- when 'lock' -%}<svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg>
+            {%- when 'doctor' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0M9 15v2a3 3 0 0 0 6 0v-2"/></svg>
+            {%- when 'chat' -%}<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/></svg>
+            {%- else -%}<svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+          {%- endcase -%}
+          </span>
+          <b>{{ b.title }}</b>
+          {%- if b.text != blank -%}<span>{{ b.text }}</span>{%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+    {%- if s.stat != blank or s.doc_text != blank or s.doc_1 != blank -%}
+    <div class="lm-why3__foot">
+      <span class="lm-why3__faces" aria-hidden="true">
+        {%- for i in (1..3) -%}
+          {%- assign dk = 'doc_' | append: i -%}
+          {%- if s[dk] != blank -%}{{ s[dk] | image_url: width: 120 | image_tag: loading: 'lazy', alt: '' }}{%- endif -%}
+        {%- endfor -%}
+      </span>
+      <p>{%- if s.stat != blank -%}<b>{{ s.stat }}</b> {{ s.stat_text }} {% endif -%}{{ s.doc_text }}</p>
+    </div>
+    {%- endif -%}
+  </div>
+</section>
+{%- if s.animate -%}
+<script>
+  (function () {
+    var list = document.currentScript.previousElementSibling.querySelector('[data-lm-anim]');
+    if (!list || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    list.classList.add('lm-anim');
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      list.classList.add('is-in'); io.disconnect();
+    }, { threshold: .25 }).observe(list);
+  })();
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "LM why trust us",
+  "tag": "div",
+  "max_blocks": 4,
+  "settings": [
+    { "type": "checkbox", "id": "animate", "label": "Fade the points in when they scroll into view", "default": false },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Why do thousands" },
+    { "type": "text", "id": "highlight", "label": "Heading part in red", "default": "trust sehatUP?" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "header", "content": "Line under the reasons" },
+    { "type": "text", "id": "stat", "label": "Big number", "default": "65,000+" },
+    { "type": "text", "id": "stat_text", "label": "Line under the number" },
+    { "type": "image_picker", "id": "doc_1", "label": "Doctor photo 1" },
+    { "type": "image_picker", "id": "doc_2", "label": "Doctor photo 2" },
+    { "type": "image_picker", "id": "doc_3", "label": "Doctor photo 3" },
+    { "type": "text", "id": "doc_text", "label": "Line beside the doctors" },
+    {"type":"header","content":"Sizes"},
+    {"type":"range","id":"icon_size","label":"Icon size","min":20,"max":60,"step":2,"unit":"px","default":34}
+  ],
+  "blocks": [
+    { "type": "reason", "name": "Reason", "settings": [
+      { "type": "select", "id": "icon", "label": "Icon", "options": [
+        { "value": "chart", "label": "Chart" }, { "value": "heart", "label": "Heart" }, { "value": "lock", "label": "Lock" }, { "value": "doctor", "label": "Doctor" }, { "value": "chat", "label": "Chat" }, { "value": "shield", "label": "Shield" }
+      ], "default": "lock" },
+      { "type": "text", "id": "title", "label": "Title" },
+      { "type": "textarea", "id": "text", "label": "Text" }
+    ] }
+  ],
+  "presets": [{ "name": "LM why trust us" }]
+}
+{% endschema %}

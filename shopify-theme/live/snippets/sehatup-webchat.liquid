@@ -1,6 +1,13 @@
 {%- liquid
   assign chat_api = 'https://sehatup-webchat.vercel.app'
   assign chat_accent = '#ee204a'
+  # The three popular questions in the unread-message teaser, matched to the page.
+  assign teaser_chips = 'Mere liye kaunsa product sahi hai?|Free consultation kaise hoti hai?|Delivery kitne din me?'
+  if page.handle == 'for-him'
+    assign teaser_chips = 'Stamina kaise badhaye?|Mere liye kaunsa kit sahi hai?|Free consultation kaise hoti hai?'
+  elsif page.handle == 'for-her'
+    assign teaser_chips = 'Periods ki problem hai|Weight loss ke liye kya lu?|Free consultation kaise hoti hai?'
+  endif
 -%}
 
 <script
@@ -22,6 +29,7 @@
     higher number if the bubble is getting missed on busy pages.
   {%- endcomment -%}
   data-pulse="3"
+  data-teaser-chips="{{ teaser_chips | escape }}"
   data-greeting="Hello! Main sehatUP Mitra hu. Product, price ya health concern - kuch bhi puchiye."
   data-chips="Weight loss ke liye kya lu?|Periods ki problem hai|Free consultation kaise hoti hai?|Delivery kitne din me?"
   {%- comment -%}

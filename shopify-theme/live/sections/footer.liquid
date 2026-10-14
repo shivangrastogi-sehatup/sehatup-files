@@ -33,6 +33,9 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
           </a>
         {% endif %}
 
+        {% if section.settings.footer_heading != blank %}
+          <p class="footer-heading">{{ section.settings.footer_heading }}</p>
+        {% endif %}
         <p class="footer-tagline">
           {{ section.settings.footer_tagline }}
         </p>
@@ -205,6 +208,14 @@ sehatUP – CUSTOM FOOTER (WITH TWO LINES)
 .footer-tagline {
   margin: 0 0 22px;
   line-height: 1.6;
+}
+
+.footer-heading {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 /* HEADINGS */
@@ -507,6 +518,7 @@ a.footer-stockist:focus-visible {
     },
     { "type": "url", "id": "footer_logo_link", "label": "Logo Link", "default": "/" },
 
+    { "type": "text", "id": "footer_heading", "label": "Heading above the description" },
     { "type": "textarea", "id": "footer_tagline", "label": "Footer Description" },
 
     { "type": "image_picker", "id": "phone_icon", "label": "Phone Icon" },

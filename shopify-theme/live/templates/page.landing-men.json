@@ -1,0 +1,451 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "layout": "landing",
+  "sections": {
+    "header": {
+      "type": "lm-header",
+      "settings": {
+        "links": "Home|/\nAbout|/pages/about-us\nContact Us|/pages/contact",
+        "trust_before": "",
+        "trust_number": "",
+        "button": "Book Free Consultation",
+        "button_link": "",
+        "wa_link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor%20privately",
+        "wa_label": "Chat with us",
+        "logo_width": 168,
+        "mobile_bar": false
+      }
+    },
+    "hero": {
+      "type": "lm-hero",
+      "settings": {
+        "glow": true,
+        "glow_color": "#fbdcd3",
+        "layout": "box",
+        "image_side": "left",
+        "image": "shopify://shop_images/Tense_Evening_in_the_Bedroom.png",
+        "heading": "Struggling to",
+        "highlight": "last longer",
+        "heading_end": "in bed?",
+        "subheading": "It's more common than you think. Don't ignore it.",
+        "button_1": "Book an Appointment",
+        "button_1_note": "",
+        "button_1_link": "",
+        "button_2": "Take the 360 Self-Assessment",
+        "button_2_note": "",
+        "button_2_link": "/pages/mens-health-questionnaire",
+        "trust_text": "Trusted by 65,000+ men",
+        "rating": "4.5",
+        "trust_initials": "R, D, S",
+        "avatar_1": "shopify://shop_images/Joyful_South_Asian_Man_Portrait.webp",
+        "avatar_2": "shopify://shop_images/Joyful_Rooftop_Portrait.webp",
+        "avatar_3": "shopify://shop_images/Warm_Professional_Headshot.webp",
+        "privacy": "",
+        "chip_1": "",
+        "chip_2": "",
+        "gap": 120,
+        "img_width": 50,
+        "img_zoom": 100,
+        "img_focus": 25,
+        "img_height_mobile": 300
+      }
+    },
+    "concerns": {
+      "type": "lm-concerns",
+      "blocks": {
+        "c1": {
+          "type": "concern",
+          "settings": {
+            "icon": "down",
+            "title": "Erection problems",
+            "text": "Not staying firm when it matters.",
+            "form_value": "Erection issues"
+          }
+        },
+        "c2": {
+          "type": "concern",
+          "settings": {
+            "icon": "timer",
+            "title": "Early ejaculation",
+            "text": "Finishing sooner than you want.",
+            "form_value": "Early ejaculation"
+          }
+        },
+        "c3": {
+          "type": "concern",
+          "settings": {
+            "icon": "heart",
+            "title": "Low libido",
+            "text": "The interest just is not there lately.",
+            "form_value": "Low libido"
+          }
+        },
+        "c4": {
+          "type": "concern",
+          "settings": {
+            "icon": "mind",
+            "title": "Performance anxiety",
+            "text": "Too much worry, not enough enjoying.",
+            "form_value": "Performance anxiety"
+          }
+        },
+        "c5": {
+          "type": "concern",
+          "settings": {
+            "icon": "battery",
+            "title": "Low stamina and weakness",
+            "text": "Tired before you even start.",
+            "form_value": "Low stamina"
+          }
+        },
+        "c6": {
+          "type": "concern",
+          "settings": {
+            "icon": "question",
+            "title": "Other Private intimate concerns",
+            "text": "A private worry you are not sure about.",
+            "form_value": "Something else"
+          }
+        }
+      },
+      "block_order": [
+        "c1",
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6"
+      ],
+      "settings": {
+        "heading": "Are these the symptoms you're",
+        "highlight": "also facing?",
+        "subheading": "",
+        "button": "Talk to a doctor for free",
+        "button_selected": "Talk to a doctor about [x]",
+        "note": "",
+        "icon_size": 64,
+        "mobile_count": 0
+      }
+    },
+    "stories": {
+      "type": "lm-stories",
+      "blocks": {
+        "v1": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        },
+        "v2": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        },
+        "v3": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        },
+        "v4": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        }
+      },
+      "block_order": [
+        "v1",
+        "v2",
+        "v3",
+        "v4"
+      ],
+      "settings": {
+        "video_speed": 4,
+        "review_speed": 6,
+        "layout": "split",
+        "show_empty": true,
+        "heading": "Our <span class=\"lm-mark\">Success</span> Stories",
+        "highlight": "",
+        "subheading": "",
+        "review_products": [
+          "vaji-bati",
+          "pure-himalayan-shilajit-resin-20g",
+          "p-e-e-d-integrated-kit",
+          "kern-drops",
+          "shaktisurge"
+        ],
+        "min_rating": 4,
+        "max_reviews": 18,
+        "videos_per_row": 5
+      }
+    },
+    "trust": {
+      "type": "lm-why-list",
+      "blocks": {
+        "p1": {
+          "type": "point",
+          "settings": {
+            "icon": "chart",
+            "title": "85% Improved Performance",
+            "text": "Verified treatment success rate"
+          }
+        },
+        "p2": {
+          "type": "point",
+          "settings": {
+            "icon": "heart",
+            "title": "92% Improved Relationships",
+            "text": "Enhanced connection and intimacy"
+          }
+        },
+        "p3": {
+          "type": "point",
+          "settings": {
+            "icon": "doctor",
+            "title": "Doctor + Therapist Follow-up Included",
+            "text": "Comprehensive care beyond medication"
+          }
+        },
+        "p4": {
+          "type": "certs",
+          "settings": {
+            "icon": "shield",
+            "title": "We are certified",
+            "logo_1": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "logo_2": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "logo_3": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "heading": "Why do thousands",
+        "highlight": "trust sehatUP?",
+        "image": "shopify://shop_images/Warm_Doctor-Patient_Consultation_1_copy.webp",
+        "tone": "white",
+        "image_width": 520,
+        "icon_size": 56
+      }
+    },
+    "couple_banner": {
+      "type": "lm-banner",
+      "settings": {
+        "image": "shopify://shop_images/Golden_Morning_Bedside_Embrace.webp",
+        "alt": "",
+        "text": "",
+        "link": "",
+        "blur": 3,
+        "full_width": true,
+        "ratio": "3 / 1",
+        "mobile_height": 240,
+        "focus_x": 50,
+        "focus_y": 50
+      }
+    },
+    "ready": {
+      "type": "lm-ready",
+      "blocks": {
+        "o1": {
+          "type": "option",
+          "settings": {
+            "icon": "doctor",
+            "title": "Talk to a doctor",
+            "text": "Have questions? Talk them through with a doctor, in Hindi or English.",
+            "button": "Book Free Consultation",
+            "link": "",
+            "highlight": true
+          }
+        },
+        "o2": {
+          "type": "option",
+          "settings": {
+            "icon": "list",
+            "title": "Take a 2-minute assessment",
+            "text": "Not ready to talk yet? Understand your symptoms privately first.",
+            "button": "Take Free Assessment",
+            "link": "/pages/mens-health-questionnaire",
+            "highlight": true
+          }
+        },
+        "o3": {
+          "type": "option",
+          "settings": {
+            "icon": "whatsapp",
+            "title": "Chat on WhatsApp",
+            "text": "Still have a question? Drop us a message and we will help.",
+            "button": "Chat on WhatsApp",
+            "link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor%20privately",
+            "highlight": true
+          }
+        }
+      },
+      "block_order": [
+        "o1",
+        "o2",
+        "o3"
+      ],
+      "settings": {
+        "card_style": "plain",
+        "head_align": "center",
+        "tone": "white",
+        "heading": "Start your Happy",
+        "highlight": "S#X Journey",
+        "subheading": "",
+        "icon_size": 34
+      }
+    },
+    "start_journey": {
+      "type": "lm-ready",
+      "blocks": {
+        "s1": {
+          "type": "option",
+          "settings": {
+            "icon": "pulse",
+            "title": "Book a Doctor Consult",
+            "text": "Meet with licensed physicians.",
+            "button": "Book Consultation",
+            "link": "",
+            "highlight": true
+          }
+        },
+        "s2": {
+          "type": "option",
+          "settings": {
+            "icon": "alert",
+            "title": "Talk to a Therapist",
+            "text": "Sexual & couple therapy sessions.",
+            "button": "Find Therapist",
+            "link": "",
+            "highlight": true
+          }
+        },
+        "s3": {
+          "type": "option",
+          "settings": {
+            "icon": "heart",
+            "title": "Get Tested",
+            "text": "At home or clinic diagnostic options.",
+            "button": "View Tests",
+            "link": "",
+            "highlight": true
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2",
+        "s3"
+      ],
+      "disabled": true,
+      "settings": {
+        "card_style": "tinted",
+        "head_align": "center",
+        "tone": "white",
+        "heading": "Start your Happy",
+        "highlight": "S#X Journey",
+        "subheading": "",
+        "icon_size": 38
+      }
+    },
+    "book": {
+      "type": "lp-book",
+      "settings": {
+        "heading": "Consult with a Doctor",
+        "highlight": "for FREE",
+        "subheading": "Book your slot and get expert guidance for your concerns.",
+        "trust": "100% Free Consultation|chat\nPrivate and Confidential|shield\nExpert Doctors|doctor",
+        "image_asset": "lm-doctor.webp",
+        "image_name": "Dr. Jayant Kumar",
+        "image_note": "BAMS (Ayurveda), 5 years experience",
+        "form_heading": "Book Your Free Consultation",
+        "form_sub": "Limited slots available.",
+        "show_timer": false,
+        "timer_label": "Today's free slots close in",
+        "concerns": "Early ejaculation\nErection issues\nLow libido\nPerformance anxiety\nLow stamina\nSomething else",
+        "times": "Morning (9 am to 12 pm)\nAfternoon (12 pm to 4 pm)\nEvening (4 pm to 8 pm)",
+        "button": "Book My Free Slot",
+        "privacy": "Your information is private and secure.",
+        "source": "landing_men",
+        "sheet_url": "https://script.google.com/macros/s/AKfycbzKIXsQgIqaEJLEuaRiSZnnrX3Lm2XChW_EakO3gzRqcwSw3UAvxqZTPZiMq8ly0UQ1/exec",
+        "gender": "male",
+        "tone": "cream",
+        "img_width": 46,
+        "img_height": 94,
+        "thanks_url": "/pages/booking-confirmed"
+      }
+    },
+    "journey": {
+      "type": "lm-journey",
+      "disabled": true,
+      "settings": {
+        "heading": "Start your happy",
+        "highlight": "S#x journey",
+        "text": "Because your sexual health deserves attention too. You don't need to keep wondering, keep searching, or feel embarrassed.",
+        "opt_1": "Private Consultation",
+        "opt_1_note": "Talk to a doctor confidentially",
+        "opt_1_link": "",
+        "opt_2": "Private Self-Assessment",
+        "opt_2_note": "Understand your symptoms privately",
+        "opt_2_link": "/pages/mens-health-questionnaire",
+        "points": "100% private\nConfidential\nNo judgement"
+      }
+    },
+    "unsure": {
+      "type": "lm-unsure",
+      "settings": {
+        "layout": "popout",
+        "full_width": true,
+        "grad_light": "#fdf4f5",
+        "grad_dark": "#f1b6c3",
+        "image_space": 30,
+        "one_line": true,
+        "image_size": 120,
+        "image": "shopify://shop_images/Confused_Man_Shrugging_in_Glasses.webp",
+        "heading": "Not sure what's the problem with",
+        "highlight": "your Champ?",
+        "subheading": "Take our self-assessment to get personalised recommendations based on your symptoms and concerns.",
+        "button": "Take the Private Assessment",
+        "link": "/pages/mens-health-questionnaire",
+        "note": "",
+        "image_width": 190,
+        "band_margin": 50
+      }
+    }
+  },
+  "order": [
+    "header",
+    "hero",
+    "concerns",
+    "stories",
+    "trust",
+    "couple_banner",
+    "ready",
+    "start_journey",
+    "book",
+    "journey",
+    "unsure"
+  ]
+}

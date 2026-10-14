@@ -406,9 +406,6 @@
         .then(function () { return window.ScrollTrigger ? null : load(base + 'gsap@3.13.0/dist/ScrollTrigger.min.js'); })
         .then(function () { return window.Lenis ? null : load(base + 'lenis@1.3.26/dist/lenis.min.js'); });
     }
-    function start() {
-      ready().then(boot, function () { /* stays a static list */ });
-    }
     // DOMContentLoaded, not load: on this page 'load' never fires (a widget
     // keeps a request open), so waiting for it left the section static.
     // ...and only once the section is about 1.5 screens away: booting at page
@@ -421,13 +418,28 @@
       }, { rootMargin: '150% 0px' });
       io.observe(root);
     }
-    function go() { whenNear(start); }
+    // ...and never during the first moments: the hero's entrance runs then, and
+    // loading GSAP + Lenis on top of it made the page open jittery. Boot after
+    // ~1.8s idle, or at once if the visitor starts scrolling toward it.
+    function go() {
+      var done = false;
+      // Download the libraries now (cheap), start them only when the section is near.
+      function once() { if (done) return; done = true; ready().then(function () { whenNear(boot); }, function () { /* stays a static list */ }); }
+      setTimeout(function () {
+        if (window.requestIdleCallback) window.requestIdleCallback(once, { timeout: 1200 }); else once();
+      }, 1800);
+      window.addEventListener('scroll', once, { once: true, passive: true });
+    }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 
     function boot() {
       if (root.dataset.hjBooted === '1') return;
       root.dataset.hjBooted = '1';
       gsap.registerPlugin(ScrollTrigger);
+      // The theme sets html { scroll-behavior: smooth }. ScrollTrigger measures by
+      // jumping to the top and back; a smooth jump measures wrong by however far the
+      // visitor has already scrolled (every step lit too early). Lenis does the smoothing.
+      document.documentElement.style.scrollBehavior = 'auto';
 
       // Smooth wheel scrolling, shared with the scroll story when present.
       if (!window.sehatLenis && window.Lenis) {
@@ -463,7 +475,8 @@
       }
       function chipStatus(c, i) {
         c.querySelectorAll('[data-chip]').forEach(function (el, k) {
-          gsap.to(el, { opacity: k === i - 1 ? 1 : 0, duration: .25, delay: k === i - 1 ? .15 : 0 });
+          // overwrite: a fast scroll must cancel a still-delayed fade-in, or two lines show at once.
+          gsap.to(el, { opacity: k === i - 1 ? 1 : 0, duration: .25, delay: k === i - 1 ? .15 : 0, overwrite: true });
         });
       }
       function count(el, from, to, dur, at, tl) {
@@ -511,7 +524,9 @@
           if (i === current) return;
           var prev = current; current = i;
           steps.forEach(function (el, k) { el.classList.toggle('is-active', k === i - 1); });
-          if (prev) gsap.to(scr[prev - 1], { autoAlpha: 0, scale: .97, duration: .3, ease: 'power2.in', overwrite: true });
+          // Hide every other screen, not just the previous one: booting mid-page
+          // (or a fast scroll) can leave more than one visible.
+          scr.forEach(function (el, k) { if (k !== i - 1) gsap.to(el, { autoAlpha: 0, scale: .97, duration: .3, ease: 'power2.in', overwrite: true }); });
           gsap.fromTo(scr[i - 1], { autoAlpha: 0, y: 30, scale: 1 }, { autoAlpha: 1, y: 0, duration: .45, ease: 'power3.out', delay: prev ? .15 : 0, overwrite: true });
           gsap.to(chip, { autoAlpha: 1, x: 0, duration: .4, ease: 'power3.out' });
           chipStatus(chip, i);

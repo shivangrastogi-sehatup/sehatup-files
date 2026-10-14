@@ -18,6 +18,15 @@
 
   assign ov = section.settings.background_overlay_strength | default: 0
   assign ov_alpha = ov | divided_by: 100.0
+
+  # Shifting the photo sideways opens a gap on one edge; zoom just enough to cover it.
+  assign bg_shift = section.settings.background_shift_x | default: 0
+  assign bg_zoom = bg_shift | abs | times: 0.02 | plus: 1.08
+
+  assign has_fg = false
+  if section.settings.layout_mode == 'background-with-overlay-image' and section.settings.foreground_image
+    assign has_fg = true
+  endif
 -%}
 
 {% style %}
@@ -34,6 +43,8 @@
       min-height: max({{ section.settings.section_min_height }}px, 62svh);
       max-height: 900px;
       overflow: hidden;
+      /* Keeps the z-indexes below inside the hero, so it never paints over the sticky header. */
+      isolation: isolate;
     }
 
     .ai-healthcare-hero__background-{{ ai_gen_id }} {
@@ -50,7 +61,7 @@
       height: 100%;
       object-fit: {{ section.settings.background_image_size }};
       object-position: {{ section.settings.background_position_x }} {{ section.settings.background_position_y }};
-      transform: scale(1.08);
+      transform: translateX({{ bg_shift }}%) scale({{ bg_zoom }});
       opacity: {{ section.settings.background_overlay_opacity | divided_by: 100.0 }};
     }
 
@@ -81,7 +92,19 @@
       {% if ov > 0 %}
         background-color: rgba({{ section.settings.background_overlay_color.rgb }}, {{ ov_alpha }});
       {% endif %}
+      {% if section.settings.light_text_fade %}
+        /* Soft light wash behind the text side so dark text reads on a busy photo. */
+        background-image: linear-gradient(90deg, rgba(251, 249, 247, .94) 0%, rgba(251, 249, 247, .82) 38%, rgba(251, 249, 247, 0) 62%);
+      {% endif %}
     }
+
+    {% if section.settings.light_text_fade %}
+      @media (max-width: 1040px) {
+        .ai-healthcare-hero__background-overlay-{{ ai_gen_id }} {
+          background-image: linear-gradient(180deg, rgba(251, 249, 247, .94) 0%, rgba(251, 249, 247, .82) 45%, rgba(251, 249, 247, 0) 70%);
+        }
+      }
+    {% endif %}
 
     {% if section.settings.layout_mode == 'split-layout' or section.settings.show_white_panel %}
       .ai-healthcare-hero__white-panel-{{ ai_gen_id }} {
@@ -101,7 +124,8 @@
 
     .ai-healthcare-hero__container-{{ ai_gen_id }} {
       position: relative;
-      z-index: 2;
+      /* Above the doctors photo, so no line of text ever disappears behind it. */
+      z-index: 3;
       /* Centred and capped, so the text does not drift into the middle of a 4K screen. */
       max-width: {{ section.settings.content_max_width }}px;
       margin: 0 auto;
@@ -131,11 +155,13 @@
     }
 
     .ai-healthcare-hero__heading-{{ ai_gen_id }} {
-      font-size: clamp(28px, 4.2vw, {{ section.settings.heading_size | times: 1.33 | round }}px);
+      /* vh cap keeps the headline from filling a short laptop screen. */
+      font-size: clamp(28px, min(3.5vw, 7.5vh), {{ section.settings.heading_size | times: 1.33 | round }}px);
       font-weight: {{ section.settings.heading_weight }};
       color: {{ section.settings.heading_color }};
       margin: 0 0 {{ section.settings.content_spacing }}px;
       line-height: 1.2;
+      text-wrap: balance;
       {% if section.settings.text_shadow_enabled %}
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       {% endif %}
@@ -160,6 +186,20 @@
       {% if section.settings.text_shadow_enabled %}
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       {% endif %}
+    }
+
+    .ai-healthcare-hero__kicker-{{ ai_gen_id }} {
+      font-size: clamp(15px, 1.3vw, 18px);
+      font-weight: 700;
+      color: {{ section.settings.subheading_highlight_color }};
+      margin: 0 0 12px;
+    }
+
+    .ai-healthcare-hero__note-{{ ai_gen_id }} {
+      font-size: 14px;
+      color: {{ section.settings.body_color }};
+      opacity: .8;
+      margin: 18px 0 0;
     }
 
     .ai-healthcare-hero__buttons-{{ ai_gen_id }} {
@@ -277,6 +317,10 @@
         object-fit: {{ section.settings.foreground_image_fit }};
         object-position: bottom center;
         display: block;
+        {% if section.settings.foreground_trim_bottom > 0 %}
+          /* Hides empty transparent rows at the bottom of the PNG so it sits flush. */
+          transform: translateY({{ section.settings.foreground_trim_bottom }}%);
+        {% endif %}
       }
     {% endif %}
 
@@ -455,6 +499,43 @@
       }
     }
 
+    {% if has_fg %}
+      /* Doctors photo sits on the right half: keep the text on the left half. */
+      @media (min-width: 1041px) {
+        /* The doctors are pinned to the banner's right edge, so pin the text to its
+           left edge too. A centred 1400px box left a huge gap on 4K screens. */
+        .ai-healthcare-hero__container-{{ ai_gen_id }} {
+          max-width: none;
+          padding-left: max({{ section.settings.section_padding_horizontal }}px, 5vw);
+          padding-right: max({{ section.settings.section_padding_horizontal }}px, 5vw);
+        }
+
+        .ai-healthcare-hero__content-{{ ai_gen_id }} {
+          max-width: min({{ section.settings.content_text_max_width | plus: 260 }}px, 52%);
+        }
+      }
+    {% endif %}
+
+    @media (max-width: 1040px) {
+      .ai-healthcare-hero__background-image-{{ ai_gen_id }} {
+        transform: scale(1.08);
+        object-position: {{ section.settings.mobile_bg_focus_x | default: 50 }}% {% if section.settings.enable_mobile_overrides %}{{ section.settings.mobile_background_position_y }}{% else %}{{ section.settings.background_position_y }}{% endif %};
+      }
+
+      {% if has_fg and section.settings.hide_foreground_mobile == false %}
+        /* Doctors stack centred under the text here, so centre the text with them. */
+        .ai-healthcare-hero__content-{{ ai_gen_id }} {
+          margin-left: auto;
+          margin-right: auto;
+          text-align: center;
+        }
+
+        .ai-healthcare-hero__buttons-{{ ai_gen_id }} {
+          justify-content: center;
+        }
+      {% endif %}
+    }
+
     /* Tablet: give the hero room so the text block and the photo both breathe. */
     @media (min-width: 700px) and (max-width: 1040px) {
       .ai-healthcare-hero__container-{{ ai_gen_id }} {
@@ -505,6 +586,20 @@
 <healthcare-hero-{{ ai_gen_id }} class="ai-healthcare-hero-{{ ai_gen_id }}" {{ section.shopify_attributes }}>
   <div class="ai-healthcare-hero__background-{{ ai_gen_id }}">
     {% if section.settings.background_image %}
+      <picture style="display: contents;">
+      {% if section.settings.mobile_background_image %}
+        <source
+          media="(max-width: 1040px)"
+          srcset="
+            {{ section.settings.mobile_background_image | image_url: width: 600 }} 600w,
+            {{ section.settings.mobile_background_image | image_url: width: 900 }} 900w,
+            {{ section.settings.mobile_background_image | image_url: width: 1200 }} 1200w
+          "
+          sizes="100vw"
+          width="{{ section.settings.mobile_background_image.width }}"
+          height="{{ section.settings.mobile_background_image.height }}"
+        >
+      {% endif %}
       <img
         src="{{ section.settings.background_image | image_url: width: 1600 }}"
         fetchpriority="high"
@@ -524,6 +619,7 @@
         height="{{ section.settings.background_image.height }}"
         class="ai-healthcare-hero__background-image-{{ ai_gen_id }}"
       >
+      </picture>
     {% else %}
       <div class="ai-healthcare-hero__background-placeholder-{{ ai_gen_id }}">
         {{ 'hero-apparel-1' | placeholder_svg_tag }}
@@ -538,8 +634,21 @@
 
   <div class="ai-healthcare-hero__container-{{ ai_gen_id }}">
     <div class="ai-healthcare-hero__content-{{ ai_gen_id }}">
+      {% if section.settings.kicker != blank %}
+        <p class="ai-healthcare-hero__kicker-{{ ai_gen_id }}">{{ section.settings.kicker }}</p>
+      {% endif %}
+
       {% if section.settings.heading != blank %}
-        <h1 class="ai-healthcare-hero__heading-{{ ai_gen_id }}">{{ section.settings.heading }}</h1>
+        {%- liquid
+          assign hero_h = section.settings.heading
+          if section.settings.heading_red != blank
+            capture red_words
+              echo '<span style="color: ' | append: section.settings.heading_red_color | append: ';">' | append: section.settings.heading_red | append: '</span>'
+            endcapture
+            assign hero_h = hero_h | replace_first: section.settings.heading_red, red_words
+          endif
+        -%}
+        <h1 class="ai-healthcare-hero__heading-{{ ai_gen_id }}">{{ hero_h }}</h1>
       {% endif %}
 
       {% if section.settings.subheading_prefix != blank %}
@@ -586,11 +695,31 @@
           {% endif %}
         </div>
       {% endif %}
+
+      {% render 'trust-proof', s: section.settings, color: section.settings.body_color, ring: 'rgba(255, 255, 255, .9)' %}
+
+      {% if section.settings.note != blank %}
+        <p class="ai-healthcare-hero__note-{{ ai_gen_id }}">{{ section.settings.note }}</p>
+      {% endif %}
     </div>
   </div>
 
   {% if section.settings.layout_mode == 'background-with-overlay-image' and section.settings.foreground_image %}
     <div class="ai-healthcare-hero__foreground-image-{{ ai_gen_id }}">
+      <picture style="display: contents;">
+      {% if section.settings.mobile_foreground_image %}
+        <source
+          media="(max-width: 1040px)"
+          srcset="
+            {{ section.settings.mobile_foreground_image | image_url: width: 600 }} 600w,
+            {{ section.settings.mobile_foreground_image | image_url: width: 900 }} 900w,
+            {{ section.settings.mobile_foreground_image | image_url: width: 1200 }} 1200w
+          "
+          sizes="min(100vw, 600px)"
+          width="{{ section.settings.mobile_foreground_image.width }}"
+          height="{{ section.settings.mobile_foreground_image.height }}"
+        >
+      {% endif %}
       <img
         src="{{ section.settings.foreground_image | image_url: width: 1200 }}"
         srcset="
@@ -605,6 +734,7 @@
         width="{{ section.settings.foreground_image.width }}"
         height="{{ section.settings.foreground_image.height }}"
       >
+      </picture>
     </div>
   {% endif %}
 </healthcare-hero-{{ ai_gen_id }}>
@@ -743,6 +873,17 @@
         }
       ],
       "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "background_shift_x",
+      "label": "Move background left / right",
+      "info": "Minus moves the photo left, plus moves it right. Desktop only.",
+      "min": -30,
+      "max": 30,
+      "step": 1,
+      "unit": "%",
+      "default": 0
     },
     {
       "type": "range",
@@ -924,6 +1065,17 @@
       "default": 0
     },
     {
+      "type": "range",
+      "id": "foreground_trim_bottom",
+      "label": "Push foreground down",
+      "info": "Use when the image has empty space at its bottom edge and does not touch the bottom of the banner.",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "%",
+      "default": 0
+    },
+    {
       "type": "checkbox",
       "id": "hide_foreground_mobile",
       "label": "Hide on mobile",
@@ -949,10 +1101,28 @@
       "content": "Content"
     },
     {
+      "type": "text",
+      "id": "kicker",
+      "label": "Small label above the heading",
+      "info": "Uses the highlight colour. Leave empty to hide."
+    },
+    {
       "type": "inline_richtext",
       "id": "heading",
       "label": "Heading",
       "default": "Struggling with stress, hormones, weight or sexual health?"
+    },
+    {
+      "type": "text",
+      "id": "heading_red",
+      "label": "Words in red in the heading",
+      "info": "Type them exactly as they appear in the heading, e.g. Integrated"
+    },
+    {
+      "type": "color",
+      "id": "heading_red_color",
+      "label": "Colour of those words",
+      "default": "#ee204a"
     },
     {
       "type": "text",
@@ -1126,6 +1296,13 @@
       "default": true
     },
     {
+      "type": "checkbox",
+      "id": "light_text_fade",
+      "label": "Light fade behind text",
+      "info": "For dark text on a light photo. Adds a soft off-white wash on the text side.",
+      "default": false
+    },
+    {
       "type": "header",
       "content": "Button 1"
     },
@@ -1275,6 +1452,48 @@
       "type": "header",
       "content": "Button style"
     },
+    {
+      "type": "text",
+      "id": "note",
+      "label": "Small note under the buttons",
+      "info": "Leave empty to hide."
+    },
+    {
+      "type": "header",
+      "content": "Trust row (faces + stars)"
+    },
+    {
+      "type": "text",
+      "id": "trust_text",
+      "label": "Trust line",
+      "info": "e.g. Trusted by 75,000+ patients. Leave empty to hide the row."
+    },
+    {
+      "type": "text",
+      "id": "rating",
+      "label": "Star rating (out of 5)",
+      "info": "Use the real Judge.me average. Empty hides the stars."
+    },
+    {
+      "type": "range",
+      "id": "trust_count",
+      "label": "People in the photo row",
+      "min": 0,
+      "max": 5,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "text",
+      "id": "trust_initials",
+      "label": "Initials when there is no photo (comma separated)",
+      "default": "R, A, S, P, K"
+    },
+    { "type": "image_picker", "id": "avatar_1", "label": "Face photo 1", "info": "Square, at least 400 x 400 px, face centred." },
+    { "type": "image_picker", "id": "avatar_2", "label": "Face photo 2" },
+    { "type": "image_picker", "id": "avatar_3", "label": "Face photo 3" },
+    { "type": "image_picker", "id": "avatar_4", "label": "Face photo 4" },
+    { "type": "image_picker", "id": "avatar_5", "label": "Face photo 5" },
     {
       "type": "select",
       "id": "button_layout",
@@ -1530,6 +1749,33 @@
         }
       ],
       "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Mobile images",
+      "info": "Used below 1040px. Leave empty to reuse the desktop images."
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_background_image",
+      "label": "Mobile background image",
+      "info": "Portrait, about 1080 x 1440 px."
+    },
+    {
+      "type": "range",
+      "id": "mobile_bg_focus_x",
+      "label": "Mobile background left / right",
+      "info": "0% shows the left edge of the photo, 100% the right edge.",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_foreground_image",
+      "label": "Mobile doctors image"
     }
   ],
   "presets": [

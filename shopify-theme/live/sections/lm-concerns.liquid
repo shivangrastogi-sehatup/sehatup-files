@@ -1,0 +1,120 @@
+{%- assign s = section.settings -%}
+<section id="symptoms" class="lm-sec" style="--lm-si: {{ s.icon_size }}px;">
+  <div class="lm-wrap">
+    <div class="lm-head">
+      <h2 class="lm-h2">{{ s.heading }}{% if s.highlight != blank %} <span class="lm-mark">{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lm-sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="lm-sym" data-lm-sym>
+      {%- assign show_n = s.mobile_count | default: 0 -%}
+      {%- assign extra = section.blocks.size | minus: show_n -%}
+      {%- if show_n > 0 and extra > 0 -%}
+        <style>@media (max-width: 749px) { #symptoms .lm-sym__grid:not(.is-open) > li:nth-child(n + {{ show_n | plus: 1 }}) { display: none; } }</style>
+      {%- endif -%}
+      <ul class="lm-sym__grid" role="list">
+        {%- for block in section.blocks -%}
+          {%- assign b = block.settings -%}
+          <li {{ block.shopify_attributes }}>
+            {%- if s.button != blank -%}<button class="lm-sym__card" type="button" aria-pressed="false" data-name="{{ b.title | escape }}" data-value="{{ b.form_value | escape }}">{%- else -%}<div class="lm-sym__card lm-sym__card--plain">{%- endif -%}
+              {%- if b.icon_image != blank or b.icon != 'none' -%}
+              <span class="lm-sym__ic" aria-hidden="true">
+                {%- if b.icon_image != blank -%}{{ b.icon_image | image_url: width: 320 | image_tag: alt: '', loading: 'lazy', widths: '120, 200, 320', sizes: '64px' }}{%- else -%}
+                {%- case b.icon -%}
+                  {%- when 'calendar' -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="M12 12.3c-1.5 1.9-2.3 3-2.3 4a2.3 2.3 0 0 0 4.6 0c0-1-.8-2.1-2.3-4z"/></svg>
+                  {%- when 'acne' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="9.5" r="6.5"/><path d="M12 16v5M9.5 21h5"/><path d="M9.8 7.6h.01M13.8 8.8h.01M11.2 11.6h.01M14.4 11.8h.01"/></svg>
+                  {%- when 'hair' -%}<svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0 1 15 0"/><path d="M12 4.5c-1 2-1 4.5 0 7.5"/><path d="M7.5 15c1 1.2 0 2.4 1 3.8M12 15.5c1 1.2 0 2.4 1 3.8M16.5 15c1 1.2 0 2.4 1 3.8"/></svg>
+                  {%- when 'face' -%}<svg viewBox="0 0 24 24"><path d="M9.5 3h5M9.5 3l2.1 11.5M14.5 3l-2.1 11.5"/><path d="M11.6 14.5h.8"/><path d="M12 17c-.9 1.2.9 2.3 0 4"/></svg>
+                  {%- when 'scale' -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M7.8 10a5.6 5.6 0 0 1 8.4 0"/><path d="M12 10.5l1.8-2.3"/></svg>
+                  {%- when 'down' -%}<svg viewBox="0 0 48 48"><path d="M6 12h10l8 12 6-6 12 16"/><path d="M42 26v8h-8"/></svg>
+                  {%- when 'timer' -%}<svg viewBox="0 0 48 48"><circle cx="26" cy="27" r="15"/><path d="M26 27l6-7M21 6h10M26 6v6M39 13l3-3"/><path d="M3 22h7M5 28h5M3 34h7"/></svg>
+                  {%- when 'heart' -%}<svg viewBox="0 0 48 48"><path d="M24 40 9 26a9 9 0 0 1 13-13l2 2 2-2a9 9 0 0 1 13 13z"/><path d="M14 25h7l3-5 3 5h7" opacity=".9"/></svg>
+                  {%- when 'mind' -%}<svg viewBox="0 0 48 48"><path d="M28 42v-6h5a4 4 0 0 0 4-4v-5l4-1-4-7A15 15 0 1 0 15 34v8"/><path d="M19 17c2-3 7-3 8 1 1 3-4 4-2 8M22 31h.01"/></svg>
+                  {%- when 'battery' -%}<svg viewBox="0 0 48 48"><rect x="4" y="14" width="34" height="20" rx="4"/><path d="M42 21v6"/><rect x="9" y="19" width="5" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M26 17l-4 7h6l-4 7"/></svg>
+                  {%- else -%}<svg viewBox="0 0 48 48"><path d="M42 23a17 17 0 0 1-24.6 15.2L7 41l2.8-9.7A17 17 0 1 1 42 23z"/><path d="M20 19a5 5 0 1 1 6.5 4.8c-1.3.4-2.5 1.5-2.5 3v1.2M24 33h.01"/></svg>
+                {%- endcase -%}
+                {%- endif -%}
+              </span>
+              {%- endif -%}
+              <span class="lm-sym__t">
+                <b>{{ b.title }}</b>
+                {%- if b.text != blank -%}<span>{{ b.text }}</span>{%- endif -%}
+              </span>
+              {%- if s.button != blank -%}<span class="lm-sym__tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m4 8 3 3 5-6"/></svg></span></button>{%- else -%}</div>{%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+      {%- if show_n > 0 and extra > 0 -%}
+        <button type="button" class="lm-sym__more" aria-expanded="false" onclick="this.previousElementSibling.classList.add('is-open');this.setAttribute('aria-expanded','true');this.hidden=true;">+ Show {{ extra }} more</button>
+      {%- endif -%}
+
+      {%- if s.button != blank -%}
+      <div class="lm-sym__go">
+        <a class="lm-btn lm-btn--red" href="#book" data-base="{{ s.button | escape }}" data-pick="{{ s.button_selected | escape }}">{{ s.button }}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+        {%- if s.note != blank -%}<small>{{ s.note }}</small>{%- endif -%}
+      </div>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.currentScript.previousElementSibling.querySelector('[data-lm-sym]');
+    if (!root) return;
+    var cards = root.querySelectorAll('.lm-sym__card');
+    var go = root.querySelector('.lm-sym__go a');
+    if (!go) return;
+    var label = go.firstChild;
+    var picked = null;
+    cards.forEach(function (c) {
+      c.addEventListener('click', function () {
+        var on = c !== picked;
+        cards.forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+        picked = on ? c : null;
+        if (on) c.setAttribute('aria-pressed', 'true');
+        label.textContent = on ? go.dataset.pick.replace('[x]', c.dataset.name.toLowerCase()) : go.dataset.base;
+      });
+    });
+    go.addEventListener('click', function () {
+      if (!picked) return;
+      var sel = document.querySelector('#book select[name="concern"]');
+      if (!sel) return;
+      var want = (picked.dataset.value || picked.dataset.name).toLowerCase();
+      Array.prototype.forEach.call(sel.options, function (o) { if (o.text.toLowerCase() === want) sel.value = o.value || o.text; });
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "LM concerns",
+  "tag": "div",
+  "max_blocks": 8,
+  "settings": [
+    { "type": "range", "id": "mobile_count", "label": "Symptoms shown on phones", "info": "The rest open with a Show more button. 0 = show all.", "min": 0, "max": 8, "step": 1, "default": 0 },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Are these the symptoms you're" },
+    { "type": "text", "id": "highlight", "label": "Heading part in red", "default": "also facing?" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "text", "id": "button", "label": "Button", "default": "Talk to a doctor for free" },
+    { "type": "text", "id": "button_selected", "label": "Button when a card is picked", "default": "Talk to a doctor about [x]", "info": "[x] becomes the picked concern." },
+    { "type": "text", "id": "note", "label": "Small line under the button" },
+    {"type":"header","content":"Sizes"},
+    {"type":"range","id":"icon_size","label":"Icon box size","min":40,"max":90,"step":2,"unit":"px","default":64,"info":"Phones use 80% of this."}
+  ],
+  "blocks": [
+    { "type": "concern", "name": "Concern", "settings": [
+      { "type": "select", "id": "icon", "label": "Icon", "options": [
+        { "value": "down", "label": "Line going down" }, { "value": "timer", "label": "Stopwatch" }, { "value": "heart", "label": "Heart" },
+        { "value": "mind", "label": "Worried mind" }, { "value": "battery", "label": "Low battery" }, { "value": "question", "label": "Question" },
+        { "value": "calendar", "label": "Calendar" }, { "value": "acne", "label": "Acne" }, { "value": "hair", "label": "Hair fall" }, { "value": "face", "label": "Facial hair" }, { "value": "scale", "label": "Weight scale" }, { "value": "none", "label": "No icon" }
+      ], "default": "question" },
+      { "type": "image_picker", "id": "icon_image", "label": "Icon image", "info": "Replaces the icon above. Square PNG with a transparent background, one colour, 512 x 512 px." },
+      { "type": "text", "id": "title", "label": "Name", "default": "Concern" },
+      { "type": "text", "id": "text", "label": "One line" },
+      { "type": "text", "id": "form_value", "label": "Form choice", "info": "The matching choice in the booking form's Primary concern box, e.g. Early ejaculation." }
+    ] }
+  ],
+  "presets": [{ "name": "LM concerns" }]
+}
+{% endschema %}

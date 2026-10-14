@@ -1,0 +1,34 @@
+{%- comment -%} Landing page top bar: logo, links to the page's own sections, button to the booking form. Sticky. {%- endcomment -%}
+{%- assign s = section.settings -%}
+<header class="lp-topbar">
+  <div class="lp-wrap lp-nav">
+    <a class="lp-logo" href="#" aria-label="sehatUP">
+      {%- if s.logo != blank -%}
+        {{ s.logo | image_url: width: 400 | image_tag: alt: 'sehatUP', widths: '160, 280, 400', sizes: '140px' }}
+      {%- else -%}
+        <img src="https://www.sehatup.com/cdn/shop/files/New_Logo_Red_and_Black_without_tagline.webp?v=1773229485&width=360" alt="sehatUP" width="140" height="31">
+      {%- endif -%}
+    </a>
+    <nav class="lp-nav__links" aria-label="Page sections">
+      {%- assign links = s.nav_links | newline_to_br | split: '<br />' -%}
+      {%- for l in links -%}
+        {%- assign p = l | strip | split: '|' -%}
+        {%- if p.size == 2 -%}<a href="{{ p[1] | strip }}">{{ p[0] | strip }}</a>{%- endif -%}
+      {%- endfor -%}
+      {%- if s.button != blank -%}<a class="lp-navbtn" href="#book">{{ s.button }}</a>{%- endif -%}
+    </nav>
+  </div>
+</header>
+
+{% schema %}
+{
+  "name": "LP header",
+  "tag": "div",
+  "settings": [
+    { "type": "image_picker", "id": "logo", "label": "Logo (empty uses the sehatUP logo)" },
+    { "type": "textarea", "id": "nav_links", "label": "Links (Label|#anchor, one per line)", "info": "Anchors: #tried #symptoms #different #reviews #book #how" },
+    { "type": "text", "id": "button", "label": "Button (goes to the booking form)", "default": "Free Consultation" }
+  ],
+  "presets": [{ "name": "LP header" }]
+}
+{% endschema %}

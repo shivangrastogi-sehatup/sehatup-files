@@ -1,0 +1,136 @@
+{%- assign s = section.settings -%}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap">
+{{ 'landing-men.css' | asset_url | stylesheet_tag }}
+<section class="lm-thanks">
+  <div class="lm-wrap">
+    <div class="lm-thanks__card">
+      <div class="lm-thanks__main">
+        <span class="lm-thanks__ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <h1 class="lm-thanks__h">{{ s.heading }}</h1>
+        {%- if s.text != blank -%}<p class="lm-thanks__p">{{ s.text }}</p>{%- endif -%}
+        <div class="lm-thanks__btns">
+          {%- if s.home_label != blank -%}
+            <a class="lm-btn lm-btn--red" href="{{ s.home_link | default: '/' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5"/></svg>{{ s.home_label }}</a>
+          {%- endif -%}
+          {%- if s.again_label != blank -%}
+            <a class="lm-btn lm-btn--line" href="{{ s.again_link | default: '/' }}" data-lm-again><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17M9 15l2 2 4-4"/></svg>{{ s.again_label }}</a>
+          {%- endif -%}
+        </div>
+        {%- capture share_url -%}{{ shop.url }}{{ s.share_url | default: '/' }}{%- endcapture -%}
+        {%- if s.share_label != blank -%}
+          <div class="lm-thanks__share">
+            <span>{{ s.share_label }}</span>
+            <div class="lm-thanks__shares">
+              <a class="lm-thanks__wa" href="https://wa.me/?text={{ s.share_text | append: ' ' | append: share_url | url_encode | replace: '+', '%20' }}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.3-4.4a8.5 8.5 0 1 1 15.7-4.5z"/></svg>Share on WhatsApp</a>
+              <button type="button" class="lm-thanks__more" data-text="{{ s.share_text | escape }}" data-url="{{ share_url | escape }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 12.5v6A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5v-6"/></svg><span>Share</span></button>
+            </div>
+          </div>
+        {%- endif -%}
+        {%- if s.facebook != blank or s.instagram != blank or s.youtube != blank -%}
+          <div class="lm-thanks__follow">
+            {%- if s.follow_label != blank -%}<span>{{ s.follow_label }}</span>{%- endif -%}
+            {%- if s.facebook != blank -%}<a href="{{ s.facebook }}" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M14 8.5V7c0-.8.5-1.2 1.2-1.2H17V2.5h-2.6C11.8 2.5 10.5 4 10.5 6.4v2.1H8V12h2.5v9.5H14V12h2.6l.4-3.5z"/></svg></a>{%- endif -%}
+            {%- if s.instagram != blank -%}<a href="{{ s.instagram }}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="17.2" cy="6.8" r="1.1"/></svg></a>{%- endif -%}
+            {%- if s.youtube != blank -%}<a href="{{ s.youtube }}" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.5 2.5 0 0 0-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3z"/></svg></a>{%- endif -%}
+          </div>
+        {%- endif -%}
+      </div>
+
+      <div class="lm-thanks__side">
+        <div class="lm-thanks__next">
+          <span class="lm-thanks__cal" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17M9 15l2 2 4-4"/></svg></span>
+          <h2>{{ s.next_heading }}</h2>
+          <ul>
+            {%- for block in section.blocks -%}
+              {%- assign b = block.settings -%}
+              <li {{ block.shopify_attributes }}>
+                <span aria-hidden="true">
+                  {%- case b.icon -%}
+                    {%- when 'chat' -%}<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>
+                    {%- when 'quiet' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+                    {%- when 'file' -%}<svg viewBox="0 0 24 24"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5M9 13h6M9 16.5h4"/></svg>
+                    {%- else -%}<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+                  {%- endcase -%}
+                </span>
+                {{ b.text }}
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+
+        <div class="lm-thanks__change">
+          <h3>{{ s.change_heading }}</h3>
+          {%- if s.change_text != blank -%}<p>{{ s.change_text }}</p>{%- endif -%}
+          <div>
+            {%- if s.phone != blank -%}<a href="tel:{{ s.phone | remove: ' ' | remove: '-' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>{{ s.phone }}</a>{%- endif -%}
+            {%- if s.whatsapp != blank -%}<a href="{{ s.whatsapp }}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.3-4.4a8.5 8.5 0 1 1 15.7-4.5z"/></svg>WhatsApp</a>{%- endif -%}
+            {%- if s.email != blank -%}<a href="mailto:{{ s.email }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>Email us</a>{%- endif -%}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+  (function () {
+    var again = document.querySelector('[data-lm-again]');
+    if (!again) return;
+    var from = new URLSearchParams(location.search).get('from');
+    if (from && from.charAt(0) === '/' && from.charAt(1) !== '/') { again.href = from.split('#')[0] + '#book-form'; return; }
+    try {
+      var r = document.referrer && new URL(document.referrer);
+      if (r && r.origin === location.origin && r.pathname !== location.pathname) again.href = r.pathname + r.search + '#book-form';
+    } catch (e) {}
+  })();
+  (function () {
+    var b = document.querySelector('.lm-thanks__more');
+    if (!b) return;
+    var label = b.querySelector('span'), canShare = !!navigator.share;
+    if (!canShare) label.textContent = 'Copy link';
+    b.addEventListener('click', function () {
+      var text = b.dataset.text, url = b.dataset.url;
+      if (canShare) { navigator.share({ text: text, url: url }).catch(function () {}); return; }
+      var done = function () { label.textContent = 'Link copied'; setTimeout(function () { label.textContent = 'Copy link'; }, 2000); };
+      if (navigator.clipboard) navigator.clipboard.writeText(text + ' ' + url).then(done, function () {});
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "LM thank you",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Appointment Booked Successfully!" },
+    { "type": "textarea", "id": "text", "label": "Line under the heading", "default": "Thank you for choosing sehatUP. Your free consultation request has been received." },
+    { "type": "text", "id": "home_label", "label": "Home button", "default": "Back to Home" },
+    { "type": "url", "id": "home_link", "label": "Home button link" },
+    { "type": "text", "id": "again_label", "label": "Second button", "default": "Book Another" },
+    { "type": "url", "id": "again_link", "label": "Second button link", "info": "Used when the visitor did not come from a sehatUP page; otherwise it goes back to that page's form." },
+    { "type": "text", "id": "share_label", "label": "Share line", "default": "Know someone who could use this?" },
+    { "type": "textarea", "id": "share_text", "label": "Message sent when sharing", "info": "Keep it discreet: never name the condition. The link is added after it.", "default": "I came across sehatUP: real doctors, free private consultation, in Hindi or English. Have a look:" },
+    { "type": "text", "id": "share_url", "label": "Link to share", "info": "A page on this store, e.g. / for the home page.", "default": "/" },
+    { "type": "text", "id": "follow_label", "label": "Follow line", "default": "Follow sehatUP" },
+    { "type": "url", "id": "facebook", "label": "Facebook link" },
+    { "type": "url", "id": "instagram", "label": "Instagram link" },
+    { "type": "url", "id": "youtube", "label": "YouTube link" },
+    { "type": "header", "content": "Right side" },
+    { "type": "text", "id": "next_heading", "label": "Steps heading", "default": "What's next?" },
+    { "type": "text", "id": "change_heading", "label": "Changes box heading", "default": "Need to make changes?" },
+    { "type": "text", "id": "change_text", "label": "Changes box line", "default": "To reschedule or cancel, contact us:" },
+    { "type": "text", "id": "phone", "label": "Phone" },
+    { "type": "url", "id": "whatsapp", "label": "WhatsApp link" },
+    { "type": "text", "id": "email", "label": "Email" }
+  ],
+  "blocks": [
+    {
+      "type": "step", "name": "Step",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icon", "default": "phone", "options": [{ "value": "phone", "label": "Phone" }, { "value": "chat", "label": "Message" }, { "value": "quiet", "label": "Clock" }, { "value": "file", "label": "Document" }] },
+        { "type": "text", "id": "text", "label": "Text", "default": "Our doctor will call you within 24 hours." }
+      ]
+    }
+  ],
+  "presets": [{ "name": "LM thank you" }]
+}
+{% endschema %}

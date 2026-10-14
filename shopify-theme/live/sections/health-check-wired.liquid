@@ -1,0 +1,418 @@
+{%- comment -%}
+  "Which one sounds like you?": the four quizzes, two for her (left) and two
+  for him (right), each wired to a hub card in the middle.
+  Desktop (1200px+): hovering or focusing a card turns its wire red and the
+  hub swaps from "How it works" to that check (who it is for, what it asks
+  about, a start button). Moving between cards only crossfades the hub; it
+  goes back to "How it works" 400ms after the pointer leaves the whole stage.
+  Phones/tablets: no wires and no hub states; cards stack under "For her" /
+  "For him", then "How it works" as a plain panel.
+  One entrance when the section scrolls in: cards slide in from their side,
+  the hub settles, the wires draw from each card into the hub.
+{%- endcomment -%}
+{%- liquid
+  assign s = section.settings
+  assign sets = 'her,him' | split: ','
+-%}
+<style>
+  #hcw-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #6b6b6b; --line: #e9e3dd; --stone: #f4f0ec; --stone2: #ede7e1; --wire: #d8d0c8;
+    --red: {{ s.accent_color }}; --btn: {{ s.accent_color | color_darken: 8 }};
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    background: #fbf9f7; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hcw-{{ section.id }} * { box-sizing: border-box; }
+  #hcw-{{ section.id }} .w__in { max-width: 1320px; margin: 0 auto; padding: clamp(56px, 5vw, 96px) 32px clamp(52px, 4.4vw, 84px); }
+
+  #hcw-{{ section.id }} .w__head { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+  #hcw-{{ section.id }} .w__h { margin: 0; color: var(--ink); font: 700 clamp(34px, 3.2vw, 56px)/1.06 'Montserrat', sans-serif; letter-spacing: -.03em; text-wrap: balance; }
+  #hcw-{{ section.id }} .w__sub { margin: 0; max-width: 720px; font: 400 clamp(16px, 1.1vw, 20px)/1.5 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+
+  /* stage: one tidy block. Row 1 = the two labels, row 2 = her cards | hub | his cards,
+     all the same height, with short wires in the gaps. */
+  #hcw-{{ section.id }} .w__stage {
+    position: relative; margin-top: clamp(32px, 3vw, 52px);
+    display: grid; grid-template-columns: minmax(0, 1fr) clamp(340px, 28vw, 400px) minmax(0, 1fr); grid-template-rows: auto 1fr;
+    column-gap: clamp(44px, 4.4vw, 72px); row-gap: 14px;
+  }
+  #hcw-{{ section.id }} .w__side { display: contents; }
+  #hcw-{{ section.id }} .w__side--her .w__label { grid-column: 1; grid-row: 1; }
+  #hcw-{{ section.id }} .w__side--her .w__cards { grid-column: 1; grid-row: 2; }
+  #hcw-{{ section.id }} .w__side--him .w__label { grid-column: 3; grid-row: 1; justify-self: end; }
+  #hcw-{{ section.id }} .w__side--him .w__cards { grid-column: 3; grid-row: 2; }
+  #hcw-{{ section.id }} .w__mid { grid-column: 2; grid-row: 2; position: relative; z-index: 2; display: flex; }
+
+  #hcw-{{ section.id }} .w__wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+  #hcw-{{ section.id }} .w__wire { fill: none; stroke: var(--wire); stroke-width: 1.5; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke .3s ease, stroke-width .3s ease, opacity .3s ease, stroke-dashoffset 1s var(--ease); }
+  #hcw-{{ section.id }} .w__end { fill: var(--wire); transition: fill .3s ease, opacity .3s ease; }
+  #hcw-{{ section.id }} .w__port { fill: #fff; stroke: var(--wire); stroke-width: 1.5; transition: fill .3s ease, stroke .3s ease, opacity .3s ease; }
+  #hcw-{{ section.id }} .w__ring { fill: none; stroke: var(--red); stroke-width: 1.5; opacity: 0; transform-box: fill-box; transform-origin: center; }
+  #hcw-{{ section.id }} .w__wires g.is-on .w__wire { stroke: var(--btn); stroke-width: 2; }
+  #hcw-{{ section.id }} .w__wires g.is-on .w__end, #hcw-{{ section.id }} .w__wires g.is-on .w__port { fill: var(--btn); stroke: var(--btn); }
+  #hcw-{{ section.id }} .w__wires g.is-on .w__ring { animation: hcw-ping-{{ section.id }} 1s ease-out 1; }
+  #hcw-{{ section.id }}[data-active] .w__wires g:not(.is-on) > * { opacity: .45; }
+  @keyframes hcw-ping-{{ section.id }} { from { opacity: .7; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
+
+  #hcw-{{ section.id }} .w__label { display: flex; align-items: center; gap: 10px; margin: 0; font: 600 16px/1 'Montserrat', sans-serif; color: var(--mute); }
+  #hcw-{{ section.id }} .w__cards { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 16px; }
+
+  /* face crops from the hero photos, same framing as the hero switch */
+  #hcw-{{ section.id }} .w__ava { width: 32px; height: 32px; flex: none; border-radius: 50%; background-color: var(--stone2); background-repeat: no-repeat; background-size: 290% auto; box-shadow: 0 0 0 2px #fff; }
+  #hcw-{{ section.id }} .w__ava--her { background-position: 48% 9%; }
+  #hcw-{{ section.id }} .w__ava--him { background-position: 52% 10.5%; }
+
+  /* card: one compact row - icon, title + line, arrow */
+  #hcw-{{ section.id }} .w__card {
+    flex: 1; display: flex; align-items: center; gap: 18px; min-height: 96px;
+    padding: 20px 22px; border-radius: 20px; background: #fff; border: 1.5px solid var(--line);
+    color: var(--ink); text-decoration: none; box-shadow: 0 1px 0 rgba(29, 29, 29, .02);
+    transition: transform .45s var(--ease), opacity .35s ease, border-color .3s ease, box-shadow .45s var(--ease);
+  }
+  #hcw-{{ section.id }} .w__card:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+  #hcw-{{ section.id }} .w__card.is-on { transform: translateY(-2px); border-color: var(--btn); box-shadow: 0 14px 32px rgba(29, 29, 29, .07); }
+  #hcw-{{ section.id }}[data-active] .w__card:not(.is-on) { opacity: .55; }
+  #hcw-{{ section.id }} .w__ico { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 50%; background: var(--stone); transition: background .3s ease, transform .45s var(--ease); }
+  #hcw-{{ section.id }} .w__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: stroke .3s ease; }
+  #hcw-{{ section.id }} .w__ico .r { stroke: var(--red); }
+  #hcw-{{ section.id }} .w__ico .rf { fill: var(--red); stroke: none; transition: fill .3s ease; }
+  #hcw-{{ section.id }} .w__card.is-on .w__ico { background: var(--btn); transform: scale(1.05); }
+  #hcw-{{ section.id }} .w__card.is-on .w__ico svg, #hcw-{{ section.id }} .w__card.is-on .w__ico .r { stroke: #fff; }
+  #hcw-{{ section.id }} .w__card.is-on .w__ico .rf { fill: #fff; }
+  #hcw-{{ section.id }} .w__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  #hcw-{{ section.id }} .w__t { font: 700 clamp(18px, 1.2vw, 21px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #hcw-{{ section.id }} .w__d { font: 400 15px/1.45 'Montserrat', sans-serif; color: var(--mute); }
+  #hcw-{{ section.id }} .w__time, #hcw-{{ section.id }} .w__go span { display: none; }
+  #hcw-{{ section.id }} .w__go { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--stone); color: var(--btn); transition: background .3s ease, color .3s ease; }
+  #hcw-{{ section.id }} .w__go svg { width: 18px; height: 18px; transition: transform .45s var(--ease); }
+  #hcw-{{ section.id }} .w__card.is-on .w__go { background: var(--btn); color: #fff; }
+  #hcw-{{ section.id }} .w__card.is-on .w__go svg { transform: translateX(2px); }
+
+  /* hub: as tall as the two cards next to it */
+  #hcw-{{ section.id }} .w__hub {
+    display: grid; align-content: center; width: 100%; padding: 26px 28px;
+    background: #fff; border: 1.5px solid var(--line); border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(31, 31, 31, .05);
+    transition: box-shadow .5s var(--ease), transform .7s var(--ease), opacity .7s ease;
+  }
+  #hcw-{{ section.id }}[data-active] .w__hub { box-shadow: 0 22px 52px rgba(31, 31, 31, .09); }
+  #hcw-{{ section.id }} .w__pane {
+    grid-area: 1 / 1; display: flex; flex-direction: column; opacity: 0; visibility: hidden; transform: translateY(6px);
+    transition: opacity .2s ease, transform .3s var(--ease), visibility 0s .2s;
+  }
+  #hcw-{{ section.id }} .w__pane.is-on, #hcw-{{ section.id }}:not([data-active]) .w__pane--a {
+    opacity: 1; visibility: visible; transform: none;
+    transition: opacity .3s ease .08s, transform .45s var(--ease) .08s, visibility 0s;
+  }
+  #hcw-{{ section.id }} .w__pane--a { align-self: center; gap: 20px; }
+  #hcw-{{ section.id }} .w__how { margin: 0; font: 700 21px/1.15 'Montserrat', sans-serif; letter-spacing: -.01em; color: var(--ink); }
+  #hcw-{{ section.id }} .w__steps { position: relative; display: flex; flex-direction: column; gap: 16px; margin: 0; padding: 0; list-style: none; }
+  #hcw-{{ section.id }} .w__steps::before { content: ""; position: absolute; left: 17px; top: 18px; bottom: 18px; width: 2px; background: var(--stone2); }
+  #hcw-{{ section.id }} .w__steps li { position: relative; display: flex; align-items: center; gap: 14px; font: 500 16px/1.35 'Montserrat', sans-serif; color: var(--ink); }
+  #hcw-{{ section.id }} .w__num { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--stone); font: 700 15px/1 'Montserrat', sans-serif; }
+
+  #hcw-{{ section.id }} .w__pane--b { gap: 14px; }
+  #hcw-{{ section.id }} .w__who { display: flex; align-items: center; gap: 10px; font: 500 15px/1 'Montserrat', sans-serif; color: var(--mute); }
+  #hcw-{{ section.id }} .w__who .w__ava { width: 36px; height: 36px; box-shadow: none; }
+  #hcw-{{ section.id }} .w__pt { margin: 0; font: 700 22px/1.15 'Montserrat', sans-serif; letter-spacing: -.01em; color: var(--ink); }
+  #hcw-{{ section.id }} .w__ask { margin: 2px 0 -4px; font: 500 14px/1 'Montserrat', sans-serif; color: var(--mute); }
+  #hcw-{{ section.id }} .w__pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  #hcw-{{ section.id }} .w__pills li {
+    padding: 9px 10px; border-radius: 999px; background: var(--stone); text-align: center; white-space: nowrap;
+    font: 500 14px/1.2 'Montserrat', sans-serif; color: var(--ink);
+    opacity: 0; transform: translateY(5px); transition: opacity .25s ease, transform .4s var(--ease);
+  }
+  #hcw-{{ section.id }} .w__pane.is-on .w__pills li { opacity: 1; transform: none; transition-delay: calc(.12s + var(--j) * 45ms); }
+  #hcw-{{ section.id }} .w__btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px; height: 50px; margin-top: 4px; border-radius: 999px;
+    background: var(--btn); color: #fff; text-decoration: none; font: 700 16px/1 'Montserrat', sans-serif;
+    box-shadow: 0 10px 22px rgba(219, 29, 68, .2); transition: background .2s ease, transform .3s var(--ease);
+  }
+  #hcw-{{ section.id }} .w__btn:hover { background: {{ s.accent_color | color_darken: 16 }}; color: #fff; transform: translateY(-1px); }
+  #hcw-{{ section.id }} .w__btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+  #hcw-{{ section.id }} .w__btn svg { width: 1em; height: 1em; transition: transform .4s var(--ease); }
+  #hcw-{{ section.id }} .w__btn:hover svg { transform: translateX(3px); }
+
+  /* doctors line */
+  #hcw-{{ section.id }} .w__docs { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: clamp(32px, 2.6vw, 44px); transition: opacity .6s ease .9s, transform .8s var(--ease) .9s; }
+  #hcw-{{ section.id }} .w__faces { display: flex; flex: none; }
+  #hcw-{{ section.id }} .w__faces img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: var(--stone2); border: 2px solid #fbf9f7; }
+  #hcw-{{ section.id }} .w__faces img + img { margin-left: -10px; }
+  #hcw-{{ section.id }} .w__docs p { margin: 0; font: 500 15px/1.4 'Montserrat', sans-serif; color: var(--ink); }
+
+  /* entrance, once (only added when motion is allowed) */
+  #hcw-{{ section.id }}.pre .w__card { opacity: 0; transform: translateX(-16px); }
+  #hcw-{{ section.id }}.pre .w__side--him .w__card { transform: translateX(16px); }
+  #hcw-{{ section.id }}.pre .w__label { opacity: 0; }
+  #hcw-{{ section.id }}.pre .w__hub { opacity: 0; transform: scale(.97); }
+  #hcw-{{ section.id }}.pre .w__wire { stroke-dashoffset: 1; }
+  #hcw-{{ section.id }}.pre .w__end, #hcw-{{ section.id }}.pre .w__port { opacity: 0; }
+  #hcw-{{ section.id }}.pre .w__docs { opacity: 0; transform: translateY(8px); }
+  #hcw-{{ section.id }}.in:not(.done) .w__card { transition-delay: calc(var(--i) * 90ms); transition-duration: .7s; }
+  #hcw-{{ section.id }}.in:not(.done) .w__label { transition: opacity .6s ease; }
+  #hcw-{{ section.id }}.in:not(.done) .w__hub { transition-delay: .1s; }
+  #hcw-{{ section.id }}.in:not(.done) .w__wire { transition-delay: .45s; transition-duration: .8s; }
+  #hcw-{{ section.id }}.in:not(.done) .w__end, #hcw-{{ section.id }}.in:not(.done) .w__port { transition-delay: .9s; }
+
+  /* phones and tablets: stacked list, no wires, no hub states */
+  @media (max-width: 1199px) {
+    #hcw-{{ section.id }} .w__in { max-width: 640px; padding: 48px 20px 44px; }
+    #hcw-{{ section.id }} .w__head { align-items: flex-start; text-align: left; gap: 10px; }
+    #hcw-{{ section.id }} .w__h { font-size: clamp(28px, 7.6vw, 40px); line-height: 1.12; }
+    #hcw-{{ section.id }} .w__sub { font-size: 16px; }
+    #hcw-{{ section.id }} .w__stage { display: flex; flex-direction: column; gap: 32px; margin-top: 28px; }
+    #hcw-{{ section.id }} .w__wires, #hcw-{{ section.id }} .w__pane--b { display: none; }
+    #hcw-{{ section.id }} .w__side { display: flex; flex-direction: column; gap: 12px; }
+    #hcw-{{ section.id }} .w__side--him { order: 2; }
+    #hcw-{{ section.id }} .w__mid { order: 3; margin-top: 8px; }
+    #hcw-{{ section.id }} .w__label { margin-bottom: 4px; font: 700 18px/1 'Montserrat', sans-serif; color: var(--ink); }
+    #hcw-{{ section.id }} .w__label .w__ava { width: 36px; height: 36px; }
+    #hcw-{{ section.id }} .w__cards { gap: 12px; }
+    #hcw-{{ section.id }} .w__card { gap: 14px; min-height: 84px; padding: 16px; }
+    #hcw-{{ section.id }} .w__card:active { transform: scale(.98); border-color: var(--btn); transition-duration: .12s; }
+    #hcw-{{ section.id }} .w__t { font-size: 18px; }
+    #hcw-{{ section.id }} .w__go { width: 36px; height: 36px; }
+
+    #hcw-{{ section.id }} .w__hub { padding: 20px; border: 0; border-radius: 20px; background: var(--stone); box-shadow: none; }
+    #hcw-{{ section.id }} .w__pane--a { gap: 16px; }
+    #hcw-{{ section.id }} .w__how { font-size: 18px; }
+    #hcw-{{ section.id }} .w__steps { gap: 12px; }
+    #hcw-{{ section.id }} .w__steps::before { display: none; }
+    #hcw-{{ section.id }} .w__num { width: 32px; height: 32px; background: #fff; }
+
+    #hcw-{{ section.id }} .w__docs { justify-content: flex-start; margin-top: 28px; }
+
+    #hcw-{{ section.id }}.pre .w__card, #hcw-{{ section.id }}.pre .w__side--him .w__card { transform: translateY(14px); }
+    #hcw-{{ section.id }}.pre .w__hub { transform: translateY(14px); }
+    #hcw-{{ section.id }}.in:not(.done) .w__hub { transition-delay: .4s; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #hcw-{{ section.id }} *, #hcw-{{ section.id }} *::before { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<section id="hcw-{{ section.id }}" class="hcw">
+  <div class="w__in">
+    <div class="w__head">
+      <h2 class="w__h">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="w__sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="w__stage">
+      <svg class="w__wires" aria-hidden="true" preserveAspectRatio="none">
+        {%- for block in section.blocks -%}
+          <g data-k="{{ block.id }}"><path class="w__wire" pathLength="1"/><circle class="w__end" r="4"/><circle class="w__ring" r="6"/><circle class="w__port" r="6"/></g>
+        {%- endfor -%}
+      </svg>
+
+      {%- assign i = 0 -%}
+      {%- for set in sets -%}
+        {%- if set == 'her' -%}{%- assign lb = s.her_label -%}{%- assign ph = s.her_photo -%}{%- else -%}{%- assign lb = s.him_label -%}{%- assign ph = s.him_photo -%}{%- endif -%}
+        {%- capture side -%}
+          <div class="w__side w__side--{{ set }}">
+            <p class="w__label"><span class="w__ava w__ava--{{ set }}" aria-hidden="true"{% if ph != blank %} style="background-image: url('{{ ph | image_url: width: 240 }}')"{% endif %}></span>{{ lb }}</p>
+            <div class="w__cards">
+              {%- for block in section.blocks -%}
+                {%- assign b = block.settings -%}
+                {%- if b.who == set -%}
+                  <a class="w__card" href="{{ b.link | default: '#' }}" data-k="{{ block.id }}" data-who="{{ set }}" style="--i: {{ i }}" {{ block.shopify_attributes }}>
+                    <span class="w__ico" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        {%- case b.icon -%}
+                          {%- when 'cycle' -%}
+                            <rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path class="rf" d="M12 12.2c1.5 1.9 2.3 3 2.3 3.9a2.3 2.3 0 0 1-4.6 0c0-.9.8-2 2.3-3.9z"/>
+                          {%- when 'scale' -%}
+                            <rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M7.8 11.5a4.2 4.2 0 0 1 8.4 0"/><path class="r" d="M12 11.5l2-2.4"/>
+                          {%- else -%}
+                            <path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/><path class="r" d="M7.4 12.4h2.5l1.4-2.4 2 4.4 1.4-2h1.9"/>
+                        {%- endcase -%}
+                      </svg>
+                    </span>
+                    <span class="w__body">
+                      <span class="w__t">{{ b.title }}</span>
+                      {%- if b.text != blank -%}<span class="w__d">{{ b.text }}</span>{%- endif -%}
+                      {%- if s.time != blank -%}<span class="w__time">{{ s.time }}</span>{%- endif -%}
+                    </span>
+                    <span class="w__go"><span>{{ s.card_cta }}</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
+                  </a>
+                  {%- assign i = i | plus: 1 -%}
+                {%- endif -%}
+              {%- endfor -%}
+            </div>
+          </div>
+        {%- endcapture -%}
+        {%- if set == 'her' -%}{%- assign her_side = side -%}{%- else -%}{%- assign him_side = side -%}{%- endif -%}
+      {%- endfor -%}
+
+      {{ her_side }}
+
+      <div class="w__mid">
+        <div class="w__hub">
+          <div class="w__pane w__pane--a">
+            <p class="w__how">{{ s.how_title }}</p>
+            <ol class="w__steps">
+              {%- if s.step_1 != blank -%}<li><span class="w__num">1</span>{{ s.step_1 }}</li>{%- endif -%}
+              {%- if s.step_2 != blank -%}<li><span class="w__num">2</span>{{ s.step_2 }}</li>{%- endif -%}
+              {%- if s.step_3 != blank -%}<li><span class="w__num">3</span>{{ s.step_3 }}</li>{%- endif -%}
+            </ol>
+          </div>
+          {%- for block in section.blocks -%}
+            {%- assign b = block.settings -%}
+            {%- if b.who == 'her' -%}{%- assign lb = s.her_label -%}{%- assign ph = s.her_photo -%}{%- else -%}{%- assign lb = s.him_label -%}{%- assign ph = s.him_photo -%}{%- endif -%}
+            <div class="w__pane w__pane--b" data-k="{{ block.id }}">
+              <div class="w__who"><span class="w__ava w__ava--{{ b.who }}" aria-hidden="true"{% if ph != blank %} style="background-image: url('{{ ph | image_url: width: 240 }}')"{% endif %}></span>{{ lb }}</div>
+              <p class="w__pt">{{ b.title }}</p>
+              {%- assign topics = b.topics | split: ',' -%}
+              {%- if topics.size > 0 -%}
+                <p class="w__ask">{{ s.ask_label }}</p>
+                <ul class="w__pills">
+                  {%- for t in topics limit: 4 -%}<li style="--j: {{ forloop.index0 }}">{{ t | strip }}</li>{%- endfor -%}
+                </ul>
+              {%- endif -%}
+              <a class="w__btn" href="{{ b.link | default: '#' }}">{{ s.button }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+            </div>
+          {%- endfor -%}
+        </div>
+      </div>
+
+      {{ him_side }}
+    </div>
+
+    {%- if s.doctors_note != blank -%}
+      <div class="w__docs">
+        <div class="w__faces">
+          {%- for n in (1..3) -%}
+            {%- assign key = 'doctor_' | append: n -%}
+            {%- assign d = s[key] -%}
+            {%- if d != blank -%}<img src="{{ d | image_url: width: 120 }}" width="40" height="40" alt="" loading="lazy">{%- endif -%}
+          {%- endfor -%}
+        </div>
+        <p>{{ s.doctors_note }}</p>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hcw-{{ section.id }}');
+    if (!root) return;
+    var stage = root.querySelector('.w__stage'), hub = root.querySelector('.w__hub'), svg = root.querySelector('.w__wires');
+    var cards = [].slice.call(root.querySelectorAll('.w__card'));
+    var wide = window.matchMedia('(min-width: 1200px)');
+    var act = null, tIntent, tReset;
+
+    // One hub state. Switching cards only swaps which pane/wire is "on";
+    // nothing resets in between.
+    function show(k) {
+      clearTimeout(tReset);
+      if (k === act) return;
+      act = k;
+      if (k) root.setAttribute('data-active', ''); else root.removeAttribute('data-active');
+      root.querySelectorAll('[data-k]').forEach(function (el) { el.classList.toggle('is-on', el.getAttribute('data-k') === k); });
+    }
+    function later() { clearTimeout(tIntent); clearTimeout(tReset); tReset = setTimeout(function () { show(null); }, 400); }
+
+    cards.forEach(function (c) {
+      var k = c.getAttribute('data-k');
+      c.addEventListener('mouseenter', function () {
+        if (!wide.matches) return;
+        clearTimeout(tReset); clearTimeout(tIntent);
+        tIntent = setTimeout(function () { show(k); }, 80);
+      });
+      c.addEventListener('mouseleave', function () { clearTimeout(tIntent); });
+      c.addEventListener('focus', function () { if (wide.matches) show(k); });
+      c.addEventListener('blur', later);
+    });
+    stage.addEventListener('mouseenter', function () { clearTimeout(tReset); });
+    stage.addEventListener('mouseleave', later);
+    root.querySelectorAll('.w__btn').forEach(function (b) {
+      b.addEventListener('focus', function () { clearTimeout(tReset); });
+      b.addEventListener('blur', later);
+    });
+    wide.addEventListener && wide.addEventListener('change', function () { show(null); draw(); });
+
+    // Wires: offsets (not getBoundingClientRect) so the entrance slide and
+    // hover lift never bend them. The stage is the offsetParent of cards and hub.
+    function at(el) { var x = 0, y = 0; while (el && el !== stage) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; } return { x: x, y: y }; }
+    function draw() {
+      if (!wide.matches) return;
+      svg.setAttribute('viewBox', '0 0 ' + stage.offsetWidth + ' ' + stage.offsetHeight);
+      var hp = at(hub), hw = hub.offsetWidth, hh = hub.offsetHeight;
+      ['her', 'him'].forEach(function (who) {
+        var list = cards.filter(function (c) { return c.getAttribute('data-who') === who; });
+        list.forEach(function (c, n) {
+          var p = at(c), her = who === 'her';
+          var ex = her ? p.x + c.offsetWidth : p.x, ey = p.y + c.offsetHeight / 2;
+          var px = her ? hp.x : hp.x + hw, py = hp.y + hh * (.2 + .6 * (n + .5) / list.length);
+          var mx = (ex + px) / 2, g = svg.querySelector('g[data-k="' + c.getAttribute('data-k') + '"]');
+          if (!g) return;
+          g.querySelector('.w__wire').setAttribute('d', 'M' + ex + ' ' + ey + 'C' + mx + ' ' + ey + ' ' + mx + ' ' + py + ' ' + px + ' ' + py);
+          [['.w__end', ex, ey], ['.w__port', px, py], ['.w__ring', px, py]].forEach(function (d) {
+            var el = g.querySelector(d[0]); el.setAttribute('cx', d[1]); el.setAttribute('cy', d[2]);
+          });
+        });
+      });
+    }
+    draw();
+    if ('ResizeObserver' in window) new ResizeObserver(draw).observe(stage); else window.addEventListener('resize', draw);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+
+    // Entrance, once.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+    root.classList.add('pre');
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      root.classList.add('in');
+      root.classList.remove('pre');
+      setTimeout(function () { root.classList.add('done'); }, 2400);
+    }, { threshold: 0.2 }).observe(stage);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "HS360 Wired checks",
+  "tag": "div",
+  "max_blocks": 6,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Which one sounds like you?" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading", "default": "Four free checks. 2 minutes each. A doctor reviews your answers on a free call." },
+    { "type": "text", "id": "her_label", "label": "Her group label", "default": "For her" },
+    { "type": "image_picker", "id": "her_photo", "label": "Her avatar photo", "info": "Use the same photo as the hero, the face is cropped from it." },
+    { "type": "text", "id": "him_label", "label": "His group label", "default": "For him" },
+    { "type": "image_picker", "id": "him_photo", "label": "His avatar photo" },
+    { "type": "text", "id": "time", "label": "Time on each card", "default": "2 min" },
+    { "type": "text", "id": "card_cta", "label": "Card link text", "default": "Start check" },
+    { "type": "header", "content": "Middle card" },
+    { "type": "text", "id": "how_title", "label": "Title at rest", "default": "How it works" },
+    { "type": "text", "id": "step_1", "label": "Step 1", "default": "Pick what bothers you" },
+    { "type": "text", "id": "step_2", "label": "Step 2", "default": "Answer 8 quick questions" },
+    { "type": "text", "id": "step_3", "label": "Step 3", "default": "Talk to a doctor, free" },
+    { "type": "text", "id": "ask_label", "label": "Above the topics", "default": "We'll ask about" },
+    { "type": "text", "id": "button", "label": "Button", "default": "Start the 2-min check" },
+    { "type": "header", "content": "Doctors line" },
+    { "type": "image_picker", "id": "doctor_1", "label": "Doctor photo 1" },
+    { "type": "image_picker", "id": "doctor_2", "label": "Doctor photo 2" },
+    { "type": "image_picker", "id": "doctor_3", "label": "Doctor photo 3" },
+    { "type": "text", "id": "doctors_note", "label": "Line", "default": "Every check ends with a free call with a sehatUP doctor." },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
+  ],
+  "blocks": [
+    {
+      "type": "check",
+      "name": "Check",
+      "settings": [
+        { "type": "select", "id": "who", "label": "Side", "options": [{ "value": "her", "label": "For her" }, { "value": "him", "label": "For him" }], "default": "her" },
+        { "type": "select", "id": "icon", "label": "Icon", "options": [{ "value": "cycle", "label": "Cycle" }, { "value": "scale", "label": "Weight" }, { "value": "heart", "label": "Heart" }], "default": "cycle" },
+        { "type": "text", "id": "title", "label": "Title", "default": "Period care" },
+        { "type": "text", "id": "text", "label": "What it checks", "default": "Cycle, cramps, PMS and PCOS signs" },
+        { "type": "text", "id": "topics", "label": "Topics in the middle card (4, comma separated)", "default": "Cycle, Pain, PMS, PCOS signs" },
+        { "type": "url", "id": "link", "label": "Quiz link" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "HS360 Wired checks" }]
+}
+{% endschema %}

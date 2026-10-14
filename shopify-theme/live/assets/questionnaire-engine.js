@@ -1258,6 +1258,7 @@ class QuestionnaireEngine {
                     lastUpdated: new Date()
                 });
                 console.log("✅ Partial doc SUCCESSFULLY CREATED in 'partial_submissions'");
+                if (typeof fbq === 'function') fbq('track', 'Contact');
             } catch (err) {
                 console.error("ERROR creating partial doc:", err);
                 console.error("Firebase Details:", {
@@ -1520,6 +1521,8 @@ class QuestionnaireEngine {
                     this.state.partialDocId = null;
                 } catch (e) { console.warn('partial cleanup failed (non-fatal):', e); }
             }
+
+            if (typeof fbq === 'function') fbq('track', 'CompleteRegistration');
 
             this.hideLoader();
 

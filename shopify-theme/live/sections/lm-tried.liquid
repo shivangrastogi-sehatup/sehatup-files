@@ -1,0 +1,133 @@
+{%- comment -%}
+  "Tried everything?" for the landing pages. Left: the point, the list of things
+  she has tried (small photo, name, "comes back after stopping") and a link to
+  the form. Right: one chart that makes the point at a glance: quick fixes dip
+  and climb back each time they stop (grey, dashed), root-cause care comes down
+  steadily (black). A plain line chart drawn from numbers set in the theme editor.
+  The PCOD page keeps its own lp-tried; this one is styled in landing-men.css.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<section class="lm-sec{% if s.tone == 'stone' %} lm-sec--stone{% endif %}" style="--lm-tt: {{ s.thumb_size }}px;">
+  <div class="lm-wrap lm-tried">
+    <div class="lm-tried__copy">
+      <h2 class="lm-h2">{{ s.heading }}{% if s.highlight != blank %} <span class="lm-mark">{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lm-sub">{{ s.subheading }}</p>{%- endif -%}
+      <ul class="lm-tried__list">
+        {%- for block in section.blocks -%}
+          {%- assign b = block.settings -%}
+          <li {{ block.shopify_attributes }}>
+            <span class="lm-tried__thumb">
+              {%- if b.image != blank -%}
+                {{ b.image | image_url: width: 200 | image_tag: loading: 'lazy', alt: '' }}
+              {%- elsif b.asset != blank -%}
+                <img src="{{ b.asset | asset_url }}" alt="" loading="lazy" width="200" height="133">
+              {%- else -%}
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M9.9 9 14 14.9"/></svg>
+              {%- endif -%}
+            </span>
+            <span class="lm-tried__t"><b>{{ b.label }}</b>{%- if b.note != blank -%}<span>{{ b.note }}</span>{%- endif -%}</span>
+          </li>
+        {%- endfor -%}
+      </ul>
+      {%- if s.link_text != blank -%}
+        <a class="lm-tried__link" href="{{ s.link | default: '#book' }}">{{ s.link_text }}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%}
+      A plain line chart drawn from the numbers in the settings: plot area
+      x 44..390, y 20 (100) .. 170 (0). Values are clamped to 0-100.
+    {%- endcomment -%}
+    {%- liquid
+      assign xl = s.x_labels | split: ','
+      assign qv = s.quick_values | split: ','
+      assign rv = s.root_values | split: ','
+      assign n = xl.size
+      if qv.size > n
+        assign n = qv.size
+      endif
+      if rv.size > n
+        assign n = rv.size
+      endif
+      assign last = n | minus: 1 | at_least: 1
+      assign step = 346.0 | divided_by: last
+    -%}
+    <figure class="lm-tried__chart">
+      {%- if s.chart_title != blank -%}<figcaption class="lm-tried__ct">{{ s.chart_title }}</figcaption>{%- endif -%}
+      <div class="lm-tried__key">
+        <span class="lm-tried__k lm-tried__k--quick">{{ s.line_quick }}</span>
+        <span class="lm-tried__k lm-tried__k--root">{{ s.line_root }}</span>
+      </div>
+      <svg class="lm-tried__svg" viewBox="0 0 400 200" role="img" aria-label="{{ s.chart_title | escape }}: {{ s.line_quick | escape }} {{ s.quick_values | escape }}; {{ s.line_root | escape }} {{ s.root_values | escape }}">
+        {%- for tick in (0..4) -%}
+          {%- assign tv = tick | times: 25 -%}
+          {%- assign ty = tv | times: 1.5 | minus: 170 | times: -1 -%}
+          <line class="lm-tried__grid{% if tick == 0 %} lm-tried__axis{% endif %}" x1="44" y1="{{ ty }}" x2="390" y2="{{ ty }}"/>
+          <text class="lm-tried__ytick" x="36" y="{{ ty | plus: 3.5 }}" text-anchor="end">{{ tv }}</text>
+        {%- endfor -%}
+        {%- if s.y_label != blank -%}<text class="lm-tried__ylab" x="8" y="95" transform="rotate(-90 8 95)" text-anchor="middle">{{ s.y_label }}</text>{%- endif -%}
+
+        {%- for line in (1..2) -%}
+          {%- if line == 1 -%}{%- assign vals = qv -%}{%- assign cls = 'quick' -%}{%- else -%}{%- assign vals = rv -%}{%- assign cls = 'root' -%}{%- endif -%}
+          {%- assign pts = '' -%}
+          {%- for v in vals -%}
+            {%- assign val = v | strip | plus: 0 | at_least: 0 | at_most: 100 -%}
+            {%- assign x = forloop.index0 | times: step | plus: 44 | round: 1 -%}
+            {%- assign y = val | times: -1.5 | plus: 170 | round: 1 -%}
+            {%- assign pts = pts | append: x | append: ',' | append: y | append: ' ' -%}
+          {%- endfor -%}
+          <polyline class="lm-tried__{{ cls }}" points="{{ pts | strip }}"/>
+          {%- for v in vals -%}
+            {%- assign val = v | strip | plus: 0 | at_least: 0 | at_most: 100 -%}
+            <circle class="lm-tried__pt lm-tried__pt--{{ cls }}" cx="{{ forloop.index0 | times: step | plus: 44 | round: 1 }}" cy="{{ val | times: -1.5 | plus: 170 | round: 1 }}" r="3.5"/>
+          {%- endfor -%}
+        {%- endfor -%}
+
+        {%- for l in xl -%}
+          {%- assign x = forloop.index0 | times: step | plus: 44 | round: 1 -%}
+          <text class="lm-tried__x" x="{{ x }}" y="190" text-anchor="{% if forloop.first %}start{% elsif forloop.last %}end{% else %}middle{% endif %}">{{ l | strip }}</text>
+        {%- endfor -%}
+      </svg>
+      {%- if s.caption != blank -%}<p class="lm-tried__cap">{{ s.caption }}</p>{%- endif -%}
+    </figure>
+  </div>
+</section>
+
+
+{% schema %}
+{
+  "name": "LM tried everything",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Tried everything?" },
+    { "type": "text", "id": "highlight", "label": "Heading part in red" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading", "default": "They calm the symptom for a while. The cause stays." },
+    { "type": "text", "id": "link_text", "label": "Link text", "default": "sehatUP treats the root cause" },
+    { "type": "text", "id": "link", "label": "Link", "default": "#book" },
+    { "type": "header", "content": "Chart" },
+    { "type": "text", "id": "chart_title", "label": "Chart title", "default": "How symptoms usually go" },
+    { "type": "text", "id": "line_quick", "label": "Grey line name", "default": "Quick fixes" },
+    { "type": "text", "id": "line_root", "label": "Black line name", "default": "sehatUP root-cause care" },
+    { "type": "text", "id": "y_label", "label": "Side label", "default": "Symptom level" },
+    { "type": "text", "id": "x_labels", "label": "Labels along the bottom", "info": "Comma separated, one per point.", "default": "M1, M2, M3, M4, M5, M6" },
+    { "type": "text", "id": "quick_values", "label": "Grey line values (0 to 100)", "info": "Comma separated, one per label. 100 = worst symptoms.", "default": "80, 45, 78, 48, 76, 74" },
+    { "type": "text", "id": "root_values", "label": "Black line values (0 to 100)", "info": "Comma separated, one per label.", "default": "80, 68, 55, 42, 32, 25" },
+    { "type": "text", "id": "caption", "label": "Small note under the chart", "default": "An illustration, not a measurement." },
+    { "type": "select", "id": "tone", "label": "Background", "default": "white", "options": [{ "value": "white", "label": "White" }, { "value": "stone", "label": "Stone" }] },
+    { "type": "header", "content": "Sizes" },
+    { "type": "range", "id": "thumb_size", "label": "Photo size in the list", "min": 40, "max": 96, "step": 2, "unit": "px", "default": 64 }
+  ],
+  "blocks": [
+    {
+      "type": "item", "name": "Tried",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Name", "default": "Allopathy" },
+        { "type": "text", "id": "note", "label": "Line under it", "default": "Symptoms come back after stopping" },
+        { "type": "image_picker", "id": "image", "label": "Photo" },
+        { "type": "text", "id": "asset", "label": "Or a theme asset", "info": "e.g. lp-tried-pills.webp" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "LM tried everything" }]
+}
+{% endschema %}

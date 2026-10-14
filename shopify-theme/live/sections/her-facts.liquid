@@ -1,0 +1,123 @@
+{%- comment -%}
+  For Her: two published figures drawn, not just printed. One compact row:
+  heading on the left, the two facts on the right as light rows.
+    PCOS            a row of women, one in red ("1 in N")
+    Painful periods a 0-100% bar with the reported range shaded
+  Only publish what a study says: every figure carries its source link.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #hfx-{{ section.id }} {
+    --hfx-red: #ee204a; --hfx-ink: #d81f48; --hfx-text: #1d1d1d; --hfx-muted: #5f5a56; --hfx-off: #e3d9d1; --hfx-line: #ece4de;
+    padding: clamp(36px, 4.4vw, 64px) clamp(16px, 3vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; font-family: 'Montserrat', sans-serif; color: var(--hfx-text);
+  }
+  #hfx-{{ section.id }} * { box-sizing: border-box; }
+  #hfx-{{ section.id }} .hfx__wrap { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 80px); align-items: center; }
+  #hfx-{{ section.id }} h2 { margin: 0; font: 800 clamp(26px, 2.8vw, 36px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hfx-{{ section.id }} .hfx__lead { margin: 12px 0 0; font: 500 15.5px/1.6 'Montserrat', sans-serif; color: var(--hfx-muted); text-wrap: pretty; }
+  #hfx-{{ section.id }} .hfx__close { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--hfx-line); font: 600 15px/1.5 'Montserrat', sans-serif; text-wrap: pretty; }
+
+  #hfx-{{ section.id }} .hfx__facts { display: grid; }
+  #hfx-{{ section.id }} .hfx__fact { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 24px; align-items: center; padding: 22px 0; }
+  #hfx-{{ section.id }} .hfx__fact + .hfx__fact { border-top: 1px solid var(--hfx-line); }
+  #hfx-{{ section.id }} .hfx__fig { grid-row: 1 / span 3; margin: 0; font: 800 clamp(32px, 3.2vw, 42px)/1 'Montserrat', sans-serif; letter-spacing: -.03em; color: var(--hfx-ink); white-space: nowrap; }
+  #hfx-{{ section.id }} .hfx__fig small { display: block; margin-top: 8px; font: 700 11px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--hfx-muted); }
+  #hfx-{{ section.id }} .hfx__text { margin: 0; font: 500 14.5px/1.5 'Montserrat', sans-serif; color: var(--hfx-text); }
+  #hfx-{{ section.id }} .hfx__src { margin: 0; font: 500 11.5px/1.4 'Montserrat', sans-serif; color: var(--hfx-muted); }
+  #hfx-{{ section.id }} .hfx__src a { color: inherit; }
+
+  /* Pictogram: N women, the last one red. */
+  #hfx-{{ section.id }} .hfx__people { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 6px; }
+  #hfx-{{ section.id }} .hfx__people svg { width: 15px; height: 30px; fill: var(--hfx-off); }
+  #hfx-{{ section.id }} .hfx__people svg.is-her { fill: var(--hfx-red); }
+
+  /* Range bar */
+  #hfx-{{ section.id }} .hfx__bar { position: relative; height: 8px; margin: 22px 0 10px; border-radius: 999px; background: var(--hfx-line); }
+  #hfx-{{ section.id }} .hfx__range { position: absolute; top: 0; bottom: 0; left: {{ s.pain_low }}%; width: {{ s.pain_high | minus: s.pain_low }}%; border-radius: 999px; background: var(--hfx-red); }
+  #hfx-{{ section.id }} .hfx__range b { position: absolute; bottom: calc(100% + 5px); font: 700 11.5px/1 'Montserrat', sans-serif; color: var(--hfx-ink); }
+  #hfx-{{ section.id }} .hfx__range b:first-child { left: 0; transform: translateX(-50%); }
+  #hfx-{{ section.id }} .hfx__range b:last-child { right: 0; transform: translateX(50%); }
+
+  /* Arrival, once: the women fill in, the bar stretches out. */
+  #hfx-{{ section.id }}.is-pre .hfx__people svg { opacity: 0; transform: translateY(6px); }
+  #hfx-{{ section.id }}.is-pre .hfx__range { transform: scaleX(0); }
+  #hfx-{{ section.id }}.is-in .hfx__people svg { transition: opacity .4s ease, transform .5s cubic-bezier(.2, .9, .25, 1); }
+  #hfx-{{ section.id }}.is-in .hfx__range { transform-origin: left; transition: transform 1s cubic-bezier(.2, .9, .25, 1) .3s; }
+
+  @media (max-width: 849px) {
+    #hfx-{{ section.id }} .hfx__wrap { grid-template-columns: 1fr; gap: 8px; }
+    #hfx-{{ section.id }} .hfx__fact { grid-template-columns: 1fr; padding: 20px 0; }
+    #hfx-{{ section.id }} .hfx__fig { grid-row: auto; margin-bottom: 10px; }
+    #hfx-{{ section.id }} .hfx__fig small { display: inline; margin: 0 0 0 10px; vertical-align: middle; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #hfx-{{ section.id }}.is-pre .hfx__people svg, #hfx-{{ section.id }}.is-pre .hfx__range { opacity: 1; transform: none; }
+  }
+</style>
+
+<section id="hfx-{{ section.id }}">
+  <div class="hfx__wrap">
+    <div class="hfx__head">
+      <h2>{{ s.heading }}</h2>
+      {%- if s.lead != blank -%}<p class="hfx__lead">{{ s.lead }}</p>{%- endif -%}
+      {%- if s.close != blank -%}<p class="hfx__close">{{ s.close }}</p>{%- endif -%}
+    </div>
+    <div class="hfx__facts">
+      <div class="hfx__fact">
+        <p class="hfx__fig">1 in {{ s.pcos_n }}<small>{{ s.pcos_issue }}</small></p>
+        <div class="hfx__people" aria-hidden="true">
+          {%- for i in (1..s.pcos_n) -%}
+            <svg viewBox="0 0 24 48" style="transition-delay: {{ forloop.index0 | times: 60 }}ms"{% if forloop.last %} class="is-her"{% endif %}><circle cx="12" cy="7" r="6"/><path d="M12 15c-4.4 0-6.5 3.5-7.4 8L2 38h5.5l1.2 10h6.6l1.2-10H22l-2.6-15c-.9-4.5-3-8-7.4-8z"/></svg>
+          {%- endfor -%}
+        </div>
+        <p class="hfx__text">{{ s.pcos_text }}</p>
+        {%- if s.pcos_source != blank -%}<p class="hfx__src">Source: <a href="{{ s.pcos_link }}" target="_blank" rel="noopener">{{ s.pcos_source }}</a></p>{%- endif -%}
+      </div>
+      <div class="hfx__fact">
+        <p class="hfx__fig">{{ s.pain_low }}-{{ s.pain_high }}%<small>{{ s.pain_issue }}</small></p>
+        <div class="hfx__bar" aria-hidden="true"><div class="hfx__range"><b>{{ s.pain_low }}%</b><b>{{ s.pain_high }}%</b></div></div>
+        <p class="hfx__text">{{ s.pain_text }}</p>
+        {%- if s.pain_source != blank -%}<p class="hfx__src">Source: <a href="{{ s.pain_link }}" target="_blank" rel="noopener">{{ s.pain_source }}</a></p>{%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var el = document.getElementById('hfx-{{ section.id }}');
+    if (!el || !('IntersectionObserver' in window)) return;
+    el.classList.add('is-pre');
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      el.classList.add('is-in'); el.classList.remove('is-pre'); io.disconnect();
+    }, { threshold: .3 }).observe(el);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Her: facts",
+  "tag": "div",
+  "settings": [
+    { "type": "color", "id": "section_bg", "label": "Section background", "default": "#ffffff" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "It's far more common than you think." },
+    { "type": "textarea", "id": "lead", "label": "Lead" },
+    { "type": "header", "content": "PCOS (pictogram)" },
+    { "type": "text", "id": "pcos_issue", "label": "Label", "default": "PCOS" },
+    { "type": "range", "id": "pcos_n", "label": "1 in ...", "min": 2, "max": 12, "step": 1, "default": 9 },
+    { "type": "textarea", "id": "pcos_text", "label": "Text" },
+    { "type": "text", "id": "pcos_source", "label": "Source" },
+    { "type": "url", "id": "pcos_link", "label": "Source link" },
+    { "type": "header", "content": "Painful periods (range bar)" },
+    { "type": "text", "id": "pain_issue", "label": "Label", "default": "Painful periods" },
+    { "type": "range", "id": "pain_low", "label": "Low %", "min": 0, "max": 100, "step": 1, "default": 46 },
+    { "type": "range", "id": "pain_high", "label": "High %", "min": 0, "max": 100, "step": 1, "default": 76 },
+    { "type": "textarea", "id": "pain_text", "label": "Text" },
+    { "type": "text", "id": "pain_source", "label": "Source" },
+    { "type": "url", "id": "pain_link", "label": "Source link" },
+    { "type": "textarea", "id": "close", "label": "Closing line" }
+  ],
+  "presets": [{ "name": "Her: facts" }]
+}
+{% endschema %}

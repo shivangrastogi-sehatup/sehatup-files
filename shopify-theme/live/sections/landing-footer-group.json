@@ -1,0 +1,30 @@
+{
+  "name": "Landing footer",
+  "type": "footer",
+  "sections": {
+    "footer": {
+      "type": "lm-footer",
+      "settings": {
+        "logo": "shopify://shop_images/New_Logo_Red_and_White_with_tagline_1.webp",
+        "logo_width": 160,
+        "heading": "One You. One Health. One sehatUP.",
+        "tagline": "Bringing Allopathy, Ayurveda and Homeopathy together for a more integrated approach to healthcare.",
+        "phone": "+91 93555-39355",
+        "email": "support@sehatup.com",
+        "address": "C-79, C Block, Sector 2, Noida, Uttar Pradesh 201301",
+        "menu_1_title": "Quick Links",
+        "menu_1": "footer",
+        "menu_2_title": "Support",
+        "menu_2": "support_menu",
+        "menu_3_title": "Company",
+        "menu_3": "footer-1",
+        "copyright": "© 2026 sehatUP. All rights reserved.",
+        "facebook": "https://www.facebook.com/sehatup/",
+        "instagram": "https://www.instagram.com/sehatupofficial/",
+        "linkedin": "https://www.linkedin.com/company/sehatup",
+        "youtube": "https://www.youtube.com/@sehatupofficial"
+      }
+    }
+  },
+  "order": ["footer"]
+}

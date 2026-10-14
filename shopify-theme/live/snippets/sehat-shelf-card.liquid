@@ -1,0 +1,32 @@
+{%- comment -%} One product card for sehat-shelf: a link to the product, then an Add to cart button (first available variant). Params: p (product), show_use. {%- endcomment -%}
+{%- liquid
+  assign name = p.title | remove: ' - sehatUP' | remove: ' | SehatUP' | remove: ' | sehatUP' | split: ' | ' | first
+  assign v = p.selected_or_first_available_variant
+  capture use
+    render 'sehat-facts', handle: p.handle, field: 'use'
+  endcapture
+  assign use = use | strip
+-%}
+<div class="ssf__card">
+  <a class="ssf__link" href="{{ p.url }}">
+    <div class="ssf__img">
+      {%- if p.featured_image != blank -%}
+        <img src="{{ p.featured_image | image_url: width: 500 }}" srcset="{{ p.featured_image | image_url: width: 300 }} 300w, {{ p.featured_image | image_url: width: 500 }} 500w" sizes="(max-width: 899px) 62vw, 290px" alt="{{ p.featured_image.alt | default: name | escape }}" loading="lazy" width="500" height="500">
+      {%- endif -%}
+      {%- if v.compare_at_price > v.price -%}
+        <span class="ssf__off">{{ v.compare_at_price | minus: v.price | times: 100.0 | divided_by: v.compare_at_price | round }}% off</span>
+      {%- endif -%}
+    </div>
+    <h3 class="ssf__name">{{ name }}</h3>
+    {%- if show_use and use != '' -%}<p class="ssf__use">{{ use }}</p>{%- endif -%}
+    <p class="ssf__price">
+      {{ v.price | money_without_trailing_zeros }}
+      {%- if v.compare_at_price > v.price -%}<s><span class="visually-hidden">Was </span>{{ v.compare_at_price | money_without_trailing_zeros }}</s>{%- endif -%}
+    </p>
+  </a>
+  {%- if p.available -%}
+    <button type="button" class="ssf__add" data-variant="{{ v.id }}" aria-label="Add {{ name | escape }} to cart">Add to cart</button>
+  {%- else -%}
+    <button type="button" class="ssf__add" disabled>Sold out</button>
+  {%- endif -%}
+</div>

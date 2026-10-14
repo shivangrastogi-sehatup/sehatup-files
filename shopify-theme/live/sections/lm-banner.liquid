@@ -1,0 +1,40 @@
+{%- assign s = section.settings -%}
+{%- if s.full_width -%}{%- assign sizes = '100vw' -%}{%- else -%}{%- assign sizes = '(max-width: 1240px) 100vw, 1200px' -%}{%- endif -%}
+{%- if s.image != blank or request.design_mode -%}
+<section class="lm-sec lm-banner-sec" style="--lm-br: {{ s.ratio }}; --lm-bm: {{ s.mobile_height }}px; --lm-bx: {{ s.focus_x }}%; --lm-by: {{ s.focus_y }}%; --lm-bb: {{ s.blur }}px;">
+  <div class="{% unless s.full_width %}lm-wrap{% endunless %}">
+    {%- if s.link != blank -%}<a class="lm-banner{% if s.full_width %} lm-banner--full{% endif %}" href="{{ s.link }}">{%- else -%}<div class="lm-banner{% if s.full_width %} lm-banner--full{% endif %}">{%- endif -%}
+      {%- if s.image != blank -%}
+        <picture>
+          {%- if s.mobile_image != blank -%}<source media="(max-width: 749px)" srcset="{{ s.mobile_image | image_url: width: 800 }} 800w, {{ s.mobile_image | image_url: width: 1200 }} 1200w" sizes="100vw">{%- endif -%}
+          {{ s.image | image_url: width: 2400 | image_tag: loading: 'lazy', widths: '800, 1200, 1600, 2000, 2400', sizes: sizes, alt: s.alt }}
+        </picture>
+      {%- else -%}
+        <div class="lm-banner__ph">Banner image: pick one in the theme editor (2400 x 800 px)</div>
+      {%- endif -%}
+      {%- if s.text != blank -%}<p class="lm-banner__t">{{ s.text }}</p>{%- endif -%}
+    {%- if s.link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "LM banner image",
+  "tag": "div",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Image", "info": "Wide 3:1, e.g. 2400 x 800 px. Hidden on the site until an image is picked." },
+    { "type": "image_picker", "id": "mobile_image", "label": "Image on phones (optional)", "info": "Otherwise the main image is cropped to the focus point." },
+    { "type": "text", "id": "alt", "label": "Image description (for screen readers)" },
+    { "type": "text", "id": "text", "label": "Short line over the image (optional)" },
+    { "type": "url", "id": "link", "label": "Link (optional)" },
+    { "type": "range", "id": "blur", "label": "Blur the photo", "info": "0 = sharp.", "min": 0, "max": 20, "step": 1, "unit": "px", "default": 0 },
+    { "type": "checkbox", "id": "full_width", "label": "Edge to edge", "default": false },
+    { "type": "select", "id": "ratio", "label": "Shape (desktop)", "default": "3 / 1", "options": [{ "value": "4 / 1", "label": "4:1 (slim)" }, { "value": "3 / 1", "label": "3:1" }, { "value": "21 / 9", "label": "21:9" }, { "value": "16 / 9", "label": "16:9" }] },
+    { "type": "range", "id": "mobile_height", "label": "Height on phones", "min": 160, "max": 480, "step": 10, "unit": "px", "default": 240 },
+    { "type": "range", "id": "focus_x", "label": "Focus point, left to right", "min": 0, "max": 100, "step": 5, "unit": "%", "default": 50 },
+    { "type": "range", "id": "focus_y", "label": "Focus point, top to bottom", "min": 0, "max": 100, "step": 5, "unit": "%", "default": 50 }
+  ],
+  "presets": [{ "name": "LM banner image" }]
+}
+{% endschema %}
