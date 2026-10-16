@@ -19,7 +19,7 @@
         "background_image_size": "cover",
         "background_position_x": "center",
         "background_position_y": "center",
-        "background_shift_x": 0,
+        "background_shift_x": -4,
         "background_overlay_opacity": 100,
         "background_overlay_color": "#e62020",
         "background_overlay_strength": 0,
@@ -36,10 +36,14 @@
         "foreground_position_y": "bottom",
         "foreground_offset_x": 0,
         "foreground_offset_y": 0,
+        "foreground_trim_bottom": 0,
         "hide_foreground_mobile": false,
         "split_layout": false,
         "mobile_crop_foreground": false,
-        "heading": "India's First Digital Health Clinic for Sexual, Health, Hormonal & Weight&nbsp;",
+        "kicker": "",
+        "heading": "India’s First Integrated Digital Health Clinic",
+        "heading_red": "",
+        "heading_red_color": "#ee204a",
         "subheading_prefix": "Find the real cause in",
         "subheading_highlight": "60 seconds",
         "subheading_highlight_color": "#ff4757",
@@ -56,6 +60,7 @@
         "body_size": 19,
         "body_color": "#ffffff",
         "text_shadow_enabled": true,
+        "light_text_fade": false,
         "button_1_text": "Start Free Assessment",
         "button_1_link": "shopify://pages/health-score-360",
         "button_1_style": "filled",
@@ -76,6 +81,15 @@
         "button_2_hover_bg_color": "#ffffff",
         "button_2_hover_text_color": "#000000",
         "button_2_hover_border_color": "#ffffff",
+        "note": "",
+        "trust_text": "Trusted by 25,000+ patients",
+        "rating": "4.5",
+        "trust_count": 4,
+        "trust_initials": "R, A, S, P, K",
+        "avatar_1": "shopify://shop_images/Warm_Portrait_with_Red_Dupatta.webp",
+        "avatar_2": "shopify://shop_images/Joyful_South_Asian_Man_Portrait.webp",
+        "avatar_3": "shopify://shop_images/Warm_Indian_Portrait_with_Embroidered_Details.webp",
+        "avatar_4": "shopify://shop_images/Joyful_Rooftop_Portrait.webp",
         "button_layout": "horizontal",
         "button_font_size": 14,
         "button_font_weight": "600",
@@ -96,10 +110,50 @@
         "mobile_content_alignment": "center",
         "mobile_background_position_x": "center",
         "mobile_background_position_y": "center",
-        "mobile_background_image": "shopify://shop_images/Blurred-Minimalist-Reception-Lobby_2.webp",
+        "mobile_background_image": "shopify://shop_images/Blurred-Minimalist-Reception-Lobby.webp",
         "mobile_bg_focus_x": 50,
-        "mobile_foreground_image": "shopify://shop_images/doc_mobile.webp"
+        "mobile_foreground_image": "shopify://shop_images/doctors_integrated.webp"
       }
+    },
+    "statistics_section_GGBRCg": {
+      "type": "statistics-section",
+      "name": "Impact statistics",
+      "settings": {
+        "heading": "Real People. Real Progress.",
+        "heading_size": 48,
+        "heading_size_mobile": 24,
+        "heading_spacing": 20,
+        "stat_1_enabled": true,
+        "stat_1_value": "40%",
+        "stat_1_label": "Better sleep",
+        "stat_2_enabled": true,
+        "stat_2_value": "30%",
+        "stat_2_label": "Improved energy",
+        "stat_3_enabled": true,
+        "stat_3_value": "25%",
+        "stat_3_label": "Reduced stress",
+        "stat_4_enabled": true,
+        "stat_4_value": "Better",
+        "stat_4_label": "Digestion, stamina and hormonal balance",
+        "value_size": 40,
+        "label_size": 16,
+        "value_spacing": 16,
+        "value_size_mobile": 32,
+        "label_size_mobile": 13,
+        "container_width": 1200,
+        "column_gap": 40,
+        "column_gap_mobile": 0,
+        "row_gap_mobile": 0,
+        "padding_top": 30,
+        "padding_bottom": 20,
+        "padding_top_mobile": 50,
+        "padding_bottom_mobile": 50,
+        "background_color": "#1c1c1c",
+        "heading_color": "#ffffff",
+        "accent_color": "#ff3333",
+        "label_color": "#ffffff"
+      },
+      "disabled": true
     },
     "healthcare_fails_BMgEFz": {
       "type": "Healthcare-Fails",
@@ -197,6 +251,7 @@
       "settings": {
         "enable_video": true,
         "video_source": "link",
+        "dock_preview_url": "",
         "video_url": "https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4",
         "dock_side": "left",
         "dock_bottom": 32,
@@ -807,45 +862,6 @@
         "margin_bottom": 0
       }
     },
-    "statistics_section_GGBRCg": {
-      "type": "statistics-section",
-      "name": "Impact statistics",
-      "settings": {
-        "heading": "Real People. Real Progress.",
-        "heading_size": 48,
-        "heading_size_mobile": 24,
-        "heading_spacing": 20,
-        "stat_1_enabled": true,
-        "stat_1_value": "40%",
-        "stat_1_label": "Better sleep",
-        "stat_2_enabled": true,
-        "stat_2_value": "30%",
-        "stat_2_label": "Improved energy",
-        "stat_3_enabled": true,
-        "stat_3_value": "25%",
-        "stat_3_label": "Reduced stress",
-        "stat_4_enabled": true,
-        "stat_4_value": "Better",
-        "stat_4_label": "Digestion, stamina and hormonal balance",
-        "value_size": 40,
-        "label_size": 16,
-        "value_spacing": 16,
-        "value_size_mobile": 32,
-        "label_size_mobile": 13,
-        "container_width": 1200,
-        "column_gap": 40,
-        "column_gap_mobile": 0,
-        "row_gap_mobile": 0,
-        "padding_top": 30,
-        "padding_bottom": 20,
-        "padding_top_mobile": 50,
-        "padding_bottom_mobile": 50,
-        "background_color": "#1c1c1c",
-        "heading_color": "#ffffff",
-        "accent_color": "#ff3333",
-        "label_color": "#ffffff"
-      }
-    },
     "1769660995835d317d": {
       "type": "apps",
       "blocks": {
@@ -1030,10 +1046,76 @@
         "padding_top": 12,
         "padding_bottom": 80
       }
+    },
+    "progress_light": {
+      "type": "sehat-progress",
+      "blocks": {
+        "stat_1": {
+          "type": "stat",
+          "settings": {
+            "icon": "moon",
+            "value": "40%",
+            "label": "Better sleep"
+          }
+        },
+        "stat_2": {
+          "type": "stat",
+          "settings": {
+            "icon": "energy",
+            "value": "30%",
+            "label": "Improved energy"
+          }
+        },
+        "stat_3": {
+          "type": "stat",
+          "settings": {
+            "icon": "calm",
+            "value": "25%",
+            "label": "Reduced stress"
+          }
+        },
+        "stat_4": {
+          "type": "stat",
+          "settings": {
+            "icon": "heart",
+            "value": "60%",
+            "label": "Wellness Improved"
+          }
+        }
+      },
+      "block_order": [
+        "stat_1",
+        "stat_2",
+        "stat_3",
+        "stat_4"
+      ],
+      "settings": {
+        "heading": "Real People.",
+        "highlight": "Real Progress.",
+        "subheading": "",
+        "note": "",
+        "count_up": true,
+        "background_color": "#ffffff",
+        "accent_color": "#ee204a",
+        "padding_top": 56,
+        "padding_bottom": 64,
+        "padding_top_mobile": 28,
+        "padding_bottom_mobile": 28,
+        "style": "glass",
+        "overlap": 0,
+        "overlap_mobile": 0,
+        "glow": true,
+        "glow_left": "#f8e1e6",
+        "glow_right": "#f3e4d8",
+        "dots": true,
+        "card_tint": "#fdf0f2"
+      }
     }
   },
   "order": [
     "blocks_k7CD3w",
+    "progress_light",
+    "statistics_section_GGBRCg",
     "healthcare_fails_BMgEFz",
     "floating_product_video_3Gty9A",
     "integrated_hLiEX3",
@@ -1043,7 +1125,6 @@
     "doctor_designed_kits_Wb6YeW",
     "homepage_judgeme_reviews_8V3nxk",
     "trust_certification_BaEkdL",
-    "statistics_section_GGBRCg",
     "1769660995835d317d",
     "featured_in_custom_D9EbdA",
     "product_faq_E43Gdi",

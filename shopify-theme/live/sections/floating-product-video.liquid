@@ -321,9 +321,7 @@
     opacity: 0;
     transition: opacity .18s ease;
   }
-  #{{ fpv_id }} .fpv__progress:hover .fpv__progress-knob,
-  #{{ fpv_id }} .fpv__progress:focus-visible .fpv__progress-knob,
-  #{{ fpv_id }} .fpv__progress[data-dragging="true"] .fpv__progress-knob { opacity: 1; }
+  #{{ fpv_id }} .fpv__progress:focus-visible .fpv__progress-knob, #{{ fpv_id }} .fpv__progress[data-dragging="true"] .fpv__progress-knob { opacity: 1; }  @media (hover: hover) { #{{ fpv_id }} .fpv__progress:hover .fpv__progress-knob { opacity: 1; } }
   #{{ fpv_id }} .fpv__progress:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 
   #{{ fpv_id }} .fpv__card {

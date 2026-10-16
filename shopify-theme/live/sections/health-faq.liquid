@@ -33,14 +33,14 @@
     border: 1.5px solid var(--hfq-text); color: var(--hfq-text); text-decoration: none; font: 700 14.5px/1 'Montserrat', sans-serif;
     transition: background-color .2s ease, color .2s ease;
   }
-  #hfq-{{ section.id }} .hfq__contact:hover { background: var(--hfq-text); color: #fff; }
+  @media (hover: hover) { #hfq-{{ section.id }} .hfq__contact:hover { background: var(--hfq-text); color: #fff; } }
 
   #hfq-{{ section.id }} .hfq__shop { margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
   #hfq-{{ section.id }} .hfq__shop a {
     padding: 9px 14px; border-radius: 999px; background: #fff; text-decoration: none;
     font: 700 13px/1 'Montserrat', sans-serif; color: var(--hfq-text); box-shadow: 0 1px 4px rgba(29,29,29,.08);
   }
-  #hfq-{{ section.id }} .hfq__shop a:hover { color: var(--hfq-accent); }
+  @media (hover: hover) { #hfq-{{ section.id }} .hfq__shop a:hover { color: var(--hfq-accent); } }
 
   #hfq-{{ section.id }} .hfq__list { border-top: 1px solid #e6dfd9; }
   #hfq-{{ section.id }} .hfq__item { border-bottom: 1px solid #e6dfd9; }
@@ -49,7 +49,7 @@
     padding: 22px 4px; font: 700 17px/1.35 'Montserrat', sans-serif; color: var(--hfq-text);
   }
   #hfq-{{ section.id }} .hfq__q::-webkit-details-marker { display: none; }
-  #hfq-{{ section.id }} .hfq__q:hover { color: var(--hfq-accent); }
+  @media (hover: hover) { #hfq-{{ section.id }} .hfq__q:hover { color: var(--hfq-accent); } }
   #hfq-{{ section.id }} .hfq__q:focus-visible { outline: 2px solid var(--hfq-text); outline-offset: 2px; border-radius: 4px; }
   #hfq-{{ section.id }} .hfq__plus { position: relative; flex: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(29,29,29,.1); }
   #hfq-{{ section.id }} .hfq__plus::before,
@@ -59,6 +59,8 @@
   #hfq-{{ section.id }} .hfq__plus::after { transform: rotate(90deg); }
   #hfq-{{ section.id }} .hfq__item[open]:not(.is-closing) .hfq__plus::after { transform: rotate(0deg); }
   #hfq-{{ section.id }} .hfq__item[open]:not(.is-closing) .hfq__plus { background: var(--hfq-accent); }
+  /* The open question is highlighted on every device (not just on hover). */
+  #hfq-{{ section.id }} .hfq__item[open]:not(.is-closing) .hfq__q { color: var(--hfq-accent); }
   #hfq-{{ section.id }} .hfq__item[open]:not(.is-closing) .hfq__plus::before,
   #hfq-{{ section.id }} .hfq__item[open]:not(.is-closing) .hfq__plus::after { background: #fff; }
   #hfq-{{ section.id }} .hfq__a { padding: 0 52px 24px 4px; font: 400 15.5px/1.65 'Montserrat', sans-serif; color: var(--hfq-muted); }

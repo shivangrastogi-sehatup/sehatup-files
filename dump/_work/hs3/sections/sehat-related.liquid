@@ -1,0 +1,113 @@
+{%- comment -%}
+  "Often bought with this": up to four products Shopify recommends for the
+  current product. The list is loaded after the page (Shopify's product
+  recommendations need a second request), so the section stays out of the
+  way and simply does not appear when there is nothing to recommend.
+{%- endcomment -%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #srl-{{ section.id }} {
+    --srl-text: #1d1d1d; --srl-muted: #5f5f5f; --srl-line: #e5e3e0;
+    padding: 0 clamp(16px, 2vw, 28px) 56px; background: #fff;
+    font-family: 'Montserrat', sans-serif; color: var(--srl-text);
+  }
+  #srl-{{ section.id }}:not(.is-ready) { display: none; }
+  #srl-{{ section.id }} * { box-sizing: border-box; }
+  #srl-{{ section.id }} .srl__inner { max-width: 1160px; margin: 0 auto; }
+  #srl-{{ section.id }} .srl__heading { margin: 0 0 20px; font: 800 clamp(24px, 2.6vw, 34px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; }
+  #srl-{{ section.id }} .srl__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  #srl-{{ section.id }} .srl__card { display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+  #srl-{{ section.id }} .srl__img { border-radius: 14px; overflow: hidden; aspect-ratio: 1; background: #f6f0ec; }
+  #srl-{{ section.id }} .srl__img img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.16, 1, .3, 1); }
+  #srl-{{ section.id }} .srl__name { margin: 12px 0 0; font: 600 15px/1.35 'Montserrat', sans-serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #srl-{{ section.id }} .srl__price { margin: 6px 0 0; font: 700 15px/1.2 'Montserrat', sans-serif; }
+  #srl-{{ section.id }} .srl__price s { margin-left: 6px; font-weight: 400; color: var(--srl-muted); }
+  #srl-{{ section.id }} .srl__price em { margin-left: 6px; font-style: normal; font-weight: 700; font-size: 13px; color: #d01d42; }
+  @media (hover: hover) and (pointer: fine) {
+    #srl-{{ section.id }} .srl__card:hover .srl__img img { transform: scale(1.04); }
+    #srl-{{ section.id }} .srl__card:hover .srl__name { text-decoration: underline; text-underline-offset: 3px; }
+  }
+  #srl-{{ section.id }} .srl__card:focus-visible { outline: 2px solid var(--srl-text); outline-offset: 4px; border-radius: 14px; }
+  @media (max-width: 749px) {
+    #srl-{{ section.id }} { padding-bottom: 40px; padding-right: 0; }
+    #srl-{{ section.id }} .srl__grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-right: 16px; gap: 12px; }
+    #srl-{{ section.id }} .srl__grid::-webkit-scrollbar { display: none; }
+    #srl-{{ section.id }} .srl__card { flex: 0 0 46%; scroll-snap-align: start; }
+    #srl-{{ section.id }} .srl__name { font-size: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #srl-{{ section.id }} .srl__img img { transition: none; } }
+  @media (min-width: 1680px) { #srl-{{ section.id }} .srl__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #srl-{{ section.id }} .srl__inner { zoom: 1.25; } }
+  @media (min-width: 2560px) { #srl-{{ section.id }} .srl__inner { zoom: 1.65; } }
+</style>
+
+<section
+  id="srl-{{ section.id }}"
+  class="srl{% if recommendations.performed and recommendations.products_count > 0 %} is-ready{% endif %}"
+  data-url="{{ routes.product_recommendations_url }}?section_id={{ section.id }}&product_id={{ product.id }}&limit={{ section.settings.limit }}"
+>
+  {%- if recommendations.performed and recommendations.products_count > 0 -%}
+    <div class="srl__inner">
+      <h2 class="srl__heading">{{ section.settings.heading }}</h2>
+      <div class="srl__grid">
+        {%- for p in recommendations.products -%}
+          {%- liquid
+            assign name = p.title | remove: ' - sehatUP' | remove: ' | SehatUP' | remove: ' | sehatUP'
+            assign v = p.selected_or_first_available_variant
+          -%}
+          <a class="srl__card" href="{{ p.url }}">
+            <div class="srl__img">
+              {%- if p.featured_image != blank -%}
+                <img src="{{ p.featured_image | image_url: width: 500 }}" alt="{{ p.featured_image.alt | default: name | escape }}" loading="lazy" width="500" height="500">
+              {%- endif -%}
+            </div>
+            <p class="srl__name">{{ name }}</p>
+            <p class="srl__price">
+              {{ v.price | money_without_trailing_zeros }}
+              {%- if v.compare_at_price > v.price -%}
+                <s><span class="visually-hidden">Was </span>{{ v.compare_at_price | money_without_trailing_zeros }}</s>
+                <em>{{ v.compare_at_price | minus: v.price | times: 100.0 | divided_by: v.compare_at_price | round }}% off</em>
+              {%- endif -%}
+            </p>
+          </a>
+        {%- endfor -%}
+      </div>
+    </div>
+  {%- endif -%}
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('srl-{{ section.id }}');
+    if (!root || root.classList.contains('is-ready') || root.dataset.srlBooted === '1') return;
+    root.dataset.srlBooted = '1';
+    // Load only when the visitor gets near it.
+    var load = function () {
+      fetch(root.dataset.url).then(function (r) { return r.text(); }).then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var fresh = doc.getElementById(root.id);
+        if (fresh && fresh.querySelector('.srl__card')) { root.innerHTML = fresh.innerHTML; root.classList.add('is-ready'); }
+      }).catch(function () {});
+    };
+    if ('IntersectionObserver' in window) {
+      var probe = root.parentElement.previousElementSibling || root.parentElement;
+      var io = new IntersectionObserver(function (en) { if (en[0].isIntersecting) { io.disconnect(); load(); } }, { rootMargin: '600px 0px' });
+      io.observe(probe);
+    } else { load(); }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "sehatUP related products",
+  "tag": "div",
+  "class": "section-sehat-related",
+  "enabled_on": { "templates": ["product"] },
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Often bought with this" },
+    { "type": "range", "id": "limit", "label": "Products to show", "min": 2, "max": 4, "step": 1, "default": 4 }
+  ],
+  "presets": [{ "name": "sehatUP related products" }]
+}
+{% endschema %}

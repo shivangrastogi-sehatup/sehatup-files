@@ -1,0 +1,99 @@
+{%- assign s = section.settings -%}
+<section class="lm-sec{% if s.tone == 'stone' %} lm-sec--stone{% endif %}" style="--lm-wi: {{ s.image_width }}px; --lm-wic: {{ s.icon_size }}px;">
+  <div class="lm-wrap lm-whyl">
+    <div>
+      <h2 class="lm-h2 lm-whyl__h">{{ s.heading }}{% if s.highlight != blank %} <span class="lm-mark">{{ s.highlight }}</span>{% endif %}</h2>
+      <ul class="lm-whyl__list{% if s.dividers %} lm-whyl__list--lines{% endif %}" data-lm-anim>
+        {%- for block in section.blocks -%}
+          {%- assign b = block.settings -%}
+          <li {{ block.shopify_attributes }}>
+            <span class="lm-whyl__ic" aria-hidden="true">
+              {%- if b.icon_image != blank -%}
+                {{ b.icon_image | image_url: width: 240 | image_tag: alt: '', loading: 'lazy', widths: '80, 160, 240', sizes: '40px', style: 'width: 58%; height: 58%; object-fit: contain;' }}
+              {%- else -%}
+              {%- case b.icon -%}
+                {%- when 'hands' -%}<svg viewBox="0 0 24 24"><path d="M3.4 9.8v2l.7 4.5c.2 1.1.7 2 1.5 2.7l2.8 2.6v1.4"/><path d="M5.6 14.2c.6-.6 1.5-.6 2.1 0l2.1 2c.8.8 1.2 1.9 1.2 3v3.3"/><g transform="matrix(-1 0 0 1 24 0)"><path d="M3.4 9.8v2l.7 4.5c.2 1.1.7 2 1.5 2.7l2.8 2.6v1.4"/><path d="M5.6 14.2c.6-.6 1.5-.6 2.1 0l2.1 2c.8.8 1.2 1.9 1.2 3v3.3"/></g><path d="M12.6 17.2c-2.9.2-4.6-1.7-4.6-4.7 3 .1 4.7 1.9 4.6 4.7z"/><path d="M9.8 13.7c1.2.8 2.1 2.1 2.6 3.6v2"/><g transform="rotate(45 9.2 5.9)"><rect x="7.6" y="2.5" width="3.2" height="6.8" rx="1.6"/><path d="M7.6 5.9h3.2"/></g><path d="M15.8 3.4c-1.4 1.9-2.1 3.1-2.1 4.1a2.1 2.1 0 0 0 4.2 0c0-1-.7-2.2-2.1-4.1z"/></svg>
+                {%- when 'pathies' -%}<svg viewBox="0 0 24 24" style="stroke-width: 1.5"><circle cx="12" cy="12" r="10"/><path d="M12 12V2M12 12l8.66 5M12 12l-8.66 5"/><path d="M5.9 11.1c0-2.2 1.4-3.5 3.6-3.5 0 2.2-1.4 3.5-3.6 3.5zM5.9 11.1l1.9-1.9"/><g transform="rotate(45 16.3 9.7)"><rect x="14.95" y="7" width="2.7" height="5.4" rx="1.35"/><path d="M14.95 9.7h2.7"/></g><path d="M12 14.9c-1.2 1.4-1.8 2.3-1.8 3.1a1.8 1.8 0 0 0 3.6 0c0-.8-.6-1.7-1.8-3.1z"/></svg>
+                {%- when 'roots' -%}<svg viewBox="0 0 24 24"><path d="M12 13V4.5"/><path d="M12 9c-2.6-.2-4.5-2-4.5-4.5 2.6.2 4.5 2 4.5 4.5zM12 7.5c0-2.5 1.9-4.3 4.5-4.5 0 2.5-1.9 4.3-4.5 4.5z"/><path d="M3.5 13h17"/><path d="M12 13c0 3-2 5.5-5 7M12 13c0 3 2 5.5 5 7M12 13v8"/></svg>
+                {%- when 'calendar' -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="M12 18.2l-2.3-2.2a1.4 1.4 0 0 1 2.3-1.6 1.4 1.4 0 0 1 2.3 1.6z"/></svg>
+                {%- when 'pulse' -%}<svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/><path d="M5 12h3.5l1.5-2.5 2.5 5 1.5-2.5H19"/></svg>
+                {%- when 'stethoscope' -%}<svg viewBox="0 0 24 24"><path d="M6 3.5H5a1 1 0 0 0-1 1V9a5 5 0 0 0 10 0V4.5a1 1 0 0 0-1-1h-1"/><path d="M9 14v1.5a4.5 4.5 0 0 0 9 0V13"/><circle cx="18" cy="11" r="2"/></svg>
+                {%- when 'chart' -%}<svg viewBox="0 0 24 24"><path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/></svg>
+                {%- when 'heart' -%}<svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/></svg>
+                {%- when 'doctor' -%}<svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 14 0M17 11l2 2 3-3"/></svg>
+                {%- else -%}<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+              {%- endcase -%}
+              {%- endif -%}
+            </span>
+            <b>{{ b.title }}</b>
+            {%- if block.type == 'certs' -%}
+              <span class="lm-whyl__logos">
+                {%- for i in (1..4) -%}
+                  {%- assign lk = 'logo_' | append: i -%}
+                  {%- if b[lk] != blank -%}{{ b[lk] | image_url: width: 160 | image_tag: loading: 'lazy', alt: b[lk].alt }}{%- endif -%}
+                {%- endfor -%}
+              </span>
+            {%- elsif b.text != blank -%}
+              <span>{{ b.text }}</span>
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+    </div>
+    {%- if s.image != blank -%}
+      <div class="lm-whyl__img">{{ s.image | image_url: width: 900 | image_tag: loading: 'lazy', widths: '420, 640, 900', sizes: '(max-width: 749px) 70vw, 440px', alt: s.image.alt }}</div>
+    {%- endif -%}
+  </div>
+</section>
+<script>
+  (function () {
+    var list = document.currentScript.previousElementSibling.querySelector('[data-lm-anim]');
+    if (!list || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    list.classList.add('lm-anim');
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      list.classList.add('is-in'); io.disconnect();
+    }, { threshold: .25 }).observe(list);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "LM: why trust (list)",
+  "tag": "div",
+  "settings": [
+    { "type": "checkbox", "id": "dividers", "label": "Thin lines between the points", "default": false },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Why do thousands" },
+    { "type": "text", "id": "highlight", "label": "Heading part in red", "default": "trust sehatUP?" },
+    { "type": "image_picker", "id": "image", "label": "Round photo" },
+    { "type": "select", "id": "tone", "label": "Background", "default": "white", "options": [{ "value": "white", "label": "White" }, { "value": "stone", "label": "Stone" }] },
+    {"type":"header","content":"Sizes"},
+    {"type":"range","id":"image_width","label":"Round photo width","min":200,"max":640,"step":10,"unit":"px","default":520},
+    {"type":"range","id":"icon_size","label":"Icon circle size","min":36,"max":80,"step":2,"unit":"px","default":56}
+  ],
+  "blocks": [
+    {
+      "type": "point", "name": "Point",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icon", "default": "shield", "options": [{ "value": "hands", "label": "Hands with leaf, capsule and drop" }, { "value": "pathies", "label": "Ayurveda + Allopathy + Homeopathy" }, { "value": "roots", "label": "Roots (root cause)" }, { "value": "chart", "label": "Chart" }, { "value": "heart", "label": "Heart" }, { "value": "doctor", "label": "Doctor" }, { "value": "shield", "label": "Shield" }, { "value": "calendar", "label": "Calendar with heart" }, { "value": "pulse", "label": "Heart with pulse" }, { "value": "stethoscope", "label": "Stethoscope" }] },
+        { "type": "image_picker", "id": "icon_image", "label": "Icon image (replaces the icon above)", "info": "Square PNG or SVG, transparent background, 512 x 512 px." },
+        { "type": "text", "id": "title", "label": "Title", "default": "Point" },
+        { "type": "text", "id": "text", "label": "Line under it" }
+      ]
+    },
+    {
+      "type": "certs", "name": "Certificates", "limit": 1,
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icon", "default": "shield", "options": [{ "value": "hands", "label": "Hands with leaf, capsule and drop" }, { "value": "pathies", "label": "Ayurveda + Allopathy + Homeopathy" }, { "value": "roots", "label": "Roots (root cause)" }, { "value": "chart", "label": "Chart" }, { "value": "heart", "label": "Heart" }, { "value": "doctor", "label": "Doctor" }, { "value": "shield", "label": "Shield" }, { "value": "calendar", "label": "Calendar with heart" }, { "value": "pulse", "label": "Heart with pulse" }, { "value": "stethoscope", "label": "Stethoscope" }] },
+        { "type": "image_picker", "id": "icon_image", "label": "Icon image (replaces the icon above)", "info": "Square PNG or SVG, transparent background, 512 x 512 px." },
+        { "type": "text", "id": "title", "label": "Title", "default": "We are certified" },
+        { "type": "image_picker", "id": "logo_1", "label": "Logo 1" },
+        { "type": "image_picker", "id": "logo_2", "label": "Logo 2" },
+        { "type": "image_picker", "id": "logo_3", "label": "Logo 3" },
+        { "type": "image_picker", "id": "logo_4", "label": "Logo 4" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "LM: why trust (list)" }]
+}
+{% endschema %}

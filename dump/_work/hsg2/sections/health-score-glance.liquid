@@ -1,0 +1,309 @@
+{%- comment -%}
+  "What is Health Score 360?" - the person inside a 360 ring, the three things
+  the score reads set around it. Desktop: copy left, ring right with the 3 points
+  around it. Tablet: still two columns, ring only (no text points). Phone:
+  one column with the ring just above the switch.
+  Switch: a two-way control with face avatars ("Who is the check for?").
+  Switching runs one animation around the photo: a red sweep circles the ring,
+  the arcs pull back and redraw, the new photo opens like an iris, and any label
+  that differs swaps. One swap at a time: extra clicks only move the switch and
+  the stage catches up once with the latest choice (no animation pile-up).
+{%- endcomment -%}
+{%- liquid
+  assign s = section.settings
+  assign her_n = s.her_nodes | newline_to_br | split: '<br />'
+  assign him_n = s.him_nodes | newline_to_br | split: '<br />'
+  assign sets = 'her,him' | split: ','
+  assign letters = 'a,b,c' | split: ','
+-%}
+<style>
+  #hsg-{{ section.id }} {
+    --ink: #1d1d1d; --mute: rgba(29, 29, 29, .66); --line: #e8e0d9; --stone: #f3ede8;
+    --red: {{ s.accent_color }}; --btn: {{ s.accent_color | color_darken: 8 }};
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    background: #fff; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hsg-{{ section.id }} * { box-sizing: border-box; }
+  #hsg-{{ section.id }} .g__in { padding: clamp(48px, 4.2vw, 84px) 4%; display: grid; grid-template-columns: minmax(0, .62fr) minmax(0, 1fr); gap: 2%; align-items: center; }
+
+  /* left column */
+  #hsg-{{ section.id }} .g__h { margin: 0 0 20px; color: var(--ink); font: 800 clamp(42px, 3.8vw, 74px)/1.04 'Montserrat', sans-serif; letter-spacing: -.03em; text-wrap: balance; }
+  #hsg-{{ section.id }} .g__sub { margin: 0 0 40px; max-width: 640px; font: 400 clamp(17px, 1.4vw, 27px)/1.42 'Montserrat', sans-serif; color: rgba(29, 29, 29, .72); }
+  #hsg-{{ section.id }} .g__ask { margin: 0 0 12px; font: 700 clamp(15px, 1vw, 18px)/1.2 'Montserrat', sans-serif; color: var(--ink); }
+
+  #hsg-{{ section.id }} .g__switch { position: relative; display: flex; width: 100%; max-width: 520px; padding: 6px; background: #fff; border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 12px 30px rgba(29, 29, 29, .08); }
+  #hsg-{{ section.id }} .g__thumb { position: absolute; top: 6px; left: 6px; width: calc(50% - 6px); height: calc(100% - 12px); border-radius: 999px; background: var(--ink); transition: transform .45s var(--ease); }
+  #hsg-{{ section.id }}[data-want="him"] .g__thumb { transform: translateX(100%); }
+  #hsg-{{ section.id }} .g__opt { position: relative; z-index: 1; flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; height: clamp(56px, 3.7vw, 68px); padding: 0 16px; border: 0; border-radius: 999px; background: none; color: var(--ink); font: 700 clamp(16px, 1.15vw, 21px)/1 'Montserrat', sans-serif; cursor: pointer; transition: color .3s, background .2s; }
+  #hsg-{{ section.id }} .g__opt[aria-pressed="true"] { color: #fff; }
+  #hsg-{{ section.id }} .g__opt[aria-pressed="false"]:hover { background: #f6f0ec; }
+  #hsg-{{ section.id }} .g__opt:focus-visible, #hsg-{{ section.id }} .g__btn:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+  #hsg-{{ section.id }} .g__ava { width: clamp(38px, 2.6vw, 48px); height: clamp(38px, 2.6vw, 48px); flex: none; border-radius: 50%; background-color: var(--stone); background-repeat: no-repeat; background-size: 290% auto; box-shadow: 0 0 0 2px #fff; }
+  #hsg-{{ section.id }} .g__ava--her { background-position: 48% 9%; }
+  #hsg-{{ section.id }} .g__ava--him { background-position: 52% 10.5%; }
+
+  #hsg-{{ section.id }} .g__hint { display: grid; margin: 18px 0 0; max-width: 560px; font: 500 clamp(15px, 1.2vw, 22px)/1.45 'Montserrat', sans-serif; color: rgba(29, 29, 29, .85); }
+  #hsg-{{ section.id }} .g__hint p { grid-area: 1 / 1; margin: 0; opacity: 0; transition: opacity .3s; }
+  #hsg-{{ section.id }}[data-want="her"] .g__hint p[data-who="her"], #hsg-{{ section.id }}[data-want="him"] .g__hint p[data-who="him"] { opacity: 1; }
+
+  #hsg-{{ section.id }} .g__cta { margin-top: 26px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+  #hsg-{{ section.id }} .g__btn { white-space: nowrap; display: inline-flex; align-items: center; gap: 14px; height: clamp(56px, 3.9vw, 74px); padding: 0 clamp(32px, 2.8vw, 54px); border-radius: 999px; background: var(--btn); color: #fff; text-decoration: none; font: 700 clamp(17px, 1.4vw, 27px)/1 'Montserrat', sans-serif; box-shadow: 0 14px 30px rgba(219, 29, 68, .22); transition: background .2s; }
+  #hsg-{{ section.id }} .g__btn:hover { background: {{ s.accent_color | color_darken: 16 }}; color: #fff; }
+  #hsg-{{ section.id }} .g__btn svg { width: .9em; height: .9em; }
+  #hsg-{{ section.id }} .g__note { font: 500 clamp(14px, 1vw, 19px)/1.3 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* stage: a 1100 x 660 canvas, ring centre (580, 330), ring r 318, photo r 280 */
+  #hsg-{{ section.id }} .g__stage { position: relative; width: 100%; aspect-ratio: 1100 / 660; }
+  #hsg-{{ section.id }} .g__ringbox { position: absolute; inset: 0; }
+  #hsg-{{ section.id }} .g__ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  #hsg-{{ section.id }} .g__sweep { opacity: 0; transform-box: fill-box; transform-origin: center; }
+  #hsg-{{ section.id }} .g__disc { position: absolute; left: 27.27%; top: 7.58%; width: 50.91%; height: 84.85%; border-radius: 50%; overflow: hidden; background: var(--stone); isolation: isolate; }
+  #hsg-{{ section.id }} .g__photo { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 2%; opacity: 0; }
+  #hsg-{{ section.id }}[data-show="her"] .g__photo[data-who="her"], #hsg-{{ section.id }}[data-show="him"] .g__photo[data-who="him"] { opacity: 1; }
+
+  #hsg-{{ section.id }} .g__dot { --d: clamp(22px, 1.7vw, 34px); position: absolute; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%; background: var(--red); border: 5px solid #fff; box-shadow: 0 0 0 1px rgba(238, 32, 74, .25), 0 6px 14px rgba(238, 32, 74, .28); }
+
+  #hsg-{{ section.id }} .g__lab { position: absolute; opacity: 0; }
+  #hsg-{{ section.id }}[data-show="her"] .g__lab[data-who="her"], #hsg-{{ section.id }}[data-show="him"] .g__lab[data-who="him"] { opacity: 1; }
+  #hsg-{{ section.id }} .g__lab b { display: block; margin-bottom: 6px; font: 700 clamp(18px, 1.55vw, 30px)/1.15 'Montserrat', sans-serif; letter-spacing: -.015em; }
+  #hsg-{{ section.id }} .g__lab span { display: block; font: 400 clamp(14px, 1.12vw, 21px)/1.4 'Montserrat', sans-serif; color: rgba(29, 29, 29, .72); }
+  #hsg-{{ section.id }} .g__lab--a { left: 0; width: 19.9%; top: 42.4%; text-align: right; }
+  #hsg-{{ section.id }} .g__lab--b { left: 79.3%; width: 20.7%; top: 8.6%; }
+  #hsg-{{ section.id }} .g__lab--c { left: 82.5%; width: 17.5%; top: 76%; }
+
+  /* before the first reveal (only added when animation can run) */
+  #hsg-{{ section.id }}.pre .g__arc { stroke-dashoffset: var(--len) !important; }
+  #hsg-{{ section.id }}.pre .g__dot { transform: scale(0) !important; }
+  #hsg-{{ section.id }}.pre .g__lab { opacity: 0 !important; }
+  #hsg-{{ section.id }}.pre .g__disc { opacity: 0; }
+
+  /* Tablets and small laptops: still two columns so the switch and the photo
+     are on screen together (the swap animation stays visible). The ring is
+     cropped to the circle; the 3 text points are desktop only. */
+  @media (max-width: 1099px) {
+    #hsg-{{ section.id }} .g__in { grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 5%; padding: 48px 5%; }
+    #hsg-{{ section.id }} .g__h { font-size: clamp(32px, 4.6vw, 48px); margin-bottom: 14px; }
+    #hsg-{{ section.id }} .g__sub { font-size: clamp(15px, 1.9vw, 18px); margin-bottom: 26px; }
+    #hsg-{{ section.id }} .g__opt { height: 54px; gap: 10px; padding: 0 12px; font-size: 16px; }
+    #hsg-{{ section.id }} .g__hint { font-size: 15px; margin-top: 14px; }
+    #hsg-{{ section.id }} .g__cta { margin-top: 20px; gap: 12px; }
+    #hsg-{{ section.id }} .g__btn { height: 54px; padding: 0 28px; font-size: 17px; }
+    #hsg-{{ section.id }} .g__note { font-size: 14px; }
+    #hsg-{{ section.id }} .g__stage { aspect-ratio: auto; overflow: hidden; width: 100%; max-width: 460px; margin: 0 auto; }
+    #hsg-{{ section.id }} .g__ringbox { position: relative; inset: auto; width: 161.76%; margin-left: -35.29%; aspect-ratio: 1100 / 660; }
+    #hsg-{{ section.id }} .g__lab { display: none; }
+    #hsg-{{ section.id }} .g__copy { text-align: center; }
+    #hsg-{{ section.id }} .g__sub, #hsg-{{ section.id }} .g__hint, #hsg-{{ section.id }} .g__switch { margin-left: auto; margin-right: auto; }
+    #hsg-{{ section.id }} .g__cta { align-items: center; }
+  }
+  /* Phones: one column, the ring sits just above the switch, so tapping
+     For Her / For Him plays the photo swap right where the finger is. */
+  @media (max-width: 699px) {
+    #hsg-{{ section.id }} .g__in { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 36px 20px 40px; }
+    #hsg-{{ section.id }} .g__copy { display: contents; }
+    #hsg-{{ section.id }} .g__in { text-align: center; }
+    #hsg-{{ section.id }} .g__h { order: 1; font-size: clamp(30px, 8.4vw, 40px); }
+    #hsg-{{ section.id }} .g__sub { order: 2; margin-bottom: 18px; }
+    #hsg-{{ section.id }} .g__stage { order: 3; max-width: 320px; margin: 0 auto 22px; }
+    #hsg-{{ section.id }} .g__ask { order: 4; }
+    #hsg-{{ section.id }} .g__switch { order: 5; max-width: none; }
+    #hsg-{{ section.id }} .g__hint { order: 6; }
+    #hsg-{{ section.id }} .g__cta { order: 7; }
+    #hsg-{{ section.id }} .g__opt { gap: 8px; padding: 0 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #hsg-{{ section.id }} .g__thumb, #hsg-{{ section.id }} .g__hint p { transition: none; }
+  }
+</style>
+
+<section id="hsg-{{ section.id }}" data-want="her" data-show="her">
+  <script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window && Element.prototype.animate) document.currentScript.parentNode.classList.add('pre');</script>
+  <div class="g__in">
+    <div class="g__copy">
+      <h2 class="g__h">{{ s.heading }}</h2>
+      <p class="g__sub">{{ s.subheading }}</p>
+      <p class="g__ask" id="hsg-ask-{{ section.id }}">{{ s.switch_label }}</p>
+      <div class="g__switch" role="group" aria-labelledby="hsg-ask-{{ section.id }}">
+        <span class="g__thumb" aria-hidden="true"></span>
+        <button type="button" class="g__opt" data-who="her" aria-pressed="true"><span class="g__ava g__ava--her" aria-hidden="true"{% if s.her_photo != blank %} style="background-image: url('{{ s.her_photo | image_url: width: 240 }}')"{% endif %}></span>{{ s.her_label }}</button>
+        <button type="button" class="g__opt" data-who="him" aria-pressed="false"><span class="g__ava g__ava--him" aria-hidden="true"{% if s.him_photo != blank %} style="background-image: url('{{ s.him_photo | image_url: width: 240 }}')"{% endif %}></span>{{ s.him_label }}</button>
+      </div>
+      <div class="g__hint" aria-live="polite">
+        <p data-who="her">{{ s.her_hint }}</p>
+        <p data-who="him">{{ s.him_hint }}</p>
+      </div>
+      <div class="g__cta">
+        <a class="g__btn" href="{{ s.her_link | default: '#' }}" data-her="{{ s.her_link | default: '#' }}" data-him="{{ s.him_link | default: '#' }}">{{ s.button }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+        <span class="g__note">{{ s.note }}</span>
+      </div>
+    </div>
+
+    <div class="g__stage">
+      <div class="g__ringbox">
+      <svg class="g__ring" viewBox="0 0 1100 660" aria-hidden="true">
+        <circle cx="580" cy="330" r="318" fill="none" stroke="#e6ddd5" stroke-width="2.5"/>
+        <circle class="g__arc" data-len="266.4" style="--len: 266.4px" cx="580" cy="330" r="318" fill="none" stroke="{{ s.accent_color }}" stroke-width="6" stroke-linecap="round" stroke-dasharray="266.4 1998.05" transform="rotate(-93 580 330)"/>
+        <circle class="g__arc" data-len="111" style="--len: 111px" cx="580" cy="330" r="318" fill="none" stroke="{{ s.accent_color }}" stroke-width="6" stroke-linecap="round" stroke-dasharray="111 1998.05" transform="rotate(206 580 330)"/>
+        <circle class="g__arc" data-len="127.7" style="--len: 127.7px" cx="580" cy="330" r="318" fill="none" stroke="{{ s.accent_color }}" stroke-width="6" stroke-linecap="round" stroke-dasharray="127.7 1998.05" transform="rotate(136 580 330)"/>
+        <circle class="g__arc" data-len="188.7" style="--len: 188.7px" cx="580" cy="330" r="318" fill="none" stroke="{{ s.accent_color }}" stroke-width="6" stroke-linecap="round" stroke-dasharray="188.7 1998.05" transform="rotate(37 580 330)"/>
+        <circle class="g__sweep" cx="580" cy="330" r="318" fill="none" stroke="{{ s.accent_color }}" stroke-width="7" stroke-linecap="round" stroke-dasharray="170 1828.05"/>
+      </svg>
+
+      <div class="g__disc">
+        {%- for set in sets -%}
+          {%- if set == 'her' -%}{%- assign ph = s.her_photo -%}{%- assign lb = s.her_label -%}{%- else -%}{%- assign ph = s.him_photo -%}{%- assign lb = s.him_label -%}{%- endif -%}
+          {%- if ph != blank -%}
+            <img class="g__photo" data-who="{{ set }}" src="{{ ph | image_url: width: 1000 }}" srcset="{{ ph | image_url: width: 700 }} 700w, {{ ph | image_url: width: 1000 }} 1000w, {{ ph | image_url: width: 1400 }} 1400w" sizes="(min-width: 1400px) 560px, 40vw" width="{{ ph.width }}" height="{{ ph.height }}" alt="{{ lb | escape }}"{% if forloop.first %} loading="eager" fetchpriority="high"{% else %} loading="lazy"{% endif %} decoding="async">
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+
+      <span class="g__dot" style="left: 23.93%; top: 45.8%"></span>
+      <span class="g__dot" style="left: 73.17%; top: 15.92%"></span>
+      <span class="g__dot" style="left: 75.82%; top: 79%"></span>
+      </div>
+
+      {%- for set in sets -%}
+        {%- if set == 'her' -%}{%- assign nodes = her_n -%}{%- else -%}{%- assign nodes = him_n -%}{%- endif -%}
+        {%- for n in nodes limit: 3 -%}
+          {%- assign p = n | strip | split: '|' -%}
+          {%- if p.size == 2 -%}
+            <div class="g__lab g__lab--{{ letters[forloop.index0] }}" data-who="{{ set }}"><b>{{ p[0] | strip }}</b><span>{{ p[1] | strip }}</span></div>
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hsg-{{ section.id }}');
+    if (!root) return;
+    var opts = root.querySelectorAll('.g__opt'), ctas = root.querySelectorAll('.g__btn');
+    var arcs = root.querySelectorAll('.g__arc'), dots = root.querySelectorAll('.g__dot'), sweep = root.querySelector('.g__sweep');
+    var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var canAnim = !still && typeof Element.prototype.animate === 'function';
+    var ease = 'cubic-bezier(.22, 1, .36, 1)';
+    var shown = 'her', want = 'her', busy = false, touched = false;
+    function q(sel) { return root.querySelector(sel); }
+
+    function choose(who) {
+      touched = true;
+      if (who === want) return;
+      want = who;
+      root.setAttribute('data-want', who);
+      opts.forEach(function (o) { o.setAttribute('aria-pressed', o.dataset.who === who ? 'true' : 'false'); });
+      ctas.forEach(function (a) { a.setAttribute('href', a.dataset[who]); });
+      // Sections further down (e.g. "Pick your check") follow this choice.
+      document.dispatchEvent(new CustomEvent('hs360:who', { detail: who }));
+      run();
+    }
+
+    // One swap at a time. Clicks during a swap only move the switch; when the
+    // swap ends, the stage catches up once if the choice changed.
+    function run() {
+      if (busy || shown === want) return;
+      var from = shown, to = want;
+      if (!canAnim) { root.setAttribute('data-show', to); shown = to; return; }
+      busy = true;
+      swap(from, to).then(done, done);
+      function done() { shown = to; busy = false; run(); }
+    }
+
+    function swap(from, to) {
+      var list = [];
+      var oldP = q('.g__photo[data-who="' + from + '"]'), newP = q('.g__photo[data-who="' + to + '"]');
+      root.setAttribute('data-show', to);
+      if (oldP && newP) {
+        oldP.style.zIndex = 1; newP.style.zIndex = 2;
+        list.push(oldP.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.94)' }], { duration: 450, easing: 'ease-in' }));
+        list.push(newP.animate([{ clipPath: 'circle(0% at 50% 45%)', transform: 'scale(1.08)' }, { clipPath: 'circle(75% at 50% 45%)', transform: 'scale(1)' }], { duration: 750, delay: 150, easing: ease, fill: 'backwards' }));
+      }
+      list.push(sweep.animate([{ transform: 'rotate(-90deg)', opacity: 0 }, { opacity: 1, offset: .1 }, { opacity: 1, offset: .82 }, { transform: 'rotate(270deg)', opacity: 0 }], { duration: 950, easing: 'cubic-bezier(.45, 0, .2, 1)' }));
+      arcs.forEach(function (arc, i) {
+        var L = arc.dataset.len + 'px';
+        list.push(arc.animate([{ strokeDashoffset: '0px' }, { strokeDashoffset: L, offset: .3 }, { strokeDashoffset: L, offset: .5 }, { strokeDashoffset: '0px' }], { duration: 1000, delay: i * 40, easing: 'ease-in-out' }));
+      });
+      dots.forEach(function (d, i) {
+        list.push(d.animate([{ transform: 'scale(1)' }, { transform: 'scale(.55)', offset: .35 }, { transform: 'scale(1.15)', offset: .75 }, { transform: 'scale(1)' }], { duration: 900, delay: i * 60 }));
+      });
+      ['a', 'b', 'c'].forEach(function (k) {
+        var o = q('.g__lab--' + k + '[data-who="' + from + '"]'), n = q('.g__lab--' + k + '[data-who="' + to + '"]');
+        if (!o || !n || o.textContent === n.textContent) return;
+        list.push(o.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-10px)' }], { duration: 260, easing: 'ease-in' }));
+        list.push(n.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 450, easing: ease, fill: 'backwards' }));
+      });
+      return Promise.all(list.map(function (a) { return a.finished; }));
+    }
+
+    opts.forEach(function (o) { o.addEventListener('click', function () { choose(o.dataset.who); }); });
+
+    if (!canAnim || !('IntersectionObserver' in window)) { root.classList.remove('pre'); return; }
+    root.classList.add('pre');
+    // Wait for the photo (max 1.5s) and two frames, so the entrance does not
+    // fight image decoding and the rest of the page booting.
+    var first = q('.g__photo[data-who="' + shown + '"]');
+    var photoReady = new Promise(function (ok) {
+      if (!first || first.complete) return ok();
+      first.addEventListener('load', ok, { once: true }); first.addEventListener('error', ok, { once: true });
+      setTimeout(ok, 1500);
+    }).then(function () { return first && first.decode ? first.decode().catch(function () {}) : null; });
+    function nextFrames() { return new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); }); }
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      photoReady.then(nextFrames).then(enter);
+    }, { threshold: 0.35 }).observe(q('.g__stage'));
+
+    function enter() {
+      root.classList.remove('pre');
+      q('.g__disc').animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 700, easing: ease, fill: 'backwards' });
+      arcs.forEach(function (arc, i) {
+        arc.animate([{ strokeDashoffset: arc.dataset.len + 'px' }, { strokeDashoffset: '0px' }], { duration: 1100, delay: i * 180, easing: ease, fill: 'backwards' });
+      });
+      dots.forEach(function (d, i) {
+        d.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 500, delay: 300 + i * 220, easing: 'cubic-bezier(.34, 1.56, .64, 1)', fill: 'backwards' });
+      });
+      root.querySelectorAll('.g__lab[data-who="' + shown + '"]').forEach(function (l, i) {
+        l.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: 450 + i * 220, easing: ease, fill: 'backwards' });
+      });
+      // Once, if nobody has touched the switch yet: pulse the other face so it reads as a choice.
+      setTimeout(function () {
+        if (touched) return;
+        var ava = q('.g__opt[aria-pressed="false"] .g__ava');
+        if (ava) ava.animate([{ boxShadow: '0 0 0 2px #fff, 0 0 0 2px rgba(238, 32, 74, .6)' }, { boxShadow: '0 0 0 2px #fff, 0 0 0 16px rgba(238, 32, 74, 0)' }], { duration: 1100, iterations: 2, easing: 'ease-out' });
+      }, 1700);
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "HS360 What is it",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What Is Health Score 360?" },
+    { "type": "textarea", "id": "subheading", "label": "One sentence under it", "default": "One free check that reads your hormones, metabolism, stamina and cycle health, not just one symptom." },
+    { "type": "text", "id": "switch_label", "label": "Question above the switch", "default": "Who is the check for?" },
+    { "type": "text", "id": "her_label", "label": "For Her label", "default": "For Her" },
+    { "type": "text", "id": "him_label", "label": "For Him label", "default": "For Him" },
+    { "type": "text", "id": "her_hint", "label": "Line under the switch, her", "default": "Periods, PCOS signs, weight and hormones, read together." },
+    { "type": "text", "id": "him_hint", "label": "Line under the switch, him", "default": "Stamina, performance, weight and energy, read together." },
+    { "type": "text", "id": "button", "label": "Button", "default": "Take the free check" },
+    { "type": "url", "id": "her_link", "label": "Button link, her" },
+    { "type": "url", "id": "him_link", "label": "Button link, him" },
+    { "type": "text", "id": "note", "label": "Line under the button", "default": "Free. Private. No sign-up." },
+
+    { "type": "header", "content": "Ring" },
+    { "type": "image_picker", "id": "her_photo", "label": "Her photo", "info": "Portrait, face in the top fifth. Transparent PNG or plain background." },
+    { "type": "image_picker", "id": "him_photo", "label": "His photo" },
+    { "type": "textarea", "id": "her_nodes", "label": "Her 3 points (Title|line, one per line: left, top right, bottom right)", "default": "Weight|Metabolism, energy and weight patterns\nPeriod care|Cycle health, PMS and hormonal balance\nEnergy|How rested and active you feel" },
+    { "type": "textarea", "id": "him_nodes", "label": "His 3 points (Title|line, one per line)", "default": "Weight|Metabolism, energy and weight patterns\nSexual wellness|Hormones, stamina and performance\nEnergy|How rested and active you feel" },
+
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
+  ],
+  "presets": [{ "name": "HS360 What is it" }]
+}
+{% endschema %}

@@ -13,6 +13,7 @@
     "header": {
       "type": "lm-header",
       "settings": {
+        "mobile_bar": false,
         "links": "Home|/\nAbout|/pages/about-us\nContact Us|/pages/contact",
         "trust_before": "",
         "trust_number": "",
@@ -20,8 +21,7 @@
         "button_link": "",
         "wa_link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor%20privately",
         "wa_label": "Chat with us",
-        "logo_width": 168,
-        "mobile_bar": false
+        "logo_width": 168
       }
     },
     "hero": {
@@ -36,13 +36,14 @@
         "highlight": "last longer",
         "heading_end": "in bed?",
         "subheading": "It's more common than you think. Don't ignore it.",
+        "sub_red": "",
         "button_1": "Book an Appointment",
         "button_1_note": "",
         "button_1_link": "",
-        "button_2": "Take the 360 Self-Assessment",
+        "button_2": "Check Your Health Score 360",
         "button_2_note": "",
         "button_2_link": "/pages/mens-health-questionnaire",
-        "trust_text": "Trusted by 65,000+ men",
+        "trust_text": "Trusted by 10,000+ men",
         "rating": "4.5",
         "trust_initials": "R, D, S",
         "avatar_1": "shopify://shop_images/Joyful_South_Asian_Man_Portrait.webp",
@@ -125,14 +126,14 @@
         "c6"
       ],
       "settings": {
+        "mobile_count": 0,
         "heading": "Are these the symptoms you're",
         "highlight": "also facing?",
         "subheading": "",
         "button": "Talk to a doctor for free",
         "button_selected": "Talk to a doctor about [x]",
         "note": "",
-        "icon_size": 64,
-        "mobile_count": 0
+        "icon_size": 64
       }
     },
     "stories": {
@@ -200,10 +201,20 @@
     "trust": {
       "type": "lm-why-list",
       "blocks": {
+        "point_6rYiFt": {
+          "type": "point",
+          "settings": {
+            "icon": "hands",
+            "icon_image": "shopify://shop_images/Caring_Hands_with_Health_Symbols.webp",
+            "title": "Treat Root Cause, Not Just Symptoms",
+            "text": "Combining Allopathy, Homoeopathy & Ayurveda for a root cause treatment."
+          }
+        },
         "p1": {
           "type": "point",
           "settings": {
             "icon": "chart",
+            "icon_image": "shopify://shop_images/02-why-improved-performance.webp",
             "title": "85% Improved Performance",
             "text": "Verified treatment success rate"
           }
@@ -212,6 +223,7 @@
           "type": "point",
           "settings": {
             "icon": "heart",
+            "icon_image": "shopify://shop_images/03-why-improved-relationships.webp",
             "title": "92% Improved Relationships",
             "text": "Enhanced connection and intimacy"
           }
@@ -220,6 +232,7 @@
           "type": "point",
           "settings": {
             "icon": "doctor",
+            "icon_image": "shopify://shop_images/Doctor_Consultation_Chat_Icon_4d89a5bf-a6af-4b41-bb3f-34ad9e23a386.webp",
             "title": "Doctor + Therapist Follow-up Included",
             "text": "Comprehensive care beyond medication"
           }
@@ -228,6 +241,7 @@
           "type": "certs",
           "settings": {
             "icon": "shield",
+            "icon_image": "shopify://shop_images/Magenta_Shield_Check_Icon_94b88799-4b4c-4e74-8d32-760bb729b35f.webp",
             "title": "We are certified",
             "logo_1": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
             "logo_2": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
@@ -236,18 +250,21 @@
         }
       },
       "block_order": [
+        "point_6rYiFt",
         "p1",
         "p2",
         "p3",
         "p4"
       ],
       "settings": {
+        "dividers": false,
         "heading": "Why do thousands",
         "highlight": "trust sehatUP?",
         "image": "shopify://shop_images/Warm_Doctor-Patient_Consultation_1_copy.webp",
         "tone": "white",
         "image_width": 520,
-        "icon_size": 56
+        "icon_size": 56,
+        "icon_image_size": 80
       }
     },
     "couple_banner": {
@@ -390,11 +407,11 @@
         "privacy": "Your information is private and secure.",
         "source": "landing_men",
         "sheet_url": "https://script.google.com/macros/s/AKfycbzKIXsQgIqaEJLEuaRiSZnnrX3Lm2XChW_EakO3gzRqcwSw3UAvxqZTPZiMq8ly0UQ1/exec",
+        "thanks_url": "/pages/booking-confirmed",
         "gender": "male",
         "tone": "cream",
         "img_width": 46,
-        "img_height": 94,
-        "thanks_url": "/pages/booking-confirmed"
+        "img_height": 94
       }
     },
     "journey": {
@@ -418,10 +435,15 @@
       "settings": {
         "layout": "popout",
         "full_width": true,
+        "band_margin": 50,
         "grad_light": "#fdf4f5",
         "grad_dark": "#f1b6c3",
         "image_space": 30,
         "one_line": true,
+        "one_line_size": 34,
+        "image_edge": false,
+        "image_right": 100,
+        "image_nudge": 0,
         "image_size": 120,
         "image": "shopify://shop_images/Confused_Man_Shrugging_in_Glasses.webp",
         "heading": "Not sure what's the problem with",
@@ -430,8 +452,20 @@
         "button": "Take the Private Assessment",
         "link": "/pages/mens-health-questionnaire",
         "note": "",
-        "image_width": 190,
-        "band_margin": 50
+        "image_width": 190
+      }
+    },
+    "floating_video": {
+      "type": "floating-product-video",
+      "settings": {
+        "enable_video": true,
+        "video_source": "link",
+        "video_url": "https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4",
+        "dock_side": "left",
+        "dock_bottom": 32,
+        "cta_label": "Add to cart",
+        "accent_color": "#ee204a",
+        "dock_sound": true
       }
     }
   },
@@ -446,6 +480,7 @@
     "start_journey",
     "book",
     "journey",
-    "unsure"
+    "unsure",
+    "floating_video"
   ]
 }

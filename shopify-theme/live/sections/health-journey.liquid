@@ -155,7 +155,8 @@
   /* 4. WhatsApp */
   #hj-{{ section.id }} .hj__scr--chat { padding: 0; background: #efe7de; }
   #hj-{{ section.id }} .hj__chat-head { display: flex; align-items: center; gap: .7em; padding: 3.1em 1em .9em; background: #075e54; color: #fff; font: 700 .95em/1 'Montserrat', sans-serif; }
-  #hj-{{ section.id }} .hj__chat-av { width: 2em; height: 2em; border-radius: 50%; background: #25d366; }
+  #hj-{{ section.id }} .hj__chat-av { width: 2em; height: 2em; flex: none; border-radius: 50%; background: #fff; overflow: hidden; display: grid; place-items: center; }
+  #hj-{{ section.id }} .hj__chat-av img { width: 100%; height: 100%; object-fit: contain; display: block; }
   #hj-{{ section.id }} .hj__chat-body { flex: 1; padding: 1.1em .9em; display: flex; flex-direction: column; gap: .7em; }
   #hj-{{ section.id }} .hj__msg { margin: 0; max-width: 82%; padding: .7em .85em; border-radius: .9em; font: 500 .88em/1.35 'Montserrat', sans-serif; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
   #hj-{{ section.id }} .hj__msg--in { align-self: flex-start; background: #fff; border-top-left-radius: .2em; }
@@ -186,8 +187,9 @@
   }
   #hj-{{ section.id }} .hj__box-css::after { content: ""; position: absolute; left: 44%; right: 44%; top: 0; height: 30%; background: rgba(255,255,255,.35); }
 
-  /* Desktop: text scrolls, the phone stays in view beside it. */
-  @media (min-width: 750px) {
+  /* Laptops and desktops: text scrolls, the phone stays in view beside it.
+     (Tablets use the one-column phone layout: two columns do not fit there.) */
+  @media (min-width: 1100px) {
     #hj-{{ section.id }}.is-live .hj__inner {
       grid-template-columns: minmax(0, 460px) auto; justify-content: center;
       column-gap: calc(var(--ph) * .5); align-items: start; padding-top: 96px; padding-bottom: 24px;
@@ -209,8 +211,8 @@
     #hj-{{ section.id }}.is-live .hj__box { right: calc(-1 * var(--ph) * .42); bottom: 2%; width: calc(var(--ph) * .42); }
   }
 
-  /* Phones: nothing sticky. Each step: its text, then its own phone. */
-  @media (max-width: 749px) {
+  /* Phones and tablets: nothing sticky. Each step: its text, then its own phone. */
+  @media (max-width: 1099px) {
     #hj-{{ section.id }} { --ph: min(430px, 62svh); }
     #hj-{{ section.id }} .hj__inner { grid-template-columns: 1fr; gap: 0; padding: 56px 16px 32px; }
     #hj-{{ section.id }} .hj__heading { font-size: 30px; margin-bottom: 8px; }
@@ -245,6 +247,18 @@
     #hj-{{ section.id }} .hj__chip-k { font-size: clamp(11px, .6vw, 20px); }
     #hj-{{ section.id }} .hj__chip-n { font-size: clamp(34px, 1.8vw, 64px); }
     #hj-{{ section.id }} .hj__chip-s { font-size: clamp(12px, .65vw, 22px); }
+  }
+
+  /* Phones and tablets: the section heading centred. */
+  @media (max-width: 1099px) {
+    #hj-{{ section.id }} .hj__eyebrow, #hj-{{ section.id }} .hj__heading { text-align: center; margin-left: auto; margin-right: auto; }
+  }
+  /* Tablets: the phone layout in a comfortable centred column. */
+  @media (min-width: 750px) and (max-width: 1099px) {
+    #hj-{{ section.id }} .hj__inner { max-width: 600px; padding: 72px 24px 40px; }
+    #hj-{{ section.id }} .hj__heading { font-size: 38px; margin-bottom: 12px; }
+    /* keep the score card right beside its phone */
+    #hj-{{ section.id }} .hj__slot { max-width: 400px; }
   }
 
   /* Narrow phones: a slightly smaller phone so the score card fits beside it. */
@@ -321,7 +335,6 @@
                       {%- else -%}
                         <em>{{ s[k_lab] | slice: 0 }}</em>
                       {%- endif -%}
-                      <small>{{ s[k_lab] }}</small>
                     </span>
                   {%- endfor -%}
                 </div>
@@ -344,7 +357,8 @@
 
             {%- comment -%} 4. WhatsApp check-in {%- endcomment -%}
             <div class="hj__scr hj__scr--chat" data-scr="4">
-              <div class="hj__chat-head"><span class="hj__chat-av"></span><b>sehatUP Care</b></div>
+              {%- assign chat_logo = s.chat_logo | default: shop.brand.square_logo | default: settings.favicon -%}
+              <div class="hj__chat-head"><span class="hj__chat-av">{%- if chat_logo != blank -%}<img src="{{ chat_logo | image_url: width: 96 }}" alt="" loading="lazy" width="48" height="48">{%- endif -%}</span><b>{{ s.chat_name | default: 'sehatUP' }}</b></div>
               <div class="hj__chat-body">
                 <p class="hj__msg hj__msg--in" data-msg>{{ s.chat_q }}</p>
                 <p class="hj__msg hj__msg--out" data-msg>{{ s.chat_a }}</p>
@@ -512,7 +526,7 @@
       var mm = gsap.matchMedia();
 
       // Desktop: steps scroll past, the sticky phone follows the active one.
-      mm.add('(min-width: 750px)', function () {
+      mm.add('(min-width: 1100px)', function () {
         var current = 0, running = null, chipN = chip.querySelector('[data-chip-n]');
         var scr = phone.querySelectorAll('.hj__scr');
         show(phone, 1);
@@ -548,7 +562,7 @@
       });
 
       // Phones: each step gets its own copy of the phone, played once in view.
-      mm.add('(max-width: 749px)', function () {
+      mm.add('(max-width: 1099px)', function () {
         var made = [];
         steps.forEach(function (el, k) {
           var i = k + 1, slot = el.querySelector('.hj__slot');
@@ -624,6 +638,8 @@
     { "type": "text", "id": "day_4", "label": "When", "default": "Every month" },
     { "type": "text", "id": "title_4", "label": "Title", "default": "Your plan keeps improving" },
     { "type": "textarea", "id": "text_4", "label": "Text", "default": "A WhatsApp check-in each month, and your plan changes as your body responds." },
+    { "type": "image_picker", "id": "chat_logo", "label": "WhatsApp profile picture", "info": "Empty uses the Square logo from Shopify admin > Settings > Brand (the one used for social media), then the favicon." },
+    { "type": "text", "id": "chat_name", "label": "WhatsApp chat name", "default": "sehatUP" },
     { "type": "text", "id": "chat_q", "label": "Doctor's message", "default": "Day 30: how is your sleep now?" },
     { "type": "text", "id": "chat_a", "label": "Customer's reply", "default": "Much better, thank you!" }
   ],

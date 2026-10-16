@@ -1,0 +1,2 @@
+const http = require('http'), fs = require('fs'), path = require('path');
+http.createServer((q, r) => { const f = path.join(__dirname, q.url === '/' ? 'index.html' : q.url.split('?')[0]); fs.readFile(f, (e, b) => { if (e) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'Content-Type': f.endsWith('.js') ? 'text/javascript' : 'text/html' }); r.end(b); }); }).listen(8765, () => console.log('on 8765'));

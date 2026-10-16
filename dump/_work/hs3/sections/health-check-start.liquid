@@ -1,0 +1,308 @@
+{%- comment -%}
+  "Free health check": the first steps of the quiz, right on the page.
+  Step 1 asks who the check is for (Women's health / Men's health). Step 2
+  shows only that person's quizzes. Picking one opens the real quiz (step 3),
+  so the visitor has already started before they leave this page.
+  Steps slide sideways and the progress bar fills as they move on.
+{%- endcomment -%}
+{%- liquid
+  assign s = section.settings
+  assign sets = 'her,him' | split: ','
+-%}
+<style>
+  #hcs-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #6b6b6b; --line: #e9e3dd; --stone: #f4f0ec; --stone2: #ede7e1;
+    --red: {{ s.accent_color }}; --btn: {{ s.accent_color | color_darken: 8 }};
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    background: #fbf9f7; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hcs-{{ section.id }} * { box-sizing: border-box; }
+  #hcs-{{ section.id }} .q__in { max-width: 1000px; margin: 0 auto; padding: clamp(56px, 5vw, 96px) 24px; }
+
+  /* the quiz card */
+  #hcs-{{ section.id }} .q__card {
+    background: #fff; border: 1.5px solid var(--line); border-radius: 28px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(31, 31, 31, .06);
+    transition: opacity .7s ease, transform .8s var(--ease);
+  }
+  #hcs-{{ section.id }} .q__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px clamp(20px, 3.4vw, 44px) 0; }
+  #hcs-{{ section.id }} .q__name { display: flex; align-items: center; gap: 10px; margin: 0; font: 700 15px/1 'Montserrat', sans-serif; color: var(--ink); }
+  #hcs-{{ section.id }} .q__name svg { width: 20px; height: 20px; color: var(--btn); }
+  #hcs-{{ section.id }} .q__count { margin: 0; font: 500 14px/1 'Montserrat', sans-serif; color: var(--mute); white-space: nowrap; }
+  #hcs-{{ section.id }} .q__bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 14px clamp(20px, 3.4vw, 44px) 0; }
+  #hcs-{{ section.id }} .q__seg { position: relative; height: 5px; border-radius: 99px; background: var(--stone2); overflow: hidden; }
+  #hcs-{{ section.id }} .q__seg::after { content: ""; position: absolute; inset: 0; width: 0; border-radius: inherit; background: var(--btn); transition: width .6s var(--ease); }
+  #hcs-{{ section.id }}[data-step="1"] .q__seg:nth-child(-n+1)::after,
+  #hcs-{{ section.id }}[data-step="2"] .q__seg:nth-child(-n+2)::after,
+  #hcs-{{ section.id }}[data-step="3"] .q__seg::after { width: 100%; }
+
+  /* steps share one spot, so the card never jumps in height */
+  #hcs-{{ section.id }} .q__steps { display: grid; overflow: hidden; }
+  #hcs-{{ section.id }} .q__step {
+    grid-area: 1 / 1; padding: clamp(26px, 3vw, 40px) clamp(20px, 3.4vw, 44px) clamp(28px, 3.2vw, 44px);
+    transition: opacity .35s ease, transform .55s var(--ease), visibility 0s;
+  }
+  #hcs-{{ section.id }} .q__step[inert] { opacity: 0; visibility: hidden; transition: opacity .25s ease, transform .55s var(--ease), visibility 0s .55s; }
+  #hcs-{{ section.id }} .q__step--1[inert] { transform: translateX(-48px); }
+  #hcs-{{ section.id }} .q__step--2[inert] { transform: translateX(48px); }
+
+  #hcs-{{ section.id }} .q__q { margin: 0; font: 700 clamp(28px, 3vw, 44px)/1.1 'Montserrat', sans-serif; letter-spacing: -.03em; color: var(--ink); outline: none; text-wrap: balance; }
+  #hcs-{{ section.id }} .q__hint { margin: 10px 0 0; font: 400 clamp(15px, 1.1vw, 18px)/1.5 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* step 1: two big tiles */
+  #hcs-{{ section.id }} .q__tiles { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(12px, 1.6vw, 20px); margin-top: clamp(22px, 2.4vw, 32px); }
+  #hcs-{{ section.id }} .q__tile {
+    display: flex; flex-direction: column; align-items: center; gap: 14px; padding: clamp(22px, 2.6vw, 36px) 16px clamp(20px, 2.2vw, 30px);
+    border: 1.5px solid var(--line); border-radius: 22px; background: #fff; color: var(--ink); text-align: center; cursor: pointer; font: inherit;
+    transition: transform .45s var(--ease), border-color .3s ease, box-shadow .45s var(--ease), background .3s ease;
+  }
+  #hcs-{{ section.id }} .q__tile:hover { transform: translateY(-3px); border-color: var(--btn); box-shadow: 0 16px 36px rgba(29, 29, 29, .08); }
+  #hcs-{{ section.id }} .q__tile:active { transform: scale(.98); }
+  #hcs-{{ section.id }} .q__tile:focus-visible, #hcs-{{ section.id }} .q__opt:focus-visible, #hcs-{{ section.id }} .q__back:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+  #hcs-{{ section.id }} .q__face {
+    width: clamp(88px, 9vw, 124px); aspect-ratio: 1; border-radius: 50%; background-color: var(--stone); background-repeat: no-repeat; background-size: 290% auto;
+    box-shadow: 0 0 0 4px #fff, 0 0 0 5.5px var(--line); transition: box-shadow .3s ease, transform .5s var(--ease);
+  }
+  #hcs-{{ section.id }} .q__face--her { background-position: 48% 9%; }
+  #hcs-{{ section.id }} .q__face--him { background-position: 52% 10.5%; }
+  #hcs-{{ section.id }} .q__tile:hover .q__face { box-shadow: 0 0 0 4px #fff, 0 0 0 5.5px var(--btn); transform: scale(1.04); }
+  #hcs-{{ section.id }} .q__tt { font: 700 clamp(18px, 1.5vw, 24px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #hcs-{{ section.id }} .q__td { margin-top: -6px; font: 400 clamp(14px, 1vw, 16px)/1.45 'Montserrat', sans-serif; color: var(--mute); }
+  #hcs-{{ section.id }} .q__pick { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; padding: 11px 20px; border-radius: 999px; background: var(--stone); font: 700 15px/1 'Montserrat', sans-serif; color: var(--ink); transition: background .3s ease, color .3s ease; }
+  #hcs-{{ section.id }} .q__pick svg { width: 16px; height: 16px; transition: transform .4s var(--ease); }
+  #hcs-{{ section.id }} .q__tile:hover .q__pick { background: var(--btn); color: #fff; }
+  #hcs-{{ section.id }} .q__tile:hover .q__pick svg { transform: translateX(3px); }
+
+  /* step 2: that person's quizzes */
+  #hcs-{{ section.id }} .q__head2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  #hcs-{{ section.id }} .q__chip { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: 999px; background: var(--stone); font: 600 14px/1 'Montserrat', sans-serif; }
+  #hcs-{{ section.id }} .q__chip .q__face { width: 30px; box-shadow: none; }
+  #hcs-{{ section.id }} .q__back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px; border: 0; background: none; font: 600 14px/1 'Montserrat', sans-serif; color: var(--mute); cursor: pointer; transition: color .2s ease; }
+  #hcs-{{ section.id }} .q__back:hover { color: var(--ink); }
+  #hcs-{{ section.id }} .q__back svg { width: 16px; height: 16px; }
+  #hcs-{{ section.id }}[data-who="her"] [data-who="him"], #hcs-{{ section.id }}[data-who="him"] [data-who="her"] { display: none; }
+
+  #hcs-{{ section.id }} .q__opts { display: flex; flex-direction: column; gap: 12px; margin-top: clamp(20px, 2.2vw, 28px); }
+  #hcs-{{ section.id }} .q__opt {
+    display: flex; align-items: center; gap: 18px; padding: 18px 20px; border-radius: 20px;
+    border: 1.5px solid var(--line); background: #fff; color: var(--ink); text-decoration: none;
+    transition: transform .45s var(--ease), border-color .3s ease, box-shadow .45s var(--ease);
+  }
+  #hcs-{{ section.id }} .q__step--2:not([inert]) .q__opt { animation: hcs-in-{{ section.id }} .5s var(--ease) backwards; animation-delay: calc(.12s + var(--j) * 80ms); }
+  @keyframes hcs-in-{{ section.id }} { from { opacity: 0; transform: translateY(10px); } }
+  #hcs-{{ section.id }} .q__opt:hover { transform: translateY(-2px); border-color: var(--btn); box-shadow: 0 14px 32px rgba(29, 29, 29, .07); }
+  #hcs-{{ section.id }} .q__opt:active { transform: scale(.99); }
+  #hcs-{{ section.id }} .q__ico { display: grid; place-items: center; width: 52px; height: 52px; flex: none; border-radius: 50%; background: var(--stone); transition: background .3s ease; }
+  #hcs-{{ section.id }} .q__ico svg { width: 26px; height: 26px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: stroke .3s ease; }
+  #hcs-{{ section.id }} .q__ico .r { stroke: var(--red); }
+  #hcs-{{ section.id }} .q__ico .rf { fill: var(--red); stroke: none; transition: fill .3s ease; }
+  #hcs-{{ section.id }} .q__opt:hover .q__ico { background: var(--btn); }
+  #hcs-{{ section.id }} .q__opt:hover .q__ico svg, #hcs-{{ section.id }} .q__opt:hover .q__ico .r { stroke: #fff; }
+  #hcs-{{ section.id }} .q__opt:hover .q__ico .rf { fill: #fff; }
+  #hcs-{{ section.id }} .q__ob { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  #hcs-{{ section.id }} .q__ot { font: 700 clamp(18px, 1.4vw, 22px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #hcs-{{ section.id }} .q__od { font: 400 15px/1.45 'Montserrat', sans-serif; color: var(--mute); }
+  #hcs-{{ section.id }} .q__start { display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 12px 18px; border-radius: 999px; background: var(--stone); font: 700 15px/1 'Montserrat', sans-serif; color: var(--ink); transition: background .3s ease, color .3s ease; }
+  #hcs-{{ section.id }} .q__start svg { width: 16px; height: 16px; transition: transform .4s var(--ease); }
+  #hcs-{{ section.id }} .q__opt:hover .q__start { background: var(--btn); color: #fff; }
+  #hcs-{{ section.id }} .q__opt:hover .q__start svg { transform: translateX(3px); }
+
+  /* footer of the card */
+  #hcs-{{ section.id }} .q__foot { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 24px; background: var(--stone); }
+  #hcs-{{ section.id }} .q__faces { display: flex; flex: none; }
+  #hcs-{{ section.id }} .q__faces img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: var(--stone2); border: 2px solid var(--stone); }
+  #hcs-{{ section.id }} .q__faces img + img { margin-left: -10px; }
+  #hcs-{{ section.id }} .q__foot p { margin: 0; font: 500 15px/1.4 'Montserrat', sans-serif; color: var(--ink); }
+
+  /* entrance, once */
+  #hcs-{{ section.id }}.pre .q__card { opacity: 0; transform: translateY(24px); }
+  #hcs-{{ section.id }}.pre .q__tile { opacity: 0; transform: translateY(14px); }
+  #hcs-{{ section.id }}.in:not(.done) .q__tile { transition: opacity .6s ease, transform .7s var(--ease); transition-delay: calc(.25s + var(--j) * 110ms); }
+
+  @media (max-width: 599px) {
+    #hcs-{{ section.id }} .q__in { padding: 44px 14px; }
+    #hcs-{{ section.id }} .q__card { border-radius: 22px; }
+    #hcs-{{ section.id }} .q__tile { padding: 20px 10px 18px; gap: 10px; border-radius: 18px; }
+    #hcs-{{ section.id }} .q__pick { padding: 10px 14px; font-size: 14px; }
+    #hcs-{{ section.id }} .q__opt { gap: 14px; padding: 16px; }
+    #hcs-{{ section.id }} .q__ico { width: 46px; height: 46px; }
+    #hcs-{{ section.id }} .q__start span { display: none; }
+    #hcs-{{ section.id }} .q__start { padding: 0; width: 38px; height: 38px; justify-content: center; }
+    #hcs-{{ section.id }} .q__foot { justify-content: flex-start; padding: 16px 18px; }
+    #hcs-{{ section.id }} .q__foot p { font-size: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #hcs-{{ section.id }} *, #hcs-{{ section.id }} *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<section id="hcs-{{ section.id }}" class="hcs" data-step="1">
+  <div class="q__in">
+    <div class="q__card">
+      <div class="q__top">
+        <p class="q__name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/><path d="M7.4 12.4h2.5l1.4-2.4 2 4.4 1.4-2h1.9"/></svg>{{ s.name }}</p>
+        <p class="q__count" aria-live="polite">Step <span class="q__n">1</span> of 3</p>
+      </div>
+      <div class="q__bar" aria-hidden="true"><span class="q__seg"></span><span class="q__seg"></span><span class="q__seg"></span></div>
+
+      <div class="q__steps">
+        <div class="q__step q__step--1">
+          <h2 class="q__q" tabindex="-1">{{ s.q1 }}</h2>
+          {%- if s.q1_hint != blank -%}<p class="q__hint">{{ s.q1_hint }}</p>{%- endif -%}
+          <div class="q__tiles">
+            {%- for set in sets -%}
+              {%- if set == 'her' -%}{%- assign ph = s.her_photo -%}{%- assign tt = s.her_title -%}{%- assign td = s.her_text -%}{%- else -%}{%- assign ph = s.him_photo -%}{%- assign tt = s.him_title -%}{%- assign td = s.him_text -%}{%- endif -%}
+              <button type="button" class="q__tile" data-pick="{{ set }}" style="--j: {{ forloop.index0 }}">
+                <span class="q__face q__face--{{ set }}" aria-hidden="true"{% if ph != blank %} style="background-image: url('{{ ph | image_url: width: 600 }}')"{% endif %}></span>
+                <span class="q__tt">{{ tt }}</span>
+                <span class="q__td">{{ td }}</span>
+                <span class="q__pick">{{ s.pick_label }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
+              </button>
+            {%- endfor -%}
+          </div>
+        </div>
+
+        <div class="q__step q__step--2" inert aria-hidden="true">
+          <div class="q__head2">
+            {%- for set in sets -%}
+              {%- if set == 'her' -%}{%- assign ph = s.her_photo -%}{%- assign tt = s.her_title -%}{%- else -%}{%- assign ph = s.him_photo -%}{%- assign tt = s.him_title -%}{%- endif -%}
+              <span class="q__chip" data-who="{{ set }}"><span class="q__face q__face--{{ set }}" aria-hidden="true"{% if ph != blank %} style="background-image: url('{{ ph | image_url: width: 240 }}')"{% endif %}></span>{{ tt }}</span>
+            {%- endfor -%}
+            <button type="button" class="q__back"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4"/></svg>{{ s.back_label }}</button>
+          </div>
+          <h2 class="q__q" tabindex="-1">{{ s.q2 }}</h2>
+          <div class="q__opts">
+            {%- assign j_her = 0 -%}{%- assign j_him = 0 -%}
+            {%- for block in section.blocks -%}
+              {%- assign b = block.settings -%}
+              {%- if b.who == 'her' -%}{%- assign j = j_her -%}{%- assign j_her = j_her | plus: 1 -%}{%- else -%}{%- assign j = j_him -%}{%- assign j_him = j_him | plus: 1 -%}{%- endif -%}
+              <a class="q__opt" href="{{ b.link | default: '#' }}" data-who="{{ b.who }}" style="--j: {{ j }}" {{ block.shopify_attributes }}>
+                <span class="q__ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    {%- case b.icon -%}
+                      {%- when 'cycle' -%}
+                        <rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path class="rf" d="M12 12.2c1.5 1.9 2.3 3 2.3 3.9a2.3 2.3 0 0 1-4.6 0c0-.9.8-2 2.3-3.9z"/>
+                      {%- when 'scale' -%}
+                        <rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M7.8 11.5a4.2 4.2 0 0 1 8.4 0"/><path class="r" d="M12 11.5l2-2.4"/>
+                      {%- else -%}
+                        <path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/><path class="r" d="M7.4 12.4h2.5l1.4-2.4 2 4.4 1.4-2h1.9"/>
+                    {%- endcase -%}
+                  </svg>
+                </span>
+                <span class="q__ob">
+                  <span class="q__ot">{{ b.title }}</span>
+                  {%- if b.text != blank -%}<span class="q__od">{{ b.text }}</span>{%- endif -%}
+                </span>
+                <span class="q__start"><span>{{ s.start_label }}</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
+              </a>
+            {%- endfor -%}
+          </div>
+        </div>
+      </div>
+
+      {%- if s.foot != blank -%}
+        <div class="q__foot">
+          <div class="q__faces">
+            {%- for n in (1..3) -%}
+              {%- assign key = 'doctor_' | append: n -%}
+              {%- assign d = s[key] -%}
+              {%- if d != blank -%}<img src="{{ d | image_url: width: 120 }}" width="34" height="34" alt="" loading="lazy">{%- endif -%}
+            {%- endfor -%}
+          </div>
+          <p>{{ s.foot }}</p>
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hcs-{{ section.id }}');
+    if (!root) return;
+    var steps = root.querySelectorAll('.q__step'), n = root.querySelector('.q__n');
+
+    function go(step, who) {
+      root.setAttribute('data-step', step);
+      if (who) root.setAttribute('data-who', who);
+      n.textContent = step;
+      steps.forEach(function (st, i) {
+        var on = i + 1 === Math.min(step, 2);
+        if (on) { st.removeAttribute('inert'); st.removeAttribute('aria-hidden'); }
+        else { st.setAttribute('inert', ''); st.setAttribute('aria-hidden', 'true'); }
+      });
+    }
+
+    root.querySelectorAll('.q__tile').forEach(function (t) {
+      t.addEventListener('click', function () {
+        go(2, t.getAttribute('data-pick'));
+        root.querySelector('.q__step--2 .q__q').focus({ preventScroll: true });
+      });
+    });
+    root.querySelector('.q__back').addEventListener('click', function () {
+      var who = root.getAttribute('data-who');
+      go(1);
+      var tile = root.querySelector('.q__tile[data-pick="' + who + '"]');
+      if (tile) tile.focus({ preventScroll: true });
+    });
+    // Leaving for the quiz page is step 3: fill the bar on the way out.
+    root.querySelectorAll('.q__opt').forEach(function (a) {
+      a.addEventListener('click', function () { go(3); });
+    });
+    // Coming back with the browser's back button restores this page from cache; start again at step 1.
+    window.addEventListener('pageshow', function (e) { if (e.persisted) go(1); });
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+    root.classList.add('pre');
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      root.classList.add('in');
+      root.classList.remove('pre');
+      setTimeout(function () { root.classList.add('done'); }, 1200);
+    }, { threshold: 0.2 }).observe(root.querySelector('.q__card'));
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "HS360 Start the check",
+  "tag": "div",
+  "max_blocks": 6,
+  "settings": [
+    { "type": "text", "id": "name", "label": "Card title", "default": "Free health check" },
+    { "type": "text", "id": "q1", "label": "Step 1 question", "default": "Who is this check for?" },
+    { "type": "text", "id": "q1_hint", "label": "Step 1 line", "default": "Pick one. It takes about 2 minutes." },
+    { "type": "text", "id": "her_title", "label": "Women tile title", "default": "Women's health" },
+    { "type": "text", "id": "her_text", "label": "Women tile line", "default": "Periods, PCOS signs and weight" },
+    { "type": "image_picker", "id": "her_photo", "label": "Women tile photo", "info": "Use the hero photo, the face is cropped from it." },
+    { "type": "text", "id": "him_title", "label": "Men tile title", "default": "Men's health" },
+    { "type": "text", "id": "him_text", "label": "Men tile line", "default": "Stamina, performance and weight" },
+    { "type": "image_picker", "id": "him_photo", "label": "Men tile photo" },
+    { "type": "text", "id": "pick_label", "label": "Tile button", "default": "Choose" },
+    { "type": "text", "id": "q2", "label": "Step 2 question", "default": "What would you like to check?" },
+    { "type": "text", "id": "back_label", "label": "Back link", "default": "Change" },
+    { "type": "text", "id": "start_label", "label": "Quiz button", "default": "Start quiz" },
+    { "type": "header", "content": "Footer" },
+    { "type": "image_picker", "id": "doctor_1", "label": "Doctor photo 1" },
+    { "type": "image_picker", "id": "doctor_2", "label": "Doctor photo 2" },
+    { "type": "image_picker", "id": "doctor_3", "label": "Doctor photo 3" },
+    { "type": "text", "id": "foot", "label": "Footer line", "default": "Free and private. Every quiz ends with a free call with a sehatUP doctor." },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
+  ],
+  "blocks": [
+    {
+      "type": "quiz",
+      "name": "Quiz",
+      "settings": [
+        { "type": "select", "id": "who", "label": "For", "options": [{ "value": "her", "label": "Women" }, { "value": "him", "label": "Men" }], "default": "her" },
+        { "type": "select", "id": "icon", "label": "Icon", "options": [{ "value": "cycle", "label": "Cycle" }, { "value": "scale", "label": "Weight" }, { "value": "heart", "label": "Heart" }], "default": "cycle" },
+        { "type": "text", "id": "title", "label": "Title", "default": "Period care" },
+        { "type": "text", "id": "text", "label": "What it checks", "default": "Cycle, cramps, PMS and PCOS signs" },
+        { "type": "url", "id": "link", "label": "Quiz link" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "HS360 Start the check" }]
+}
+{% endschema %}

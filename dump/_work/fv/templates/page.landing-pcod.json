@@ -1,0 +1,527 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "layout": "landing",
+  "sections": {
+    "header": {
+      "type": "lm-header",
+      "settings": {
+        "mobile_bar": false,
+        "links": "Home|/\nAbout|/pages/about-us\nContact Us|/pages/contact",
+        "trust_before": "",
+        "trust_number": "",
+        "button": "Book Free Consultation",
+        "button_link": "",
+        "wa_link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor%20privately",
+        "wa_label": "Chat with us",
+        "logo_width": 168
+      }
+    },
+    "hero": {
+      "type": "lm-hero",
+      "settings": {
+        "glow": true,
+        "glow_color": "#fbdcd3",
+        "layout": "box",
+        "image_side": "left",
+        "image": "shopify://shop_images/Cozy_Bedroom_Stomachache_Moment.webp",
+        "heading": "",
+        "highlight": "PCOD/PCOS",
+        "heading_end": "Management Program",
+        "subheading": "Irregular periods, Acne, Mood Swings are not as common than you think - don’t ignore it.",
+        "sub_red": "Irregular periods, Acne, Mood Swings",
+        "button_1": "Book an Appointment",
+        "button_1_note": "",
+        "button_1_link": "#book",
+        "button_2": "Check Your Health Score 360",
+        "button_2_note": "",
+        "button_2_link": "/pages/womens-wellness-questionnaire",
+        "trust_text": "Trusted by 15,000+ women",
+        "rating": "4.5",
+        "trust_initials": "P, A, S",
+        "avatar_1": "shopify://shop_images/Warm_Portrait_with_Red_Dupatta.webp",
+        "avatar_2": "shopify://shop_images/Warm_Indian_Portrait_with_Embroidered_Details.webp",
+        "avatar_3": "shopify://shop_images/Elegant_Indian_Portrait_with_Jhumka_Earrings.webp",
+        "privacy": "",
+        "chip_1": "",
+        "chip_2": "",
+        "gap": 120,
+        "img_width": 50,
+        "img_zoom": 100,
+        "img_focus": 25,
+        "img_height_mobile": 300
+      }
+    },
+    "symptoms": {
+      "type": "lm-concerns",
+      "blocks": {
+        "s1": {
+          "type": "concern",
+          "settings": {
+            "icon": "none",
+            "icon_image": "shopify://shop_images/Period_calander.webp",
+            "title": "Irregular Periods",
+            "text": "When your periods don't follow a regular cycle.",
+            "form_value": "Irregular Periods"
+          }
+        },
+        "s2": {
+          "type": "concern",
+          "settings": {
+            "icon": "none",
+            "icon_image": "shopify://shop_images/Acne.webp",
+            "title": "Acne",
+            "text": "Skin troubles that keep coming back.",
+            "form_value": "Acne"
+          }
+        },
+        "s3": {
+          "type": "concern",
+          "settings": {
+            "icon": "none",
+            "icon_image": "shopify://shop_images/Hair_Loss.webp",
+            "title": "Hair Fall",
+            "text": "More hair on your brush than usual.",
+            "form_value": "Hair Fall"
+          }
+        },
+        "s4": {
+          "type": "concern",
+          "settings": {
+            "icon": "none",
+            "icon_image": "shopify://shop_images/Facial_hair_growth.webp",
+            "title": "Facial Hair Growth",
+            "text": "Noticing unwanted facial hair growth.",
+            "form_value": "Facial Hair Growth"
+          }
+        },
+        "s5": {
+          "type": "concern",
+          "settings": {
+            "icon": "none",
+            "icon_image": "shopify://shop_images/Weight.webp",
+            "title": "Weight Changes",
+            "text": "Weight changes that feel hard to understand.",
+            "form_value": "Weight Changes"
+          }
+        },
+        "concern_MrxHBq": {
+          "type": "concern",
+          "settings": {
+            "icon": "question",
+            "title": "Dark Patches on Body",
+            "text": "Noticing darker patches on your skin.",
+            "form_value": ""
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "concern_MrxHBq"
+      ],
+      "settings": {
+        "mobile_count": 0,
+        "heading": "Are these the symptoms you’re",
+        "highlight": "also facing?",
+        "subheading": "",
+        "button": "",
+        "button_selected": "",
+        "note": "",
+        "icon_size": 64
+      }
+    },
+    "tried": {
+      "type": "lm-tried",
+      "blocks": {
+        "t1": {
+          "type": "item",
+          "settings": {
+            "label": "Herbal medicines",
+            "note": "Symptoms come back after stopping",
+            "asset": "lp-tried-unani.webp"
+          }
+        },
+        "t2": {
+          "type": "item",
+          "settings": {
+            "label": "Contraceptives",
+            "note": "Symptoms come back after stopping",
+            "asset": "lp-tried-pills.webp"
+          }
+        },
+        "t3": {
+          "type": "item",
+          "settings": {
+            "label": "Nuskhe",
+            "note": "Symptoms come back after stopping",
+            "asset": "lp-tried-powders.webp"
+          }
+        },
+        "t4": {
+          "type": "item",
+          "settings": {
+            "label": "Allopathy",
+            "note": "Symptoms come back after stopping",
+            "asset": ""
+          }
+        }
+      },
+      "block_order": [
+        "t1",
+        "t2",
+        "t3",
+        "t4"
+      ],
+      "disabled": true,
+      "settings": {
+        "heading": "Tried everything?",
+        "highlight": "",
+        "subheading": "They calm the symptom for a while. The cause stays.",
+        "link_text": "sehatUP treats the root cause",
+        "link": "#book",
+        "chart_title": "How symptoms usually go",
+        "line_quick": "Quick fixes",
+        "line_root": "sehatUP root-cause care",
+        "y_label": "Symptom level",
+        "x_labels": "M1, M2, M3, M4, M5, M6",
+        "quick_values": "80, 45, 78, 48, 76, 74",
+        "root_values": "80, 68, 55, 42, 32, 25",
+        "caption": "An illustration, not a measurement.",
+        "tone": "stone",
+        "thumb_size": 64
+      }
+    },
+    "stories": {
+      "type": "lm-stories",
+      "blocks": {
+        "v1": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        },
+        "v2": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        },
+        "v3": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        },
+        "v4": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        },
+        "v5": {
+          "type": "video",
+          "settings": {
+            "video_url": "",
+            "quote": "",
+            "length": ""
+          }
+        }
+      },
+      "block_order": [
+        "v1",
+        "v2",
+        "v3",
+        "v4",
+        "v5"
+      ],
+      "settings": {
+        "video_speed": 4,
+        "review_speed": 6,
+        "layout": "split",
+        "show_empty": true,
+        "heading": "Our <span class=\"lm-mark\">Success</span> Stories",
+        "highlight": "",
+        "subheading": "",
+        "review_products": [
+          "tea-for-period-cramps",
+          "harmen",
+          "her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness",
+          "aloezy-intimate-foam-wash",
+          "macho-metabolism"
+        ],
+        "min_rating": 4,
+        "max_reviews": 5,
+        "videos_per_row": 5
+      }
+    },
+    "trust": {
+      "type": "lm-why-list",
+      "blocks": {
+        "point_wQwkem": {
+          "type": "point",
+          "settings": {
+            "icon": "calendar",
+            "title": "Treat Root Cause, Not Just Symptoms",
+            "text": "Combining Allopathy, Homoeopathy & Ayurveda for <br>a root cause treatment."
+          }
+        },
+        "p1": {
+          "type": "point",
+          "settings": {
+            "icon": "calendar",
+            "title": "Irregular Periods",
+            "text": "Understand cycle changes with personalised health guidance."
+          }
+        },
+        "p2": {
+          "type": "point",
+          "settings": {
+            "icon": "pulse",
+            "title": "Hormonal Health Support",
+            "text": "Explore care options for common PCOS/PCOD concerns."
+          }
+        },
+        "p3": {
+          "type": "point",
+          "settings": {
+            "icon": "stethoscope",
+            "title": "Doctor-Led Guidance",
+            "text": "Get professional guidance tailored to individual health needs."
+          }
+        },
+        "p4": {
+          "type": "certs",
+          "settings": {
+            "icon": "shield",
+            "title": "We are certified",
+            "logo_1": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "logo_2": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "logo_3": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp"
+          }
+        }
+      },
+      "block_order": [
+        "point_wQwkem",
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "dividers": true,
+        "heading": "Why do thousands",
+        "highlight": "trust SehatUP?",
+        "image": "shopify://shop_images/Thoughtful_Doctor-Patient_Consultation.webp",
+        "tone": "white",
+        "image_width": 520,
+        "icon_size": 56
+      }
+    },
+    "couple_banner": {
+      "type": "lm-banner",
+      "settings": {
+        "image": "shopify://shop_images/Sunlit_Morning_Bedroom_Stretch.webp",
+        "alt": "",
+        "text": "",
+        "link": "",
+        "blur": 3,
+        "full_width": true,
+        "ratio": "3 / 1",
+        "mobile_height": 240,
+        "focus_x": 50,
+        "focus_y": 50
+      }
+    },
+    "ready": {
+      "type": "lm-ready",
+      "blocks": {
+        "o1": {
+          "type": "option",
+          "settings": {
+            "icon": "doctor",
+            "title": "Talk to a Doctor",
+            "text": "Consult to understand your options and next steps.",
+            "button": "Book free consultation",
+            "link": "#book",
+            "highlight": true
+          }
+        },
+        "o2": {
+          "type": "option",
+          "settings": {
+            "icon": "list",
+            "title": "Take a 60-sec quiz",
+            "text": "Find the right solution based on your symptoms and needs.",
+            "button": "Take Free Assessment",
+            "link": "/pages/womens-wellness-questionnaire",
+            "highlight": true
+          }
+        },
+        "o3": {
+          "type": "option",
+          "settings": {
+            "icon": "whatsapp",
+            "title": "Chat on WhatsApp",
+            "text": "Discreet messaging with our AI Chatbot 24/7.",
+            "button": "Start Chat",
+            "link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20PCOD%2FPCOS",
+            "highlight": true
+          }
+        }
+      },
+      "block_order": [
+        "o1",
+        "o2",
+        "o3"
+      ],
+      "settings": {
+        "card_style": "plain",
+        "head_align": "center",
+        "tone": "white",
+        "heading": "We're Here",
+        "highlight": "When You are Ready",
+        "subheading": "",
+        "icon_size": 34
+      }
+    },
+    "book": {
+      "type": "lp-book",
+      "settings": {
+        "heading": "Consult with a Doctor",
+        "highlight": "for FREE",
+        "subheading": "Book your slot and get expert guidance for PCOD/PCOS.",
+        "trust": "100% Free Consultation|chat\nPrivate and Confidential|shield\nExpert Doctors|doctor",
+        "image": "shopify://shop_images/Confident_Doctor_with_Stethoscope.webp",
+        "image_asset": "",
+        "image_name": "Dr. Shefali Chhicholia",
+        "image_note": "BHMS, MD (Homeopathy), 5 years experience",
+        "form_heading": "Book Your Free Consultation",
+        "form_sub": "Takes less than a minute.",
+        "show_timer": false,
+        "timer_label": "",
+        "concerns": "Irregular Periods\nAcne\nHair Fall\nFacial Hair Growth\nWeight Changes\nSomething else",
+        "times": "Morning (9 am to 12 pm)\nAfternoon (12 pm to 4 pm)\nEvening (4 pm to 8 pm)",
+        "button": "Book My Free Slot",
+        "privacy": "Your information is private and secure.",
+        "source": "landing_women",
+        "sheet_url": "https://script.google.com/macros/s/AKfycbzjcZ6CwDwFz7m2XGob3wFb4QXnEJZB5eqennf8TmMzU9M-XHVaVkf9xydF3kbtfRrb/exec",
+        "thanks_url": "/pages/booking-confirmed",
+        "gender": "female",
+        "tone": "cream",
+        "img_width": 54,
+        "img_height": 94
+      }
+    },
+    "journey": {
+      "type": "lm-ready",
+      "blocks": {
+        "j1": {
+          "type": "option",
+          "settings": {
+            "icon": "doctor",
+            "title": "Free Dr. consultation",
+            "text": "",
+            "button": "Book free consultation",
+            "link": "#book",
+            "highlight": true
+          }
+        },
+        "j2": {
+          "type": "option",
+          "settings": {
+            "icon": "list",
+            "title": "Free Period Assessment",
+            "text": "",
+            "button": "Take Free Assessment",
+            "link": "/pages/womens-wellness-questionnaire",
+            "highlight": true
+          }
+        }
+      },
+      "block_order": [
+        "j1",
+        "j2"
+      ],
+      "disabled": true,
+      "settings": {
+        "card_style": "plain",
+        "head_align": "center",
+        "tone": "white",
+        "heading": "Start your",
+        "highlight": "Period Care Journey",
+        "subheading": "",
+        "icon_size": 34
+      }
+    },
+    "unsure": {
+      "type": "lm-unsure",
+      "settings": {
+        "layout": "popout",
+        "full_width": true,
+        "band_margin": 50,
+        "grad_light": "#fdf4f5",
+        "grad_dark": "#f1b6c3",
+        "image_space": 24,
+        "one_line": true,
+        "one_line_size": 30,
+        "image_edge": true,
+        "image_right": 100,
+        "image_nudge": 0,
+        "image_size": 120,
+        "image": "shopify://shop_images/Confused_Woman_Shrugging_in_Green_Shirt.webp",
+        "heading": "Not sure what’s the problem with your",
+        "highlight": "Menstrual Cycle?",
+        "subheading": "Take our self - assessment to get personalised recommendations based on your symptoms & concerns.",
+        "button": "Take HS 360 assessment",
+        "link": "/pages/womens-wellness-questionnaire",
+        "note": "",
+        "image_width": 190
+      }
+    },
+    "floating_video": {
+      "type": "floating-product-video",
+      "settings": {
+        "enable_video": true,
+        "video_source": "link",
+        "video_url": "https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4",
+        "dock_side": "left",
+        "dock_bottom": 32,
+        "cta_label": "Add to cart",
+        "accent_color": "#ee204a"
+      }
+    }
+  },
+  "order": [
+    "header",
+    "hero",
+    "symptoms",
+    "tried",
+    "stories",
+    "trust",
+    "couple_banner",
+    "ready",
+    "book",
+    "journey",
+    "unsure",
+    "floating_video"
+  ]
+}

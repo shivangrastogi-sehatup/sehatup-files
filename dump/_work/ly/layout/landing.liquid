@@ -1,0 +1,47 @@
+<!doctype html>
+{%- comment -%}
+  Landing layout for ad pages: no site header, menu or cart, so a visitor
+  from an ad has one job on the page. The landing footer (landing-footer-group) is shown at the end. Keeps the tracking the main
+  layout has (Shopify pixels via content_for_header, attribution, OpenAI pixel,
+  Clarity). Pages using it are kept out of search (noindex): they are for ads.
+{%- endcomment -%}
+<html lang="{{ request.locale.iso_code }}">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="{{ canonical_url }}">
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+    {%- endif -%}
+    <title>{{ page_title }} | sehatUP</title>
+    {%- if page_description -%}<meta name="description" content="{{ page_description | escape }}">{%- endif -%}
+
+    {% render 'sehatup-attribution' %}
+    <script>!function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:"6YvDyuZQsPeKJ7bhguTQEB"});</script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {{ 'landing.css' | asset_url | stylesheet_tag }}
+
+    {{ content_for_header }}
+
+    <script>
+      (function (c, l, a, r, i, t, y) {
+        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+        t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
+        y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+      })(window, document, 'clarity', 'script', 'tvlois2qku');
+    </script>
+    <style>/* Below 320px the page keeps its 320px layout and scrolls sideways instead of squeezing. */ html, body { min-width: 320px; }</style>
+  </head>
+  <body class="lp-body">
+    <main id="MainContent" role="main">
+      {{ content_for_layout }}
+    </main>
+    {%- unless template.suffix == 'landing-thanks' -%}{% sections 'landing-footer-group' %}{%- endunless -%}
+    <script src="{{ 'landing.js' | asset_url }}" defer></script>
+  </body>
+</html>

@@ -1,0 +1,166 @@
+{%- comment -%}
+  Most ordered care kits: real products picked in the editor (the Health
+  Score page uses the three best-selling kits from Shopify orders), shown as
+  cards with the For Her / For Him tone, price + saving, and the Judge.me
+  rating when the product has one. "View kit" goes to the product page;
+  the copy makes clear the doctor recommends the kit first.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #hkt-{{ section.id }} { --hkt-text: #1d1d1d; --hkt-muted: #5c5c5c; --hkt-ink: {{ s.accent_color | color_darken: 8 }}; background: #fff; font-family: 'Montserrat', sans-serif; color: var(--hkt-text); }
+  #hkt-{{ section.id }} .hkt__inner { max-width: 1160px; margin: 0 auto; padding: 88px 24px 40px; }
+  #hkt-{{ section.id }} .hkt__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 36px; }
+  #hkt-{{ section.id }} .hkt__eyebrow { margin: 0 0 14px; font: 700 12px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--hkt-ink); }
+  #hkt-{{ section.id }} .hkt__heading { color: var(--hkt-text); margin: 0 0 12px; font: 800 clamp(28px, 3.4vw, 46px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hkt-{{ section.id }} .hkt__sub { margin: 0; max-width: 560px; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--hkt-muted); }
+  #hkt-{{ section.id }} .hkt__all { flex: none; display: inline-flex; gap: 8px; align-items: center; font: 700 15px/1 'Montserrat', sans-serif; color: var(--hkt-ink); text-decoration: none; padding-bottom: 6px; border-bottom: 2px solid currentColor; }
+
+  #hkt-{{ section.id }} .hkt__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+  #hkt-{{ section.id }} .hkt__card {
+    --tone: #fde2e7; --tone-ink: #b3123a;
+    display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; text-decoration: none; color: inherit; background: #fff;
+    box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 12px 32px rgba(29, 29, 29, .07);
+    transition: transform .35s cubic-bezier(.16, 1, .3, 1), box-shadow .35s ease;
+  }
+  #hkt-{{ section.id }} .hkt__card--him { --tone: #d9f0ee; --tone-ink: #0f6b62; }
+  @media (hover: hover) and (pointer: fine) {
+    #hkt-{{ section.id }} .hkt__card:hover { transform: translateY(-6px); box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 22px 44px rgba(29, 29, 29, .12); }
+    #hkt-{{ section.id }} .hkt__card:hover .hkt__cta span { transform: translateX(4px); }
+  }
+  #hkt-{{ section.id }} .hkt__card:focus-visible { outline: 2px solid var(--hkt-text); outline-offset: 3px; }
+  /* Product photos come with their own backgrounds: show them as they are, edge to edge. */
+  #hkt-{{ section.id }} .hkt__img { position: relative; aspect-ratio: 1; background: #f4f1ee; overflow: hidden; }
+  #hkt-{{ section.id }} .hkt__img img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.16, 1, .3, 1); }
+  @media (hover: hover) and (pointer: fine) { #hkt-{{ section.id }} .hkt__card:hover .hkt__img img { transform: scale(1.04); } }
+  #hkt-{{ section.id }} .hkt__tag,
+  #hkt-{{ section.id }} .hkt__badge { position: absolute; top: 14px; padding: 7px 11px; border-radius: 999px; font: 700 11.5px/1 'Montserrat', sans-serif; }
+  /* Tinted with a shadow so it stays visible on white product photos too. */
+  #hkt-{{ section.id }} .hkt__tag { left: 14px; background: var(--tone); color: var(--tone-ink); box-shadow: 0 2px 8px rgba(29, 29, 29, .12); }
+  #hkt-{{ section.id }} .hkt__badge { box-shadow: 0 2px 8px rgba(29, 29, 29, .18); }
+  #hkt-{{ section.id }} .hkt__badge { right: 14px; background: var(--hkt-text); color: #fff; }
+  #hkt-{{ section.id }} .hkt__body { padding: 20px 22px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  #hkt-{{ section.id }} .hkt__title { margin: 0; font: 700 17px/1.3 'Montserrat', sans-serif; color: var(--hkt-text); }
+  #hkt-{{ section.id }} .hkt__rating { margin: 0; font: 600 13px/1 'Montserrat', sans-serif; color: var(--hkt-text); }
+  #hkt-{{ section.id }} .hkt__rating i { font-style: normal; color: #f5a623; }
+  #hkt-{{ section.id }} .hkt__rating span { color: var(--hkt-muted); font-weight: 500; }
+  #hkt-{{ section.id }} .hkt__price { margin: 2px 0 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+  #hkt-{{ section.id }} .hkt__price b { font: 800 20px/1 'Montserrat', sans-serif; }
+  #hkt-{{ section.id }} .hkt__price s { font: 500 14px/1 'Montserrat', sans-serif; color: #767676; }
+  #hkt-{{ section.id }} .hkt__price em { font: 700 12.5px/1 'Montserrat', sans-serif; font-style: normal; color: var(--hkt-ink); }
+  #hkt-{{ section.id }} .hkt__cta { margin-top: auto; padding-top: 10px; display: inline-flex; gap: 8px; align-items: center; font: 700 14.5px/1 'Montserrat', sans-serif; color: var(--hkt-ink); }
+  #hkt-{{ section.id }} .hkt__cta span { transition: transform .2s ease; }
+  #hkt-{{ section.id }} .hkt__note { margin: 28px 0 0; font: 500 14px/1.5 'Montserrat', sans-serif; color: var(--hkt-muted); }
+
+  @media (max-width: 749px) {
+    #hkt-{{ section.id }} .hkt__inner { padding: 56px 0 28px; }
+    #hkt-{{ section.id }} .hkt__head { flex-direction: column; align-items: flex-start; padding: 0 16px; margin-bottom: 24px; gap: 16px; }
+    #hkt-{{ section.id }} .hkt__heading { font-size: 28px; }
+    #hkt-{{ section.id }} .hkt__sub { font-size: 14.5px; }
+    #hkt-{{ section.id }} .hkt__row {
+      display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 18px;
+      scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none;
+    }
+    #hkt-{{ section.id }} .hkt__row::-webkit-scrollbar { display: none; }
+    #hkt-{{ section.id }} .hkt__card { flex: 0 0 76%; scroll-snap-align: start; }
+    #hkt-{{ section.id }} .hkt__note { padding: 0 16px; margin-top: 14px; font-size: 13px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #hkt-{{ section.id }} .hkt__card, #hkt-{{ section.id }} .hkt__cta span { transition: none; } }
+
+  /* Big screens: scale the whole section in proportion, so 1920-3840px
+     monitors get a page sized for them instead of a 1200px island. */
+  @media (min-width: 1680px) { #hkt-{{ section.id }} .hkt__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hkt-{{ section.id }} .hkt__inner { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hkt-{{ section.id }} .hkt__inner { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hkt-{{ section.id }} .hkt__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hkt-{{ section.id }} .hkt__inner { zoom: 2; } }
+  @media (min-width: 3840px) { #hkt-{{ section.id }} .hkt__inner { zoom: 2.4; } }
+</style>
+
+<section id="hkt-{{ section.id }}" class="hkt">
+  <div class="hkt__inner">
+    <div class="hkt__head">
+      <div>
+        {%- if s.eyebrow != blank -%}<p class="hkt__eyebrow">{{ s.eyebrow }}</p>{%- endif -%}
+        <h2 class="hkt__heading">{{ s.heading }}</h2>
+        {%- if s.subheading != blank -%}<p class="hkt__sub">{{ s.subheading }}</p>{%- endif -%}
+      </div>
+      {%- if s.all_link != blank and s.all_label != blank -%}
+        <a class="hkt__all" href="{{ s.all_link }}">{{ s.all_label }}<span aria-hidden="true">&rarr;</span></a>
+      {%- endif -%}
+    </div>
+
+    <div class="hkt__row">
+      {%- for product in s.products -%}
+        {%- liquid
+          assign probe = product.title | append: ' ' | append: product.handle | downcase
+          assign her = false
+          if probe contains 'female' or probe contains 'women' or probe contains 'her ' or probe contains 'period' or probe contains 'menses' or probe contains 'hormon'
+            assign her = true
+          endif
+          assign v = product.selected_or_first_available_variant
+          assign rating = product.metafields.reviews.rating.value
+          assign rating_count = product.metafields.reviews.rating_count.value
+        -%}
+        <a class="hkt__card {% if her %}hkt__card--her{% else %}hkt__card--him{% endif %}" href="{{ product.url }}">
+          <div class="hkt__img">
+            {%- if product.featured_image != blank -%}
+              <img src="{{ product.featured_image | image_url: width: 600 }}"
+                   srcset="{{ product.featured_image | image_url: width: 360 }} 360w, {{ product.featured_image | image_url: width: 600 }} 600w"
+                   sizes="(max-width: 749px) 80vw, 340px"
+                   alt="{{ product.featured_image.alt | default: product.title | escape }}" loading="lazy"
+                   width="600" height="{{ 600 | divided_by: product.featured_image.aspect_ratio | round }}">
+            {%- endif -%}
+            <span class="hkt__tag">{% if her %}{{ s.her_label }}{% else %}{{ s.him_label }}{% endif %}</span>
+            {%- if forloop.first and s.first_badge != blank -%}<span class="hkt__badge">{{ s.first_badge }}</span>{%- endif -%}
+          </div>
+          <div class="hkt__body">
+            <h3 class="hkt__title">{{ product.title }}</h3>
+            {%- if rating != blank and rating_count > 0 -%}
+              <p class="hkt__rating"><i aria-hidden="true">★</i> {{ rating.rating | round: 1 }} <span>({{ rating_count }})</span></p>
+            {%- endif -%}
+            <p class="hkt__price">
+              <b>{{ v.price | money_without_trailing_zeros }}</b>
+              {%- if v.compare_at_price > v.price -%}
+                {%- assign save = v.compare_at_price | minus: v.price | times: 100 | divided_by: v.compare_at_price -%}
+                <s>{{ v.compare_at_price | money_without_trailing_zeros }}</s>
+                <em>Save {{ save }}%</em>
+              {%- endif -%}
+            </p>
+            <span class="hkt__cta">{{ s.button_label }}<span aria-hidden="true">&rarr;</span></span>
+          </div>
+        </a>
+      {%- endfor -%}
+    </div>
+
+    {%- if s.note != blank -%}<p class="hkt__note">{{ s.note }}</p>{%- endif -%}
+  </div>
+</section>
+
+
+{% schema %}
+{
+  "name": "Care kits",
+  "tag": "div",
+  "class": "section-health-kits",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "What your doctor may suggest" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Our most ordered care kits" },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Each kit pairs medicines from different systems. Your doctor tells you which one fits you, and what it costs, before you decide." },
+    { "type": "product_list", "id": "products", "label": "Kits", "limit": 4 },
+    { "type": "text", "id": "first_badge", "label": "Badge on the first kit", "default": "Most ordered" },
+    { "type": "text", "id": "button_label", "label": "Card button", "default": "View kit" },
+    { "type": "text", "id": "her_label", "label": "For Her tag", "default": "For Her" },
+    { "type": "text", "id": "him_label", "label": "For Him tag", "default": "For Him" },
+    { "type": "text", "id": "all_label", "label": "All kits link text", "default": "See all combos" },
+    { "type": "url", "id": "all_link", "label": "All kits link" },
+    { "type": "text", "id": "note", "label": "Small note", "default": "Pay just ₹50 to confirm and the rest on delivery, or pay in full online." },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
+  ],
+  "presets": [{ "name": "Care kits" }]
+}
+{% endschema %}

@@ -100,11 +100,11 @@
     font: 700 15px/1 'Montserrat', sans-serif; text-decoration: none;
     transition: background-color .2s ease, transform .1s ease;
   }
-  #hsg-{{ section.id }} .hsg__cta:hover { background: #b3123a; }
+  @media (hover: hover) { #hsg-{{ section.id }} .hsg__cta:hover { background: #b3123a; } }
   #hsg-{{ section.id }} .hsg__cta:active { transform: translateY(1px); }
   #hsg-{{ section.id }} .hsg__cta:focus-visible { outline: 2px solid var(--hsg-text); outline-offset: 3px; }
   #hsg-{{ section.id }} .hsg__arrow { transition: transform .2s ease; }
-  #hsg-{{ section.id }} .hsg__cta:hover .hsg__arrow { transform: translateX(3px); }
+  @media (hover: hover) { #hsg-{{ section.id }} .hsg__cta:hover .hsg__arrow { transform: translateX(3px); } }
   #hsg-{{ section.id }} .hsg__note { margin: 16px 0 0; font: 400 12.5px/1.5 'Montserrat', sans-serif; color: #6b6b6b; }
 
   @media (max-width: 749px) {
@@ -119,6 +119,23 @@
     #hsg-{{ section.id }} .hsg__tick::after { left: 5px; top: 2px; }
     #hsg-{{ section.id }} .hsg__bar { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 28px; padding: 16px; border-radius: 20px; text-align: center; }
     #hsg-{{ section.id }} .hsg__cta { justify-content: center; }
+  }
+
+  /* Phones and tablets: 4 signs, then a small "See more" link on the right. */
+  #hsg-{{ section.id }} .hsg__more { display: none; }
+  @media (max-width: 1099px) {
+    #hsg-{{ section.id }} .hsg__panel:not(.is-open) .hsg__chip:nth-child(n + 5):not([aria-pressed="true"]) { display: none; }
+    #hsg-{{ section.id }} .hsg__more {
+      display: flex; width: fit-content; align-items: center; gap: 4px; margin: 12px 4px 0 auto; padding: 6px 2px;
+      border: 0; background: none; cursor: pointer;
+      font: 600 13.5px/1 'Montserrat', sans-serif; color: var(--hsg-ink);
+      text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #hsg-{{ section.id }} .hsg__more svg { width: 14px; height: 14px; transition: transform .25s ease; }
+    #hsg-{{ section.id }} .hsg__panel.is-open .hsg__more svg { transform: rotate(180deg); }
+    #hsg-{{ section.id }} .hsg__more:focus-visible { outline: 2px solid var(--hsg-text); outline-offset: 2px; border-radius: 4px; }
+    #hsg-{{ section.id }} .hsg__more[hidden] { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -173,6 +190,7 @@
             <button type="button" class="hsg__chip" data-group="2" aria-pressed="false"><span class="hsg__tick" aria-hidden="true"></span>{{ t }}</button>
           {%- endif -%}{%- endfor -%}
         </div>
+        <button type="button" class="hsg__more" data-more aria-expanded="false"><span data-more-label>See more</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
       </div>
     {%- endfor -%}
 
@@ -228,7 +246,18 @@
       ctaLabel.textContent = n === 0 ? T.btnZero : T.btnPicked;
     }
 
+    // See more / See less (only shown on phones and tablets, and only with more than 4 signs).
+    panels.forEach(function (p) { var m = p.querySelector('[data-more]'); if (m && p.querySelectorAll('.hsg__chip').length <= 4) m.hidden = true; });
+
     root.addEventListener('click', function (e) {
+      var more = e.target.closest('[data-more]');
+      if (more) {
+        var pn = more.closest('[data-panel]'), open = !pn.classList.contains('is-open');
+        pn.classList.toggle('is-open', open);
+        more.setAttribute('aria-expanded', open ? 'true' : 'false');
+        more.querySelector('[data-more-label]').textContent = open ? 'See less' : 'See more';
+        return;
+      }
       var chip = e.target.closest('.hsg__chip');
       if (chip) {
         var on = chip.getAttribute('aria-pressed') !== 'true';

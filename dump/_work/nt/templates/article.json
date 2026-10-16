@@ -1,0 +1,139 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-article",
+      "settings": {
+        "banner_fit": "auto",
+        "banner_height": 560,
+        "banner_focus": 0,
+        "byline": "SehatUP",
+        "reviewer": "",
+        "show_cta": true,
+        "cta_status": "Doctors available today",
+        "cta_title": "Talk to an Ayurvedic doctor",
+        "cta_dek": "Leave your number and a doctor calls you back the same day. No cost, no judgment.",
+        "cta_button": "Request a call back",
+        "cta_consent": "We call from a SehatUP number between 10 am and 6 pm. Your number is never shared.",
+        "privacy_url": "",
+        "show_topic": false,
+        "topics": "Stamina and performance, Low energy, Stress and sleep, Something else",
+        "trust_1": "AYUSH certified",
+        "trust_2": "Verified doctors",
+        "trust_3": "Private by default",
+        "whatsapp_url": "",
+        "whatsapp_label": "Prefer to chat? Message us",
+        "done_title": "We have your number",
+        "done_dek": "A doctor calls you back today between 10 am and 8 pm.",
+        "lead_endpoint": "https://script.google.com/macros/s/AKfycbw-xKV9YQKzS63uCN7dv_Ijocl7CiBh9fPqLAx8BwPcD1_h3Tb7rQUXKsPJAa_TtZsf/exec",
+        "lead_token": "sehatup-blog-J7d3qHngA8KDmBBuUNl3FCYK",
+        "lead_collection": "Blog leads",
+        "sticky_top": 96,
+        "show_mobile_bar": true,
+        "bar_button": "Book a call",
+        "bar_text": "Free doctor consultation, same day",
+        "bar_trigger": 22,
+        "panel_fallback": false,
+        "panel_kicker": "What is inside",
+        "panel_title": "Vaji Bati",
+        "panel_note": "AYUSH certified. No added hormones.",
+        "panel_link": "",
+        "panel_link_label": "See the product",
+        "latest_title": "Latest blogs",
+        "latest_count": 4,
+        "show_progress": true,
+        "color_brand": "#ee204a",
+        "color_brand_deep": "#c8143a",
+        "color_wine": "#55123a"
+      }
+    },
+    "custom_liquid_Gtyy4a": {
+      "type": "custom-liquid",
+      "disabled": true,
+      "name": "t:sections.custom-liquid.presets.name",
+      "settings": {
+        "custom_liquid": "<div class=\"article-template__back element-margin-top center page-width\">\n  <a href=\"{{ blog.url }}\" class=\"article-template__link link animate-arrow\">\n    <span class=\"icon-wrap\">\n      <span class=\"svg-wrapper\">{{- 'icon-arrow.svg' | inline_asset_content -}}</span>\n    </span>\n    {{ 'blogs.article.back_to_blog' | t: title: blog.title | escape }}\n  </a>\n</div>",
+        "color_scheme": "",
+        "padding_top": 0,
+        "padding_bottom": 0
+      }
+    },
+    "product_faq_TjcKMA": {
+      "type": "product-faq",
+      "blocks": {
+        "faq_zX8A8t": {
+          "type": "faq",
+          "settings": {
+            "question": "What makes this product different?",
+            "answer": "<p>This product is formulated with clinically backed ingredients and guided by medical expertise.</p>"
+          }
+        },
+        "faq_xGELNn": {
+          "type": "faq",
+          "settings": {
+            "question": "What makes this product different?",
+            "answer": "<p>This product is formulated with clinically backed ingredients and guided by medical expertise.</p>"
+          }
+        },
+        "faq_jYaGRX": {
+          "type": "faq",
+          "settings": {
+            "question": "What makes this product different?",
+            "answer": "<p>This product is formulated with clinically backed ingredients and guided by medical expertise.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_zX8A8t",
+        "faq_xGELNn",
+        "faq_jYaGRX"
+      ],
+      "name": "FAQ accordion",
+      "settings": {
+        "heading": "Frequently Asked Questions",
+        "single_open": true,
+        "reserve_space": false,
+        "enable_schema": true,
+        "heading_size": 32,
+        "max_width": 900,
+        "padding_top": 60,
+        "padding_bottom": 60,
+        "item_padding": 18,
+        "border_radius": 8,
+        "question_size": 17,
+        "answer_size": 15,
+        "background_color": "#ffffff",
+        "item_background": "#ffffff",
+        "border_color": "#e5e5e5",
+        "heading_color": "#1d1d1d",
+        "question_color": "#1d1d1d",
+        "answer_color": "#666666",
+        "him_q1": "Who is the For Him range designed for?",
+        "him_a1": "<p>Designed for men looking to support testosterone, energy, and performance naturally.</p>",
+        "him_q2": "Are these products safe for daily use?",
+        "him_a2": "<p>Yes, all products are clinically formulated and safe for daily use as directed.</p>",
+        "him_q3": "How soon will I see results?",
+        "him_a3": "<p>Most users notice improvements within 4–6 weeks of consistent use.</p>",
+        "her_q1": "Who is the For Her range designed for?",
+        "her_a1": "<p>Designed for women seeking hormonal balance, skin health, and sustained energy.</p>",
+        "her_q2": "Are these safe during pregnancy?",
+        "her_a2": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>",
+        "her_q3": "Can I take these with other supplements?",
+        "her_a3": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>"
+      }
+    }
+  },
+  "order": [
+    "main",
+    "custom_liquid_Gtyy4a",
+    "product_faq_TjcKMA"
+  ]
+}

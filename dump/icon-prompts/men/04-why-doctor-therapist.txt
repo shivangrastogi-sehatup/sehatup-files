@@ -1,0 +1,27 @@
+ICON: Doctor + Therapist Follow-up Included
+PAGE: Men's landing page (/pages/mens-check)
+SECTION: Why do thousands trust sehatUP
+SAVE AS: 04-why-doctor-therapist.png
+
+PROMPT (paste everything below into ChatGPT):
+----------------------------------------------------------------
+Create a single app-style icon for a health website.
+What it shows: a doctor (head and shoulders with a stethoscope) next to a small speech bubble.
+Meaning: "Doctor + Therapist Follow-up Included".
+
+STYLE (keep exactly the same for every icon in the set):
+- One single icon, centred on a square 512 x 512 px canvas, TRANSPARENT background (no white, no circle, no tile behind it).
+- Thick outline (line) icon. Stroke width 40 px on the 512 px canvas (about 8% of the width), the same thickness everywhere. This icon is shown very small on the website (about 32 px), so thin lines disappear: keep the lines THICK.
+- Round line ends and round corners. No fill, no shading, no gradient, no 3D, no shadow.
+- One colour only: #d81f48 (brand red).
+- Very simple: 2 to 3 shapes at most, no small details, no tiny dots, no text, no letters, no numbers.
+- Leave at least 50 px empty space on every side, and keep gaps between lines at least as wide as the line itself, so it stays clear when shrunk.
+- Modern, friendly, medical-but-calm, same look as Lucide or Feather icons but with heavier lines.
+
+Output: 512 x 512 px PNG with a transparent background.
+----------------------------------------------------------------
+
+IF IT COMES OUT WRONG, reply with one of these:
+- "Make the lines thicker, 40 px, and remove the small details."
+- "Use only the colour #d81f48 and a transparent background, nothing behind the icon."
+- "Simpler: fewer shapes, bigger gaps between the lines."

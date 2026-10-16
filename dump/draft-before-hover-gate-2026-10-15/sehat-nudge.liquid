@@ -1,0 +1,40 @@
+{%- comment -%}
+  One-line nudge between sections: a question, a short line and one button.
+{%- endcomment -%}
+
+{%- assign s = section.settings -%}
+
+<style>
+  #snu-{{ section.id }} { padding: clamp(40px, 4.4vw, 64px) clamp(16px, 3vw, 48px) clamp(8px, 1.2vw, 16px); background: #fff; font-family: 'Montserrat', sans-serif; color: #1d1d1d; }
+  #snu-{{ section.id }} * { box-sizing: border-box; }
+  #snu-{{ section.id }} .snu__inner { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 20px 48px; flex-wrap: wrap; padding: clamp(20px, 2.2vw, 28px) clamp(20px, 3vw, 40px); border-radius: 22px; border: 1.5px solid #e8e0d9; }
+  #snu-{{ section.id }} .snu__t b { display: block; font: 800 clamp(18px, 1.8vw, 24px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #snu-{{ section.id }} .snu__t span { display: block; margin-top: 6px; max-width: 34em; font: 500 15.5px/1.6 'Montserrat', sans-serif; color: #5f5a56; }
+  #snu-{{ section.id }} .snu__btn { flex: none; display: inline-flex; align-items: center; min-height: 52px; padding: 0 28px; border-radius: 999px; background: {{ s.accent_color }}; color: #fff; font: 700 15.5px/1 'Montserrat', sans-serif; text-decoration: none; transition: background-color .2s ease; }
+  #snu-{{ section.id }} .snu__btn:hover { background: {{ s.accent_color | color_darken: 10 }}; }
+  #snu-{{ section.id }} .snu__btn:focus-visible { outline: 2px solid #1d1d1d; outline-offset: 3px; }
+  @media (max-width: 599px) { #snu-{{ section.id }} .snu__btn { width: 100%; justify-content: center; } }
+</style>
+
+<section id="snu-{{ section.id }}" class="snu">
+  <div class="snu__inner">
+    <div class="snu__t"><b>{{ s.heading }}</b>{%- if s.text != blank -%}<span>{{ s.text }}</span>{%- endif -%}</div>
+    {%- if s.button != blank -%}<a class="snu__btn" href="{{ s.link | default: '#' }}">{{ s.button }}</a>{%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "sehatUP nudge",
+  "tag": "div",
+  "class": "section-sehat-nudge",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Question", "default": "Not sure which one is right for you?" },
+    { "type": "text", "id": "text", "label": "Line under it" },
+    { "type": "text", "id": "button", "label": "Button", "default": "Take the free Health Score" },
+    { "type": "url", "id": "link", "label": "Button link" },
+    { "type": "color", "id": "accent_color", "label": "Button colour", "default": "#d81f48" }
+  ],
+  "presets": [{ "name": "sehatUP nudge" }]
+}
+{% endschema %}

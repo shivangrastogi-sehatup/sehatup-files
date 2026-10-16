@@ -35,8 +35,8 @@
   #hfc-{{ section.id }} .hfc__btn span { transition: transform .2s ease; }
   #hfc-{{ section.id }} .hfc__btn--her { background: #fde2e7; color: #b3123a; }
   #hfc-{{ section.id }} .hfc__btn--him { background: #d9f0ee; color: #0f6b62; }
-  #hfc-{{ section.id }} .hfc__btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
-  #hfc-{{ section.id }} .hfc__btn:hover span { transform: translateX(3px); }
+  @media (hover: hover) { #hfc-{{ section.id }} .hfc__btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .25); } }
+  @media (hover: hover) { #hfc-{{ section.id }} .hfc__btn:hover span { transform: translateX(3px); } }
   #hfc-{{ section.id }} .hfc__btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
   #hfc-{{ section.id }} .hfc__note { position: relative; margin: 22px 0 0; font: 500 13px/1.4 'Montserrat', sans-serif; color: rgba(255, 255, 255, .55); }
 

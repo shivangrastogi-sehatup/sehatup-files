@@ -87,8 +87,7 @@
     content: "" !important; display: block; width: 9px; height: 9px; border: solid var(--htr-text); border-width: 2px 2px 0 0; transform: translateX(-2px) rotate(45deg);
   }
   #htr-{{ section.id }} .htr__reviews .jdgm-carousel__left-arrow::before { transform: translateX(2px) rotate(-135deg); }
-  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__left-arrow:hover,
-  #htr-{{ section.id }} .htr__reviews .jdgm-carousel__right-arrow:hover { border-color: var(--htr-accent); }
+  @media (hover: hover) { #htr-{{ section.id }} .htr__reviews .jdgm-carousel__left-arrow:hover, #htr-{{ section.id }} .htr__reviews .jdgm-carousel__right-arrow:hover { border-color: var(--htr-accent); } }
 
   @media (max-width: 1023px) {
     #htr-{{ section.id }} .htr__strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -120,7 +119,7 @@
     <div class="htr__head">
       <h2 class="htr__heading">{{ s.heading }}</h2>
       {%- if s.subheading != blank -%}<p class="htr__sub">{{ s.subheading }}</p>{%- endif -%}
-      <p class="htr__rating" data-rating hidden></p>
+      {%- if s.rating_line != blank -%}<p class="htr__rating" data-rating data-line="{{ s.rating_line | escape }}" hidden></p>{%- endif -%}
     </div>
 
     {%- if s.trust_1 != blank or s.trust_2 != blank or s.trust_3 != blank or s.trust_4 != blank -%}
@@ -160,20 +159,24 @@
 
 
 <script>
-  // Live rating from the Judge.me carousel in this section (the store-wide
-  // average and count), shown once Judge.me has rendered it. Never invented:
-  // if Judge.me does not render, the line stays hidden.
+  // Rating line: [rating] and [count] are filled from the Judge.me carousel in
+  // this section (store-wide average and count) once it has rendered. Never
+  // invented: if a placeholder can't be filled, the line stays hidden.
   (function () {
     var root = document.getElementById('htr-{{ section.id }}');
     if (!root) return;
     var out = root.querySelector('[data-rating]'), tries = 0;
+    if (!out) return;
+    var line = out.getAttribute('data-line');
     (function look() {
       var r = root.querySelector('.htr__reviews .jdgm-all-reviews-rating[data-score]');
       var c = root.querySelector('.htr__reviews .jdgm-all-reviews-rating-wrapper');
       var score = r && parseFloat(r.getAttribute('data-score'));
       var count = c && (c.textContent.match(/\d+/) || [])[0];
-      if (score && count) {
-        out.innerHTML = '<i>★★★★★</i>' + score.toFixed(1) + ' from ' + count + ' reviews';
+      var needR = line.indexOf('[rating]') > -1, needC = line.indexOf('[count]') > -1;
+      if ((!needR || score) && (!needC || count)) {
+        out.textContent = line.replace('[rating]', score ? score.toFixed(1) : '').replace('[count]', count || '');
+        if (needR) out.insertAdjacentHTML('afterbegin', '<i>★★★★★</i>');
         out.hidden = false;
       } else if (++tries < 40) setTimeout(look, 500);
     })();
@@ -188,6 +191,7 @@
   "settings": [
     { "type": "text", "id": "heading", "label": "Heading", "default": "Real people. Real results." },
     { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Honest reviews from customers who took the first step." },
+    { "type": "text", "id": "rating_line", "label": "Rating line", "default": "[rating] from [count] reviews", "info": "[rating] = live Judge.me average, [count] = number of reviews. e.g. [rating] · Trusted by 25,000+ patients. Empty hides the line." },
     { "type": "color", "id": "accent_color", "label": "Icon colour", "default": "#ee204a" },
     { "type": "product_list", "id": "review_products", "label": "Only reviews of these products", "limit": 20, "info": "Leave empty to use the Judge.me carousel block." },
     { "type": "range", "id": "min_rating", "label": "Lowest star rating to show", "min": 1, "max": 5, "step": 1, "default": 4 },

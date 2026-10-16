@@ -37,7 +37,7 @@
     border-radius: 28px; background: var(--stone);
     transition: opacity .7s ease, transform .9s var(--ease), background .4s ease;
   }
-  #hcd-{{ section.id }} .d__panel:hover { background: var(--stone2); }
+  @media (hover: hover) { #hcd-{{ section.id }} .d__panel:hover { background: var(--stone2); } }
   #hcd-{{ section.id }} .d__person {
     position: absolute; bottom: 0; height: calc(100% + 56px); width: auto; max-width: none;
     pointer-events: none; user-select: none;
@@ -61,21 +61,21 @@
     box-shadow: 0 1px 0 rgba(29, 29, 29, .03), 0 8px 22px rgba(29, 29, 29, .05);
     transition: transform .45s var(--ease), border-color .3s ease, box-shadow .45s var(--ease), opacity .6s ease;
   }
-  #hcd-{{ section.id }} .d__quiz:hover { transform: translateY(-3px); border-color: var(--btn); box-shadow: 0 16px 34px rgba(29, 29, 29, .09); }
+  @media (hover: hover) { #hcd-{{ section.id }} .d__quiz:hover { transform: translateY(-3px); border-color: var(--btn); box-shadow: 0 16px 34px rgba(29, 29, 29, .09); } }
   #hcd-{{ section.id }} .d__quiz:active { transform: scale(.98); transition-duration: .12s; }
   #hcd-{{ section.id }} .d__quiz:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
   #hcd-{{ section.id }} .d__ico { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--stone); transition: background .3s ease, transform .45s var(--ease); }
   #hcd-{{ section.id }} .d__ico svg { width: 26px; height: 26px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: stroke .3s ease; }
   #hcd-{{ section.id }} .d__ico .r { stroke: var(--red); }
   #hcd-{{ section.id }} .d__ico .rf { fill: var(--red); stroke: none; transition: fill .3s ease; }
-  #hcd-{{ section.id }} .d__quiz:hover .d__ico { background: #fdeef1; transform: rotate(-6deg); }
+  @media (hover: hover) { #hcd-{{ section.id }} .d__quiz:hover .d__ico { background: #fdeef1; transform: rotate(-6deg); } }
   #hcd-{{ section.id }} .d__qb { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   #hcd-{{ section.id }} .d__qt { font: 700 clamp(16px, 1.15vw, 19px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
   #hcd-{{ section.id }} .d__qd { font: 400 clamp(13px, .9vw, 15px)/1.4 'Montserrat', sans-serif; color: var(--mute); }
   #hcd-{{ section.id }} .d__go { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--btn); color: #fff; box-shadow: 0 6px 14px rgba(219, 29, 68, .25); transition: transform .45s var(--ease), box-shadow .3s ease; }
   #hcd-{{ section.id }} .d__go svg { width: 16px; height: 16px; transition: transform .45s var(--ease); }
-  #hcd-{{ section.id }} .d__quiz:hover .d__go { transform: scale(1.08); box-shadow: 0 8px 18px rgba(219, 29, 68, .32); }
-  #hcd-{{ section.id }} .d__quiz:hover .d__go svg { transform: translateX(2px); }
+  @media (hover: hover) { #hcd-{{ section.id }} .d__quiz:hover .d__go { transform: scale(1.08); box-shadow: 0 8px 18px rgba(219, 29, 68, .32); } }
+  @media (hover: hover) { #hcd-{{ section.id }} .d__quiz:hover .d__go svg { transform: translateX(2px); } }
 
   /* entrance, once (only added when motion is allowed) */
   #hcd-{{ section.id }}.pre .d__badge { opacity: 0; transform: scale(.8); }
@@ -100,7 +100,7 @@
   /* tablets: panels stack, people stay */
   @media (max-width: 1099px) {
     #hcd-{{ section.id }} .d__in { max-width: 680px; padding-left: 20px; padding-right: 20px; }
-    #hcd-{{ section.id }} .d__grid { grid-template-columns: 1fr; gap: 72px; }
+    #hcd-{{ section.id }} .d__grid { grid-template-columns: minmax(0, 1fr); gap: 72px; }
   }
   /* phones: round avatar instead of the cut-out */
   @media (max-width: 599px) {

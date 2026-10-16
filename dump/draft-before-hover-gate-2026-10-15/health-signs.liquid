@@ -1,0 +1,288 @@
+{%- comment -%}
+  Signs your body is asking for help: a tap checklist.
+
+  For Her / For Him switch, symptom chips in everyday words, and a result
+  bar that counts what was tapped and sends the visitor to the matching
+  questionnaire. Each side has two groups of signs (e.g. period / weight),
+  and the button follows whichever group has more taps (ties go to the
+  first group). Nothing is stored or sent anywhere; the taps only choose
+  the link. Plain JS and CSS, no libraries. Without JS the chips still show
+  and the button links to each side's first questionnaire.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #hsg-{{ section.id }} {
+    --hsg-text: #1d1d1d;
+    --hsg-muted: #5c5c5c;
+    --hsg-rose: #fde2e7;
+    --hsg-rose-ink: #b3123a;
+    --hsg-teal: #d9f0ee;
+    --hsg-teal-ink: #0f6b62;
+    --hsg-tone: var(--hsg-rose);
+    --hsg-ink: var(--hsg-rose-ink);
+    background: #fff;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--hsg-text);
+  }
+  #hsg-{{ section.id }}.is-him { --hsg-tone: var(--hsg-teal); --hsg-ink: var(--hsg-teal-ink); }
+  #hsg-{{ section.id }} .hsg__inner { max-width: 980px; margin: 0 auto; padding: 88px 24px 80px; text-align: center; }
+  #hsg-{{ section.id }} .hsg__heading { color: var(--hsg-text); margin: 0 0 12px; font: 800 clamp(28px, 3.4vw, 46px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hsg-{{ section.id }} .hsg__sub { margin: 0 auto; max-width: 560px; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--hsg-muted); }
+
+  /* For Her / For Him switch with a sliding pill behind the active side. */
+  #hsg-{{ section.id }} .hsg__switch {
+    position: relative; display: inline-grid; grid-template-columns: 1fr 1fr;
+    margin: 34px auto 30px; padding: 5px; border-radius: 999px; background: #f3efec;
+  }
+  #hsg-{{ section.id }} .hsg__tab {
+    position: relative; z-index: 1; min-width: 140px; padding: 12px 22px; border: 0; border-radius: 999px;
+    background: none; cursor: pointer; font: 700 15px/1 'Montserrat', sans-serif; color: #6f6862;
+    transition: color .3s ease;
+  }
+  #hsg-{{ section.id }} .hsg__tab.is-on { color: var(--hsg-ink); }
+  #hsg-{{ section.id }} .hsg__tab:focus-visible { outline: 2px solid var(--hsg-text); outline-offset: 2px; }
+  #hsg-{{ section.id }} .hsg__tab-bg {
+    position: absolute; z-index: 0; top: 5px; bottom: 5px; left: 5px; width: calc(50% - 5px);
+    border-radius: 999px; background: var(--hsg-tone); box-shadow: 0 2px 8px rgba(29, 29, 29, .08);
+    transition: transform .4s cubic-bezier(.16, 1, .3, 1), background-color .3s ease;
+  }
+  #hsg-{{ section.id }}.is-him .hsg__tab-bg { transform: translateX(100%); }
+
+  /* Chips */
+  #hsg-{{ section.id }} .hsg__panel[hidden] { display: none; }
+  #hsg-{{ section.id }} .hsg__panel.is-on { animation: hsg-in-{{ section.id }} .45s cubic-bezier(.16, 1, .3, 1) both; }
+  @keyframes hsg-in-{{ section.id }} { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  #hsg-{{ section.id }} .hsg__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  #hsg-{{ section.id }} .hsg__chip {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 20px 14px 16px; border-radius: 999px; border: 1.5px solid #e6e0db;
+    background: #fff; cursor: pointer; font: 600 15px/1.2 'Montserrat', sans-serif; color: var(--hsg-text);
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #hsg-{{ section.id }} .hsg__chip:hover { border-color: var(--hsg-ink); }
+  }
+  #hsg-{{ section.id }} .hsg__chip:active { transform: scale(.96); }
+  #hsg-{{ section.id }} .hsg__chip:focus-visible { outline: 2px solid var(--hsg-text); outline-offset: 2px; }
+  #hsg-{{ section.id }} .hsg__tick {
+    position: relative; flex: none; width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid #cfc7c0; background: #fff; transition: all .2s ease;
+  }
+  #hsg-{{ section.id }} .hsg__tick::after {
+    content: ""; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .2s ease;
+  }
+  #hsg-{{ section.id }} .hsg__chip[aria-pressed="true"] { background: var(--hsg-tone); border-color: var(--hsg-ink); color: var(--hsg-ink); }
+  #hsg-{{ section.id }} .hsg__chip[aria-pressed="true"] .hsg__tick { background: var(--hsg-ink); border-color: var(--hsg-ink); }
+  #hsg-{{ section.id }} .hsg__chip[aria-pressed="true"] .hsg__tick::after { transform: rotate(45deg) scale(1); }
+  #hsg-{{ section.id }} .hsg__chip.is-pop { animation: hsg-pop-{{ section.id }} .32s cubic-bezier(.34, 1.56, .64, 1); }
+  @keyframes hsg-pop-{{ section.id }} { 0% { transform: scale(.94); } 60% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+  /* Result bar */
+  #hsg-{{ section.id }} .hsg__bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    max-width: 720px; margin: 40px auto 0; padding: 14px 14px 14px 26px;
+    border-radius: 999px; background: #f7f3f0; text-align: left;
+    transition: background-color .3s ease;
+  }
+  #hsg-{{ section.id }} .hsg__bar.has-picks { background: var(--hsg-tone); }
+  #hsg-{{ section.id }} .hsg__count { margin: 0; display: grid; gap: 2px; font: 400 14px/1.3 'Montserrat', sans-serif; color: var(--hsg-muted); }
+  #hsg-{{ section.id }} .hsg__count b { font-weight: 700; font-size: 16px; color: var(--hsg-text); }
+  #hsg-{{ section.id }} .hsg__cta {
+    flex: none; display: inline-flex; align-items: center; gap: 10px;
+    padding: 15px 24px; border-radius: 999px; background: var(--hsg-accent); color: #fff;
+    font: 700 15px/1 'Montserrat', sans-serif; text-decoration: none;
+    transition: background-color .2s ease, transform .1s ease;
+  }
+  #hsg-{{ section.id }} .hsg__cta:hover { background: #b3123a; }
+  #hsg-{{ section.id }} .hsg__cta:active { transform: translateY(1px); }
+  #hsg-{{ section.id }} .hsg__cta:focus-visible { outline: 2px solid var(--hsg-text); outline-offset: 3px; }
+  #hsg-{{ section.id }} .hsg__arrow { transition: transform .2s ease; }
+  #hsg-{{ section.id }} .hsg__cta:hover .hsg__arrow { transform: translateX(3px); }
+  #hsg-{{ section.id }} .hsg__note { margin: 16px 0 0; font: 400 12.5px/1.5 'Montserrat', sans-serif; color: #6b6b6b; }
+
+  @media (max-width: 749px) {
+    #hsg-{{ section.id }} .hsg__inner { padding: 56px 16px 52px; }
+    #hsg-{{ section.id }} .hsg__heading { font-size: 28px; }
+    #hsg-{{ section.id }} .hsg__sub { font-size: 14.5px; }
+    #hsg-{{ section.id }} .hsg__switch { margin: 24px auto 22px; }
+    #hsg-{{ section.id }} .hsg__tab { min-width: 0; padding: 11px 26px; font-size: 14px; }
+    #hsg-{{ section.id }} .hsg__chips { gap: 8px; }
+    #hsg-{{ section.id }} .hsg__chip { padding: 11px 14px 11px 12px; font-size: 13.5px; gap: 8px; }
+    #hsg-{{ section.id }} .hsg__tick { width: 18px; height: 18px; }
+    #hsg-{{ section.id }} .hsg__tick::after { left: 5px; top: 2px; }
+    #hsg-{{ section.id }} .hsg__bar { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 28px; padding: 16px; border-radius: 20px; text-align: center; }
+    #hsg-{{ section.id }} .hsg__cta { justify-content: center; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #hsg-{{ section.id }} * { animation: none !important; transition: none !important; }
+  }
+
+  /* Big screens: scale the whole section in proportion, so 1920-3840px
+     monitors get a page sized for them instead of a 1200px island. */
+  @media (min-width: 1680px) { #hsg-{{ section.id }} .hsg__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hsg-{{ section.id }} .hsg__inner { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hsg-{{ section.id }} .hsg__inner { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hsg-{{ section.id }} .hsg__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hsg-{{ section.id }} .hsg__inner { zoom: 2; } }
+  @media (min-width: 3840px) { #hsg-{{ section.id }} .hsg__inner { zoom: 2.4; } }
+</style>
+
+<section id="hsg-{{ section.id }}" class="hsg" data-hsg style="--hsg-accent: {{ s.accent_color | color_darken: 8 }};">
+  <div class="hsg__inner">
+    <div class="hsg__head">
+      <h2 class="hsg__heading">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="hsg__sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="hsg__switch" role="group" aria-label="Choose who this is for">
+      <button type="button" class="hsg__tab is-on" data-side="her" aria-pressed="true">{{ s.her_label }}</button>
+      <button type="button" class="hsg__tab" data-side="him" aria-pressed="false">{{ s.him_label }}</button>
+      <span class="hsg__tab-bg" aria-hidden="true"></span>
+    </div>
+
+    {%- assign sides = 'her,him' | split: ',' -%}
+    {%- for side in sides -%}
+      {%- liquid
+        if side == 'her'
+          assign g1 = s.her_group_1 | newline_to_br | split: '<br />'
+          assign g2 = s.her_group_2 | newline_to_br | split: '<br />'
+          assign link1 = s.her_link_1
+          assign link2 = s.her_link_2
+        else
+          assign g1 = s.him_group_1 | newline_to_br | split: '<br />'
+          assign g2 = s.him_group_2 | newline_to_br | split: '<br />'
+          assign link1 = s.him_link_1
+          assign link2 = s.him_link_2
+        endif
+      -%}
+      <div class="hsg__panel hsg__panel--{{ side }}{% if forloop.first %} is-on{% endif %}" data-panel="{{ side }}"
+           data-first="{{ link1 | default: '#' }}" data-second="{{ link2 | default: '#' }}"{% unless forloop.first %} hidden{% endunless %}>
+        <div class="hsg__chips">
+          {%- for line in g1 -%}{%- assign t = line | strip -%}{%- if t != blank -%}
+            <button type="button" class="hsg__chip" data-group="1" aria-pressed="false"><span class="hsg__tick" aria-hidden="true"></span>{{ t }}</button>
+          {%- endif -%}{%- endfor -%}
+          {%- for line in g2 -%}{%- assign t = line | strip -%}{%- if t != blank -%}
+            <button type="button" class="hsg__chip" data-group="2" aria-pressed="false"><span class="hsg__tick" aria-hidden="true"></span>{{ t }}</button>
+          {%- endif -%}{%- endfor -%}
+        </div>
+      </div>
+    {%- endfor -%}
+
+    <div class="hsg__bar" data-bar>
+      <p class="hsg__count" aria-live="polite"><b data-count>{{ s.zero_line }}</b><span data-count-sub></span></p>
+      <a class="hsg__cta" href="{{ s.her_link_1 | default: '#' }}" data-cta>
+        <span data-cta-label>{{ s.button_zero }}</span>
+        <span class="hsg__arrow" aria-hidden="true">&rarr;</span>
+      </a>
+    </div>
+    {%- if s.note != blank -%}<p class="hsg__note">{{ s.note }}</p>{%- endif -%}
+  </div>
+</section>
+
+
+<script>
+  (function () {
+    var root = document.getElementById('hsg-{{ section.id }}');
+    if (!root || root.dataset.hsgBooted === '1') return;
+    root.dataset.hsgBooted = '1';
+
+    var T = {
+      zero: {{ s.zero_line | json }},
+      zeroSub: {{ s.zero_sub | json }},
+      one: {{ s.one_line | json }},
+      many: {{ s.many_line | json }},
+      pickedSub: {{ s.picked_sub | json }},
+      btnZero: {{ s.button_zero | json }},
+      btnPicked: {{ s.button_picked | json }}
+    };
+    var side = 'her';
+    var tabs = root.querySelectorAll('.hsg__tab');
+    var panels = root.querySelectorAll('[data-panel]');
+    var bar = root.querySelector('[data-bar]');
+    var count = root.querySelector('[data-count]');
+    var countSub = root.querySelector('[data-count-sub]');
+    var cta = root.querySelector('[data-cta]');
+    var ctaLabel = root.querySelector('[data-cta-label]');
+
+    function panel() { return root.querySelector('[data-panel="' + side + '"]'); }
+
+    function update() {
+      var p = panel();
+      var on = p.querySelectorAll('.hsg__chip[aria-pressed="true"]');
+      var g1 = 0, g2 = 0;
+      on.forEach(function (c) { if (c.dataset.group === '2') g2++; else g1++; });
+      var n = on.length;
+      // More taps in group 2 (e.g. weight) sends them there; ties stay on group 1.
+      cta.href = g2 > g1 ? p.dataset.second : p.dataset.first;
+      bar.classList.toggle('has-picks', n > 0);
+      count.textContent = n === 0 ? T.zero : (n === 1 ? T.one : T.many.replace('[n]', n));
+      countSub.textContent = n === 0 ? T.zeroSub : T.pickedSub;
+      ctaLabel.textContent = n === 0 ? T.btnZero : T.btnPicked;
+    }
+
+    root.addEventListener('click', function (e) {
+      var chip = e.target.closest('.hsg__chip');
+      if (chip) {
+        var on = chip.getAttribute('aria-pressed') !== 'true';
+        chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+        chip.classList.remove('is-pop'); void chip.offsetWidth; chip.classList.add('is-pop');
+        if (on && navigator.vibrate) { try { navigator.vibrate(8); } catch (err) {} }
+        update();
+        return;
+      }
+      var tab = e.target.closest('.hsg__tab');
+      if (tab && tab.dataset.side !== side) {
+        side = tab.dataset.side;
+        root.classList.toggle('is-him', side === 'him');
+        tabs.forEach(function (t) { var on = t === tab; t.classList.toggle('is-on', on); t.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+        panels.forEach(function (p) { var on = p.dataset.panel === side; p.hidden = !on; p.classList.toggle('is-on', on); });
+        update();
+      }
+    });
+
+    update();
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Health signs checklist",
+  "tag": "div",
+  "class": "section-health-signs",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Signs your body is asking for help" },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Tap the ones you feel. We will point you to the right check." },
+    { "type": "color", "id": "accent_color", "label": "Button colour", "default": "#ee204a" },
+    { "type": "header", "content": "For Her" },
+    { "type": "text", "id": "her_label", "label": "Tab label", "default": "For Her" },
+    { "type": "textarea", "id": "her_group_1", "label": "Signs for link 1 (one per line)", "default": "Periods are irregular or skipped\nPainful periods or heavy bleeding\nMood swings before periods\nAcne or unwanted facial hair\nHair fall that will not stop" },
+    { "type": "url", "id": "her_link_1", "label": "Link 1 (e.g. women's wellness questionnaire)" },
+    { "type": "textarea", "id": "her_group_2", "label": "Signs for link 2 (one per line)", "default": "Weight that will not move\nBelly fat despite diet and exercise\nTired even after sleeping\nConstant sugar cravings" },
+    { "type": "url", "id": "her_link_2", "label": "Link 2 (e.g. women's weight questionnaire)" },
+    { "type": "header", "content": "For Him" },
+    { "type": "text", "id": "him_label", "label": "Tab label", "default": "For Him" },
+    { "type": "textarea", "id": "him_group_1", "label": "Signs for link 1 (one per line)", "default": "Low stamina\nFinishing too early\nErections not as strong as before\nLow desire lately\nStress affecting performance" },
+    { "type": "url", "id": "him_link_1", "label": "Link 1 (e.g. men's health questionnaire)" },
+    { "type": "textarea", "id": "him_group_2", "label": "Signs for link 2 (one per line)", "default": "Belly fat that will not go\nWeight gain after 30\nTired all day, low energy\nPoor sleep" },
+    { "type": "url", "id": "him_link_2", "label": "Link 2 (e.g. men's weight questionnaire)" },
+    { "type": "header", "content": "Result bar" },
+    { "type": "text", "id": "zero_line", "label": "Nothing tapped: line", "default": "Tap what you feel" },
+    { "type": "text", "id": "zero_sub", "label": "Nothing tapped: small line", "default": "Your answers stay on your phone." },
+    { "type": "text", "id": "one_line", "label": "One tapped", "default": "1 sign picked" },
+    { "type": "text", "id": "many_line", "label": "Several tapped ([n] = number)", "default": "[n] signs picked" },
+    { "type": "text", "id": "picked_sub", "label": "Tapped: small line", "default": "Let's check what is behind them." },
+    { "type": "text", "id": "button_zero", "label": "Button, nothing tapped", "default": "Take the free check" },
+    { "type": "text", "id": "button_picked", "label": "Button, signs tapped", "default": "Check what is behind these" },
+    { "type": "text", "id": "note", "label": "Small note under the bar", "default": "Free. Private. No sign-up." }
+  ],
+  "presets": [{ "name": "Health signs checklist" }]
+}
+{% endschema %}

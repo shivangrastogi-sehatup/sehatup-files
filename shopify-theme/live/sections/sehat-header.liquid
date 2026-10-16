@@ -82,18 +82,15 @@
     transition: transform .35s var(--sh-ease);
   }
   #sh-{{ section.id }} .sh__item--parent .sh__link::after { right: 2px; }
-  #sh-{{ section.id }} .sh__link:hover,
-  #sh-{{ section.id }} .sh__link.is-active { color: var(--sh-ink); }
-  #sh-{{ section.id }} .sh__link:hover::after,
-  #sh-{{ section.id }} .sh__link.is-active::after { transform: scaleX(1); }
+  #sh-{{ section.id }} .sh__link.is-active { color: var(--sh-ink); }  @media (hover: hover) { #sh-{{ section.id }} .sh__link:hover { color: var(--sh-ink); } }
+  #sh-{{ section.id }} .sh__link.is-active::after { transform: scaleX(1); }  @media (hover: hover) { #sh-{{ section.id }} .sh__link:hover::after { transform: scaleX(1); } }
   #sh-{{ section.id }} .sh__caret {
     width: 26px; height: 32px;
     display: inline-flex; align-items: center; justify-content: center;
     color: var(--sh-muted);
     transition: transform .3s var(--sh-ease), color .2s ease;
   }
-  #sh-{{ section.id }} .sh__item:hover .sh__caret,
-  #sh-{{ section.id }} .sh__caret[aria-expanded="true"] { color: var(--sh-ink); transform: rotate(180deg); }
+  #sh-{{ section.id }} .sh__caret[aria-expanded="true"] { color: var(--sh-ink); transform: rotate(180deg); }  @media (hover: hover) { #sh-{{ section.id }} .sh__item:hover .sh__caret { color: var(--sh-ink); transform: rotate(180deg); } }
 
   /* ---- Dropdown panel ------------------------------------------------- */
   #sh-{{ section.id }} .sh__panel {
@@ -141,8 +138,8 @@
     transition: background-color .2s ease, color .2s ease;
   }
   #sh-{{ section.id }} .sh__panel-links li a span { color: var(--sh-ink); opacity: 0; transform: translateX(-6px); transition: opacity .2s ease, transform .3s var(--sh-ease); }
-  #sh-{{ section.id }} .sh__panel-links li a:hover { background: var(--p1); color: var(--sh-ink); }
-  #sh-{{ section.id }} .sh__panel-links li a:hover span { opacity: 1; transform: none; }
+  @media (hover: hover) { #sh-{{ section.id }} .sh__panel-links li a:hover { background: var(--p1); color: var(--sh-ink); } }
+  @media (hover: hover) { #sh-{{ section.id }} .sh__panel-links li a:hover span { opacity: 1; transform: none; } }
   #sh-{{ section.id }} .sh__all {
     margin-top: auto; padding-top: 14px;
     font: 700 13px/1 'Montserrat', sans-serif; color: var(--sh-ink) !important;
@@ -164,7 +161,7 @@
     transition: transform .6s var(--sh-ease);
     transform-origin: 50% 100%;
   }
-  #sh-{{ section.id }} .sh__promo:hover .sh__promo-img { transform: scale(1.05); }
+  @media (hover: hover) { #sh-{{ section.id }} .sh__promo:hover .sh__promo-img { transform: scale(1.05); } }
   #sh-{{ section.id }} .sh__promo-txt {
     position: relative; z-index: 1;
     margin: 10px; padding: 14px;
@@ -241,7 +238,7 @@
     background: #e9e1dc; color: #4a4a4a; transition: background-color .2s ease, color .2s ease;
   }
   #sh-{{ section.id }} .sh__search-clear[hidden] { display: none; }
-  #sh-{{ section.id }} .sh__search-clear:hover { background: var(--sh-ink); color: #fff; }
+  @media (hover: hover) { #sh-{{ section.id }} .sh__search-clear:hover { background: var(--sh-ink); color: #fff; } }
   #sh-{{ section.id }} .sh__search-go {
     height: 40px; padding: 0 18px; border-radius: 999px;
     background: var(--sh-ink); color: #fff; font: 700 13.5px/1 'Montserrat', sans-serif;
@@ -256,7 +253,7 @@
     padding: 8px; border-radius: 14px;
     transition: background-color .2s ease;
   }
-  #sh-{{ section.id }} .sh__res:hover, #sh-{{ section.id }} .sh__res:focus-visible { background: #faf6f3; }
+  #sh-{{ section.id }} .sh__res:focus-visible { background: #faf6f3; }  @media (hover: hover) { #sh-{{ section.id }} .sh__res:hover { background: #faf6f3; } }
   #sh-{{ section.id }} .sh__res img { width: 56px; height: 56px; flex: none; border-radius: 10px; object-fit: cover; background: #f4f1ee; }
   #sh-{{ section.id }} .sh__res-t { font: 600 14px/1.3 'Montserrat', sans-serif; color: var(--sh-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   #sh-{{ section.id }} .sh__res-p { display: block; margin-top: 4px; font: 700 13px/1 'Montserrat', sans-serif; color: var(--sh-ink); }
@@ -270,6 +267,23 @@
     #sh-{{ section.id }} .sh__search-go { padding: 0 14px; }
     #sh-{{ section.id }} .sh__results { padding-right: 0; }
     #sh-{{ section.id }} .sh__results ul { grid-template-columns: 1fr; }
+  }
+
+  /* ---- Narrow phones (under 344px): search bar row under the logo row ----
+     (Amazon style). From 344px up the search icon fits beside the centred logo. */
+  #sh-{{ section.id }} .sh__mrow { display: none; }
+  @media (max-width: 343.98px) {
+    #sh-{{ section.id }} .sh__tools [data-sh-search] { display: none; }
+    /* The row floats under the bar (not part of the header's height), with the
+       same room kept free below the header at the top of the page. Hiding it
+       slides it up behind the bar, so the page never moves and nothing flickers. */
+    #shopify-section-{{ section.id }} { margin-bottom: 54px; }
+    #sh-{{ section.id }} .sh__mrow { display: block; position: absolute; left: 0; right: 0; top: 100%; z-index: 1; padding: 0 12px 10px; background: #fff; transition: transform .3s var(--sh-ease), opacity .2s ease; }
+    #sh-{{ section.id }}.is-scrolled .sh__mrow { box-shadow: 0 8px 18px -12px rgba(29, 29, 29, .25); }
+    #sh-{{ section.id }}.is-down .sh__mrow, #sh-{{ section.id }}:has(.sh__search:not([hidden])) .sh__mrow { transform: translateY(-100%); opacity: 0; pointer-events: none; box-shadow: none; }
+    #sh-{{ section.id }} .sh__msearch { width: 100%; height: 44px; display: flex; align-items: stretch; border: 1.5px solid #e6ddd5; border-radius: 12px; background: #fff; overflow: hidden; text-align: left; }
+    #sh-{{ section.id }} .sh__msearch-field { flex: 1; min-width: 0; display: block; margin-right: 12px; padding-left: 14px; font: 500 13.5px/41px 'Montserrat', sans-serif; color: #8a8580; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #sh-{{ section.id }} .sh__msearch-go { flex: none; width: 50px; display: flex; align-items: center; justify-content: center; background: var(--sh-ink); color: #fff; }
   }
 
   /* ---- Drawer (phones / tablets) -------------------------------------- */
@@ -315,7 +329,7 @@
   #sh-{{ section.id }} .sh__dmenu details[open] summary svg { transform: rotate(180deg); color: var(--sh-ink); }
   #sh-{{ section.id }} .sh__dmenu details ul { padding: 0 0 14px 2px; }
   #sh-{{ section.id }} .sh__dmenu details li a { display: block; padding: 11px 14px; border-radius: 10px; font: 600 15.5px/1.2 'Montserrat', sans-serif; color: #3a3a3a; }
-  #sh-{{ section.id }} .sh__dmenu details li a:hover { background: #faf6f3; color: var(--sh-ink); }
+  @media (hover: hover) { #sh-{{ section.id }} .sh__dmenu details li a:hover { background: #faf6f3; color: var(--sh-ink); } }
   #sh-{{ section.id }} .sh__dmenu .sh__dall { color: var(--sh-ink) !important; font-weight: 700 !important; }
   #sh-{{ section.id }} .sh__dmenu [aria-current="page"] { color: var(--sh-ink); }
   #sh-{{ section.id }} .sh__dfoot { margin-top: auto; padding-top: 22px; display: flex; flex-wrap: wrap; gap: 10px; }
@@ -339,7 +353,7 @@
     #sh-{{ section.id }} .sh__bar { gap: 6px; padding: 0 8px; }
     #sh-{{ section.id }} .sh__nav { display: none; }
     #sh-{{ section.id }} .sh__burger { display: inline-flex; }
-    #sh-{{ section.id }} .sh__logo { position: absolute; left: 50%; transform: translateX(-50%); }
+    #sh-{{ section.id }} .sh__bar > .sh__logo { position: absolute; left: 50%; transform: translateX(-50%); }
     #sh-{{ section.id }} .sh__bar > .sh__logo img { width: min(var(--sh-logo), 128px); }
     #sh-{{ section.id }} .sh__tools { margin-left: auto; gap: 0; }
     #sh-{{ section.id }} .sh__account { display: none; }
@@ -445,6 +459,13 @@
     </div>
   </header>
 
+  <div class="sh__mrow">
+    <button type="button" class="sh__msearch" data-sh-msearch aria-label="Search products" aria-controls="sh-search-{{ section.id }}">
+      <span class="sh__msearch-field">{{ s.search_placeholder | default: 'Search products' }}</span>
+      <span class="sh__msearch-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+    </button>
+  </div>
+
   <div class="sh__search" id="sh-search-{{ section.id }}" hidden data-suggest-url="{{ routes.predictive_search_url }}.json">
     <div class="sh__search-row">
     <form action="{{ routes.search_url }}" method="get" role="search" class="sh__search-form">
@@ -470,7 +491,7 @@
         <a href="{{ routes.root_url }}" class="sh__logo" aria-label="{{ shop.name | escape }} home">
           {%- if settings.logo != blank -%}{{ settings.logo | image_url: width: 320 | image_tag: alt: shop.name, width: 130, height: nil, loading: 'lazy' }}{%- else -%}{{ shop.name }}{%- endif -%}
         </a>
-        <button type="button" class="sh__icon" data-sh-close aria-label="Close menu">
+        <button type="button" class="sh__icon" data-sh-close aria-label="Close menu" autofocus>
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
       </div>
@@ -523,10 +544,14 @@
     root.dataset.shBooted = '1';
 
     // Shadow and hairline once the page has moved.
-    var scrolled = null;
+    // Phones: the search row folds away while scrolling down, back on scrolling up.
+    var scrolled = null, lastY = window.scrollY;
     function onScroll() {
-      var now = window.scrollY > 4;
+      var y = window.scrollY, now = y > 4;
       if (now !== scrolled) { scrolled = now; root.classList.toggle('is-scrolled', now); }
+      if (y > lastY + 8 && y > 120) root.classList.add('is-down');
+      else if (y < lastY - 8 || y < 120) root.classList.remove('is-down');
+      if (Math.abs(y - lastY) > 8) lastY = y;
     }
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -601,6 +626,7 @@
       sInput.focus();
     });
     sInput.addEventListener('input', function () { syncClear(); clearTimeout(timer); timer = setTimeout(suggest, 220); });
+    root.querySelector('[data-sh-msearch]').addEventListener('click', function () { sBtn.click(); });
     sBtn.addEventListener('click', function () {
       if (!sBox.hidden) { closeSearch(); return; }
       closeAll();

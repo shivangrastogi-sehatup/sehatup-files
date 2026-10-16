@@ -1,0 +1,621 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero_healthcare_banner_zGJQMa": {
+      "type": "hero-healthcare-banner",
+      "name": "Healthcare hero banner",
+      "settings": {
+        "layout_mode": "background-with-overlay-image",
+        "desktop_width_percent": 100,
+        "background_image": "shopify://shop_images/Sunlit_Curtain_and_Beige_Tile_Wall.webp",
+        "background_image_size": "cover",
+        "background_position_x": "center",
+        "background_position_y": "center",
+        "background_shift_x": -4,
+        "background_overlay_opacity": 100,
+        "background_overlay_color": "#e62020",
+        "background_overlay_strength": 0,
+        "show_white_panel": false,
+        "white_panel_width": 45,
+        "white_panel_color": "#ffffff",
+        "white_panel_opacity": 10,
+        "white_panel_rounded": true,
+        "white_panel_border_radius": 20,
+        "foreground_image": "shopify://shop_images/Man_Adjusting_Collar_at_Bathroom_Mirror.webp",
+        "foreground_image_scale": 135,
+        "foreground_image_fit": "contain",
+        "foreground_position_x": "right",
+        "foreground_position_y": "bottom",
+        "foreground_offset_x": 0,
+        "foreground_offset_y": 0,
+        "foreground_trim_bottom": 1.5,
+        "hide_foreground_mobile": false,
+        "split_layout": false,
+        "mobile_crop_foreground": false,
+        "kicker": "For men",
+        "heading": "You're not the only one. Most men just never say it.",
+        "subheading_prefix": "",
+        "subheading_highlight": "",
+        "subheading_highlight_color": "#ee204a",
+        "body_text": "<p>Finishing too soon, erections that do not last, low energy, stubborn weight. These are some of the most common reasons men see a doctor, and they can be treated. Our doctors combine Ayurveda, Homeopathy and modern medicine.</p>",
+        "content_position": "left",
+        "content_max_width": 1400,
+        "content_text_max_width": 650,
+        "heading_size": 46,
+        "heading_weight": "700",
+        "heading_color": "#1d1d1d",
+        "subheading_size": 26,
+        "subheading_weight": "500",
+        "subheading_color": "#1d1d1d",
+        "body_size": 17,
+        "body_color": "#333333",
+        "text_shadow_enabled": false,
+        "light_text_fade": true,
+        "button_1_text": "Take the free Health Score",
+        "button_1_link": "shopify://pages/health-score-360",
+        "button_1_style": "filled",
+        "button_1_bg_color": "#ee204a",
+        "button_1_text_color": "#ffffff",
+        "button_1_border_color": "#ee204a",
+        "button_1_hover_bg_color": "#c8183c",
+        "button_1_hover_text_color": "#ffffff",
+        "button_1_hover_border_color": "#c8183c",
+        "show_button_2": true,
+        "enable_doctor_new_tab": true,
+        "button_2_text": "See the products",
+        "button_2_link": "#sexual-wellness",
+        "button_2_style": "outline",
+        "button_2_bg_color": "#1d1d1d",
+        "button_2_text_color": "#1d1d1d",
+        "button_2_border_color": "#1d1d1d",
+        "button_2_hover_bg_color": "#1d1d1d",
+        "button_2_hover_text_color": "#ffffff",
+        "button_2_hover_border_color": "#1d1d1d",
+        "note": "Free, private, and in Hindi or English.",
+        "button_layout": "horizontal",
+        "button_font_size": 16,
+        "button_font_weight": "600",
+        "button_padding_vertical": 14,
+        "button_padding_horizontal": 32,
+        "button_border_radius": 50,
+        "button_spacing": 24,
+        "section_min_height": 390,
+        "section_padding_top": 30,
+        "section_padding_bottom": 30,
+        "section_padding_horizontal": 40,
+        "content_spacing": 16,
+        "enable_mobile_overrides": false,
+        "section_min_height_mobile": 600,
+        "section_padding_top_mobile": 20,
+        "section_padding_bottom_mobile": 40,
+        "section_padding_horizontal_mobile": 16,
+        "mobile_content_alignment": "center",
+        "mobile_background_position_x": "center",
+        "mobile_background_position_y": "center",
+        "mobile_background_image": "shopify://shop_images/Sunlit_Beige_Tiled_Wall.webp",
+        "mobile_bg_focus_x": 50
+      }
+    },
+    "common": {
+      "type": "sehat-common",
+      "blocks": {
+        "f1": {
+          "type": "fact",
+          "settings": {
+            "issue": "Finishing too soon",
+            "icon": "timer",
+            "figure": "18 to 55%",
+            "text": "said they finish sooner than they want to, across published Indian studies.",
+            "source": "Review of Indian studies, Bhat et al., 2026",
+            "source_link": "https://doi.org/10.1177/26318318251355733"
+          }
+        },
+        "f2": {
+          "type": "fact",
+          "settings": {
+            "issue": "Erection problems",
+            "icon": "pulse",
+            "figure": "20 to 64%",
+            "text": "had trouble getting or keeping an erection, across published Indian studies.",
+            "source": "Review of Indian studies, Bhat et al., 2026",
+            "source_link": "https://doi.org/10.1177/26318318251355733"
+          }
+        },
+        "q1": {
+          "type": "problem",
+          "settings": {
+            "title": "Finishing too soon",
+            "text": "Control, and lasting longer.",
+            "link": "#sexual-wellness",
+            "icon_image": "shopify://shop_images/icon-stopwatch.webp",
+            "icon": "timer",
+            "image_asset": "him-problem-finishing.webp",
+            "focus": "center 25%"
+          }
+        },
+        "q2": {
+          "type": "problem",
+          "settings": {
+            "title": "Erections that do not last",
+            "text": "Getting and keeping one",
+            "link": "#sexual-wellness",
+            "icon_image": "shopify://shop_images/icon-heart-pulse.webp",
+            "icon": "pulse",
+            "image_asset": "him-problem-erections.webp",
+            "focus": "right 30%"
+          }
+        },
+        "q3": {
+          "type": "problem",
+          "settings": {
+            "title": "Low stamina and energy",
+            "text": "Tired by evening, slow to recover",
+            "link": "#energy",
+            "icon_image": "shopify://shop_images/icon-energy-bolt.webp",
+            "icon": "bolt",
+            "image_asset": "him-problem-stamina.webp",
+            "focus": "center 25%"
+          }
+        },
+        "q4": {
+          "type": "problem",
+          "settings": {
+            "title": "Weight that will not shift",
+            "text": "Belly fat and a slow metabolism",
+            "link": "#weight",
+            "icon_image": "shopify://shop_images/icon-weight-scale.webp",
+            "icon": "scale",
+            "image_asset": "him-problem-weight.webp",
+            "focus": "center 40%"
+          }
+        }
+      },
+      "block_order": [
+        "f1",
+        "f2",
+        "q1",
+        "q2",
+        "q3",
+        "q4"
+      ],
+      "settings": {
+        "facts_heading": "It's far more common than you think.",
+        "facts_lead": "Doctors see these every day. Most men never mention them to anyone, which is why they last longer than they need to.",
+        "facts_close": "Both can be treated, and the first step is private: a two-minute check on your phone.",
+        "problems_heading": "What's bothering you?",
+        "problems_lead": "Tap the one that sounds like you.",
+        "problems_image": "shopify://shop_images/him-thinking-man.webp",
+        "steps_heading": "How men get past it",
+        "steps_lead": "Three steps. No waiting room, no awkward questions in person.",
+        "cta_text": "Take the free Health Score",
+        "cta_link": "shopify://pages/health-score-360",
+        "accent_color": "#d81f48"
+      }
+    },
+    "doctors": {
+      "type": "health-doctors",
+      "blocks": {
+        "doc_homeo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Shefali.webp",
+            "system": "Homeopathy",
+            "name": "Dr. Shefali Chhicholia",
+            "degree": "BHMS, MD (Homeopathy), 5 years experience",
+            "role": "Gentle, long-term help for early finishing and stamina, with no habit-forming pills."
+          }
+        },
+        "doc_ayur": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "system": "Ayurveda",
+            "name": "Dr. Jayant Kumar",
+            "degree": "BAMS (Ayurveda), 5 years experience",
+            "role": "Finds the root cause behind weak erections, low energy and slow recovery."
+          }
+        },
+        "doc_allo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Devika.webp",
+            "system": "Psychology",
+            "name": "Ms. Devika Chugh",
+            "degree": "Counselling Psychologist, 5 years experience",
+            "role": "Helps with the stress and performance worry that often sit behind it."
+          }
+        }
+      },
+      "block_order": [
+        "doc_homeo",
+        "doc_ayur",
+        "doc_allo"
+      ],
+      "settings": {
+        "eyebrow": "Your private care team",
+        "heading": "Real experts. One plan for you.",
+        "subheading": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your answers together. Your plan treats the body and the mind, because for most men it is both.",
+        "button": "Talk to a doctor on WhatsApp",
+        "button_link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor",
+        "footnote": "Free with every order. In Hindi or English, and nothing you share leaves your doctor.",
+        "accent_color": "#ee204a",
+        "background": "#ffffff",
+        "padding_top": 32,
+        "padding_bottom": 40
+      }
+    },
+    "integrated": {
+      "type": "sehat-integrated",
+      "blocks": {
+        "m1": {
+          "type": "system",
+          "settings": {
+            "icon": "leaf",
+            "title": "Ayurveda",
+            "job": "Works on the root",
+            "text": "Herbs like ashwagandha and shilajit support stamina, energy, sleep and stress over time."
+          }
+        },
+        "m2": {
+          "type": "system",
+          "settings": {
+            "icon": "drop",
+            "title": "Homeopathy",
+            "job": "Gentle, long-term support",
+            "text": "Easy to take alongside your daily routine, for steady improvement without heavy doses."
+          }
+        },
+        "m3": {
+          "type": "system",
+          "settings": {
+            "icon": "capsule",
+            "title": "Modern medicine",
+            "job": "Faster relief when needed",
+            "text": "Prescribed only when a doctor says it fits you, never as a first guess."
+          }
+        }
+      },
+      "block_order": [
+        "m1",
+        "m2",
+        "m3"
+      ],
+      "settings": {
+        "heading": "Three kinds of medicine. One plan for you.",
+        "subheading": "Each one does a different job. Your doctors choose the mix that suits you, so you never take more than you need.",
+        "sum": "One plan, made by your doctors, for your body and your routine.",
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_sexual": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Sexual wellness",
+        "subheading": "For stamina, control and confidence.",
+        "collection": "for-him",
+        "products": [],
+        "pinned": [],
+        "limit": 4,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "View all sexual wellness",
+        "show_use": true,
+        "anchor": "sexual-wellness",
+        "legacy_anchor": "shopify-block-AWVVNcnhMMmVtTlNTc__ai_gen_block_1595750_D9fNhM",
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_weight": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Weight",
+        "subheading": "For metabolism, appetite and stubborn weight.",
+        "collection": "weight-for-him",
+        "products": [],
+        "pinned": [],
+        "limit": 4,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "View all weight products",
+        "show_use": true,
+        "anchor": "weight",
+        "legacy_anchor": "shopify-block-AMDRQd1MrZXp0TTVEd__ai_gen_block_1595750_jVXcQK",
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_energy": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Energy and strength",
+        "subheading": "For daily energy, strength and recovery.",
+        "collection": "overall-wellness",
+        "products": [],
+        "pinned": [],
+        "limit": 4,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "View all energy products",
+        "show_use": true,
+        "anchor": "energy",
+        "legacy_anchor": "shopify-block-AMEhSNGcvcnJFRnZQW__ai_gen_block_1595750_bBpMEE",
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_kits": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Kits for men",
+        "subheading": "Doctor-designed combos that work together, at a better price.",
+        "collection": "combos",
+        "products": [
+          "p-e-e-d-integrated-kit",
+          "shaktisurge",
+          "shilajit-sticks-energy-stamina-kit",
+          "calm-curve-control"
+        ],
+        "pinned": [],
+        "limit": 4,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "All combos",
+        "show_use": true,
+        "anchor": "kits",
+        "legacy_anchor": "",
+        "accent_color": "#d81f48"
+      }
+    },
+    "certs": {
+      "type": "sehat-certs",
+      "blocks": {
+        "c1": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "c2": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "c3": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "settings": {
+        "heading": "Made and checked the right way",
+        "subheading": "What you take is made to approved standards and chosen by real doctors."
+      }
+    },
+    "nudge": {
+      "type": "sehat-nudge",
+      "settings": {
+        "heading": "Not sure which one is right for you?",
+        "text": "Answer a few private questions and a doctor will point you to the right plan. Free, 2 minutes.",
+        "button": "Take the free Health Score",
+        "link": "shopify://pages/health-score-360",
+        "accent_color": "#d81f48"
+      }
+    },
+    "note": {
+      "type": "sehat-product-story",
+      "blocks": {
+        "p1": {
+          "type": "promise",
+          "settings": {
+            "lead": "A doctor is part of it.",
+            "text": "Every order includes a consultation with one of our doctors, at no extra cost. They can adjust the plan to suit you.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p2": {
+          "type": "promise",
+          "settings": {
+            "lead": "[advance] to confirm.",
+            "text": "You pay the rest only when the parcel is in your hands. Or pay in full online and shipping is free.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p3": {
+          "type": "promise",
+          "settings": {
+            "lead": "Nobody else will know.",
+            "text": "It arrives in a plain box with nothing printed on the outside, and what you tell us stays with your doctor.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p4": {
+          "type": "promise",
+          "settings": {
+            "lead": "Ask before you buy.",
+            "text": "Not sure where to start? Message us and get an answer first.",
+            "link_label": "Chat with us on WhatsApp",
+            "link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20men%27s%20health"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "note_heading": "Before you order, four things you can count on.",
+        "note_text": "sehatUP is a clinic, not a supplement shop. This is how we look after an order.",
+        "doc_1": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+        "doc_2": "shopify://shop_images/Dr_Shefali.webp",
+        "doc_names": "Dr. Jayant Kumar, Dr. Shefali Chhicholia and Ms. Devika Chugh",
+        "doc_caption": "The experts behind your plan",
+        "show_rating": true,
+        "advance_amount": 50,
+        "expect_heading": "What to expect",
+        "expect_note": "Results vary from person to person.",
+        "doc_title": "",
+        "doc_text": "Our doctors guide you on the right dose and answer your questions.",
+        "doc_button": "Talk to a doctor",
+        "doc_link": "",
+        "accent_color": "#d81f48",
+        "doc_3": "shopify://shop_images/Dr_Devika.webp"
+      }
+    },
+    "reviews": {
+      "type": "health-trust",
+      "blocks": {
+        "jm_carousel": {
+          "type": "shopify://apps/judge-me-reviews/blocks/featured_carousel/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "maxwidth": 1160
+          }
+        }
+      },
+      "block_order": [
+        "jm_carousel"
+      ],
+      "settings": {
+        "heading": "What our customers say",
+        "subheading": "Honest reviews from customers who took the first step.",
+        "accent_color": "#ee204a",
+        "trust_1": "",
+        "trust_1_text": "",
+        "trust_2": "",
+        "trust_2_text": "",
+        "trust_3": "",
+        "trust_3_text": "",
+        "trust_4": "",
+        "trust_4_text": "",
+        "rating_line": "[rating] · Trusted by 25,000+ patients"
+      }
+    },
+    "faq": {
+      "type": "health-faq",
+      "blocks": {
+        "faq_9": {
+          "type": "question",
+          "settings": {
+            "question": "Can it help with low stamina or performance worries?",
+            "answer": "<p>Yes. The men's check covers stamina, energy, stress and performance, and a doctor reviews your answers privately before suggesting anything. Many of these concerns are common and treatable.</p>"
+          }
+        },
+        "faq_10": {
+          "type": "question",
+          "settings": {
+            "question": "How soon will I see results?",
+            "answer": "<p>Most people notice first changes in 4 to 6 weeks. A full plan usually runs 3 months, adjusted at each monthly check-in. Results vary from person to person.</p>"
+          }
+        },
+        "faq_4": {
+          "type": "question",
+          "settings": {
+            "question": "How do I pay for a care kit?",
+            "answer": "<p>Confirm your order with just ₹50 and pay the rest when your kit arrives, or pay the full amount online.</p>"
+          }
+        },
+        "faq_5": {
+          "type": "question",
+          "settings": {
+            "question": "Will anyone know what I ordered?",
+            "answer": "<p>No. Your kit comes in a plain box with nothing printed on it about what is inside, and only your doctor sees your answers.</p>"
+          }
+        },
+        "faq_6": {
+          "type": "question",
+          "settings": {
+            "question": "Is it safe to combine Ayurveda, Homeopathy and Allopathy?",
+            "answer": "<p>Your doctors plan your care together, so the parts of your plan are chosen to work with each other. Always tell your doctor about any medicines you already take.</p>"
+          }
+        },
+        "faq_7": {
+          "type": "question",
+          "settings": {
+            "question": "How long does delivery take?",
+            "answer": "<p>Usually 3 to 5 days, depending on where you live.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_9",
+        "faq_10",
+        "faq_4",
+        "faq_5",
+        "faq_6",
+        "faq_7"
+      ],
+      "settings": {
+        "heading": "Questions men ask us",
+        "subheading": "Straight answers, in private.",
+        "contact_text": "Ask us on WhatsApp",
+        "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20men%27s%20health",
+        "open_first": true,
+        "shop_1_text": "Shop For Her",
+        "shop_1_link": "shopify://pages/for-her",
+        "shop_2_text": "Shop For Him",
+        "shop_2_link": "shopify://pages/for-him",
+        "shop_3_text": "All combos",
+        "shop_3_link": "shopify://pages/combos",
+        "accent_color": "#ee204a"
+      }
+    },
+    "cta": {
+      "type": "health-final-cta",
+      "settings": {
+        "heading": "Your body is talking. Start listening.",
+        "subheading": "Free, private, and it takes 2 minutes.",
+        "her_label": "",
+        "her_link": "shopify://pages/womens-wellness-questionnaire",
+        "him_label": "Start my free check",
+        "him_link": "shopify://pages/mens-health-questionnaire",
+        "note": "No sign-up. Your answers stay private."
+      }
+    },
+    "sticky": {
+      "type": "sehat-sticky-cta",
+      "settings": {
+        "label": "Take the free Health Score",
+        "link": "shopify://pages/health-score-360",
+        "whatsapp_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20men%27s%20health",
+        "accent_color": "#d81f48"
+      }
+    }
+  },
+  "order": [
+    "hero_healthcare_banner_zGJQMa",
+    "common",
+    "doctors",
+    "integrated",
+    "shelf_sexual",
+    "shelf_weight",
+    "shelf_energy",
+    "shelf_kits",
+    "nudge",
+    "certs",
+    "note",
+    "reviews",
+    "faq",
+    "cta",
+    "sticky"
+  ]
+}

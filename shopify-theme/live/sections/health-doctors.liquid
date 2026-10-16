@@ -46,7 +46,7 @@
   #hdr-{{ section.id }} .hdr__role { margin: 8px 0 0; padding-top: 12px; border-top: 1px solid #eee6e0; font: 400 15px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
   #hdr-{{ section.id }} .hdr__cta { margin-top: 36px; display: flex; justify-content: center; }
   #hdr-{{ section.id }} .hdr__btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 30px; border-radius: 999px; background: var(--hdr-accent); color: #fff; font: 700 15.5px/1 'Montserrat', sans-serif; text-decoration: none; box-shadow: 0 12px 26px -10px rgba(216, 31, 72, .55); transition: transform .2s ease, background-color .2s ease; }
-  #hdr-{{ section.id }} .hdr__btn:hover { transform: translateY(-2px); background: {{ s.accent_color | color_darken: 16 }}; }
+  @media (hover: hover) { #hdr-{{ section.id }} .hdr__btn:hover { transform: translateY(-2px); background: {{ s.accent_color | color_darken: 16 }}; } }
   #hdr-{{ section.id }} .hdr__btn:focus-visible { outline: 2px solid var(--hdr-text); outline-offset: 3px; }
   #hdr-{{ section.id }} .hdr__btn svg { width: 19px; height: 19px; fill: currentColor; }
   #hdr-{{ section.id }} .hdr__cta + .hdr__foot { margin-top: 14px; }

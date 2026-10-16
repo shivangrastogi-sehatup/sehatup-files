@@ -1,0 +1,232 @@
+{%- comment -%}
+  "Pick your check": the four quizzes, two for her and two for him, right
+  under the "What is Health Score 360?" ring. Each check is one big tappable
+  row with a small ring (a piece of the big ring above) around a line icon.
+  The For Her / For Him switch in the ring section drives this one: the chosen
+  panel lifts into a white card and its rings fill further. Hovering a row
+  draws its ring all the way round, the "360".
+{%- endcomment -%}
+{%- liquid
+  assign s = section.settings
+  assign sets = 'her,him' | split: ','
+-%}
+<style>
+  #hcp-{{ section.id }} {
+    --ink: #1d1d1d; --mute: rgba(29, 29, 29, .66); --line: #e6ddd5; --stone: #f6f0ec;
+    --red: {{ s.accent_color }}; --btn: {{ s.accent_color | color_darken: 8 }};
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    background: var(--stone); color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hcp-{{ section.id }} * { box-sizing: border-box; }
+  #hcp-{{ section.id }} .p__in { padding: clamp(56px, 5vw, 96px) 4% clamp(56px, 4.6vw, 88px); }
+
+  /* head: heading left, the promise right */
+  #hcp-{{ section.id }} .p__head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); gap: 4%; align-items: end; margin-bottom: clamp(32px, 2.8vw, 52px); }
+  #hcp-{{ section.id }} .p__eyebrow { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font: 700 clamp(12px, .8vw, 15px)/1 'Montserrat', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--btn); }
+  #hcp-{{ section.id }} .p__eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  #hcp-{{ section.id }} .p__h { margin: 0; color: var(--ink); font: 800 clamp(34px, 3.1vw, 60px)/1.06 'Montserrat', sans-serif; letter-spacing: -.03em; text-wrap: balance; }
+  #hcp-{{ section.id }} .p__sub { margin: 0; font: 400 clamp(16px, 1.25vw, 24px)/1.5 'Montserrat', sans-serif; color: rgba(29, 29, 29, .72); text-wrap: pretty; }
+
+  /* two panels */
+  #hcp-{{ section.id }} .p__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 1.6vw, 32px); }
+  #hcp-{{ section.id }} .p__panel {
+    position: relative; overflow: hidden; padding: clamp(22px, 1.9vw, 38px) clamp(24px, 2.1vw, 42px) clamp(10px, .8vw, 16px);
+    border-radius: clamp(24px, 2vw, 36px); background: rgba(255, 255, 255, .42); border: 1.5px solid var(--line);
+    transition: background .5s var(--ease), box-shadow .5s var(--ease), transform .5s var(--ease), border-color .5s;
+  }
+  #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"],
+  #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] {
+    background: #fff; border-color: #fff; transform: translateY(-4px);
+    box-shadow: 0 2px 0 rgba(29, 29, 29, .03), 0 24px 56px rgba(29, 29, 29, .09);
+  }
+  /* a slice of the big ring in the corner of each panel */
+  #hcp-{{ section.id }} .p__corner { position: absolute; top: -96px; right: -96px; width: 180px; height: 180px; pointer-events: none; overflow: visible; }
+  #hcp-{{ section.id }} .p__corner circle { transition: stroke-dasharray .9s var(--ease); }
+  #hcp-{{ section.id }} .p__corner .p__corner-arc { stroke-dasharray: 60 600; }
+  #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"] .p__corner-arc,
+  #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] .p__corner-arc { stroke-dasharray: 150 600; }
+
+  #hcp-{{ section.id }} .p__who { display: flex; align-items: center; gap: 14px; padding-bottom: clamp(14px, 1.2vw, 22px); border-bottom: 1px solid var(--line); }
+  #hcp-{{ section.id }} .p__ava { width: clamp(44px, 3vw, 58px); height: clamp(44px, 3vw, 58px); flex: none; border-radius: 50%; background-color: var(--stone); background-repeat: no-repeat; background-size: 290% auto; box-shadow: 0 0 0 3px #fff, 0 4px 12px rgba(29, 29, 29, .12); }
+  #hcp-{{ section.id }} .p__ava--her { background-position: 48% 9%; }
+  #hcp-{{ section.id }} .p__ava--him { background-position: 52% 10.5%; }
+  #hcp-{{ section.id }} .p__who b { display: block; font: 800 clamp(20px, 1.5vw, 28px)/1.1 'Montserrat', sans-serif; letter-spacing: -.015em; }
+  #hcp-{{ section.id }} .p__who span { display: block; margin-top: 4px; font: 500 clamp(13px, .95vw, 17px)/1.3 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* one row per check: the whole row is the link */
+  #hcp-{{ section.id }} .p__row {
+    --arc: 64; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: clamp(16px, 1.4vw, 28px);
+    padding: clamp(16px, 1.4vw, 26px) 0; color: inherit; text-decoration: none; border-bottom: 1px solid var(--line);
+  }
+  #hcp-{{ section.id }} .p__row:last-child { border-bottom: 0; }
+  #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"] .p__row,
+  #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] .p__row { --arc: 120; }
+  #hcp-{{ section.id }} .p__row:hover, #hcp-{{ section.id }} .p__row:focus-visible { --arc: 239; }
+  #hcp-{{ section.id }} .p__row:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; border-radius: 12px; }
+
+  #hcp-{{ section.id }} .p__ring { position: relative; width: clamp(68px, 5vw, 96px); aspect-ratio: 1; flex: none; }
+  #hcp-{{ section.id }} .p__ring svg.p__track { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+  #hcp-{{ section.id }} .p__arc { stroke-dasharray: calc(var(--arc) * 1px) 300px; transition: stroke-dasharray .7s var(--ease); }
+  #hcp-{{ section.id }} .p__ico { position: absolute; inset: 27%; width: 46%; height: 46%; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform .4s var(--ease); }
+  #hcp-{{ section.id }} .p__ico .r { stroke: var(--red); }
+  #hcp-{{ section.id }} .p__ico .rf { fill: var(--red); stroke: none; }
+  #hcp-{{ section.id }} .p__row:hover .p__ico { transform: scale(1.08); }
+
+  #hcp-{{ section.id }} .p__t { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 6px; font: 700 clamp(19px, 1.45vw, 28px)/1.15 'Montserrat', sans-serif; letter-spacing: -.015em; }
+  #hcp-{{ section.id }} .p__time { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; background: var(--stone); font: 600 clamp(11px, .75vw, 14px)/1 'Montserrat', sans-serif; letter-spacing: 0; color: var(--mute); }
+  #hcp-{{ section.id }} .p__time svg { width: 1.1em; height: 1.1em; }
+  #hcp-{{ section.id }} .p__d { display: block; margin: 0; font: 400 clamp(14px, 1.05vw, 19px)/1.45 'Montserrat', sans-serif; color: rgba(29, 29, 29, .7); }
+
+  #hcp-{{ section.id }} .p__go {
+    display: grid; place-items: center; width: clamp(44px, 3.2vw, 60px); aspect-ratio: 1; border-radius: 50%;
+    border: 1.5px solid var(--line); background: #fff; color: var(--ink); transition: background .3s, border-color .3s, color .3s, box-shadow .3s;
+  }
+  #hcp-{{ section.id }} .p__go svg { width: 40%; height: 40%; transition: transform .35s var(--ease); }
+  #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"] .p__go,
+  #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] .p__go,
+  #hcp-{{ section.id }} .p__row:hover .p__go {
+    background: var(--btn); border-color: var(--btn); color: #fff; box-shadow: 0 10px 22px rgba(219, 29, 68, .24);
+  }
+  #hcp-{{ section.id }} .p__row:hover .p__go svg { transform: translateX(3px); }
+
+  #hcp-{{ section.id }} .p__foot { margin: clamp(22px, 1.8vw, 34px) 0 0; font: 500 clamp(14px, 1vw, 18px)/1.5 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* before the first reveal (only added when it can animate) */
+  #hcp-{{ section.id }}.pre .p__arc { stroke-dasharray: 0 300px; }
+  #hcp-{{ section.id }}.pre .p__row, #hcp-{{ section.id }}.pre .p__who { opacity: 0; transform: translateY(14px); }
+  #hcp-{{ section.id }} .p__row, #hcp-{{ section.id }} .p__who { transition: opacity .6s var(--ease), transform .6s var(--ease); transition-delay: calc(var(--i, 0) * 110ms); }
+  #hcp-{{ section.id }} .p__arc { transition-delay: calc(var(--i, 0) * 110ms + 200ms); }
+  #hcp-{{ section.id }}.done .p__row, #hcp-{{ section.id }}.done .p__who, #hcp-{{ section.id }}.done .p__arc { transition-delay: 0ms; }
+
+  @media (max-width: 899px) {
+    #hcp-{{ section.id }} .p__in { padding: 48px 16px; }
+    #hcp-{{ section.id }} .p__head { grid-template-columns: 1fr; gap: 14px; }
+    #hcp-{{ section.id }} .p__grid { grid-template-columns: 1fr; }
+    #hcp-{{ section.id }} .p__panel { padding: 20px 18px 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #hcp-{{ section.id }} *, #hcp-{{ section.id }} .p__panel { transition: none !important; }
+  }
+</style>
+
+<section id="hcp-{{ section.id }}" class="hcp" data-want="her">
+  <div class="p__in">
+    <div class="p__head">
+      <div>
+        {%- if s.eyebrow != blank -%}<p class="p__eyebrow">{{ s.eyebrow }}</p>{%- endif -%}
+        <h2 class="p__h">{{ s.heading }}</h2>
+      </div>
+      {%- if s.subheading != blank -%}<p class="p__sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="p__grid">
+      {%- assign i = 0 -%}
+      {%- for set in sets -%}
+        {%- if set == 'her' -%}
+          {%- assign lb = s.her_label -%}{%- assign sb = s.her_sub -%}{%- assign ph = s.her_photo -%}
+        {%- else -%}
+          {%- assign lb = s.him_label -%}{%- assign sb = s.him_sub -%}{%- assign ph = s.him_photo -%}
+        {%- endif -%}
+        <div class="p__panel" data-who="{{ set }}">
+          <svg class="p__corner" viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r="92" fill="none" stroke="#efe7e0" stroke-width="2"/>
+            <circle class="p__corner-arc" cx="100" cy="100" r="92" fill="none" stroke="{{ s.accent_color }}" stroke-width="4" stroke-linecap="round" transform="rotate(95 100 100)"/>
+          </svg>
+          <div class="p__who" style="--i: {{ i }}">
+            <span class="p__ava p__ava--{{ set }}" aria-hidden="true"{% if ph != blank %} style="background-image: url('{{ ph | image_url: width: 240 }}')"{% endif %}></span>
+            <div><b>{{ lb }}</b>{%- if sb != blank -%}<span>{{ sb }}</span>{%- endif -%}</div>
+          </div>
+          {%- assign i = i | plus: 1 -%}
+          {%- for block in section.blocks -%}
+            {%- assign b = block.settings -%}
+            {%- if b.who == set -%}
+              <a class="p__row" href="{{ b.link | default: '#' }}" style="--i: {{ i }}" {{ block.shopify_attributes }}>
+                <span class="p__ring" aria-hidden="true">
+                  <svg class="p__track" viewBox="0 0 84 84">
+                    <circle cx="42" cy="42" r="38" fill="none" stroke="#e6ddd5" stroke-width="2"/>
+                    <circle class="p__arc" cx="42" cy="42" r="38" fill="none" stroke="{{ s.accent_color }}" stroke-width="4" stroke-linecap="round"/>
+                  </svg>
+                  <svg class="p__ico" viewBox="0 0 24 24">
+                    {%- case b.icon -%}
+                      {%- when 'cycle' -%}
+                        <rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path class="rf" d="M12 12.2c1.5 1.9 2.3 3 2.3 3.9a2.3 2.3 0 0 1-4.6 0c0-.9.8-2 2.3-3.9z"/>
+                      {%- when 'scale' -%}
+                        <rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M7.8 11.5a4.2 4.2 0 0 1 8.4 0"/><path class="r" d="M12 11.5l2-2.4"/>
+                      {%- else -%}
+                        <path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/><path class="r" d="M7.4 12.4h2.5l1.4-2.4 2 4.4 1.4-2h1.9"/>
+                    {%- endcase -%}
+                  </svg>
+                </span>
+                <span>
+                  <span class="p__t">{{ b.title }}{%- if b.time != blank -%}<span class="p__time"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.4"/></svg>{{ b.time }}</span>{%- endif -%}</span>
+                  {%- if b.text != blank -%}<span class="p__d">{{ b.text }}</span>{%- endif -%}
+                </span>
+                <span class="p__go" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
+              </a>
+              {%- assign i = i | plus: 1 -%}
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endfor -%}
+    </div>
+
+    {%- if s.footnote != blank -%}<p class="p__foot">{{ s.footnote }}</p>{%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hcp-{{ section.id }}');
+    if (!root) return;
+    // Follow the For Her / For Him switch in the ring section above.
+    document.addEventListener('hs360:who', function (e) {
+      if (e.detail === 'her' || e.detail === 'him') root.setAttribute('data-want', e.detail);
+    });
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+    root.classList.add('pre');
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      root.classList.remove('pre');
+      // After the staggered entrance, hover and switching react with no delay.
+      setTimeout(function () { root.classList.add('done'); }, 1400);
+    }, { threshold: 0.25 }).observe(root.querySelector('.p__grid'));
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "HS360 Pick your check",
+  "tag": "div",
+  "max_blocks": 6,
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Four free checks" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Start with what bothers you most" },
+    { "type": "textarea", "id": "subheading", "label": "Line next to the heading", "default": "Each check takes about 2 minutes. A doctor goes through your answers with you on a free call." },
+    { "type": "text", "id": "her_label", "label": "Her panel title", "default": "For her" },
+    { "type": "text", "id": "her_sub", "label": "Her panel line", "default": "Cycle, hormones and weight" },
+    { "type": "image_picker", "id": "her_photo", "label": "Her avatar photo", "info": "Use the same photo as the ring section." },
+    { "type": "text", "id": "him_label", "label": "His panel title", "default": "For him" },
+    { "type": "text", "id": "him_sub", "label": "His panel line", "default": "Stamina, performance and weight" },
+    { "type": "image_picker", "id": "him_photo", "label": "His avatar photo" },
+    { "type": "text", "id": "footnote", "label": "Line under the panels", "default": "Not sure which one? Pick the one that bothers you most. Your doctor looks at the whole picture on the call." },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
+  ],
+  "blocks": [
+    {
+      "type": "check",
+      "name": "Check",
+      "settings": [
+        { "type": "select", "id": "who", "label": "Panel", "options": [{ "value": "her", "label": "For her" }, { "value": "him", "label": "For him" }], "default": "her" },
+        { "type": "select", "id": "icon", "label": "Icon", "options": [{ "value": "cycle", "label": "Cycle" }, { "value": "scale", "label": "Weight" }, { "value": "heart", "label": "Heart" }], "default": "cycle" },
+        { "type": "text", "id": "title", "label": "Title", "default": "Period care" },
+        { "type": "text", "id": "text", "label": "What it checks", "default": "Irregular or painful periods, PMS and PCOS signs" },
+        { "type": "text", "id": "time", "label": "Time chip", "default": "2 min" },
+        { "type": "url", "id": "link", "label": "Quiz link" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "HS360 Pick your check" }]
+}
+{% endschema %}

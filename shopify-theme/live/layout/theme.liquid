@@ -375,7 +375,7 @@
       })(window, document, 'clarity', 'script', 'tvlois2qku');
     </script>
 
-    <script src="https://unpkg.com/spf-analytics@1.0.0/index.js" defer></script>
+    
 
     {%- liquid
       assign biz_name = 'sehatUP'
@@ -498,6 +498,7 @@
       }
     </style>
 
+    <style>/* Below 320px the page keeps its 320px layout and scrolls sideways instead of squeezing. */ html, body { min-width: 320px; }</style>
   </head>
 
   <body class="gradient{% if settings.animations_hover_elements != 'none' %} animate--hover-{{ settings.animations_hover_elements }}{% endif %}">

@@ -73,6 +73,11 @@
     teaserDelay: Math.max(0, parseInt((script && script.dataset.teaserDelay) || '5000', 10) || 0),
     teaserHello: (script && script.dataset.teaserHello) || 'Namaste! Main sehatUP Mitra hu.',
     teaserAsk: (script && script.dataset.teaserAsk) || 'Log aksar ye puchte hain. Tap karke puchiye:',
+    // data-teaser-text="0": badge only. The launcher gets its "1", then the "2", but
+    // the two messages never open over the page.
+    teaserText: (script && script.dataset.teaserText) !== '0',
+    // Pause between the "1" and the "2" badge.
+    teaserStep: Math.max(300, parseInt((script && script.dataset.teaserStep) || '1500', 10) || 1500),
     teaserChips: [],
   };
   CONFIG.teaserChips = ((script && script.dataset.teaserChips) || CONFIG.chips.slice(0, 3).join('|'))
@@ -443,13 +448,13 @@
     if (atFooter) { tipDeferred = true; return; }
     if (tipAlreadyShown()) return;
     var msgs = el.teaser.querySelectorAll('.tmsg');
-    el.teaser.classList.add('show');
+    var text = CONFIG.teaserText;
+    if (text) { el.teaser.classList.add('show'); msgs[0].classList.add('show'); }
     setBadge(1);
-    msgs[0].classList.add('show');
     teaserTimers.push(window.setTimeout(function () {
       setBadge(2);
-      if (msgs[1]) msgs[1].classList.add('show');
-    }, 1500));
+      if (text && msgs[1]) msgs[1].classList.add('show');
+    }, CONFIG.teaserStep));
   }
 
   function open() {

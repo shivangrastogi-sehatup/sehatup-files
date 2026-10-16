@@ -1,0 +1,79 @@
+{%- comment -%}
+  Shop by category: round photos that jump to a product shelf on the same
+  page (link like #sexual-wellness, the shelf's anchor name).
+{%- endcomment -%}
+
+{%- assign s = section.settings -%}
+
+<style>
+  #sct-{{ section.id }} {
+    --sct-text: #1d1d1d; --sct-muted: #5f5a56; --sct-soft: #f6f0ec;
+    --sct-ink: {{ s.accent_color | color_darken: 8 }};
+    padding: clamp(28px, 4vw, 56px) clamp(16px, 3vw, 48px);
+    background: #fff; font-family: 'Montserrat', sans-serif; color: var(--sct-text);
+  }
+  #sct-{{ section.id }} * { box-sizing: border-box; }
+  #sct-{{ section.id }} .sct__inner { max-width: 1040px; margin: 0 auto; }
+  #sct-{{ section.id }} .sct__h { margin: 0; text-align: center; font: 800 clamp(26px, 3vw, 40px)/1.1 'Montserrat', sans-serif; letter-spacing: -.02em; }
+  #sct-{{ section.id }} .sct__sub { margin: 10px auto 0; max-width: 34em; text-align: center; font: 500 15.5px/1.55 'Montserrat', sans-serif; color: var(--sct-muted); }
+  #sct-{{ section.id }} .sct__list { list-style: none; margin: clamp(24px, 3vw, 40px) 0 0; padding: 0; display: grid; grid-template-columns: repeat({{ section.blocks.size | at_most: 4 }}, minmax(0, 1fr)); gap: clamp(12px, 3vw, 40px); }
+  #sct-{{ section.id }} .sct__card { display: flex; flex-direction: column; align-items: center; text-align: center; color: inherit; text-decoration: none; }
+  #sct-{{ section.id }} .sct__img { width: min(100%, 150px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: var(--sct-soft); transition: transform .4s cubic-bezier(.16, 1, .3, 1), box-shadow .4s ease; }
+  #sct-{{ section.id }} .sct__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #sct-{{ section.id }} .sct__card b { margin-top: 18px; font: 800 clamp(16px, 1.5vw, 20px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #sct-{{ section.id }} .sct__card span { margin-top: 6px; max-width: 22em; font: 500 14px/1.5 'Montserrat', sans-serif; color: var(--sct-muted); }
+  #sct-{{ section.id }} .sct__card:focus-visible { outline: 2px solid var(--sct-text); outline-offset: 4px; border-radius: 12px; }
+  @media (hover: hover) and (pointer: fine) {
+    #sct-{{ section.id }} .sct__card:hover .sct__img { transform: translateY(-4px); box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--sct-ink); }
+    #sct-{{ section.id }} .sct__card:hover b { color: var(--sct-ink); }
+  }
+  @media (max-width: 599px) {
+    #sct-{{ section.id }} .sct__card b { margin-top: 10px; font-size: 14px; }
+    #sct-{{ section.id }} .sct__card span { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { #sct-{{ section.id }} * { transition: none !important; } }
+</style>
+
+<section id="sct-{{ section.id }}" class="sct">
+  <div class="sct__inner">
+    {%- if s.heading != blank -%}<h2 class="sct__h">{{ s.heading }}</h2>{%- endif -%}
+    {%- if s.subheading != blank -%}<p class="sct__sub">{{ s.subheading }}</p>{%- endif -%}
+    <ul class="sct__list">
+      {%- for b in section.blocks -%}
+        <li {{ b.shopify_attributes }}>
+          <a class="sct__card" href="{{ b.settings.link | default: '#' }}">
+            <div class="sct__img">
+              {%- if b.settings.image != blank -%}
+                {{ b.settings.image | image_url: width: 500 | image_tag: loading: 'lazy', widths: '250, 400, 500', sizes: '(max-width: 599px) 30vw, 150px', alt: b.settings.title }}
+              {%- endif -%}
+            </div>
+            <b>{{ b.settings.title }}</b>
+            {%- if b.settings.text != blank -%}<span>{{ b.settings.text }}</span>{%- endif -%}
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "sehatUP shop by category",
+  "tag": "div",
+  "class": "section-sehat-categories",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Shop by category" },
+    { "type": "text", "id": "subheading", "label": "Line under the heading" },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#d81f48" }
+  ],
+  "blocks": [
+    { "type": "category", "name": "Category", "limit": 4, "settings": [
+      { "type": "image_picker", "id": "image", "label": "Image (square or round)" },
+      { "type": "text", "id": "title", "label": "Title", "default": "Sexual wellness" },
+      { "type": "text", "id": "text", "label": "One line under it" },
+      { "type": "text", "id": "link", "label": "Link", "info": "#name of a shelf on this page, e.g. #sexual-wellness", "default": "#sexual-wellness" }
+    ] }
+  ],
+  "presets": [{ "name": "sehatUP shop by category" }]
+}
+{% endschema %}

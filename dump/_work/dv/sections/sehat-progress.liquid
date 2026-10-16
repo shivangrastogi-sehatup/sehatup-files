@@ -1,0 +1,185 @@
+{%- comment -%}
+  Light stats band for under the hero: heading, then up to 6 stats, each an
+  icon + big value + short label, split by hairlines. Numbers count up once
+  the band scrolls into view (skipped for reduced motion).
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #spg-{{ section.id }} { --spg-accent: {{ s.accent_color }}; background: {{ s.background_color }}; color: #1d1d1d; font-family: 'Montserrat', sans-serif; }
+  #spg-{{ section.id }} .spg__in { max-width: 1160px; margin: 0 auto; padding: {{ s.padding_top }}px 24px {{ s.padding_bottom }}px; }
+  #spg-{{ section.id }} .spg__head { text-align: center; max-width: 680px; margin: 0 auto 36px; }
+  #spg-{{ section.id }} .spg__h { margin: 0; color: #1d1d1d; font: 800 clamp(26px, 3vw, 40px)/1.12 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #spg-{{ section.id }} .spg__h span { color: var(--spg-accent); }
+  #spg-{{ section.id }} .spg__sub { margin: 10px 0 0; font: 400 16px/1.55 'Montserrat', sans-serif; color: #5c5c5c; }
+  #spg-{{ section.id }} .spg__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat({{ section.blocks.size | at_most: 6 | at_least: 1 }}, minmax(0, 1fr)); }
+  #spg-{{ section.id }} .spg__item { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 20px; }
+  #spg-{{ section.id }} .spg__item + .spg__item { border-left: 1px solid rgba(29, 29, 29, .1); }
+  #spg-{{ section.id }} .spg__ic { width: 30px; height: 30px; color: var(--spg-accent); margin-bottom: 14px; }
+  #spg-{{ section.id }} .spg__ic svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #spg-{{ section.id }} .spg__v { font: 800 clamp(30px, 3vw, 42px)/1 'Montserrat', sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  #spg-{{ section.id }} .spg__l { margin-top: 10px; max-width: 220px; font: 500 15px/1.4 'Montserrat', sans-serif; color: #4a4a4a; }
+  #spg-{{ section.id }} .spg__note { margin: 28px 0 0; text-align: center; font: 400 12.5px/1.5 'Montserrat', sans-serif; color: #8a8580; }
+  #spg-{{ section.id }}.spg--glass { position: relative; z-index: 3; margin-top: -{{ s.overlap }}px; background: linear-gradient(transparent {{ s.overlap }}px, {{ s.background_color }} {{ s.overlap }}px); }
+  #spg-{{ section.id }}.spg--glass .spg__panel { padding: 30px 28px 34px; border-radius: 26px; background: rgba(255, 255, 255, .62); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); border: 1px solid rgba(255, 255, 255, .8); box-shadow: 0 28px 60px -30px rgba(70, 40, 25, .35), inset 0 1px 0 rgba(255, 255, 255, .9); }
+  #spg-{{ section.id }}.spg--glass .spg__head { margin-bottom: 24px; }
+  #spg-{{ section.id }}.spg--glass .spg__h { font-size: clamp(24px, 2.4vw, 34px); }
+  #spg-{{ section.id }}.spg--glass .spg__ic { width: 36px; height: 36px; margin-bottom: 12px; }
+  #spg-{{ section.id }}.spg--glass .spg__ic svg { stroke-width: 1.7; }
+  #spg-{{ section.id }}.spg--glass .spg__item + .spg__item { border-left-color: rgba(29, 29, 29, .12); }
+  #spg-{{ section.id }}.spg--glass .spg__l { color: #2f2f2f; }
+  #spg-{{ section.id }} .spg__v.spg__v--long { font-size: clamp(20px, 1.8vw, 26px); line-height: 1.6; }
+  @media (min-width: 1100px) { #spg-{{ section.id }} .spg__v.spg__v--long { white-space: nowrap; } }
+  /* Soft background: colour glows in two corners, white middle, faint dots fading out to the centre. */
+  #spg-{{ section.id }}.spg--glow { position: relative; isolation: isolate; }
+  #spg-{{ section.id }}.spg--glow::before, #spg-{{ section.id }}.spg--glow::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; top: var(--spg-ov, 0px); z-index: -1; pointer-events: none; }
+  #spg-{{ section.id }}.spg--glow::before { background: radial-gradient(55% 85% at 0% 0%, {{ s.glow_left }}, transparent 70%), radial-gradient(50% 85% at 100% 100%, {{ s.glow_right }}, transparent 70%); }
+  {%- if s.dots -%}
+  #spg-{{ section.id }}.spg--glow::after { background-image: radial-gradient(rgba(29, 29, 29, .07) 1px, transparent 1.4px); background-size: 22px 22px; -webkit-mask-image: radial-gradient(70% 80% at 50% 50%, transparent 35%, #000 100%); mask-image: radial-gradient(70% 80% at 50% 50%, transparent 35%, #000 100%); }
+  {%- endif -%}
+  #spg-{{ section.id }}.spg--glass .spg__panel { background: radial-gradient(45% 70% at 100% 100%, {{ s.card_tint | color_modify: 'alpha', 0.85 }}, transparent 70%), linear-gradient(135deg, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, .64) 60%, {{ s.card_tint | color_modify: 'alpha', 0.6 }} 100%); }
+  /* Big screens: grow with the screen (same proportions as at 1600px), capped at the 2560px (QHD) size so 4K never outgrows the hero. */
+  @media (min-width: 1600px) {
+    #spg-{{ section.id }} .spg__in { max-width: min(72.5vw, 1856px); padding-left: min(1.5vw, 38.4px); padding-right: min(1.5vw, 38.4px); }
+    #spg-{{ section.id }} .spg__head { max-width: min(42vw, 1075.2px); margin-bottom: min(2.25vw, 57.6px); }
+    #spg-{{ section.id }} .spg__h, #spg-{{ section.id }}.spg--glass .spg__h { font-size: min(2.1vw, 53.8px); }
+    #spg-{{ section.id }} .spg__sub { font-size: min(1vw, 25.6px); }
+    #spg-{{ section.id }} .spg__item { padding: min(0.4vw, 10.2px) min(1.25vw, 32px); }
+    #spg-{{ section.id }} .spg__ic, #spg-{{ section.id }}.spg--glass .spg__ic { width: min(2.25vw, 57.6px); height: min(2.25vw, 57.6px); margin-bottom: min(0.75vw, 19.2px); }
+    #spg-{{ section.id }} .spg__v { font-size: min(2.6vw, 66.6px); }
+    #spg-{{ section.id }} .spg__v.spg__v--long { font-size: min(1.62vw, 41.5px); }
+    #spg-{{ section.id }} .spg__l { margin-top: min(0.65vw, 16.6px); max-width: min(14vw, 358.4px); font-size: min(0.95vw, 24.3px); }
+    #spg-{{ section.id }} .spg__note { font-size: min(0.8vw, 20.5px); }
+    #spg-{{ section.id }}.spg--glass .spg__panel { padding: min(1.9vw, 48.6px) min(1.75vw, 44.8px) min(2.1vw, 53.8px); border-radius: min(1.6vw, 41px); }
+    #spg-{{ section.id }}.spg--glass .spg__head { margin-bottom: min(1.5vw, 38.4px); }
+  }
+  @media (max-width: 749px) {
+    #spg-{{ section.id }}.spg--glass { margin-top: -{{ s.overlap_mobile }}px; background: linear-gradient(transparent {{ s.overlap_mobile }}px, {{ s.background_color }} {{ s.overlap_mobile }}px); }
+    #spg-{{ section.id }}.spg--glass .spg__panel { padding: 22px 8px 10px; border-radius: 20px; }
+    #spg-{{ section.id }}.spg--glass .spg__head { margin-bottom: 8px; }
+    #spg-{{ section.id }}.spg--glass .spg__ic { width: 30px; height: 30px; }
+  }
+  @media (max-width: 749px) {
+    #spg-{{ section.id }} .spg__in { padding: {{ s.padding_top_mobile }}px 16px {{ s.padding_bottom_mobile }}px; }
+    #spg-{{ section.id }} .spg__head { margin-bottom: 24px; }
+    #spg-{{ section.id }} .spg__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #spg-{{ section.id }} .spg__item { padding: 20px 12px; }
+    #spg-{{ section.id }} .spg__item + .spg__item { border-left: 0; }
+    #spg-{{ section.id }} .spg__item:nth-child(2n) { border-left: 1px solid rgba(29, 29, 29, .1); }
+    #spg-{{ section.id }} .spg__item:nth-child(n + 3) { border-top: 1px solid rgba(29, 29, 29, .1); }
+    #spg-{{ section.id }} .spg__ic { width: 26px; height: 26px; margin-bottom: 10px; }
+    #spg-{{ section.id }} .spg__l { font-size: 13.5px; }
+  }
+</style>
+
+<section id="spg-{{ section.id }}" class="{% if s.style == 'glass' %}spg--glass{% endif %}{% if s.glow %} spg--glow{% endif %}" style="--spg-ov: {% if s.style == 'glass' %}{{ s.overlap }}{% else %}0{% endif %}px;">
+  <div class="spg__in">
+    <div class="spg__panel">
+    {%- if s.heading != blank -%}
+      <div class="spg__head">
+        <h2 class="spg__h">{{ s.heading }}{% if s.highlight != blank %} <span>{{ s.highlight }}</span>{% endif %}</h2>
+        {%- if s.subheading != blank -%}<p class="spg__sub">{{ s.subheading }}</p>{%- endif -%}
+      </div>
+    {%- endif -%}
+    <ul class="spg__list" role="list">
+      {%- for block in section.blocks limit: 6 -%}
+        {%- assign b = block.settings -%}
+        <li class="spg__item" {{ block.shopify_attributes }}>
+          <span class="spg__ic" aria-hidden="true">
+            {%- case b.icon -%}
+              {%- when 'moon' -%}<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+              {%- when 'energy' -%}<svg viewBox="0 0 24 24"><path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12z"/></svg>
+              {%- when 'calm' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c1.9 1.6 5.1 1.6 7 0M9 10h.01M15 10h.01"/></svg>
+              {%- when 'heart' -%}<svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/></svg>
+              {%- when 'pulse' -%}<svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg>
+              {%- when 'balance' -%}<svg viewBox="0 0 24 24"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a2.5 2.5 0 0 0 5 0zM19 8l-2.5 6a2.5 2.5 0 0 0 5 0z"/></svg>
+              {%- when 'scale' -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M7.8 10a5.6 5.6 0 0 1 8.4 0M12 10.5l1.8-2.3"/></svg>
+              {%- when 'people' -%}<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>
+              {%- when 'star' -%}<svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>
+              {%- when 'doctor' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0M9 14.5v3a2 2 0 0 0 4 0M15.5 14.8v2.7"/></svg>
+              {%- when 'clock' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9.5 2.5h5"/></svg>
+              {%- when 'lock' -%}<svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5M12 14.5v2.5"/></svg>
+              {%- when 'chat' -%}<svg viewBox="0 0 24 24"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.6-4.2A8.5 8.5 0 1 1 20.5 11.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg>
+              {%- else -%}<svg viewBox="0 0 24 24"><path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/></svg>
+            {%- endcase -%}
+          </span>
+          <span class="spg__v{% if b.value.size > 8 %} spg__v--long{% endif %}" data-spg-v>{{ b.value }}</span>
+          {%- if b.label != blank -%}<span class="spg__l">{{ b.label }}</span>{%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+    {%- if s.note != blank -%}<p class="spg__note">{{ s.note }}</p>{%- endif -%}
+    </div>
+  </div>
+</section>
+
+{%- if s.count_up -%}
+<script>
+  (function () {
+    var root = document.getElementById('spg-{{ section.id }}');
+    if (!root || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var els = [].filter.call(root.querySelectorAll('[data-spg-v]'), function (el) { return /\d/.test(el.textContent); });
+    var io = new IntersectionObserver(function (e) {
+      if (!e[0].isIntersecting) return;
+      io.disconnect();
+      els.forEach(function (el) {
+        var full = el.textContent, m = full.match(/[\d,.]+/), end = parseFloat(m[0].replace(/,/g, '')), t0 = performance.now();
+        (function tick(now) {
+          var p = Math.min(1, (now - t0) / 1200), v = Math.round(end * (1 - Math.pow(1 - p, 3)));
+          el.textContent = p < 1 ? full.replace(m[0], v.toLocaleString('en-IN')) : full;
+          if (p < 1) requestAnimationFrame(tick);
+        })(t0);
+      });
+    }, { threshold: .4 });
+    io.observe(root);
+  })();
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Progress stats (light)",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Real People." },
+    { "type": "text", "id": "highlight", "label": "Heading part in colour", "default": "Real Progress." },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "text", "id": "note", "label": "Small note under the stats", "info": "Where the numbers come from, e.g. Reported by customers after 8 weeks. Empty hides it." },
+    { "type": "select", "id": "style", "label": "Style", "default": "plain", "options": [{ "value": "plain", "label": "Plain band" }, { "value": "glass", "label": "Glass panel over the section above" }] },
+    { "type": "range", "id": "overlap", "label": "Glass: overlap the section above", "min": 0, "max": 200, "step": 10, "unit": "px", "default": 90 },
+    { "type": "range", "id": "overlap_mobile", "label": "Glass: overlap on phones", "min": 0, "max": 120, "step": 10, "unit": "px", "default": 40 },
+    { "type": "header", "content": "Soft background" },
+    { "type": "checkbox", "id": "glow", "label": "Colour glow in the corners", "default": false },
+    { "type": "color", "id": "glow_left", "label": "Top-left glow", "default": "#f8e1e6" },
+    { "type": "color", "id": "glow_right", "label": "Bottom-right glow", "default": "#f3e4d8" },
+    { "type": "checkbox", "id": "dots", "label": "Faint dot pattern at the edges", "default": true },
+    { "type": "color", "id": "card_tint", "label": "Glass card tint (bottom-right)", "default": "#fdf0f2" },
+    { "type": "checkbox", "id": "count_up", "label": "Count the numbers up on scroll", "default": true },
+    { "type": "color", "id": "background_color", "label": "Background", "default": "#f6f0ec" },
+    { "type": "color", "id": "accent_color", "label": "Icon and highlight colour", "default": "#ee204a" },
+    { "type": "header", "content": "Spacing" },
+    { "type": "range", "id": "padding_top", "label": "Top", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_bottom", "label": "Bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 56 },
+    { "type": "range", "id": "padding_top_mobile", "label": "Top on phones", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 40 },
+    { "type": "range", "id": "padding_bottom_mobile", "label": "Bottom on phones", "min": 0, "max": 100, "step": 4, "unit": "px", "default": 32 }
+  ],
+  "blocks": [
+    {
+      "type": "stat",
+      "name": "Stat",
+      "settings": [
+        { "type": "select", "id": "icon", "label": "Icon", "default": "chart", "options": [
+          { "value": "moon", "label": "Moon (sleep)" }, { "value": "energy", "label": "Lightning (energy)" },
+          { "value": "calm", "label": "Calm face (stress)" }, { "value": "heart", "label": "Heart" },
+          { "value": "pulse", "label": "Pulse" }, { "value": "balance", "label": "Balance (hormones)" },
+          { "value": "scale", "label": "Weight scale" }, { "value": "people", "label": "People" },
+          { "value": "star", "label": "Star" }, { "value": "doctor", "label": "Doctor" }, { "value": "clock", "label": "Clock" },
+          { "value": "lock", "label": "Lock (private)" }, { "value": "chat", "label": "Chat (language)" }, { "value": "chart", "label": "Chart" }
+        ] },
+        { "type": "text", "id": "value", "label": "Value", "default": "40%" },
+        { "type": "text", "id": "label", "label": "Label", "default": "Better sleep" }
+      ]
+    }
+  ],
+  "max_blocks": 6,
+  "presets": [{ "name": "Progress stats (light)", "blocks": [{ "type": "stat" }, { "type": "stat" }, { "type": "stat" }, { "type": "stat" }] }]
+}
+{% endschema %}

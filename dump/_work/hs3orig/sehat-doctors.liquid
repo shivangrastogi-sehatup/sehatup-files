@@ -1,0 +1,142 @@
+{%- comment -%}
+  Meet the doctors, photo first: each doctor in a tall arch frame on a warm
+  blush panel, the middle one raised, a small name tag under each, then one
+  button. The arches rise in once when the panel first comes into view.
+  Phones swipe the arches sideways.
+{%- endcomment -%}
+
+{%- assign s = section.settings -%}
+
+<style>
+  #sdr-{{ section.id }} {
+    --sdr-text: #1d1d1d; --sdr-muted: #5f5a56; --sdr-soft: #f6f0ec;
+    --sdr-ink: {{ s.accent_color | color_darken: 8 }};
+    padding: clamp(36px, 4.5vw, 64px) clamp(16px, 3vw, 48px);
+    background: #fff; font-family: 'Montserrat', sans-serif; color: var(--sdr-text);
+  }
+  #sdr-{{ section.id }} * { box-sizing: border-box; }
+  #sdr-{{ section.id }} .sdr__inner {
+    position: relative; overflow: hidden; max-width: 1240px; margin: 0 auto; text-align: center;
+    padding: clamp(36px, 4.5vw, 64px) clamp(16px, 3vw, 48px) clamp(32px, 4vw, 52px);
+    border-radius: 32px; background: radial-gradient(120% 80% at 50% 0%, #fbe7eb 0%, #f8efec 45%, var(--sdr-soft) 100%);
+  }
+  /* Two soft rings behind the arches, for depth. */
+  #sdr-{{ section.id }} .sdr__inner::before, #sdr-{{ section.id }} .sdr__inner::after {
+    content: ""; position: absolute; left: 50%; top: 58%; border-radius: 50%; border: 1px solid rgba(216, 31, 72, .1); transform: translate(-50%, -50%); pointer-events: none;
+  }
+  #sdr-{{ section.id }} .sdr__inner::before { width: min(820px, 120%); aspect-ratio: 1; }
+  #sdr-{{ section.id }} .sdr__inner::after { width: min(560px, 90%); aspect-ratio: 1; border-color: rgba(216, 31, 72, .14); }
+  #sdr-{{ section.id }} .sdr__h { position: relative; margin: 0; font: 800 clamp(28px, 3.2vw, 44px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #sdr-{{ section.id }} .sdr__sub { position: relative; margin: 12px auto 0; max-width: 32em; font: 500 16px/1.55 'Montserrat', sans-serif; color: var(--sdr-muted); }
+  #sdr-{{ section.id }} .sdr__team { position: relative; list-style: none; margin: clamp(32px, 4vw, 52px) auto 0; padding: 0; max-width: 980px; display: grid; grid-template-columns: repeat({{ section.blocks.size | at_most: 3 }}, minmax(0, 1fr)); gap: clamp(16px, 2.6vw, 36px); align-items: end; }
+  #sdr-{{ section.id }} .sdr__doc { display: flex; flex-direction: column; align-items: center; }
+  #sdr-{{ section.id }} .sdr__doc:nth-child(2) { margin-bottom: clamp(16px, 2.4vw, 32px); }
+  #sdr-{{ section.id }} .sdr__arch {
+    position: relative; width: 100%; aspect-ratio: 3 / 3.7; border-radius: 999px 999px 28px 28px; overflow: hidden;
+    background: #fff; border: 6px solid #fff; box-shadow: 0 22px 50px -18px rgba(120, 40, 60, .3);
+    transition: transform .45s cubic-bezier(.2, .9, .25, 1), box-shadow .45s ease;
+  }
+  #sdr-{{ section.id }} .sdr__arch img { width: 100%; height: 100%; object-fit: cover; object-position: center 12%; display: block; border-radius: 999px 999px 22px 22px; }
+  #sdr-{{ section.id }} .sdr__tag { position: relative; z-index: 1; margin-top: -30px; width: 86%; padding: 12px 14px; border-radius: 18px; background: #fff; box-shadow: 0 12px 30px -12px rgba(60, 30, 20, .25); }
+  #sdr-{{ section.id }} .sdr__tag i { display: block; font: 700 11.5px/1 'Montserrat', sans-serif; font-style: normal; color: var(--sdr-ink); }
+  #sdr-{{ section.id }} .sdr__tag b { display: block; margin-top: 6px; font: 800 15.5px/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #sdr-{{ section.id }} .sdr__tag span { display: block; margin-top: 4px; font: 500 12px/1.35 'Montserrat', sans-serif; color: var(--sdr-muted); }
+  @media (hover: hover) and (pointer: fine) {
+    #sdr-{{ section.id }} .sdr__doc:hover .sdr__arch { transform: translateY(-6px); box-shadow: 0 30px 60px -18px rgba(120, 40, 60, .38); }
+  }
+  #sdr-{{ section.id }} .sdr__foot { position: relative; margin-top: clamp(26px, 3vw, 40px); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  #sdr-{{ section.id }} .sdr__btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 30px; border-radius: 999px; background: var(--sdr-ink); color: #fff; font: 700 15.5px/1 'Montserrat', sans-serif; text-decoration: none; box-shadow: 0 12px 26px -10px rgba(216, 31, 72, .55); transition: transform .2s ease, background-color .2s ease; }
+  #sdr-{{ section.id }} .sdr__btn:hover { transform: translateY(-2px); background: {{ s.accent_color | color_darken: 16 }}; }
+  #sdr-{{ section.id }} .sdr__btn svg { width: 19px; height: 19px; fill: currentColor; }
+  #sdr-{{ section.id }} .sdr__note { margin: 0; font: 600 13.5px/1.5 'Montserrat', sans-serif; color: var(--sdr-muted); }
+  #sdr-{{ section.id }} a:focus-visible { outline: 2px solid var(--sdr-text); outline-offset: 3px; }
+  /* Arrival: the arches rise in, one after another, the first time. */
+  #sdr-{{ section.id }} .sdr__team.is-pre .sdr__doc { opacity: 0; transform: translateY(28px); }
+  #sdr-{{ section.id }} .sdr__team.is-in .sdr__doc { opacity: 1; transform: none; transition: opacity .6s ease, transform .8s cubic-bezier(.2, .9, .25, 1); }
+  #sdr-{{ section.id }} .sdr__team.is-in .sdr__doc:nth-child(2) { transition-delay: .12s; }
+  #sdr-{{ section.id }} .sdr__team.is-in .sdr__doc:nth-child(3) { transition-delay: .24s; }
+  @media (max-width: 699px) {
+    #sdr-{{ section.id }} .sdr__inner { border-radius: 24px; margin: 0 -4px; padding-left: 0; padding-right: 0; }
+    #sdr-{{ section.id }} .sdr__h, #sdr-{{ section.id }} .sdr__sub { padding: 0 16px; }
+    #sdr-{{ section.id }} .sdr__team { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 8px 16px; gap: 14px; align-items: flex-end; }
+    #sdr-{{ section.id }} .sdr__team::-webkit-scrollbar { display: none; }
+    #sdr-{{ section.id }} .sdr__doc { flex: 0 0 64%; scroll-snap-align: center; }
+    #sdr-{{ section.id }} .sdr__foot { padding: 0 16px; }
+    #sdr-{{ section.id }} .sdr__btn { width: 100%; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #sdr-{{ section.id }} .sdr__team.is-pre .sdr__doc { opacity: 1; transform: none; }
+    #sdr-{{ section.id }} .sdr__arch, #sdr-{{ section.id }} .sdr__btn { transition: none; }
+  }
+</style>
+
+<section id="sdr-{{ section.id }}" class="sdr">
+  <div class="sdr__inner">
+    <h2 class="sdr__h">{{ s.heading }}</h2>
+    {%- if s.subheading != blank -%}<p class="sdr__sub">{{ s.subheading }}</p>{%- endif -%}
+    <ul class="sdr__team">
+      {%- for b in section.blocks -%}
+        {%- assign d = b.settings -%}
+        <li class="sdr__doc" {{ b.shopify_attributes }}>
+          <div class="sdr__arch">
+            {%- if d.photo != blank -%}{{ d.photo | image_url: width: 600 | image_tag: loading: 'lazy', widths: '360, 480, 600', sizes: '(max-width: 699px) 64vw, 300px', alt: d.name }}{%- endif -%}
+          </div>
+          <div class="sdr__tag">
+            {%- if d.system != blank -%}<i>{{ d.system }}</i>{%- endif -%}
+            <b>{{ d.name }}</b>
+            {%- if d.degree != blank -%}<span>{{ d.degree }}</span>{%- endif -%}
+          </div>
+        </li>
+      {%- endfor -%}
+    </ul>
+    <div class="sdr__foot">
+      {%- if s.button != blank -%}
+        <a class="sdr__btn" href="{{ s.button_link | default: '#' }}"{% if s.button_link contains 'wa.me' %} target="_blank" rel="noopener"{% endif %}>
+          {%- if s.button_link contains 'wa.me' -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>{%- endif -%}
+          {{ s.button }}
+        </a>
+      {%- endif -%}
+      {%- if s.note != blank -%}<p class="sdr__note">{{ s.note }}</p>{%- endif -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var team = document.querySelector('#sdr-{{ section.id }} .sdr__team');
+    if (!team || !('IntersectionObserver' in window)) return;
+    team.classList.add('is-pre');
+    var io = new IntersectionObserver(function (e) {
+      if (!e[0].isIntersecting) return;
+      io.disconnect();
+      requestAnimationFrame(function () { team.classList.add('is-in'); });
+    }, { threshold: .2 });
+    io.observe(team);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "sehatUP doctors",
+  "tag": "div",
+  "class": "section-sehat-doctors",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Real experts. One plan for you." },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "text", "id": "button", "label": "Button", "default": "Talk to a doctor" },
+    { "type": "url", "id": "button_link", "label": "Button link", "info": "A wa.me link shows the WhatsApp icon." },
+    { "type": "text", "id": "note", "label": "Small line under the button" },
+    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
+  ],
+  "blocks": [
+    { "type": "doctor", "name": "Doctor", "limit": 3, "settings": [
+      { "type": "image_picker", "id": "photo", "label": "Photo" },
+      { "type": "text", "id": "system", "label": "Field", "default": "Ayurveda" },
+      { "type": "text", "id": "name", "label": "Name" },
+      { "type": "text", "id": "degree", "label": "Degree and experience" },
+      { "type": "text", "id": "role", "label": "What they help with", "info": "Not shown in this layout." }
+    ] }
+  ],
+  "presets": [{ "name": "sehatUP doctors" }]
+}
+{% endschema %}

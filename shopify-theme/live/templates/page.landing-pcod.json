@@ -40,10 +40,10 @@
         "button_1": "Book an Appointment",
         "button_1_note": "",
         "button_1_link": "#book",
-        "button_2": "Take 360 self assessment",
+        "button_2": "Check Your Health Score 360",
         "button_2_note": "",
-        "button_2_link": "/pages/health-score-360",
-        "trust_text": "Trusted by 75,000+ women",
+        "button_2_link": "/pages/womens-wellness-questionnaire",
+        "trust_text": "Trusted by 15,000+ women",
         "rating": "4.5",
         "trust_initials": "P, A, S",
         "avatar_1": "shopify://shop_images/Warm_Portrait_with_Red_Dupatta.webp",
@@ -68,7 +68,7 @@
             "icon": "none",
             "icon_image": "shopify://shop_images/Period_calander.webp",
             "title": "Irregular Periods",
-            "text": "",
+            "text": "When your periods don't follow a regular cycle.",
             "form_value": "Irregular Periods"
           }
         },
@@ -78,7 +78,7 @@
             "icon": "none",
             "icon_image": "shopify://shop_images/Acne.webp",
             "title": "Acne",
-            "text": "",
+            "text": "Skin troubles that keep coming back.",
             "form_value": "Acne"
           }
         },
@@ -88,7 +88,7 @@
             "icon": "none",
             "icon_image": "shopify://shop_images/Hair_Loss.webp",
             "title": "Hair Fall",
-            "text": "",
+            "text": "More hair on your brush than usual.",
             "form_value": "Hair Fall"
           }
         },
@@ -98,7 +98,7 @@
             "icon": "none",
             "icon_image": "shopify://shop_images/Facial_hair_growth.webp",
             "title": "Facial Hair Growth",
-            "text": "",
+            "text": "Noticing unwanted facial hair growth.",
             "form_value": "Facial Hair Growth"
           }
         },
@@ -108,8 +108,18 @@
             "icon": "none",
             "icon_image": "shopify://shop_images/Weight.webp",
             "title": "Weight Changes",
-            "text": "",
+            "text": "Weight changes that feel hard to understand.",
             "form_value": "Weight Changes"
+          }
+        },
+        "concern_MrxHBq": {
+          "type": "concern",
+          "settings": {
+            "icon": "question",
+            "icon_image": "shopify://shop_images/Magenta_Female_Portrait_with_Neck_Patch.webp",
+            "title": "Dark Patches on Body",
+            "text": "Noticing darker patches on your skin.",
+            "form_value": "Dark Patches on Body"
           }
         }
       },
@@ -118,15 +128,16 @@
         "s2",
         "s3",
         "s4",
-        "s5"
+        "s5",
+        "concern_MrxHBq"
       ],
       "settings": {
         "mobile_count": 0,
         "heading": "Are these the symptoms you’re",
         "highlight": "also facing?",
         "subheading": "",
-        "button": "",
-        "button_selected": "",
+        "button": "Talk to a doctor for free",
+        "button_selected": "Talk to a doctor about [x]",
         "note": "",
         "icon_size": 64
       }
@@ -266,10 +277,20 @@
     "trust": {
       "type": "lm-why-list",
       "blocks": {
+        "point_wQwkem": {
+          "type": "point",
+          "settings": {
+            "icon": "hands",
+            "icon_image": "shopify://shop_images/Caring_Hands_with_Health_Symbols.webp",
+            "title": "Treat Root Cause, Not Just Symptoms",
+            "text": "Combining Allopathy, Homoeopathy & Ayurveda for a root cause treatment."
+          }
+        },
         "p1": {
           "type": "point",
           "settings": {
             "icon": "calendar",
+            "icon_image": "shopify://shop_images/Circular_Droplet_Refresh_Icon_21ede514-e0be-4322-8a63-7dc656088014.webp",
             "title": "Irregular Periods",
             "text": "Understand cycle changes with personalised health guidance."
           }
@@ -278,6 +299,7 @@
           "type": "point",
           "settings": {
             "icon": "pulse",
+            "icon_image": "shopify://shop_images/Heart_ECG_Pulse_Icon_2718ae09-494c-496e-baeb-555aedd7c6e6.webp",
             "title": "Hormonal Health Support",
             "text": "Explore care options for common PCOS/PCOD concerns."
           }
@@ -286,6 +308,7 @@
           "type": "point",
           "settings": {
             "icon": "stethoscope",
+            "icon_image": "shopify://shop_images/Deep_Pink_Stethoscope_Icon_c4ea60d9-e35e-4397-bcbc-7a41e2c93d60.webp",
             "title": "Doctor-Led Guidance",
             "text": "Get professional guidance tailored to individual health needs."
           }
@@ -294,6 +317,7 @@
           "type": "certs",
           "settings": {
             "icon": "shield",
+            "icon_image": "shopify://shop_images/Magenta_Shield_Check_Icon_94b88799-4b4c-4e74-8d32-760bb729b35f.webp",
             "title": "We are certified",
             "logo_1": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
             "logo_2": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
@@ -302,6 +326,7 @@
         }
       },
       "block_order": [
+        "point_wQwkem",
         "p1",
         "p2",
         "p3",
@@ -314,7 +339,8 @@
         "image": "shopify://shop_images/Thoughtful_Doctor-Patient_Consultation.webp",
         "tone": "white",
         "image_width": 520,
-        "icon_size": 56
+        "icon_size": 56,
+        "icon_image_size": 80
       }
     },
     "couple_banner": {
@@ -353,7 +379,7 @@
             "title": "Take a 60-sec quiz",
             "text": "Find the right solution based on your symptoms and needs.",
             "button": "Take Free Assessment",
-            "link": "/pages/health-score-360",
+            "link": "/pages/womens-wellness-questionnaire",
             "highlight": true
           }
         },
@@ -399,7 +425,7 @@
         "form_sub": "Takes less than a minute.",
         "show_timer": false,
         "timer_label": "",
-        "concerns": "Irregular Periods\nAcne\nHair Fall\nFacial Hair Growth\nWeight Changes\nSomething else",
+        "concerns": "Irregular Periods\nAcne\nHair Fall\nFacial Hair Growth\nWeight Changes\nDark Patches on Body\nSomething else",
         "times": "Morning (9 am to 12 pm)\nAfternoon (12 pm to 4 pm)\nEvening (4 pm to 8 pm)",
         "button": "Book My Free Slot",
         "privacy": "Your information is private and secure.",
@@ -433,7 +459,7 @@
             "title": "Free Period Assessment",
             "text": "",
             "button": "Take Free Assessment",
-            "link": "/pages/health-score-360",
+            "link": "/pages/womens-wellness-questionnaire",
             "highlight": true
           }
         }
@@ -473,9 +499,22 @@
         "highlight": "Menstrual Cycle?",
         "subheading": "Take our self - assessment to get personalised recommendations based on your symptoms & concerns.",
         "button": "Take HS 360 assessment",
-        "link": "/pages/health-score-360",
+        "link": "/pages/womens-wellness-questionnaire",
         "note": "",
         "image_width": 190
+      }
+    },
+    "floating_video": {
+      "type": "floating-product-video",
+      "settings": {
+        "enable_video": true,
+        "video_source": "link",
+        "video_url": "https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4",
+        "dock_side": "left",
+        "dock_bottom": 32,
+        "cta_label": "Add to cart",
+        "accent_color": "#ee204a",
+        "dock_sound": true
       }
     }
   },
@@ -490,6 +529,7 @@
     "ready",
     "book",
     "journey",
-    "unsure"
+    "unsure",
+    "floating_video"
   ]
 }

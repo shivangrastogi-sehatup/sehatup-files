@@ -23,7 +23,7 @@
         "her_link": "shopify://pages/womens-wellness-questionnaire",
         "him_link": "shopify://pages/mens-health-questionnaire",
         "note": "Free. Private. No sign-up.",
-        "her_photo": "shopify://shop_images/ChatGPT_Image_Sep_30_2026_12_13_52_PM.png",
+        "her_photo": "shopify://shop_images/Warm_Portrait_with_Crossed_Arms_copy.webp",
         "him_photo": "shopify://shop_images/healthscrore-men.png",
         "her_nodes": "Weight|Metabolism, energy and weight patterns\nPeriod care|Cycle health, PMS and hormonal balance\nEnergy|How rested and active you feel",
         "him_nodes": "Weight|Metabolism, energy and weight patterns\nSexual wellness|Hormones, stamina and performance\nEnergy|How rested and active you feel",
@@ -201,7 +201,9 @@
         "title_4": "Your plan keeps improving",
         "text_4": "A WhatsApp check-in each month. Most people notice first changes in 4 to 6 weeks, and your plan changes as your body responds.",
         "chat_q": "Day 30: how is your sleep now?",
-        "chat_a": "Much better, thank you!"
+        "chat_a": "Much better, thank you!",
+        "doctor_3_image": "shopify://shop_images/Dr_Devika.webp",
+        "chat_name": "sehatUP"
       }
     },
     "health_signs_hsg01": {
@@ -233,16 +235,6 @@
     "health_doctors_hdr01": {
       "type": "health-doctors",
       "blocks": {
-        "doc_ayur": {
-          "type": "doctor",
-          "settings": {
-            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
-            "system": "Ayurveda",
-            "name": "Dr. Jayant Kumar",
-            "degree": "BAMS (Ayurveda), 5 years experience",
-            "role": "Looks for the root cause behind your symptoms."
-          }
-        },
         "doc_homeo": {
           "type": "doctor",
           "settings": {
@@ -251,6 +243,16 @@
             "name": "Dr. Shefali Chhicholia",
             "degree": "BHMS, MD (Homeopathy), 5 years experience",
             "role": "Gentle, long-term support for hormonal balance."
+          }
+        },
+        "doc_ayur": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "system": "Ayurveda",
+            "name": "Dr. Jayant Kumar",
+            "degree": "BAMS (Ayurveda), 5 years experience",
+            "role": "Looks for the root cause behind your symptoms."
           }
         },
         "doc_allo": {
@@ -274,6 +276,11 @@
         "heading": "Three experts. One plan for you.",
         "subheading": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your score together, so your plan cares for your body and your mind.",
         "footnote": "Talk to them in Hindi or English, on a call that suits you.",
+        "button": "",
+        "button_link": "",
+        "background": "#faf7f5",
+        "padding_top": 88,
+        "padding_bottom": 80,
         "accent_color": "#ee204a"
       }
     },
@@ -314,7 +321,11 @@
       "settings": {
         "heading": "Real people. Real results.",
         "subheading": "Honest reviews from customers who took the first step.",
+        "rating_line": "[rating] · Trusted by 25,000+ patients",
         "accent_color": "#ee204a",
+        "review_products": [],
+        "min_rating": 4,
+        "review_hide": "",
         "trust_1": "Free",
         "trust_1_text": "The Health Score costs nothing",
         "trust_2": "100% private",
@@ -412,6 +423,7 @@
         "faq_7"
       ],
       "settings": {
+        "section_bg": "#faf7f5",
         "heading": "Questions people ask before they start",
         "subheading": "Straight answers about cost, privacy and what happens next.",
         "contact_text": "Ask us on WhatsApp",
@@ -1036,6 +1048,7 @@
     "health_final_cta_hfc01": {
       "type": "health-final-cta",
       "settings": {
+        "section_bg": "#faf7f5",
         "heading": "Your body is talking. Start listening.",
         "subheading": "Free, private, and it takes 2 minutes.",
         "her_label": "Start for her",
