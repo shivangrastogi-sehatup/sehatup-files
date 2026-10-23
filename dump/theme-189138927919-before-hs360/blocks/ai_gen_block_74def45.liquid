@@ -1,0 +1,856 @@
+{% doc %}
+  @prompt
+    Create a responsive "Made Separately for Men and Women" section with two quiz cards side by side.Layout structure:- Main heading: "Made Separately for Men and Women"- Subheading: "Your body, hormones, lifestyle, and risks are different - so your quiz should be too"- Two cards in a row (desktop/tablet) or stacked (mobile):Left card (light pink/lavender background):- Pink/red quiz icon at top- Title: "Men's Health Quiz"- Bullet list:  * Metabolism  * Hormones  * Sexual wellness  * Performance  * Energy- Black rounded button: "Take a Quiz"Right card (light blue background):- Pink/red quiz icon at top- Title: "Women's Health Quiz:"- Bullet list:  * Cycle health  * PMS  * Hormonal patterns  * PCOS signals  * Weight triggers- Black rounded button: "Take a Quiz"Requirements:- Fully responsive layout:  * Desktop: 2 columns side by side  * Tablet: 2 columns with adjusted spacing  * Mobile: stacked vertically, full width- Settings schema to customize:  * Main heading and subheading text  * For each card (as blocks):    - Icon/image upload    - Card title    - Background color    - Bullet points (repeatable list items)    - Button text and link    - Button colors (background, text, hover)  * Add/remove cards (flexible for more quiz types)  * Typography: heading sizes, body text, list text  * Spacing: section padding, card gaps, internal padding  * Color pickers: card backgrounds, text colors, button colors  * Card styling: border radius, shadow, padding- Cards should have rounded corners and soft backgrounds- Icons centered at top of each card- Bullet lists with proper formatting and spacing- Buttons full-width within cards, rounded, with hover effects- Mobile: cards stack vertically with proper spacing- Max-width container for desktop, centered- Equal height cards on desktop/tablet- Flexible block system to add/remove/reorder quiz cards, i want you to make the logo background red color with rounded edges and align that red container to the left and make the bullet points and text together dont aligng that to center . i want the title and list aligned left . and on the right side of the both cards i want the width to be a bit extra from the content in the tablet and the desktop , not in the mobile phones . do changes , now due to extra space on right , the button is squashed and it is not looking good . on the left and right both side theree should be same margin, now on the right side of the button take a quiz , space is uneven and not looking good 
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  html {
+    scroll-behavior: smooth;
+  }
+.ai-quiz-section-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    padding: {{ block.settings.section_padding_top }}px 20px {{ block.settings.section_padding_bottom }}px;
+    background-color: {{ block.settings.section_background_color }};
+  }
+
+  .ai-quiz-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.container_max_width }}px;
+    margin: 0 auto;
+  }
+
+  .ai-quiz-header-{{ ai_gen_id }} {
+    text-align: center;
+    margin-bottom: {{ block.settings.header_spacing }}px;
+  }
+
+  .ai-quiz-main-heading-{{ ai_gen_id }} {
+    font-size: clamp(24px,3.4vw,64px);
+    font-weight: 700;
+    color: {{ block.settings.heading_color }};
+    margin: 0 0 {{ block.settings.subheading_spacing }}px;
+    line-height: 1.2;
+  }
+
+  .ai-quiz-subheading-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1.2vw, 20px);
+    color: {{ block.settings.subheading_color }};
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .ai-quiz-cards-grid-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: {{ block.settings.card_gap }}px;
+    margin-top: {{ block.settings.cards_top_spacing }}px;
+  }
+
+  .ai-quiz-card-{{ ai_gen_id }} {
+    background-color: var(--ai-card-bg-{{ ai_gen_id }});
+    border-radius: {{ block.settings.card_border_radius }}px;
+    padding: {{ block.settings.card_padding }}px;
+    box-shadow: {{ block.settings.card_shadow_horizontal }}px {{ block.settings.card_shadow_vertical }}px {{ block.settings.card_shadow_blur }}px rgba(0, 0, 0, {{ block.settings.card_shadow_opacity }});
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+  }
+
+  .ai-quiz-icon-wrapper-{{ ai_gen_id }} {
+    width: {{ block.settings.icon_size }}px;
+    height: {{ block.settings.icon_size }}px;
+    background-color: {{ block.settings.icon_background_color }};
+    border-radius: {{ block.settings.icon_border_radius }}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: {{ block.settings.icon_spacing }}px;
+    flex-shrink: 0;
+  }
+
+  .ai-quiz-icon-wrapper-{{ ai_gen_id }} img {
+    width: {{ block.settings.icon_image_size }}px;
+    height: {{ block.settings.icon_image_size }}px;
+    object-fit: contain;
+  }
+
+  .ai-quiz-icon-placeholder-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-quiz-icon-placeholder-{{ ai_gen_id }} svg {
+    width: {{ block.settings.icon_image_size }}px;
+    height: {{ block.settings.icon_image_size }}px;
+    color: #ffffff;
+  }
+
+  .ai-quiz-card-content-{{ ai_gen_id }} {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ai-quiz-card-title-{{ ai_gen_id }} {
+    font-size: clamp(14px, 2.4vw, 35px);
+    font-weight: 700;
+    color: {{ block.settings.card_title_color }};
+    margin: 0 0 {{ block.settings.title_spacing }}px;
+    text-align: left;
+    line-height: 1.3;
+  }
+
+  .ai-quiz-list-{{ ai_gen_id }} {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 {{ block.settings.list_spacing }}px;
+    flex-grow: 1;
+  }
+
+  .ai-quiz-list-item-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1.2vw, 20px);
+    color: {{ block.settings.list_item_color }};
+    margin-bottom: {{ block.settings.list_item_spacing }}px;
+    padding-left: 20px;
+    position: relative;
+    text-align: left;
+    line-height: 1.5;
+  }
+
+  .ai-quiz-list-item-{{ ai_gen_id }}:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: {{ block.settings.bullet_color }};
+    font-weight: bold;
+    font-size: 1.2em;
+  }
+
+  .ai-quiz-button-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    padding: {{ block.settings.button_padding_vertical }}px {{ block.settings.button_padding_horizontal }}px;
+    background-color: {{ block.settings.button_background_color }};
+    color: {{ block.settings.button_text_color }};
+    text-align: center;
+    text-decoration: none;
+    border-radius: {{ block.settings.button_border_radius }}px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+
+  .ai-quiz-button-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.button_hover_background_color }};
+    color: {{ block.settings.button_hover_text_color }};
+    transform: translateY(-2px);
+  }
+
+  @media screen and (min-width: 750px) and (max-width: 989px) {
+    .ai-quiz-cards-grid-{{ ai_gen_id }} {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media screen and (min-width: 990px) {
+    .ai-quiz-cards-grid-{{ ai_gen_id }} {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-quiz-cards-grid-{{ ai_gen_id }} {
+      grid-template-columns: 1fr;
+    }
+
+    .ai-quiz-main-heading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.main_heading_size }}px * 0.8);
+    }
+
+    .ai-quiz-subheading-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.subheading_size }}px * 0.9);
+    }
+
+    .ai-quiz-card-title-{{ ai_gen_id }} {
+      font-size: calc({{ block.settings.card_title_size }}px * 0.9);
+    }
+  }
+{% endstyle %}
+
+<quiz-cards-{{ ai_gen_id }} class="ai-quiz-section-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-quiz-container-{{ ai_gen_id }}">
+    <div class="ai-quiz-header-{{ ai_gen_id }}">
+      {% if block.settings.main_heading != blank %}
+        <h2 class="ai-quiz-main-heading-{{ ai_gen_id }}">{{ block.settings.main_heading }}</h2>
+      {% endif %}
+      {% if block.settings.subheading != blank %}
+        <p class="ai-quiz-subheading-{{ ai_gen_id }}">{{ block.settings.subheading }}</p>
+      {% endif %}
+    </div>
+
+    <div class="ai-quiz-cards-grid-{{ ai_gen_id }}">
+      <div 
+        class="ai-quiz-card-{{ ai_gen_id }}"
+        style="--ai-card-bg-{{ ai_gen_id }}: {{ block.settings.card_1_background_color }};"
+      >
+        <div class="ai-quiz-icon-wrapper-{{ ai_gen_id }}">
+          {% if block.settings.card_1_icon_image %}
+            <img 
+              src="{{ block.settings.card_1_icon_image | image_url: width: 100 }}" 
+              alt="{{ block.settings.card_1_title }}"
+              loading="lazy"
+              width="100"
+              height="100"
+            >
+          {% else %}
+            <div class="ai-quiz-icon-placeholder-{{ ai_gen_id }}">
+              {{ 'image' | placeholder_svg_tag }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="ai-quiz-card-content-{{ ai_gen_id }}">
+          {% if block.settings.card_1_title != blank %}
+            <h3 class="ai-quiz-card-title-{{ ai_gen_id }}">{{ block.settings.card_1_title }}</h3>
+          {% endif %}
+
+          {% if block.settings.card_1_list_items != blank %}
+            <ul class="ai-quiz-list-{{ ai_gen_id }}">
+              {% assign items = block.settings.card_1_list_items | newline_to_br | split: '<br />' %}
+              {% for item in items %}
+                {% assign trimmed_item = item | strip %}
+                {% if trimmed_item != blank %}
+                  <li class="ai-quiz-list-item-{{ ai_gen_id }}">{{ trimmed_item }}</li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if block.settings.card_1_button_text != blank %}
+            {% if block.settings.card_1_button_action_type == 'scroll' and block.settings.card_1_scroll_id != blank %}
+              {% assign card1_final_link = '#' | append: block.settings.card_1_scroll_id %}
+            {% else %}
+              {% assign card1_final_link = block.settings.card_1_button_link %}
+            {% endif %}
+
+            <a 
+              href="{{ card1_final_link }}" 
+              class="ai-quiz-button-{{ ai_gen_id }}"
+            >
+              {{ block.settings.card_1_button_text }}
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div 
+        class="ai-quiz-card-{{ ai_gen_id }}"
+        style="--ai-card-bg-{{ ai_gen_id }}: {{ block.settings.card_2_background_color }};"
+      >
+        <div class="ai-quiz-icon-wrapper-{{ ai_gen_id }}">
+          {% if block.settings.card_2_icon_image %}
+            <img 
+              src="{{ block.settings.card_2_icon_image | image_url: width: 100 }}" 
+              alt="{{ block.settings.card_2_title }}"
+              loading="lazy"
+              width="100"
+              height="100"
+            >
+          {% else %}
+            <div class="ai-quiz-icon-placeholder-{{ ai_gen_id }}">
+              {{ 'image' | placeholder_svg_tag }}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="ai-quiz-card-content-{{ ai_gen_id }}">
+          {% if block.settings.card_2_title != blank %}
+            <h3 class="ai-quiz-card-title-{{ ai_gen_id }}">{{ block.settings.card_2_title }}</h3>
+          {% endif %}
+
+          {% if block.settings.card_2_list_items != blank %}
+            <ul class="ai-quiz-list-{{ ai_gen_id }}">
+              {% assign items = block.settings.card_2_list_items | newline_to_br | split: '<br />' %}
+              {% for item in items %}
+                {% assign trimmed_item = item | strip %}
+                {% if trimmed_item != blank %}
+                  <li class="ai-quiz-list-item-{{ ai_gen_id }}">{{ trimmed_item }}</li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if block.settings.card_2_button_text != blank %}
+            {% if block.settings.card_2_button_action_type == 'scroll' and block.settings.card_2_scroll_id != blank %}
+              {% assign card2_final_link = '#' | append: block.settings.card_2_scroll_id %}
+            {% else %}
+              {% assign card2_final_link = block.settings.card_2_button_link %}
+            {% endif %}
+
+            <a 
+              href="{{ card2_final_link }}" 
+              class="ai-quiz-button-{{ ai_gen_id }}"
+            >
+              {{ block.settings.card_2_button_text }}
+            </a>
+
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</quiz-cards-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class QuizCards{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        this.equalizeCardHeights();
+        window.addEventListener('resize', () => this.equalizeCardHeights());
+      }
+
+      equalizeCardHeights() {
+        if (window.innerWidth < 750) return;
+        
+        const cards = this.querySelectorAll('.ai-quiz-card-{{ ai_gen_id }}');
+        cards.forEach(card => card.style.minHeight = 'auto');
+        
+        let maxHeight = 0;
+        cards.forEach(card => {
+          const height = card.offsetHeight;
+          if (height > maxHeight) maxHeight = height;
+        });
+        
+        cards.forEach(card => card.style.minHeight = maxHeight + 'px');
+      }
+    }
+
+    customElements.define('quiz-cards-{{ ai_gen_id }}', QuizCards{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Quiz cards section",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section settings"
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "color",
+      "id": "section_background_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "container_max_width",
+      "label": "Container max width",
+      "min": 800,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "header",
+      "content": "Headings"
+    },
+    {
+      "type": "text",
+      "id": "main_heading",
+      "label": "Main heading",
+      "default": "Made Separately for Men and Women"
+    },
+    {
+      "type": "range",
+      "id": "main_heading_size",
+      "label": "Main heading size",
+      "min": 20,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#000000"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Your body, hormones, lifestyle, and risks are different - so your quiz should be too"
+    },
+    {
+      "type": "range",
+      "id": "subheading_size",
+      "label": "Subheading size",
+      "min": 12,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "subheading_color",
+      "label": "Subheading color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "subheading_spacing",
+      "label": "Subheading spacing",
+      "min": 5,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "header_spacing",
+      "label": "Header bottom spacing",
+      "min": 20,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Cards layout"
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "label": "Gap between cards",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "cards_top_spacing",
+      "label": "Cards top spacing",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Card padding",
+      "min": 15,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Card border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_horizontal",
+      "label": "Shadow horizontal",
+      "min": -10,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_vertical",
+      "label": "Shadow vertical",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_blur",
+      "label": "Shadow blur",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_opacity",
+      "label": "Shadow opacity",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "default": 0.1
+    },
+    {
+      "type": "header",
+      "content": "Icon style"
+    },
+    {
+      "type": "color",
+      "id": "icon_background_color",
+      "label": "Icon background color",
+      "default": "#dc3545"
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon container size",
+      "min": 40,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "icon_image_size",
+      "label": "Icon image size",
+      "min": 20,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "default": 35
+    },
+    {
+      "type": "range",
+      "id": "icon_border_radius",
+      "label": "Icon border radius",
+      "min": 0,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "icon_spacing",
+      "label": "Icon bottom spacing",
+      "min": 10,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Card content"
+    },
+    {
+      "type": "range",
+      "id": "card_title_size",
+      "label": "Title size",
+      "min": 16,
+      "max": 36,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "color",
+      "id": "card_title_color",
+      "label": "Title color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "title_spacing",
+      "label": "Title bottom spacing",
+      "min": 10,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "list_item_size",
+      "label": "List item size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "list_item_color",
+      "label": "List item color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "bullet_color",
+      "label": "Bullet color",
+      "default": "#dc3545"
+    },
+    {
+      "type": "range",
+      "id": "list_item_spacing",
+      "label": "List item spacing",
+      "min": 5,
+      "max": 25,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "list_spacing",
+      "label": "List bottom spacing",
+      "min": 15,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "default": 25
+    },
+    {
+      "type": "header",
+      "content": "Button style"
+    },
+    {
+      "type": "color",
+      "id": "button_background_color",
+      "label": "Background color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "button_hover_background_color",
+      "label": "Hover background color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "button_hover_text_color",
+      "label": "Hover text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "button_font_size",
+      "label": "Font size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "button_padding_vertical",
+      "label": "Vertical padding",
+      "min": 8,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "button_padding_horizontal",
+      "label": "Horizontal padding",
+      "min": 15,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "button_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Card 1"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_1_icon_image",
+      "label": "Icon image"
+    },
+    {
+      "type": "text",
+      "id": "card_1_title",
+      "label": "Title",
+      "default": "Men's Health Quiz"
+    },
+    {
+      "type": "color",
+      "id": "card_1_background_color",
+      "label": "Background color",
+      "default": "#f8d7da"
+    },
+    {
+      "type": "textarea",
+      "id": "card_1_list_items",
+      "label": "List items",
+      "default": "Metabolism\nHormones\nSexual wellness\nPerformance\nEnergy"
+    },
+    {
+      "type": "text",
+      "id": "card_1_button_text",
+      "label": "Button text",
+      "default": "Take a Quiz"
+    },
+    {
+      "type": "url",
+      "id": "card_1_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "select",
+      "id": "card_1_button_action_type",
+      "label": "Button action type",
+      "options": [
+        { "value": "link", "label": "Open link" },
+        { "value": "scroll", "label": "Scroll to section" }
+      ],
+      "default": "link"
+    },
+    {
+      "type": "text",
+      "id": "card_1_scroll_id",
+      "label": "Scroll to section ID",
+      "info": "Enter section ID without # (example: assessment-section)"
+    },  
+    {
+      "type": "header",
+      "content": "Card 2"
+    },
+    {
+      "type": "image_picker",
+      "id": "card_2_icon_image",
+      "label": "Icon image"
+    },
+    {
+      "type": "text",
+      "id": "card_2_title",
+      "label": "Title",
+      "default": "Women's Health Quiz"
+    },
+    {
+      "type": "color",
+      "id": "card_2_background_color",
+      "label": "Background color",
+      "default": "#d1ecf1"
+    },
+    {
+      "type": "textarea",
+      "id": "card_2_list_items",
+      "label": "List items",
+      "default": "Cycle health\nPMS\nHormonal patterns\nPCOS signals\nWeight triggers"
+    },
+    {
+      "type": "text",
+      "id": "card_2_button_text",
+      "label": "Button text",
+      "default": "Take a Quiz"
+    },
+    {
+      "type": "url",
+      "id": "card_2_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "select",
+      "id": "card_2_button_action_type",
+      "label": "Button action type",
+      "options": [
+        { "value": "link", "label": "Open link" },
+        { "value": "scroll", "label": "Scroll to section" }
+      ],
+      "default": "link"
+    },
+    {
+      "type": "text",
+      "id": "card_2_scroll_id",
+      "label": "Scroll to section ID",
+      "info": "Enter section ID without # (example: assessment-section)"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Quiz cards section"
+    }
+  ]
+}
+{% endschema %}

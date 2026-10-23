@@ -25,6 +25,9 @@
   if exp_lines.size > 0 or exp_blocks.size > 0
     assign has_exp = true
   endif
+  if s.show_expect == false
+    assign has_exp = false
+  endif
 -%}
 
 {%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
@@ -300,6 +303,7 @@
     { "type": "header", "content": "Timeline and doctor strip" },
     { "type": "number", "id": "advance_amount", "label": "Advance to confirm an order (Rs.)", "default": 50 },
     { "type": "paragraph", "content": "Timeline per product: fill the product metafield 'custom.what_to_expect' (multi-line text, one step per line, written as: When | what happens). Products without it use the timeline blocks below." },
+    { "type": "checkbox", "id": "show_expect", "label": "Show the timeline", "default": true },
     { "type": "text", "id": "expect_heading", "label": "Heading: timeline", "default": "What to expect" },
     { "type": "text", "id": "expect_note", "label": "Note beside the timeline", "default": "Results vary from person to person." },
     { "type": "header", "content": "Doctor strip" },

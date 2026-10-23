@@ -6,7 +6,7 @@
 {%- assign s = section.settings -%}
 <style>
   #spg-{{ section.id }} { --spg-accent: {{ s.accent_color }}; background: {{ s.background_color }}; color: #1d1d1d; font-family: 'Montserrat', sans-serif; }
-  #spg-{{ section.id }} .spg__in { max-width: 1160px; margin: 0 auto; padding: {{ s.padding_top }}px 24px {{ s.padding_bottom }}px; }
+  #spg-{{ section.id }} .spg__in { max-width: 1320px; margin: 0 auto; padding: {{ s.padding_top }}px 24px {{ s.padding_bottom }}px; }
   #spg-{{ section.id }} .spg__head { text-align: center; max-width: 680px; margin: 0 auto 36px; }
   #spg-{{ section.id }} .spg__h { margin: 0; color: #1d1d1d; font: 800 clamp(26px, 3vw, 40px)/1.12 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
   #spg-{{ section.id }} .spg__h span { color: var(--spg-accent); }
@@ -37,21 +37,14 @@
   #spg-{{ section.id }}.spg--glow::after { background-image: radial-gradient(rgba(29, 29, 29, .07) 1px, transparent 1.4px); background-size: 22px 22px; -webkit-mask-image: radial-gradient(70% 80% at 50% 50%, transparent 35%, #000 100%); mask-image: radial-gradient(70% 80% at 50% 50%, transparent 35%, #000 100%); }
   {%- endif -%}
   #spg-{{ section.id }}.spg--glass .spg__panel { background: radial-gradient(45% 70% at 100% 100%, {{ s.card_tint | color_modify: 'alpha', 0.85 }}, transparent 70%), linear-gradient(135deg, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, .64) 60%, {{ s.card_tint | color_modify: 'alpha', 0.6 }} 100%); }
-  /* Big screens: grow with the screen (same proportions as at 1600px), capped at the 2560px (QHD) size so 4K never outgrows the hero. */
-  @media (min-width: 1600px) {
-    #spg-{{ section.id }} .spg__in { max-width: min(72.5vw, 1856px); padding-left: min(1.5vw, 38.4px); padding-right: min(1.5vw, 38.4px); }
-    #spg-{{ section.id }} .spg__head { max-width: min(42vw, 1075.2px); margin-bottom: min(2.25vw, 57.6px); }
-    #spg-{{ section.id }} .spg__h, #spg-{{ section.id }}.spg--glass .spg__h { font-size: min(2.1vw, 53.8px); }
-    #spg-{{ section.id }} .spg__sub { font-size: min(1vw, 25.6px); }
-    #spg-{{ section.id }} .spg__item { padding: min(0.4vw, 10.2px) min(1.25vw, 32px); }
-    #spg-{{ section.id }} .spg__ic, #spg-{{ section.id }}.spg--glass .spg__ic { width: min(2.25vw, 57.6px); height: min(2.25vw, 57.6px); margin-bottom: min(0.75vw, 19.2px); }
-    #spg-{{ section.id }} .spg__v { font-size: min(2.6vw, 66.6px); }
-    #spg-{{ section.id }} .spg__v.spg__v--long { font-size: min(1.62vw, 41.5px); }
-    #spg-{{ section.id }} .spg__l { margin-top: min(0.65vw, 16.6px); max-width: min(14vw, 358.4px); font-size: min(0.95vw, 24.3px); }
-    #spg-{{ section.id }} .spg__note { font-size: min(0.8vw, 20.5px); }
-    #spg-{{ section.id }}.spg--glass .spg__panel { padding: min(1.9vw, 48.6px) min(1.75vw, 44.8px) min(2.1vw, 53.8px); border-radius: min(1.6vw, 41px); }
-    #spg-{{ section.id }}.spg--glass .spg__head { margin-bottom: min(1.5vw, 38.4px); }
-  }
+  /* Big screens: the same steps and widths as the Health Score 360 sections
+     (it used to stop growing at 2560px and stayed narrower than the rest). */
+  @media (min-width: 1680px) { #spg-{{ section.id }} .spg__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #spg-{{ section.id }} .spg__in { zoom: 1.25; max-width: 1360px; } }
+  @media (min-width: 2240px) { #spg-{{ section.id }} .spg__in { zoom: 1.45; } }
+  @media (min-width: 2560px) { #spg-{{ section.id }} .spg__in { zoom: 1.65; max-width: 1440px; } }
+  @media (min-width: 3200px) { #spg-{{ section.id }} .spg__in { zoom: 2; } }
+  @media (min-width: 3840px) { #spg-{{ section.id }} .spg__in { zoom: 2.4; } }
   @media (max-width: 749px) {
     #spg-{{ section.id }}.spg--glass { margin-top: -{{ s.overlap_mobile }}px; background: linear-gradient(transparent {{ s.overlap_mobile }}px, {{ s.background_color }} {{ s.overlap_mobile }}px); }
     #spg-{{ section.id }}.spg--glass .spg__panel { padding: 22px 8px 10px; border-radius: 20px; }
@@ -59,6 +52,8 @@
     #spg-{{ section.id }}.spg--glass .spg__ic { width: 30px; height: 30px; }
   }
   @media (max-width: 749px) {
+    /* Phones: the same heading size as every other section heading. */
+    #spg-{{ section.id }} .spg__h, #spg-{{ section.id }}.spg--glass .spg__h { font-size: 30px; line-height: 1.06; }
     #spg-{{ section.id }} .spg__in { padding: {{ s.padding_top_mobile }}px 16px {{ s.padding_bottom_mobile }}px; }
     #spg-{{ section.id }} .spg__head { margin-bottom: 24px; }
     #spg-{{ section.id }} .spg__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }

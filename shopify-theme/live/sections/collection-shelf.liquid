@@ -682,25 +682,17 @@
         totalItems = Object.values(this.cartQuantities).reduce((sum, qty) => sum + qty, 0);
       }
 
-      const bubble = document.querySelector('.cart-count-bubble');
-      if (bubble) {
-        let countSpan = bubble.querySelector('span[aria-hidden="true"]') || bubble.querySelector('span');
-        if (!countSpan) {
-          countSpan = document.createElement('span');
-          countSpan.setAttribute('aria-hidden', 'true');
-          bubble.prepend(countSpan);
-        }
-        countSpan.textContent = totalItems;
-        bubble.classList.toggle('hidden', totalItems === 0);
-        bubble.style.display = totalItems === 0 ? 'none' : '';
-      }
-
+      // The header shows the count in .sh__count (snippets/sh-cart-icon).
       const cartIcon = document.querySelector('#cart-icon-bubble');
-      if (cartIcon && !cartIcon.querySelector('.cart-count-bubble') && totalItems > 0) {
-        const newBubble = document.createElement('div');
-        newBubble.className = 'cart-count-bubble';
-        newBubble.innerHTML = '<span aria-hidden="true">' + totalItems + '</span>';
-        cartIcon.appendChild(newBubble);
+      let bubble = cartIcon && cartIcon.querySelector('.sh__count');
+      if (!bubble && cartIcon && totalItems > 0) {
+        bubble = document.createElement('span');
+        bubble.className = 'sh__count';
+        cartIcon.appendChild(bubble);
+      }
+      if (bubble) {
+        bubble.textContent = totalItems;
+        bubble.style.display = totalItems === 0 ? 'none' : '';
       }
 
       document.querySelectorAll('[data-cart-count]').forEach(el => {

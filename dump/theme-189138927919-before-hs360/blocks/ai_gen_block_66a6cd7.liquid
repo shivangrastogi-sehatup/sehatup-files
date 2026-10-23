@@ -1,0 +1,1106 @@
+{% doc %}
+  @prompt
+    Create a responsive YouTube Shorts video gallery section with the following specifications:
+    
+    LAYOUT & STRUCTURE:
+    - Horizontal scrollable gallery displaying multiple YouTube Shorts in portrait orientation (9:16 aspect ratio)
+    - Videos aligned center by default with settings for left/right alignment options
+    - Navigation arrows appear automatically when content exceeds viewport width
+    - Smooth horizontal scroll behavior with snap-to-grid functionality
+    - "Explore More" or "Watch More On Our YouTube" button positioned below the video cards on all devices (mobile, tablet, desktop)
+    
+    VIDEO CARDS:
+    - Portrait-oriented cards optimized for YouTube Shorts (recommended dimensions: 405px width × 720px height for desktop, responsive scaling for mobile)
+    - Each card displays YouTube Shorts thumbnail by default (auto-fetched from YouTube)
+    - Optional custom thumbnail upload override per video
+    - Lazy loading implementation for performance optimization
+    - Native YouTube embedded player with full controls: play/pause, mute/unmute, volume slider, fullscreen, progress bar
+    - Smooth 3D zoom-in hover effect on desktop
+    - Multiple smooth transition effects optimized separately for mobile and desktop experiences
+    
+    SETTINGS & CUSTOMIZATION:
+    - Add multiple YouTube Shorts URLs via repeatable settings blocks
+    - Toggle between center, left, or right alignment
+    - Custom thumbnail upload option for each video
+    - Adjustable card spacing and gallery padding
+    - Customizable button text, style, and link for the "Explore More" CTA
+    - Color scheme controls for overlay elements
+    
+    RESPONSIVE BEHAVIOR:
+    - Mobile: Single column or 1.5 cards visible with smooth swipe gestures and mobile-optimized transitions
+    - Tablet: 2-3 cards visible with touch-friendly navigation
+    - Desktop: 3-4 cards visible with hover effects and arrow navigation
+    - Maintain 9:16 portrait aspect ratio across all breakpoints
+    
+    ANIMATIONS & EFFECTS:
+    - Smooth 3D zoom and tilt effect on hover (desktop only)
+    - Fade-in animations as cards enter viewport
+    - Smooth scroll transitions between videos
+    - Mobile-specific: swipe momentum, bounce effects, and optimized GPU-accelerated animations
+    
+    Ensure the section matches the premium spa-inspired aesthetic with clean spacing, elegant typography, and smooth interactions throughout., i also want that we can put optional thumbnail to the card and then that thumbnail will be fit with all the dimensions. i mean if the image is having lesser height then zoom the image a bit. 
+    
+    this is the title and use font size clamp() responsive for title and all texts , 
+    
+    We Built sehatUP Because Healthcare Was Broken
+    
+    this is the paragraph 
+    
+    Our founders explain why India needs integrated care—and why shortcuts, symptom-only medicine, and stigma have failed us.
+    
+    these are the default three videos , 
+    
+    https://www.youtube.com/shorts/nnMmHWpuZz0
+    
+    https://www.youtube.com/shorts/_zMOKpxf__o
+    
+    https://www.youtube.com/shorts/BFIT6rw6HB4, now i see totally black cards , no thumbnail and no action when i click them no video play . correct things , I want you to add up the youtube shorts play button and schema settings for custom icon and also the gap between the cards 
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-youtube-shorts-gallery-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    padding: {{ block.settings.section_padding_top }}px 0 {{ block.settings.section_padding_bottom }}px;
+    background-color: {{ block.settings.background_color }};
+  }
+
+  .ai-youtube-shorts-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.container_max_width }}px;
+    margin: 0 auto;
+    padding: 0 {{ block.settings.container_padding }}px;
+  }
+
+  .ai-youtube-shorts-header-{{ ai_gen_id }} {
+    text-align: {{ block.settings.text_alignment }};
+    margin-bottom: {{ block.settings.header_spacing }}px;
+  }
+
+  .ai-youtube-shorts-title-{{ ai_gen_id }} {
+    font-size: clamp(24px, 3.4vw, {{ block.settings.title_size }}px);
+    color: {{ block.settings.title_color }};
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+  }
+
+  .ai-youtube-shorts-subtitle-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1.2vw, {{ block.settings.subtitle_size }}px);
+    color: {{ block.settings.subtitle_color }};
+    margin: 0;
+    opacity: 0.9;
+    line-height: 1.5;
+  }
+
+  .ai-youtube-shorts-gallery-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    margin-bottom: {{ block.settings.cta_spacing }}px;
+  }
+
+  .ai-youtube-shorts-scroll-container-{{ ai_gen_id }} {
+    display: flex;
+    gap: {{ block.settings.card_gap }}px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 20px 0;
+    justify-content: {{ block.settings.gallery_alignment }};
+  }
+
+  .ai-youtube-shorts-scroll-container-{{ ai_gen_id }}::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ai-youtube-shorts-card-{{ ai_gen_id }} {
+    flex: 0 0 auto;
+    width: {{ block.settings.card_width_desktop }}px;
+    scroll-snap-align: center;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .ai-youtube-shorts-card-{{ ai_gen_id }}.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .ai-youtube-shorts-card-inner-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    padding-bottom: 177.78%;
+    background-color: #000;
+    border-radius: {{ block.settings.card_border_radius }}px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+    cursor: pointer;
+  }
+
+  @media (min-width: 750px) {
+    .ai-youtube-shorts-card-inner-{{ ai_gen_id }}:hover {
+      transform: scale(1.05) translateZ(20px) rotateY(2deg);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .ai-youtube-shorts-card-inner-{{ ai_gen_id }}:hover .ai-youtube-shorts-play-overlay-{{ ai_gen_id }} {
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+  }
+
+  .ai-youtube-shorts-thumbnail-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    z-index: 2;
+    transition: opacity 0.3s ease;
+  }
+
+  .ai-youtube-shorts-card-inner-{{ ai_gen_id }}.playing .ai-youtube-shorts-thumbnail-{{ ai_gen_id }} {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ai-youtube-shorts-play-overlay-{{ ai_gen_id }} {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: {{ block.settings.play_button_size }}px;
+    height: {{ block.settings.play_button_size }}px;
+    background-color: {{ block.settings.play_button_bg }};
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+  }
+
+  .ai-youtube-shorts-card-inner-{{ ai_gen_id }}.playing .ai-youtube-shorts-play-overlay-{{ ai_gen_id }} {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ai-youtube-shorts-play-icon-{{ ai_gen_id }} {
+    width: calc({{ block.settings.play_button_size }}px * 0.45);
+    height: calc({{ block.settings.play_button_size }}px * 0.45);
+    color: {{ block.settings.play_button_icon_color }};
+    margin-left: calc({{ block.settings.play_button_size }}px * 0.06);
+  }
+
+  .ai-youtube-shorts-play-custom-icon-{{ ai_gen_id }} {
+    width: calc({{ block.settings.play_button_size }}px * 0.6);
+    height: calc({{ block.settings.play_button_size }}px * 0.6);
+    object-fit: contain;
+  }
+
+  .ai-youtube-shorts-iframe-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    z-index: 1;
+  }
+
+  .ai-youtube-shorts-nav-button-{{ ai_gen_id }} {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    background-color: {{ block.settings.nav_button_bg }};
+    color: {{ block.settings.nav_button_color }};
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .ai-youtube-shorts-nav-button-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.nav_button_hover_bg }};
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  .ai-youtube-shorts-nav-button-{{ ai_gen_id }}.visible {
+    display: flex;
+  }
+
+  .ai-youtube-shorts-nav-prev-{{ ai_gen_id }} {
+    left: -24px;
+  }
+
+  .ai-youtube-shorts-nav-next-{{ ai_gen_id }} {
+    right: -24px;
+  }
+
+  .ai-youtube-shorts-cta-wrapper-{{ ai_gen_id }} {
+    text-align: {{ block.settings.text_alignment }};
+  }
+
+  .ai-youtube-shorts-cta-{{ ai_gen_id }} {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background-color: {{ block.settings.cta_bg_color }};
+    color: {{ block.settings.cta_text_color }};
+    text-decoration: none;
+    border-radius: {{ block.settings.cta_border_radius }}px;
+    font-size: clamp(14px, 2.5vw, {{ block.settings.cta_font_size }}px);
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .ai-youtube-shorts-cta-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.cta_hover_bg_color }};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  .ai-youtube-shorts-cta-icon-{{ ai_gen_id }} {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ai-youtube-shorts-empty-state-{{ ai_gen_id }} {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+  }
+
+  .ai-youtube-shorts-empty-state-{{ ai_gen_id }} svg {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+    opacity: 0.3;
+  }
+
+  .ai-youtube-shorts-empty-message-{{ ai_gen_id }} {
+    font-size: clamp(14px, 2.5vw, 16px);
+    color: #999;
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-youtube-shorts-card-{{ ai_gen_id }} {
+      width: {{ block.settings.card_width_mobile }}px;
+    }
+
+    .ai-youtube-shorts-scroll-container-{{ ai_gen_id }} {
+      justify-content: flex-start;
+      padding: 15px 0;
+    }
+
+    .ai-youtube-shorts-card-inner-{{ ai_gen_id }} {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .ai-youtube-shorts-nav-button-{{ ai_gen_id }} {
+      display: none !important;
+    }
+
+    .ai-youtube-shorts-play-overlay-{{ ai_gen_id }} {
+      width: calc({{ block.settings.play_button_size }}px * 0.85);
+      height: calc({{ block.settings.play_button_size }}px * 0.85);
+    }
+
+    .ai-youtube-shorts-play-icon-{{ ai_gen_id }} {
+      width: calc({{ block.settings.play_button_size }}px * 0.38);
+      height: calc({{ block.settings.play_button_size }}px * 0.38);
+    }
+
+    .ai-youtube-shorts-play-custom-icon-{{ ai_gen_id }} {
+      width: calc({{ block.settings.play_button_size }}px * 0.5);
+      height: calc({{ block.settings.play_button_size }}px * 0.5);
+    }
+  }
+
+  @media screen and (min-width: 750px) and (max-width: 989px) {
+    .ai-youtube-shorts-card-{{ ai_gen_id }} {
+      width: {{ block.settings.card_width_tablet }}px;
+    }
+  }
+{% endstyle %}
+
+<youtube-shorts-gallery-{{ ai_gen_id }}
+  class="ai-youtube-shorts-gallery-{{ ai_gen_id }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="ai-youtube-shorts-container-{{ ai_gen_id }}">
+    {% if block.settings.section_title != blank or block.settings.section_subtitle != blank %}
+      <div class="ai-youtube-shorts-header-{{ ai_gen_id }}">
+        {% if block.settings.section_title != blank %}
+          <h2 class="ai-youtube-shorts-title-{{ ai_gen_id }}">{{ block.settings.section_title }}</h2>
+        {% endif %}
+        {% if block.settings.section_subtitle != blank %}
+          <p class="ai-youtube-shorts-subtitle-{{ ai_gen_id }}">{{ block.settings.section_subtitle }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% assign has_videos = false %}
+    {% if block.settings.video_url_1 != blank or block.settings.video_url_2 != blank or block.settings.video_url_3 != blank or block.settings.video_url_4 != blank or block.settings.video_url_5 != blank or block.settings.video_url_6 != blank %}
+      {% assign has_videos = true %}
+    {% endif %}
+
+    {% if has_videos %}
+      <div class="ai-youtube-shorts-gallery-wrapper-{{ ai_gen_id }}">
+        <button
+          class="ai-youtube-shorts-nav-button-{{ ai_gen_id }} ai-youtube-shorts-nav-prev-{{ ai_gen_id }}"
+          aria-label="Previous videos"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+
+        <div class="ai-youtube-shorts-scroll-container-{{ ai_gen_id }}">
+          {% for i in (1..6) %}
+            {% assign video_url_key = 'video_url_' | append: i %}
+            {% assign video_title_key = 'video_title_' | append: i %}
+            {% assign thumbnail_key = 'thumbnail_' | append: i %}
+            {% assign video_url = block.settings[video_url_key] %}
+            {% assign video_title = block.settings[video_title_key] %}
+            {% assign custom_thumbnail = block.settings[thumbnail_key] %}
+
+            {% if video_url != blank %}
+              {% assign video_id = video_url | split: 'shorts/' | last | split: '?' | first | split: '&' | first %}
+              {% if video_id == blank or video_id == video_url %}
+                {% assign video_id = video_url | split: 'v=' | last | split: '&' | first %}
+              {% endif %}
+              {% if video_id == blank or video_id == video_url %}
+                {% assign video_id = video_url | split: 'youtu.be/' | last | split: '?' | first %}
+              {% endif %}
+
+              <div class="ai-youtube-shorts-card-{{ ai_gen_id }}" data-index="{{ forloop.index0 }}" data-video-id="{{ video_id }}">
+                <div class="ai-youtube-shorts-card-inner-{{ ai_gen_id }}">
+                  {% if custom_thumbnail != blank %}
+                    <img
+                      src="{{ custom_thumbnail | image_url: width: 800 }}"
+                      alt="{% if video_title != blank %}{{ video_title | escape }}{% else %}YouTube Shorts video {{ i }}{% endif %}"
+                      class="ai-youtube-shorts-thumbnail-{{ ai_gen_id }}"
+                      loading="lazy"
+                      width="800"
+                      height="1422"
+                    >
+                  {% else %}
+                    <img
+                      src="https://img.youtube.com/vi/{{ video_id }}/maxresdefault.jpg"
+                      alt="{% if video_title != blank %}{{ video_title | escape }}{% else %}YouTube Shorts video {{ i }}{% endif %}"
+                      class="ai-youtube-shorts-thumbnail-{{ ai_gen_id }}"
+                      loading="lazy"
+                      width="1280"
+                      height="720"
+                    >
+                  {% endif %}
+                  
+                  <div class="ai-youtube-shorts-play-overlay-{{ ai_gen_id }}">
+                    {% if block.settings.play_button_custom_icon != blank %}
+                      <img
+                        src="{{ block.settings.play_button_custom_icon | image_url: width: 200 }}"
+                        alt="Play video"
+                        class="ai-youtube-shorts-play-custom-icon-{{ ai_gen_id }}"
+                        loading="lazy"
+                      >
+                    {% else %}
+                      <svg
+                        class="ai-youtube-shorts-play-icon-{{ ai_gen_id }}"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M8 5v14l11-7z"></path>
+                      </svg>
+                    {% endif %}
+                  </div>
+
+                  <iframe
+                    class="ai-youtube-shorts-iframe-{{ ai_gen_id }}"
+                    data-src="https://www.youtube.com/embed/{{ video_id }}?controls=1&modestbranding=1&rel=0&playsinline=1&autoplay=1"
+                    title="{% if video_title != blank %}{{ video_title | escape }}{% else %}YouTube Shorts video {{ i }}{% endif %}"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                    loading="lazy"
+                  ></iframe>
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <button
+          class="ai-youtube-shorts-nav-button-{{ ai_gen_id }} ai-youtube-shorts-nav-next-{{ ai_gen_id }}"
+          aria-label="Next videos"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    {% else %}
+      <div class="ai-youtube-shorts-empty-state-{{ ai_gen_id }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+          <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+        </svg>
+        <p class="ai-youtube-shorts-empty-message-{{ ai_gen_id }}">Add YouTube Shorts URLs to display your video gallery</p>
+      </div>
+    {% endif %}
+
+    {% if block.settings.cta_text != blank %}
+      <div class="ai-youtube-shorts-cta-wrapper-{{ ai_gen_id }}">
+        <a
+          href="{{ block.settings.cta_link }}"
+          class="ai-youtube-shorts-cta-{{ ai_gen_id }}"
+          {% if block.settings.cta_link == blank %}aria-disabled="true"{% endif %}
+        >
+          {{ block.settings.cta_text }}
+          <svg
+            class="ai-youtube-shorts-cta-icon-{{ ai_gen_id }}"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</youtube-shorts-gallery-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class YoutubeShortsGallery{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.scrollContainer = null;
+        this.prevButton = null;
+        this.nextButton = null;
+        this.cards = [];
+        this.observer = null;
+      }
+
+      connectedCallback() {
+        this.scrollContainer = this.querySelector('.ai-youtube-shorts-scroll-container-{{ ai_gen_id }}');
+        this.prevButton = this.querySelector('.ai-youtube-shorts-nav-prev-{{ ai_gen_id }}');
+        this.nextButton = this.querySelector('.ai-youtube-shorts-nav-next-{{ ai_gen_id }}');
+        this.cards = Array.from(this.querySelectorAll('.ai-youtube-shorts-card-{{ ai_gen_id }}'));
+
+        if (this.cards.length > 0) {
+          this.setupIntersectionObserver();
+          this.setupNavigation();
+          this.setupCardClicks();
+          this.updateNavigationVisibility();
+
+          this.scrollContainer.addEventListener('scroll', () => {
+            this.updateNavigationVisibility();
+          });
+
+          window.addEventListener('resize', () => {
+            this.updateNavigationVisibility();
+          });
+        }
+      }
+
+      setupCardClicks() {
+        this.cards.forEach((card) => {
+          const cardInner = card.querySelector('.ai-youtube-shorts-card-inner-{{ ai_gen_id }}');
+          const iframe = card.querySelector('.ai-youtube-shorts-iframe-{{ ai_gen_id }}');
+
+          if (cardInner && iframe) {
+            cardInner.addEventListener('click', () => {
+              const dataSrc = iframe.getAttribute('data-src');
+              if (dataSrc && !iframe.getAttribute('src')) {
+                iframe.setAttribute('src', dataSrc);
+                cardInner.classList.add('playing');
+              }
+            });
+          }
+        });
+      }
+
+      setupIntersectionObserver() {
+        const options = {
+          root: null,
+          rootMargin: '0px',
+          threshold: 0.1
+        };
+
+        this.observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+            }
+          });
+        }, options);
+
+        this.cards.forEach((card) => {
+          this.observer.observe(card);
+        });
+      }
+
+      setupNavigation() {
+        if (this.prevButton && this.nextButton) {
+          this.prevButton.addEventListener('click', () => {
+            this.scroll('prev');
+          });
+
+          this.nextButton.addEventListener('click', () => {
+            this.scroll('next');
+          });
+        }
+      }
+
+      scroll(direction) {
+        if (!this.scrollContainer || this.cards.length === 0) return;
+
+        const cardWidth = this.cards[0].offsetWidth;
+        const gap = parseInt(getComputedStyle(this.scrollContainer).gap) || 0;
+        const scrollAmount = cardWidth + gap;
+
+        if (direction === 'next') {
+          this.scrollContainer.scrollBy({
+            left: scrollAmount,
+            behavior: 'smooth'
+          });
+        } else {
+          this.scrollContainer.scrollBy({
+            left: -scrollAmount,
+            behavior: 'smooth'
+          });
+        }
+      }
+
+      updateNavigationVisibility() {
+        if (!this.scrollContainer || !this.prevButton || !this.nextButton) return;
+
+        const isOverflowing = this.scrollContainer.scrollWidth > this.scrollContainer.clientWidth;
+        const isAtStart = this.scrollContainer.scrollLeft <= 5;
+        const isAtEnd = this.scrollContainer.scrollLeft + this.scrollContainer.clientWidth >= this.scrollContainer.scrollWidth - 5;
+
+        if (isOverflowing && window.innerWidth >= 750) {
+          if (!isAtStart) {
+            this.prevButton.classList.add('visible');
+          } else {
+            this.prevButton.classList.remove('visible');
+          }
+
+          if (!isAtEnd) {
+            this.nextButton.classList.add('visible');
+          } else {
+            this.nextButton.classList.remove('visible');
+          }
+        } else {
+          this.prevButton.classList.remove('visible');
+          this.nextButton.classList.remove('visible');
+        }
+      }
+
+      disconnectedCallback() {
+        if (this.observer) {
+          this.observer.disconnect();
+        }
+      }
+    }
+
+    customElements.define('youtube-shorts-gallery-{{ ai_gen_id }}', YoutubeShortsGallery{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "YouTube Shorts gallery",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section header"
+    },
+    {
+      "type": "text",
+      "id": "section_title",
+      "label": "Title",
+      "default": "We Built sehatUP Because Healthcare Was Broken"
+    },
+    {
+      "type": "textarea",
+      "id": "section_subtitle",
+      "label": "Subtitle",
+      "default": "Our founders explain why India needs integrated care—and why shortcuts, symptom-only medicine, and stigma have failed us."
+    },
+    {
+      "type": "range",
+      "id": "title_size",
+      "label": "Title size (max)",
+      "min": 20,
+      "max": 70,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "subtitle_size",
+      "label": "Subtitle size (max)",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Title color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "color",
+      "id": "subtitle_color",
+      "label": "Subtitle color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "header_spacing",
+      "label": "Header spacing",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Gallery layout"
+    },
+    {
+      "type": "select",
+      "id": "gallery_alignment",
+      "label": "Gallery alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "card_width_desktop",
+      "label": "Card width (desktop)",
+      "min": 250,
+      "max": 450,
+      "step": 10,
+      "unit": "px",
+      "default": 340
+    },
+    {
+      "type": "range",
+      "id": "card_width_tablet",
+      "label": "Card width (tablet)",
+      "min": 200,
+      "max": 350,
+      "step": 10,
+      "unit": "px",
+      "default": 280
+    },
+    {
+      "type": "range",
+      "id": "card_width_mobile",
+      "label": "Card width (mobile)",
+      "min": 200,
+      "max": 320,
+      "step": 10,
+      "unit": "px",
+      "default": 260
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "label": "Gap between cards",
+      "min": 8,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Card border radius",
+      "min": 0,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Play button"
+    },
+    {
+      "type": "range",
+      "id": "play_button_size",
+      "label": "Size",
+      "min": 40,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 64
+    },
+    {
+      "type": "color",
+      "id": "play_button_bg",
+      "label": "Background",
+      "default": "rgba(238, 32, 74, 0.9)"
+    },
+    {
+      "type": "color",
+      "id": "play_button_icon_color",
+      "label": "Icon color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "image_picker",
+      "id": "play_button_custom_icon",
+      "label": "Custom icon",
+      "info": "Optional: Upload a custom play icon (replaces default play triangle)"
+    },
+    {
+      "type": "header",
+      "content": "Video 1"
+    },
+    {
+      "type": "text",
+      "id": "video_url_1",
+      "label": "YouTube Shorts URL",
+      "info": "Paste the full URL (e.g., https://youtube.com/shorts/VIDEO_ID)",
+      "default": "https://www.youtube.com/shorts/nnMmHWpuZz0"
+    },
+    {
+      "type": "text",
+      "id": "video_title_1",
+      "label": "Video title",
+      "info": "Optional: Used for accessibility"
+    },
+    {
+      "type": "image_picker",
+      "id": "thumbnail_1",
+      "label": "Custom thumbnail",
+      "info": "Optional: Upload a custom thumbnail (9:16 aspect ratio recommended)"
+    },
+    {
+      "type": "header",
+      "content": "Video 2"
+    },
+    {
+      "type": "text",
+      "id": "video_url_2",
+      "label": "YouTube Shorts URL",
+      "default": "https://www.youtube.com/shorts/_zMOKpxf__o"
+    },
+    {
+      "type": "text",
+      "id": "video_title_2",
+      "label": "Video title"
+    },
+    {
+      "type": "image_picker",
+      "id": "thumbnail_2",
+      "label": "Custom thumbnail"
+    },
+    {
+      "type": "header",
+      "content": "Video 3"
+    },
+    {
+      "type": "text",
+      "id": "video_url_3",
+      "label": "YouTube Shorts URL",
+      "default": "https://www.youtube.com/shorts/BFIT6rw6HB4"
+    },
+    {
+      "type": "text",
+      "id": "video_title_3",
+      "label": "Video title"
+    },
+    {
+      "type": "image_picker",
+      "id": "thumbnail_3",
+      "label": "Custom thumbnail"
+    },
+    {
+      "type": "header",
+      "content": "Video 4"
+    },
+    {
+      "type": "text",
+      "id": "video_url_4",
+      "label": "YouTube Shorts URL"
+    },
+    {
+      "type": "text",
+      "id": "video_title_4",
+      "label": "Video title"
+    },
+    {
+      "type": "image_picker",
+      "id": "thumbnail_4",
+      "label": "Custom thumbnail"
+    },
+    {
+      "type": "header",
+      "content": "Video 5"
+    },
+    {
+      "type": "text",
+      "id": "video_url_5",
+      "label": "YouTube Shorts URL"
+    },
+    {
+      "type": "text",
+      "id": "video_title_5",
+      "label": "Video title"
+    },
+    {
+      "type": "image_picker",
+      "id": "thumbnail_5",
+      "label": "Custom thumbnail"
+    },
+    {
+      "type": "header",
+      "content": "Video 6"
+    },
+    {
+      "type": "text",
+      "id": "video_url_6",
+      "label": "YouTube Shorts URL"
+    },
+    {
+      "type": "text",
+      "id": "video_title_6",
+      "label": "Video title"
+    },
+    {
+      "type": "image_picker",
+      "id": "thumbnail_6",
+      "label": "Custom thumbnail"
+    },
+    {
+      "type": "header",
+      "content": "Navigation arrows"
+    },
+    {
+      "type": "color",
+      "id": "nav_button_bg",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "nav_button_hover_bg",
+      "label": "Hover background",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "nav_button_color",
+      "label": "Icon color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "header",
+      "content": "Call to action"
+    },
+    {
+      "type": "text",
+      "id": "cta_text",
+      "label": "Button text",
+      "default": "Watch More On YouTube"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "Button link"
+    },
+    {
+      "type": "range",
+      "id": "cta_font_size",
+      "label": "Button font size (max)",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "cta_border_radius",
+      "label": "Button border radius",
+      "min": 0,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 6
+    },
+    {
+      "type": "color",
+      "id": "cta_bg_color",
+      "label": "Button background",
+      "default": "#ee204a"
+    },
+    {
+      "type": "color",
+      "id": "cta_hover_bg_color",
+      "label": "Button hover background",
+      "default": "#d01d42"
+    },
+    {
+      "type": "color",
+      "id": "cta_text_color",
+      "label": "Button text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "cta_spacing",
+      "label": "Spacing above button",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Section spacing"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Padding top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "container_max_width",
+      "label": "Container max width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1400
+    },
+    {
+      "type": "range",
+      "id": "container_padding",
+      "label": "Container padding",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    }
+  ],
+  "presets": [
+    {
+      "name": "YouTube Shorts gallery"
+    }
+  ]
+}
+{% endschema %}

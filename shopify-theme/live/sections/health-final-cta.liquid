@@ -12,7 +12,7 @@
 <style>
   #hfc-{{ section.id }} { background: {{ s.section_bg | default: '#faf7f5' }}; padding: 24px 24px 88px; font-family: 'Montserrat', sans-serif; }
   #hfc-{{ section.id }} .hfc__inner {
-    position: relative; overflow: hidden; max-width: 1160px; margin: 0 auto; padding: 84px 32px;
+    position: relative; overflow: hidden; max-width: 1272px; margin: 0 auto; padding: 96px 40px;
     border-radius: 28px; background: #1d1d1d; color: #fff; text-align: center;
   }
   /* Two soft glows, rose and teal, hinting at For Her and For Him. */
@@ -24,12 +24,12 @@
   #hfc-{{ section.id }} .hfc__inner::after { right: -160px; top: -300px; background: #2bb3a3; }
   /* Explicit colour: the theme's global h2 colour would otherwise win over the
      inherited white and leave the heading dark-on-dark. */
-  #hfc-{{ section.id }} .hfc__heading { color: #fff; position: relative; margin: 0 auto 14px; max-width: 760px; font: 800 clamp(30px, 4vw, 56px)/1.05 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
-  #hfc-{{ section.id }} .hfc__sub { position: relative; margin: 0 auto; max-width: 520px; font: 400 17px/1.55 'Montserrat', sans-serif; color: rgba(255, 255, 255, .72); }
+  #hfc-{{ section.id }} .hfc__heading { color: #fff; position: relative; margin: 0 auto 16px; max-width: 860px; font: 800 clamp(30px, 4vw, 58px)/1.05 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hfc-{{ section.id }} .hfc__sub { position: relative; margin: 0 auto; max-width: 560px; font: 400 18px/1.55 'Montserrat', sans-serif; color: rgba(255, 255, 255, .72); }
   #hfc-{{ section.id }} .hfc__btns { position: relative; display: flex; justify-content: center; gap: 14px; margin-top: 36px; flex-wrap: wrap; }
   #hfc-{{ section.id }} .hfc__btn {
-    display: inline-flex; align-items: center; gap: 12px; min-width: 200px; justify-content: center;
-    padding: 17px 28px; border-radius: 999px; font: 700 16px/1 'Montserrat', sans-serif; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 12px; min-width: 220px; justify-content: center;
+    padding: 19px 30px; border-radius: 999px; font: 700 17px/1 'Montserrat', sans-serif; text-decoration: none;
     transition: transform .2s ease, box-shadow .2s ease;
   }
   #hfc-{{ section.id }} .hfc__btn span { transition: transform .2s ease; }
@@ -38,15 +38,22 @@
   @media (hover: hover) { #hfc-{{ section.id }} .hfc__btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .25); } }
   @media (hover: hover) { #hfc-{{ section.id }} .hfc__btn:hover span { transform: translateX(3px); } }
   #hfc-{{ section.id }} .hfc__btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-  #hfc-{{ section.id }} .hfc__note { position: relative; margin: 22px 0 0; font: 500 13px/1.4 'Montserrat', sans-serif; color: rgba(255, 255, 255, .55); }
+  #hfc-{{ section.id }} .hfc__note { position: relative; margin: 24px 0 0; font: 500 14px/1.4 'Montserrat', sans-serif; color: rgba(255, 255, 255, .55); }
 
-  @media (max-width: 749px) {
+  @media (min-width: 750px) and (max-width: 1099.98px) {
+    #hfc-{{ section.id }} .hfc__inner { padding: 80px 6%; }
+    #hfc-{{ section.id }} .hfc__heading { font-size: 42px; }
+    #hfc-{{ section.id }} .hfc__sub { font-size: 17px; }
+  }
+  @media (max-width: 749.98px) {
     #hfc-{{ section.id }} { padding: 8px 16px 56px; }
-    #hfc-{{ section.id }} .hfc__inner { padding: 52px 20px; border-radius: 22px; }
+    #hfc-{{ section.id }} .hfc__inner { padding: 52px 16px; border-radius: 22px; }
+    #hfc-{{ section.id }} .hfc__heading, #hfc-{{ section.id }} .hfc__sub { max-width: none; }
     #hfc-{{ section.id }} .hfc__heading { font-size: 30px; }
     #hfc-{{ section.id }} .hfc__sub { font-size: 15px; }
     #hfc-{{ section.id }} .hfc__btns { flex-direction: column; align-items: stretch; gap: 10px; margin-top: 28px; }
-    #hfc-{{ section.id }} .hfc__btn { min-width: 0; }
+    #hfc-{{ section.id }} .hfc__btn { min-width: 0; padding: 18px 24px; font-size: 16px; }
+    #hfc-{{ section.id }} .hfc__note { font-size: 13px; }
   }
 
   /* Big screens: scale the whole section in proportion, so 1920-3840px
@@ -57,6 +64,9 @@
   @media (min-width: 2560px) { #hfc-{{ section.id }} .hfc__inner { zoom: 1.65; } }
   @media (min-width: 3200px) { #hfc-{{ section.id }} .hfc__inner { zoom: 2; } }
   @media (min-width: 3840px) { #hfc-{{ section.id }} .hfc__inner { zoom: 2.4; } }
+  /* ...and a little wider at each step, like the rows above. */
+  @media (min-width: 1920px) { #hfc-{{ section.id }} .hfc__inner { max-width: 1312px; } }
+  @media (min-width: 2560px) { #hfc-{{ section.id }} .hfc__inner { max-width: 1392px; } }
 </style>
 
 <section id="hfc-{{ section.id }}" class="hfc">

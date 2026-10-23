@@ -1,0 +1,945 @@
+{% doc %}
+  @prompt
+    Create a responsive "Our Commitment" feature section with icon-based commitment cards in a horizontal layout.
+        
+        Layout structure:
+        - Section heading: "Our Commitment"
+        - Three feature cards in a row (3 columns desktop, stacked mobile):
+        
+        Card 1:
+        - Icon: lock/padlock icon
+        - Title: "Privacy First"
+        - Description: "All your answers are encrypted."
+        
+        Card 2:
+        - Icon: shield with checkmark icon
+        - Title: "Quality Assured"
+        - Description: "AYUSH-approved products. Doctor-reviewed plans. No shortcuts."
+        
+        Card 3:
+        - Icon: clock/24-7 icon
+        - Title: "Always Accessible"
+        - Description: "Health doesn't clock out-and neither do we."
+        
+        Requirements:
+        - Fully responsive layout:
+          * Desktop: 3 columns in a row, evenly spaced
+          * Tablet: 3 columns with adjusted spacing or 2+1 layout
+          * Mobile: single column, stacked vertically
+        - Settings schema to customize:
+          * Section heading text and typography (size, weight, color, alignment)
+          * Section background color
+          * Content max-width control
+          * Section padding (top/bottom)
+          * Feature cards (repeatable blocks):
+            - Icon upload or icon picker
+            - Icon size control
+            - Icon color
+            - Title text
+            - Description text
+            - Card alignment (center, left)
+          * Grid layout: columns per row (2, 3, or 4 on desktop)
+          * Typography controls:
+            - Title font size, weight, color
+            - Description font size, color, line height
+          * Spacing controls: section padding, card gaps, icon-to-text spacing
+          * Icon styling: size, color, background circle (optional)
+          * Text alignment within cards (center or left)
+          * Card background color (optional)
+          * Card padding and border (optional)
+          * Mobile-specific: icon size, font size overrides, card spacing
+        - Icons should be simple, clean, and centered above text
+        - Cards should be center-aligned by default
+        - Equal spacing between cards
+        - Clean, minimal design with good readability
+        - Support for adding/removing commitment cards (flexible blocks)
+        - Icons should be consistent size across all cards
+        - Mobile: cards stack vertically, full width, center-aligned
+        - Optional: subtle background or border on cards
+        - Optional: hover effects on cards (lift, shadow)
+        - Accessible color contrast ratios
+        - Support for 2-6 feature cards in flexible grid
+        - Light background section with dark text for contrast, resize the cards when available space is there making the padding and icon and text sizes accordingly . do changes and make it responsive design and align the card contents to left and if the cards dont come in horizontally in one row . if it is having more then 1 row then make it a horizontal scroll do changes
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-commitment-section-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    padding: {{ block.settings.section_padding_top }}px 0 {{ block.settings.section_padding_bottom }}px;
+    background-color: {{ block.settings.section_background_color }};
+    overflow: hidden;
+  }
+
+  .ai-commitment-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.content_max_width }}px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .ai-commitment-heading-{{ ai_gen_id }} {
+    font-size: {{ block.settings.heading_size }}px;
+    font-weight: {{ block.settings.heading_weight }};
+    color: {{ block.settings.heading_color }};
+    text-align: {{ block.settings.heading_alignment }};
+    margin: 0 0 {{ block.settings.heading_bottom_spacing }}px;
+    line-height: 1.2;
+  }
+
+  .ai-commitment-scroll-wrapper-{{ ai_gen_id }} {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  .ai-commitment-scroll-wrapper-{{ ai_gen_id }}::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .ai-commitment-scroll-wrapper-{{ ai_gen_id }}::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .ai-commitment-scroll-wrapper-{{ ai_gen_id }}::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
+  .ai-commitment-grid-{{ ai_gen_id }} {
+    display: flex;
+    gap: {{ block.settings.card_gap }}px;
+    margin: 0;
+    min-width: min-content;
+  }
+
+  .ai-commitment-card-{{ ai_gen_id }} {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: {{ block.settings.card_padding }}px;
+    background-color: {{ block.settings.card_background_color }};
+    border-radius: {{ block.settings.card_border_radius }}px;
+    flex: 0 0 auto;
+    width: calc(({{ block.settings.content_max_width }}px - ({{ block.settings.card_gap }}px * ({{ block.settings.columns_desktop }} - 1)) - 40px) / {{ block.settings.columns_desktop }});
+    min-width: 280px;
+    max-width: 450px;
+    {% if block.settings.card_border_thickness > 0 %}
+      border: {{ block.settings.card_border_thickness }}px solid {{ block.settings.card_border_color }};
+    {% endif %}
+    {% if block.settings.enable_hover_effect %}
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    {% endif %}
+  }
+
+  {% if block.settings.enable_hover_effect %}
+    .ai-commitment-card-{{ ai_gen_id }}:hover {
+      transform: translateY(-{{ block.settings.hover_lift_distance }}px);
+      box-shadow: 0 {{ block.settings.hover_shadow_distance }}px {{ block.settings.hover_shadow_blur }}px rgba(0, 0, 0, {{ block.settings.hover_shadow_opacity }});
+    }
+  {% endif %}
+
+  .ai-commitment-icon-wrapper-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: {{ block.settings.icon_size }}px;
+    height: {{ block.settings.icon_size }}px;
+    margin-bottom: {{ block.settings.icon_to_text_spacing }}px;
+    flex-shrink: 0;
+    {% if block.settings.icon_background_circle %}
+      background-color: {{ block.settings.icon_background_color }};
+      border-radius: 50%;
+      padding: {{ block.settings.icon_circle_padding }}px;
+    {% endif %}
+  }
+
+  .ai-commitment-icon-wrapper-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    stroke: {{ block.settings.icon_color }};
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .ai-commitment-card-title-{{ ai_gen_id }} {
+    font-size: {{ block.settings.title_font_size }}px;
+    font-weight: {{ block.settings.title_font_weight }};
+    color: {{ block.settings.title_color }};
+    margin: 0 0 {{ block.settings.title_bottom_spacing }}px;
+    line-height: 1.3;
+  }
+
+  .ai-commitment-card-description-{{ ai_gen_id }} {
+    font-size: {{ block.settings.description_font_size }}px;
+    color: {{ block.settings.description_color }};
+    line-height: {{ block.settings.description_line_height }};
+    margin: 0;
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-commitment-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size_mobile }}px;
+    }
+
+    .ai-commitment-grid-{{ ai_gen_id }} {
+      gap: {{ block.settings.card_gap_mobile }}px;
+    }
+
+    .ai-commitment-card-{{ ai_gen_id }} {
+      width: calc((100vw - ({{ block.settings.card_gap_mobile }}px * ({{ block.settings.columns_tablet }} - 1)) - 60px) / {{ block.settings.columns_tablet }});
+      padding: {{ block.settings.card_padding_mobile }}px;
+    }
+
+    .ai-commitment-icon-wrapper-{{ ai_gen_id }} {
+      width: {{ block.settings.icon_size_mobile }}px;
+      height: {{ block.settings.icon_size_mobile }}px;
+    }
+
+    .ai-commitment-card-title-{{ ai_gen_id }} {
+      font-size: {{ block.settings.title_font_size_mobile }}px;
+    }
+
+    .ai-commitment-card-description-{{ ai_gen_id }} {
+      font-size: {{ block.settings.description_font_size_mobile }}px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-commitment-section-{{ ai_gen_id }} {
+      padding: {{ block.settings.section_padding_top_mobile }}px 0 {{ block.settings.section_padding_bottom_mobile }}px;
+    }
+
+    .ai-commitment-container-{{ ai_gen_id }} {
+      padding: 0 16px;
+    }
+
+    .ai-commitment-card-{{ ai_gen_id }} {
+      width: calc(100vw - 80px);
+      min-width: 260px;
+    }
+  }
+{% endstyle %}
+
+<commitment-section-{{ ai_gen_id }} class="ai-commitment-section-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-commitment-container-{{ ai_gen_id }}">
+    {% if block.settings.section_heading != blank %}
+      <h2 class="ai-commitment-heading-{{ ai_gen_id }}">{{ block.settings.section_heading }}</h2>
+    {% endif %}
+
+    <div class="ai-commitment-scroll-wrapper-{{ ai_gen_id }}">
+      <div class="ai-commitment-grid-{{ ai_gen_id }}">
+        <div class="ai-commitment-card-{{ ai_gen_id }}">
+          <div class="ai-commitment-icon-wrapper-{{ ai_gen_id }}">
+            {% case block.settings.card_1_icon %}
+              {% when 'lock' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              {% when 'shield' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <polyline points="9 12 11 14 15 10"></polyline>
+                </svg>
+              {% when 'clock' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              {% when 'heart' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              {% when 'star' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+              {% when 'check_circle' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              {% when 'truck' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+              {% when 'gift' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <polyline points="20 12 20 22 4 22 4 12"></polyline>
+                  <rect x="2" y="7" width="20" height="5"></rect>
+                  <line x1="12" y1="22" x2="12" y2="7"></line>
+                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+                </svg>
+            {% endcase %}
+          </div>
+          {% if block.settings.card_1_title != blank %}
+            <h3 class="ai-commitment-card-title-{{ ai_gen_id }}">{{ block.settings.card_1_title }}</h3>
+          {% endif %}
+          {% if block.settings.card_1_description != blank %}
+            <p class="ai-commitment-card-description-{{ ai_gen_id }}">{{ block.settings.card_1_description }}</p>
+          {% endif %}
+        </div>
+
+        <div class="ai-commitment-card-{{ ai_gen_id }}">
+          <div class="ai-commitment-icon-wrapper-{{ ai_gen_id }}">
+            {% case block.settings.card_2_icon %}
+              {% when 'lock' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              {% when 'shield' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <polyline points="9 12 11 14 15 10"></polyline>
+                </svg>
+              {% when 'clock' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              {% when 'heart' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              {% when 'star' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+              {% when 'check_circle' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              {% when 'truck' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+              {% when 'gift' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <polyline points="20 12 20 22 4 22 4 12"></polyline>
+                  <rect x="2" y="7" width="20" height="5"></rect>
+                  <line x1="12" y1="22" x2="12" y2="7"></line>
+                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+                </svg>
+            {% endcase %}
+          </div>
+          {% if block.settings.card_2_title != blank %}
+            <h3 class="ai-commitment-card-title-{{ ai_gen_id }}">{{ block.settings.card_2_title }}</h3>
+          {% endif %}
+          {% if block.settings.card_2_description != blank %}
+            <p class="ai-commitment-card-description-{{ ai_gen_id }}">{{ block.settings.card_2_description }}</p>
+          {% endif %}
+        </div>
+
+        <div class="ai-commitment-card-{{ ai_gen_id }}">
+          <div class="ai-commitment-icon-wrapper-{{ ai_gen_id }}">
+            {% case block.settings.card_3_icon %}
+              {% when 'lock' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              {% when 'shield' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <polyline points="9 12 11 14 15 10"></polyline>
+                </svg>
+              {% when 'clock' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              {% when 'heart' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              {% when 'star' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+              {% when 'check_circle' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              {% when 'truck' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+              {% when 'gift' %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <polyline points="20 12 20 22 4 22 4 12"></polyline>
+                  <rect x="2" y="7" width="20" height="5"></rect>
+                  <line x1="12" y1="22" x2="12" y2="7"></line>
+                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+                </svg>
+            {% endcase %}
+          </div>
+          {% if block.settings.card_3_title != blank %}
+            <h3 class="ai-commitment-card-title-{{ ai_gen_id }}">{{ block.settings.card_3_title }}</h3>
+          {% endif %}
+          {% if block.settings.card_3_description != blank %}
+            <p class="ai-commitment-card-description-{{ ai_gen_id }}">{{ block.settings.card_3_description }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</commitment-section-{{ ai_gen_id }}>
+
+{% schema %}
+{
+  "name": "Our commitment",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section heading"
+    },
+    {
+      "type": "text",
+      "id": "section_heading",
+      "label": "Heading",
+      "default": "Our Commitment"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 20,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "Heading size (mobile)",
+      "min": 18,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 28
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "Heading weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#262626"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "Heading alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "range",
+      "id": "heading_bottom_spacing",
+      "label": "Heading bottom spacing",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "header",
+      "content": "Section layout"
+    },
+    {
+      "type": "color",
+      "id": "section_background_color",
+      "label": "Background color",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "range",
+      "id": "content_max_width",
+      "label": "Content max width",
+      "min": 800,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Padding top",
+      "min": 20,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Padding bottom",
+      "min": 20,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top_mobile",
+      "label": "Padding top (mobile)",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom_mobile",
+      "label": "Padding bottom (mobile)",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Grid layout"
+    },
+    {
+      "type": "select",
+      "id": "columns_desktop",
+      "label": "Columns (desktop)",
+      "options": [
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" },
+        { "value": "4", "label": "4" }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "select",
+      "id": "columns_tablet",
+      "label": "Columns (tablet)",
+      "options": [
+        { "value": "1", "label": "1" },
+        { "value": "2", "label": "2" },
+        { "value": "3", "label": "3" }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "label": "Card gap",
+      "min": 12,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "card_gap_mobile",
+      "label": "Card gap (mobile)",
+      "min": 12,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "color",
+      "id": "card_background_color",
+      "label": "Card background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Card padding",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 28
+    },
+    {
+      "type": "range",
+      "id": "card_padding_mobile",
+      "label": "Card padding (mobile)",
+      "min": 12,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "card_border_thickness",
+      "label": "Border thickness",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "card_border_color",
+      "label": "Border color",
+      "default": "#e0e0e0"
+    },
+    {
+      "type": "header",
+      "content": "Hover effects"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_hover_effect",
+      "label": "Enable hover effect",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "hover_lift_distance",
+      "label": "Lift distance",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "hover_shadow_distance",
+      "label": "Shadow distance",
+      "min": 4,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "hover_shadow_blur",
+      "label": "Shadow blur",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "hover_shadow_opacity",
+      "label": "Shadow opacity",
+      "min": 0,
+      "max": 0.5,
+      "step": 0.1,
+      "default": 0.1
+    },
+    {
+      "type": "header",
+      "content": "Icon style"
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon size",
+      "min": 40,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    },
+    {
+      "type": "range",
+      "id": "icon_size_mobile",
+      "label": "Icon size (mobile)",
+      "min": 32,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Icon color",
+      "default": "#262626"
+    },
+    {
+      "type": "checkbox",
+      "id": "icon_background_circle",
+      "label": "Show background circle",
+      "default": false
+    },
+    {
+      "type": "color",
+      "id": "icon_background_color",
+      "label": "Background circle color",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "range",
+      "id": "icon_circle_padding",
+      "label": "Circle padding",
+      "min": 8,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "icon_to_text_spacing",
+      "label": "Icon to text spacing",
+      "min": 12,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "range",
+      "id": "title_font_size",
+      "label": "Title size",
+      "min": 14,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "title_font_size_mobile",
+      "label": "Title size (mobile)",
+      "min": 14,
+      "max": 28,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "select",
+      "id": "title_font_weight",
+      "label": "Title weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "600"
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Title color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "title_bottom_spacing",
+      "label": "Title bottom spacing",
+      "min": 4,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "description_font_size",
+      "label": "Description size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "description_font_size_mobile",
+      "label": "Description size (mobile)",
+      "min": 12,
+      "max": 18,
+      "step": 1,
+      "unit": "px",
+      "default": 13
+    },
+    {
+      "type": "color",
+      "id": "description_color",
+      "label": "Description color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "description_line_height",
+      "label": "Description line height",
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.5
+    },
+    {
+      "type": "header",
+      "content": "Card 1"
+    },
+    {
+      "type": "select",
+      "id": "card_1_icon",
+      "label": "Icon",
+      "options": [
+        { "value": "lock", "label": "Lock (Privacy)" },
+        { "value": "shield", "label": "Shield (Quality)" },
+        { "value": "clock", "label": "Clock (24/7)" },
+        { "value": "heart", "label": "Heart" },
+        { "value": "star", "label": "Star" },
+        { "value": "check_circle", "label": "Check circle" },
+        { "value": "truck", "label": "Truck (Delivery)" },
+        { "value": "gift", "label": "Gift" }
+      ],
+      "default": "lock"
+    },
+    {
+      "type": "text",
+      "id": "card_1_title",
+      "label": "Title",
+      "default": "Privacy First"
+    },
+    {
+      "type": "textarea",
+      "id": "card_1_description",
+      "label": "Description",
+      "default": "All your answers are encrypted."
+    },
+    {
+      "type": "header",
+      "content": "Card 2"
+    },
+    {
+      "type": "select",
+      "id": "card_2_icon",
+      "label": "Icon",
+      "options": [
+        { "value": "lock", "label": "Lock (Privacy)" },
+        { "value": "shield", "label": "Shield (Quality)" },
+        { "value": "clock", "label": "Clock (24/7)" },
+        { "value": "heart", "label": "Heart" },
+        { "value": "star", "label": "Star" },
+        { "value": "check_circle", "label": "Check circle" },
+        { "value": "truck", "label": "Truck (Delivery)" },
+        { "value": "gift", "label": "Gift" }
+      ],
+      "default": "shield"
+    },
+    {
+      "type": "text",
+      "id": "card_2_title",
+      "label": "Title",
+      "default": "Quality Assured"
+    },
+    {
+      "type": "textarea",
+      "id": "card_2_description",
+      "label": "Description",
+      "default": "AYUSH-approved products. Doctor-reviewed plans. No shortcuts."
+    },
+    {
+      "type": "header",
+      "content": "Card 3"
+    },
+    {
+      "type": "select",
+      "id": "card_3_icon",
+      "label": "Icon",
+      "options": [
+        { "value": "lock", "label": "Lock (Privacy)" },
+        { "value": "shield", "label": "Shield (Quality)" },
+        { "value": "clock", "label": "Clock (24/7)" },
+        { "value": "heart", "label": "Heart" },
+        { "value": "star", "label": "Star" },
+        { "value": "check_circle", "label": "Check circle" },
+        { "value": "truck", "label": "Truck (Delivery)" },
+        { "value": "gift", "label": "Gift" }
+      ],
+      "default": "clock"
+    },
+    {
+      "type": "text",
+      "id": "card_3_title",
+      "label": "Title",
+      "default": "Always Accessible"
+    },
+    {
+      "type": "textarea",
+      "id": "card_3_description",
+      "label": "Description",
+      "default": "Health doesn't clock out—and neither do we."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Our commitment"
+    }
+  ]
+}
+{% endschema %}

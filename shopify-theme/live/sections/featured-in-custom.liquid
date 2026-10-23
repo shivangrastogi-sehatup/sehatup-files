@@ -130,7 +130,7 @@
   /* Phones: four press logos do not need a marquee. A strip that shows one
      and a half logos behind an end fade hides half the credentials, so below
      600px they sit still in a grid where all four can be read at once. */
-  @media (max-width: 599px) {
+  @media (max-width: 599.98px) {
     .ftr-wrap-{{ sid }} {
       -webkit-mask-image: none;
               mask-image: none;
@@ -169,6 +169,24 @@
     }
   }
 
+  /* "Health Score page look": heading and big-screen growth like the
+     other Health Score page sections (zoom is safe here: the strip measures
+     itself with offsetWidth / scrollWidth, which ignore zoom). */
+  .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { max-width: 1320px; }
+  .ftr-{{ sid }}.ftr--page .ftr-heading-{{ sid }} { margin: 0 0 24px; color: #1d1d1d; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  @media (min-width: 750px) and (max-width: 1099.98px) { .ftr-{{ sid }}.ftr--page .ftr-heading-{{ sid }} { font-size: 38px; } }
+  @media (max-width: 749.98px) {
+    .ftr-{{ sid }}.ftr--page .ftr-heading-{{ sid }} { font-size: 30px; margin-bottom: 16px; }
+    .ftr-{{ sid }}.ftr--page { padding-bottom: 40px; }
+    .ftr-{{ sid }}.ftr--page .ftr-wrap-{{ sid }} { padding: 12px 0; }
+  }
+  @media (min-width: 1680px) { .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { zoom: 1.12; } }
+  @media (min-width: 1920px) { .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { zoom: 1.25; max-width: 1360px; } }
+  @media (min-width: 2240px) { .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { zoom: 1.45; } }
+  @media (min-width: 2560px) { .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { zoom: 1.65; max-width: 1440px; } }
+  @media (min-width: 3200px) { .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { zoom: 2; } }
+  @media (min-width: 3840px) { .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { zoom: 2.4; } }
+
   @media (prefers-reduced-motion: reduce) {
     .ftr-track-{{ sid }}.is-scrolling { animation: none; }
     .ftr-track-{{ sid }} { justify-content: center; margin: 0 auto; }
@@ -179,7 +197,7 @@
   }
 </style>
 
-<section class="ftr-{{ sid }}">
+<section class="ftr-{{ sid }}{% if s.page_style %} ftr--page{% endif %}">
   <div class="ftr-inner-{{ sid }}">
     {%- if s.heading != blank -%}
       <h2 class="ftr-heading-{{ sid }}">{{ s.heading }}</h2>
@@ -234,7 +252,7 @@
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Below 600px the logos are a static grid, so nothing should be cloned,
   // scrolled, or given a per-frame transform.
-  var gridQuery = window.matchMedia('(max-width: 599px)');
+  var gridQuery = window.matchMedia('(max-width: 599.98px)');
   function isGrid() { return gridQuery.matches; }
 
   function clearInline() {
@@ -482,46 +500,226 @@
   "tag": "section",
   "max_blocks": 30,
   "settings": [
-    { "type": "text", "id": "heading", "label": "Heading", "default": "Featured In" },
-    { "type": "range", "id": "heading_size", "label": "Heading size", "min": 16, "max": 64, "step": 2, "unit": "px", "default": 32 },
-    { "type": "color", "id": "heading_color", "label": "Heading colour", "default": "#222222" },
-
-    { "type": "header", "content": "Logos" },
-    { "type": "range", "id": "logo_max_width", "label": "Logo width", "min": 60, "max": 200, "step": 10, "unit": "px", "default": 120 },
-    { "type": "range", "id": "logo_spacing", "label": "Space between logos", "min": 20, "max": 80, "step": 4, "unit": "px", "default": 40 },
-    { "type": "range", "id": "logo_opacity", "label": "Opacity", "min": 30, "max": 100, "step": 5, "unit": "%", "default": 70 },
-    { "type": "range", "id": "grayscale_amount", "label": "Grayscale", "min": 0, "max": 100, "step": 10, "unit": "%", "default": 100 },
-
-    { "type": "header", "content": "Scrolling" },
-    { "type": "paragraph", "content": "Seconds for one set of logos to pass. The strip loops continuously whatever the number of logos." },
-    { "type": "range", "id": "scroll_speed", "label": "Speed", "min": 10, "max": 60, "step": 2, "unit": "s", "default": 30 },
-    { "type": "checkbox", "id": "pause_on_hover", "label": "Slow to a stop on hover", "default": true },
-
-    { "type": "header", "content": "Depth" },
-    { "type": "paragraph", "content": "Logos shrink and fade towards the ends, so the strip reads as receding. The ends themselves fade out cleanly." },
-    { "type": "range", "id": "tunnel_scale", "label": "Depth", "min": 0, "max": 60, "step": 5, "unit": "%", "default": 30, "info": "How much smaller a logo gets as it reaches the end." },
-    { "type": "range", "id": "hover_zoom", "label": "Grow on hover", "min": 0, "max": 40, "step": 2, "unit": "%", "default": 12, "info": "0 turns it off." },
-    { "type": "range", "id": "tunnel_fade", "label": "Distance fade", "min": 0, "max": 90, "step": 5, "unit": "%", "default": 55 },
-
-    { "type": "header", "content": "Layout" },
-    { "type": "color", "id": "background_color", "label": "Background", "default": "#ffffff" },
-    { "type": "range", "id": "max_width", "label": "Max width", "min": 800, "max": 1600, "step": 100, "unit": "px", "default": 1200 },
-    { "type": "range", "id": "padding_top", "label": "Padding top", "min": 20, "max": 120, "step": 4, "unit": "px", "default": 60 },
-    { "type": "range", "id": "padding_bottom", "label": "Padding bottom", "min": 20, "max": 120, "step": 4, "unit": "px", "default": 60 }
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Featured In"
+    },
+    {
+      "type": "checkbox",
+      "id": "page_style",
+      "label": "Health Score page look",
+      "info": "Big heading and big-screen sizing like the other Health Score page sections.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 16,
+      "max": 64,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading colour",
+      "default": "#222222"
+    },
+    {
+      "type": "header",
+      "content": "Logos"
+    },
+    {
+      "type": "range",
+      "id": "logo_max_width",
+      "label": "Logo width",
+      "min": 60,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 120
+    },
+    {
+      "type": "range",
+      "id": "logo_spacing",
+      "label": "Space between logos",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "logo_opacity",
+      "label": "Opacity",
+      "min": 30,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 70
+    },
+    {
+      "type": "range",
+      "id": "grayscale_amount",
+      "label": "Grayscale",
+      "min": 0,
+      "max": 100,
+      "step": 10,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "header",
+      "content": "Scrolling"
+    },
+    {
+      "type": "paragraph",
+      "content": "Seconds for one set of logos to pass. The strip loops continuously whatever the number of logos."
+    },
+    {
+      "type": "range",
+      "id": "scroll_speed",
+      "label": "Speed",
+      "min": 10,
+      "max": 60,
+      "step": 2,
+      "unit": "s",
+      "default": 30
+    },
+    {
+      "type": "checkbox",
+      "id": "pause_on_hover",
+      "label": "Slow to a stop on hover",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Depth"
+    },
+    {
+      "type": "paragraph",
+      "content": "Logos shrink and fade towards the ends, so the strip reads as receding. The ends themselves fade out cleanly."
+    },
+    {
+      "type": "range",
+      "id": "tunnel_scale",
+      "label": "Depth",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "unit": "%",
+      "default": 30,
+      "info": "How much smaller a logo gets as it reaches the end."
+    },
+    {
+      "type": "range",
+      "id": "hover_zoom",
+      "label": "Grow on hover",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "%",
+      "default": 12,
+      "info": "0 turns it off."
+    },
+    {
+      "type": "range",
+      "id": "tunnel_fade",
+      "label": "Distance fade",
+      "min": 0,
+      "max": 90,
+      "step": 5,
+      "unit": "%",
+      "default": 55
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "label": "Max width",
+      "min": 800,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Padding top",
+      "min": 20,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Padding bottom",
+      "min": 20,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    }
   ],
   "blocks": [
     {
       "type": "logo",
       "name": "Logo",
       "settings": [
-        { "type": "image_picker", "id": "logo", "label": "Logo" },
-        { "type": "text", "id": "name", "label": "Publication name", "info": "Used as the image's alt text." },
-        { "type": "url", "id": "link", "label": "Optional link" }
+        {
+          "type": "image_picker",
+          "id": "logo",
+          "label": "Logo"
+        },
+        {
+          "type": "text",
+          "id": "name",
+          "label": "Publication name",
+          "info": "Used as the image's alt text."
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Optional link"
+        }
       ]
     }
   ],
   "presets": [
-    { "name": "Featured in", "blocks": [ { "type": "logo" }, { "type": "logo" }, { "type": "logo" }, { "type": "logo" } ] }
+    {
+      "name": "Featured in",
+      "blocks": [
+        {
+          "type": "logo"
+        },
+        {
+          "type": "logo"
+        },
+        {
+          "type": "logo"
+        },
+        {
+          "type": "logo"
+        }
+      ]
+    }
   ]
 }
 {% endschema %}

@@ -1,0 +1,1080 @@
+{% style %}
+    .ai-feature-section-{{ ai_gen_id }} {
+      display: block;
+      width: 100%;
+      background-color: {{ block.settings.section_bg_color }};
+      padding: {{ block.settings.section_padding_top }}px {{ block.settings.section_padding_horizontal }}px {{ block.settings.section_padding_bottom }}px;
+    }
+
+    .ai-feature-section__container-{{ ai_gen_id }} {
+      max-width: {{ block.settings.container_max_width }}px;
+      margin: 0 auto;
+      padding: 40px 21px 0;
+      background: #FBFBFB;
+      border-radius: 20px;
+    }
+
+    .ai-feature-section__heading-{{ ai_gen_id }} {
+      margin: 0 0 {{ block.settings.heading_margin_bottom }}px;
+      text-align: {{ block.settings.heading_alignment }};
+      color: {{ block.settings.heading_color }};
+      font-size: clamp(24px,3.4vw,64px);
+      font-weight: {{ block.settings.heading_weight }};
+      line-height: 1.2;
+    }
+
+    .ai-feature-section__grid-{{ ai_gen_id }} {
+      display: grid;
+      grid-template-columns: repeat({{ block.settings.columns_desktop }}, 1fr);
+      gap: {{ block.settings.grid_gap }}px;
+      margin-bottom: {{ block.settings.tagline_margin_top }}px;
+    }
+
+    .ai-feature-block-{{ ai_gen_id }} {
+      background-color: transparent;
+      padding: {{ block.settings.block_padding }}px;
+      border-radius: {{ block.settings.block_border_radius }}px;
+      {% if block.settings.block_border_thickness > 0 %}
+        border: {{ block.settings.block_border_thickness }}px solid {{ block.settings.block_border_color }};
+      {% endif %}
+    }
+
+    .ai-feature-block--icon-top-{{ ai_gen_id }} {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ai-feature-block--icon-top-left-{{ ai_gen_id }} {
+      align-items: flex-start;
+    }
+
+    .ai-feature-block--icon-top-left-{{ ai_gen_id }} .ai-feature-block__content-{{ ai_gen_id }} {
+      text-align: left;
+    }
+
+    .ai-feature-block--icon-top-center-{{ ai_gen_id }} {
+      align-items: center;
+    }
+
+    .ai-feature-block--icon-top-center-{{ ai_gen_id }} .ai-feature-block__content-{{ ai_gen_id }} {
+      text-align: center;
+    }
+
+    .ai-feature-block--icon-top-right-{{ ai_gen_id }} {
+      align-items: flex-end;
+    }
+
+    .ai-feature-block--icon-top-right-{{ ai_gen_id }} .ai-feature-block__content-{{ ai_gen_id }} {
+      text-align: right;
+    }
+
+    .ai-feature-block--icon-left-{{ ai_gen_id }} {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: {{ block.settings.icon_content_gap }}px;
+    }
+
+    .ai-feature-block--icon-left-{{ ai_gen_id }} .ai-feature-block__content-{{ ai_gen_id }} {
+      text-align: left;
+    }
+
+    .ai-feature-block__icon-wrapper-{{ ai_gen_id }} {
+      flex-shrink: 0;
+      margin-bottom: {{ block.settings.icon_margin_bottom }}px;
+    }
+
+    .ai-feature-block--icon-left-{{ ai_gen_id }} .ai-feature-block__icon-wrapper-{{ ai_gen_id }} {
+      margin-bottom: 0;
+      width: {{ block.settings.icon_left_width }}%;
+    }
+
+    .ai-feature-block__icon-{{ ai_gen_id }} {
+      width: {{ block.settings.icon_size }}px;
+      height: {{ block.settings.icon_size }}px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .ai-feature-block__icon-placeholder-{{ ai_gen_id }} {
+      width: {{ block.settings.icon_size }}px;
+      height: {{ block.settings.icon_size }}px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-feature-block__icon-placeholder-{{ ai_gen_id }} svg {
+      width: 100%;
+      height: 100%;
+      color: {{ block.settings.icon_color }};
+    }
+
+    .ai-feature-block__content-{{ ai_gen_id }} {
+      flex-grow: 1;
+    }
+
+    .ai-feature-block--icon-left-{{ ai_gen_id }} .ai-feature-block__content-{{ ai_gen_id }} {
+      width: calc(100% - {{ block.settings.icon_left_width }}% - {{ block.settings.icon_content_gap }}px);
+    }
+
+    .ai-feature-block__title-{{ ai_gen_id }} {
+      margin: 0 0 {{ block.settings.title_margin_bottom }}px;
+      color: {{ block.settings.title_color }};
+      font-size: {{ block.settings.title_size }}px;
+      font-weight: {{ block.settings.title_weight }};
+      line-height: 1.3;
+    }
+
+    .ai-feature-block__description-{{ ai_gen_id }} {
+      margin: 0;
+      color: {{ block.settings.description_color }};
+      font-size: clamp(10px, 1.2vw, 20px);
+      font-weight: {{ block.settings.description_weight }};
+      line-height: 1.5;
+    }
+
+    .ai-feature-section__tagline-{{ ai_gen_id }} {
+      margin: 0;
+      text-align: {{ block.settings.tagline_alignment }};
+      color: {{ block.settings.tagline_color }};
+      font-size: {{ block.settings.tagline_size }}px;
+      font-weight: {{ block.settings.tagline_weight }};
+      line-height: 1.4;
+    }
+
+    @media screen and (max-width: 989px) {
+      .ai-feature-section__grid-{{ ai_gen_id }} {
+        grid-template-columns: repeat({{ block.settings.columns_tablet }}, 1fr);
+      }
+
+      .ai-feature-section__heading-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.heading_size }}px * 0.85);
+      }
+
+      .ai-feature-block__title-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.title_size }}px * 0.9);
+      }
+
+      .ai-feature-block__description-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.description_size }}px * 0.95);
+      }
+    }
+
+    @media screen and (max-width: 749px) {
+      .ai-feature-section-{{ ai_gen_id }} {
+        padding: {{ block.settings.section_padding_top | times: 0.7 }}px {{ block.settings.section_padding_horizontal | times: 0.7 }}px {{ block.settings.section_padding_bottom | times: 0.7 }}px;
+      }
+
+      .ai-feature-section__grid-{{ ai_gen_id }} {
+        grid-template-columns: 1fr;
+        gap: {{ block.settings.grid_gap | times: 0.8 }}px;
+      }
+
+      .ai-feature-block--icon-left-{{ ai_gen_id }} {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .ai-feature-block--icon-left-{{ ai_gen_id }} .ai-feature-block__content-{{ ai_gen_id }} {
+        text-align: center;
+      }
+
+      .ai-feature-block--icon-left-{{ ai_gen_id }} .ai-feature-block__icon-wrapper-{{ ai_gen_id }} {
+        margin-bottom: {{ block.settings.icon_margin_bottom }}px;
+        width: auto;
+      }
+
+      .ai-feature-block--icon-left-{{ ai_gen_id }} .ai-feature-block__content-{{ ai_gen_id }} {
+        width: 100%;
+      }
+
+      .ai-feature-section__heading-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.heading_size }}px * 0.75);
+        margin-bottom: {{ block.settings.heading_margin_bottom | times: 0.7 }}px;
+      }
+
+      .ai-feature-block__title-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.title_size }}px * 0.85);
+      }
+
+      .ai-feature-block__description-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.description_size }}px * 0.9);
+      }
+
+      .ai-feature-section__tagline-{{ ai_gen_id }} {
+        font-size: calc({{ block.settings.tagline_size }}px * 0.9);
+      }
+    }
+{% endstyle %}
+
+<feature-section-{{ ai_gen_id }} class="ai-feature-section-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-feature-section__container-{{ ai_gen_id }}">
+    {% if block.settings.section_heading != blank %}
+      <h2 class="ai-feature-section__heading-{{ ai_gen_id }}">
+        {{ block.settings.section_heading }}
+      </h2>
+    {% endif %}
+
+    <div class="ai-feature-section__grid-{{ ai_gen_id }}">
+      {% for i in (1..6) %}
+        {% liquid
+          assign feature_enabled_key = 'feature_' | append: i | append: '_enabled'
+          assign feature_icon_key = 'feature_' | append: i | append: '_icon'
+          assign feature_title_key = 'feature_' | append: i | append: '_title'
+          assign feature_description_key = 'feature_' | append: i | append: '_description'
+          assign feature_layout_key = 'feature_' | append: i | append: '_layout'
+          assign feature_alignment_key = 'feature_' | append: i | append: '_alignment'
+
+          assign feature_enabled = block.settings[feature_enabled_key]
+          assign feature_icon = block.settings[feature_icon_key]
+          assign feature_title = block.settings[feature_title_key]
+          assign feature_description = block.settings[feature_description_key]
+          assign feature_layout = block.settings[feature_layout_key]
+          assign feature_alignment = block.settings[feature_alignment_key]
+
+          assign has_title = false
+          if feature_title != blank
+            assign has_title = true
+          endif
+
+          assign layout_class = ''
+          if feature_layout == 'icon-left'
+            assign layout_class = 'ai-feature-block--icon-left-' | append: ai_gen_id
+          else
+            assign base_class = 'ai-feature-block--icon-top-'
+            assign alignment_suffix = feature_alignment | default: 'center'
+            assign layout_class = base_class | append: alignment_suffix | append: '-' | append: ai_gen_id
+          endif
+        %}
+
+        {% if feature_enabled %}
+          <div class="ai-feature-block-{{ ai_gen_id }} {{ layout_class }}">
+            <div class="ai-feature-block__icon-wrapper-{{ ai_gen_id }}">
+              {% if feature_icon %}
+                <img
+                  src="{{ feature_icon | image_url: width: 400 }}"
+                  alt="{{ feature_title | default: feature_description | strip_html | truncate: 50 }}"
+                  class="ai-feature-block__icon-{{ ai_gen_id }}"
+                  loading="lazy"
+                  width="{{ block.settings.icon_size }}"
+                  height="{{ block.settings.icon_size }}"
+                >
+              {% else %}
+                <div class="ai-feature-block__icon-placeholder-{{ ai_gen_id }}">
+                  {{ 'image' | placeholder_svg_tag }}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="ai-feature-block__content-{{ ai_gen_id }}">
+              {% if has_title %}
+                <h3 class="ai-feature-block__title-{{ ai_gen_id }}">
+                  {{ feature_title }}
+                </h3>
+              {% endif %}
+
+              {% if feature_description != blank %}
+                <div class="ai-feature-block__description-{{ ai_gen_id }}">
+                  {{ feature_description }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% if block.settings.tagline_text != blank %}
+      <div class="ai-feature-section__tagline-{{ ai_gen_id }}">
+        {{ block.settings.tagline_text }}
+      </div>
+    {% endif %}
+  </div>
+</feature-section-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class FeatureSection{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        this.initializeAccessibility();
+      }
+
+      initializeAccessibility() {
+        const headings = this.querySelectorAll('.ai-feature-block__title-{{ ai_gen_id }}');
+        headings.forEach(heading => {
+          if (!heading.getAttribute('role')) {
+            heading.setAttribute('role', 'heading');
+            heading.setAttribute('aria-level', '3');
+          }
+        });
+      }
+    }
+
+    customElements.define('feature-section-{{ ai_gen_id }}', FeatureSection{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Feature Section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section Settings"
+    },
+    {
+      "type": "text",
+      "id": "section_heading",
+      "label": "Section Heading",
+      "default": "Our Features"
+    },
+    {
+      "type": "color",
+      "id": "section_bg_color",
+      "label": "Background Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "container_max_width",
+      "min": 600,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "label": "Container Max Width",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Section Padding Top",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Section Padding Bottom",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "section_padding_horizontal",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Section Padding Horizontal",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Heading Settings"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "Heading Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading Color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 16,
+      "max": 72,
+      "step": 2,
+      "unit": "px",
+      "label": "Heading Size",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "heading_weight",
+      "min": 300,
+      "max": 900,
+      "step": 100,
+      "label": "Heading Weight",
+      "default": 700
+    },
+    {
+      "type": "range",
+      "id": "heading_margin_bottom",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "label": "Heading Margin Bottom",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Grid Settings"
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "label": "Columns (Desktop)",
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "columns_tablet",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "label": "Columns (Tablet)",
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "grid_gap",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "label": "Grid Gap",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Feature Block Settings"
+    },
+    {
+      "type": "range",
+      "id": "block_padding",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Block Padding",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "block_border_radius",
+      "min": 0,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "label": "Block Border Radius",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "block_border_thickness",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "label": "Block Border Thickness",
+      "default": 0
+    },
+    {
+      "type": "color",
+      "id": "block_border_color",
+      "label": "Block Border Color",
+      "default": "#e0e0e0"
+    },
+    {
+      "type": "header",
+      "content": "Icon Settings"
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "min": 20,
+      "max": 150,
+      "step": 5,
+      "unit": "px",
+      "label": "Icon Size",
+      "default": 60
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Icon Placeholder Color",
+      "default": "#cccccc"
+    },
+    {
+      "type": "range",
+      "id": "icon_margin_bottom",
+      "min": 0,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "label": "Icon Margin Bottom",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "icon_content_gap",
+      "min": 0,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "label": "Icon Content Gap (Icon Left Layout)",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "icon_left_width",
+      "min": 10,
+      "max": 50,
+      "step": 5,
+      "unit": "%",
+      "label": "Icon Width (Icon Left Layout)",
+      "default": 25
+    },
+    {
+      "type": "header",
+      "content": "Title Settings"
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Title Color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "title_size",
+      "min": 12,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "label": "Title Size",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "title_weight",
+      "min": 300,
+      "max": 900,
+      "step": 100,
+      "label": "Title Weight",
+      "default": 600
+    },
+    {
+      "type": "range",
+      "id": "title_margin_bottom",
+      "min": 0,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "label": "Title Margin Bottom",
+      "default": 10
+    },
+    {
+      "type": "header",
+      "content": "Description Settings"
+    },
+    {
+      "type": "color",
+      "id": "description_color",
+      "label": "Description Color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "description_size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Description Size",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "description_weight",
+      "min": 300,
+      "max": 900,
+      "step": 100,
+      "label": "Description Weight",
+      "default": 400
+    },
+    {
+      "type": "header",
+      "content": "Tagline Settings"
+    },
+    {
+      "type": "richtext",
+      "id": "tagline_text",
+      "label": "Tagline Text"
+    },
+    {
+      "type": "select",
+      "id": "tagline_alignment",
+      "label": "Tagline Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "color",
+      "id": "tagline_color",
+      "label": "Tagline Color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "tagline_size",
+      "min": 12,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "label": "Tagline Size",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "tagline_weight",
+      "min": 300,
+      "max": 900,
+      "step": 100,
+      "label": "Tagline Weight",
+      "default": 400
+    },
+    {
+      "type": "range",
+      "id": "tagline_margin_top",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "label": "Tagline Margin Top",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Feature 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "feature_1_enabled",
+      "label": "Enable Feature 1",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "feature_1_icon",
+      "label": "Feature 1 Icon"
+    },
+    {
+      "type": "text",
+      "id": "feature_1_title",
+      "label": "Feature 1 Title",
+      "default": "Feature Title"
+    },
+    {
+      "type": "richtext",
+      "id": "feature_1_description",
+      "label": "Feature 1 Description",
+      "default": "<p>Feature description goes here</p>"
+    },
+    {
+      "type": "select",
+      "id": "feature_1_layout",
+      "label": "Feature 1 Layout",
+      "options": [
+        {
+          "value": "icon-top",
+          "label": "Icon Top"
+        },
+        {
+          "value": "icon-left",
+          "label": "Icon Left"
+        }
+      ],
+      "default": "icon-top"
+    },
+    {
+      "type": "select",
+      "id": "feature_1_alignment",
+      "label": "Feature 1 Alignment (Icon Top Only)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Feature 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "feature_2_enabled",
+      "label": "Enable Feature 2",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "feature_2_icon",
+      "label": "Feature 2 Icon"
+    },
+    {
+      "type": "text",
+      "id": "feature_2_title",
+      "label": "Feature 2 Title",
+      "default": "Feature Title"
+    },
+    {
+      "type": "richtext",
+      "id": "feature_2_description",
+      "label": "Feature 2 Description",
+      "default": "<p>Feature description goes here</p>"
+    },
+    {
+      "type": "select",
+      "id": "feature_2_layout",
+      "label": "Feature 2 Layout",
+      "options": [
+        {
+          "value": "icon-top",
+          "label": "Icon Top"
+        },
+        {
+          "value": "icon-left",
+          "label": "Icon Left"
+        }
+      ],
+      "default": "icon-top"
+    },
+    {
+      "type": "select",
+      "id": "feature_2_alignment",
+      "label": "Feature 2 Alignment (Icon Top Only)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Feature 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "feature_3_enabled",
+      "label": "Enable Feature 3",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "feature_3_icon",
+      "label": "Feature 3 Icon"
+    },
+    {
+      "type": "text",
+      "id": "feature_3_title",
+      "label": "Feature 3 Title",
+      "default": "Feature Title"
+    },
+    {
+      "type": "richtext",
+      "id": "feature_3_description",
+      "label": "Feature 3 Description",
+      "default": "<p>Feature description goes here</p>"
+    },
+    {
+      "type": "select",
+      "id": "feature_3_layout",
+      "label": "Feature 3 Layout",
+      "options": [
+        {
+          "value": "icon-top",
+          "label": "Icon Top"
+        },
+        {
+          "value": "icon-left",
+          "label": "Icon Left"
+        }
+      ],
+      "default": "icon-top"
+    },
+    {
+      "type": "select",
+      "id": "feature_3_alignment",
+      "label": "Feature 3 Alignment (Icon Top Only)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Feature 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "feature_4_enabled",
+      "label": "Enable Feature 4",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "feature_4_icon",
+      "label": "Feature 4 Icon"
+    },
+    {
+      "type": "text",
+      "id": "feature_4_title",
+      "label": "Feature 4 Title",
+      "default": "Feature Title"
+    },
+    {
+      "type": "richtext",
+      "id": "feature_4_description",
+      "label": "Feature 4 Description",
+      "default": "<p>Feature description goes here</p>"
+    },
+    {
+      "type": "select",
+      "id": "feature_4_layout",
+      "label": "Feature 4 Layout",
+      "options": [
+        {
+          "value": "icon-top",
+          "label": "Icon Top"
+        },
+        {
+          "value": "icon-left",
+          "label": "Icon Left"
+        }
+      ],
+      "default": "icon-top"
+    },
+    {
+      "type": "select",
+      "id": "feature_4_alignment",
+      "label": "Feature 4 Alignment (Icon Top Only)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Feature 5"
+    },
+    {
+      "type": "checkbox",
+      "id": "feature_5_enabled",
+      "label": "Enable Feature 5",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "feature_5_icon",
+      "label": "Feature 5 Icon"
+    },
+    {
+      "type": "text",
+      "id": "feature_5_title",
+      "label": "Feature 5 Title",
+      "default": "Feature Title"
+    },
+    {
+      "type": "richtext",
+      "id": "feature_5_description",
+      "label": "Feature 5 Description",
+      "default": "<p>Feature description goes here</p>"
+    },
+    {
+      "type": "select",
+      "id": "feature_5_layout",
+      "label": "Feature 5 Layout",
+      "options": [
+        {
+          "value": "icon-top",
+          "label": "Icon Top"
+        },
+        {
+          "value": "icon-left",
+          "label": "Icon Left"
+        }
+      ],
+      "default": "icon-top"
+    },
+    {
+      "type": "select",
+      "id": "feature_5_alignment",
+      "label": "Feature 5 Alignment (Icon Top Only)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Feature 6"
+    },
+    {
+      "type": "checkbox",
+      "id": "feature_6_enabled",
+      "label": "Enable Feature 6",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "feature_6_icon",
+      "label": "Feature 6 Icon"
+    },
+    {
+      "type": "text",
+      "id": "feature_6_title",
+      "label": "Feature 6 Title",
+      "default": "Feature Title"
+    },
+    {
+      "type": "richtext",
+      "id": "feature_6_description",
+      "label": "Feature 6 Description",
+      "default": "<p>Feature description goes here</p>"
+    },
+    {
+      "type": "select",
+      "id": "feature_6_layout",
+      "label": "Feature 6 Layout",
+      "options": [
+        {
+          "value": "icon-top",
+          "label": "Icon Top"
+        },
+        {
+          "value": "icon-left",
+          "label": "Icon Left"
+        }
+      ],
+      "default": "icon-top"
+    },
+    {
+      "type": "select",
+      "id": "feature_6_alignment",
+      "label": "Feature 6 Alignment (Icon Top Only)",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Feature Section"
+    }
+  ]
+}
+{% endschema %}

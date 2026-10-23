@@ -1,0 +1,391 @@
+{% assign uid = section.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .trust-row-{{ uid }} {
+    background: {{ section.settings.background_color }};
+    padding: {{ section.settings.padding_top }}px 20px {{ section.settings.padding_bottom }}px;
+    margin: {{ section.settings.margin_top }}px 0 {{ section.settings.margin_bottom }}px;
+    overflow: hidden;
+  }
+
+  .trust-container-{{ uid }} {
+    max-width: {{ section.settings.container_width }}px;
+    margin: 0 auto;
+  }
+
+  .trust-heading-{{ uid }} {
+    text-align: center;
+    /* same scale as the other section headings */
+    font-size: clamp(25px, 3.3vw, 60px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    color: {{ section.settings.heading_color }};
+    margin-bottom: clamp(22px, 3.4vw, 44px);
+    text-wrap: balance;
+  }
+
+  .trust-wrapper-{{ uid }} {
+    overflow: hidden;
+  }
+
+  /* One row of credentials at every width. The old version assumed four
+     columns and squeezed three items into 93px boxes with 10px labels on a
+     small phone, even though the space was there. */
+  .trust-track-{{ uid }} {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: clamp(16px, 3vw, 56px);
+  }
+
+  .trust-item-{{ uid }} {
+    flex: 0 1 clamp(96px, 26vw, 240px);
+    max-width: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .trust-logo-{{ uid }} {
+    width: clamp(74px, 19vw, 140px);
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto clamp(8px, 1vw, 14px);
+  }
+
+  .trust-label-{{ uid }} {
+    /* never below 13px: it used to drop to 10px under 480px */
+    font-size: clamp(13px, 1.15vw, 18px);
+    color: {{ section.settings.label_color }};
+    font-weight: 700;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+
+  /* Very small phones: let the labels breathe instead of shrinking them */
+  @media (max-width: 400px) {
+    .trust-track-{{ uid }} { gap: 14px 10px; }
+    .trust-item-{{ uid }} { flex: 0 1 calc(33.333% - 8px); }
+  }
+
+  /* tablets and up: the label should not sit at the mobile floor */
+  @media (min-width: 600px) {
+    .trust-label-{{ uid }} { font-size: clamp(15px, 1.15vw, 18px); }
+  }
+
+  /* 2K and 4K: grow with the rest of the page */
+  @media (min-width: 1920px) {
+    .trust-logo-{{ uid }} { width: clamp(140px, 8vw, 180px); }
+    .trust-label-{{ uid }} { font-size: clamp(18px, 1vw, 22px); }
+    .trust-track-{{ uid }} { gap: clamp(56px, 5vw, 96px); }
+  }
+
+  /* Desktop marquee, when the setting is on */
+  @media (min-width: 992px) {
+    .trust-track-{{ uid }} { flex-wrap: nowrap; }
+    .trust-item-{{ uid }} { flex: 0 0 auto; }
+  }
+
+  /* Scrolling animation - only on desktop when enabled */
+  @media (min-width: 992px) {
+    .trust-scroll-enabled-{{ uid }} .trust-track-{{ uid }} {
+      animation: trust-scroll-anim-{{ uid }} linear infinite;
+      animation-duration: {{ section.settings.scroll_speed }}s;
+    }
+  }
+
+  @keyframes trust-scroll-anim-{{ uid }} {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+{% endstyle %}
+
+<div class="trust-row-{{ uid }}">
+  <div class="trust-container-{{ uid }}">
+    {% if section.settings.heading != blank %}
+      <div class="trust-heading-{{ uid }}">{{ section.settings.heading }}</div>
+    {% endif %}
+
+    <div class="trust-wrapper-{{ uid }}" id="wrapper-{{ uid }}">
+      <div class="trust-track-{{ uid }}" id="track-{{ uid }}">
+        {% for block in section.blocks %}
+          {% if block.settings.logo or block.settings.label != blank %}
+            <div class="trust-item-{{ uid }}" {{ block.shopify_attributes }}>
+              {% if block.settings.logo %}
+                <img
+                  src="{{ block.settings.logo | image_url: width: 360 }}"
+                  srcset="{{ block.settings.logo | image_url: width: 180 }} 180w,
+                          {{ block.settings.logo | image_url: width: 360 }} 360w"
+                  sizes="(min-width: 1920px) 180px, (min-width: 600px) 140px, 25vw"
+                  alt="{{ block.settings.label | escape }}"
+                  width="{{ block.settings.logo.width }}"
+                  height="{{ block.settings.logo.height }}"
+                  loading="lazy"
+                  decoding="async"
+                  class="trust-logo-{{ uid }}"
+                >
+              {% endif %}
+              {% if block.settings.label != blank %}
+                <div class="trust-label-{{ uid }}">{{ block.settings.label }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var wrapper = document.getElementById('wrapper-{{ uid }}');
+    var track = document.getElementById('track-{{ uid }}');
+    
+    if (!track || !wrapper) return;
+
+    function checkOverflow() {
+      // Remove any existing duplicates
+      var existingDuplicates = track.querySelectorAll('.trust-duplicate-{{ uid }}');
+      existingDuplicates.forEach(function(dup) {
+        dup.remove();
+      });
+
+      wrapper.classList.remove('trust-scroll-enabled-{{ uid }}');
+
+      // Only enable scrolling on desktop (992px+)
+      if (window.innerWidth < 992) {
+        return;
+      }
+
+      // Check if content overflows container on desktop
+      var needsScroll = track.scrollWidth > wrapper.clientWidth;
+      
+      if (needsScroll && {{ section.settings.enable_scroll }}) {
+        // Clone all items for seamless loop
+        var items = track.querySelectorAll('.trust-item-{{ uid }}');
+        items.forEach(function(item) {
+          if (!item.classList.contains('trust-duplicate-{{ uid }}')) {
+            var clone = item.cloneNode(true);
+            clone.classList.add('trust-duplicate-{{ uid }}');
+            clone.removeAttribute('data-shopify-editor-block');
+            clone.removeAttribute('data-shopify-editor-section');
+            track.appendChild(clone);
+          }
+        });
+        
+        wrapper.classList.add('trust-scroll-enabled-{{ uid }}');
+      }
+    }
+
+    // Wait for images to load
+    var images = track.querySelectorAll('img');
+    var loadedCount = 0;
+    
+    function imageLoaded() {
+      loadedCount++;
+      if (loadedCount === images.length) {
+        checkOverflow();
+      }
+    }
+
+    if (images.length === 0) {
+      checkOverflow();
+    } else {
+      images.forEach(function(img) {
+        if (img.complete) {
+          imageLoaded();
+        } else {
+          img.addEventListener('load', imageLoaded);
+        }
+      });
+    }
+
+    window.addEventListener('resize', checkOverflow);
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Trust Certifications",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Why People Trust Us"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 18,
+      "max": 48,
+      "step": 2,
+      "default": 28,
+      "unit": "px"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#222222"
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "label": "Container width",
+      "min": 800,
+      "max": 1600,
+      "step": 100,
+      "default": 1200,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "logo_max_width",
+      "label": "Logo max width (Desktop)",
+      "min": 80,
+      "max": 240,
+      "step": 10,
+      "default": 160,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "label_font_size",
+      "label": "Label font size",
+      "min": 12,
+      "max": 22,
+      "step": 1,
+      "default": 14,
+      "unit": "px"
+    },
+    {
+      "type": "color",
+      "id": "label_color",
+      "label": "Label color",
+      "default": "#333333"
+    },
+    {
+      "type": "header",
+      "content": "Scrolling Animation"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_scroll",
+      "label": "Enable auto-scroll",
+      "default": false,
+      "info": "Automatically scrolls on desktop when certifications overflow container"
+    },
+    {
+      "type": "range",
+      "id": "scroll_speed",
+      "label": "Scroll speed (seconds)",
+      "min": 10,
+      "max": 60,
+      "step": 2,
+      "default": 30,
+      "unit": "s"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Padding top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "default": 48,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Padding bottom",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "default": 48,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "label": "Margin top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "default": 0,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "label": "Margin bottom",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "default": 0,
+      "unit": "px"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "certification",
+      "name": "Certification",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "logo",
+          "label": "Certification logo"
+        },
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Certification label",
+          "default": "Certified"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Trust Certifications",
+      "blocks": [
+        {
+          "type": "certification",
+          "settings": {
+            "label": "GMP Certified"
+          }
+        },
+        {
+          "type": "certification",
+          "settings": {
+            "label": "AYUSH Approved"
+          }
+        },
+        {
+          "type": "certification",
+          "settings": {
+            "label": "Verified Doctors"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

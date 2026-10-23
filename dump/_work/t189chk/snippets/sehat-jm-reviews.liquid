@@ -1,0 +1,136 @@
+{%- comment -%}
+  Judge.me reviews, filtered to a few products, in the same card style as the
+  restyled Judge.me carousel (health-trust): stone card, stars, product photo
+  top right, bold title, text, then "Name on Product". Prev/next arrows below,
+  and it moves on by itself every few seconds (paused on hover or touch).
+
+  Reviews come live from Judge.me's public all-reviews feed (the one its own
+  widgets use), so new reviews of the picked products appear by themselves.
+  Text is inserted as text, never HTML. Hidden if nothing matches.
+
+  Usage:
+    {% render 'sehat-jm-reviews', products: section.settings.review_products, min: 4, max: 18, uid: section.id, hide: 'text to skip, another' %}
+{%- endcomment -%}
+{%- assign jmr_min = min | default: 4 -%}
+{%- assign jmr_max = max | default: 18 -%}
+{%- if products != blank -%}
+<style>
+  .jmr { position: relative; font-family: 'Montserrat', sans-serif; }
+  .jmr[hidden] { display: none; }
+  .jmr__row { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; padding: 2px; }
+  .jmr__row::-webkit-scrollbar { display: none; }
+  .jmr__card {
+    position: relative; flex: 0 0 calc((100% - 40px) / 3); min-width: 0; scroll-snap-align: start; box-sizing: border-box;
+    display: flex; flex-direction: column; min-height: 264px; padding: 24px 24px 20px;
+    border-radius: 20px; background: var(--jmr-card, #faf7f5); border: 1px solid #efe7e2; text-align: left;
+  }
+  .jmr__img { position: absolute; top: 22px; right: 22px; width: 56px; height: 56px; border-radius: 14px; object-fit: cover; background: #fff; box-shadow: 0 4px 12px rgba(60, 30, 20, .08); }
+  .jmr__stars { padding-right: 64px; margin-bottom: 14px; color: #f5a623; font-size: 17px; letter-spacing: 3px; line-height: 1; }
+  .jmr__t { padding-right: 64px; margin: 0 0 6px; font: 700 16px/1.35 'Montserrat', sans-serif; color: #1d1d1d; }
+  .jmr__b { margin: 0; font: 400 14px/1.6 'Montserrat', sans-serif; color: #5c5c5c; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .jmr__foot { display: flex; align-items: baseline; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid #ebe3dd; min-width: 0; }
+  .jmr__name { flex: none; font: 700 13.5px/1.3 'Montserrat', sans-serif; color: #1d1d1d; }
+  .jmr__on { flex: none; font: 500 12.5px/1.3 'Montserrat', sans-serif; color: #5c5c5c; }
+  .jmr a.jmr__prod { min-width: 0; font: 700 13px/1.3 'Montserrat', sans-serif; color: #d81f48; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jmr a.jmr__prod:hover { text-decoration: underline; }
+  .jmr__nav { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }
+  .jmr__arrow { width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 1.5px solid #e8e0d9; background: #fff; color: #1d1d1d; display: grid; place-items: center; cursor: pointer; transition: border-color .2s ease; }
+  .jmr__arrow:hover { border-color: #d81f48; }
+  .jmr__arrow:focus-visible { outline: 2px solid #1d1d1d; outline-offset: 3px; }
+  .jmr__arrow svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  @media (max-width: 1023px) { .jmr__card { flex-basis: calc((100% - 20px) / 2); } }
+  @media (max-width: 599px) { .jmr__row { gap: 12px; } .jmr__card { flex-basis: 86%; min-height: 240px; padding: 20px 18px 18px; } .jmr__img { top: 18px; right: 18px; width: 50px; height: 50px; } }
+  @media (prefers-reduced-motion: reduce) { .jmr__row { scroll-behavior: auto; } }
+</style>
+
+<div class="jmr" id="jmr-{{ uid }}" data-min="{{ jmr_min }}" data-max="{{ jmr_max }}" data-hide="{{ hide | escape }}" hidden>
+  <div class="jmr__row" aria-label="Customer reviews"></div>
+  <div class="jmr__nav">
+    <button class="jmr__arrow" type="button" data-dir="-1" aria-label="Previous reviews"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5"/></svg></button>
+    <button class="jmr__arrow" type="button" data-dir="1" aria-label="Next reviews"><svg viewBox="0 0 16 16"><path d="m6 3 5 5-5 5"/></svg></button>
+  </div>
+  <script type="application/json">
+    {
+    {%- for p in products -%}
+      {{ p.handle | json }}: { "t": {{ p.title | split: ' | ' | first | json }}, "i": {{ p.featured_image | image_url: width: 160 | json }}, "u": {{ p.url | json }} }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+    }
+  </script>
+</div>
+
+<script>
+  (function () {
+    var root = document.getElementById('jmr-{{ uid }}');
+    if (!root) return;
+    var row = root.querySelector('.jmr__row');
+    var products = JSON.parse(root.querySelector('script[type="application/json"]').textContent || '{}');
+    var MIN = Number(root.dataset.min), MAX = Number(root.dataset.max);
+    var HIDE = (root.dataset.hide || '').toLowerCase().split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var base = 'https://api.judge.me/reviews/all_reviews_js_based?url={{ shop.permanent_domain }}&shop_domain={{ shop.permanent_domain }}&platform=shopify&review_type=product-reviews&page=';
+    var found = [];
+
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+    function tidy(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
+
+    function load(page) {
+      return fetch(base + page).then(function (r) { return r.json(); }).then(function (j) {
+        var revs = new DOMParser().parseFromString(j.html || '', 'text/html').querySelectorAll('.jdgm-rev');
+        revs.forEach(function (e) {
+          var q = function (s) { return e.querySelector(s); };
+          var link = q('.jdgm-rev__prod-link');
+          var handle = ((link && link.getAttribute('href')) || '').split('/products/')[1];
+          handle = handle ? handle.split(/[?#]/)[0] : '';
+          var rate = q('.jdgm-rev__rating');
+          var rating = rate ? Number(rate.getAttribute('data-score')) : 0;
+          var body = tidy(q('.jdgm-rev__body') && q('.jdgm-rev__body').textContent);
+          if (!products[handle] || rating < MIN || body.length < 12) return;
+          if (HIDE.some(function (h) { return body.toLowerCase().indexOf(h) > -1; })) return;
+          found.push({ h: handle, r: rating, b: body, t: tidy(q('.jdgm-rev__title') && q('.jdgm-rev__title').textContent), a: tidy(q('.jdgm-rev__author') && q('.jdgm-rev__author').textContent) || 'Anonymous' });
+        });
+        if (revs.length >= 25 && page < 8 && found.length < MAX) return load(page + 1);
+      });
+    }
+
+    function card(v) {
+      var p = products[v.h];
+      var c = el('article', 'jmr__card');
+      if (p.i) { var img = el('img', 'jmr__img'); img.src = p.i; img.alt = p.t; img.width = 56; img.height = 56; img.loading = 'lazy'; c.appendChild(img); }
+      var st = el('div', 'jmr__stars', '★★★★★'.slice(0, v.r)); st.setAttribute('aria-label', v.r + ' out of 5 stars'); c.appendChild(st);
+      if (v.t) c.appendChild(el('h3', 'jmr__t', v.t));
+      if (v.b.toLowerCase() !== v.t.toLowerCase()) c.appendChild(el('p', 'jmr__b', v.b));
+      var f = el('div', 'jmr__foot');
+      f.appendChild(el('span', 'jmr__name', v.a));
+      f.appendChild(el('span', 'jmr__on', 'on'));
+      var a = el('a', 'jmr__prod', p.t); a.href = p.u; f.appendChild(a);
+      c.appendChild(f);
+      return c;
+    }
+
+    load(1).then(function () {
+      if (!found.length) return;
+      found.slice(0, MAX).forEach(function (v) { row.appendChild(card(v)); });
+      root.hidden = false;
+
+      function step() { var c = row.querySelector('.jmr__card'); return c ? c.offsetWidth + parseFloat(getComputedStyle(row).columnGap || 20) : row.clientWidth; }
+      function go(dir) {
+        var end = row.scrollLeft + row.clientWidth >= row.scrollWidth - 8;
+        if (dir > 0 && end) row.scrollTo({ left: 0 });
+        else if (dir < 0 && row.scrollLeft < 8) row.scrollTo({ left: row.scrollWidth });
+        else row.scrollBy({ left: step() * dir });
+      }
+      root.querySelectorAll('.jmr__arrow').forEach(function (b) { b.addEventListener('click', function () { go(Number(b.dataset.dir)); }); });
+
+      /* Moves on by itself while on screen; any hover, touch or focus pauses it. */
+      if (still) return;
+      var held = false, seen = false, timer;
+      ['mouseenter', 'focusin', 'touchstart'].forEach(function (ev) { root.addEventListener(ev, function () { held = true; }, { passive: true }); });
+      ['mouseleave', 'focusout'].forEach(function (ev) { root.addEventListener(ev, function () { held = false; }); });
+      root.addEventListener('touchend', function () { setTimeout(function () { held = false; }, 4000); }, { passive: true });
+      if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { seen = e[0].isIntersecting; }).observe(root);
+      else seen = true;
+      timer = setInterval(function () { if (seen && !held && !document.hidden) go(1); }, 4000);
+    }).catch(function () {});
+  })();
+</script>
+{%- endif -%}

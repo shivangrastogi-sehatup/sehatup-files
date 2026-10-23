@@ -30,9 +30,9 @@
     color: var(--hsg-text);
   }
   #hsg-{{ section.id }}.is-him { --hsg-tone: var(--hsg-teal); --hsg-ink: var(--hsg-teal-ink); }
-  #hsg-{{ section.id }} .hsg__inner { max-width: 980px; margin: 0 auto; padding: 88px 24px 80px; text-align: center; }
-  #hsg-{{ section.id }} .hsg__heading { color: var(--hsg-text); margin: 0 0 12px; font: 800 clamp(28px, 3.4vw, 46px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
-  #hsg-{{ section.id }} .hsg__sub { margin: 0 auto; max-width: 560px; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--hsg-muted); }
+  #hsg-{{ section.id }} .hsg__inner { max-width: 1100px; margin: 0 auto; padding: 88px 24px 80px; text-align: center; }
+  #hsg-{{ section.id }} .hsg__heading { color: var(--hsg-text); margin: 0 0 12px; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hsg-{{ section.id }} .hsg__sub { margin: 0 auto; max-width: 640px; font: 400 17px/1.55 'Montserrat', sans-serif; color: var(--hsg-muted); }
 
   /* For Her / For Him switch with a sliding pill behind the active side. */
   #hsg-{{ section.id }} .hsg__switch {
@@ -88,7 +88,7 @@
   #hsg-{{ section.id }} .hsg__bar {
     display: flex; align-items: center; justify-content: space-between; gap: 18px;
     max-width: 720px; margin: 40px auto 0; padding: 14px 14px 14px 26px;
-    border-radius: 999px; background: #f7f3f0; text-align: left;
+    border-radius: 18px; background: #f7f3f0; text-align: left;
     transition: background-color .3s ease;
   }
   #hsg-{{ section.id }} .hsg__bar.has-picks { background: var(--hsg-tone); }
@@ -105,25 +105,40 @@
   #hsg-{{ section.id }} .hsg__cta:focus-visible { outline: 2px solid var(--hsg-text); outline-offset: 3px; }
   #hsg-{{ section.id }} .hsg__arrow { transition: transform .2s ease; }
   @media (hover: hover) { #hsg-{{ section.id }} .hsg__cta:hover .hsg__arrow { transform: translateX(3px); } }
-  #hsg-{{ section.id }} .hsg__note { margin: 16px 0 0; font: 400 12.5px/1.5 'Montserrat', sans-serif; color: #6b6b6b; }
+  #hsg-{{ section.id }} .hsg__note { margin: 16px 0 0; font: 400 13px/1.5 'Montserrat', sans-serif; color: #6b6b6b; }
 
-  @media (max-width: 749px) {
+  @media (max-width: 749.98px) {
     #hsg-{{ section.id }} .hsg__inner { padding: 56px 16px 52px; }
-    #hsg-{{ section.id }} .hsg__heading { font-size: 28px; }
-    #hsg-{{ section.id }} .hsg__sub { font-size: 14.5px; }
+    #hsg-{{ section.id }} .hsg__heading { font-size: 30px; }
+    #hsg-{{ section.id }} .hsg__sub { font-size: 15px; max-width: none; }
     #hsg-{{ section.id }} .hsg__switch { margin: 24px auto 22px; }
     #hsg-{{ section.id }} .hsg__tab { min-width: 0; padding: 11px 26px; font-size: 14px; }
     #hsg-{{ section.id }} .hsg__chips { gap: 8px; }
     #hsg-{{ section.id }} .hsg__chip { padding: 11px 14px 11px 12px; font-size: 13.5px; gap: 8px; }
     #hsg-{{ section.id }} .hsg__tick { width: 18px; height: 18px; }
     #hsg-{{ section.id }} .hsg__tick::after { left: 5px; top: 2px; }
-    #hsg-{{ section.id }} .hsg__bar { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 28px; padding: 16px; border-radius: 20px; text-align: center; }
+    #hsg-{{ section.id }} .hsg__bar { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 28px; padding: 16px; border-radius: 18px; text-align: center; }
     #hsg-{{ section.id }} .hsg__cta { justify-content: center; }
+  }
+
+  /* Phones and tablets: every sign pill the same size (tablet 2 equal columns, phone 1). */
+  @media (max-width: 1099.98px) {
+    #hsg-{{ section.id }} .hsg__chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 640px; margin: 0 auto; }
+    #hsg-{{ section.id }} .hsg__chip { width: 100%; min-height: 52px; text-align: left; }
+  }
+  @media (min-width: 750px) and (max-width: 1099.98px) {
+    #hsg-{{ section.id }} .hsg__inner { padding: 72px 6% 64px; }
+    #hsg-{{ section.id }} .hsg__heading { font-size: 38px; }
+    #hsg-{{ section.id }} .hsg__sub { font-size: 16px; }
+  }
+  @media (max-width: 599.98px) {
+    #hsg-{{ section.id }} .hsg__chips { grid-template-columns: minmax(0, 1fr); max-width: 420px; gap: 8px; }
+    #hsg-{{ section.id }} .hsg__chip { min-height: 46px; }
   }
 
   /* Phones and tablets: 4 signs, then a small "See more" link on the right. */
   #hsg-{{ section.id }} .hsg__more { display: none; }
-  @media (max-width: 1099px) {
+  @media (max-width: 1099.98px) {
     #hsg-{{ section.id }} .hsg__panel:not(.is-open) .hsg__chip:nth-child(n + 5):not([aria-pressed="true"]) { display: none; }
     #hsg-{{ section.id }} .hsg__more {
       display: flex; width: fit-content; align-items: center; gap: 4px; margin: 12px 4px 0 auto; padding: 6px 2px;

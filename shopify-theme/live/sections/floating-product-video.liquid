@@ -461,13 +461,22 @@
       bottom: calc(12px + env(safe-area-inset-bottom));
     }
     #{{ fpv_id }} .fpv__top { padding-top: calc(26px + env(safe-area-inset-top)); }
-    #{{ fpv_id }} .fpv__dock { bottom: {{ fpv_bottom | minus: 12 }}px; left: 12px; width: 78px; }
+    #{{ fpv_id }} .fpv__dock { bottom: {{ fpv_bottom | minus: 12 }}px; left: 12px; width: 64px; }
     #{{ fpv_id }} .fpv__dock[data-playing] { width: 138px; }
     /* vertical drags still scroll the page; horizontal ones are ours */
     #{{ fpv_id }} .fpv__dock { touch-action: pan-y; }
     #{{ fpv_id }} .fpv__dock[data-dragging] { cursor: grabbing; }
     #{{ fpv_id }}[data-side="right"] .fpv__dock { left: auto; right: 12px; }
   }
+  /* Tablets: a notch smaller than on laptops. */
+  @media (min-width: 768px) and (max-width: 1099.98px) { #{{ fpv_id }} .fpv__dock { width: 80px; } }
+  /* Big screens: the bubble grows in the same steps as the page sections. */
+  @media (min-width: 1680px) { #{{ fpv_id }} .fpv__dock { zoom: 1.12; } }
+  @media (min-width: 1920px) { #{{ fpv_id }} .fpv__dock { zoom: 1.25; } }
+  @media (min-width: 2240px) { #{{ fpv_id }} .fpv__dock { zoom: 1.45; } }
+  @media (min-width: 2560px) { #{{ fpv_id }} .fpv__dock { zoom: 1.65; } }
+  @media (min-width: 3200px) { #{{ fpv_id }} .fpv__dock { zoom: 2; } }
+  @media (min-width: 3840px) { #{{ fpv_id }} .fpv__dock { zoom: 2.4; } }
 
   @media (prefers-reduced-motion: reduce) {
     #{{ fpv_id }} .fpv__dock,

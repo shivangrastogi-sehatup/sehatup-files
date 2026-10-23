@@ -1,0 +1,410 @@
+{% assign section_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+    .healthcare-hero-{{ section_id }} {
+      display: block;
+      position: relative;
+      width: 100%;
+      min-height: {{ block.settings.section_min_height }}px;
+      overflow: hidden;
+    }
+
+    .healthcare-hero__background-{{ section_id }} {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .healthcare-hero__background-image-{{ section_id }} {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: {{ block.settings.background_position_x }} {{ block.settings.background_position_y }};
+      transform: scale(1.08);
+      opacity: {{ block.settings.background_overlay_opacity | divided_by: 100.0 }};
+    }
+
+    .healthcare-hero__background-placeholder-{{ section_id }} {
+      width: 100%;
+      height: 100%;
+      background: #f4f4f4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .healthcare-hero__background-overlay-{{ section_id }} {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: {{ block.settings.background_overlay_color }};
+  opacity: {{ block.settings.background_overlay_opacity | divided_by: 100.0 }};
+
+    }
+    .healthcare-hero__btn-{{ section_id }}:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+
+    {% if block.settings.layout_mode == 'split-layout' or block.settings.show_white_panel %}
+    .healthcare-hero__panel-{{ section_id }} {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: {{ block.settings.white_panel_width }}%;
+      background: {{ block.settings.white_panel_color }};
+      opacity: {{ block.settings.white_panel_opacity | divided_by: 100.0 }};
+      z-index: 1;
+      {% if block.settings.white_panel_rounded %}
+        border-radius: 0 {{ block.settings.white_panel_border_radius }}px {{ block.settings.white_panel_border_radius }}px 0;
+      {% endif %}
+    }
+    {% endif %}
+
+    .healthcare-hero__container-{{ section_id }} {
+      position: relative;
+      z-index: 2;
+      max-width: {{ block.settings.content_max_width }}px;
+      margin: 0 auto;
+      padding: {{ block.settings.section_padding_top }}px {{ block.settings.section_padding_horizontal }}px {{ block.settings.section_padding_bottom }}px;
+      min-height: {{ block.settings.section_min_height }}px;
+      display: flex;
+      align-items: center;
+      justify-content:
+        {% if block.settings.content_position == 'center' %}center
+        {% elsif block.settings.content_position == 'right' %}flex-end
+        {% else %}flex-start{% endif %};
+    }
+
+    .healthcare-hero__content-{{ section_id }} {
+      max-width: {{ block.settings.content_text_max_width }}px;
+      text-align:
+        {% if block.settings.content_position == 'center' %}center
+        {% elsif block.settings.content_position == 'right' %}right
+        {% else %}left{% endif %};
+    }
+
+    .healthcare-hero__heading-{{ section_id }} {
+      font-size: {{ block.settings.heading_size }}px;
+      font-weight: {{ block.settings.heading_weight }};
+      color: {{ block.settings.heading_color }};
+      margin-bottom: {{ block.settings.content_spacing }}px;
+    }
+
+    .healthcare-hero__subheading-{{ section_id }} {
+      font-size: {{ block.settings.subheading_size }}px;
+      font-weight: {{ block.settings.subheading_weight }};
+      color: {{ block.settings.subheading_color }};
+      margin-bottom: {{ block.settings.content_spacing }}px;
+    }
+
+    .healthcare-hero__body-{{ section_id }} {
+      font-size: {{ block.settings.body_size }}px;
+      color: {{ block.settings.body_color }};
+      margin-bottom: {{ block.settings.content_spacing }}px;
+      line-height: 1.6;
+    }
+
+    .healthcare-hero__actions-{{ section_id }} {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .healthcare-hero__btn-{{ section_id }} {
+      padding: {{ block.settings.button_padding_vertical }}px {{ block.settings.button_padding_horizontal }}px;
+      font-size: {{ block.settings.button_font_size }}px;
+      font-weight: {{ block.settings.button_font_weight }};
+      border-radius: {{ block.settings.button_border_radius }}px;
+      border: 2px solid transparent;
+      text-decoration: none;
+      transition: 0.3s ease;
+    }
+
+    .healthcare-hero__btn-primary-{{ section_id }} {
+      background: {{ block.settings.button_1_bg_color }};
+      color: {{ block.settings.button_1_text_color }};
+    }
+
+    .healthcare-hero__btn-secondary-{{ section_id }} {
+      background: transparent;
+      color: {{ block.settings.button_2_text_color }};
+      border-color: {{ block.settings.button_2_border_color }};
+    }
+
+    /* Mobile */
+    @media (max-width: 1040px) {
+      .healthcare-hero__container-{{ section_id }} {
+        display: block;
+        padding: 24px 16px;
+      }
+    }
+{% endstyle %}
+
+<section class="healthcare-hero-{{ section_id }}" role="banner" {{ block.shopify_attributes }}>
+  <div class="healthcare-hero__background-{{ section_id }}">
+    {% if block.settings.background_image %}
+      <img
+        src="{{ block.settings.background_image | image_url: width: 2000 }}"
+        alt="{{ block.settings.background_image.alt | escape }}"
+        class="healthcare-hero__background-image-{{ section_id }}"
+      >
+    {% else %}
+      <div class="healthcare-hero__background-placeholder-{{ section_id }}">
+        {{ 'hero-apparel-1' | placeholder_svg_tag }}
+      </div>
+    {% endif %}
+    <div class="healthcare-hero__background-overlay-{{ section_id }}"></div>
+  </div>
+
+  {% if block.settings.layout_mode == 'split-layout' or block.settings.show_white_panel %}
+    <div class="healthcare-hero__panel-{{ section_id }}"></div>
+  {% endif %}
+
+  <div class="healthcare-hero__container-{{ section_id }}">
+    <div class="healthcare-hero__content-{{ section_id }}">
+      {% if block.settings.heading != blank %}
+        <h1 class="healthcare-hero__heading-{{ section_id }}">
+          {{ block.settings.heading }}
+        </h1>
+      {% endif %}
+
+      {% if block.settings.subheading != blank %}
+        <div class="healthcare-hero__subheading-{{ section_id }}">
+          {{ block.settings.subheading }}
+        </div>
+      {% endif %}
+
+      {% if block.settings.body_text != blank %}
+        <div class="healthcare-hero__body-{{ section_id }}">
+          {{ block.settings.body_text }}
+        </div>
+      {% endif %}
+
+      <div class="healthcare-hero__actions-{{ section_id }}">
+        {% if block.settings.button_1_text != blank %}
+          <a
+            href="{{ block.settings.button_1_link }}"
+            class="healthcare-hero__btn-{{ section_id }} healthcare-hero__btn-primary-{{ section_id }}"
+          >
+            {{ block.settings.button_1_text }}
+          </a>
+        {% endif %}
+
+        {% if block.settings.show_button_2 and block.settings.button_2_text != blank %}
+          <a
+            href="{{ block.settings.button_2_link }}"
+            class="healthcare-hero__btn-{{ section_id }} healthcare-hero__btn-secondary-{{ section_id }}"
+          >
+            {{ block.settings.button_2_text }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const section = document.querySelector('.healthcare-hero-{{ section_id }}');
+    if (!section) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.disconnect();
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(section);
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Custom Healthcare banner",
+  "tag": "section",
+  "class": "section-healthcare-hero",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_mode",
+      "label": "Layout mode",
+      "options": [
+        { "value": "full-background", "label": "Full background" },
+        { "value": "split-layout", "label": "Split layout" },
+        { "value": "background-with-overlay-image", "label": "Background with image" }
+      ],
+      "default": "full-background"
+    },
+
+    {
+      "type": "header",
+      "content": "Background"
+    },
+    {
+      "type": "image_picker",
+      "id": "background_image",
+      "label": "Background image"
+    },
+    {
+      "type": "select",
+      "id": "background_position_x",
+      "label": "Background position X",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "background_position_y",
+      "label": "Background position Y",
+      "options": [
+        { "value": "top", "label": "Top" },
+        { "value": "center", "label": "Center" },
+        { "value": "bottom", "label": "Bottom" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "background_overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 30
+    },
+
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Struggling with stress, hormones or weight?"
+    },
+    {
+      "type": "richtext",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "<p>Find the root cause in 60 seconds</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "body_text",
+      "label": "Body text",
+      "default": "<p>India’s first digital clinic combining Ayurveda, Homeopathy and Allopathy.</p>"
+    },
+    {
+      "type": "select",
+      "id": "content_position",
+      "label": "Content alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+
+    {
+      "type": "header",
+      "content": "Buttons"
+    },
+    {
+      "type": "text",
+      "id": "button_1_text",
+      "label": "Primary button text",
+      "default": "Start Free Assessment"
+    },
+    {
+      "type": "url",
+      "id": "button_1_link",
+      "label": "Primary button link"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_button_2",
+      "label": "Show secondary button",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "button_2_text",
+      "label": "Secondary button text",
+      "default": "Talk to a Doctor"
+    },
+    {
+      "type": "url",
+      "id": "button_2_link",
+      "label": "Secondary button link"
+    },
+
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "section_min_height",
+      "label": "Minimum height",
+      "min": 200,
+      "max": 800,
+      "step": 20,
+      "unit": "px",
+      "default": 400
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Padding top",
+      "min": 20,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Padding bottom",
+      "min": 20,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_horizontal",
+      "label": "Padding horizontal",
+      "min": 16,
+      "max": 80,
+      "step": 8,
+      "unit": "px",
+      "default": 40
+    }
+  ],
+  "presets": [
+    {
+      "name": "Custom Healthcare banner"
+    }
+  ]
+}
+{% endschema %}

@@ -25,7 +25,15 @@
     </p>
   </a>
   {%- if p.available -%}
-    <button type="button" class="ssf__add" data-variant="{{ v.id }}" aria-label="Add {{ name | escape }} to cart">Add to cart</button>
+    {%- assign in_cart = 0 -%}
+    {%- for it in cart.items -%}{%- if it.variant_id == v.id -%}{%- assign in_cart = in_cart | plus: it.quantity -%}{%- endif -%}{%- endfor -%}
+    <button type="button" class="ssf__add" data-variant="{{ v.id }}" aria-label="Add {{ name | escape }} to cart"{% if in_cart > 0 %} hidden{% endif %}>Add to cart</button>
+    {%- comment -%} Once it is in the cart the button becomes a counter, kept in step with the cart. {%- endcomment -%}
+    <div class="ssf__qty" data-qty="{{ v.id }}"{% if in_cart == 0 %} hidden{% endif %}>
+      <button type="button" data-step="-1" aria-label="One less {{ name | escape }}">&minus;</button>
+      <span data-count aria-live="polite">{{ in_cart | at_least: 1 }}</span>
+      <button type="button" data-step="1" aria-label="One more {{ name | escape }}">+</button>
+    </div>
   {%- else -%}
     <button type="button" class="ssf__add" disabled>Sold out</button>
   {%- endif -%}

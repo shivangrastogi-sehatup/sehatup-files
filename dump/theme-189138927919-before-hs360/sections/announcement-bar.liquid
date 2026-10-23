@@ -1,0 +1,319 @@
+{% assign uid = section.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ann-bar-{{ uid }} {
+    width: 100%;
+    overflow: hidden;
+    background: {{ section.settings.bg_desktop }};
+    padding: {{ section.settings.padding_desktop }}px 0;
+  }
+
+  .ann-wrap-{{ uid }} {
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+  }
+
+  .ann-track-{{ uid }} {
+    display: flex;
+    align-items: center;
+    gap: {{ section.settings.gap_desktop }}px;
+    white-space: nowrap;
+  }
+
+  .ann-track-{{ uid }}.static-{{ uid }} {
+    justify-content: center;
+  }
+
+  .ann-item-{{ uid }} {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-size: {{ section.settings.font_desktop }}px;
+    flex: 0 0 auto;
+  }
+
+  .ann-item-{{ uid }} img {
+    width: {{ section.settings.icon_desktop }}px;
+    height: auto;
+  }
+
+  /* Tablet */
+  @media (max-width: 1024px) {
+    .ann-bar-{{ uid }} {
+      background: {{ section.settings.bg_tablet }};
+      padding: {{ section.settings.padding_tablet }}px 0;
+    }
+    .ann-track-{{ uid }} {
+      gap: {{ section.settings.gap_tablet }}px;
+    }
+    .ann-item-{{ uid }} {
+      font-size: {{ section.settings.font_tablet }}px;
+    }
+    .ann-item-{{ uid }} img {
+      width: {{ section.settings.icon_tablet }}px;
+    }
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .ann-bar-{{ uid }} {
+      background: {{ section.settings.bg_mobile }};
+      padding: {{ section.settings.padding_mobile }}px 0;
+    }
+    .ann-track-{{ uid }} {
+      gap: {{ section.settings.gap_mobile }}px;
+    }
+    .ann-item-{{ uid }} {
+      font-size: {{ section.settings.font_mobile }}px;
+    }
+    .ann-item-{{ uid }} img {
+      width: {{ section.settings.icon_mobile }}px;
+    }
+  }
+
+  /* scrolling */
+  .scroll-{{ uid }} {
+    animation: scroll-anim-{{ uid }} linear infinite;
+    animation-duration: {{ section.settings.scroll_speed }}s;
+  }
+
+  @keyframes scroll-anim-{{ uid }} {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+{% endstyle %}
+
+<div class="ann-bar-{{ uid }}">
+  <div class="ann-wrap-{{ uid }}" id="wrap-{{ uid }}">
+    <div class="ann-track-{{ uid }}" id="track-{{ uid }}">
+      {% for block in section.blocks %}
+        <div class="ann-item-{{ uid }}" {{ block.shopify_attributes }}>
+          {% if block.settings.icon %}
+            <img src="{{ block.settings.icon | image_url: width: 200 }}" loading="lazy" alt="">
+          {% endif %}
+          <span>{{ block.settings.text }}</span>
+        </div>
+      {% endfor %}
+
+      <!-- duplicate for smooth scroll -->
+      {% for block in section.blocks %}
+        <div class="ann-item-{{ uid }} duplicate-{{ uid }}" style="display: none;">
+          {% if block.settings.icon %}
+            <img src="{{ block.settings.icon | image_url: width: 200 }}" loading="lazy" alt="">
+          {% endif %}
+          <span>{{ block.settings.text }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var wrap = document.getElementById('wrap-{{ uid }}');
+    var track = document.getElementById('track-{{ uid }}');
+    var duplicates = track.querySelectorAll('.duplicate-{{ uid }}');
+
+    function checkScroll() {
+      // Get current gap based on viewport
+      var gap = {{ section.settings.gap_desktop }};
+      if (window.innerWidth <= 600) {
+        gap = {{ section.settings.gap_mobile }};
+      } else if (window.innerWidth <= 1024) {
+        gap = {{ section.settings.gap_tablet }};
+      }
+
+      // Calculate width of original items only
+      var allItems = track.querySelectorAll('.ann-item-{{ uid }}');
+      var originalCount = allItems.length / 2;
+      var totalWidth = 0;
+
+      for (var i = 0; i < originalCount; i++) {
+        totalWidth += allItems[i].offsetWidth;
+      }
+      totalWidth += gap * (originalCount - 1);
+
+      if (totalWidth > wrap.clientWidth) {
+        // Need scrolling - show duplicates and animate
+        duplicates.forEach(function(dup) {
+          dup.style.display = '';
+        });
+        track.classList.add('scroll-{{ uid }}');
+        track.classList.remove('static-{{ uid }}');
+      } else {
+        // Fits - hide duplicates and center
+        duplicates.forEach(function(dup) {
+          dup.style.display = 'none';
+        });
+        track.classList.remove('scroll-{{ uid }}');
+        track.classList.add('static-{{ uid }}');
+      }
+    }
+
+    // Small delay to ensure proper rendering
+    setTimeout(checkScroll, 100);
+    window.addEventListener('resize', function() {
+      setTimeout(checkScroll, 100);
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Announcement Bar",
+  "settings": [
+    {
+      "type": "range",
+      "id": "scroll_speed",
+      "label": "Scroll speed",
+      "min": 10,
+      "max": 60,
+      "step": 2,
+      "default": 30,
+      "unit": "s"
+    },
+
+    { "type": "header", "content": "Desktop" },
+    { "type": "color", "id": "bg_desktop", "label": "Background", "default": "#1c1c1c" },
+    {
+      "type": "range",
+      "id": "padding_desktop",
+      "label": "Padding",
+      "min": 8,
+      "max": 30,
+      "step": 2,
+      "default": 12,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "font_desktop",
+      "label": "Font size",
+      "min": 10,
+      "max": 30,
+      "step": 1,
+      "default": 14,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "icon_desktop",
+      "label": "Icon size",
+      "min": 16,
+      "max": 60,
+      "step": 2,
+      "default": 24,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "gap_desktop",
+      "label": "Gap",
+      "min": 20,
+      "max": 120,
+      "step": 10,
+      "default": 60,
+      "unit": "px"
+    },
+
+    { "type": "header", "content": "Tablet" },
+    { "type": "color", "id": "bg_tablet", "label": "Background", "default": "#1c1c1c" },
+    {
+      "type": "range",
+      "id": "padding_tablet",
+      "label": "Padding",
+      "min": 6,
+      "max": 24,
+      "step": 2,
+      "default": 10,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "font_tablet",
+      "label": "Font size",
+      "min": 10,
+      "max": 24,
+      "step": 1,
+      "default": 13,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "icon_tablet",
+      "label": "Icon size",
+      "min": 16,
+      "max": 50,
+      "step": 2,
+      "default": 22,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "gap_tablet",
+      "label": "Gap",
+      "min": 20,
+      "max": 100,
+      "step": 10,
+      "default": 50,
+      "unit": "px"
+    },
+
+    { "type": "header", "content": "Mobile" },
+    { "type": "color", "id": "bg_mobile", "label": "Background", "default": "#1c1c1c" },
+    {
+      "type": "range",
+      "id": "padding_mobile",
+      "label": "Padding",
+      "min": 4,
+      "max": 20,
+      "step": 2,
+      "default": 8,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "font_mobile",
+      "label": "Font size",
+      "min": 10,
+      "max": 20,
+      "step": 1,
+      "default": 12,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "icon_mobile",
+      "label": "Icon size",
+      "min": 14,
+      "max": 40,
+      "step": 2,
+      "default": 20,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "gap_mobile",
+      "label": "Gap",
+      "min": 20,
+      "max": 80,
+      "step": 10,
+      "default": 40,
+      "unit": "px"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "announcement",
+      "name": "Announcement",
+      "settings": [
+        { "type": "image_picker", "id": "icon", "label": "Icon" },
+        { "type": "text", "id": "text", "label": "Text", "default": "Your announcement text here" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Announcement Bar" }]
+}
+{% endschema %}

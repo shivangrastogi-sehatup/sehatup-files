@@ -1,0 +1,91 @@
+{%- comment -%}
+  Testimonials: video cards (Shopify video or an .mp4 link, with a quote) and
+  written reviews. Use only real customers' words and videos, with their consent.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<section id="reviews" class="lp-sec lp-sec--{{ s.tone }}">
+  <div class="lp-wrap">
+    <div class="lp-head">
+      <h2 class="lp-title">{{ s.heading }}{% if s.highlight != blank %} <span class="lp-hl">{{ s.highlight }}</span>{% endif %}{% if s.heading_end != blank %} {{ s.heading_end }}{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lp-sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="lp-videos">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'video' -%}
+          {%- assign b = block.settings -%}
+          <div class="lp-vid{% if s.video_layout == 'stack' %} lp-vid--stack{% endif %}" {{ block.shopify_attributes }}>
+            <div class="lp-vid__media">
+              {%- if b.video != blank -%}
+                {{ b.video | video_tag: controls: true, preload: 'none', playsinline: true, image_size: '600x' }}
+              {%- elsif b.video_url != blank -%}
+                <video src="{{ b.video_url }}" controls preload="none" playsinline{% if b.poster != blank %} poster="{{ b.poster | image_url: width: 600 }}"{% endif %}></video>
+              {%- else -%}
+                <div class="lp-vid__empty">Add the customer video in the theme editor</div>
+              {%- endif -%}
+            </div>
+            <blockquote class="lp-vid__quote">
+              {%- if s.show_stars -%}<div class="lp-stars" aria-label="5 stars">★★★★★</div>{%- endif -%}
+              {%- if b.quote != blank -%}"{{ b.quote }}"{%- endif -%}
+              {%- if b.name != blank -%}<cite>{{ b.name }}</cite>{%- endif -%}
+            </blockquote>
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+
+    {%- assign has_review = false -%}
+    {%- for block in section.blocks -%}{%- if block.type == 'review' -%}{%- assign has_review = true -%}{%- endif -%}{%- endfor -%}
+    {%- if has_review -%}
+      {%- if s.reviews_heading != blank -%}<h3 class="lp-reviews-h">{{ s.reviews_heading }}</h3>{%- endif -%}
+      <div class="lp-reviews">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'review' -%}
+            <div class="lp-review" {{ block.shopify_attributes }}>
+              <div class="lp-review__top">
+                <span class="lp-review__av">{%- if block.settings.photo != blank -%}{{ block.settings.photo | image_url: width: 100 | image_tag: loading: 'lazy', alt: '' }}{%- else -%}{{ block.settings.name | slice: 0 }}{%- endif -%}</span>
+                <div><div class="lp-review__name">{{ block.settings.name }}</div><div class="lp-stars" aria-label="{{ block.settings.stars }} stars">{%- for i in (1..block.settings.stars) -%}★{%- endfor -%}</div></div>
+              </div>
+              <p>"{{ block.settings.text }}"</p>
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "LP testimonials",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading start", "default": "Real Men." },
+    { "type": "text", "id": "highlight", "label": "Heading part in colour", "default": "Real Results." },
+    { "type": "text", "id": "heading_end", "label": "Heading end (after the colour)" },
+    { "type": "text", "id": "subheading", "label": "Line under the heading" },
+    { "type": "select", "id": "video_layout", "label": "Video card layout", "options": [ { "value": "side", "label": "Video beside the quote" }, { "value": "stack", "label": "Video above the quote" } ], "default": "side" },
+    { "type": "checkbox", "id": "show_stars", "label": "Stars on video quotes", "default": false },
+    { "type": "text", "id": "reviews_heading", "label": "Written reviews heading" },
+    { "type": "select", "id": "tone", "label": "Background", "options": [
+      { "value": "blush", "label": "Blush" }, { "value": "sage", "label": "Sage" }, { "value": "cream", "label": "Cream" }, { "value": "white", "label": "White" }
+    ], "default": "blush" }
+  ],
+  "blocks": [
+    { "type": "video", "name": "Video testimonial", "settings": [
+      { "type": "video", "id": "video", "label": "Video (upload to Shopify)" },
+      { "type": "url", "id": "video_url", "label": "Or an .mp4 link" },
+      { "type": "image_picker", "id": "poster", "label": "Cover image for the .mp4 link" },
+      { "type": "textarea", "id": "quote", "label": "Quote (their own words)" },
+      { "type": "text", "id": "name", "label": "Name, age", "default": "Name, age" }
+    ] },
+    { "type": "review", "name": "Written review", "settings": [
+      { "type": "image_picker", "id": "photo", "label": "Photo (optional)" },
+      { "type": "text", "id": "name", "label": "Name", "default": "Name" },
+      { "type": "range", "id": "stars", "label": "Stars", "min": 1, "max": 5, "step": 1, "default": 5 },
+      { "type": "textarea", "id": "text", "label": "Review (their own words)" }
+    ] }
+  ],
+  "presets": [{ "name": "LP testimonials" }]
+}
+{% endschema %}

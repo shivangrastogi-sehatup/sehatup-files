@@ -1,0 +1,230 @@
+<filter-selection class="filter-section" {{ block.shopify_attributes }}>
+  <div class="filter-section__container">
+
+    {% if block.settings.show_filter_bar %}
+    <div class="filter-bar">
+
+      {% if block.settings.filter_label != blank %}
+      <span class="filter-label">{{ block.settings.filter_label }}</span>
+      {% endif %}
+
+      {% for i in (1..5) %}
+
+      {% assign dropdown_enabled_key = 'dropdown_' | append: i | append: '_enabled' %}
+      {% assign dropdown_label_key = 'dropdown_' | append: i | append: '_label' %}
+      {% assign dropdown_options_key = 'dropdown_' | append: i | append: '_options' %}
+
+      {% assign dropdown_enabled = block.settings[dropdown_enabled_key] %}
+      {% assign dropdown_label = block.settings[dropdown_label_key] %}
+      {% assign dropdown_options = block.settings[dropdown_options_key] %}
+
+      {% if dropdown_enabled and dropdown_label != blank %}
+
+      <div class="filter-dropdown">
+
+        <select
+          class="filter-select"
+          data-filter-dropdown
+          aria-label="{{ dropdown_label }}"
+        >
+
+          <option value="all">{{ dropdown_label }}</option>
+
+          {% assign options = dropdown_options | split: ',' %}
+
+          {% for option in options %}
+          {% assign trimmed_option = option | strip %}
+
+          {% if trimmed_option != blank %}
+          <option value="{{ trimmed_option | handleize }}">
+            {{ trimmed_option }}
+          </option>
+          {% endif %}
+
+          {% endfor %}
+
+        </select>
+
+        <svg class="filter-dropdown-icon" width="12" height="8" viewBox="0 0 12 8" fill="none">
+          <path d="M1 1L6 6L11 1"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+        </svg>
+
+      </div>
+
+      {% endif %}
+      {% endfor %}
+
+    </div>
+    {% endif %}
+
+    {% if block.settings.heading != blank %}
+    <h2 class="filter-heading">{{ block.settings.heading }}</h2>
+    {% endif %}
+
+    {% if block.settings.subheading != blank %}
+    <p class="filter-subheading">{{ block.settings.subheading }}</p>
+    {% endif %}
+
+    <div class="filter-pills">
+
+      {% for i in (1..12) %}
+
+      {% assign pill_enabled_key = 'pill_' | append: i | append: '_enabled' %}
+      {% assign pill_text_key = 'pill_' | append: i | append: '_text' %}
+      {% assign pill_url_key = 'pill_' | append: i | append: '_url' %}
+      {% assign pill_tags_key = 'pill_' | append: i | append: '_filter_tags' %}
+
+      {% assign pill_enabled = block.settings[pill_enabled_key] %}
+      {% assign pill_text = block.settings[pill_text_key] %}
+      {% assign pill_url = block.settings[pill_url_key] %}
+      {% assign pill_tags = block.settings[pill_tags_key] %}
+
+      {% if pill_enabled and pill_text != blank %}
+
+      {% assign pill_tags_array = pill_tags | split: ',' %}
+      {% assign pill_tags_string = '' %}
+
+      {% for tag in pill_tags_array %}
+      {% assign trimmed_tag = tag | strip | handleize %}
+      {% if trimmed_tag != blank %}
+      {% assign pill_tags_string = pill_tags_string | append: trimmed_tag | append: ' ' %}
+      {% endif %}
+      {% endfor %}
+
+      <a
+        href="{% if pill_url != blank %}{{ pill_url }}{% else %}#{% endif %}"
+        class="filter-pill"
+        data-pill
+        data-filter-tags="{{ pill_tags_string | strip }}"
+        data-selection-mode="{{ block.settings.pill_selection_mode }}"
+      >
+        {{ pill_text }}
+      </a>
+
+      {% endif %}
+      {% endfor %}
+
+    </div>
+
+    {% if block.settings.button_text != blank %}
+
+    <div class="filter-cta">
+
+      <a
+        href="{% if block.settings.button_url != blank %}{{ block.settings.button_url }}{% else %}#{% endif %}"
+        class="filter-button"
+      >
+        {{ block.settings.button_text }}
+      </a>
+
+    </div>
+
+    {% endif %}
+
+  </div>
+</filter-selection>
+
+
+<script>
+
+class FilterSelection extends HTMLElement {
+
+  constructor() {
+    super();
+    this.dropdowns = this.querySelectorAll('[data-filter-dropdown]');
+    this.pills = this.querySelectorAll('[data-pill]');
+    this.selectionMode = this.pills.length > 0 ? this.pills[0].dataset.selectionMode : 'single';
+  }
+
+  connectedCallback() {
+    this.setupDropdownFilters();
+    this.setupPillSelection();
+  }
+
+  setupDropdownFilters() {
+
+    this.dropdowns.forEach(dropdown => {
+
+      dropdown.addEventListener('change', () => {
+        this.filterPills();
+      });
+
+    });
+
+  }
+
+  filterPills() {
+
+    const activeFilters = Array.from(this.dropdowns)
+      .map(dropdown => dropdown.value)
+      .filter(value => value !== 'all');
+
+    this.pills.forEach(pill => {
+
+      const pillTags = pill.dataset.filterTags
+        ? pill.dataset.filterTags.split(' ')
+        : [];
+
+      if (activeFilters.length === 0) {
+
+        pill.classList.remove('hidden');
+
+      } else {
+
+        const hasMatch = activeFilters.some(filter =>
+          pillTags.includes(filter)
+        );
+
+        if (hasMatch) {
+          pill.classList.remove('hidden');
+        } else {
+          pill.classList.add('hidden');
+        }
+
+      }
+
+    });
+
+  }
+
+  setupPillSelection() {
+
+    this.pills.forEach(pill => {
+
+      pill.addEventListener('click', (e) => {
+
+        if (pill.getAttribute('href') === '#') {
+
+          e.preventDefault();
+
+          if (this.selectionMode === 'single') {
+
+            this.pills.forEach(p =>
+              p.classList.remove('active')
+            );
+
+            pill.classList.add('active');
+
+          } else {
+
+            pill.classList.toggle('active');
+
+          }
+
+        }
+
+      });
+
+    });
+
+  }
+
+}
+
+customElements.define('filter-selection', FilterSelection);
+
+</script>

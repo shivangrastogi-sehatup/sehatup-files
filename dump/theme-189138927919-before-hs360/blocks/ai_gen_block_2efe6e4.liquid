@@ -1,0 +1,974 @@
+{% doc %}
+  @prompt
+    Create a custom Shopify section called “Doctor-Designed Care Kits”.
+    
+    Section purpose:
+    Showcase 4 featured care kits in a premium, trust-focused layout for a healthcare brand.
+    
+    Overall layout:
+    - Full-width section
+    - White background
+    - Centered content container (max-width ~1200px)
+    - Large centered heading at top:
+      “Doctor-Designed Care Kits”
+    
+    Grid structure:
+    - 2 rows × 2 columns on desktop
+    - Responsive:
+      - 1 column on mobile
+      - Maintain visual balance
+    
+    Each card (block-based):
+    - Rounded rectangle card (16–20px radius)
+    - Soft pastel background color (editable per block)
+    - No shadows (clean, medical feel)
+    - Horizontal layout inside card:
+      - Text on left
+      - Image(s) on right
+    
+    Card content (left side):
+    - Title (bold, large):
+      Examples:
+      - Stress & Sleep Balance Kit
+      - Women’s Hormone Balance Kit
+      - Men’s Performance Kit
+      - Weight Management Kit
+    - Short description (smaller, muted text)
+    - Primary CTA button:
+      - Label: “Buy Now”
+      - Rounded pill button
+      - Dark background (#111)
+      - White text
+    
+    Card visuals (right side):
+    - Allow 1–2 images per block:
+      - Product bottle image
+      - Human lifestyle image
+    - Images should:
+      - Stay inside card
+      - Maintain aspect ratio
+      - Align visually to the right
+    - No image cropping by default
+    
+    Styling & typography:
+    - Sans-serif font
+    - Headings: bold, dark text
+    - Descriptions: medium weight, slightly muted
+    - Button text: medium-bold
+    
+    Admin / schema controls:
+    - Section:
+      - Heading text
+      - Padding top / bottom
+    - Block settings (repeatable):
+      - Card background color
+      - Title text
+      - Description text
+      - Button label
+      - Button link
+      - Product image
+      - Lifestyle image
+      - Image alignment (right)
+    - Ability to reorder cards
+    
+    Technical requirements:
+    - Use Shopify section + blocks
+    - Clean Liquid, HTML, and CSS
+    - No external libraries
+    - Mobile-first responsive CSS
+    - Semantic markup
+    - Professional naming (no “ai”, no experimental tags)
+    
+    Goal:
+    The section should look premium, trustworthy, and doctor-approved — suitable for a wellness 
+{% enddoc %}
+{% liquid
+  assign section_id = section.id | replace: '_', '' | downcase
+%}
+
+{% style %}
+  .care-kits-section-{{ section_id }} {
+    width: 100%;
+    background-color: {{ section.settings.background_color }};
+    padding-top: {{ section.settings.padding_top }}px;
+    padding-bottom: {{ section.settings.padding_bottom }}px;
+  }
+
+  .care-kits-container-{{ section_id }} {
+    max-width: {{ section.settings.container_width }}px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .care-kits-heading-{{ section_id }} {
+    text-align: center;
+    font-size: {{ section.settings.heading_size }}px;
+    font-weight: 700;
+    color: {{ section.settings.heading_color }};
+    margin: 0 0 {{ section.settings.heading_spacing }}px;
+    font-family: {{ section.settings.heading_font.family }}, {{ section.settings.heading_font.fallback_families }};
+    font-weight: {{ section.settings.heading_font.weight }};
+  }
+
+  .care-kits-grid-{{ section_id }} {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: {{ section.settings.grid_gap }}px;
+  }
+
+  .care-kit-card-{{ section_id }} {
+    background-color: var(--card-bg-color);
+    border-radius: {{ section.settings.card_radius }}px;
+    padding: {{ section.settings.card_padding }}px;
+    display: flex;
+    align-items: center;
+    gap: {{ section.settings.card_gap }}px;
+    overflow: hidden;
+  }
+
+  .care-kit-content-{{ section_id }} {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .care-kit-title-{{ section_id }} {
+    font-size: {{ section.settings.title_size }}px;
+    font-weight: 700;
+    color: {{ section.settings.title_color }};
+    margin: 0 0 {{ section.settings.title_spacing }}px;
+    line-height: 1.3;
+  }
+
+  .care-kit-description-{{ section_id }} {
+    font-size: {{ section.settings.description_size }}px;
+    font-weight: 400;
+    color: {{ section.settings.description_color }};
+    margin: 0 0 {{ section.settings.description_spacing }}px;
+    line-height: 1.5;
+  }
+
+  .care-kit-button-{{ section_id }} {
+    display: inline-block;
+    padding: {{ section.settings.button_padding_vertical }}px {{ section.settings.button_padding_horizontal }}px;
+    background-color: {{ section.settings.button_bg_color }};
+    color: {{ section.settings.button_text_color }};
+    text-decoration: none;
+    border-radius: {{ section.settings.button_radius }}px;
+    font-size: {{ section.settings.button_size }}px;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .care-kit-button-{{ section_id }}:hover {
+    background-color: {{ section.settings.button_hover_bg_color }};
+    transform: translateY(-2px);
+  }
+
+  .care-kit-images-{{ section_id }} {
+    display: flex;
+    gap: {{ section.settings.image_gap }}px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .care-kit-image-wrapper-{{ section_id }} {
+    width: {{ section.settings.image_width }}px;
+    height: auto;
+  }
+
+  .care-kit-image-{{ section_id }} {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: {{ section.settings.image_radius }}px;
+  }
+
+  .care-kit-image-placeholder-{{ section_id }} {
+    width: 100%;
+    aspect-ratio: 1;
+    background-color: #f0f0f0;
+    border-radius: {{ section.settings.image_radius }}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .care-kit-image-placeholder-{{ section_id }} svg {
+    width: 60%;
+    height: 60%;
+    opacity: 0.3;
+  }
+
+  @media screen and (max-width: 989px) {
+    .care-kits-grid-{{ section_id }} {
+      grid-template-columns: 1fr;
+    }
+
+    .care-kit-card-{{ section_id }} {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .care-kit-images-{{ section_id }} {
+      justify-content: center;
+    }
+
+    .care-kits-heading-{{ section_id }} {
+      font-size: calc({{ section.settings.heading_size }}px * 0.8);
+    }
+
+    .care-kit-title-{{ section_id }} {
+      font-size: calc({{ section.settings.title_size }}px * 0.9);
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .care-kit-image-wrapper-{{ section_id }} {
+      width: {{ section.settings.image_width | times: 0.7 }}px;
+    }
+
+    .care-kits-heading-{{ section_id }} {
+      font-size: calc({{ section.settings.heading_size }}px * 0.7);
+    }
+  }
+{% endstyle %}
+
+<div class="care-kits-section-{{ section_id }}" {{ block.shopify_attributes }}>
+  <div class="care-kits-container-{{ section_id }}">
+    {% if section.settings.heading != blank %}
+      <h2 class="care-kits-heading-{{ section_id }}">{{ section.settings.heading }}</h2>
+    {% endif %}
+
+    <div class="care-kits-grid-{{ section_id }}">
+      {% if section.settings.kit_1_enabled %}
+        <div
+          class="care-kit-card-{{ section_id }}"
+          style="--card-bg-color: {{ section.settings.kit_1_bg_color }};"
+        >
+          <div class="care-kit-content-{{ section_id }}">
+            {% if section.settings.kit_1_title != blank %}
+              <h3 class="care-kit-title-{{ section_id }}">{{ section.settings.kit_1_title }}</h3>
+            {% endif %}
+
+            {% if section.settings.kit_1_description != blank %}
+              <p class="care-kit-description-{{ section_id }}">{{ section.settings.kit_1_description }}</p>
+            {% endif %}
+
+            {% if section.settings.kit_1_button_link != blank %}
+              <a
+                href="{{ section.settings.kit_1_button_link }}"
+                class="care-kit-button-{{ section_id }}"
+              >
+                {{ section.settings.kit_1_button_label }}
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="care-kit-images-{{ section_id }}">
+            {% if section.settings.kit_1_product_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_1_product_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_1_product_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_1_product_image.width }}"
+                  height="{{ section.settings.kit_1_product_image.height }}"
+                >
+              </div>
+            {% else %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <div class="care-kit-image-placeholder-{{ section_id }}">
+                  {{ 'product-1' | placeholder_svg_tag }}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if section.settings.kit_1_lifestyle_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_1_lifestyle_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_1_lifestyle_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_1_lifestyle_image.width }}"
+                  height="{{ section.settings.kit_1_lifestyle_image.height }}"
+                >
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if section.settings.kit_2_enabled %}
+        <div
+          class="care-kit-card-{{ section_id }}"
+          style="--card-bg-color: {{ section.settings.kit_2_bg_color }};"
+        >
+          <div class="care-kit-content-{{ section_id }}">
+            {% if section.settings.kit_2_title != blank %}
+              <h3 class="care-kit-title-{{ section_id }}">{{ section.settings.kit_2_title }}</h3>
+            {% endif %}
+
+            {% if section.settings.kit_2_description != blank %}
+              <p class="care-kit-description-{{ section_id }}">{{ section.settings.kit_2_description }}</p>
+            {% endif %}
+
+            {% if section.settings.kit_2_button_link != blank %}
+              <a
+                href="{{ section.settings.kit_2_button_link }}"
+                class="care-kit-button-{{ section_id }}"
+              >
+                {{ section.settings.kit_2_button_label }}
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="care-kit-images-{{ section_id }}">
+            {% if section.settings.kit_2_product_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_2_product_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_2_product_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_2_product_image.width }}"
+                  height="{{ section.settings.kit_2_product_image.height }}"
+                >
+              </div>
+            {% else %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <div class="care-kit-image-placeholder-{{ section_id }}">
+                  {{ 'product-1' | placeholder_svg_tag }}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if section.settings.kit_2_lifestyle_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_2_lifestyle_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_2_lifestyle_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_2_lifestyle_image.width }}"
+                  height="{{ section.settings.kit_2_lifestyle_image.height }}"
+                >
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if section.settings.kit_3_enabled %}
+        <div
+          class="care-kit-card-{{ section_id }}"
+          style="--card-bg-color: {{ section.settings.kit_3_bg_color }};"
+        >
+          <div class="care-kit-content-{{ section_id }}">
+            {% if section.settings.kit_3_title != blank %}
+              <h3 class="care-kit-title-{{ section_id }}">{{ section.settings.kit_3_title }}</h3>
+            {% endif %}
+
+            {% if section.settings.kit_3_description != blank %}
+              <p class="care-kit-description-{{ section_id }}">{{ section.settings.kit_3_description }}</p>
+            {% endif %}
+
+            {% if section.settings.kit_3_button_link != blank %}
+              <a
+                href="{{ section.settings.kit_3_button_link }}"
+                class="care-kit-button-{{ section_id }}"
+              >
+                {{ section.settings.kit_3_button_label }}
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="care-kit-images-{{ section_id }}">
+            {% if section.settings.kit_3_product_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_3_product_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_3_product_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_3_product_image.width }}"
+                  height="{{ section.settings.kit_3_product_image.height }}"
+                >
+              </div>
+            {% else %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <div class="care-kit-image-placeholder-{{ section_id }}">
+                  {{ 'product-1' | placeholder_svg_tag }}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if section.settings.kit_3_lifestyle_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_3_lifestyle_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_3_lifestyle_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_3_lifestyle_image.width }}"
+                  height="{{ section.settings.kit_3_lifestyle_image.height }}"
+                >
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if section.settings.kit_4_enabled %}
+        <div
+          class="care-kit-card-{{ section_id }}"
+          style="--card-bg-color: {{ section.settings.kit_4_bg_color }};"
+        >
+          <div class="care-kit-content-{{ section_id }}">
+            {% if section.settings.kit_4_title != blank %}
+              <h3 class="care-kit-title-{{ section_id }}">{{ section.settings.kit_4_title }}</h3>
+            {% endif %}
+
+            {% if section.settings.kit_4_description != blank %}
+              <p class="care-kit-description-{{ section_id }}">{{ section.settings.kit_4_description }}</p>
+            {% endif %}
+
+            {% if section.settings.kit_4_button_link != blank %}
+              <a
+                href="{{ section.settings.kit_4_button_link }}"
+                class="care-kit-button-{{ section_id }}"
+              >
+                {{ section.settings.kit_4_button_label }}
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="care-kit-images-{{ section_id }}">
+            {% if section.settings.kit_4_product_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_4_product_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_4_product_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_4_product_image.width }}"
+                  height="{{ section.settings.kit_4_product_image.height }}"
+                >
+              </div>
+            {% else %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <div class="care-kit-image-placeholder-{{ section_id }}">
+                  {{ 'product-1' | placeholder_svg_tag }}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if section.settings.kit_4_lifestyle_image != blank %}
+              <div class="care-kit-image-wrapper-{{ section_id }}">
+                <img
+                  src="{{ section.settings.kit_4_lifestyle_image | image_url: width: 400 }}"
+                  alt="{{ section.settings.kit_4_lifestyle_image.alt | escape }}"
+                  class="care-kit-image-{{ section_id }}"
+                  loading="lazy"
+                  width="{{ section.settings.kit_4_lifestyle_image.width }}"
+                  height="{{ section.settings.kit_4_lifestyle_image.height }}"
+                >
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Doctor-designed care kits",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Doctor-Designed Care Kits"
+    },
+    {
+      "type": "font_picker",
+      "id": "heading_font",
+      "label": "Heading font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 24,
+      "max": 72,
+      "step": 2,
+      "unit": "px",
+      "label": "Heading size",
+      "default": 48
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "heading_spacing",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "label": "Heading spacing",
+      "default": 48
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "label": "Container width",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 60
+    },
+    {
+      "type": "header",
+      "content": "Grid"
+    },
+    {
+      "type": "range",
+      "id": "grid_gap",
+      "min": 12,
+      "max": 48,
+      "step": 4,
+      "unit": "px",
+      "label": "Gap between cards",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "range",
+      "id": "card_radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Card border radius",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "label": "Card padding",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "min": 16,
+      "max": 48,
+      "step": 4,
+      "unit": "px",
+      "label": "Gap inside card",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "range",
+      "id": "title_size",
+      "min": 18,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Title size",
+      "default": 24
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Title color",
+      "default": "#262626"
+    },
+    {
+      "type": "range",
+      "id": "title_spacing",
+      "min": 8,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "label": "Title spacing",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "description_size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Description size",
+      "default": 15
+    },
+    {
+      "type": "color",
+      "id": "description_color",
+      "label": "Description color",
+      "default": "#666666"
+    },
+    {
+      "type": "range",
+      "id": "description_spacing",
+      "min": 12,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Description spacing",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Button"
+    },
+    {
+      "type": "range",
+      "id": "button_size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Button text size",
+      "default": 15
+    },
+    {
+      "type": "color",
+      "id": "button_bg_color",
+      "label": "Button background",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "button_hover_bg_color",
+      "label": "Button hover background",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "button_radius",
+      "min": 0,
+      "max": 50,
+      "step": 2,
+      "unit": "px",
+      "label": "Button border radius",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "button_padding_vertical",
+      "min": 8,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "label": "Button vertical padding",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "button_padding_horizontal",
+      "min": 16,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "label": "Button horizontal padding",
+      "default": 28
+    },
+    {
+      "type": "header",
+      "content": "Images"
+    },
+    {
+      "type": "range",
+      "id": "image_width",
+      "min": 80,
+      "max": 240,
+      "step": 10,
+      "unit": "px",
+      "label": "Image width",
+      "default": 140
+    },
+    {
+      "type": "range",
+      "id": "image_gap",
+      "min": 8,
+      "max": 32,
+      "step": 4,
+      "unit": "px",
+      "label": "Gap between images",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "image_radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "label": "Image border radius",
+      "default": 8
+    },
+    {
+      "type": "header",
+      "content": "Kit 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "kit_1_enabled",
+      "label": "Enable kit 1",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "kit_1_bg_color",
+      "label": "Background color",
+      "default": "#f8f5f2"
+    },
+    {
+      "type": "text",
+      "id": "kit_1_title",
+      "label": "Title",
+      "default": "Stress & Sleep Balance Kit"
+    },
+    {
+      "type": "textarea",
+      "id": "kit_1_description",
+      "label": "Description",
+      "default": "Clinically formulated to support healthy sleep patterns and reduce stress naturally."
+    },
+    {
+      "type": "text",
+      "id": "kit_1_button_label",
+      "label": "Button label",
+      "default": "Buy Now"
+    },
+    {
+      "type": "url",
+      "id": "kit_1_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_1_product_image",
+      "label": "Product image"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_1_lifestyle_image",
+      "label": "Lifestyle image"
+    },
+    {
+      "type": "header",
+      "content": "Kit 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "kit_2_enabled",
+      "label": "Enable kit 2",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "kit_2_bg_color",
+      "label": "Background color",
+      "default": "#f2f5f8"
+    },
+    {
+      "type": "text",
+      "id": "kit_2_title",
+      "label": "Title",
+      "default": "Women's Hormone Balance Kit"
+    },
+    {
+      "type": "textarea",
+      "id": "kit_2_description",
+      "label": "Description",
+      "default": "Doctor-designed blend to support hormonal health and overall wellness."
+    },
+    {
+      "type": "text",
+      "id": "kit_2_button_label",
+      "label": "Button label",
+      "default": "Buy Now"
+    },
+    {
+      "type": "url",
+      "id": "kit_2_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_2_product_image",
+      "label": "Product image"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_2_lifestyle_image",
+      "label": "Lifestyle image"
+    },
+    {
+      "type": "header",
+      "content": "Kit 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "kit_3_enabled",
+      "label": "Enable kit 3",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "kit_3_bg_color",
+      "label": "Background color",
+      "default": "#f5f8f2"
+    },
+    {
+      "type": "text",
+      "id": "kit_3_title",
+      "label": "Title",
+      "default": "Men's Performance Kit"
+    },
+    {
+      "type": "textarea",
+      "id": "kit_3_description",
+      "label": "Description",
+      "default": "Premium formulation to enhance energy, vitality, and daily performance."
+    },
+    {
+      "type": "text",
+      "id": "kit_3_button_label",
+      "label": "Button label",
+      "default": "Buy Now"
+    },
+    {
+      "type": "url",
+      "id": "kit_3_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_3_product_image",
+      "label": "Product image"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_3_lifestyle_image",
+      "label": "Lifestyle image"
+    },
+    {
+      "type": "header",
+      "content": "Kit 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "kit_4_enabled",
+      "label": "Enable kit 4",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "kit_4_bg_color",
+      "label": "Background color",
+      "default": "#f8f2f5"
+    },
+    {
+      "type": "text",
+      "id": "kit_4_title",
+      "label": "Title",
+      "default": "Weight Management Kit"
+    },
+    {
+      "type": "textarea",
+      "id": "kit_4_description",
+      "label": "Description",
+      "default": "Science-backed supplements to support healthy metabolism and weight goals."
+    },
+    {
+      "type": "text",
+      "id": "kit_4_button_label",
+      "label": "Button label",
+      "default": "Buy Now"
+    },
+    {
+      "type": "url",
+      "id": "kit_4_button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_4_product_image",
+      "label": "Product image"
+    },
+    {
+      "type": "image_picker",
+      "id": "kit_4_lifestyle_image",
+      "label": "Lifestyle image"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Doctor-designed care kits"
+    }
+  ]
+}
+{% endschema %}

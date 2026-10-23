@@ -315,6 +315,50 @@ const normalizeState = (raw) => {
   return partial || clean;
 };
 
+// Pure field checks for one address (no network). Returns a list of human-readable problems.
+const checkAddressFields = (label, a) => {
+  const errs = [];
+  const pin = String(a.pin || '').trim();
+  if (!String(a.name || '').trim()) errs.push(`${label}: name is empty`);
+  if (String(a.address || '').trim().length < 5) errs.push(`${label}: address is missing or too short`);
+  if (!String(a.city || '').trim()) errs.push(`${label}: city is empty`);
+  if (!INDIAN_STATES.includes(a.state)) errs.push(`${label}: pick a state from the list`);
+  if (!/^[1-9]\d{5}$/.test(pin)) errs.push(`${label}: PIN code "${pin}" must be exactly 6 digits`);
+  return errs;
+};
+// Indian mobile: 10 digits starting 6-9, optionally prefixed by 91 or 0.
+const isIndianMobile = (raw) => /^(91|0)?[6-9]\d{9}$/.test(String(raw || '').replace(/\D/g, ''));
+
+// Every check the order form needs before it writes to Shopify. The PIN is looked up so a
+// real-looking but wrong PIN (one that belongs to another state) is caught too.
+async function validateOrderAddresses({ phone, email, shipping, billing }) {
+  const errs = [];
+  if (!isIndianMobile(phone)) errs.push(`Phone "${phone}" is not a valid 10-digit Indian mobile number`);
+  if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errs.push(`Email "${email}" is not valid`);
+  const addrs = [['Shipping', shipping], billing && ['Billing', billing]].filter(Boolean);
+  for (const [label, a] of addrs) {
+    const fieldErrs = checkAddressFields(label, a);
+    errs.push(...fieldErrs);
+    if (label === 'Billing' && a.phone && !isIndianMobile(a.phone)) errs.push(`Billing: phone "${a.phone}" is not a valid mobile number`);
+    if (fieldErrs.some(e => e.includes('PIN'))) continue;
+    try {
+      const res = await fetch(`/api/pincode?pin=${String(a.pin).trim()}`);
+      // 404 = the PIN exists in no directory. Any other failure is the lookup being down,
+      // which must not block an order on its own.
+      if (res.status === 404) { errs.push(`${label}: PIN code ${a.pin} does not exist`); continue; }
+      if (!res.ok) continue;
+      const data = await res.json();
+      const pinState = normalizeState(data?.[0]?.PostOffice?.[0]?.State || data?.places?.[0]?.state || '');
+      if (pinState && INDIAN_STATES.includes(a.state) && pinState !== a.state) {
+        errs.push(`${label}: PIN code ${a.pin} is in ${pinState}, but the state is ${a.state}`);
+      }
+    } catch (e) {
+      console.warn('[validate] pincode lookup failed, skipping state match:', e);
+    }
+  }
+  return errs;
+}
+
 const NAMES = [
   "Aamina Jan", "Madhu Sharma", "Bhagyashree Pawara", "Mitali Fale", "Saloni Agarwal",
   "Radhika Nonia", "Mst Zinat Parveen", "Purva Chambhare", "Kirti Agrawal", "Nisha Prajapati",
@@ -6150,6 +6194,25 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     if (!items || items.length === 0) return alert('Please add at least one product to the order.');
     if (pay !== "Prepaid" && pay !== "COD") return alert('Please select a payment type (Prepaid or COD) before creating the order.');
 
+    // Every field Shopify / the courier will see, checked before anything is written. A saved
+    // address skips the pincode lookup, which is how #1995 shipped to "83210" (5 digits, which
+    // Shopify flagged "Postal code doesn't match Jharkhand").
+    const addrErrors = await validateOrderAddresses({
+      phone: rawPhone, email: custEmail,
+      shipping: {
+        name: custFirstName || preset?.name, address: shippingAddress || billingAddress,
+        city: city || billingCity, state: stateName || billingStateName, pin: pincode || billingPincode,
+      },
+      billing: differentBillingAddress ? {
+        name: billingFirstName || custFirstName, address: billingAddress,
+        city: billingCity, state: billingStateName, pin: billingPincode, phone: billingPhone,
+      } : null,
+    });
+    if (addrErrors.length) {
+      if (dryRun) { step('Form validation', false, addrErrors.join(' | ')); setTestReport({ steps, at: new Date() }); return; }
+      return alert('Please fix before creating the order:\n\n- ' + addrErrors.join('\n- '));
+    }
+
     if (dryRun) {
       step('Form validation', true, `${items.length} line(s), payment ${pay}, phone ${normalizedPhone}`);
       setTestReport(null);
@@ -6590,24 +6653,16 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
           if (d.email) orderPayload.order.email = d.email;
           if (d.shipping_address) orderPayload.order.shipping_address = d.shipping_address;
           if (d.billing_address || d.shipping_address) orderPayload.order.billing_address = d.billing_address || d.shipping_address;
-          // Discount → one entry per discount, so the order reads the way Shopify's own draft
-          // editor writes it. The total still has to come out the same: the payment transaction
-          // below is pinned to the draft's total, and a mismatch is the "Rs.200 unauthorized"
-          // bug. So the split is only used when the parts add up exactly to `discount`; if the
-          // subtotal cap trimmed the sum, one combined line is sent instead.
+          // Discount → ONE combined entry. REST orders.json keeps only the first item of
+          // `discount_codes` and silently drops the rest, so sending "SEHAT10" and
+          // "partial pay 100" as two entries posted order #2007 without the partial-pay
+          // amount. The label names every part with its amount: "SEHAT10 -Rs.130 + partial pay -Rs.100".
           if (discount > 0) {
-            const partsSum = activeDiscounts.reduce((s, x) => s + x.amount, 0);
-            orderPayload.order.discount_codes = (activeDiscounts.length > 0 && partsSum === discount)
-              ? activeDiscounts.map(x => ({
-                  code: String(x.label || 'Discount').slice(0, 255),
-                  amount: String(x.amount),
-                  type: 'fixed_amount',
-                }))
-              : [{
-                  code: (buildDiscountReason() || 'Discount').slice(0, 255),
-                  amount: String(discount),
-                  type: 'fixed_amount',
-                }];
+            orderPayload.order.discount_codes = [{
+              code: (buildOrderDiscountCode() || 'Discount').slice(0, 255),
+              amount: String(discount),
+              type: 'fixed_amount',
+            }];
           } else if (d.applied_discount && parseFloat(d.applied_discount.amount) > 0) {
             orderPayload.order.discount_codes = [{ code: d.applied_discount.title || 'Discount', amount: d.applied_discount.amount, type: 'fixed_amount' }];
           }
@@ -6690,6 +6745,22 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
           finalOrderName = orderResData.order.name
             || (orderResData.order.order_number != null ? `#${orderResData.order.order_number}` : null);
           console.log('--- ACTIVE ORDER CREATED ---', finalOrderId, finalOrderName, orderResData.order.payment_gateway_names);
+
+          // Check what Shopify actually saved. It drops discounts without an error, so a local
+          // sum can't be trusted. Before the line edit below, the order should be the draft
+          // total plus the line discounts still to come off. If not, cancel it now rather
+          // than leave a wrongly priced order for someone to find later.
+          const savedTotal = parseFloat(orderResData.order.total_price);
+          const expectedTotal = draftTotal + lineDiscountTotal;
+          if (Number.isFinite(savedTotal) && Math.abs(savedTotal - expectedTotal) > 1) {
+            await fetch(`/shopify-v2/orders/${finalOrderId}/cancel.json`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason: 'other', email: false }),
+            }).catch(() => { });
+            throw new Error(`Shopify saved ${finalOrderName || 'the order'} at Rs.${savedTotal.toFixed(2)} instead of Rs.${expectedTotal.toFixed(2)}, ` +
+              `so it was cancelled automatically. Nothing was saved to the CRM; check the discounts and create it again.`);
+          }
 
           // ── Per-line discounts, via the Order Editing API ─────────────────────────────
           // The only way to put a discount ON a line of a real order: begin an edit, discount
@@ -6941,9 +7012,12 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
   const PREPAID_SHIPPING = { id: 'prepaid', title: 'Prepaid Shipping', price: 0, code: 'PREPAID' };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    // Prepaid always forces Prepaid Shipping, even after a COD rate was picked. Otherwise
+    // COD -> "Shipping (Partial)" -> Prepaid kept the partial rate while the card showed
+    // "Prepaid Shipping Free", and the order went out tagged Prepaid (#2003-#2006).
+    if (pay === 'Prepaid') { setUseCustomShipping(false); setSelectedShipping(PREPAID_SHIPPING); setShippingTouched(false); return; }
     if (shippingTouched) return;
-    if (pay === 'Prepaid') { setUseCustomShipping(false); setSelectedShipping(PREPAID_SHIPPING); }
-    else if (pay === 'COD') { setUseCustomShipping(false); setSelectedShipping(COD_SHIPPING_OPTIONS[0]); }
+    if (pay === 'COD') { setUseCustomShipping(false); setSelectedShipping(COD_SHIPPING_OPTIONS[0]); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pay, shippingTouched]);
 
@@ -7297,6 +7371,11 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
 
   // Combined reason for the (single) draft-order discount: each line's label, joined.
   const buildDiscountReason = () => activeDiscounts.map(d => d.label).join(" + ");
+  // The order's ONE discount line when coupon + partial pay are combined, with each part's
+  // amount: "SEHAT10 -Rs.270 + partial pay -Rs.150". The prefilled "partial pay 150" drops
+  // its trailing amount so it isn't printed twice (coupon names like SEHAT10 are left alone).
+  const buildOrderDiscountCode = () => activeDiscounts.length < 2 ? buildDiscountReason()
+    : activeDiscounts.map(d => `${d.key === 'custom' ? d.label.replace(/\s+(rs\.?\s*)?\d+(\.\d+)?\s*(rs\.?)?$/i, '') : d.label} -Rs.${d.amount}`).join(' + ');
 
   // Prefill the custom discount's reason as "partial pay {amount}" until the user edits it.
   useEffect(() => {
@@ -7947,7 +8026,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
               <div className="span-4 field">
                 <span className="lbl">Pincode *</span>
                 <div style={{ position: 'relative' }}>
-                  <input className="input num" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: pincodeLoading ? 36 : undefined }} />
+                  <input className="input num" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: pincodeLoading ? 36 : undefined, borderColor: pincode && !/^[1-9]\d{5}$/.test(pincode) ? "var(--danger, #d92d20)" : undefined }} />
                   {pincodeLoading && (
                     <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex' }}>
                       <span className="pincode-spinner" />
@@ -8005,7 +8084,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                   <div className="span-4 field">
                     <span className="lbl">Pincode *</span>
                     <div style={{ position: 'relative' }}>
-                      <input className="input num" value={billingPincode} onChange={e => setBillingPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: billingPincodeLoading ? 36 : undefined }} />
+                      <input className="input num" value={billingPincode} onChange={e => setBillingPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="400001" style={{ paddingRight: billingPincodeLoading ? 36 : undefined, borderColor: billingPincode && !/^[1-9]\d{5}$/.test(billingPincode) ? "var(--danger, #d92d20)" : undefined }} />
                       {billingPincodeLoading && (
                         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex' }}>
                           <span className="pincode-spinner" />

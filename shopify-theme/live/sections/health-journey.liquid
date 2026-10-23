@@ -39,7 +39,7 @@
 
   /* ---- Static layout (no JS / reduced motion): a plain list ---------- */
   #hj-{{ section.id }} .hj__inner {
-    max-width: 1200px;
+    max-width: 1320px;
     margin: 0 auto;
     padding: 72px 24px;
     display: grid;
@@ -133,7 +133,8 @@
   }
   #hj-{{ section.id }} .hj__face small { font: 600 .62em/1 'Montserrat', sans-serif; opacity: .9; }
   #hj-{{ section.id }} .hj__call-btns { display: flex; justify-content: center; gap: 1.4em; }
-  #hj-{{ section.id }} .hj__call-btns span { width: 2.6em; height: 2.6em; border-radius: 50%; background: rgba(255,255,255,.22); }
+  #hj-{{ section.id }} .hj__call-btns span { width: 2.6em; height: 2.6em; border-radius: 50%; background: rgba(255,255,255,.22); display: grid; place-items: center; color: #fff; }
+  #hj-{{ section.id }} .hj__call-btns svg { width: 1.15em; height: 1.15em; }
   #hj-{{ section.id }} .hj__call-btns .hj__end { background: #e5484d; }
 
   /* 3. Tracking */
@@ -156,7 +157,7 @@
   #hj-{{ section.id }} .hj__scr--chat { padding: 0; background: #efe7de; }
   #hj-{{ section.id }} .hj__chat-head { display: flex; align-items: center; gap: .7em; padding: 3.1em 1em .9em; background: #075e54; color: #fff; font: 700 .95em/1 'Montserrat', sans-serif; }
   #hj-{{ section.id }} .hj__chat-av { width: 2em; height: 2em; flex: none; border-radius: 50%; background: #fff; overflow: hidden; display: grid; place-items: center; }
-  #hj-{{ section.id }} .hj__chat-av img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  #hj-{{ section.id }} .hj__chat-av img { width: 64%; height: 64%; object-fit: contain; display: block; }
   #hj-{{ section.id }} .hj__chat-body { flex: 1; padding: 1.1em .9em; display: flex; flex-direction: column; gap: .7em; }
   #hj-{{ section.id }} .hj__msg { margin: 0; max-width: 82%; padding: .7em .85em; border-radius: .9em; font: 500 .88em/1.35 'Montserrat', sans-serif; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
   #hj-{{ section.id }} .hj__msg--in { align-self: flex-start; background: #fff; border-top-left-radius: .2em; }
@@ -191,7 +192,8 @@
      (Tablets use the one-column phone layout: two columns do not fit there.) */
   @media (min-width: 1100px) {
     #hj-{{ section.id }}.is-live .hj__inner {
-      grid-template-columns: minmax(0, 460px) auto; justify-content: center;
+      /* Text on the left edge, phone on the right; wider laptops use up to 92% of the screen. */
+      max-width: max(1200px, 92vw); grid-template-columns: minmax(0, 460px) auto; justify-content: space-between;
       column-gap: calc(var(--ph) * .5); align-items: start; padding-top: 96px; padding-bottom: 24px;
     }
     #hj-{{ section.id }}.is-live .hj__steps { gap: 0; }
@@ -207,14 +209,15 @@
       top: calc(var(--hj-top, 0px) + (100vh - var(--hj-top, 0px) - var(--ph)) / 2);
       margin: calc(31vh - var(--ph) / 2 + 60px) calc(var(--ph) * .36) 0 0;
     }
-    #hj-{{ section.id }}.is-live .hj__chip { left: calc(-1 * var(--ph) * .32); top: 22%; }
+    /* The score card hangs off the phone's left edge (only a sliver over the screen), so it never covers the doctor's face, whatever the phone size. */
+    #hj-{{ section.id }}.is-live .hj__chip { left: auto; right: calc(100% - var(--ph) * .05); top: 22%; width: max-content; }
     #hj-{{ section.id }}.is-live .hj__box { right: calc(-1 * var(--ph) * .42); bottom: 2%; width: calc(var(--ph) * .42); }
   }
 
   /* Phones and tablets: nothing sticky. Each step: its text, then its own phone. */
-  @media (max-width: 1099px) {
+  @media (max-width: 1099.98px) {
     #hj-{{ section.id }} { --ph: min(430px, 62svh); }
-    #hj-{{ section.id }} .hj__inner { grid-template-columns: 1fr; gap: 0; padding: 56px 16px 32px; }
+    #hj-{{ section.id }} .hj__inner { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 56px 16px 32px; }
     #hj-{{ section.id }} .hj__heading { font-size: 30px; margin-bottom: 8px; }
     #hj-{{ section.id }} .hj__n { font-size: 34px; margin-bottom: 6px; }
     #hj-{{ section.id }}.is-live .hj__visual { display: none; }
@@ -223,48 +226,85 @@
     #hj-{{ section.id }}.is-live .hj__title { font-size: 26px; }
     #hj-{{ section.id }}.is-live .hj__text { font-size: 15px; }
     #hj-{{ section.id }}.is-live .hj__slot {
-      /* Phone to the left, the score card beside it rather than on the screen. */
+      /* Phone to the left, the score card right beside it rather than on the screen. */
       display: flex; justify-content: flex-start; position: relative; margin-top: 22px;
     }
-    #hj-{{ section.id }}.is-live .hj__slot .hj__chip { right: 0; top: 16%; padding: 9px 10px; border-radius: 12px; }
+    #hj-{{ section.id }}.is-live .hj__slot .hj__chip { left: min(calc(var(--ph) * .49 + 12px), calc(100% - 150px)); right: auto; max-width: 150px; top: 16%; padding: 9px 10px; border-radius: 12px; }
     #hj-{{ section.id }} .hj__slot .hj__chip-n { font-size: 24px; }
     #hj-{{ section.id }} .hj__slot .hj__chip-s { font-size: 10px; }
-    #hj-{{ section.id }}.is-live .hj__slot .hj__box { right: 0; bottom: 3%; width: calc(var(--ph) * .34); }
+    #hj-{{ section.id }}.is-live .hj__slot .hj__box { left: min(calc(var(--ph) * .4), calc(100% - var(--ph) * .34)); right: auto; bottom: 3%; width: calc(var(--ph) * .34); }
   }
 
-  /* Big screens: everything grows with the screen (no zoom: the sticky phone
-     and the step triggers measure real pixels). */
-  @media (min-width: 1920px) {
-    #hj-{{ section.id }} { --ph: min(68vh, 1500px); }
-    #hj-{{ section.id }}.is-live .hj__inner { max-width: min(78vw, 3000px); grid-template-columns: minmax(0, min(34vw, 1200px)) auto; }
-    #hj-{{ section.id }} .hj__heading { font-size: clamp(52px, 2.9vw, 110px); max-width: none; }
-    #hj-{{ section.id }} .hj__eyebrow { font-size: clamp(12px, .65vw, 22px); }
-    #hj-{{ section.id }} .hj__n { font-size: clamp(44px, 2.3vw, 84px); }
-    #hj-{{ section.id }} .hj__day { font-size: clamp(15px, .8vw, 28px); }
-    #hj-{{ section.id }}.is-live .hj__title { font-size: clamp(44px, 2.3vw, 88px); }
-    #hj-{{ section.id }}.is-live .hj__text { font-size: clamp(17px, .95vw, 32px); max-width: none; }
-    #hj-{{ section.id }}.is-live .hj__chip { padding: clamp(14px, .8vw, 30px) clamp(18px, 1vw, 36px); border-radius: clamp(16px, .9vw, 30px); }
-    #hj-{{ section.id }} .hj__chip-k { font-size: clamp(11px, .6vw, 20px); }
-    #hj-{{ section.id }} .hj__chip-n { font-size: clamp(34px, 1.8vw, 64px); }
-    #hj-{{ section.id }} .hj__chip-s { font-size: clamp(12px, .65vw, 22px); }
+  /* Big screens (QHD, 4K): same width (92%) and the same growth steps as the
+     quizzes section above. Sizes are the laptop sizes times --k (no zoom: the
+     sticky phone and the step triggers measure real pixels). */
+  @media (min-width: 1680px) { #hj-{{ section.id }} { --k: 1.12; } }
+  @media (min-width: 1920px) { #hj-{{ section.id }} { --k: 1.25; } }
+  @media (min-width: 2240px) { #hj-{{ section.id }} { --k: 1.45; } }
+  @media (min-width: 2560px) { #hj-{{ section.id }} { --k: 1.65; } }
+  @media (min-width: 3200px) { #hj-{{ section.id }} { --k: 2; } }
+  @media (min-width: 3840px) { #hj-{{ section.id }} { --k: 2.4; } }
+  @media (min-width: 1920px) { #hj-{{ section.id }} .hj__inner { max-width: calc(1312px * var(--k)) !important; } }
+  @media (min-width: 2560px) { #hj-{{ section.id }} .hj__inner { max-width: calc(1392px * var(--k)) !important; } }
+  @media (min-width: 1680px) {
+    #hj-{{ section.id }} { --ph: min(calc(600px * var(--k)), 72vh); }
+    /* the same content width as the other sections at each step */
+    #hj-{{ section.id }} .hj__inner { max-width: calc(1272px * var(--k)); padding-left: 0; padding-right: 0; }
+    #hj-{{ section.id }}.is-live .hj__inner { justify-content: space-between; grid-template-columns: minmax(0, calc(620px * var(--k))) auto; padding-top: calc(96px * var(--k)); padding-right: calc(var(--ph) * .07); /* room for the box that sticks out right of the phone */ }
+    #hj-{{ section.id }} .hj__eyebrow { font-size: calc(12px * var(--k)); margin-bottom: calc(18px * var(--k)); }
+    #hj-{{ section.id }} .hj__heading { font-size: calc(52px * var(--k)); margin-bottom: calc(36px * var(--k)); max-width: calc(620px * var(--k)); }
+    #hj-{{ section.id }} .hj__n { font-size: calc(44px * var(--k)); margin-bottom: calc(10px * var(--k)); }
+    #hj-{{ section.id }} .hj__day { font-size: calc(13px * var(--k)); margin-bottom: calc(6px * var(--k)); }
+    #hj-{{ section.id }}.is-live .hj__title { font-size: calc(44px * var(--k)); margin-bottom: calc(8px * var(--k)); }
+    #hj-{{ section.id }}.is-live .hj__text { font-size: calc(17px * var(--k)); max-width: calc(500px * var(--k)); }
+    #hj-{{ section.id }}.is-live .hj__chip { padding: calc(14px * var(--k)) calc(18px * var(--k)) calc(14px * var(--k)) calc(16px * var(--k)); border-radius: calc(16px * var(--k)); gap: calc(4px * var(--k)); }
+    #hj-{{ section.id }} .hj__chip-k { font-size: calc(11px * var(--k)); }
+    #hj-{{ section.id }} .hj__chip-n { font-size: calc(34px * var(--k)); }
+    #hj-{{ section.id }} .hj__chip-s { font-size: calc(12px * var(--k)); }
   }
 
   /* Phones and tablets: the section heading centred. */
-  @media (max-width: 1099px) {
+  @media (max-width: 1099.98px) {
     #hj-{{ section.id }} .hj__eyebrow, #hj-{{ section.id }} .hj__heading { text-align: center; margin-left: auto; margin-right: auto; }
   }
   /* Tablets: the phone layout in a comfortable centred column. */
-  @media (min-width: 750px) and (max-width: 1099px) {
-    #hj-{{ section.id }} .hj__inner { max-width: 600px; padding: 72px 24px 40px; }
+  @media (min-width: 640px) and (max-width: 1099.98px) {
+    #hj-{{ section.id }} .hj__inner { max-width: none; padding: 72px 24px 40px; }
     #hj-{{ section.id }} .hj__heading { font-size: 38px; margin-bottom: 12px; }
-    /* keep the score card right beside its phone */
-    #hj-{{ section.id }} .hj__slot { max-width: 400px; }
+    /* Each step: its text on the left, its phone and score card on the right. */
+    #hj-{{ section.id }}.is-live .hj__step {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1fr auto auto auto auto 1fr;
+      column-gap: 6%; padding: 32px 0;
+    }
+    #hj-{{ section.id }}.is-live .hj__n { grid-area: 2 / 1; }
+    #hj-{{ section.id }}.is-live .hj__day { grid-area: 3 / 1; }
+    #hj-{{ section.id }}.is-live .hj__title { grid-area: 4 / 1; font-size: 30px; }
+    #hj-{{ section.id }}.is-live .hj__text { grid-area: 5 / 1; font-size: 16px; }
+    #hj-{{ section.id }}.is-live .hj__slot { grid-area: 1 / 2 / 7 / 3; margin-top: 0; width: calc(var(--ph) * .49 + 162px); }
+  }
+  /* Large phones (640-749): same side by side, a slightly smaller phone. */
+  @media (min-width: 640px) and (max-width: 749.98px) {
+    #hj-{{ section.id }} { --ph: min(340px, 50svh); }
+    #hj-{{ section.id }} .hj__inner { padding: 56px 24px 32px; }
+    #hj-{{ section.id }} .hj__heading { font-size: 32px; }
+    #hj-{{ section.id }}.is-live .hj__step { column-gap: 24px; }
+    #hj-{{ section.id }}.is-live .hj__title { font-size: 24px; }
+    #hj-{{ section.id }}.is-live .hj__text { font-size: 15px; }
+  }
+  /* Phones: no room beside the text, so the phone and its card sit centred below it. */
+  @media (max-width: 639.98px) {
+    /* The phone mockup about 20% smaller than before, so each step fits a phone screen better. */
+    #hj-{{ section.id }} { --ph: min(340px, 50svh); }
+    #hj-{{ section.id }} .hj__steps { grid-template-columns: minmax(0, 1fr); }
+    #hj-{{ section.id }}.is-live .hj__slot { width: calc(var(--ph) * .49 + 162px); max-width: 100%; margin-left: auto; margin-right: auto; }
   }
 
   /* Narrow phones: a slightly smaller phone so the score card fits beside it. */
   @media (max-width: 374px) {
-    #hj-{{ section.id }} { --ph: min(390px, 58svh); }
+    #hj-{{ section.id }} { --ph: min(320px, 48svh); }
   }
+
+  @media (max-width: 749.98px) { #hj-{{ section.id }} .hj__heading, #hj-{{ section.id }} .hj__text { max-width: none; } }
 
   @media (prefers-reduced-motion: reduce) {
     #hj-{{ section.id }} * { transition: none !important; animation: none !important; }
@@ -316,7 +356,7 @@
             {%- comment -%} 2. Doctor call {%- endcomment -%}
             <div class="hj__scr hj__scr--call" data-scr="2">
               {%- if s.call_image != blank -%}
-                <img class="hj__call-img" src="{{ s.call_image | image_url: width: 600 }}" alt="" loading="lazy" width="600" height="{{ 600 | divided_by: s.call_image.aspect_ratio | round }}">
+                <img class="hj__call-img" style="top: {{ s.call_image_y | default: 0 }}%" src="{{ s.call_image | image_url: width: 600 }}" alt="" loading="lazy" width="600" height="{{ 600 | divided_by: s.call_image.aspect_ratio | round }}">
               {%- endif -%}
               <div class="hj__call-shade"></div>
               <div class="hj__call-top">
@@ -338,7 +378,7 @@
                     </span>
                   {%- endfor -%}
                 </div>
-                <div class="hj__call-btns"><span></span><span class="hj__end"></span><span></span></div>
+                <div class="hj__call-btns"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span><span class="hj__end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 14.5c5-4.7 13-4.7 18 0l-2.3 2.3-3.2-1.6v-2.4a11 11 0 0 0-7 0v2.4l-3.2 1.6z"/></svg></span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span></div>
               </div>
             </div>
 
@@ -562,7 +602,7 @@
       });
 
       // Phones: each step gets its own copy of the phone, played once in view.
-      mm.add('(max-width: 1099px)', function () {
+      mm.add('(max-width: 1099.98px)', function () {
         var made = [];
         steps.forEach(function (el, k) {
           var i = k + 1, slot = el.querySelector('.hj__slot');
@@ -620,6 +660,7 @@
     { "type": "text", "id": "title_2", "label": "Title", "default": "A doctor calls you" },
     { "type": "textarea", "id": "text_2", "label": "Text", "default": "Ayurveda, Homeopathy and Allopathy doctors review your score together, in Hindi or English." },
     { "type": "image_picker", "id": "call_image", "label": "Doctor on the call (portrait)" },
+    { "type": "range", "id": "call_image_y", "label": "Call photo: move down", "min": 0, "max": 30, "step": 1, "unit": "%", "default": 12, "info": "Moves the photo down so the name and timer at the top do not cover the face." },
     { "type": "text", "id": "call_name", "label": "Caller name", "default": "sehatUP Doctor" },
     { "type": "text", "id": "review_line", "label": "Review line", "default": "Your score is reviewed by 3 doctors" },
     { "type": "image_picker", "id": "doctor_1_image", "label": "Doctor 1 photo" },

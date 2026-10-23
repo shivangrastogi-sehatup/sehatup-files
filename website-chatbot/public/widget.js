@@ -1329,14 +1329,24 @@
 .legal { margin: 0; padding: 0 16px 12px; font-size: 10.5px; line-height: 1.45;
          color: var(--muted); background: var(--panel); text-align: center; }
 
+/* Big screens: the button, its greeting and the teaser grow in the same steps as the
+   storefront sections (zoom also scales their corner offsets, so they stay together).
+   The chat panel itself keeps its size; it is sized against the window height. */
+@media (min-width: 1680px) { .launcher, .tip, .teaser { zoom: 1.12; } }
+@media (min-width: 1920px) { .launcher, .tip, .teaser { zoom: 1.25; } }
+@media (min-width: 2240px) { .launcher, .tip, .teaser { zoom: 1.45; } }
+@media (min-width: 2560px) { .launcher, .tip, .teaser { zoom: 1.65; } }
+@media (min-width: 3200px) { .launcher, .tip, .teaser { zoom: 2; } }
+@media (min-width: 3840px) { .launcher, .tip, .teaser { zoom: 2.4; } }
+
 @media (max-width: 560px) {
   .wrap { --gap-bottom: ${CONFIG.bottomMobile}; --gap-right: 16px; }
   .panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw;
            height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
-  .launcher { width: 54px; height: 54px; }
-  .tip { height: 54px; padding-right: 54px; max-width: 54px; border-radius: 27px; }
+  .launcher { width: 50px; height: 50px; }
+  .tip { height: 50px; padding-right: 50px; max-width: 50px; border-radius: 25px; }
   .tip.show { max-width: calc(100vw - 32px); }
-  .teaser { right: 16px; bottom: calc(var(--gap-bottom) + 66px); }
+  .teaser { right: 16px; bottom: calc(var(--gap-bottom) + 62px); }
   .tip__in { padding-left: 18px; }
   .row { max-width: 90%; }
 }

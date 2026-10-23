@@ -1,0 +1,77 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "layout": "landing",
+  "sections": {
+    "thanks": {
+      "type": "lm-thanks",
+      "blocks": {
+        "s1": {
+          "type": "step",
+          "settings": {
+            "icon": "phone",
+            "text": "Our doctor will call you within 24 hours on the number you shared."
+          }
+        },
+        "s2": {
+          "type": "step",
+          "settings": {
+            "icon": "chat",
+            "text": "You will get a WhatsApp message from sehatUP with the details."
+          }
+        },
+        "s3": {
+          "type": "step",
+          "settings": {
+            "icon": "quiet",
+            "text": "Keep 10 to 15 minutes free in a quiet, private place for the call."
+          }
+        },
+        "s4": {
+          "type": "step",
+          "settings": {
+            "icon": "file",
+            "text": "Keep any previous reports or prescriptions handy, if you have them."
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ],
+      "settings": {
+        "heading": "Appointment Booked Successfully!",
+        "text": "Thank you for choosing sehatUP. Your free consultation request has been received.",
+        "home_label": "Back to Home",
+        "home_link": "/",
+        "again_label": "Book Another",
+        "again_link": "/",
+        "share_label": "Know someone who could use this?",
+        "facebook": "https://www.facebook.com/sehatup/",
+        "instagram": "https://www.instagram.com/sehatupofficial/",
+        "youtube": "",
+        "next_heading": "What's next?",
+        "change_heading": "Need to make changes?",
+        "change_text": "To reschedule or cancel, contact us:",
+        "phone": "+91 93555-39355",
+        "whatsapp": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20change%20my%20consultation%20booking",
+        "email": "support@sehatup.com",
+        "share_text": "I came across sehatUP: real doctors, free private consultation, in Hindi or English. Have a look:",
+        "share_url": "/",
+        "follow_label": "Follow sehatUP"
+      }
+    }
+  },
+  "order": [
+    "thanks"
+  ]
+}

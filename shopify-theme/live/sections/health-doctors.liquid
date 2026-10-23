@@ -19,13 +19,13 @@
     --hdr-stone: #f3ece6;
     background: {{ s.background | default: '#faf7f5' }}; font-family: 'Montserrat', sans-serif; color: var(--hdr-text);
   }
-  #hdr-{{ section.id }} .hdr__inner { max-width: 1160px; margin: 0 auto; padding: {{ s.padding_top | default: 88 }}px 24px {{ s.padding_bottom | default: 80 }}px; }
-  #hdr-{{ section.id }} .hdr__head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
-  #hdr-{{ section.id }} .hdr__eyebrow { margin: 0 0 14px; font: 700 12px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--hdr-accent); }
-  #hdr-{{ section.id }} .hdr__heading { color: var(--hdr-text); margin: 0 0 14px; font: 800 clamp(28px, 3.4vw, 46px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
-  #hdr-{{ section.id }} .hdr__sub { margin: 0 auto; max-width: 600px; font: 400 16px/1.6 'Montserrat', sans-serif; color: var(--hdr-muted); text-wrap: pretty; }
+  #hdr-{{ section.id }} .hdr__inner { max-width: 1320px; margin: 0 auto; padding: {{ s.padding_top | default: 88 }}px 24px {{ s.padding_bottom | default: 80 }}px; }
+  #hdr-{{ section.id }} .hdr__head { max-width: none; margin: 0 auto 48px; text-align: center; }
+  #hdr-{{ section.id }} .hdr__eyebrow { margin: 0 0 16px; font: 700 13px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--hdr-accent); }
+  #hdr-{{ section.id }} .hdr__heading { color: var(--hdr-text); margin: 0 0 14px; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hdr-{{ section.id }} .hdr__sub { margin: 0 auto; max-width: min(780px, 60vw); font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--hdr-muted); text-wrap: pretty; }
 
-  #hdr-{{ section.id }} .hdr__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  #hdr-{{ section.id }} .hdr__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
   #hdr-{{ section.id }} .hdr__card {
     display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; background: #fff;
     box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 12px 32px rgba(29, 29, 29, .06);
@@ -40,24 +40,26 @@
   }
   #hdr-{{ section.id }} .hdr__photo img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
   #hdr-{{ section.id }} .hdr__initial { align-self: center; font: 300 96px/1 'Montserrat', sans-serif; color: var(--hdr-muted); opacity: .35; }
-  #hdr-{{ section.id }} .hdr__body { padding: 22px 24px 26px; display: grid; gap: 6px; }
-  #hdr-{{ section.id }} .hdr__name { margin: 0; font: 700 21px/1.2 'Montserrat', sans-serif; color: var(--hdr-text); }
-  #hdr-{{ section.id }} .hdr__degree { margin: 0; font: 600 13px/1.4 'Montserrat', sans-serif; color: var(--hdr-muted); }
-  #hdr-{{ section.id }} .hdr__role { margin: 8px 0 0; padding-top: 12px; border-top: 1px solid #eee6e0; font: 400 15px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
+  #hdr-{{ section.id }} .hdr__body { padding: 24px 28px 30px; display: grid; gap: 8px; }
+  #hdr-{{ section.id }} .hdr__name { margin: 0; font: 700 clamp(19px, 1.6vw, 23px)/1.2 'Montserrat', sans-serif; color: var(--hdr-text); }
+  #hdr-{{ section.id }} .hdr__degree { margin: 0; font: 600 14.5px/1.45 'Montserrat', sans-serif; color: var(--hdr-muted); }
+  #hdr-{{ section.id }} .hdr__role { margin: 8px 0 0; padding-top: 14px; border-top: 1px solid #eee6e0; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--hdr-muted); }
   #hdr-{{ section.id }} .hdr__cta { margin-top: 36px; display: flex; justify-content: center; }
-  #hdr-{{ section.id }} .hdr__btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 30px; border-radius: 999px; background: var(--hdr-accent); color: #fff; font: 700 15.5px/1 'Montserrat', sans-serif; text-decoration: none; box-shadow: 0 12px 26px -10px rgba(216, 31, 72, .55); transition: transform .2s ease, background-color .2s ease; }
+  #hdr-{{ section.id }} .hdr__btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 30px; border-radius: 999px; background: var(--hdr-accent); color: #fff; font: 700 16px/1 'Montserrat', sans-serif; text-decoration: none; box-shadow: 0 12px 26px -10px rgba(216, 31, 72, .55); transition: transform .2s ease, background-color .2s ease; }
   @media (hover: hover) { #hdr-{{ section.id }} .hdr__btn:hover { transform: translateY(-2px); background: {{ s.accent_color | color_darken: 16 }}; } }
   #hdr-{{ section.id }} .hdr__btn:focus-visible { outline: 2px solid var(--hdr-text); outline-offset: 3px; }
   #hdr-{{ section.id }} .hdr__btn svg { width: 19px; height: 19px; fill: currentColor; }
   #hdr-{{ section.id }} .hdr__cta + .hdr__foot { margin-top: 14px; }
-  #hdr-{{ section.id }} .hdr__foot { margin: 36px 0 0; text-align: center; font: 500 14.5px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
+  #hdr-{{ section.id }} .hdr__foot { margin: 36px 0 0; text-align: center; font: 500 15px/1.5 'Montserrat', sans-serif; color: var(--hdr-muted); }
 
   /* Phones: swipe row, next card peeking in. */
-  @media (max-width: 749px) {
+  @media (max-width: 749.98px) {
     #hdr-{{ section.id }} .hdr__inner { padding: {{ s.padding_top | default: 88 | times: 0.64 | round }}px 0 {{ s.padding_bottom | default: 80 | times: 0.65 | round }}px; }
     #hdr-{{ section.id }} .hdr__head { padding: 0 16px; margin-bottom: 26px; }
-    #hdr-{{ section.id }} .hdr__heading { font-size: 28px; }
-    #hdr-{{ section.id }} .hdr__sub { font-size: 14.5px; }
+    #hdr-{{ section.id }} .hdr__heading { font-size: 30px; }
+    #hdr-{{ section.id }} .hdr__sub { font-size: 15px; max-width: none; }
+    #hdr-{{ section.id }} .hdr__degree { font-size: 13.5px; }
+    #hdr-{{ section.id }} .hdr__body { padding: 20px 20px 24px; }
     #hdr-{{ section.id }} .hdr__row {
       display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 18px;
       scroll-snap-type: x mandatory; scroll-padding: 0 16px; -webkit-overflow-scrolling: touch; scrollbar-width: none;
@@ -67,8 +69,30 @@
     #hdr-{{ section.id }} .hdr__name { font-size: 19px; }
     #hdr-{{ section.id }} .hdr__role { font-size: 14px; }
     #hdr-{{ section.id }} .hdr__cta { margin-top: 18px; padding: 0 16px; }
-    #hdr-{{ section.id }} .hdr__btn { width: 100%; justify-content: center; }
+    #hdr-{{ section.id }} .hdr__btn { width: 100%; justify-content: center; text-align: center; text-wrap: balance; line-height: 1.25; padding-top: 12px; padding-bottom: 12px; height: auto; min-height: 54px; }
     #hdr-{{ section.id }} .hdr__foot { padding: 0 16px; margin-top: 18px; font-size: 13.5px; }
+  }
+  @media (min-width: 750px) and (max-width: 1099.98px) {
+    #hdr-{{ section.id }} .hdr__inner { padding-left: 0; padding-right: 0; }
+    #hdr-{{ section.id }} .hdr__head { padding: 0 24px; margin-bottom: 36px; }
+    #hdr-{{ section.id }} .hdr__heading { font-size: 38px; }
+    #hdr-{{ section.id }} .hdr__sub { font-size: 16px; max-width: min(520px, 50vw); }
+    #hdr-{{ section.id }} .hdr__row {
+      display: flex; gap: 20px; overflow-x: auto; padding: 4px 24px 22px;
+      scroll-snap-type: x mandatory; scroll-padding: 0 24px; scrollbar-width: none;
+    }
+    #hdr-{{ section.id }} .hdr__row::-webkit-scrollbar { display: none; }
+    #hdr-{{ section.id }} .hdr__card { flex: 0 0 max(calc((88% - 20px) / 2.15), 290px); scroll-snap-align: start; }
+    #hdr-{{ section.id }} .hdr__name { font-size: 21px; }
+    #hdr-{{ section.id }} .hdr__cta { margin-top: 24px; }
+  }
+  /* Laptop and up (three cards in a row): a square photo made each card taller
+     than it is wide, so on a 1366 x 768 laptop or a wide, short monitor the
+     row ran past the bottom of the screen. A 5:4 frame showing head to waist
+     keeps the whole card in view. The portraits are 3:4, so they fill it. */
+  @media (min-width: 1100px) {
+    #hdr-{{ section.id }} .hdr__photo { aspect-ratio: 5 / 4; }
+    #hdr-{{ section.id }} .hdr__photo img { object-fit: cover; object-position: 50% 8%; }
   }
   @media (prefers-reduced-motion: reduce) { #hdr-{{ section.id }} .hdr__card { transition: none; } }
 
@@ -80,6 +104,9 @@
   @media (min-width: 2560px) { #hdr-{{ section.id }} .hdr__inner { zoom: 1.65; } }
   @media (min-width: 3200px) { #hdr-{{ section.id }} .hdr__inner { zoom: 2; } }
   @media (min-width: 3840px) { #hdr-{{ section.id }} .hdr__inner { zoom: 2.4; } }
+  /* ...and the cards row gets a little wider at each step (about 88-90% of the screen). */
+  @media (min-width: 1920px) { #hdr-{{ section.id }} .hdr__inner { max-width: 1360px; } }
+  @media (min-width: 2560px) { #hdr-{{ section.id }} .hdr__inner { max-width: 1440px; } }
 </style>
 
 <section id="hdr-{{ section.id }}" class="hdr">
@@ -97,8 +124,8 @@
           <div class="hdr__photo">
             {%- if b.photo != blank -%}
               <img src="{{ b.photo | image_url: width: 700 }}"
-                   srcset="{{ b.photo | image_url: width: 400 }} 400w, {{ b.photo | image_url: width: 700 }} 700w"
-                   sizes="(max-width: 749px) 78vw, 360px"
+                   srcset="{{ b.photo | image_url: width: 400 }} 400w, {{ b.photo | image_url: width: 700 }} 700w, {{ b.photo | image_url: width: 1000 }} 1000w, {{ b.photo | image_url: width: 1400 }} 1400w"
+                   sizes="(max-width: 749.98px) 78vw, (max-width: 1099.98px) 42vw, 30vw"
                    alt="{{ b.name | escape }}" loading="lazy" width="700" height="{{ 700 | divided_by: b.photo.aspect_ratio | round }}">
             {%- else -%}
               <span class="hdr__initial" aria-hidden="true">{{ b.system | slice: 0 }}</span>

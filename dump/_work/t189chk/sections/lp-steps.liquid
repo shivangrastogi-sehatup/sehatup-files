@@ -1,0 +1,47 @@
+{%- comment -%} "How it works": numbered steps. {%- endcomment -%}
+{%- assign s = section.settings -%}
+<section id="how" class="lp-sec lp-sec--{{ s.tone }}">
+  <div class="lp-wrap">
+    <div class="lp-head">
+      <h2 class="lp-title">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="lp-sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+    <div class="lp-steps">
+      {%- for block in section.blocks -%}
+        <div class="lp-step" {{ block.shopify_attributes }}>
+          <span class="lp-step__ic">{% render 'lp-icon', name: block.settings.icon %}</span>
+          <p class="lp-step__t">{{ block.settings.title }}</p>
+          <p class="lp-step__x">{{ block.settings.text }}</p>
+        </div>
+      {%- endfor -%}
+    </div>
+    {%- if s.button != blank -%}
+      <div class="lp-center"><a class="lp-btn" href="#book">{{ s.button }}</a></div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "LP how it works",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "How It Works?" },
+    { "type": "text", "id": "subheading", "label": "Line under the heading" },
+    { "type": "text", "id": "button", "label": "Button (goes to the booking form)" },
+    { "type": "select", "id": "tone", "label": "Background", "options": [
+      { "value": "white", "label": "White" }, { "value": "sage", "label": "Sage" }, { "value": "blush", "label": "Blush" }, { "value": "cream", "label": "Cream" }
+    ], "default": "white" }
+  ],
+  "blocks": [
+    { "type": "step", "name": "Step", "settings": [
+      { "type": "select", "id": "icon", "label": "Icon", "options": [
+        { "value": "calendar", "label": "Calendar" }, { "value": "doctor", "label": "Doctor" }, { "value": "box", "label": "Kit box" }, { "value": "chart", "label": "Progress" }, { "value": "chat", "label": "Chat" }, { "value": "check", "label": "Check" }
+      ], "default": "calendar" },
+      { "type": "text", "id": "title", "label": "Title", "default": "Book a Free Consultation" },
+      { "type": "text", "id": "text", "label": "Text" }
+    ] }
+  ],
+  "presets": [{ "name": "LP how it works" }]
+}
+{% endschema %}

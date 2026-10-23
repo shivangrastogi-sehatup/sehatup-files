@@ -1,0 +1,946 @@
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% liquid
+  assign description = product.description
+  
+  assign tab_1_start = '[' | append: block.settings.tab_1_delimiter | append: ']'
+  assign tab_1_end = '[/' | append: block.settings.tab_1_delimiter | append: ']'
+  if description contains tab_1_start
+    assign tab_1_has_content = true
+    assign tab_1_content_raw = description | split: tab_1_start | last | split: tab_1_end | first
+  else
+    assign tab_1_has_content = false
+    assign tab_1_content_raw = ''
+  endif
+  
+  assign tab_2_start = '[' | append: block.settings.tab_2_delimiter | append: ']'
+  assign tab_2_end = '[/' | append: block.settings.tab_2_delimiter | append: ']'
+  if description contains tab_2_start
+    assign tab_2_has_content = true
+    assign tab_2_content_raw = description | split: tab_2_start | last | split: tab_2_end | first
+  else
+    assign tab_2_has_content = false
+    assign tab_2_content_raw = ''
+  endif
+  
+  assign tab_3_start = '[' | append: block.settings.tab_3_delimiter | append: ']'
+  assign tab_3_end = '[/' | append: block.settings.tab_3_delimiter | append: ']'
+  if description contains tab_3_start
+    assign tab_3_has_content = true
+    assign tab_3_content_raw = description | split: tab_3_start | last | split: tab_3_end | first
+  else
+    assign tab_3_has_content = false
+    assign tab_3_content_raw = ''
+  endif
+  
+  assign tab_4_start = '[' | append: block.settings.tab_4_delimiter | append: ']'
+  assign tab_4_end = '[/' | append: block.settings.tab_4_delimiter | append: ']'
+  if description contains tab_4_start
+    assign tab_4_has_content = true
+    assign tab_4_content_raw = description | split: tab_4_start | last | split: tab_4_end | first
+  else
+    assign tab_4_has_content = false
+    assign tab_4_content_raw = ''
+  endif
+  
+  assign tab_5_start = '[' | append: block.settings.tab_5_delimiter | append: ']'
+  assign tab_5_end = '[/' | append: block.settings.tab_5_delimiter | append: ']'
+  if description contains tab_5_start
+    assign tab_5_has_content = true
+    assign tab_5_content_raw = description | split: tab_5_start | last | split: tab_5_end | first
+  else
+    assign tab_5_has_content = false
+    assign tab_5_content_raw = ''
+  endif
+  
+  assign tab_6_start = '[' | append: block.settings.tab_6_delimiter | append: ']'
+  assign tab_6_end = '[/' | append: block.settings.tab_6_delimiter | append: ']'
+  if description contains tab_6_start
+    assign tab_6_has_content = true
+    assign tab_6_content_raw = description | split: tab_6_start | last | split: tab_6_end | first
+  else
+    assign tab_6_has_content = false
+    assign tab_6_content_raw = ''
+  endif
+  
+  assign active_tabs = 0
+  assign tabs_array = ''
+  
+  if block.settings.tab_1_enable and tab_1_has_content
+    assign active_tabs = active_tabs | plus: 1
+    assign tabs_array = tabs_array | append: '1,'
+  endif
+  
+  if block.settings.tab_2_enable and tab_2_has_content
+    assign active_tabs = active_tabs | plus: 1
+    assign tabs_array = tabs_array | append: '2,'
+  endif
+  
+  if block.settings.tab_3_enable and tab_3_has_content
+    assign active_tabs = active_tabs | plus: 1
+    assign tabs_array = tabs_array | append: '3,'
+  endif
+  
+  if block.settings.tab_4_enable and tab_4_has_content
+    assign active_tabs = active_tabs | plus: 1
+    assign tabs_array = tabs_array | append: '4,'
+  endif
+  
+  if block.settings.tab_5_enable and tab_5_has_content
+    assign active_tabs = active_tabs | plus: 1
+    assign tabs_array = tabs_array | append: '5,'
+  endif
+  
+  if block.settings.tab_6_enable and tab_6_has_content
+    assign active_tabs = active_tabs | plus: 1
+    assign tabs_array = tabs_array | append: '6,'
+  endif
+  
+  assign tabs_list = tabs_array | split: ','
+%}
+
+{% style %}
+  .ai-product-tabs-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    padding-top: {{ block.settings.padding_top }}px;
+    padding-bottom: {{ block.settings.padding_bottom }}px;
+  }
+
+  .ai-product-tabs-container-{{ ai_gen_id }} {
+    width: 100%;
+    max-width: 100%;
+    padding-left: {{ block.settings.horizontal_margin }}px;
+    padding-right: {{ block.settings.horizontal_margin }}px;
+  }
+
+  .ai-product-tabs-nav-{{ ai_gen_id }} {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: {% if block.settings.show_scrollbar %}thin{% else %}none{% endif %};
+    {% if block.settings.tabs_alignment == 'center' %}
+      justify-content: center;
+    {% elsif block.settings.tabs_alignment == 'right' %}
+      justify-content: flex-end;
+    {% endif %}
+  }
+
+  {% unless block.settings.show_scrollbar %}
+    .ai-product-tabs-nav-{{ ai_gen_id }}::-webkit-scrollbar {
+      display: none;
+    }
+  {% endunless %}
+
+  {% if block.settings.show_scrollbar %}
+    .ai-product-tabs-nav-{{ ai_gen_id }}::-webkit-scrollbar {
+      height: 3px;
+    }
+
+    .ai-product-tabs-nav-{{ ai_gen_id }}::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .ai-product-tabs-nav-{{ ai_gen_id }}::-webkit-scrollbar-thumb {
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+
+    .ai-product-tabs-nav-{{ ai_gen_id }}::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+  {% endif %}
+
+  .ai-product-tabs-button-{{ ai_gen_id }} {
+    background: none;
+    border: none;
+    padding: 16px 24px;
+    font-size: clamp(14px, 1.9vw, 25px);
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    transition: color 0.3s ease;
+    border-bottom: 2px solid transparent;
+    flex-shrink: 0;
+  }
+
+  .ai-product-tabs-button-{{ ai_gen_id }}:hover {
+    color: rgba(0, 0, 0, 0.8);
+  }
+
+  .ai-product-tabs-button-{{ ai_gen_id }}.active {
+    color: {{ block.settings.active_tab_color }};
+    border-bottom-color: {{ block.settings.active_tab_color }};
+  }
+
+  .ai-product-tabs-content-{{ ai_gen_id }} {
+    position: relative;
+    text-align: {{ block.settings.content_alignment }};
+  }
+
+  .ai-product-tabs-panel-{{ ai_gen_id }} {
+    display: none;
+    opacity: 0;
+    animation: ai-product-tabs-fade-in-{{ ai_gen_id }} 0.3s ease forwards;
+  }
+
+  .ai-product-tabs-panel-{{ ai_gen_id }}.active {
+    display: block;
+  }
+
+  @keyframes ai-product-tabs-fade-in-{{ ai_gen_id }} {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} {
+    line-height: 1.6;
+    color: rgba(0, 0, 0, 0.8);
+  }
+
+  .ai-product-tabs-description-{{ ai_gen_id }} {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.7);
+    font-size: clamp(13px,1vw,22px);
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} p {
+    margin-bottom: 16px;
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} strong,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} b {
+    font-weight: 600;
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} em,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} i {
+    font-style: italic;
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} ul,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} ol {
+    margin-bottom: 16px;
+    padding-left: 0;
+    list-style: none;
+    {% if block.settings.content_alignment == 'center' %}
+      display: inline-block;
+      text-align: left;
+    {% endif %}
+  }
+
+  {% if block.settings.enable_list_icons %}
+    .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li {
+      position: relative;
+      padding-left: 32px;
+      margin-bottom: 12px;
+    }
+
+    .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 4px;
+      width: 20px;
+      height: 20px;
+      background-color: {{ block.settings.list_icon_color }};
+      {% if block.settings.list_icon_style == 'custom' and block.settings.custom_svg_icon != blank %}
+        mask-image: url("data:image/svg+xml,{{ block.settings.custom_svg_icon | url_encode }}");
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+      {% elsif block.settings.list_icon_style == 'checkmark' %}
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+      {% elsif block.settings.list_icon_style == 'circle' %}
+        border-radius: 50%;
+      {% elsif block.settings.list_icon_style == 'star' %}
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+      {% elsif block.settings.list_icon_style == 'arrow' %}
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3Cpolyline points='12 5 19 12 12 19'%3E%3C/polyline%3E%3C/svg%3E");
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+      {% elsif block.settings.list_icon_style == 'plus' %}
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+      {% elsif block.settings.list_icon_style == 'heart' %}
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'%3E%3C/path%3E%3C/svg%3E");
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+      {% endif %}
+    }
+  {% else %}
+    .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li {
+      margin-bottom: 8px;
+    }
+  {% endif %}
+
+  .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+  }
+
+  .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li {
+    background: {{ block.settings.ingredient_card_bg }};
+    border: 1px solid {{ block.settings.ingredient_card_border }};
+    border-radius: {{ block.settings.ingredient_card_radius }}px;
+    padding: 20px;
+    margin-bottom: 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li::before {
+    position: static;
+    display: inline-block;
+    margin-right: 12px;
+    vertical-align: middle;
+    width: 24px;
+    height: 24px;
+  }
+
+  .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li strong {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    color: {{ block.settings.ingredient_title_color }};
+    margin-bottom: 8px;
+  }
+
+  .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(0, 0, 0, 0.7);
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} ol {
+    padding-left: 24px;
+    list-style: decimal;
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} ol li {
+    margin-bottom: 8px;
+  }
+
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} h1,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} h2,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} h3,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} h4,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} h5,
+  .ai-product-tabs-panel-content-{{ ai_gen_id }} h6 {
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  .ai-product-tabs-empty-{{ ai_gen_id }} {
+    padding: 40px 20px;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.4);
+    font-style: italic;
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-product-tabs-container-{{ ai_gen_id }} {
+      padding-left: {{ block.settings.horizontal_margin_mobile }}px;
+      padding-right: {{ block.settings.horizontal_margin_mobile }}px;
+    }
+
+    .ai-product-tabs-button-{{ ai_gen_id }} {
+      padding: 12px 20px;
+      font-size: 14px;
+    }
+
+    .ai-product-tabs-nav-{{ ai_gen_id }} {
+      margin-bottom: 20px;
+      justify-content: flex-start;
+      {% if block.settings.show_scrollbar %}
+        padding-bottom: 8px;
+      {% endif %}
+    }
+
+    .ai-product-tabs-panel-content-{{ ai_gen_id }} {
+      font-size: 14px;
+    }
+
+    .ai-product-tabs-description-{{ ai_gen_id }} {
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .ai-product-tabs-panel-content-{{ ai_gen_id }} p {
+      margin-bottom: 12px;
+    }
+
+    .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li {
+      padding-left: 28px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li::before {
+      width: 16px;
+      height: 16px;
+      top: 3px;
+    }
+
+    .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li {
+      padding: 16px;
+    }
+
+    .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li strong {
+      font-size: 15px;
+    }
+
+    .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li p {
+      font-size: 13px;
+    }
+
+    .ai-product-tabs-panel-{{ ai_gen_id }}[data-tab="3"] .ai-product-tabs-panel-content-{{ ai_gen_id }} ul li::before {
+      width: 20px;
+      height: 20px;
+    }
+  }
+{% endstyle %}
+
+<product-tabs-{{ ai_gen_id }} class="ai-product-tabs-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  {% if active_tabs > 0 %}
+    <div class="ai-product-tabs-container-{{ ai_gen_id }}">
+      <div class="ai-product-tabs-nav-{{ ai_gen_id }}" role="tablist">
+        {% for tab_num in tabs_list %}
+          {% if tab_num != blank %}
+            {% assign tab_label_key = 'tab_' | append: tab_num | append: '_label' %}
+            {% assign tab_label = block.settings[tab_label_key] %}
+            
+            <button
+              class="ai-product-tabs-button-{{ ai_gen_id }} {% if forloop.first %}active{% endif %}"
+              role="tab"
+              aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+              aria-controls="ai-product-tabs-panel-{{ tab_num }}-{{ ai_gen_id }}"
+              data-tab="{{ tab_num }}"
+            >
+              {{ tab_label }}
+            </button>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="ai-product-tabs-content-{{ ai_gen_id }}">
+        {% for tab_num in tabs_list %}
+          {% if tab_num != blank %}
+            {% assign tab_description_key = 'tab_' | append: tab_num | append: '_description' %}
+            {% assign tab_description = block.settings[tab_description_key] %}
+            
+            {% case tab_num %}
+              {% when '1' %}
+                {% assign tab_content = tab_1_content_raw %}
+              {% when '2' %}
+                {% assign tab_content = tab_2_content_raw %}
+              {% when '3' %}
+                {% assign tab_content = tab_3_content_raw %}
+              {% when '4' %}
+                {% assign tab_content = tab_4_content_raw %}
+              {% when '5' %}
+                {% assign tab_content = tab_5_content_raw %}
+              {% when '6' %}
+                {% assign tab_content = tab_6_content_raw %}
+            {% endcase %}
+            
+            <div
+              id="ai-product-tabs-panel-{{ tab_num }}-{{ ai_gen_id }}"
+              class="ai-product-tabs-panel-{{ ai_gen_id }} {% if forloop.first %}active{% endif %}"
+              role="tabpanel"
+              data-tab="{{ tab_num }}"
+            >
+              {% if tab_description != blank %}
+                <div class="ai-product-tabs-description-{{ ai_gen_id }}">
+                  {{ tab_description }}
+                </div>
+              {% endif %}
+              <div class="ai-product-tabs-panel-content-{{ ai_gen_id }}">
+                {{ tab_content }}
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <div class="ai-product-tabs-empty-{{ ai_gen_id }}">
+      Add delimiters to your product description to display tabs. Example: [benefits]Your content here[/benefits]
+    </div>
+  {% endif %}
+</product-tabs-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class ProductTabs{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        this.buttons = this.querySelectorAll('.ai-product-tabs-button-{{ ai_gen_id }}');
+        this.panels = this.querySelectorAll('.ai-product-tabs-panel-{{ ai_gen_id }}');
+        this.nav = this.querySelector('.ai-product-tabs-nav-{{ ai_gen_id }}');
+        
+        this.buttons.forEach((button) => {
+          button.addEventListener('click', () => {
+            this.switchTab(button);
+          });
+        });
+      }
+
+      switchTab(selectedButton) {
+        const targetTab = selectedButton.getAttribute('data-tab');
+        
+        this.buttons.forEach((button) => {
+          button.classList.remove('active');
+          button.setAttribute('aria-selected', 'false');
+        });
+        
+        this.panels.forEach((panel) => {
+          panel.classList.remove('active');
+        });
+        
+        selectedButton.classList.add('active');
+        selectedButton.setAttribute('aria-selected', 'true');
+        
+        const targetPanel = this.querySelector('#ai-product-tabs-panel-' + targetTab + '-{{ ai_gen_id }}');
+        if (targetPanel) {
+          targetPanel.classList.add('active');
+        }
+
+        if (this.nav && window.innerWidth <= 749) {
+          const buttonRect = selectedButton.getBoundingClientRect();
+          const navRect = this.nav.getBoundingClientRect();
+          const scrollLeft = this.nav.scrollLeft;
+          const buttonCenter = buttonRect.left - navRect.left + scrollLeft + (buttonRect.width / 2);
+          const navCenter = this.nav.offsetWidth / 2;
+          
+          this.nav.scrollTo({
+            left: buttonCenter - navCenter,
+            behavior: 'smooth'
+          });
+        }
+      }
+    }
+
+    customElements.define('product-tabs-{{ ai_gen_id }}', ProductTabs{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Product details tabs",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "This block automatically extracts content from your product description using delimiters. Add content like: [benefits]Your benefits here[/benefits]"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "tabs_alignment",
+      "label": "Tabs alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left",
+      "info": "On mobile, tabs always align left for better scrolling"
+    },
+    {
+      "type": "select",
+      "id": "content_alignment",
+      "label": "Content alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_scrollbar",
+      "label": "Show horizontal scrollbar",
+      "default": false,
+      "info": "Display scrollbar when tabs overflow on mobile"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "horizontal_margin",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Horizontal margin (desktop)",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "horizontal_margin_mobile",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "label": "Horizontal margin (mobile)",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Top padding",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Bottom padding",
+      "default": 36
+    },
+    {
+      "type": "header",
+      "content": "List icons"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_list_icons",
+      "label": "Enable custom list icons",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "list_icon_style",
+      "label": "Icon style",
+      "options": [
+        {
+          "value": "checkmark",
+          "label": "Checkmark"
+        },
+        {
+          "value": "circle",
+          "label": "Circle"
+        },
+        {
+          "value": "star",
+          "label": "Star"
+        },
+        {
+          "value": "arrow",
+          "label": "Arrow"
+        },
+        {
+          "value": "plus",
+          "label": "Plus"
+        },
+        {
+          "value": "heart",
+          "label": "Heart"
+        },
+        {
+          "value": "custom",
+          "label": "Custom SVG"
+        }
+      ],
+      "default": "checkmark"
+    },
+    {
+      "type": "html",
+      "id": "custom_svg_icon",
+      "label": "Custom SVG icon",
+      "info": "Paste your SVG code here. Only used when 'Custom SVG' is selected."
+    },
+    {
+      "type": "color",
+      "id": "list_icon_color",
+      "label": "Icon color",
+      "default": "#e11d48"
+    },
+    {
+      "type": "header",
+      "content": "Ingredients tab style"
+    },
+    {
+      "type": "paragraph",
+      "content": "Special card-based layout for Tab 3 (Ingredients). Format each ingredient as: <strong>Name</strong> followed by description."
+    },
+    {
+      "type": "color",
+      "id": "ingredient_card_bg",
+      "label": "Card background",
+      "default": "#f9fafb"
+    },
+    {
+      "type": "color",
+      "id": "ingredient_card_border",
+      "label": "Card border",
+      "default": "#e5e7eb"
+    },
+    {
+      "type": "range",
+      "id": "ingredient_card_radius",
+      "min": 0,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "label": "Card border radius",
+      "default": 8
+    },
+    {
+      "type": "color",
+      "id": "ingredient_title_color",
+      "label": "Ingredient title color",
+      "default": "#111827"
+    },
+    {
+      "type": "header",
+      "content": "Tab 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_1_enable",
+      "label": "Enable tab 1",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_1_label",
+      "label": "Tab label",
+      "default": "Description"
+    },
+    {
+      "type": "text",
+      "id": "tab_1_delimiter",
+      "label": "Delimiter",
+      "default": "description",
+      "info": "Use the delimiter that matches your product description. Example: [description]content[/description]"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_1_description",
+      "label": "Tab description"
+    },
+    {
+      "type": "header",
+      "content": "Tab 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_2_enable",
+      "label": "Enable tab 2",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_2_label",
+      "label": "Tab label",
+      "default": "Benefits"
+    },
+    {
+      "type": "text",
+      "id": "tab_2_delimiter",
+      "label": "Delimiter",
+      "default": "benefits"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_2_description",
+      "label": "Tab description"
+    },
+    {
+      "type": "header",
+      "content": "Tab 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_3_enable",
+      "label": "Enable tab 3",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_3_label",
+      "label": "Tab label",
+      "default": "Ingredients"
+    },
+    {
+      "type": "text",
+      "id": "tab_3_delimiter",
+      "label": "Delimiter",
+      "default": "ingredients"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_3_description",
+      "label": "Tab description"
+    },
+    {
+      "type": "header",
+      "content": "Tab 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_4_enable",
+      "label": "Enable tab 4",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "tab_4_label",
+      "label": "Tab label",
+      "default": "How To Use"
+    },
+    {
+      "type": "text",
+      "id": "tab_4_delimiter",
+      "label": "Delimiter",
+      "default": "how_to_use"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_4_description",
+      "label": "Tab description"
+    },
+    {
+      "type": "header",
+      "content": "Tab 5"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_5_enable",
+      "label": "Enable tab 5",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "tab_5_label",
+      "label": "Tab label",
+      "default": "Safety & Disclaimer"
+    },
+    {
+      "type": "text",
+      "id": "tab_5_delimiter",
+      "label": "Delimiter",
+      "default": "safety"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_5_description",
+      "label": "Tab description"
+    },
+    {
+      "type": "header",
+      "content": "Tab 6"
+    },
+    {
+      "type": "checkbox",
+      "id": "tab_6_enable",
+      "label": "Enable tab 6",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "tab_6_label",
+      "label": "Tab label",
+      "default": "Details"
+    },
+    {
+      "type": "text",
+      "id": "tab_6_delimiter",
+      "label": "Delimiter",
+      "default": "details"
+    },
+    {
+      "type": "richtext",
+      "id": "tab_6_description",
+      "label": "Tab description"
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "color",
+      "id": "active_tab_color",
+      "label": "Active tab color",
+      "default": "#e11d48"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product details tabs"
+    }
+  ]
+}
+{% endschema %}

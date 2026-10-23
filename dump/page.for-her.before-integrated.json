@@ -1,0 +1,701 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "hero-healthcare-banner",
+      "name": "Healthcare hero banner",
+      "settings": {
+        "layout_mode": "background-with-overlay-image",
+        "desktop_width_percent": 100,
+        "background_image": "shopify://shop_images/Sunlit_Curtain_and_Beige_Tile_Wall.webp",
+        "background_image_size": "cover",
+        "background_position_x": "center",
+        "background_position_y": "center",
+        "background_shift_x": -4,
+        "background_overlay_opacity": 100,
+        "background_overlay_color": "#e62020",
+        "background_overlay_strength": 0,
+        "show_white_panel": false,
+        "white_panel_width": 45,
+        "white_panel_color": "#ffffff",
+        "white_panel_opacity": 10,
+        "white_panel_rounded": true,
+        "white_panel_border_radius": 20,
+        "foreground_image": "shopify://shop_images/Cozy_Indian_Portrait_with_Mug.webp",
+        "foreground_image_scale": 140,
+        "foreground_image_fit": "contain",
+        "foreground_position_x": "right",
+        "foreground_position_y": "bottom",
+        "foreground_offset_x": 0,
+        "foreground_offset_y": 0,
+        "foreground_trim_bottom": 0,
+        "hide_foreground_mobile": false,
+        "split_layout": false,
+        "mobile_crop_foreground": false,
+        "kicker": "For women",
+        "heading": "Your cycle, your hormones, your weight. Finally, someone who listens.",
+        "subheading_prefix": "",
+        "subheading_highlight": "",
+        "subheading_highlight_color": "#ee204a",
+        "body_text": "<p>Irregular or painful periods, PCOS, hormone swings and weight that will not move. These are common, and they are treatable. Our doctors combine Ayurveda, Homeopathy and modern medicine, privately.</p>",
+        "content_position": "left",
+        "content_max_width": 1400,
+        "content_text_max_width": 650,
+        "heading_size": 46,
+        "heading_weight": "700",
+        "heading_color": "#1d1d1d",
+        "subheading_size": 26,
+        "subheading_weight": "500",
+        "subheading_color": "#1d1d1d",
+        "body_size": 17,
+        "body_color": "#333333",
+        "text_shadow_enabled": false,
+        "light_text_fade": true,
+        "button_1_text": "Take the free Health Score",
+        "button_1_link": "shopify://pages/health-score-360",
+        "button_1_style": "filled",
+        "button_1_bg_color": "#ee204a",
+        "button_1_text_color": "#ffffff",
+        "button_1_border_color": "#ee204a",
+        "button_1_hover_bg_color": "#c8183c",
+        "button_1_hover_text_color": "#ffffff",
+        "button_1_hover_border_color": "#c8183c",
+        "show_button_2": true,
+        "enable_doctor_new_tab": true,
+        "button_2_text": "See the products",
+        "button_2_link": "#period-care",
+        "button_2_style": "outline",
+        "button_2_bg_color": "#1d1d1d",
+        "button_2_text_color": "#1d1d1d",
+        "button_2_border_color": "#1d1d1d",
+        "button_2_hover_bg_color": "#1d1d1d",
+        "button_2_hover_text_color": "#ffffff",
+        "button_2_hover_border_color": "#1d1d1d",
+        "note": "Free, private, and in Hindi or English.",
+        "button_layout": "horizontal",
+        "button_font_size": 16,
+        "button_font_weight": "600",
+        "button_padding_vertical": 14,
+        "button_padding_horizontal": 32,
+        "button_border_radius": 50,
+        "button_spacing": 24,
+        "section_min_height": 390,
+        "section_padding_top": 30,
+        "section_padding_bottom": 30,
+        "section_padding_horizontal": 40,
+        "content_spacing": 16,
+        "enable_mobile_overrides": false,
+        "section_min_height_mobile": 600,
+        "section_padding_top_mobile": 20,
+        "section_padding_bottom_mobile": 40,
+        "section_padding_horizontal_mobile": 16,
+        "mobile_content_alignment": "center",
+        "mobile_background_position_x": "center",
+        "mobile_background_position_y": "center",
+        "mobile_background_image": "shopify://shop_images/Sunlit_Beige_Tiled_Wall.webp",
+        "mobile_bg_focus_x": 50
+      }
+    },
+    "her_facts": {
+      "type": "her-facts",
+      "settings": {
+        "heading": "It's far more common than you think.",
+        "lead": "Doctors see these every day. Many women are told it is normal and just live with it, so it lasts longer than it needs to.",
+        "pcos_issue": "PCOS",
+        "pcos_n": 9,
+        "pcos_text": "Indian women has PCOS, according to a pooled review of Indian studies.",
+        "pcos_source": "Pooled review of Indian studies, Cureus, 2022",
+        "pcos_link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9826643/",
+        "pain_issue": "Painful periods",
+        "pain_low": 46,
+        "pain_high": 76,
+        "pain_text": "of Indian women reported painful periods, across two decades of studies.",
+        "pain_source": "Review of Indian studies on menstrual disorders, 2025",
+        "pain_link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11770859/",
+        "close": "Both can be treated, and the first step is private.",
+        "section_bg": "#ffffff"
+      }
+    },
+    "her_roots": {
+      "type": "her-roots",
+      "blocks": {
+        "s0": {
+          "type": "sign",
+          "settings": {
+            "label": "Irregular periods"
+          }
+        },
+        "s1": {
+          "type": "sign",
+          "settings": {
+            "label": "Heavy periods"
+          }
+        },
+        "s2": {
+          "type": "sign",
+          "settings": {
+            "label": "Acne"
+          }
+        },
+        "s3": {
+          "type": "sign",
+          "settings": {
+            "label": "Hair on face or body"
+          }
+        },
+        "s4": {
+          "type": "sign",
+          "settings": {
+            "label": "Thinning hair"
+          }
+        },
+        "s5": {
+          "type": "sign",
+          "settings": {
+            "label": "Weight around the waist"
+          }
+        },
+        "s6": {
+          "type": "sign",
+          "settings": {
+            "label": "Dark patches on the neck"
+          }
+        },
+        "s7": {
+          "type": "sign",
+          "settings": {
+            "label": "Sugar cravings"
+          }
+        },
+        "s8": {
+          "type": "sign",
+          "settings": {
+            "label": "Tired all the time"
+          }
+        },
+        "s9": {
+          "type": "sign",
+          "settings": {
+            "label": "Mood swings"
+          }
+        },
+        "s10": {
+          "type": "sign",
+          "settings": {
+            "label": "Poor sleep"
+          }
+        },
+        "r0": {
+          "type": "root",
+          "settings": {
+            "title": "Insulin resistance",
+            "text": "Your body struggles to use insulin, so it makes more. Extra insulin makes weight stick and pushes up male hormones.",
+            "signs": "Irregular periods, Acne, Weight around the waist, Dark patches on the neck, Sugar cravings",
+            "link": "#weight",
+            "link_label": "See what helps"
+          }
+        },
+        "r1": {
+          "type": "root",
+          "settings": {
+            "title": "High male hormones",
+            "text": "A little is normal. Too much brings acne, hair on the face and thinning hair on the head. A common sign of PCOS.",
+            "signs": "Irregular periods, Acne, Hair on face or body, Thinning hair",
+            "link": "#period-care",
+            "link_label": "See what helps"
+          }
+        },
+        "r2": {
+          "type": "root",
+          "settings": {
+            "title": "Thyroid",
+            "text": "A slow thyroid slows everything down: energy, weight, periods and mood.",
+            "signs": "Irregular periods, Heavy periods, Thinning hair, Weight around the waist, Tired all the time, Mood swings",
+            "link": "",
+            "link_label": "See what helps"
+          }
+        },
+        "r3": {
+          "type": "root",
+          "settings": {
+            "title": "Stress",
+            "text": "Long stress throws hormones off balance and can delay or stop a period.",
+            "signs": "Irregular periods, Sugar cravings, Weight around the waist, Mood swings, Poor sleep",
+            "link": "",
+            "link_label": "See what helps"
+          }
+        },
+        "r4": {
+          "type": "root",
+          "settings": {
+            "title": "Low iron",
+            "text": "Common with heavy periods. It leaves you tired, out of breath and losing hair.",
+            "signs": "Heavy periods, Thinning hair, Tired all the time",
+            "link": "",
+            "link_label": "See what helps"
+          }
+        }
+      },
+      "block_order": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "s8",
+        "s9",
+        "s10",
+        "r0",
+        "r1",
+        "r2",
+        "r3",
+        "r4"
+      ],
+      "settings": {
+        "heading": "Your symptoms are clues.",
+        "lead": "Acne, hair fall, weight and late periods often come from the same place. Tap what you notice and see where it points.",
+        "step_1": "Tap everything you notice",
+        "idle_text": "Tick at least one sign and we'll show the likely cause here.",
+        "top_label": "Most of your signs point to",
+        "mobile_signs": 5,
+        "button": "Start my free check",
+        "button_link": "shopify://pages/womens-wellness-questionnaire",
+        "note": "This is not a diagnosis. A doctor looks at your answers and confirms it.",
+        "section_bg": "#ffffff"
+      }
+    },
+    "her_cycle": {
+      "type": "her-cycle",
+      "settings": {
+        "heading": "Your cycle, decoded.",
+        "lead": "Your body changes through the month. Here is what is normal, and when to see a doctor.",
+        "fine": "Every woman is different. A cycle of 21 to 35 days is normal.",
+        "period_name": "Period",
+        "period_happening": "Your body lets go of last month's lining. This is your bleeding.",
+        "period_feel": "Cramps, Back pain, Tiredness, Bloating",
+        "period_doctor": "The pain stops your day, you change a pad every 1 to 2 hours, or bleeding lasts more than 7 days.",
+        "period_link": "#period-care",
+        "period_link_label": "See what helps",
+        "follicular_name": "After your period",
+        "follicular_happening": "Your body gets ready for the month ahead. Energy comes back.",
+        "follicular_feel": "More energy, Better mood, Clearer skin",
+        "follicular_doctor": "Your periods often come before 21 days or after 35 days.",
+        "follicular_link": "",
+        "follicular_link_label": "See what helps",
+        "ovulation_name": "Middle of your cycle",
+        "ovulation_happening": "An egg is released. This is when pregnancy is most likely.",
+        "ovulation_feel": "Mild pain on one side, More white discharge",
+        "ovulation_doctor": "Your periods have been irregular for months. It can be a sign of PCOS.",
+        "ovulation_link": "/pages/womens-wellness-questionnaire",
+        "ovulation_link_label": "Check for PCOS, free",
+        "luteal_name": "Before your period",
+        "luteal_happening": "If you are not pregnant, your body gets ready for the next period.",
+        "luteal_feel": "Bloating, Cravings, Sore breasts, Mood swings",
+        "luteal_doctor": "Mood changes hurt your work or family life, or it gets worse every month.",
+        "luteal_link": "#period-care",
+        "luteal_link_label": "See what helps",
+        "section_bg": "#ffffff"
+      }
+    },
+    "doctors": {
+      "type": "health-doctors",
+      "blocks": {
+        "doc_homeo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Shefali.webp",
+            "system": "Homeopathy",
+            "name": "Dr. Shefali Chhicholia",
+            "degree": "BHMS, MD (Homeopathy), 5 years experience",
+            "role": "Gentle, long-term support for periods and hormone balance, with no harsh side effects."
+          }
+        },
+        "doc_ayur": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "system": "Ayurveda",
+            "name": "Dr. Jayant Kumar",
+            "degree": "BAMS (Ayurveda), 5 years experience",
+            "role": "Finds the root cause behind PCOS, irregular cycles and slow metabolism."
+          }
+        },
+        "doc_allo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr_Devika.webp",
+            "system": "Psychology",
+            "name": "Ms. Devika Chugh",
+            "degree": "Counselling Psychologist, 5 years experience",
+            "role": "Helps with the stress, mood swings and body worries that often come with it."
+          }
+        }
+      },
+      "block_order": [
+        "doc_homeo",
+        "doc_ayur",
+        "doc_allo"
+      ],
+      "settings": {
+        "eyebrow": "Your private care team",
+        "heading": "Real experts. One plan for you.",
+        "subheading": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your answers together. Your plan cares for your body and your mind.",
+        "footnote": "Free with every order. In Hindi or English, and nothing you share leaves your doctor.",
+        "button": "Talk to a doctor on WhatsApp",
+        "button_link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor",
+        "background": "#ffffff",
+        "padding_top": 32,
+        "padding_bottom": 40,
+        "accent_color": "#ee204a"
+      }
+    },
+    "shelf_period": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Period and hormone care",
+        "subheading": "For cramps, irregular cycles, PCOS and intimate hygiene.",
+        "collection": "period-care",
+        "products": [],
+        "pinned": [],
+        "limit": 4,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "View all period care",
+        "show_use": true,
+        "anchor": "period-care",
+        "legacy_anchor": "",
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_weight": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Weight",
+        "subheading": "For metabolism, cravings and stubborn weight.",
+        "collection": "women-weight",
+        "products": [],
+        "pinned": [],
+        "limit": 4,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "View all weight products",
+        "show_use": true,
+        "anchor": "weight",
+        "legacy_anchor": "",
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_kits": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Kits for women",
+        "subheading": "Doctor-designed combos that work together, at a better price.",
+        "collection": "combos",
+        "products": [
+          "her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness",
+          "macho-metabolism"
+        ],
+        "pinned": [],
+        "limit": 4,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "All combos",
+        "show_use": true,
+        "anchor": "kits",
+        "legacy_anchor": "",
+        "accent_color": "#d81f48"
+      }
+    },
+    "certs": {
+      "type": "sehat-certs",
+      "blocks": {
+        "c1": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "c2": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "c3": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "settings": {
+        "heading": "Made and checked the right way",
+        "subheading": "What you take is made to approved standards and chosen by real doctors.",
+        "section_bg": "#ffffff"
+      }
+    },
+    "reviews": {
+      "type": "health-trust",
+      "settings": {
+        "heading": "What our customers say",
+        "subheading": "Honest reviews from customers who took the first step.",
+        "accent_color": "#ee204a",
+        "review_products": [
+          "tea-for-period-cramps",
+          "aloezy-intimate-foam-wash",
+          "harmen",
+          "slimtox-energy-tea",
+          "garcenia-cambogia-drops",
+          "her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness",
+          "macho-metabolism"
+        ],
+        "min_rating": 4,
+        "review_hide": "liked the color man",
+        "trust_1": "",
+        "trust_1_text": "",
+        "trust_2": "",
+        "trust_2_text": "",
+        "trust_3": "",
+        "trust_3_text": "",
+        "trust_4": "",
+        "trust_4_text": "",
+        "rating_line": "[rating] · Trusted by 25,000+ patients"
+      }
+    },
+    "faq": {
+      "type": "health-faq",
+      "blocks": {
+        "q1": {
+          "type": "question",
+          "settings": {
+            "question": "Can it help with PCOS or irregular periods?",
+            "answer": "<p>Yes. The women's check covers your cycle, hormones, weight and stress, and a doctor reviews your answers privately before suggesting anything. Many women see their cycles settle with the right plan.</p>"
+          }
+        },
+        "q2": {
+          "type": "question",
+          "settings": {
+            "question": "Is it safe for painful periods every month?",
+            "answer": "<p>Our period care uses gentle herbal and homeopathic support that you can take alongside your routine. If the pain is severe or sudden, your doctor will ask you to get it checked in person first.</p>"
+          }
+        },
+        "q3": {
+          "type": "question",
+          "settings": {
+            "question": "How soon will I see results?",
+            "answer": "<p>Most women notice first changes within 1 to 2 cycles. A full plan usually runs 3 months, adjusted at each monthly check-in. Results vary from person to person.</p>"
+          }
+        },
+        "q4": {
+          "type": "question",
+          "settings": {
+            "question": "Will anyone know what I ordered?",
+            "answer": "<p>No. Your kit comes in a plain box with nothing printed on it about what is inside, and only your doctor sees your answers.</p>"
+          }
+        },
+        "q5": {
+          "type": "question",
+          "settings": {
+            "question": "Can I talk to a woman expert?",
+            "answer": "<p>Yes. Ask on WhatsApp and we will set up your call with Dr. Shefali or Ms. Devika, in Hindi or English.</p>"
+          }
+        },
+        "q6": {
+          "type": "question",
+          "settings": {
+            "question": "How do I pay for a care kit?",
+            "answer": "<p>Confirm your order with just ₹50 and pay the rest when your kit arrives, or pay the full amount online.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5",
+        "q6"
+      ],
+      "settings": {
+        "heading": "Questions women ask us",
+        "subheading": "Straight answers, in private.",
+        "contact_text": "Ask us on WhatsApp",
+        "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20women%27s%20health",
+        "open_first": true,
+        "shop_1_text": "Period care",
+        "shop_1_link": "/collections/period-care",
+        "shop_2_text": "Weight for women",
+        "shop_2_link": "/collections/women-weight",
+        "shop_3_text": "All combos",
+        "shop_3_link": "shopify://pages/combos",
+        "accent_color": "#ee204a",
+        "section_bg": "#ffffff"
+      }
+    },
+    "cta": {
+      "type": "health-final-cta",
+      "settings": {
+        "heading": "Your body is talking. Start listening.",
+        "subheading": "Free, private, and it takes 2 minutes.",
+        "her_label": "Start my free check",
+        "her_link": "shopify://pages/womens-wellness-questionnaire",
+        "him_label": "",
+        "him_link": "",
+        "note": "No sign-up. Your answers stay private.",
+        "section_bg": "#ffffff"
+      }
+    },
+    "sticky": {
+      "type": "sehat-sticky-cta",
+      "settings": {
+        "label": "Take the free Health Score",
+        "link": "shopify://pages/health-score-360",
+        "whatsapp_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20women%27s%20health",
+        "accent_color": "#d81f48"
+      }
+    },
+    "her_promise": {
+      "type": "her-list",
+      "blocks": {
+        "p1": {
+          "type": "row",
+          "settings": {
+            "title": "A doctor is part of it.",
+            "tag": "",
+            "text": "Every order includes a consultation with one of our doctors, at no extra cost. They can adjust the plan to suit you.",
+            "link_label": "",
+            "link": "",
+            "icon": "doctor"
+          }
+        },
+        "p2": {
+          "type": "row",
+          "settings": {
+            "title": "Pay ₹50 to confirm.",
+            "tag": "",
+            "text": "You pay the rest only when the parcel is in your hands. Or pay in full online and shipping is free.",
+            "link_label": "",
+            "link": "",
+            "icon": "wallet"
+          }
+        },
+        "p3": {
+          "type": "row",
+          "settings": {
+            "title": "Nobody else will know.",
+            "tag": "",
+            "text": "It arrives in a plain box with nothing printed on the outside, and what you tell us stays with your doctor.",
+            "link_label": "",
+            "link": "",
+            "icon": "box"
+          }
+        },
+        "p4": {
+          "type": "row",
+          "settings": {
+            "title": "Ask before you buy.",
+            "tag": "",
+            "text": "Not sure where to start? Message us and get an answer first.",
+            "link_label": "Chat with us on WhatsApp",
+            "link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20women%27s%20health",
+            "icon": "chat"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "heading": "Before you order, four things you can count on.",
+        "lead": "sehatUP is a clinic, not a supplement shop. This is how we look after an order.",
+        "button": "",
+        "button_link": "",
+        "note": "",
+        "layout": "strip"
+      }
+    },
+    "integrated": {
+      "type": "sehat-integrated",
+      "blocks": {
+        "m1": {
+          "type": "system",
+          "settings": {
+            "icon": "leaf",
+            "title": "Ayurveda",
+            "job": "Works on the root",
+            "text": "Herbs like shatavari, ashoka and ashwagandha support cycles, hormones and stress over time."
+          }
+        },
+        "m2": {
+          "type": "system",
+          "settings": {
+            "icon": "drop",
+            "title": "Homeopathy",
+            "job": "Gentle, long-term support",
+            "text": "Easy to take alongside your daily routine, for steady improvement without heavy doses."
+          }
+        },
+        "m3": {
+          "type": "system",
+          "settings": {
+            "icon": "capsule",
+            "title": "Modern medicine",
+            "job": "Faster relief when needed",
+            "text": "Prescribed only when a doctor says it fits you, never as a first guess."
+          }
+        }
+      },
+      "block_order": [
+        "m1",
+        "m2",
+        "m3"
+      ],
+      "settings": {
+        "heading": "Three kinds of medicine. One plan for you.",
+        "subheading": "Each one does a different job. Your doctors choose the mix that suits you, so you never take more than you need.",
+        "sum": "One plan, made by your doctors, for your body and your routine.",
+        "accent_color": "#d81f48",
+        "section_bg": "#ffffff"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "her_facts",
+    "her_roots",
+    "her_cycle",
+    "doctors",
+    "integrated",
+    "shelf_period",
+    "shelf_weight",
+    "shelf_kits",
+    "certs",
+    "her_promise",
+    "reviews",
+    "faq",
+    "cta",
+    "sticky"
+  ]
+}

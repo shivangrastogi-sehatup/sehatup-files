@@ -1,0 +1,531 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "custom_title_block": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% assign product_title = product.title %}\n\n{% assign is_combo = false %}\n{% for collection in product.collections %}\n {% if collection.handle == 'combos' %}\n {% assign is_combo = true %}\n {% break %}\n {% endif %}\n{% endfor %}\n\n{% if product_title contains \"-\" and is_combo %}\n {% assign title_parts = product_title | split: \"-\" %}\n <div class=\"combo-title-wrapper\">\n <h1 class=\"main-title\">{{ title_parts.first | strip }}</h1>\n <p class=\"tagline\">{{ title_parts.last | strip }}</p>\n </div>\n{% else %}\n <h1>{{ product.title }}</h1>\n{% endif %}\n\n<style>\n.combo-title-wrapper .main-title {\n font-size: clamp(22px, 5vw, 52px);\n margin-bottom: 5px; \n line-height: 1.2;\n margin-top: 0;\n}\n\n.combo-title-wrapper .tagline {\n font-size: clamp(13px, 3vw, 30px); \n color: #777; \n font-weight: 500;\n margin-top: 0;\n}\n\n.combo-title-wrapper {\n margin-bottom: 15px;\n}\n\n.product-form__input .main-title { margin-top: 0; }\n</style>"
+          }
+        },
+        "judge_me_reviews_preview_badge_ECFCMJ": {
+          "type": "shopify://apps/judge-me-reviews/blocks/preview_badge/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {}
+        },
+        "quantity_selector_nEyjrx": {
+          "type": "quantity_selector",
+          "settings": {}
+        },
+        "custom_liquid_B8N6j8": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% comment %}\n  Estimated Delivery Time — restyled to match store branding\n  - Uses theme's own font (inherits --font-body-family, no forced Google Font)\n  - Accent color #ee204a to match the pill-variant \"checked\" color used elsewhere on the PDP\n  - Border-radius language matched to the prepaid-offer / product-highlight boxes (12–18px)\n  - Six-digit pincode input, Check button inside the same row\n  - Responsive desktop and mobile layout\n{% endcomment %}\n\n{% assign delivery_box_id =\n  'minimal-delivery-box-'\n  | append: section.id\n  | append: '-'\n  | append: product.id\n%}\n\n<div\n  id=\"{{ delivery_box_id }}\"\n  class=\"minimal-delivery-box\"\n  data-minimal-delivery-box\n>\n\n  <!-- HEADER -->\n  <div class=\"minimal-delivery-header\">\n    <span class=\"minimal-delivery-title\">\n      Estimated Delivery Time\n    </span>\n  </div>\n\n  <!-- PINCODE FIELD -->\n  <div\n    class=\"minimal-delivery-field\"\n    data-pincode-form\n  >\n    <input\n      type=\"tel\"\n      inputmode=\"numeric\"\n      pattern=\"[0-9]*\"\n      maxlength=\"6\"\n      placeholder=\"Enter 6 digit pincode\"\n      autocomplete=\"postal-code\"\n      aria-label=\"Enter delivery pincode\"\n      data-pincode-input\n    >\n\n    <button\n      type=\"button\"\n      class=\"minimal-delivery-check\"\n      data-check-btn\n    >\n      Check\n    </button>\n  </div>\n\n  <!-- ERROR -->\n  <p\n    class=\"minimal-delivery-error\"\n    data-pincode-error\n    role=\"alert\"\n    hidden\n  >\n    Please enter a valid 6-digit pincode.\n  </p>\n\n  <!-- RESULT -->\n  <div\n    class=\"minimal-delivery-result\"\n    data-delivery-result\n    hidden\n  >\n    <div class=\"minimal-delivery-result-copy\">\n      <span>Estimated delivery</span>\n      <strong data-delivery-date></strong>\n    </div>\n\n    <button\n      type=\"button\"\n      class=\"minimal-delivery-change\"\n      data-change-btn\n    >\n      Change\n    </button>\n  </div>\n\n</div>\n\n<style>\n\n  #{{ delivery_box_id }},\n  #{{ delivery_box_id }} * {\n    box-sizing: border-box;\n    /* Inherit the theme's own body font instead of forcing Inter,\n       so it matches the rest of the product page typography */\n    font-family: var(--font-body-family, inherit);\n  }\n\n  /*\n    DESKTOP SPACING\n    Change these two values independently.\n  */\n  #{{ delivery_box_id }} {\n    --delivery-accent: #ee204a;        /* matches .product-form__input--pill checked color */\n    --delivery-accent-soft: #fff0f3;   /* light tint of accent for the check button / result bg */\n    --delivery-text: #171717;\n    --delivery-muted: #6b7280;         /* matches WhatsApp consult label gray */\n\n    --desktop-margin-top: 4px;\n    --desktop-margin-bottom: 14px;\n\n    width: 100%;\n    margin-top: var(--desktop-margin-top);\n    margin-right: 0;\n    margin-bottom: var(--desktop-margin-bottom);\n    margin-left: 0;\n\n    padding: 0;\n    background: transparent;\n    color: var(--delivery-text);\n    -webkit-font-smoothing: antialiased;\n    text-rendering: optimizeLegibility;\n  }\n\n  /* HEADER */\n  #{{ delivery_box_id }} .minimal-delivery-header {\n    display: block;\n    margin: 0 0 7px;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-title {\n    display: block;\n    color: var(--delivery-muted);\n    font-size: 15px;\n    font-weight: 500;\n    line-height: 1.35;\n    letter-spacing: 0;\n  }\n\n  /* FIELD */\n  #{{ delivery_box_id }} .minimal-delivery-field {\n    position: relative;\n    display: flex;\n    align-items: stretch;\n\n    width: 100%;\n    min-height: 49px;\n\n    overflow: hidden;\n\n    background: #ffffff;\n    border: 1px solid rgba(238, 32, 74, 0.22); /* accent-tinted border */\n    border-radius: 14px; /* matches prepaid-offer-new / product-highlights radius language */\n\n    transition:\n      border-color 0.18s ease,\n      box-shadow 0.18s ease;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-field:focus-within {\n    border-color: var(--delivery-accent);\n    box-shadow: 0 0 0 3px rgba(238, 32, 74, 0.08);\n  }\n\n  /* INPUT */\n  #{{ delivery_box_id }} input {\n    flex: 1 1 auto;\n\n    width: 100%;\n    min-width: 0;\n    height: 47px;\n\n    margin: 0;\n    padding: 0 16px;\n\n    background: #ffffff;\n    border: 0;\n    outline: 0;\n    box-shadow: none;\n\n    color: var(--delivery-text);\n\n    font-size: 13px;\n    font-weight: 400;\n    line-height: 1;\n  }\n\n  #{{ delivery_box_id }} input::placeholder {\n    color: #9a9a9a;\n    opacity: 1;\n  }\n\n  /* CHECK BUTTON */\n  #{{ delivery_box_id }} .minimal-delivery-check {\n    position: static;\n    transform: none;\n\n    flex: 0 0 84px;\n\n    min-width: 84px;\n    height: 47px;\n\n    margin: 0;\n    padding: 0 16px;\n\n    background: var(--delivery-accent-soft);\n    border: 0;\n    border-left: 1px solid rgba(238, 32, 74, 0.15);\n\n    color: var(--delivery-text);\n\n    font-size: 12px;\n    font-weight: 600;\n    line-height: 1;\n\n    cursor: pointer;\n    white-space: nowrap;\n\n    transition:\n      background-color 0.18s ease,\n      color 0.18s ease;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-check:hover {\n    background: var(--delivery-accent);\n    color: #ffffff;\n  }\n\n  /* ERROR */\n  #{{ delivery_box_id }} .minimal-delivery-error {\n    margin: 6px 0 0;\n    padding: 0;\n\n    color: var(--delivery-accent);\n\n    font-size: 11px;\n    font-weight: 400;\n    line-height: 1.35;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-error[hidden],\n  #{{ delivery_box_id }} .minimal-delivery-result[hidden] {\n    display: none !important;\n  }\n\n  /* RESULT */\n  #{{ delivery_box_id }} .minimal-delivery-result {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 12px;\n\n    min-height: 49px;\n    padding: 10px 13px;\n\n    background: var(--delivery-accent-soft);\n    border: 1px solid rgba(238, 32, 74, 0.2);\n    border-radius: 14px;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-result-copy {\n    display: flex;\n    align-items: baseline;\n    flex-wrap: wrap;\n    gap: 5px;\n    min-width: 0;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-result-copy span {\n    color: var(--delivery-muted);\n    font-size: 12px;\n    font-weight: 400;\n    line-height: 1.35;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-result-copy strong {\n    color: var(--delivery-text);\n    font-size: 13px;\n    font-weight: 700;\n    line-height: 1.35;\n    white-space: nowrap;\n  }\n\n  #{{ delivery_box_id }} .minimal-delivery-change {\n    flex: 0 0 auto;\n\n    margin: 0;\n    padding: 0;\n\n    background: transparent;\n    border: 0;\n\n    color: var(--delivery-accent);\n\n    font-size: 11px;\n    font-weight: 600;\n    line-height: 1;\n\n    cursor: pointer;\n    text-decoration: underline;\n    text-underline-offset: 2px;\n  }\n\n  @media screen and (max-width: 749px) {\n    /*\n      MOBILE SPACING\n      Change these two values independently.\n    */\n    #{{ delivery_box_id }} {\n      --mobile-margin-top: 4px;\n      --mobile-margin-bottom: 0px;\n\n      margin-top: var(--mobile-margin-top);\n      margin-right: 0;\n      margin-bottom: var(--mobile-margin-bottom);\n      margin-left: 0;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-header {\n      margin-bottom: 7px;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-title {\n      font-size: 14px;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-field,\n    #{{ delivery_box_id }} .minimal-delivery-result {\n      min-height: 48px;\n      border-radius: 12px;\n    }\n\n    #{{ delivery_box_id }} input {\n      height: 46px;\n      padding: 0 13px;\n      font-size: 12px;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-check {\n      flex-basis: 78px;\n      min-width: 78px;\n      height: 46px;\n      padding: 0 12px;\n      font-size: 11px;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-result {\n      padding: 9px 12px;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-result-copy span {\n      font-size: 11px;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-result-copy strong {\n      font-size: 12px;\n    }\n  }\n\n  @media screen and (max-width: 390px) {\n    #{{ delivery_box_id }} .minimal-delivery-title {\n      font-size: 13px;\n    }\n\n    #{{ delivery_box_id }} input {\n      padding-left: 12px;\n    }\n\n    #{{ delivery_box_id }} .minimal-delivery-check {\n      flex-basis: 72px;\n      min-width: 72px;\n      padding: 0 10px;\n    }\n  }\n\n</style>\n\n<script>\n\n(function () {\n\n  var deliveryBox =\n    document.getElementById(\n      '{{ delivery_box_id }}'\n    );\n\n  if (\n    !deliveryBox ||\n    deliveryBox.dataset.loaded === 'true'\n  ) {\n    return;\n  }\n\n  deliveryBox.dataset.loaded =\n    'true';\n\n  var input =\n    deliveryBox.querySelector(\n      '[data-pincode-input]'\n    );\n\n  var checkBtn =\n    deliveryBox.querySelector(\n      '[data-check-btn]'\n    );\n\n  var form =\n    deliveryBox.querySelector(\n      '[data-pincode-form]'\n    );\n\n  var result =\n    deliveryBox.querySelector(\n      '[data-delivery-result]'\n    );\n\n  var deliveryDate =\n    deliveryBox.querySelector(\n      '[data-delivery-date]'\n    );\n\n  var error =\n    deliveryBox.querySelector(\n      '[data-pincode-error]'\n    );\n\n  var changeBtn =\n    deliveryBox.querySelector(\n      '[data-change-btn]'\n    );\n\n  if (\n    !input ||\n    !checkBtn ||\n    !form ||\n    !result\n  ) {\n    return;\n  }\n\n  /* =========================================\n     CLEAN PINCODE\n     ========================================= */\n\n  function cleanPincode(value) {\n\n    return String(\n      value || ''\n    )\n      .replace(/\\D/g, '')\n      .slice(0, 6);\n\n  }\n\n  /* =========================================\n     DELIVERY ESTIMATE\n     ========================================= */\n\n  function getDeliveryDays(pin) {\n\n    var p =\n      parseInt(\n        pin,\n        10\n      );\n\n    if (\n      (p >= 110001 && p <= 110096) ||\n      (p >= 201001 && p <= 201310) ||\n      (p >= 122001 && p <= 122508) ||\n      (p >= 124001 && p <= 124507) ||\n      (p >= 131001 && p <= 131402) ||\n      (p >= 121001 && p <= 121106) ||\n      (p >= 245001 && p <= 245412)\n    ) {\n      return 2;\n    }\n\n    if (\n      (p >= 200001 && p <= 285205) ||\n      (p >= 125001 && p <= 136156) ||\n      (p >= 140001 && p <= 160059) ||\n      (p >= 301001 && p <= 345034) ||\n      (p >= 246001 && p <= 263680) ||\n      (p >= 170001 && p <= 177213)\n    ) {\n      return 3;\n    }\n\n    if (\n      (p >= 450001 && p <= 488776) ||\n      (p >= 800001 && p <= 855117) ||\n      (p >= 360001 && p <= 396590) ||\n      (p >= 400001 && p <= 445402) ||\n      (p >= 490001 && p <= 497778) ||\n      (p >= 700001 && p <= 743710)\n    ) {\n      return 4;\n    }\n\n    return 5;\n\n  }\n\n  /* =========================================\n     DATE\n     ========================================= */\n\n  function getEstimatedDate(days) {\n\n    var date =\n      new Date();\n\n    date.setDate(\n      date.getDate() +\n      Number(days)\n    );\n\n    return date.toLocaleDateString(\n      'en-IN',\n      {\n        weekday: 'short',\n        day: 'numeric',\n        month: 'short'\n      }\n    );\n\n  }\n\n  function hideError() {\n\n    if (error) {\n      error.hidden = true;\n    }\n\n  }\n\n  /* =========================================\n     CHECK\n     ========================================= */\n\n  function checkPincode() {\n\n    var pin =\n      cleanPincode(\n        input.value\n      );\n\n    input.value =\n      pin;\n\n    if (\n      pin.length !== 6\n    ) {\n\n      if (error) {\n        error.hidden = false;\n      }\n\n      input.focus();\n\n      return;\n\n    }\n\n    hideError();\n\n    var days =\n      getDeliveryDays(pin);\n\n    if (deliveryDate) {\n\n      deliveryDate.textContent =\n        getEstimatedDate(days);\n\n    }\n\n    form.style.display =\n      'none';\n\n    result.hidden =\n      false;\n\n  }\n\n  /* =========================================\n     CHANGE\n     ========================================= */\n\n  function changePincode() {\n\n    result.hidden =\n      true;\n\n    form.style.display =\n      'flex';\n\n    input.value =\n      '';\n\n    hideError();\n\n    setTimeout(\n      function () {\n\n        input.focus();\n\n      },\n      50\n    );\n\n  }\n\n  /* =========================================\n     EVENTS\n     ========================================= */\n\n  input.addEventListener(\n    'input',\n    function () {\n\n      input.value =\n        cleanPincode(\n          input.value\n        );\n\n      hideError();\n\n    }\n  );\n\n  input.addEventListener(\n    'keydown',\n    function (event) {\n\n      if (\n        event.key === 'Enter'\n      ) {\n\n        event.preventDefault();\n\n        checkPincode();\n\n      }\n\n    }\n  );\n\n  checkBtn.addEventListener(\n    'click',\n    checkPincode\n  );\n\n  if (changeBtn) {\n\n    changeBtn.addEventListener(\n      'click',\n      changePincode\n    );\n\n  }\n\n})();\n\n</script>"
+          }
+        },
+        "custom_liquid_Fhmefe": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": ""
+          }
+        },
+        "custom_liquid_9fx6JB": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": ""
+          }
+        },
+        "custom_liquid_yNNGTw": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% if product and product.handle == 'aloezy-intimate-foam-wash' %}\n<section class=\"flat10-banner\">\n <div class=\"flat10-inner\">\n <div class=\"flat10-left\">\n <div class=\"flat10-tag\"> INTRODUCTORY OFFER</div>\n <h2>Flat 10% OFF on Aloezy</h2>\n <p>Use coupon code <strong>FLAT10</strong> at checkout. Valid only on this product.</p>\n\n <div class=\"flat10-code-box\" onclick=\"navigator.clipboard && navigator.clipboard.writeText('FLAT10')\">\n <span class=\"flat10-label\">Coupon Code</span>\n <span class=\"flat10-code\">FLAT10</span>\n <span class=\"flat10-copy\">Tap to copy</span>\n </div>\n\n <small class=\"flat10-note\">*Discount applies at checkout after you enter the code.</small>\n </div>\n </div>\n</section>\n\n<style>\n.flat10-banner{\n margin:24px 0;\n padding:18px 20px;\n border-radius:12px;\n background:linear-gradient(135deg,#ffd5e5,#f3e5ff);\n border:1px solid rgba(0,0,0,0.06);\n}\n.flat10-inner{\n display:flex;\n align-items:flex-start;\n gap:16px;\n}\n.flat10-tag{\n display:inline-block;\n padding:4px 10px;\n border-radius:999px;\n background:#ff3366;\n color:#fff;\n font-size:11px;\n font-weight:700;\n letter-spacing:.03em;\n margin-bottom:6px;\n}\n.flat10-left h2{\n font-size:20px;\n margin:0 0 6px;\n}\n.flat10-left p{\n margin:0 0 10px;\n font-size:14px;\n}\n.flat10-code-box{\n display:inline-flex;\n align-items:center;\n gap:10px;\n padding:10px 14px;\n border-radius:999px;\n background:#fff;\n border:1px dashed #ff3366;\n cursor:pointer;\n user-select:none;\n}\n.flat10-label{\n font-size:11px;\n text-transform:uppercase;\n color:#777;\n}\n.flat10-code{\n font-weight:800;\n letter-spacing:.08em;\n}\n.flat10-copy{\n font-size:11px;\n color:#555;\n}\n.flat10-note{\n display:block;\n margin-top:6px;\n font-size:11px;\n color:#666;\n}\n@media(max-width:768px){\n .flat10-inner{flex-direction:column;}\n}\n</style>\n{% endif %}"
+          }
+        },
+        "rating_QMgLja": {
+          "type": "rating",
+          "disabled": true,
+          "settings": {}
+        },
+        "custom_liquid_3c8K67": {
+          "type": "custom_liquid",
+          "disabled": true,
+          "settings": {
+            "custom_liquid": "<div class=\"abc\">\n <h1>Hurry Up! 🔥 Last Chance⚡Limited Inventory</h1>\n</div>\n\n<style>\n.abc {\n padding: 20px;\n text-align: center;\n}\n\n.abc h1 {\n color: #ff4444;\n background: linear-gradient(45deg, #000, #333);\n padding: 5px 10px;\n border-radius: 60px;\n margin: 10px auto;\n display: inline-block;\n font-size: 1.1em;\n font-weight: bold;\n text-shadow: 2px 2px 4px rgba(0,0,0,0.5);\n animation: pulse 2s infinite, bounce 4s infinite;\n box-shadow: 0 10px 30px rgba(255,68,68,0.4);\n}\n\n@keyframes pulse {\n 0%, 100% { transform: scale(1); }\n 0% { transform: scale(1.01); }\n}\n\n@keyframes bounce {\n 0%, 20%, 50%, 80%, 100% { transform: translateY(0); }\n 40% { transform: translateY(-15px); }\n 60% { transform: translateY(-8px); }\n}\n</style>"
+          }
+        },
+        "description_TKFgtA": {
+          "type": "description",
+          "disabled": true,
+          "settings": {}
+        },
+        "variant_picker_DtmceM": {
+          "type": "variant_picker",
+          "settings": {
+            "picker_type": "button",
+            "swatch_shape": "square"
+          }
+        },
+        "custom_liquid_PqGrnk": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "<div class=\"product-highlights\">\n <div class=\"highlight\">\n <div class=\"icon\">\n <img src=\"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/free-delivery-01.webp?v=1773730841\" alt=\"Free Shipping\">\n </div>\n <p>Free Shipping</p>\n </div>\n\n <div class=\"highlight\">\n <div class=\"icon\">\n <img src=\"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/fast-delivery-01.webp?v=1773730973\" alt=\"Fast Delivery\">\n </div>\n <p>Fast Delivery</p>\n </div>\n\n <div class=\"highlight\">\n <div class=\"icon\">\n <img src=\"https://cdn.shopify.com/s/files/1/0924/5687/8383/files/100_natural-01.webp?v=1773731064\" alt=\"100% Natural\">\n </div>\n <p>100% Natural</p>\n </div>\n</div>\n\n<style>\n.product-highlights {\n display: flex;\n justify-content: space-around;\n align-items: center;\n background: #f9f9f9;\n padding: 15px;\n border-radius: 10px;\n margin-top: 20px;\n flex-wrap: wrap;\n}\n\n.highlight {\n display: flex;\n flex-direction: column;\n align-items: center;\n text-align: center;\n width: 100px;\n margin: 10px;\n}\n\n.icon img {\n width: 65px;\n height: 65px;\n transition: transform 0.3s ease, filter 0.3s ease;\n}\n\n.highlight:hover .icon img {\n transform: scale(1.1);\n}\n\n.highlight p {\n font-size: 14px;\n font-weight: bold;\n color: #333;\n}\n\n/* --- Mobile view fix --- */\n@media (max-width: 768px) {\n .product-highlights {\n flex-wrap: nowrap;\n justify-content: space-between;\n padding: 8px 5px;\n gap: 8px;\n }\n\n .highlight {\n width: 70px;\n margin: 0;\n }\n\n .icon img {\n width: 40px;\n height: 40px;\n }\n\n .highlight p {\n font-size: 12px;\n }\n}\n</style>"
+          }
+        },
+        "custom_liquid_HbNX9H": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": ""
+          }
+        },
+        "custom_liquid_prepaid_badge": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "{% if product.id == 10478503625007 %}\n\n<div class=\"prepaid-badge-one-line\">\n  <span class=\"gift\">🎁</span>\n  <span class=\"text\">\n    <strong>Prepaid Offer:</strong>\n    <span class=\"free-pill\">FREE</span>\n    Ashwagandha Sample (30 Tabs)\n  </span>\n</div>\n\n<style>\n.prepaid-badge-one-line{\n  margin:18px 0;\n  padding:14px 18px;\n  border:2px dashed #ff3b30;\n  border-radius:14px;\n  background:#fff7f5;\n  display:flex;\n  align-items:center;\n  gap:12px;\n  font-size:16px;\n  font-weight:600;\n  line-height:1.4;\n}\n\n.prepaid-badge-one-line .gift{\n  font-size:24px;\n}\n\n.free-pill{\n  background:#ff3b30;\n  color:#fff;\n  padding:4px 10px;\n  border-radius:6px;\n  font-size:13px;\n  font-weight:800;\n  margin:0 6px;\n}\n\n@media(max-width:768px){\n  .prepaid-badge-one-line{\n    font-size:14px;\n    padding:12px 14px;\n  }\n}\n</style>\n\n{% endif %}"
+          }
+        },
+        "price_MRLXxf": {
+          "type": "price",
+          "settings": {}
+        },
+        "buy_buttons_fJiYAW": {
+          "type": "buy_buttons",
+          "settings": {
+            "show_dynamic_checkout": true,
+            "show_gift_card_recipient": true
+          }
+        },
+        "custom_liquid_hNBnRJ": {
+          "type": "custom_liquid",
+          "settings": {
+            "custom_liquid": "<style>\n  /* Consultation prompt styling */\n  .consultation-prompt-wrapper {\n    margin-top: 16px;\n  }\n\n  /* Inner container for centering */\n  .consultation-content {\n    text-align: center;\n  }\n\n  /* Container for consultation prompt */\n  .quantity-consultation {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    white-space: nowrap;\n  }\n\n  /* Text */\n  .consult-label {\n    font-size: 14px;\n    color: #666;\n    line-height: 1.4;\n  }\n\n  /* Button with icon */\n  .consult-btn {\n    display: inline-flex;\n    align-items: center;\n    gap: 0;\n    font-size: 14px;\n    font-weight: 600;\n    color: #6b21a8;\n    text-decoration: underline;\n    padding: 0;\n    background: none;\n    border: none;\n    cursor: pointer;\n    transition: opacity 0.2s ease;\n    line-height: 1.4;\n  }\n\n  .consult-btn:hover {\n    opacity: 0.8;\n  }\n\n  /* WhatsApp icon */\n  .whatsapp-icon {\n    display: inline-block;\n    vertical-align: middle;\n    margin-right: 6px;\n    width: 18px;\n    height: 18px;\n    flex-shrink: 0;\n  }\n\n  .whatsapp-icon svg {\n    width: 100%;\n    height: 100%;\n    display: block;\n  }\n\n  /* Mobile */\n  @media (max-width: 768px) {\n    .consultation-prompt-wrapper {\n      margin-top: 12px;\n    }\n\n    .quantity-consultation {\n      flex-wrap: wrap;\n      gap: 4px;\n      justify-content: center;\n    }\n  }\n</style>\n\n<div class=\"product-form__buttons consultation-prompt-wrapper\">\n  <div class=\"consultation-content\">\n    <div class=\"quantity-consultation\">\n      <span class=\"consult-label\">Still confused?</span>\n      <a href=\"https://wa.me/919355539355?text=I%20want%20to%20consult%20doctor\" target=\"_blank\" class=\"consult-btn\">\n        <span class=\"whatsapp-icon\">\n          <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n            <path d=\"M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z\" fill=\"#25D366\"/>\n          </svg>\n        </span>\n        Get free consultation\n      </a>\n    </div>\n  </div>\n</div>"
+          }
+        }
+      },
+      "block_order": [
+        "custom_title_block",
+        "judge_me_reviews_preview_badge_ECFCMJ",
+        "quantity_selector_nEyjrx",
+        "custom_liquid_B8N6j8",
+        "custom_liquid_Fhmefe",
+        "custom_liquid_9fx6JB",
+        "custom_liquid_yNNGTw",
+        "rating_QMgLja",
+        "custom_liquid_3c8K67",
+        "description_TKFgtA",
+        "variant_picker_DtmceM",
+        "custom_liquid_PqGrnk",
+        "custom_liquid_HbNX9H",
+        "custom_liquid_prepaid_badge",
+        "price_MRLXxf",
+        "buy_buttons_fJiYAW",
+        "custom_liquid_hNBnRJ"
+      ],
+      "custom_css": [
+        ".product-form__input--pill input[type=\"radio\"]:checked + label {background: #ee204a; border: 0;}"
+      ],
+      "settings": {
+        "enable_sticky_info": true,
+        "color_scheme": "scheme-9fb3f4cf-eaf4-4e64-89d4-b887375c8431",
+        "media_size": "small",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "gallery_layout": "thumbnail_slider",
+        "media_position": "left",
+        "image_zoom": "hover",
+        "mobile_thumbnails": "show",
+        "hide_variants": true,
+        "enable_video_looping": false,
+        "padding_top": 36,
+        "padding_bottom": 16
+      }
+    },
+    "floating_product_video_rpficc": {
+      "type": "floating-product-video",
+      "name": "Floating product video",
+      "settings": {
+        "enable_video": true,
+        "dock_side": "left",
+        "dock_bottom": 32,
+        "cta_label": "Add to cart",
+        "accent_color": "#ee204a"
+      }
+    },
+    "custom_popup_products_GKEGkz": {
+      "type": "custom-popup-products",
+      "disabled": true,
+      "name": "Zencal Toast Popup",
+      "settings": {
+        "product_handle": "vitamin-d3k2",
+        "message": "🔥 Pay online and get 15 gm of Slimtox tea free.",
+        "first_delay": 2,
+        "hide_after": 15,
+        "repeat_after": 6,
+        "tint_color": "#3d9e5f",
+        "bottom": 90,
+        "left": 25
+      }
+    },
+    "custom_liquid_Dga3P9": {
+      "type": "custom-liquid",
+      "disabled": true,
+      "settings": {
+        "custom_liquid": "{% render 'key-ingredients' %}",
+        "color_scheme": "scheme-1",
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    },
+    "custom-product-details": {
+      "type": "custom-product-details",
+      "disabled": true,
+      "settings": {}
+    },
+    "177036186402be30ce": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_2531cf1_UT3Uf3": {
+          "type": "ai_gen_block_2531cf1",
+          "settings": {
+            "tabs_alignment": "center",
+            "content_alignment": "left",
+            "show_scrollbar": false,
+            "horizontal_margin": 92,
+            "horizontal_margin_mobile": 16,
+            "padding_top": 12,
+            "padding_bottom": 36,
+            "enable_list_icons": true,
+            "list_icon_style": "checkmark",
+            "custom_svg_icon": "",
+            "list_icon_color": "#e11d48",
+            "ingredient_card_bg": "#f9fafb",
+            "ingredient_card_border": "#e5e7eb",
+            "ingredient_card_radius": 8,
+            "ingredient_title_color": "#111827",
+            "tab_1_enable": true,
+            "tab_1_label": "Description",
+            "tab_1_delimiter": "description",
+            "tab_1_description": "",
+            "tab_2_enable": true,
+            "tab_2_label": "Benefits",
+            "tab_2_delimiter": "benefits",
+            "tab_2_description": "",
+            "tab_3_enable": true,
+            "tab_3_label": "Ingredients",
+            "tab_3_delimiter": "ingredients",
+            "tab_3_description": "",
+            "tab_4_enable": true,
+            "tab_4_label": "How To Use",
+            "tab_4_delimiter": "how_to_use",
+            "tab_4_description": "",
+            "tab_5_enable": false,
+            "tab_5_label": "Safety & Disclaimer",
+            "tab_5_delimiter": "safety",
+            "tab_5_description": "",
+            "tab_6_enable": false,
+            "tab_6_label": "Details",
+            "tab_6_delimiter": "details",
+            "tab_6_description": "",
+            "active_tab_color": "#e11d48"
+          },
+          "blocks": {}
+        },
+        "ai_gen_block_2ad666c_BMjYej": {
+          "type": "ai_gen_block_2ad666c",
+          "settings": {
+            "container_max_width": 1500,
+            "block_spacing": 12,
+            "block_padding": 0,
+            "grid_gap": 30,
+            "image_border_radius": 8,
+            "card_border_radius": 8,
+            "card_heading_size": 22,
+            "card_text_size": 15,
+            "card_background": "#ffffff",
+            "card_text_color": "#262626"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_2531cf1_UT3Uf3",
+        "ai_gen_block_2ad666c_BMjYej"
+      ],
+      "settings": {}
+    },
+    "1771396014c5d19f82": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_693814c_wTcWCD": {
+          "type": "ai_gen_block_693814c",
+          "settings": {
+            "container_max_width": 1000,
+            "container_padding": 20,
+            "block_spacing": 60,
+            "default_bg_color": "#ffffff",
+            "default_text_color": "#262626",
+            "image_border_radius": 8,
+            "overlay_padding": 40,
+            "overlay_content_padding": 32,
+            "overlay_border_radius": 8,
+            "overlay_max_width": 50,
+            "overlay_bg_opacity": 85,
+            "overlay_heading_size": 36,
+            "overlay_text_size": 16,
+            "grid_gap": 24,
+            "card_border_radius": 8,
+            "card_padding": 24,
+            "card_heading_size": 22,
+            "card_text_size": 15,
+            "desktop_width_percent": 100
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_693814c_wTcWCD"
+      ],
+      "disabled": true,
+      "settings": {}
+    },
+    "1770390070cc0f4688": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_ada8f76_Tm3xAp": {
+          "type": "ai_gen_block_ada8f76",
+          "settings": {
+            "show_section_override": false,
+            "heading": "Who is it For",
+            "heading_size": 36,
+            "heading_color": "#262626",
+            "heading_weight": "600",
+            "heading_alignment": "center",
+            "subtitle_fallback": "",
+            "subtitle_size": 16,
+            "subtitle_color": "#666666",
+            "card_title_should_use": "Who Should Use [product_name]",
+            "card_title_should_not_use": "Who Should Not Use [product_name]",
+            "card_title_size": 22,
+            "card_title_color": "#262626",
+            "card_title_weight": "600",
+            "card_title_spacing": 20,
+            "card_bg_color": "#ffffff",
+            "card_border_color": "#e5e5e5",
+            "card_border_width": 1,
+            "card_border_radius": 12,
+            "card_shadow_opacity": 10,
+            "card_shadow_vertical": 2,
+            "card_shadow_blur": 8,
+            "card_padding": 32,
+            "list_text_color": "#333333",
+            "list_text_size": 15,
+            "list_line_height": 1.6,
+            "list_item_spacing": 16,
+            "checkmark_bg_color": "#e8f5e9",
+            "checkmark_icon_color": "#2e7d32",
+            "checkmark_size": 24,
+            "checkmark_text_gap": 12,
+            "cards_wrapper_bg_color": "#fffdf4",
+            "cards_wrapper_padding": 40,
+            "cards_wrapper_border_radius": 16,
+            "outer_max_width": 1400,
+            "container_max_width": 1200,
+            "card_gap": 32,
+            "header_spacing": 40,
+            "cards_top_spacing": 32,
+            "section_bg_color": "#fafafa",
+            "section_padding_top": 60,
+            "section_padding_bottom": 60,
+            "desktop_width_percent": 100
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_ada8f76_Tm3xAp"
+      ],
+      "settings": {}
+    },
+    "176458370003ed2528": {
+      "type": "apps",
+      "blocks": {
+        "judge_me_reviews_review_widget_zDwk7x": {
+          "type": "shopify://apps/judge-me-reviews/blocks/review_widget/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "review_data": "sample_data",
+            "max_width": 1200,
+            "show_shop_reviews": false,
+            "empty_state": "empty_widget"
+          }
+        }
+      },
+      "block_order": [
+        "judge_me_reviews_review_widget_zDwk7x"
+      ],
+      "settings": {
+        "include_margins": true
+      }
+    },
+    "ugc_videos_VHMarE": {
+      "type": "ugc_videos",
+      "blocks": {
+        "video_item_Dnthbr": {
+          "type": "video_item",
+          "settings": {
+            "video_url": "",
+            "label": "Customer Review"
+          }
+        },
+        "video_item_gfcm9M": {
+          "type": "video_item",
+          "settings": {
+            "video_url": "",
+            "label": "Customer Review"
+          }
+        },
+        "video_item_MqhGhq": {
+          "type": "video_item",
+          "settings": {
+            "video_url": "",
+            "label": "Customer Review"
+          }
+        }
+      },
+      "block_order": [
+        "video_item_Dnthbr",
+        "video_item_gfcm9M",
+        "video_item_MqhGhq"
+      ],
+      "name": "UGC Shorts Slider",
+      "settings": {
+        "heading_text": "What Our Customers Say",
+        "fallback_json": "",
+        "section_padding": 0
+      }
+    },
+    "product_faq_YazkWm": {
+      "type": "product-faq",
+      "blocks": {
+        "faq_Aj8ery": {
+          "type": "faq",
+          "settings": {
+            "question": "How can I start my care plan?",
+            "answer": "<p>After your purchase, our doctors will conduct a comprehensive evaluation of your concerns, medical history, and lifestyle to customize the plan to meet your specific needs.</p>"
+          }
+        },
+        "faq_xitQgY": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my information confidential?",
+            "answer": "<p>Confidentiality and clarity are our priorities. Your data is held in strict confidence, and the information you share will solely be utilized for transparent communication and to deliver effective care.</p>"
+          }
+        },
+        "faq_9cde4T": {
+          "type": "faq",
+          "settings": {
+            "question": "Are the products safe?",
+            "answer": "<p>Our products are approved by AYUSH. All our products are formulated by experts and are safe to use, and free from harmful chemicals.</p>"
+          }
+        },
+        "faq_RAgC3V": {
+          "type": "faq",
+          "settings": {
+            "question": "Is my treatment plan customized to my needs?",
+            "answer": "<p>The plans provided offer a glimpse of what you can anticipate in your customized plan, but every individual's needs vary, and our doctors excel in leading you toward your unique journey to well-being.</p>"
+          }
+        },
+        "faq_zDqFCW": {
+          "type": "faq",
+          "settings": {
+            "question": "Do I have to pay for doctor consultation?",
+            "answer": "<p>Your doctor consultation is included at no additional cost with your care plan.</p>"
+          }
+        },
+        "faq_LB4YMw": {
+          "type": "faq",
+          "settings": {
+            "question": "Are medications part of the program?",
+            "answer": "<p>Depending on the diagnosis, our doctors/nutritionists may prescribe medications as part of the treatment plan.<br/>These are selected based on individual needs and may include supplements, prescriptions, or other suitable options.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_Aj8ery",
+        "faq_xitQgY",
+        "faq_9cde4T",
+        "faq_RAgC3V",
+        "faq_zDqFCW",
+        "faq_LB4YMw"
+      ],
+      "name": "Product FAQ",
+      "settings": {
+        "heading": "Frequently Asked Questions",
+        "heading_size": 28,
+        "max_width": 1100,
+        "padding_top": 80,
+        "padding_bottom": 40,
+        "item_padding": 16,
+        "border_radius": 8,
+        "question_size": 16,
+        "answer_size": 15,
+        "background_color": "#ffffff",
+        "item_background": "#ffffff",
+        "border_color": "#e5e5e5",
+        "heading_color": "#1d1d1d",
+        "question_color": "#1d1d1d",
+        "answer_color": "#666666",
+        "him_q1": "Who is the For Him range designed for?",
+        "him_a1": "<p>Designed for men looking to support testosterone, energy, and performance naturally.</p>",
+        "him_q2": "Are these products safe for daily use?",
+        "him_a2": "<p>Yes, all products are clinically formulated and safe for daily use as directed.</p>",
+        "him_q3": "How soon will I see results?",
+        "him_a3": "<p>Most users notice improvements within 4–6 weeks of consistent use.</p>",
+        "her_q1": "Who is the For Her range designed for?",
+        "her_a1": "<p>Designed for women seeking hormonal balance, skin health, and sustained energy.</p>",
+        "her_q2": "Are these safe during pregnancy?",
+        "her_a2": "<p>Please consult your doctor before use during pregnancy or breastfeeding.</p>",
+        "her_q3": "Can I take these with other supplements?",
+        "her_a3": "<p>Yes, our products are designed to complement a balanced wellness routine.</p>"
+      }
+    },
+    "17453847438705599e": {
+      "type": "apps",
+      "blocks": {
+        "fether_widget_block_JqaPVT": {
+          "type": "shopify://apps/fether-frequently-bought/blocks/widget-block/f96a0d1a-35b8-40ef-ad54-1cb7fb011e11",
+          "disabled": true,
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "fether_widget_block_JqaPVT"
+      ],
+      "disabled": true,
+      "settings": {
+        "include_margins": false
+      }
+    }
+  },
+  "order": [
+    "main",
+    "floating_product_video_rpficc",
+    "custom_popup_products_GKEGkz",
+    "custom_liquid_Dga3P9",
+    "custom-product-details",
+    "177036186402be30ce",
+    "1771396014c5d19f82",
+    "1770390070cc0f4688",
+    "176458370003ed2528",
+    "ugc_videos_VHMarE",
+    "product_faq_YazkWm",
+    "17453847438705599e"
+  ]
+}

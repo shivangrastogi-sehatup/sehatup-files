@@ -83,6 +83,12 @@
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
   }
+  /* Very large screens: grow with the header under it. */
+  @media (min-width: 2200px) { .ann-bar-{{ uid }} { zoom: 1.4; } }
+  @media (min-width: 2560px) { .ann-bar-{{ uid }} { zoom: 1.65; } }
+  @media (min-width: 3200px) { .ann-bar-{{ uid }} { zoom: 2; } }
+  /* Newer browsers grow it smoothly instead, in step with the header: 1x at 1280px, 1.65x at 2560px, at most 2x. */
+  @media (min-width: 1280px) { .ann-bar-{{ uid }} { zoom: clamp(1, max(1 + (100vw - 1280px) / 5333px, 1 + (100vw - 1920px) / 984.6px), 2); } }
 {% endstyle %}
 
 <div class="ann-bar-{{ uid }}">

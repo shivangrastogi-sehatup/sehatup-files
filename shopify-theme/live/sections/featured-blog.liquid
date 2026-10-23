@@ -10,17 +10,17 @@
   }
 
   .blog-container {
-    max-width: 1080px;
+    max-width: 1320px;
     margin: 0 auto;
-    padding: 0 16px;
+    padding: 0 clamp(16px, 4vw, 24px);
   }
 
   .blog-heading {
-    /* the same scale, weight and tracking as every other section heading */
-    font-size: clamp(25px, 3.3vw, 60px);
-    font-weight: 700;
-    line-height: 1.08;
-    letter-spacing: -0.03em;
+    /* the Health Score 360 section heading */
+    font-size: clamp(30px, 3.6vw, 52px);
+    font-weight: 800;
+    line-height: 1.06;
+    letter-spacing: -0.02em;
     color: #1d1d1d;
     text-align: center;
     margin: 0 0 clamp(22px, 3.4vw, 44px);
@@ -50,7 +50,7 @@
 
   /* the picture is the card's top edge, not a thumbnail floating inside it */
   .blog-card__image {
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 16 / 9;
     background: #f4f4f6;
     overflow: hidden;
   }
@@ -206,6 +206,15 @@
     .blog-card,
     .blog-card__image img { transition: none; }
   }
+  @media (min-width: 769px) and (max-width: 1099.98px) { .blog-heading { font-size: 38px; } }
+  @media (max-width: 768px) { .blog-heading { font-size: 30px; } }
+  /* Big screens: the same steps as the Health Score 360 sections. */
+  @media (min-width: 1680px) { .blog-container { zoom: 1.12; } }
+  @media (min-width: 1920px) { .blog-container { zoom: 1.25; max-width: 1360px; } }
+  @media (min-width: 2240px) { .blog-container { zoom: 1.45; } }
+  @media (min-width: 2560px) { .blog-container { zoom: 1.65; max-width: 1440px; } }
+  @media (min-width: 3200px) { .blog-container { zoom: 2; } }
+  @media (min-width: 3840px) { .blog-container { zoom: 2.4; } }
 {% endstyle %}
 
 <section class="section-{{ section.id }}-padding">

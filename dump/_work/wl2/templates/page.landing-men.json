@@ -204,15 +204,17 @@
         "point_6rYiFt": {
           "type": "point",
           "settings": {
-            "icon": "roots",
+            "icon": "hands",
+            "icon_image": "shopify://shop_images/Caring_Hands_with_Health_Symbols.webp",
             "title": "Treat Root Cause, Not Just Symptoms",
-            "text": "Combining Allopathy, Homoeopathy & Ayurveda for<br> a root cause treatment."
+            "text": "Combining Allopathy, Homoeopathy & Ayurveda for a root cause treatment."
           }
         },
         "p1": {
           "type": "point",
           "settings": {
             "icon": "chart",
+            "icon_image": "shopify://shop_images/02-why-improved-performance.webp",
             "title": "85% Improved Performance",
             "text": "Verified treatment success rate"
           }
@@ -221,6 +223,7 @@
           "type": "point",
           "settings": {
             "icon": "heart",
+            "icon_image": "shopify://shop_images/03-why-improved-relationships.webp",
             "title": "92% Improved Relationships",
             "text": "Enhanced connection and intimacy"
           }
@@ -229,6 +232,7 @@
           "type": "point",
           "settings": {
             "icon": "doctor",
+            "icon_image": "shopify://shop_images/Doctor_Consultation_Chat_Icon_4d89a5bf-a6af-4b41-bb3f-34ad9e23a386.webp",
             "title": "Doctor + Therapist Follow-up Included",
             "text": "Comprehensive care beyond medication"
           }
@@ -237,6 +241,7 @@
           "type": "certs",
           "settings": {
             "icon": "shield",
+            "icon_image": "shopify://shop_images/Magenta_Shield_Check_Icon_94b88799-4b4c-4e74-8d32-760bb729b35f.webp",
             "title": "We are certified",
             "logo_1": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
             "logo_2": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
@@ -258,7 +263,8 @@
         "image": "shopify://shop_images/Warm_Doctor-Patient_Consultation_1_copy.webp",
         "tone": "white",
         "image_width": 520,
-        "icon_size": 56
+        "icon_size": 56,
+        "icon_image_size": 80
       }
     },
     "couple_banner": {
@@ -458,7 +464,8 @@
         "dock_side": "left",
         "dock_bottom": 32,
         "cta_label": "Add to cart",
-        "accent_color": "#ee204a"
+        "accent_color": "#ee204a",
+        "dock_sound": true
       }
     }
   },

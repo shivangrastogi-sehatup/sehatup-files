@@ -1,0 +1,201 @@
+<section class="product-info-container">
+  <div class="product-tabs">
+    <button class="tab-link active" onclick="openTab(event, 'Description')">Description</button>
+    <button class="tab-link" onclick="openTab(event, 'Benefits')">Benefits</button>
+    <button class="tab-link" onclick="openTab(event, 'HowToUse')">How to Use</button>
+  </div>
+
+  <!-- Mobile Dropdown -->
+  <div class="mobile-dropdown">
+    <div class="dropdown-label" onclick="toggleDropdown()">Description</div>
+    <div class="dropdown-options">
+      <div class="dropdown-option" onclick="openMobileTab('Description', 'Description')">Description</div>
+      <div class="dropdown-option" onclick="openMobileTab('Benefits', 'Benefits')">Benefits</div>
+      <div class="dropdown-option" onclick="openMobileTab('HowToUse', 'How to Use')">How to Use</div>
+    </div>
+  </div>
+
+  <!-- 🟠 DESCRIPTION TAB -->
+  <div id="Description" class="tab-content active">
+    {% if product.description contains '[details]' %}
+      {{ product.description | split: '[details]' | first | replace: '<img', '<img class="responsive-img"' }}
+    {% else %}
+      {{ product.description | replace: '<img', '<img class="responsive-img"' }}
+    {% endif %}
+  </div>
+
+  <!-- 🔵 BENEFITS TAB -->
+  <div id="Benefits" class="tab-content">
+    {% if product.description contains '[benefits]' and product.description contains '[/benefits]' %}
+      {{ product.description | split: '[benefits]' | last | split: '[/benefits]' | first | replace: '<img', '<img class="responsive-img"' }}
+    {% endif %}
+  </div>
+
+  <!-- 🟣 HOW TO USE TAB -->
+  <div id="HowToUse" class="tab-content">
+    {% if product.description contains '[how_to_use]' and product.description contains '[/how_to_use]' %}
+      {{ product.description | split: '[how_to_use]' | last | split: '[/how_to_use]' | first | replace: '<img', '<img class="responsive-img"' }}
+    {% endif %}
+  </div>
+</section>
+
+<script>
+function openTab(evt, tabName) {
+  let tabcontent = document.getElementsByClassName("tab-content");
+  for (let i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  let tablinks = document.getElementsByClassName("tab-link");
+  for (let i = 0; i < tablinks.length; i++) {
+    tablinks[i].classList.remove("active");
+  }
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.classList.add("active");
+}
+
+function toggleDropdown() {
+  document.querySelector(".dropdown-options").classList.toggle("show");
+}
+
+function openMobileTab(tabName, tabText) {
+  let tabcontent = document.getElementsByClassName("tab-content");
+  for (let i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  document.getElementById(tabName).style.display = "block";
+  
+  // Update dropdown label text
+  document.querySelector(".dropdown-label").textContent = tabText;
+  
+  // Close dropdown
+  document.querySelector(".dropdown-options").classList.remove("show");
+}
+
+// Close dropdown if clicking outside
+document.addEventListener("click", function (event) {
+  if (!event.target.closest(".mobile-dropdown")) {
+    document.querySelector(".dropdown-options").classList.remove("show");
+  }
+});
+</script>
+
+<style>
+/* Container Styling */
+.product-info-container {
+  max-width: 1600px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* Tab Navigation */
+.product-tabs {
+  display: flex;
+  overflow-x: auto;
+  white-space: nowrap;
+  gap: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #eee;
+}
+
+.tab-link {
+  flex: 1;
+  min-width: 120px;
+  text-align: center;
+  background: none;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 18px;
+  color: #777;
+  transition: all 0.3s ease-in-out;
+}
+
+.tab-link.active {
+  color: red;
+  border-bottom: 3px solid red;
+}
+
+/* Mobile Dropdown */
+.mobile-dropdown {
+  display: none;
+  position: relative;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.dropdown-label {
+  background: #f5f5f5;
+  padding: 12px;
+  font-size: 18px;
+  text-align: center;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-weight: bold;
+}
+
+.dropdown-options {
+  display: none;
+  position: absolute;
+  width: 100%;
+  background: white;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.dropdown-options.show {
+  display: block;
+}
+
+.dropdown-option {
+  padding: 12px;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.dropdown-option:hover {
+  background: #eee;
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  padding: 15px;
+  margin-top: 10px;
+  animation: fadeEffect 0.3s;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Responsive Media */
+.responsive-img, .product-info-container iframe, .product-info-container video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10px auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile Optimization */
+@media (max-width: 768px) {
+  .product-tabs {
+    display: none;
+  }
+  .mobile-dropdown {
+    display: block;
+  }
+}
+
+/* Fade-in effect */
+@keyframes fadeEffect {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>

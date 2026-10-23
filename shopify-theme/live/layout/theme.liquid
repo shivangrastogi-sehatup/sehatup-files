@@ -499,6 +499,96 @@
     </style>
 
     <style>/* Below 320px the page keeps its 320px layout and scrolls sideways instead of squeezing. */ html, body { min-width: 320px; }</style>
+    {%- comment -%}
+      One content width for every section, so every page has the same side margins
+      at every screen size: up to 1272px with 24px sides (16px on phones), and from
+      1414px up 90% of the screen (5% each side). Sections that scale up on big
+      screens zoom their inner box by --sz (the Health Score 360 steps), so their
+      width is divided by it; their 24px inner padding is added back. The header
+      logo and the hero text use the same edge.
+    {%- endcomment -%}
+    <style>
+      :root { --sz: 1; }
+      @media (min-width: 1680px) { :root { --sz: 1.12; } }
+      @media (min-width: 1920px) { :root { --sz: 1.25; } }
+      @media (min-width: 2240px) { :root { --sz: 1.45; } }
+      @media (min-width: 2560px) { :root { --sz: 1.65; } }
+      @media (min-width: 3200px) { :root { --sz: 2; } }
+      @media (min-width: 3840px) { :root { --sz: 2.4; } }
+      @media (min-width: 1414px) {
+        body #MainContent :is(.hdr__inner, .htr__inner, .hfq__inner, .hkt__inner, .spg__in, .care-kits-container, .blog-container) { max-width: calc(90vw / var(--sz) + 48px) !important; }
+        body #MainContent :is(.hcp__in, .hcn__in, .hfd__in, .hfc__inner, .ftr--page [class*="ftr-inner-"]) { max-width: calc(90vw / var(--sz)) !important; }
+        body #MainContent .hin__in { max-width: 90vw !important; }
+        body #MainContent .hj__inner { max-width: calc(90vw + 48px) !important; }
+      }
+      @media (min-width: 1680px) { body #MainContent .hj__inner { max-width: 90vw !important; } }
+      /* Phones: the same 64px between every section (32px under the last thing
+         in one, 32px above the first thing in the next). Each value is measured
+         from the section's real content, so they differ where a section's own
+         heading margin or card already adds space. */
+      @media (max-width: 749.98px) {
+        body #MainContent .htr--side .htr__inner { padding-top: 32px !important; padding-bottom: 8px !important; }
+        body #MainContent section.hin { padding-top: 32px !important; padding-bottom: 32px !important; }
+        body #MainContent [id^="hcp-"] { padding-top: 32px !important; padding-bottom: 32px !important; }
+        body #MainContent [id^="hcn-"] { padding-top: 32px !important; padding-bottom: 32px !important; }
+        body #MainContent .hj__inner { padding-top: 32px !important; }
+        body #MainContent .hdr__inner { padding-top: 32px !important; padding-bottom: 32px !important; }
+        body #MainContent .care-kits-section { padding-top: 8px !important; padding-bottom: 32px !important; }
+        body #MainContent [id^="hfd-"] { padding-top: 38px !important; padding-bottom: 32px !important; }
+        body #MainContent .ftr--page { padding-top: 32px !important; padding-bottom: 20px !important; }
+        body #MainContent .hfq__inner { padding-top: 32px !important; padding-bottom: 32px !important; }
+        body #MainContent section:has(> .blog-container) { padding-top: 35px !important; padding-bottom: 32px !important; }
+        body #MainContent [id^="hfc-"] { padding-top: 32px !important; }
+      }
+      /* Phones: a tighter, app-like home page. Lists of similar things become
+         tiles or swipe rows, intros under headlines go, long text is cut to a
+         few lines (the full text is one tap away). */
+      @media (max-width: 749.98px) {
+        /* Reviews: every card the same compact size; long reviews end in "..." */
+        body #MainContent .htr__reviews .jdgm-carousel-item, body #MainContent .htr--side .htr__reviews .jdgm-carousel-item { height: 222px !important; padding: 22px 24px 18px !important; }
+        body #MainContent .htr__reviews .jdgm-carousel-item__review-title { -webkit-line-clamp: 1 !important; line-clamp: 1 !important; font-size: 16px !important; }
+        body #MainContent .htr__reviews .jdgm-carousel-item__review-body { -webkit-line-clamp: 3 !important; line-clamp: 3 !important; }
+        body #MainContent .htr__reviews .jdgm-carousel-item__review-body, body #MainContent .htr__reviews .jdgm-carousel-item__review-body p { font-size: 14.5px !important; line-height: 1.5 !important; }
+        /* The headline carries these sections on a phone; the intro under it goes */
+        body #MainContent :is(.hcn__sub, .hcp__sub, .hdr__sub) { display: none !important; }
+        /* Help with: a 2-column grid of tiles (who it is for, then the concern) */
+        body #MainContent .hcn__d { display: none !important; }
+        body #MainContent .hcn__list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border: 0 !important; }
+        body #MainContent .hcn__list > li { min-width: 0; }
+        body #MainContent .hcn__row { height: 100%; display: flex !important; flex-direction: column; align-items: flex-start; gap: 6px !important; padding: 14px 14px 44px !important; border: 1px solid #e8e0d9 !important; border-radius: 16px; background: #fff; }
+        body #MainContent .hcn__row::before { border-radius: 16px !important; }
+        body #MainContent .hcn__who { order: -1; margin: 0 !important; font-size: 11.5px !important; }
+        body #MainContent .hcn__t { font-size: 15.5px !important; line-height: 1.25 !important; }
+        body #MainContent .hcn__go { position: absolute; right: 10px; bottom: 10px; width: 28px !important; height: 28px !important; }
+        body #MainContent .hcn__go svg { width: 13px !important; height: 13px !important; }
+        /* Doctors: a shorter photo frame (head to waist) and three lines about each */
+        body #MainContent .hdr__photo { aspect-ratio: 5 / 4 !important; }
+        body #MainContent .hdr__photo img { object-fit: cover !important; object-position: 50% 8% !important; }
+        body #MainContent .hdr__role { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+        /* Kits: a 2 x 2 grid of tiles; the description goes, the title and photo stay */
+        body #MainContent .care-kits-row { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px !important; }
+        body #MainContent .care-kits-row + .care-kits-row { margin-top: 10px !important; }
+        body #MainContent .care-kit-title-row { padding: 14px 14px 0 !important; }
+        body #MainContent .care-kit-title { font-size: 15px !important; line-height: 1.25 !important; min-height: 3.75em; }
+        body #MainContent .care-kit-description { display: none !important; }
+        body #MainContent .care-kit-text { padding: 0 14px 8px !important; }
+        body #MainContent .care-kit-button { min-height: 36px !important; padding: 0 16px !important; font-size: 12.5px !important; }
+        body #MainContent .care-kit-image { max-height: 120px !important; max-width: 100% !important; }
+        /* Founders: the story to four lines (the link reads the rest), the two founders side by side */
+        body #MainContent .hfd__story { text-align: center; }
+        body #MainContent .hfd__story p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+        body #MainContent .hfd__people { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px !important; }
+        body #MainContent .hfd__people li { flex-direction: column; text-align: center; gap: 8px !important; }
+        body #MainContent .hfd__people img, body #MainContent .hfd__people i { width: 64px !important; height: 64px !important; }
+        body #MainContent .hfd__people b { font-size: 15px !important; }
+        body #MainContent .hfd__people span span { font-size: 12.5px !important; }
+        body #MainContent .hfd__more { align-self: center !important; }
+        /* Compare and FAQ: tighter rows */
+        body #MainContent .hcp__r { padding: 16px 0 !important; gap: 8px !important; }
+        body #MainContent .hcp__u { font-size: 13.5px !important; }
+        body #MainContent .hfq__q { padding: 15px 2px !important; font-size: 15.5px !important; }
+      }
+    </style>
   </head>
 
   <body class="gradient{% if settings.animations_hover_elements != 'none' %} animate--hover-{{ settings.animations_hover_elements }}{% endif %}">

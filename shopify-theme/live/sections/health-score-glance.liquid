@@ -75,12 +75,11 @@
   #hsg-{{ section.id }}.pre .g__arc { stroke-dashoffset: var(--len) !important; }
   #hsg-{{ section.id }}.pre .g__dot { transform: scale(0) !important; }
   #hsg-{{ section.id }}.pre .g__lab { opacity: 0 !important; }
-  #hsg-{{ section.id }}.pre .g__disc { opacity: 0; }
 
   /* Tablets and small laptops: still two columns so the switch and the photo
      are on screen together (the swap animation stays visible). The ring is
      cropped to the circle; the 3 text points are desktop only. */
-  @media (max-width: 1099px) {
+  @media (max-width: 1099.98px) {
     #hsg-{{ section.id }} .g__in { grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 5%; padding: 48px 5%; }
     #hsg-{{ section.id }} .g__h { font-size: clamp(32px, 4.6vw, 48px); margin-bottom: 14px; }
     #hsg-{{ section.id }} .g__sub { font-size: clamp(15px, 1.9vw, 18px); margin-bottom: 26px; }
@@ -98,8 +97,8 @@
   }
   /* Phones: one column, the ring sits just above the switch, so tapping
      For Her / For Him plays the photo swap right where the finger is. */
-  @media (max-width: 699px) {
-    #hsg-{{ section.id }} .g__in { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 36px 20px 40px; }
+  @media (max-width: 699.98px) {
+    #hsg-{{ section.id }} .g__in { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 36px 16px 40px; }
     #hsg-{{ section.id }} .g__copy { display: contents; }
     #hsg-{{ section.id }} .g__in { text-align: center; }
     #hsg-{{ section.id }} .g__h { order: 1; font-size: clamp(30px, 8.4vw, 40px); }
@@ -250,24 +249,29 @@
 
     if (!canAnim || !('IntersectionObserver' in window)) { root.classList.remove('pre'); return; }
     root.classList.add('pre');
-    // Wait for the photo (max 1.5s) and two frames, so the entrance does not
-    // fight image decoding and the rest of the page booting.
+    // Wait for the photo (max 1.5s) and an idle moment, so the
+    // ring draws on a quiet main thread (while the page boots, frames take
+    // 50-150ms and the drawing stutters).
     var first = q('.g__photo[data-who="' + shown + '"]');
     var photoReady = new Promise(function (ok) {
       if (!first || first.complete) return ok();
       first.addEventListener('load', ok, { once: true }); first.addEventListener('error', ok, { once: true });
       setTimeout(ok, 1500);
     }).then(function () { return first && first.decode ? first.decode().catch(function () {}) : null; });
+    function settled() {
+      return new Promise(function (ok) {
+        if (window.requestIdleCallback) requestIdleCallback(ok, { timeout: 1200 }); else setTimeout(ok, 300);
+      });
+    }
     function nextFrames() { return new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); }); }
     new IntersectionObserver(function (es, io) {
       if (!es[0].isIntersecting) return;
       io.disconnect();
-      photoReady.then(nextFrames).then(enter);
+      photoReady.then(settled).then(nextFrames).then(enter);
     }, { threshold: 0.35 }).observe(q('.g__stage'));
 
     function enter() {
       root.classList.remove('pre');
-      q('.g__disc').animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 700, easing: ease, fill: 'backwards' });
       arcs.forEach(function (arc, i) {
         arc.animate([{ strokeDashoffset: arc.dataset.len + 'px' }, { strokeDashoffset: '0px' }], { duration: 1100, delay: i * 180, easing: ease, fill: 'backwards' });
       });

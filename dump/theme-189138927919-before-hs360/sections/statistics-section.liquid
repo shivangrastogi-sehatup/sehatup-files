@@ -1,0 +1,536 @@
+<section
+  class="impact-stats"
+  style="
+    background: {{ section.settings.background_color }};
+    padding: {{ section.settings.padding_top }}px 20px {{ section.settings.padding_bottom }}px;
+  "
+>
+  <div class="impact-container" style="max-width: {{ section.settings.container_width }}px;">
+    {% if section.settings.heading != blank %}
+      <h2 class="impact-heading">
+        {{ section.settings.heading }}
+      </h2>
+    {% endif %} 
+
+    <div class="impact-grid">
+
+      {% for i in (1..4) %}
+        {% assign key_enabled = 'stat_' | append: i | append: '_enabled' %}
+        {% assign key_value   = 'stat_' | append: i | append: '_value' %}
+        {% assign key_label   = 'stat_' | append: i | append: '_label' %}
+
+        {% assign en  = section.settings[key_enabled] %}
+        {% assign val = section.settings[key_value] %}
+        {% assign lbl = section.settings[key_label] %}
+
+        {% if en %}
+          <div class="impact-item">
+            <div class="impact-value" data-count="{{ val | escape }}">{{ val }}</div>
+            <div class="impact-label">{{ lbl }}</div>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+    </div>
+  </div>
+</section>
+
+<style>
+/* digits keep the same width while counting, so the number does not jitter */
+.impact-value { font-variant-numeric: tabular-nums; }
+.impact-num { display: inline-block; text-align: right; }
+
+.impact-stats {
+  width: 100%;
+}
+
+.impact-container {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.impact-heading {
+  color: {{ section.settings.heading_color }};
+  font-size: clamp(24px,3.4vw,64px);
+  margin-bottom: {{ section.settings.heading_spacing }}px;
+  margin-top: 10px;
+  font-weight: 700;
+}
+
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: {{ section.settings.column_gap }}px;
+}
+
+.impact-item {
+  padding: 0 10px;
+}
+
+.impact-value {
+  color: {{ section.settings.accent_color }};
+  font-size: {{ section.settings.value_size }}px;
+  font-weight: 700;
+  margin-bottom: {{ section.settings.value_spacing }}px;
+}
+
+.impact-label {
+  color: {{ section.settings.label_color }};
+  font-size: clamp(14px, 1vw, 35px);
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .impact-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: {{ section.settings.column_gap_mobile }}px {{ section.settings.row_gap_mobile }}px;
+  }
+
+  .impact-heading {
+    font-size: {{ section.settings.heading_size | times: 0.85 | round }}px;
+    margin: 10px 0;
+  }
+
+  .impact-value {
+    font-size: {{ section.settings.value_size | times: 0.75 | round }}px;
+    margin-bottom:0;
+  }
+
+  .impact-label {
+    font-size: {{ section.settings.label_size | times: 0.9 | round }}px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .impact-stats {
+    padding: {{ section.settings.padding_top_mobile }}px 16px {{ section.settings.padding_bottom_mobile }}px;
+  }
+
+  .impact-heading {
+    font-size: {{ section.settings.heading_size_mobile }}px;
+    margin-bottom: {{ section.settings.heading_spacing | times: 0.6 | round }}px;
+  }
+
+  .impact-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: {{ section.settings.column_gap_mobile }}px {{ section.settings.row_gap_mobile }}px;
+  }
+
+  .impact-value {
+    font-size: {{ section.settings.value_size_mobile }}px;
+  }
+
+  .impact-label {
+    font-size: {{ section.settings.label_size_mobile }}px;
+  }
+}
+</style>
+
+
+<script>
+  (() => {
+    const root = document.getElementById("shopify-section-{{ section.id }}");
+    if (!root) return;
+    const values = [...root.querySelectorAll(".impact-value")];
+    if (!values.length) return;
+
+    // "40%" counts up, "Better" is left alone. Whatever sits around the number
+    // (a percent sign, a plus, a currency symbol) is kept exactly as written.
+    const targets = values.map(el => {
+      const raw = el.dataset.count || el.textContent;
+      const m = raw.match(/^(\D*?)(\d[\d,]*)(\.\d+)?(.*)$/);
+      if (!m) return null;
+      const decimals = m[3] ? m[3].length - 1 : 0;
+      return { el, pre: m[1], suf: m[4], decimals,
+               end: parseFloat(m[2].replace(/,/g, "") + (m[3] || "")) };
+    }).filter(Boolean);
+    if (!targets.length) return;
+
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (still) return;
+
+    // The number gets its own box, wide enough for the final figure. Without
+    // this the text is re-centred on every frame as 0 becomes 40, which is
+    // what makes a counter look like it is shaking.
+    targets.forEach(t => {
+      const box = document.createElement("span");
+      box.className = "impact-num";
+      box.style.minWidth = (String(Math.round(t.end)).length + (t.decimals ? t.decimals + 1 : 0)) + "ch";
+      t.el.textContent = t.pre;
+      t.el.appendChild(box);
+      t.el.appendChild(document.createTextNode(t.suf));
+      t.box = box;
+      box.textContent = t.end.toFixed(t.decimals);
+    });
+
+    const render = (t, v) => {
+      t.box.textContent = v.toFixed(t.decimals);
+    };
+    // The numbers are NOT zeroed here. If the trigger never fires, for any
+    // reason, the real figures stay on screen rather than a row of zeros.
+
+    let started = false;
+    const run = () => {
+      if (started) return;
+      started = true;
+      targets.forEach(t => render(t, 0));
+      const ms = 1500;
+      const t0 = performance.now();
+      const frame = (now) => {
+        const k = Math.min(1, (now - t0) / ms);
+        // fast at first, easing into the final number
+        const e = 1 - Math.pow(1 - k, 3);
+        targets.forEach(t => render(t, t.end * e));
+        if (k < 1) requestAnimationFrame(frame);
+        else targets.forEach(t => render(t, t.end));
+      };
+      requestAnimationFrame(frame);
+    };
+
+    // Two ways in: the observer, and a plain scroll check as a backstop.
+    const inView = () => {
+      const r = root.getBoundingClientRect();
+      return r.top < innerHeight * 0.85 && r.bottom > 0;
+    };
+    const check = () => { if (inView()) { run(); removeEventListener("scroll", check); } };
+
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) { io.disconnect(); run(); } });
+      }, { threshold: 0.3 });
+      io.observe(root);
+    }
+    addEventListener("scroll", check, { passive: true });
+    check();
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Impact statistics",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Real People. Real Progress."
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 24,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "label": "Heading size (desktop)",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "min": 18,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "label": "Heading size (mobile)",
+      "default": 28
+    },
+    {
+      "type": "range",
+      "id": "heading_spacing",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Spacing below heading",
+      "default": 60
+    },
+
+    {
+      "type": "header",
+      "content": "Statistic 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "stat_1_enabled",
+      "label": "Enable statistic 1",
+      "default": true
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_1_value",
+      "label": "Value",
+      "default": "40%"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_1_label",
+      "label": "Label",
+      "default": "Better sleep"
+    },
+
+    {
+      "type": "header",
+      "content": "Statistic 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "stat_2_enabled",
+      "label": "Enable statistic 2",
+      "default": true
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_2_value",
+      "label": "Value",
+      "default": "30%"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_2_label",
+      "label": "Label",
+      "default": "Improved energy"
+    },
+
+    {
+      "type": "header",
+      "content": "Statistic 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "stat_3_enabled",
+      "label": "Enable statistic 3",
+      "default": true
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_3_value",
+      "label": "Value",
+      "default": "25%"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_3_label",
+      "label": "Label",
+      "default": "Reduced stress"
+    },
+
+    {
+      "type": "header",
+      "content": "Statistic 4"
+    },
+    {
+      "type": "checkbox",
+      "id": "stat_4_enabled",
+      "label": "Enable statistic 4",
+      "default": true
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_4_value",
+      "label": "Value",
+      "default": "Better"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "stat_4_label",
+      "label": "Label",
+      "default": "Digestion, stamina and hormonal balance"
+    },
+
+    {
+      "type": "header",
+      "content": "Typography - Desktop"
+    },
+    {
+      "type": "range",
+      "id": "value_size",
+      "min": 32,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "label": "Value size",
+      "default": 72
+    },
+    {
+      "type": "range",
+      "id": "label_size",
+      "min": 12,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "label": "Label size",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "value_spacing",
+      "min": 8,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "label": "Spacing below value",
+      "default": 16
+    },
+
+    {
+      "type": "header",
+      "content": "Typography - Mobile"
+    },
+    {
+      "type": "range",
+      "id": "value_size_mobile",
+      "min": 24,
+      "max": 72,
+      "step": 2,
+      "unit": "px",
+      "label": "Value size (mobile)",
+      "default": 42
+    },
+    {
+      "type": "range",
+      "id": "label_size_mobile",
+      "min": 10,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Label size (mobile)",
+      "default": 13
+    },
+
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "min": 800,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "label": "Container width",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Column gap (desktop)",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "label": "Column gap (mobile)",
+      "default": 25
+    },
+    {
+      "type": "range",
+      "id": "row_gap_mobile",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "label": "Row gap (mobile)",
+      "default": 35
+    },
+
+    {
+      "type": "header",
+      "content": "Spacing - Desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 80
+    },
+
+    {
+      "type": "header",
+      "content": "Spacing - Mobile"
+    },
+    {
+      "type": "range",
+      "id": "padding_top_mobile",
+      "min": 30,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "label": "Padding top (mobile)",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom_mobile",
+      "min": 30,
+      "max": 120,
+      "step": 5,
+      "unit": "px",
+      "label": "Padding bottom (mobile)",
+      "default": 50
+    },
+
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "default": "#1c1c1c"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent (values)",
+      "default": "#ff3333"
+    },
+    {
+      "type": "color",
+      "id": "label_color",
+      "label": "Label",
+      "default": "#ffffff"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Impact statistics"
+    }
+  ]
+}
+{% endschema %}

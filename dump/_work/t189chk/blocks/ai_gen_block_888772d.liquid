@@ -1,0 +1,636 @@
+{% doc %}
+  @prompt
+    Create a custom reviews carousel section that integrates with Judge.me's All Reviews widget. Include the Judge.me widget div (hidden) to load review data, then use JavaScript to extract reviews from Judge.me's loaded data (jdgm object or DOM) and dynamically populate a custom two-row horizontal carousel. Each review card should display: customer profile image or placeholder, star rating visualization, customer name, and review text. The two rows should auto-scroll infinitely to the left with smooth continuous animation that loops seamlessly and pauses on hover. Make it fully responsive and accessible with ARIA labels. Include theme editor settings for: scroll speed control, card styling (padding, border radius, box shadows), color customization for background, text, and star ratings, and option to limit number of reviews displayed. Use clean, premium healthcare brand aesthetic with modern minimal design. The section should wait for Judge.me data to load before populating the carousel.
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-reviews-carousel-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    padding: {{ block.settings.section_padding }}px 0;
+    background-color: {{ block.settings.background_color }};
+  }
+
+  .ai-reviews-carousel__container-{{ ai_gen_id }} {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .ai-reviews-carousel__heading-{{ ai_gen_id }} {
+    text-align: center;
+    margin: 0 0 {{ block.settings.heading_spacing }}px;
+    font-size: {{ block.settings.heading_size }}px;
+    color: {{ block.settings.text_color }};
+  }
+
+  .ai-reviews-carousel__track-wrapper-{{ ai_gen_id }} {
+    display: flex;
+    flex-direction: column;
+    gap: {{ block.settings.row_gap }}px;
+  }
+
+  .ai-reviews-carousel__track-{{ ai_gen_id }} {
+    display: flex;
+    gap: {{ block.settings.card_gap }}px;
+    animation: ai-reviews-scroll-{{ ai_gen_id }} var(--ai-scroll-duration-{{ ai_gen_id }}) linear infinite;
+    will-change: transform;
+  }
+
+  .ai-reviews-carousel__track-{{ ai_gen_id }}:hover {
+    animation-play-state: paused;
+  }
+
+  .ai-reviews-carousel__track-{{ ai_gen_id }}--reverse {
+    animation-direction: reverse;
+  }
+
+  .ai-reviews-carousel__card-{{ ai_gen_id }} {
+    flex: 0 0 auto;
+    width: {{ block.settings.card_width }}px;
+    background-color: {{ block.settings.card_background }};
+    border-radius: {{ block.settings.card_border_radius }}px;
+    padding: {{ block.settings.card_padding }}px;
+    box-shadow: {{ block.settings.shadow_horizontal }}px {{ block.settings.shadow_vertical }}px {{ block.settings.shadow_blur }}px rgba(0, 0, 0, {{ block.settings.shadow_opacity | divided_by: 100.0 }});
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ai-reviews-carousel__header-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ai-reviews-carousel__avatar-{{ ai_gen_id }} {
+    width: {{ block.settings.avatar_size }}px;
+    height: {{ block.settings.avatar_size }}px;
+    border-radius: 50%;
+    background-color: {{ block.settings.avatar_placeholder_bg }};
+    color: {{ block.settings.avatar_placeholder_text }};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: {{ block.settings.avatar_size | divided_by: 2 }}px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .ai-reviews-carousel__avatar-{{ ai_gen_id }} img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ai-reviews-carousel__author-info-{{ ai_gen_id }} {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ai-reviews-carousel__author-name-{{ ai_gen_id }} {
+    font-weight: 600;
+    color: {{ block.settings.text_color }};
+    margin: 0 0 4px;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ai-reviews-carousel__stars-{{ ai_gen_id }} {
+    display: flex;
+    gap: 2px;
+  }
+
+  .ai-reviews-carousel__star-{{ ai_gen_id }} {
+    width: 16px;
+    height: 16px;
+    color: {{ block.settings.star_color }};
+  }
+
+  .ai-reviews-carousel__star-{{ ai_gen_id }}--empty {
+    color: {{ block.settings.star_empty_color }};
+  }
+
+  .ai-reviews-carousel__text-{{ ai_gen_id }} {
+    color: {{ block.settings.text_color }};
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: {{ block.settings.text_lines }};
+    -webkit-box-orient: vertical;
+  }
+
+  .ai-reviews-carousel__loading-{{ ai_gen_id }} {
+    text-align: center;
+    padding: 40px 20px;
+    color: {{ block.settings.text_color }};
+    font-size: 14px;
+  }
+
+  .ai-reviews-carousel__empty-{{ ai_gen_id }} {
+    text-align: center;
+    padding: 40px 20px;
+    color: {{ block.settings.text_color }};
+    font-size: 14px;
+  }
+
+  @keyframes ai-reviews-scroll-{{ ai_gen_id }} {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(calc(-50% - {{ block.settings.card_gap | divided_by: 2 }}px));
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-reviews-carousel__card-{{ ai_gen_id }} {
+      width: {{ block.settings.card_width | times: 0.8 }}px;
+    }
+
+    .ai-reviews-carousel__heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size | times: 0.8 }}px;
+    }
+  }
+{% endstyle %}
+
+<judge-me-reviews-carousel-{{ ai_gen_id }}
+  class="ai-reviews-carousel-{{ ai_gen_id }}"
+  data-max-reviews="{{ block.settings.max_reviews }}"
+  {{ block.shopify_attributes }}
+>
+  {% if block.settings.heading != blank %}
+    <h2 class="ai-reviews-carousel__heading-{{ ai_gen_id }}">{{ block.settings.heading }}</h2>
+  {% endif %}
+
+  <div class="ai-reviews-carousel__container-{{ ai_gen_id }}">
+    <div class="ai-reviews-carousel__loading-{{ ai_gen_id }}" data-loading>
+      Loading reviews...
+    </div>
+
+    <div class="ai-reviews-carousel__track-wrapper-{{ ai_gen_id }}" data-carousel style="display: none;">
+      <div class="ai-reviews-carousel__track-{{ ai_gen_id }}" data-track-1 role="list" aria-label="Customer reviews row 1"></div>
+      <div class="ai-reviews-carousel__track-{{ ai_gen_id }} ai-reviews-carousel__track-{{ ai_gen_id }}--reverse" data-track-2 role="list" aria-label="Customer reviews row 2"></div>
+    </div>
+
+    <div class="ai-reviews-carousel__empty-{{ ai_gen_id }}" data-empty style="display: none;">
+      No reviews available yet.
+    </div>
+  </div>
+
+  <div id="judgeme_product_reviews" style="display: none;"></div>
+</judge-me-reviews-carousel-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class JudgeMeReviewsCarousel{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+        this.maxReviews = parseInt(this.dataset.maxReviews) || 20;
+        this.scrollSpeed = {{ block.settings.scroll_speed }};
+        this.reviews = [];
+        this.loadingEl = this.querySelector('[data-loading]');
+        this.carouselEl = this.querySelector('[data-carousel]');
+        this.emptyEl = this.querySelector('[data-empty]');
+        this.track1 = this.querySelector('[data-track-1]');
+        this.track2 = this.querySelector('[data-track-2]');
+      }
+
+      connectedCallback() {
+        this.waitForJudgeMe();
+      }
+
+      waitForJudgeMe() {
+        const checkInterval = setInterval(() => {
+          if (window.jdgm && window.jdgm.loadedData) {
+            clearInterval(checkInterval);
+            this.extractReviews();
+          } else if (this.querySelector('#judgeme_product_reviews .jdgm-rev-widg__reviews')) {
+            clearInterval(checkInterval);
+            setTimeout(() => this.extractReviewsFromDOM(), 500);
+          }
+        }, 200);
+
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          if (this.reviews.length === 0) {
+            this.extractReviewsFromDOM();
+          }
+        }, 5000);
+      }
+
+      extractReviews() {
+        try {
+          if (window.jdgm && window.jdgm.loadedData && window.jdgm.loadedData.reviews) {
+            const reviewsData = window.jdgm.loadedData.reviews;
+            this.reviews = reviewsData.slice(0, this.maxReviews).map(review => ({
+              author: review.reviewer || review.author || 'Anonymous',
+              rating: review.score || review.rating || 5,
+              text: review.body || review.content || review.text || '',
+              avatar: review.reviewer_avatar || review.avatar || null
+            }));
+          }
+        } catch (error) {
+          console.warn('Error extracting Judge.me reviews from API:', error);
+        }
+
+        if (this.reviews.length === 0) {
+          this.extractReviewsFromDOM();
+        } else {
+          this.renderCarousel();
+        }
+      }
+
+      extractReviewsFromDOM() {
+        try {
+          const reviewElements = document.querySelectorAll('.jdgm-rev, [data-review-id]');
+          
+          reviewElements.forEach((el, index) => {
+            if (index >= this.maxReviews) return;
+
+            const authorEl = el.querySelector('.jdgm-rev__author, .jdgm-reviewer-name, [data-author]');
+            const ratingEl = el.querySelector('.jdgm-rev__rating, [data-score], [data-rating]');
+            const textEl = el.querySelector('.jdgm-rev__body, .jdgm-review-text, [data-content]');
+            const avatarEl = el.querySelector('.jdgm-rev__avatar img, .jdgm-reviewer-avatar img');
+
+            const author = authorEl ? authorEl.textContent.trim() : 'Anonymous';
+            let rating = 5;
+            
+            if (ratingEl) {
+              const ratingAttr = ratingEl.getAttribute('data-score') || ratingEl.getAttribute('data-rating');
+              if (ratingAttr) {
+                rating = parseFloat(ratingAttr);
+              } else {
+                const filledStars = ratingEl.querySelectorAll('.jdgm-star--filled, .jdgm-star.jdgm--on');
+                rating = filledStars.length || 5;
+              }
+            }
+
+            const text = textEl ? textEl.textContent.trim() : '';
+            const avatar = avatarEl ? avatarEl.src : null;
+
+            if (author || text) {
+              this.reviews.push({ author, rating, text, avatar });
+            }
+          });
+        } catch (error) {
+          console.warn('Error extracting Judge.me reviews from DOM:', error);
+        }
+
+        this.renderCarousel();
+      }
+
+      renderCarousel() {
+        if (this.reviews.length === 0) {
+          this.loadingEl.style.display = 'none';
+          this.emptyEl.style.display = 'block';
+          return;
+        }
+
+        this.loadingEl.style.display = 'none';
+        this.carouselEl.style.display = 'flex';
+
+        const reviewsForRow1 = this.reviews.slice(0, Math.ceil(this.reviews.length / 2));
+        const reviewsForRow2 = this.reviews.slice(Math.ceil(this.reviews.length / 2));
+
+        this.populateTrack(this.track1, reviewsForRow1);
+        this.populateTrack(this.track2, reviewsForRow2.length > 0 ? reviewsForRow2 : reviewsForRow1);
+
+        this.setScrollSpeed();
+      }
+
+      populateTrack(track, reviews) {
+        const reviewsHTML = reviews.map(review => this.createReviewCard(review)).join('');
+        track.innerHTML = reviewsHTML + reviewsHTML;
+      }
+
+      createReviewCard(review) {
+        const initials = this.getInitials(review.author);
+        const stars = this.createStars(review.rating);
+        const avatarContent = review.avatar 
+          ? `<img src="${review.avatar}" alt="${review.author}" loading="lazy">`
+          : initials;
+
+        return `
+          <div class="ai-reviews-carousel__card-{{ ai_gen_id }}" role="listitem">
+            <div class="ai-reviews-carousel__header-{{ ai_gen_id }}">
+              <div class="ai-reviews-carousel__avatar-{{ ai_gen_id }}" aria-hidden="true">
+                ${avatarContent}
+              </div>
+              <div class="ai-reviews-carousel__author-info-{{ ai_gen_id }}">
+                <p class="ai-reviews-carousel__author-name-{{ ai_gen_id }}">${this.escapeHtml(review.author)}</p>
+                <div class="ai-reviews-carousel__stars-{{ ai_gen_id }}" role="img" aria-label="${review.rating} out of 5 stars">
+                  ${stars}
+                </div>
+              </div>
+            </div>
+            ${review.text ? `<p class="ai-reviews-carousel__text-{{ ai_gen_id }}">${this.escapeHtml(review.text)}</p>` : ''}
+          </div>
+        `;
+      }
+
+      createStars(rating) {
+        let starsHTML = '';
+        for (let i = 1; i <= 5; i++) {
+          const isFilled = i <= Math.round(rating);
+          const className = isFilled 
+            ? 'ai-reviews-carousel__star-{{ ai_gen_id }}'
+            : 'ai-reviews-carousel__star-{{ ai_gen_id }} ai-reviews-carousel__star-{{ ai_gen_id }}--empty';
+          
+          starsHTML += `
+            <svg class="${className}" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+          `;
+        }
+        return starsHTML;
+      }
+
+      getInitials(name) {
+        if (!name) return 'A';
+        const parts = name.trim().split(' ');
+        if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+      }
+
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      setScrollSpeed() {
+        const cardWidth = {{ block.settings.card_width }};
+        const gap = {{ block.settings.card_gap }};
+        const totalWidth = (cardWidth + gap) * this.reviews.length;
+        const duration = (totalWidth / this.scrollSpeed) * 10;
+        
+        this.style.setProperty('--ai-scroll-duration-{{ ai_gen_id }}', `${duration}s`);
+      }
+    }
+
+    customElements.define('judge-me-reviews-carousel-{{ ai_gen_id }}', JudgeMeReviewsCarousel{{ ai_gen_id }});
+  })();
+</script>
+
+<script>
+  (function() {
+    if (window.jdgmSettings) {
+      window.jdgmSettings.widget_load_with_code_splitting = false;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://cdn.judge.me/shopify_v2.js';
+    script.async = true;
+    document.head.appendChild(script);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Judge.me reviews carousel",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "What Our Customers Say"
+    },
+    {
+      "type": "range",
+      "id": "max_reviews",
+      "min": 4,
+      "max": 50,
+      "step": 2,
+      "label": "Maximum reviews",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "text_lines",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "label": "Review text lines",
+      "default": 3
+    },
+    {
+      "type": "header",
+      "content": "Animation"
+    },
+    {
+      "type": "range",
+      "id": "scroll_speed",
+      "min": 10,
+      "max": 100,
+      "step": 5,
+      "label": "Scroll speed",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "section_padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Section padding",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 16,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "label": "Heading size",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "heading_spacing",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "label": "Heading spacing",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "row_gap",
+      "min": 8,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "label": "Row gap",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "min": 8,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "label": "Card gap",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "range",
+      "id": "card_width",
+      "min": 200,
+      "max": 400,
+      "step": 20,
+      "unit": "px",
+      "label": "Card width",
+      "default": 300
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "min": 12,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "label": "Card padding",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "label": "Card border radius",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "avatar_size",
+      "min": 32,
+      "max": 64,
+      "step": 4,
+      "unit": "px",
+      "label": "Avatar size",
+      "default": 48
+    },
+    {
+      "type": "header",
+      "content": "Shadow"
+    },
+    {
+      "type": "range",
+      "id": "shadow_horizontal",
+      "min": -12,
+      "max": 12,
+      "step": 2,
+      "unit": "px",
+      "label": "Horizontal offset",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "shadow_vertical",
+      "min": -12,
+      "max": 12,
+      "step": 2,
+      "unit": "px",
+      "label": "Vertical offset",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "shadow_blur",
+      "min": 0,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "label": "Blur",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "shadow_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Opacity",
+      "default": 10
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "card_background",
+      "label": "Card background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "star_color",
+      "label": "Star filled",
+      "default": "#FFB800"
+    },
+    {
+      "type": "color",
+      "id": "star_empty_color",
+      "label": "Star empty",
+      "default": "#E0E0E0"
+    },
+    {
+      "type": "color",
+      "id": "avatar_placeholder_bg",
+      "label": "Avatar placeholder background",
+      "default": "#c2b7ac"
+    },
+    {
+      "type": "color",
+      "id": "avatar_placeholder_text",
+      "label": "Avatar placeholder text",
+      "default": "#262626"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Judge.me reviews carousel"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,284 @@
+{%- comment -%}
+  About Us: how it works. Text tabs on the left (number + title, a thin red
+  line under the active one fills while it plays, then the next step comes
+  up by itself); one stone panel on the right shows a small scene of that
+  step: a quiz card, the experts, the plan, a follow-up chat.
+  Clicking a tab stops the auto-play. Auto-play pauses off screen and on
+  hover, and never runs with reduced motion. Phones: tabs in a row of four,
+  the panel under them, the step's text under the panel.
+
+  Scene lines (block "Scene lines", one per line):
+    quiz: label / question / options (start one with * to show it picked)
+    team: Name|System for each photo
+    plan: card title / then Title|text rows
+    chat: us|text or me|text
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #asp-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --soft: #9a918a; --line: #e8e0d9; --stone: #f6f0ec; --tint: #fdecef;
+    --red: #ee204a; --red-ink: #d81f48; --ease: cubic-bezier(.22, 1, .36, 1);
+    padding: clamp(56px, 6vw, 104px) clamp(16px, 4vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #asp-{{ section.id }} * { box-sizing: border-box; }
+  #asp-{{ section.id }} .asp__in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5.5vw, 88px); align-items: center; }
+  #asp-{{ section.id }} .asp__h { margin: 0; color: var(--ink); font: 800 clamp(28px, 3vw, 42px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #asp-{{ section.id }} .asp__sub { margin: 12px 0 0; font: 500 16px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+
+  /* Tabs */
+  #asp-{{ section.id }} .asp__tabs { margin-top: clamp(24px, 3vw, 36px); border-top: 1px solid var(--line); }
+  #asp-{{ section.id }} .asp__tab { position: relative; display: flex; align-items: baseline; gap: 16px; width: 100%; padding: 18px 0; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; cursor: pointer; color: var(--soft); font-family: inherit; transition: color .3s ease; }
+  #asp-{{ section.id }} .asp__tab .n { font: 700 14px/1 'Montserrat', sans-serif; letter-spacing: .02em; }
+  #asp-{{ section.id }} .asp__tab .t { font: 800 clamp(19px, 1.6vw, 23px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #asp-{{ section.id }} .asp__tab[aria-selected="true"] { color: var(--ink); }
+  #asp-{{ section.id }} .asp__tab[aria-selected="true"] .n { color: var(--red-ink); }
+  @media (hover: hover) { #asp-{{ section.id }} .asp__tab:hover { color: var(--ink); } }
+  #asp-{{ section.id }} .asp__tab:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  /* The line that fills while a step plays (it also drives the auto-play) */
+  #asp-{{ section.id }} .asp__tab .p { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--red); transform: scaleX(0); transform-origin: left; }
+  #asp-{{ section.id }} .asp__tab[aria-selected="true"] .p { transform: scaleX(1); }
+  #asp-{{ section.id }}.auto .asp__tab[aria-selected="true"] .p { animation: asp-fill-{{ section.id }} 6s linear both; }
+  #asp-{{ section.id }}.auto.hold .asp__tab[aria-selected="true"] .p { animation-play-state: paused; }
+  @keyframes asp-fill-{{ section.id }} { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* The active step's text: all texts share one cell, so the height never jumps */
+  #asp-{{ section.id }} .asp__say { display: grid; margin-top: 20px; }
+  #asp-{{ section.id }} .asp__say p { grid-area: 1 / 1; margin: 0; font: 500 16px/1.6 'Montserrat', sans-serif; color: var(--mute); opacity: 0; transform: translateY(6px); transition: opacity .35s ease, transform .45s var(--ease); text-wrap: pretty; }
+  #asp-{{ section.id }} .asp__say p.on { opacity: 1; transform: none; }
+  #asp-{{ section.id }} .asp__link { display: inline-block; margin-top: 18px; font: 700 15px/1.4 'Montserrat', sans-serif; color: var(--ink); text-decoration: none; border-bottom: 1.5px solid #cfc4bb; transition: border-color .2s; }
+  @media (hover: hover) { #asp-{{ section.id }} .asp__link:hover { border-color: var(--ink); } }
+
+  /* Panel + scenes */
+  #asp-{{ section.id }} .asp__panel { position: relative; display: grid; place-items: center; min-height: clamp(420px, 38vw, 520px); padding: 32px; border-radius: 28px; background: var(--stone); overflow: hidden; }
+  #asp-{{ section.id }} .sc { grid-area: 1 / 1; width: min(420px, 100%); opacity: 0; visibility: hidden; transform: translateY(14px) scale(.98); transition: opacity .4s ease, transform .6s var(--ease), visibility 0s .4s; }
+  #asp-{{ section.id }} .sc.on { opacity: 1; visibility: visible; transform: none; transition: opacity .45s ease .1s, transform .7s var(--ease) .1s, visibility 0s; }
+  #asp-{{ section.id }} .card { padding: 26px; border-radius: 22px; background: #fff; box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 18px 40px rgba(60, 40, 30, .08); }
+  /* Children rise in one after another while their scene is on */
+  #asp-{{ section.id }} .sc .in { opacity: 0; transform: translateY(10px); transition: opacity .3s ease, transform .3s ease; }
+  #asp-{{ section.id }} .sc.on .in { opacity: 1; transform: none; transition: opacity .5s ease calc(.25s + var(--i, 0) * .14s), transform .6s var(--ease) calc(.25s + var(--i, 0) * .14s); }
+
+  /* quiz */
+  #asp-{{ section.id }} .k { margin: 0; font: 700 13px/1 'Montserrat', sans-serif; color: var(--soft); }
+  #asp-{{ section.id }} .bar { height: 4px; margin: 12px 0 20px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  #asp-{{ section.id }} .bar i { display: block; width: 25%; height: 100%; background: var(--red); transform-origin: left; }
+  #asp-{{ section.id }} .sc.on .bar i { animation: asp-grow-{{ section.id }} .9s var(--ease) .2s both; }
+  @keyframes asp-grow-{{ section.id }} { from { transform: scaleX(.35); } }
+  #asp-{{ section.id }} .q { margin: 0 0 18px; font: 800 20px/1.3 'Montserrat', sans-serif; letter-spacing: -.01em; color: var(--ink); }
+  #asp-{{ section.id }} .opts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  #asp-{{ section.id }} .opts li { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--line); font: 600 15px/1.2 'Montserrat', sans-serif; color: var(--ink); }
+  #asp-{{ section.id }} .sc.on .opts li.pick { border-color: var(--red); background: var(--tint); transition: opacity .5s ease calc(.25s + var(--i, 0) * .14s), transform .6s var(--ease) calc(.25s + var(--i, 0) * .14s), border-color .3s ease 1.2s, background-color .3s ease 1.2s; }
+  #asp-{{ section.id }} .opts li.pick::after { content: ""; width: 18px; height: 18px; border-radius: 50%; background: var(--red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; transform: scale(0); transition: transform .2s ease; }
+  #asp-{{ section.id }} .sc.on .opts li.pick::after { transform: scale(1); transition: transform .45s cubic-bezier(.34, 1.56, .64, 1) 1.3s; }
+
+  /* team */
+  #asp-{{ section.id }} .team { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: center; }
+  #asp-{{ section.id }} .team .ph { display: block; width: 84px; height: 84px; margin: 0 auto 12px; border-radius: 50%; overflow: hidden; background: #e8e0d9; box-shadow: 0 0 0 4px #fff, 0 8px 20px rgba(60, 40, 30, .12); }
+  #asp-{{ section.id }} .team .ph img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; display: block; }
+  #asp-{{ section.id }} .team b { display: block; font: 800 13.5px/1.3 'Montserrat', sans-serif; color: var(--ink); }
+  #asp-{{ section.id }} .team small { display: block; margin-top: 3px; font: 600 12.5px/1.3 'Montserrat', sans-serif; color: var(--red-ink); }
+  #asp-{{ section.id }} .reading { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--line); font: 600 14px/1.3 'Montserrat', sans-serif; color: var(--mute); }
+  #asp-{{ section.id }} .dots { display: inline-flex; gap: 4px; }
+  #asp-{{ section.id }} .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--red); opacity: .25; }
+  #asp-{{ section.id }} .sc.on .dots i { animation: asp-dot-{{ section.id }} 1.2s ease-in-out infinite; }
+  #asp-{{ section.id }} .sc.on .dots i:nth-child(2) { animation-delay: .15s; }
+  #asp-{{ section.id }} .sc.on .dots i:nth-child(3) { animation-delay: .3s; }
+  @keyframes asp-dot-{{ section.id }} { 0%, 60%, 100% { opacity: .25; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+
+  /* plan */
+  #asp-{{ section.id }} .plan-h { margin: 0 0 6px; font: 800 20px/1.3 'Montserrat', sans-serif; color: var(--ink); }
+  #asp-{{ section.id }} .rows { list-style: none; margin: 0; padding: 0; }
+  #asp-{{ section.id }} .rows li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  #asp-{{ section.id }} .rows li:last-child { border-bottom: 0; padding-bottom: 0; }
+  #asp-{{ section.id }} .rows svg { grid-row: span 2; width: 22px; height: 22px; margin-top: 1px; }
+  #asp-{{ section.id }} .rows svg path { fill: none; stroke: var(--red); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #asp-{{ section.id }} .rows b { font: 800 15.5px/1.3 'Montserrat', sans-serif; color: var(--ink); }
+  #asp-{{ section.id }} .rows span { font: 500 14px/1.45 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* chat */
+  #asp-{{ section.id }} .chat { display: grid; gap: 10px; padding: 22px; border-radius: 22px; background: #fff; box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 18px 40px rgba(60, 40, 30, .08); }
+  #asp-{{ section.id }} .chat-top { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid var(--line); font: 800 15px/1.2 'Montserrat', sans-serif; }
+  #asp-{{ section.id }} .chat-top i { width: 10px; height: 10px; border-radius: 50%; background: #25d366; }
+  #asp-{{ section.id }} .msg { max-width: 82%; padding: 11px 14px; border-radius: 16px; font: 500 14.5px/1.45 'Montserrat', sans-serif; color: var(--ink); }
+  #asp-{{ section.id }} .msg.us { justify-self: start; background: var(--stone); border-bottom-left-radius: 4px; }
+  #asp-{{ section.id }} .msg.me { justify-self: end; background: var(--tint); border-bottom-right-radius: 4px; }
+  #asp-{{ section.id }} .sc.on .msg.in { transition-delay: calc(.3s + var(--i, 0) * .7s); }
+
+  @media (max-width: 849.98px) {
+    #asp-{{ section.id }} .asp__in { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    #asp-{{ section.id }} .asp__l { display: contents; }
+    #asp-{{ section.id }} .asp__head { order: 1; }
+    #asp-{{ section.id }} .asp__tabs { order: 2; display: grid; grid-template-columns: repeat({{ section.blocks.size | at_least: 1 }}, minmax(0, 1fr)); margin: 24px 0 16px; border-top: 0; }
+    #asp-{{ section.id }} .asp__tab { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 4px 12px 0; }
+    #asp-{{ section.id }} .asp__tab .t { font-size: 14px; line-height: 1.2; }
+    #asp-{{ section.id }} .asp__tab .n { font-size: 12px; }
+    #asp-{{ section.id }} .asp__panel { order: 3; min-height: 390px; padding: 20px 16px; border-radius: 22px; }
+    #asp-{{ section.id }} .asp__say { order: 4; margin-top: 18px; }
+    #asp-{{ section.id }} .asp__link { order: 5; justify-self: start; }
+    #asp-{{ section.id }} .card, #asp-{{ section.id }} .chat { padding: 20px; }
+    #asp-{{ section.id }} .team .ph { width: 64px; height: 64px; }
+    #asp-{{ section.id }} .team b { font-size: 12.5px; }
+    #asp-{{ section.id }} .q { font-size: 18px; }
+  }
+  @media (min-width: 1680px) { #asp-{{ section.id }} .asp__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #asp-{{ section.id }} .asp__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #asp-{{ section.id }} .asp__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #asp-{{ section.id }} .asp__in { zoom: 2; } }
+  @media (prefers-reduced-motion: reduce) {
+    #asp-{{ section.id }} .sc, #asp-{{ section.id }} .sc .in, #asp-{{ section.id }} .asp__say p { transition: none !important; }
+    #asp-{{ section.id }} .sc.on .dots i { animation: none; }
+  }
+</style>
+
+<section id="asp-{{ section.id }}">
+  <div class="asp__in">
+    <div class="asp__l">
+      <div class="asp__head">
+        <h2 class="asp__h">{{ s.heading }}</h2>
+        {%- if s.subheading != blank -%}<p class="asp__sub">{{ s.subheading }}</p>{%- endif -%}
+      </div>
+      <div class="asp__tabs" role="tablist" aria-label="{{ s.heading | escape }}">
+        {%- for b in section.blocks -%}
+          <button type="button" class="asp__tab" role="tab" id="asp-t{{ forloop.index }}-{{ section.id }}" aria-controls="asp-p{{ forloop.index }}-{{ section.id }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"{% unless forloop.first %} tabindex="-1"{% endunless %} {{ b.shopify_attributes }}>
+            <span class="n">{% if forloop.index < 10 %}0{% endif %}{{ forloop.index }}</span><span class="t">{{ b.settings.title }}</span><i class="p" aria-hidden="true"></i>
+          </button>
+        {%- endfor -%}
+      </div>
+      <div class="asp__say" aria-live="polite">
+        {%- for b in section.blocks -%}<p{% if forloop.first %} class="on"{% endif %}>{{ b.settings.text }}</p>{%- endfor -%}
+      </div>
+      {%- if s.link_label != blank -%}<a class="asp__link" href="{{ s.link | default: '#' }}">{{ s.link_label }} &rarr;</a>{%- endif -%}
+    </div>
+
+    <div class="asp__panel">
+      {%- for b in section.blocks -%}
+        {%- assign L = b.settings.lines | strip | newline_to_br | split: '<br />' -%}
+        <div class="sc{% if forloop.first %} on{% endif %}" role="tabpanel" id="asp-p{{ forloop.index }}-{{ section.id }}" aria-labelledby="asp-t{{ forloop.index }}-{{ section.id }}">
+          {%- case b.settings.scene -%}
+            {%- when 'quiz' -%}
+              <div class="card">
+                <p class="k">{{ L[0] | strip }}</p>
+                <div class="bar"><i></i></div>
+                <p class="q in">{{ L[1] | strip }}</p>
+                <ul class="opts">
+                  {%- for o in L offset: 2 -%}
+                    {%- assign opt = o | strip -%}
+                    <li class="in{% if opt contains '*' %} pick{% endif %}" style="--i: {{ forloop.index }}">{{ opt | remove: '*' }}</li>
+                  {%- endfor -%}
+                </ul>
+              </div>
+            {%- when 'team' -%}
+              <div class="card">
+                <ul class="team">
+                  {%- for i in (1..3) -%}
+                    {%- assign pk = 'photo_' | append: i -%}
+                    {%- assign who = L[forloop.index0] | split: '|' -%}
+                    <li class="in" style="--i: {{ forloop.index0 }}">
+                      <span class="ph">{%- if b.settings[pk] != blank -%}{{ b.settings[pk] | image_url: width: 240, height: 240, crop: 'top' | image_tag: alt: '', loading: 'lazy', width: 84, height: 84 }}{%- endif -%}</span>
+                      <b>{{ who[0] | strip }}</b><small>{{ who[1] | strip }}</small>
+                    </li>
+                  {%- endfor -%}
+                </ul>
+                {%- if L[3] != blank -%}<p class="reading in" style="--i: 3">{{ L[3] | strip }}<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>{%- endif -%}
+              </div>
+            {%- when 'plan' -%}
+              <div class="card">
+                <p class="plan-h">{{ L[0] | strip }}</p>
+                <ul class="rows">
+                  {%- for r in L offset: 1 -%}
+                    {%- assign row = r | split: '|' -%}
+                    <li class="in" style="--i: {{ forloop.index }}"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M5 11.5l4 4 8-9"/></svg><b>{{ row[0] | strip }}</b><span>{{ row[1] | strip }}</span></li>
+                  {%- endfor -%}
+                </ul>
+              </div>
+            {%- when 'chat' -%}
+              <div class="chat">
+                <div class="chat-top"><i aria-hidden="true"></i>{{ b.settings.chat_name | default: 'sehatUP care team' }}</div>
+                {%- for m in L -%}
+                  {%- assign msg = m | split: '|' -%}
+                  <p class="msg {{ msg[0] | strip }} in" style="--i: {{ forloop.index0 }}">{{ msg[1] | strip }}</p>
+                {%- endfor -%}
+              </div>
+          {%- endcase -%}
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('asp-{{ section.id }}');
+    if (!root) return;
+    var tabs = root.querySelectorAll('.asp__tab'), scenes = root.querySelectorAll('.sc'), says = root.querySelectorAll('.asp__say p');
+    var cur = 0, n = tabs.length;
+    if (n < 2) return;
+    function go(i, focus) {
+      cur = (i + n) % n;
+      tabs.forEach(function (t, k) { t.setAttribute('aria-selected', k === cur ? 'true' : 'false'); t.tabIndex = k === cur ? 0 : -1; });
+      scenes.forEach(function (sc, k) { sc.classList.toggle('on', k === cur); });
+      says.forEach(function (p, k) { p.classList.toggle('on', k === cur); });
+      if (focus) tabs[cur].focus();
+    }
+    function stop() { root.classList.remove('auto'); }
+    tabs.forEach(function (t, k) {
+      t.addEventListener('click', function () { stop(); go(k); });
+      t.addEventListener('keydown', function (e) {
+        var d = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+        if (d) { e.preventDefault(); stop(); go(cur + d, true); }
+      });
+      // The red line finishing its fill moves the auto-play on.
+      t.querySelector('.p').addEventListener('animationend', function () { if (root.classList.contains('auto') && k === cur) go(cur + 1); });
+    });
+
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+    root.classList.add('auto', 'hold');
+    // The first scene builds up when the panel is first seen, not on page load.
+    scenes[0].classList.remove('on');
+    var seen = false;
+    // Plays only while on screen (pauses where it was).
+    new IntersectionObserver(function (es) {
+      var on = es[0].isIntersecting;
+      if (on && !seen) { seen = true; go(cur); }
+      root.classList.toggle('hold', !on);
+    }, { threshold: .4 }).observe(root.querySelector('.asp__panel'));
+    if (matchMedia('(hover: hover)').matches) {
+      root.addEventListener('mouseenter', function () { root.classList.add('hold'); });
+      root.addEventListener('mouseleave', function () { root.classList.remove('hold'); });
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "About: steps",
+  "tag": "div",
+  "settings": [
+    { "type": "color", "id": "section_bg", "label": "Section background", "default": "#ffffff" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Your health journey, made simple." },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "text", "id": "link_label", "label": "Link under the steps" },
+    { "type": "url", "id": "link", "label": "Link" }
+  ],
+  "blocks": [
+    {
+      "type": "step", "name": "Step", "limit": 4,
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title", "default": "Step" },
+        { "type": "textarea", "id": "text", "label": "Text" },
+        { "type": "select", "id": "scene", "label": "Scene", "default": "quiz", "options": [
+          { "value": "quiz", "label": "Quiz card" },
+          { "value": "team", "label": "Three experts" },
+          { "value": "plan", "label": "Plan card" },
+          { "value": "chat", "label": "Chat" }
+        ] },
+        { "type": "textarea", "id": "lines", "label": "Scene lines", "info": "Quiz: label, question, then options (* = picked). Experts: Name|System x3, then a status line. Plan: title, then Title|text rows. Chat: us|text or me|text." },
+        { "type": "image_picker", "id": "photo_1", "label": "Expert photo 1" },
+        { "type": "image_picker", "id": "photo_2", "label": "Expert photo 2" },
+        { "type": "image_picker", "id": "photo_3", "label": "Expert photo 3" },
+        { "type": "text", "id": "chat_name", "label": "Chat name", "default": "sehatUP care team" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "About: steps" }]
+}
+{% endschema %}

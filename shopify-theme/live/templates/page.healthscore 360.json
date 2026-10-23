@@ -12,8 +12,8 @@
     "health_score_glance_hsg01": {
       "type": "health-score-glance",
       "settings": {
-        "heading": "What Is Health Score 360?",
-        "subheading": "One free check that reads your hormones, metabolism, stamina and cycle health, not just one symptom.",
+        "heading": "Discover What Your Body Needs",
+        "subheading": "A quick 2-minute check to understand what your body really needs - and how to fix it.",
         "switch_label": "Who is the check for?",
         "her_label": "For Her",
         "him_label": "For Him",
@@ -22,7 +22,7 @@
         "button": "Take the free check",
         "her_link": "shopify://pages/womens-wellness-questionnaire",
         "him_link": "shopify://pages/mens-health-questionnaire",
-        "note": "Free. Private. No sign-up.",
+        "note": "",
         "her_photo": "shopify://shop_images/Warm_Portrait_with_Crossed_Arms_copy.webp",
         "him_photo": "shopify://shop_images/healthscrore-men.png",
         "her_nodes": "Weight|Metabolism, energy and weight patterns\nPeriod care|Cycle health, PMS and hormonal balance\nEnergy|How rested and active you feel",
@@ -85,11 +85,17 @@
         "heading": "Free Health Score quizzes",
         "subheading": "2 minutes. A few questions. A free doctor call after.",
         "her_title": "For women",
-        "her_cutout": "shopify://shop_images/Thoughtful_Woman_in_Ivory_Tee.webp",
-        "her_face": "shopify://shop_images/Thoughtful_Upward_Studio_Portrait.webp",
+        "her_cutout": "shopify://shop_images/A_Women.webp",
+        "her_face": "shopify://shop_images/women_square_photo.webp",
+        "her_img_size": 98,
+        "her_img_x": -18,
+        "her_img_y": 0,
         "him_title": "For men",
-        "him_cutout": "shopify://shop_images/Thoughtful_Man_in_Cream_T-Shirt.webp",
-        "him_face": "shopify://shop_images/Thoughtful_Studio_Portrait_of_a_Smiling_Man.webp",
+        "him_cutout": "shopify://shop_images/A_man.webp",
+        "him_face": "shopify://shop_images/A_man_square_photo.webp",
+        "him_img_size": 105,
+        "him_img_x": 17,
+        "him_img_y": 0,
         "accent_color": "#ee204a"
       }
     },
@@ -185,25 +191,26 @@
         "day_2": "Within 24 hours",
         "title_2": "A doctor calls you",
         "text_2": "Ayurveda, Homeopathy and Allopathy doctors review your score together, in Hindi or English.",
-        "call_image": "shopify://shop_images/Dr_Shefali.webp",
+        "call_image": "shopify://shop_images/Dr._Shefali.webp",
         "call_name": "sehatUP Doctor",
         "review_line": "Your score is reviewed by 3 doctors",
-        "doctor_1_image": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+        "doctor_1_image": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
         "doctor_1_label": "Ayurveda",
-        "doctor_2_image": "shopify://shop_images/Dr_Shefali.webp",
+        "doctor_2_image": "shopify://shop_images/Dr._Shefali.webp",
         "doctor_2_label": "Homeopathy",
+        "doctor_3_image": "shopify://shop_images/Devika_Chugh.webp",
         "doctor_3_label": "Allopathy",
         "day_3": "Day 3 to 5",
         "title_3": "Your kit arrives",
-        "text_3": "In a plain box. Nobody knows what is inside. Confirm with just ₹50 and pay the rest on delivery, or pay in full online.",
+        "text_3": "Packed discreetly. The label has your address, and product names show only their first few letters. Confirm with just ₹50 and pay the rest on delivery, or pay in full online.",
         "pay_line": "₹50 paid · rest on delivery",
         "day_4": "Every month",
         "title_4": "Your plan keeps improving",
         "text_4": "A WhatsApp check-in each month. Most people notice first changes in 4 to 6 weeks, and your plan changes as your body responds.",
+        "chat_logo": "shopify://shop_images/Favicon_black.webp",
+        "chat_name": "sehatUP",
         "chat_q": "Day 30: how is your sleep now?",
-        "chat_a": "Much better, thank you!",
-        "doctor_3_image": "shopify://shop_images/Dr_Devika.webp",
-        "chat_name": "sehatUP"
+        "chat_a": "Much better, thank you!"
       }
     },
     "health_signs_hsg01": {
@@ -238,7 +245,7 @@
         "doc_homeo": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Shefali.webp",
+            "photo": "shopify://shop_images/Dr._Shefali.webp",
             "system": "Homeopathy",
             "name": "Dr. Shefali Chhicholia",
             "degree": "BHMS, MD (Homeopathy), 5 years experience",
@@ -248,7 +255,7 @@
         "doc_ayur": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "photo": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
             "system": "Ayurveda",
             "name": "Dr. Jayant Kumar",
             "degree": "BAMS (Ayurveda), 5 years experience",
@@ -258,7 +265,7 @@
         "doc_allo": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Devika.webp",
+            "photo": "shopify://shop_images/Smiling_Woman_in_White_Coat_with_Crossed_Arms.webp",
             "system": "Psychology",
             "name": "Ms. Devika Chugh",
             "degree": "Counselling Psychologist, 5 years experience",
@@ -273,8 +280,8 @@
       ],
       "settings": {
         "eyebrow": "Who reviews your Health Score",
-        "heading": "Three experts. One plan for you.",
-        "subheading": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your score together, so your plan cares for your body and your mind.",
+        "heading": "Three experts. One Personalized Health plan.",
+        "subheading": "Our Ayurveda, Homeopathy and counselling experts review your Health Score 360 results to understand your wellness needs and help create a personalized care plan.",
         "footnote": "Talk to them in Hindi or English, on a call that suits you.",
         "button": "",
         "button_link": "",
@@ -288,8 +295,19 @@
       "type": "health-kits",
       "settings": {
         "eyebrow": "What your doctor may suggest",
-        "heading": "Our most ordered care kits",
+        "heading": "The care that fits your needs.",
         "subheading": "Each kit pairs medicines from different systems. Your doctor tells you which one fits you, and what it costs, before you decide.",
+        "her_products": [
+          "her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness",
+          "macho-metabolism",
+          "aloezy-intimate-foam-wash"
+        ],
+        "him_products": [
+          "p-e-e-d-integrated-kit",
+          "shaktisurge",
+          "calm-curve-control",
+          "shilajit-sticks-energy-stamina-kit"
+        ],
         "products": [
           "p-e-e-d-integrated-kit",
           "her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness",
@@ -301,7 +319,7 @@
         "him_label": "For Him",
         "all_label": "See all combos",
         "all_link": "shopify://pages/combos",
-        "note": "Pay just ₹50 to confirm and the rest on delivery, or pay in full online.",
+        "note": "",
         "accent_color": "#ee204a"
       }
     },
@@ -331,7 +349,7 @@
         "trust_2": "100% private",
         "trust_2_text": "Only your doctor sees your answers",
         "trust_3": "Discreet packaging",
-        "trust_3_text": "A plain box, nothing printed on it",
+        "trust_3_text": "Product names cut short on the label",
         "trust_4": "Just ₹50 to confirm",
         "trust_4_text": "Pay the rest on delivery, or pay in full online"
       }
@@ -392,7 +410,7 @@
           "type": "question",
           "settings": {
             "question": "Will anyone know what I ordered?",
-            "answer": "<p>No. Your kit comes in a plain box with nothing printed on it about what is inside, and only your doctor sees your answers.</p>"
+            "answer": "<p>Your kit is packed discreetly. The shipping label has your address, and product names are cut to their first few letters, so the full names are not shown. Only your doctor sees your answers.</p>"
           }
         },
         "faq_6": {
@@ -429,12 +447,13 @@
         "contact_text": "Ask us on WhatsApp",
         "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20Health%20Score%20360",
         "open_first": true,
-        "shop_1_text": "Shop For Her",
-        "shop_1_link": "shopify://pages/for-her",
-        "shop_2_text": "Shop For Him",
-        "shop_2_link": "shopify://pages/for-him",
-        "shop_3_text": "All combos",
-        "shop_3_link": "shopify://pages/combos",
+        "shop_label": "",
+        "shop_1_text": "",
+        "shop_1_link": "",
+        "shop_2_text": "",
+        "shop_2_link": "",
+        "shop_3_text": "",
+        "shop_3_link": "",
         "accent_color": "#ee204a"
       }
     },
@@ -1028,6 +1047,7 @@
       "name": "Featured in",
       "settings": {
         "heading": "sehatUP in the News",
+        "page_style": true,
         "heading_size": 28,
         "heading_color": "#2b2c2d",
         "logo_max_width": 140,
@@ -1131,6 +1151,7 @@
     "health_doctors_hdr01",
     "health_kits_hkt01",
     "health_trust_htr01",
+    "featured_in_custom_8wkE6P",
     "health_faq_hfq01",
     "17697712806fa21863",
     "1769771514fca70115",
@@ -1140,7 +1161,6 @@
     "176977220871fe049a",
     "integrated_AzUHbM",
     "1769773909614181d6",
-    "featured_in_custom_8wkE6P",
     "health_final_cta_hfc01",
     "1769774876af247713"
   ]

@@ -589,9 +589,10 @@
         "st3"
       ],
       "settings": {
-        "doc_photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+        "doc_photo": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+        "show_expect": false,
         "doc_link": "https://wa.me/919355539355?text=Hi%2C%20I%20would%20like%20to%20talk%20to%20a%20doctor",
-        "doc_1": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+        "doc_1": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
         "doc_2": "shopify://shop_images/Dr_Shefali.webp"
       }
     },

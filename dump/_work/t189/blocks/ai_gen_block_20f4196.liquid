@@ -1,0 +1,504 @@
+{% comment %} Parse delimiters from product description {% endcomment %}
+{% assign description = product.description %}
+{% assign show_section = false %}
+
+{% comment %} Extract subtitle {% endcomment %}
+{% assign subtitle_content = section.settings.subtitle %}
+{% if description contains '[who_subtitle]' %}
+  {% assign subtitle_parts = description | split: '[who_subtitle]' %}
+  {% assign subtitle_end = subtitle_parts[1] | split: '[/who_subtitle]' %}
+  {% assign subtitle_content = subtitle_end[0] | strip %}
+{% endif %}
+
+{% comment %} Extract "should use" content {% endcomment %}
+{% assign should_use_content = '' %}
+{% if description contains '[who_should_use]' %}
+  {% assign should_parts = description | split: '[who_should_use]' %}
+  {% assign should_end = should_parts[1] | split: '[/who_should_use]' %}
+  {% assign should_use_content = should_end[0] | strip %}
+  {% assign show_section = true %}
+{% endif %}
+
+{% comment %} Extract "should NOT use" content {% endcomment %}
+{% assign should_not_use_content = '' %}
+{% if description contains '[who_should_not_use]' %}
+  {% assign not_parts = description | split: '[who_should_not_use]' %}
+  {% assign not_end = not_parts[1] | split: '[/who_should_not_use]' %}
+  {% assign should_not_use_content = not_end[0] | strip %}
+  {% assign show_section = true %}
+{% endif %}
+
+{% comment %} Show section if override is enabled or content exists {% endcomment %}
+{% if section.settings.show_section_override %}
+  {% assign show_section = true %}
+{% endif %}
+
+{% if show_section %}
+<section class="who-this-is-for-section" style="
+  background-color: {{ section.settings.section_background_color }};
+  padding-top: {{ section.settings.section_padding_top }}px;
+  padding-bottom: {{ section.settings.section_padding_bottom }}px;
+">
+  <div class="who-container" style="max-width: {{ section.settings.container_max_width }}px; margin: 0 auto; padding: 0 20px;">
+    
+    {% comment %} Header {% endcomment %}
+    <div class="who-header" style="text-align: center; margin-bottom: {{ section.settings.header_spacing }}px;">
+      <h2 style="
+        font-size: {{ section.settings.heading_size }}px;
+        color: {{ section.settings.heading_color }};
+        margin: 0 0 16px 0;
+        font-weight: 600;
+        line-height: 1.2;
+      ">{{ section.settings.heading }}</h2>
+      
+      {% if subtitle_content != blank %}
+      <p style="
+        font-size: {{ section.settings.subtitle_size }}px;
+        color: {{ section.settings.subtitle_color }};
+        margin: 0;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.5;
+      ">{{ subtitle_content }}</p>
+      {% endif %}
+    </div>
+
+    {% comment %} Cards {% endcomment %}
+    <div class="who-cards-wrapper" style="
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: {{ section.settings.card_gap }}px;
+      margin-top: {{ section.settings.cards_top_spacing }}px;
+    ">
+      
+      {% comment %} Should Use Card - LEFT SIDE {% endcomment %}
+      {% if should_use_content != blank %}
+      <div class="who-card who-should-use" style="
+        background: {{ section.settings.card_background_color }};
+        border: {{ section.settings.card_border_width }}px solid {{ section.settings.card_border_color }};
+        border-radius: {{ section.settings.card_border_radius }}px;
+        padding: {{ section.settings.card_padding }}px;
+        box-shadow: 0 2px 8px rgba(0,0,0,{{ section.settings.card_shadow_opacity | times: 0.01 }});
+      ">
+        {% assign card_title = section.settings.should_use_title | replace: '[product_name]', product.title %}
+        <h3 class="who-card-title" style="
+          font-size: {{ section.settings.card_title_size }}px;
+          color: {{ section.settings.card_title_color }};
+          margin: 0 0 24px 0;
+          font-weight: 600;
+          line-height: 1.3;
+        ">{{ card_title }}</h3>
+        
+        <div class="who-card-content" style="
+          color: {{ section.settings.list_text_color }};
+          font-size: {{ section.settings.list_text_size }}px;
+          line-height: 1.6;
+        ">
+          {{ should_use_content | raw }}
+        </div>
+      </div>
+      {% endif %}
+
+      {% comment %} Should NOT Use Card - RIGHT SIDE {% endcomment %}
+      {% if should_not_use_content != blank %}
+      <div class="who-card who-should-not-use" style="
+        background: {{ section.settings.card_background_color }};
+        border: {{ section.settings.card_border_width }}px solid {{ section.settings.card_border_color }};
+        border-radius: {{ section.settings.card_border_radius }}px;
+        padding: {{ section.settings.card_padding }}px;
+        box-shadow: 0 2px 8px rgba(0,0,0,{{ section.settings.card_shadow_opacity | times: 0.01 }});
+      ">
+        <h3 class="who-card-title" style="
+          font-size: {{ section.settings.card_title_size }}px;
+          color: {{ section.settings.card_title_color }};
+          margin: 0 0 24px 0;
+          font-weight: 600;
+          line-height: 1.3;
+        ">{{ section.settings.should_not_use_title }}</h3>
+        
+        <div class="who-card-content" style="
+          color: {{ section.settings.list_text_color }};
+          font-size: {{ section.settings.list_text_size }}px;
+          line-height: 1.6;
+        ">
+          {{ should_not_use_content | raw }}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Reset list styles */
+  .who-this-is-for-section .who-card-content ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .who-this-is-for-section .who-card-content li {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 12px;
+    position: relative;
+  }
+  
+  .who-this-is-for-section .who-card-content li:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Checkmark icon styling */
+  .who-this-is-for-section .who-card-content li:before {
+    content: '✓';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: {{ section.settings.icon_size }}px;
+    height: {{ section.settings.icon_size }}px;
+    background: {{ section.settings.icon_background_color }};
+    color: {{ section.settings.icon_color }};
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: {{ section.settings.icon_size | times: 0.55 }}px;
+    line-height: 1;
+  }
+  
+  /* Remove paragraph margins inside list items */
+  .who-this-is-for-section .who-card-content li p {
+    margin: 0;
+    flex: 1;
+  }
+  
+  /* Standalone paragraphs */
+  .who-this-is-for-section .who-card-content > p {
+    margin: 0 0 16px 0;
+  }
+  
+  .who-this-is-for-section .who-card-content > p:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Strong text */
+  .who-this-is-for-section .who-card-content strong {
+    font-weight: 600;
+  }
+  
+  /* Mobile responsive - stack cards */
+  @media screen and (max-width: 768px) {
+    .who-cards-wrapper {
+      grid-template-columns: 1fr !important;
+      gap: 24px !important;
+    }
+    
+    .who-header h2 {
+      font-size: {{ section.settings.heading_size | times: 0.75 }}px !important;
+    }
+    
+    .who-header p {
+      font-size: {{ section.settings.subtitle_size | times: 0.9 }}px !important;
+    }
+    
+    .who-card-title {
+      font-size: {{ section.settings.card_title_size | times: 0.85 }}px !important;
+    }
+    
+    .who-card {
+      padding: {{ section.settings.card_padding | times: 0.75 }}px !important;
+    }
+  }
+  
+  /* Tablet responsive */
+  @media screen and (max-width: 1024px) and (min-width: 769px) {
+    .who-container {
+      padding: 0 32px !important;
+    }
+  }
+</style>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Who this is for",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Section visibility"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_section_override",
+      "label": "Show section override",
+      "info": "Enable to show section even without delimiter content (for testing)",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Heading"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Who This for"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 20,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#1a1a1a"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle (fallback)",
+      "info": "Use [who_subtitle] content [/who_subtitle] in product description to override this",
+      "default": "Your body, hormones, lifestyle, and risks are different - so your quiz should be too"
+    },
+    {
+      "type": "range",
+      "id": "subtitle_size",
+      "label": "Subtitle size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "color",
+      "id": "subtitle_color",
+      "label": "Subtitle color",
+      "default": "#666666"
+    },
+    {
+      "type": "header",
+      "content": "Card titles"
+    },
+    {
+      "type": "text",
+      "id": "should_use_title",
+      "label": "Should use title",
+      "info": "Use [product_name] to insert product name",
+      "default": "Who should use [product_name]"
+    },
+    {
+      "type": "text",
+      "id": "should_not_use_title",
+      "label": "Should NOT use title",
+      "default": "Who should NOT use this"
+    },
+    {
+      "type": "range",
+      "id": "card_title_size",
+      "label": "Card title size",
+      "min": 16,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 22
+    },
+    {
+      "type": "color",
+      "id": "card_title_color",
+      "label": "Card title color",
+      "default": "#1a1a1a"
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "color",
+      "id": "card_background_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "card_border_color",
+      "label": "Border color",
+      "default": "#e5e5e5"
+    },
+    {
+      "type": "range",
+      "id": "card_border_width",
+      "label": "Border width",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "card_shadow_opacity",
+      "label": "Shadow opacity",
+      "min": 0,
+      "max": 30,
+      "step": 5,
+      "unit": "%",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Card padding",
+      "min": 20,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "header",
+      "content": "List items"
+    },
+    {
+      "type": "color",
+      "id": "list_text_color",
+      "label": "Text color",
+      "default": "#333333"
+    },
+    {
+      "type": "range",
+      "id": "list_text_size",
+      "label": "Text size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "header",
+      "content": "Checkmark icons"
+    },
+    {
+      "type": "color",
+      "id": "icon_background_color",
+      "label": "Background",
+      "default": "#e8f5e9"
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Icon color",
+      "default": "#2e7d32"
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon size",
+      "min": 16,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "container_max_width",
+      "label": "Container max width",
+      "min": 800,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "label": "Gap between cards",
+      "min": 16,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "header_spacing",
+      "label": "Header bottom spacing",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "cards_top_spacing",
+      "label": "Cards top spacing",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "Section spacing"
+    },
+    {
+      "type": "color",
+      "id": "section_background_color",
+      "label": "Background",
+      "default": "#fafafa"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 60
+    }
+  ],
+  "presets": [
+    {
+      "name": "Who this is for"
+    }
+  ]
+}
+{% endschema %}

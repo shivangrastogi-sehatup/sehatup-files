@@ -1,0 +1,51 @@
+{%- assign s = section.settings -%}
+<section class="lm-sec lm-journey">
+  <div class="lm-wrap lm-journey__in">
+    <div>
+      <h2 class="lm-journey__h lm-hand">{{ s.heading }}{% if s.highlight != blank %} <span>{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.text != blank -%}<p>{{ s.text }}</p>{%- endif -%}
+    </div>
+    <div class="lm-journey__opts">
+      {%- if s.opt_1 != blank -%}
+        <a class="lm-jopt lm-jopt--red" href="{{ s.opt_1_link | default: '#book' }}">
+          <i aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></i>
+          <span><b>{{ s.opt_1 }}</b>{%- if s.opt_1_note != blank -%}<small>{{ s.opt_1_note }}</small>{%- endif -%}</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      {%- endif -%}
+      {%- if s.opt_2 != blank -%}
+        <a class="lm-jopt" href="{{ s.opt_2_link | default: '#' }}">
+          <i aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 11l1.5 1.5L13 9.5M8.5 16.5h7"/></svg></i>
+          <span><b>{{ s.opt_2 }}</b>{%- if s.opt_2_note != blank -%}<small>{{ s.opt_2_note }}</small>{%- endif -%}</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </a>
+      {%- endif -%}
+      {%- assign pts = s.points | newline_to_br | split: '<br />' -%}
+      {%- if s.points != blank -%}
+        <ul class="lm-journey__trust">
+          {%- for p in pts -%}{%- assign t = p | strip -%}{%- if t != blank -%}<li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>{{ t }}</li>{%- endif -%}{%- endfor -%}
+        </ul>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "LM journey band",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading (handwritten)", "default": "Start your happy" },
+    { "type": "text", "id": "highlight", "label": "Heading part in pink", "default": "S#x journey" },
+    { "type": "textarea", "id": "text", "label": "Text" },
+    { "type": "text", "id": "opt_1", "label": "Option 1", "default": "Private Consultation" },
+    { "type": "text", "id": "opt_1_note", "label": "Option 1 small line" },
+    { "type": "url", "id": "opt_1_link", "label": "Option 1 link", "info": "Empty goes to the booking form." },
+    { "type": "text", "id": "opt_2", "label": "Option 2", "default": "Private Self-Assessment" },
+    { "type": "text", "id": "opt_2_note", "label": "Option 2 small line" },
+    { "type": "url", "id": "opt_2_link", "label": "Option 2 link" },
+    { "type": "textarea", "id": "points", "label": "Reassurances (one per line)" }
+  ],
+  "presets": [{ "name": "LM journey band" }]
+}
+{% endschema %}

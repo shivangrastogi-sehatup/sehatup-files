@@ -19,6 +19,8 @@
     background: #fbf9f7; color: var(--ink); font-family: 'Montserrat', sans-serif;
   }
   #hcd-{{ section.id }} * { box-sizing: border-box; }
+  /* A photo moved past the card sides is cut only at the screen edge, so the page never scrolls sideways. */
+  #hcd-{{ section.id }} { overflow-x: clip; }
   #hcd-{{ section.id }} .d__in { max-width: 1320px; margin: 0 auto; padding: clamp(44px, 4vw, 72px) 32px clamp(56px, 5vw, 88px); }
 
   /* centred: heading, then one line with the free tag leading the promise */
@@ -35,6 +37,8 @@
     --lean-x: 0px; --lean-y: 0px;
     position: relative; display: flex; min-height: clamp(400px, 31vw, 470px);
     border-radius: 28px; background: var(--stone);
+    /* Trim the photo only at the card's bottom; it may go out above and to the sides. */
+    clip-path: inset(-1000px -1000px 0 -1000px round 0 0 28px 28px);
     transition: opacity .7s ease, transform .9s var(--ease), background .4s ease;
   }
   @media (hover: hover) { #hcd-{{ section.id }} .d__panel:hover { background: var(--stone2); } }
@@ -93,22 +97,60 @@
   #hcd-{{ section.id }}.in:not(.done) .d__who { transition: opacity .6s ease, transform .7s var(--ease); transition-delay: calc(.55s + var(--p) * .12s); }
   #hcd-{{ section.id }}.in:not(.done) .d__quiz { transition: opacity .6s ease, transform .8s var(--ease); transition-delay: calc(.65s + var(--p) * .12s + var(--j) * .1s); }
 
+  /* Laptop and up: photo size and left/right position from the section settings. */
+  @media (min-width: 1100px) {
+    #hcd-{{ section.id }} .d__panel--her .d__person { height: calc((100% + 56px) * var(--her-s, 1)); left: var(--her-x, 0%); bottom: calc(var(--her-y, 0%) * -1); }
+    #hcd-{{ section.id }} .d__panel--him .d__person { height: calc((100% + 56px) * var(--him-s, 1)); right: calc(var(--him-x, 0%) * -1); bottom: calc(var(--him-y, 0%) * -1); }
+  }
+  /* Big screens (QHD, 4K): the whole section grows in steps, so the layout set
+     on a laptop keeps its proportions. */
+  /* Her photo: a little further left on 1680-1919px screens (laptop and 4K use the setting). */
+  @media (min-width: 1680px) and (max-width: 1919.98px) {
+    #hcd-{{ section.id }} { --her-x: -20% !important; }
+  }
+  /* Tablets: both photos a bit smaller, pushed slightly past the card edges. */
+  @media (min-width: 600px) and (max-width: 1099.98px) {
+    #hcd-{{ section.id }} .d__person { height: calc(80% + 56px); }
+    #hcd-{{ section.id }} .d__panel--her .d__person { left: -71px; }
+    #hcd-{{ section.id }} .d__panel--him .d__person { right: -61px; }
+  }
+
+  /* Big screens: the cards use more of the width, so the photo and the text sit further apart. */
+  @media (min-width: 1680px) {
+    #hcd-{{ section.id }} .d__grid { gap: 32px; }
+    /* bigger type and controls so the wider cards are filled, not left empty in the middle */
+    #hcd-{{ section.id }} .d__body { gap: 18px; padding-top: 48px; padding-bottom: 48px; }
+    #hcd-{{ section.id }} .d__who { font-size: 50px; margin-bottom: 10px; }
+    #hcd-{{ section.id }} .d__quiz { padding: 22px 22px 22px 24px; gap: 18px; border-radius: 22px; }
+    #hcd-{{ section.id }} .d__qt { font-size: 23px; }
+    #hcd-{{ section.id }} .d__qd { font-size: 17.5px; }
+    #hcd-{{ section.id }} .d__ico { width: 54px; height: 54px; border-radius: 14px; }
+    #hcd-{{ section.id }} .d__ico svg { width: 30px; height: 30px; }
+    #hcd-{{ section.id }} .d__go { width: 44px; height: 44px; }
+  }
+  @media (min-width: 1680px) { #hcd-{{ section.id }} .d__in { zoom: 1.12; max-width: 1380px; } }
+  @media (min-width: 1920px) { #hcd-{{ section.id }} .d__in { zoom: 1.25; max-width: 1413px; } }
+  @media (min-width: 2240px) { #hcd-{{ section.id }} .d__in { zoom: 1.45; max-width: 1421px; } }
+  @media (min-width: 2560px) { #hcd-{{ section.id }} .d__in { zoom: 1.65; max-width: 1427px; } }
+  @media (min-width: 3200px) { #hcd-{{ section.id }} .d__in { zoom: 2; max-width: 1472px; } }
+  @media (min-width: 3840px) { #hcd-{{ section.id }} .d__in { zoom: 2.4; max-width: 1472px; } }
+
   @media (min-width: 1400px) {
     #hcd-{{ section.id }} .d__panel--her .d__body { margin-left: 42%; }
     #hcd-{{ section.id }} .d__panel--him .d__body { margin-right: 42%; }
   }
   /* tablets: panels stack, people stay */
-  @media (max-width: 1099px) {
+  @media (max-width: 1099.98px) {
     #hcd-{{ section.id }} .d__in { max-width: 680px; padding-left: 20px; padding-right: 20px; }
     #hcd-{{ section.id }} .d__grid { grid-template-columns: minmax(0, 1fr); gap: 72px; }
   }
   /* phones: round avatar instead of the cut-out */
-  @media (max-width: 599px) {
+  @media (max-width: 599.98px) {
     #hcd-{{ section.id }} .d__in { padding: 48px 16px; }
     #hcd-{{ section.id }} .d__badge { height: 30px; font-size: 13px; }
     #hcd-{{ section.id }} .d__head { gap: 12px; }
     #hcd-{{ section.id }} .d__grid { gap: 16px; margin-top: 32px; }
-    #hcd-{{ section.id }} .d__panel { min-height: 0; border-radius: 22px; }
+    #hcd-{{ section.id }} .d__panel { min-height: 0; border-radius: 22px; clip-path: inset(-1000px -1000px 0 -1000px round 0 0 22px 22px); }
     #hcd-{{ section.id }} .d__person { display: none; }
     #hcd-{{ section.id }} .d__ava { display: block; }
     #hcd-{{ section.id }} .d__panel--her .d__body, #hcd-{{ section.id }} .d__panel--him .d__body { margin: 0; width: 100%; padding: 20px 16px 16px; gap: 10px; }
@@ -120,7 +162,7 @@
   }
 </style>
 
-<section id="hcd-{{ section.id }}" class="hcd">
+<section id="hcd-{{ section.id }}" class="hcd" style="--her-s: {{ s.her_img_size | default: 100 | divided_by: 100.0 }}; --her-x: {{ s.her_img_x | default: 0 }}%; --her-y: {{ s.her_img_y | default: 0 }}%; --him-s: {{ s.him_img_size | default: 100 | divided_by: 100.0 }}; --him-x: {{ s.him_img_x | default: 0 }}%; --him-y: {{ s.him_img_y | default: 0 }}%;">
   <script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) document.currentScript.parentNode.classList.add('pre');</script>
   <div class="d__in">
     <div class="d__head">
@@ -141,8 +183,8 @@
         <div class="d__panel d__panel--{{ set }}" style="--p: {{ forloop.index0 }}">
           {%- if cut != blank -%}
             <img class="d__person" src="{{ cut | image_url: width: 900 }}"
-                 srcset="{{ cut | image_url: width: 500 }} 500w, {{ cut | image_url: width: 900 }} 900w, {{ cut | image_url: width: 1200 }} 1200w"
-                 sizes="(max-width: 599px) 1px, 440px" width="{{ cut.width }}" height="{{ cut.height }}" alt="" loading="lazy" decoding="async">
+                 srcset="{{ cut | image_url: width: 500 }} 500w, {{ cut | image_url: width: 800 }} 800w, {{ cut | image_url: width: 1100 }} 1100w, {{ cut | image_url: width: 1500 }} 1500w, {{ cut | image_url: width: 2048 }} 2048w"
+                 sizes="(max-width: 599.98px) 1px, (max-width: 1099.98px) 420px, (min-width: 3200px) 1450px, (min-width: 2240px) 1050px, (min-width: 1680px) 800px, 560px" width="{{ cut.width }}" height="{{ cut.height }}" alt="" loading="lazy" decoding="async">
           {%- endif -%}
           <div class="d__body">
             <h3 class="d__who">
@@ -205,14 +247,23 @@
 
     if (!('IntersectionObserver' in window)) { root.classList.remove('pre'); return; }
     root.classList.add('pre');
-    // Start only when the people are loaded (max 1.5s) and the hidden state has
-    // been painted for two frames; otherwise the browser can skip the transition.
+    // Start as soon as the section's top comes into view, once the people are
+    // loaded (max 0.4s, so a slow phone connection never leaves the screen blank)
+    // and the hidden state has been painted for two frames; otherwise the browser
+    // can skip the transition. It used to wait for 15% of the panels, which on a
+    // phone (panels stacked, ~1300px tall) meant scrolling past a blank screen.
     var people = [].slice.call(root.querySelectorAll('.d__person'));
     function loaded() { return Promise.all(people.map(function (im) {
       return im.complete ? null : new Promise(function (ok) {
-        im.addEventListener('load', ok, { once: true }); im.addEventListener('error', ok, { once: true }); setTimeout(ok, 1500);
+        im.addEventListener('load', ok, { once: true }); im.addEventListener('error', ok, { once: true }); setTimeout(ok, 400);
       });
     })); }
+    // Start fetching the people a screen early, so they are usually in by the time the section shows.
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      people.forEach(function (im) { im.loading = 'eager'; });
+    }, { rootMargin: '0px 0px 900px 0px' }).observe(root);
     function frames() { return new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); }); }
     new IntersectionObserver(function (es, io) {
       if (!es[0].isIntersecting) return;
@@ -223,7 +274,7 @@
         root.classList.remove('pre');
         setTimeout(function () { root.classList.add('done'); }, 2200);
       });
-    }, { threshold: 0.15 }).observe(root.querySelector('.d__grid'));
+    }, { threshold: 0, rootMargin: '0px 0px -10% 0px' }).observe(root);
   })();
 </script>
 
@@ -233,32 +284,205 @@
   "tag": "div",
   "max_blocks": 6,
   "settings": [
-    { "type": "text", "id": "badge", "label": "Badge", "default": "100% free" },
-    { "type": "text", "id": "heading", "label": "Heading", "default": "Free Health Score quizzes" },
-    { "type": "text", "id": "subheading", "label": "Line under the heading", "default": "2 minutes. A few questions. A free doctor call after." },
-    { "type": "header", "content": "Women" },
-    { "type": "text", "id": "her_title", "label": "Title", "default": "For women" },
-    { "type": "image_picker", "id": "her_cutout", "label": "Cut-out photo (laptop)", "info": "Transparent PNG, 4:5, waist-up, looking to the right." },
-    { "type": "image_picker", "id": "her_face", "label": "Square photo (phones)", "info": "1:1, shown as a round avatar on phones." },
-    { "type": "header", "content": "Men" },
-    { "type": "text", "id": "him_title", "label": "Title", "default": "For men" },
-    { "type": "image_picker", "id": "him_cutout", "label": "Cut-out photo (laptop)", "info": "Transparent PNG, 4:5, waist-up, looking to the left." },
-    { "type": "image_picker", "id": "him_face", "label": "Square photo (phones)" },
-    { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#ee204a" }
+    {
+      "type": "text",
+      "id": "badge",
+      "label": "Badge",
+      "default": "100% free"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Free Health Score quizzes"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Line under the heading",
+      "default": "2 minutes. A few questions. A free doctor call after."
+    },
+    {
+      "type": "header",
+      "content": "Women"
+    },
+    {
+      "type": "text",
+      "id": "her_title",
+      "label": "Title",
+      "default": "For women"
+    },
+    {
+      "type": "image_picker",
+      "id": "her_cutout",
+      "label": "Cut-out photo (laptop)",
+      "info": "Transparent PNG, 4:5, waist-up, looking to the right."
+    },
+    {
+      "type": "image_picker",
+      "id": "her_face",
+      "label": "Square photo (phones)",
+      "info": "1:1, shown as a round avatar on phones."
+    },
+    {
+      "type": "range",
+      "id": "her_img_size",
+      "label": "Her photo size (laptop)",
+      "min": 70,
+      "max": 160,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "info": "Bigger zooms the photo in. Set it on a laptop: big screens scale it up, tablets and phones arrange themselves."
+    },
+    {
+      "type": "range",
+      "id": "her_img_x",
+      "label": "Her photo: move left / right",
+      "min": -30,
+      "max": 30,
+      "step": 1,
+      "unit": "%",
+      "default": 0,
+      "info": "Minus moves left, plus moves right."
+    },
+    {
+      "type": "range",
+      "id": "her_img_y",
+      "label": "Her photo: move up / down",
+      "min": -30,
+      "max": 30,
+      "step": 1,
+      "unit": "%",
+      "default": 0,
+      "info": "Minus moves up, plus moves down."
+    },
+    {
+      "type": "header",
+      "content": "Men"
+    },
+    {
+      "type": "text",
+      "id": "him_title",
+      "label": "Title",
+      "default": "For men"
+    },
+    {
+      "type": "image_picker",
+      "id": "him_cutout",
+      "label": "Cut-out photo (laptop)",
+      "info": "Transparent PNG, 4:5, waist-up, looking to the left."
+    },
+    {
+      "type": "image_picker",
+      "id": "him_face",
+      "label": "Square photo (phones)"
+    },
+    {
+      "type": "range",
+      "id": "him_img_size",
+      "label": "His photo size (laptop)",
+      "min": 70,
+      "max": 160,
+      "step": 5,
+      "unit": "%",
+      "default": 100,
+      "info": "Bigger zooms the photo in."
+    },
+    {
+      "type": "range",
+      "id": "him_img_x",
+      "label": "His photo: move left / right",
+      "min": -30,
+      "max": 30,
+      "step": 1,
+      "unit": "%",
+      "default": 0,
+      "info": "Minus moves left, plus moves right."
+    },
+    {
+      "type": "range",
+      "id": "him_img_y",
+      "label": "His photo: move up / down",
+      "min": -30,
+      "max": 30,
+      "step": 1,
+      "unit": "%",
+      "default": 0,
+      "info": "Minus moves up, plus moves down."
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent colour",
+      "default": "#ee204a"
+    }
   ],
   "blocks": [
     {
       "type": "quiz",
       "name": "Quiz",
       "settings": [
-        { "type": "select", "id": "who", "label": "For", "options": [{ "value": "her", "label": "Women" }, { "value": "him", "label": "Men" }], "default": "her" },
-        { "type": "select", "id": "icon", "label": "Icon", "options": [{ "value": "cycle", "label": "Cycle" }, { "value": "scale", "label": "Weight" }, { "value": "heart", "label": "Heart" }], "default": "cycle" },
-        { "type": "text", "id": "title", "label": "Title", "default": "Period care" },
-        { "type": "text", "id": "text", "label": "What it checks", "default": "Cycle, cramps, PMS and PCOS signs" },
-        { "type": "url", "id": "link", "label": "Quiz link" }
+        {
+          "type": "select",
+          "id": "who",
+          "label": "For",
+          "options": [
+            {
+              "value": "her",
+              "label": "Women"
+            },
+            {
+              "value": "him",
+              "label": "Men"
+            }
+          ],
+          "default": "her"
+        },
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon",
+          "options": [
+            {
+              "value": "cycle",
+              "label": "Cycle"
+            },
+            {
+              "value": "scale",
+              "label": "Weight"
+            },
+            {
+              "value": "heart",
+              "label": "Heart"
+            }
+          ],
+          "default": "cycle"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title",
+          "default": "Period care"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "What it checks",
+          "default": "Cycle, cramps, PMS and PCOS signs"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Quiz link"
+        }
       ]
     }
   ],
-  "presets": [{ "name": "HS360 Quiz doors" }]
+  "presets": [
+    {
+      "name": "HS360 Quiz doors"
+    }
+  ]
 }
 {% endschema %}

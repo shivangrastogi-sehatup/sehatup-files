@@ -1,0 +1,375 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "open": {
+      "type": "about-ed-open",
+      "settings": {
+        "kicker": "About sehatUP",
+        "heading": "Not short of medicine.",
+        "heading_red": "Short of direction.",
+        "lead": "<p><strong>sehatUP is India's first integrated digital health clinic.</strong> Our Ayurveda, Homeopathy and counselling experts work together on one plan for you, privately, from your phone.</p><p>This is the story of why we built it, who is behind it, and how it works.</p>",
+        "contents_label": "In this story",
+        "contents": "01|The problem we kept seeing\n02|A letter from the founders\n03|One person. Three systems. One plan.\n04|What we believe\n05|The people behind your care\n06|How we look after you\n07|Proof, not promises\n08|Start here",
+        "photo": "shopify://shop_images/Photo.webp",
+        "photo_name": "Karan Bhargava",
+        "photo_role": "Founder & CEO",
+        "photo_2": "shopify://shop_images/amit_sir_5e4ba3ea-0d53-4816-bf2b-b305b444b69e.webp",
+        "photo_2_name": "Amit Singh Sandhu",
+        "photo_2_role": "Co-founder & CMO"
+      }
+    },
+    "ch01": {
+      "type": "about-chapter",
+      "blocks": {
+        "b1": {
+          "type": "text",
+          "settings": {
+            "style": "lead",
+            "text": "<p>Google says one thing. A doctor says another. A wellness influencer says the opposite. You are left with pills, supplements and zero clarity.</p>"
+          }
+        },
+        "b2": {
+          "type": "text",
+          "settings": {
+            "style": "normal",
+            "text": "<p>Every system of medicine works on its own. Modern medicine for fast relief, Homeopathy for gentle care, Ayurveda for balance. Nobody joins them into one plan for one person.</p><p>And for the problems people feel shy about, like sexual health, periods or weight, shame keeps many from asking for help at all.</p>"
+          }
+        },
+        "b3": {
+          "type": "quote",
+          "settings": {
+            "quote": "Most people we met were not short of medicine. They were short of direction.",
+            "cite": "Why sehatUP exists"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3"
+      ],
+      "settings": {
+        "number": "01",
+        "heading": "The problem we kept seeing",
+        "line_above": false,
+        "section_bg": "#ffffff"
+      }
+    },
+    "ch02": {
+      "type": "about-chapter",
+      "blocks": {
+        "b4": {
+          "type": "text",
+          "settings": {
+            "style": "letter",
+            "text": "<p>Dear reader,</p><p>We started sehatUP because we were tired of seeing people struggle, not with illness, but with direction.</p><p>Some used Modern medicine for fast relief. Some used Homeopathy for gentle care. Some used Ayurveda for balance. No one combined them into one complete, personal path.</p><p>So we built a clinic that doesn't ask you to choose. It integrates what works, rejects the noise, and delivers clarity. It happens on your phone, in Hindi or English, and what you tell us stays with your doctor.</p><p><strong>Karan and Amit</strong></p>"
+          }
+        },
+        "b5": {
+          "type": "person",
+          "settings": {
+            "photo": "shopify://shop_images/Photo.webp",
+            "name": "Karan Bhargava",
+            "role": "Founder & CEO",
+            "line": "\"What if healthcare treated people, not just problems?\""
+          }
+        },
+        "b6": {
+          "type": "person",
+          "settings": {
+            "photo": "shopify://shop_images/amit_sir_5e4ba3ea-0d53-4816-bf2b-b305b444b69e.webp",
+            "name": "Amit Singh Sandhu",
+            "role": "Co-founder & CMO",
+            "line": "\"Solutions shouldn't just exist. They should be understood, adopted and trusted.\""
+          }
+        }
+      },
+      "block_order": [
+        "b4",
+        "b5",
+        "b6"
+      ],
+      "settings": {
+        "number": "02",
+        "heading": "A letter from the founders",
+        "line_above": true,
+        "section_bg": "#ffffff"
+      }
+    },
+    "ch03": {
+      "type": "about-chapter",
+      "blocks": {
+        "b7": {
+          "type": "text",
+          "settings": {
+            "style": "lead",
+            "text": "<p>This isn't alternative medicine. It's complete medicine. Each system does a different job, and your doctors choose the mix that fits you.</p>"
+          }
+        },
+        "b8": {
+          "type": "plan",
+          "settings": {
+            "label": "Example: a plan for weight gain",
+            "systems": "Ayurveda|Herbs and a daily routine that support digestion and metabolism.\nHomeopathy|Remedies matched to your cravings, stress and sleep.\nModern medicine|Looks for causes like thyroid or sugar problems, and gives faster support when needed.",
+            "plan_title": "Your plan",
+            "plan_text": "One kit, a food and routine guide, and a monthly check-in as your body responds.",
+            "note": "This is an example. Your plan depends on your answers and your doctor."
+          }
+        }
+      },
+      "block_order": [
+        "b7",
+        "b8"
+      ],
+      "settings": {
+        "number": "03",
+        "heading": "One person. Three systems. One plan.",
+        "line_above": true,
+        "section_bg": "#ffffff"
+      }
+    },
+    "ch04": {
+      "type": "about-chapter",
+      "blocks": {
+        "b9": {
+          "type": "list",
+          "settings": {
+            "numbered": true,
+            "rows": "Treat the person, not just the problem.|Your sleep, stress, food and hormones are connected. We look at all of it before we suggest anything.\nYou shouldn't have to choose.|Every system of medicine is good at something. Your plan should use the best of each.\nRoot cause over quick fixes.|Fast relief matters, but lasting health comes from fixing what sits behind the symptom.\nPrivacy is part of care.|Shame and stigma keep people away from help. So it all happens on your phone, and your kit comes in a plain box.\nCare doesn't stop at the order.|Your plan changes as your body responds, with check-ins on WhatsApp.\nClear words, in your language.|No jargon. Talk to us in Hindi or English, and always know why you are taking something."
+          }
+        }
+      },
+      "block_order": [
+        "b9"
+      ],
+      "settings": {
+        "number": "04",
+        "heading": "What we believe",
+        "line_above": true,
+        "section_bg": "#ffffff"
+      }
+    },
+    "ch05": {
+      "type": "about-chapter",
+      "blocks": {
+        "b10": {
+          "type": "text",
+          "settings": {
+            "style": "normal",
+            "text": "<p>Every plan is made by qualified experts with real names and faces. Not a call centre, and not an algorithm. You can talk to them in Hindi or English.</p>"
+          }
+        },
+        "b11": {
+          "type": "person",
+          "settings": {
+            "photo": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+            "name": "Dr. Jayant Kumar",
+            "role": "Ayurveda, BAMS",
+            "line": "Looks for the root cause behind weight, energy and hormone problems."
+          }
+        },
+        "b12": {
+          "type": "person",
+          "settings": {
+            "photo": "shopify://shop_images/Dr._Shefali.webp",
+            "name": "Dr. Shefali Chhicholia",
+            "role": "Homeopathy, BHMS, MD",
+            "line": "Gentle, long-term care for hormones, periods, stamina and stress."
+          }
+        },
+        "b13": {
+          "type": "person",
+          "settings": {
+            "photo": "shopify://shop_images/Smiling_Woman_in_White_Coat_with_Crossed_Arms.webp",
+            "name": "Ms. Devika Chugh",
+            "role": "Counselling Psychologist",
+            "line": "Helps with the stress and worry that often sit behind a health problem."
+          }
+        },
+        "b14": {
+          "type": "buttons",
+          "settings": {
+            "label": "",
+            "link": "",
+            "label_2": "Talk to a doctor on WhatsApp",
+            "link_2": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor",
+            "note": ""
+          }
+        }
+      },
+      "block_order": [
+        "b10",
+        "b11",
+        "b12",
+        "b13",
+        "b14"
+      ],
+      "settings": {
+        "number": "05",
+        "heading": "The people behind your care",
+        "line_above": true,
+        "section_bg": "#ffffff"
+      }
+    },
+    "ch06": {
+      "type": "about-chapter",
+      "blocks": {
+        "b15": {
+          "type": "list",
+          "settings": {
+            "numbered": false,
+            "rows": "Privacy first|Your answers are encrypted, and only your doctor sees them.\nA plain box|Your kit arrives with nothing printed outside, and product names are cut short on the label.\nMade the right way|AYUSH approved and GMP certified products, chosen for you by a doctor.\nEasy to start|Confirm your order with just ₹50 and pay the rest on delivery, or pay in full online.\nWe stay with you|A WhatsApp check-in every month, and your plan changes as your body responds."
+          }
+        }
+      },
+      "block_order": [
+        "b15"
+      ],
+      "settings": {
+        "number": "06",
+        "heading": "How we look after you",
+        "line_above": true,
+        "section_bg": "#ffffff"
+      }
+    },
+    "ch07": {
+      "type": "about-chapter",
+      "blocks": {
+        "b16": {
+          "type": "facts",
+          "settings": {
+            "rows": "25,000+|patients have trusted us\n4.5/5|average rating\n50+|doctors and health coaches\nOct 2024|launched in Noida"
+          }
+        },
+        "b17": {
+          "type": "text",
+          "settings": {
+            "style": "normal",
+            "text": "<p>India's One Nation One Health vision aims to bring traditional and modern medicine together by 2030. sehatUP has been doing it online since October 2024, and the press has noticed.</p>"
+          }
+        },
+        "b18": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Bw_healthcare-01.webp",
+            "name": "BW Healthcare",
+            "link": "https://www.bwhealthcareworld.com/article/health-tech-startup-sehatup-launches-india%E2%80%99s-first-integrated-digital-health-clinic-536987"
+          }
+        },
+        "b19": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/The_week-01.webp",
+            "name": "The Week",
+            "link": "https://www.theweek.in/news/sci-tech/2024/10/22/india-s-first-integrated-digital-clinic-sehatup-aims-to-deliver-.html"
+          }
+        },
+        "b20": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/United_news_of_india-01.webp",
+            "name": "United News of India",
+            "link": "https://web.archive.org/web/20250118230824/https://www.uniindia.com/~/health-startup-sehatup-launches-integrated-digital-health-clinic/Business%20Economy/news/3310240.html"
+          }
+        },
+        "b21": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Silicon_india-01.webp",
+            "name": "Siliconindia",
+            "link": "https://www.siliconindia.com/news/sehatup-launches-india-s-first-integrated-digital-health-clinic-nwid-47297.html"
+          }
+        },
+        "b22": {
+          "type": "video",
+          "settings": {
+            "video": "https://www.youtube.com/watch?v=_zMOKpxf__o",
+            "title": "The power of combining Ayurveda, Homeopathy and Allopathy"
+          }
+        },
+        "b23": {
+          "type": "video",
+          "settings": {
+            "video": "https://www.youtube.com/watch?v=nnMmHWpuZz0",
+            "title": "Your health, finally simplified with sehatUP"
+          }
+        },
+        "b24": {
+          "type": "video",
+          "settings": {
+            "video": "https://www.youtube.com/watch?v=BFIT6rw6HB4",
+            "title": "Why quick fixes like Ozempic come at a cost"
+          }
+        }
+      },
+      "block_order": [
+        "b16",
+        "b17",
+        "b18",
+        "b19",
+        "b20",
+        "b21",
+        "b22",
+        "b23",
+        "b24"
+      ],
+      "settings": {
+        "number": "07",
+        "heading": "Proof, not promises",
+        "line_above": true,
+        "section_bg": "#ffffff"
+      }
+    },
+    "ch08": {
+      "type": "about-chapter",
+      "blocks": {
+        "b25": {
+          "type": "text",
+          "settings": {
+            "style": "lead",
+            "text": "<p>Start with the free Health Score. It takes 2 minutes, it is private, and a doctor calls you within 24 hours.</p>"
+          }
+        },
+        "b26": {
+          "type": "buttons",
+          "settings": {
+            "label": "Start for her",
+            "link": "shopify://pages/womens-wellness-questionnaire",
+            "label_2": "Start for him",
+            "link_2": "shopify://pages/mens-health-questionnaire",
+            "note": "No sign-up. Your answers stay private."
+          }
+        }
+      },
+      "block_order": [
+        "b25",
+        "b26"
+      ],
+      "settings": {
+        "number": "08",
+        "heading": "Start here",
+        "line_above": true,
+        "section_bg": "#ffffff"
+      }
+    }
+  },
+  "order": [
+    "open",
+    "ch01",
+    "ch02",
+    "ch03",
+    "ch04",
+    "ch05",
+    "ch06",
+    "ch07",
+    "ch08"
+  ]
+}

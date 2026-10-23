@@ -22,6 +22,7 @@
     --sh-muted: #5c5c5c;
     --sh-ink: {{ s.accent_color | color_darken: 8 }};
     --sh-h: 60px;
+    --sh-lp: clamp(8px, 1vw - 3px, 12px); /* menu link side padding: 8px at 1100px, 12px from 1500px */
     --sh-ease: cubic-bezier(.16, 1, .3, 1);
     position: relative;
     font-family: 'Montserrat', sans-serif;
@@ -39,8 +40,9 @@
     height: var(--sh-h);
     display: flex;
     align-items: center;
-    gap: 28px;
-    padding: 0 clamp(16px, 3vw, 48px);
+    gap: clamp(14px, 2.2vw - 10px, 28px);
+    /* The same side edge as the page content (see layout/theme.liquid). */
+    padding: 0 calc(min(max(24px, (100vw - 1272px) / 2), 5vw) / var(--hz, 1));
     background: rgba(255, 255, 255, .96);
     border-bottom: 1px solid transparent;
     transition: background-color .3s ease, border-color .3s ease, box-shadow .3s ease;
@@ -63,9 +65,9 @@
     display: inline-flex;
     align-items: center;
     height: 40px;
-    padding: 0 12px;
+    padding: 0 var(--sh-lp);
     border-radius: 999px;
-    font: 600 14.5px/1 'Montserrat', sans-serif;
+    font: 600 clamp(13.5px, .25vw + 11px, 14.5px)/1 'Montserrat', sans-serif;
     letter-spacing: .01em;
     transition: color .2s ease, background-color .2s ease;
   }
@@ -74,7 +76,7 @@
   #sh-{{ section.id }} .sh__link::after {
     content: "";
     position: absolute;
-    left: 12px; right: 12px; bottom: 5px;
+    left: var(--sh-lp); right: var(--sh-lp); bottom: 5px;
     height: 2px;
     border-radius: 2px;
     background: var(--sh-ink);
@@ -259,14 +261,20 @@
   #sh-{{ section.id }} .sh__res-p { display: block; margin-top: 4px; font: 700 13px/1 'Montserrat', sans-serif; color: var(--sh-ink); }
   #sh-{{ section.id }} .sh__res-p s { margin-left: 6px; font-weight: 500; color: #8a8a8a; }
   #sh-{{ section.id }} .sh__res-none { margin: 16px 4px 0; font: 500 14px/1.4 'Montserrat', sans-serif; color: var(--sh-muted); }
+  /* Best sellers, shown until a typed search finds products. */
+  #sh-{{ section.id }} .sh__pop { max-width: 780px; margin: 0 auto; padding-right: 52px; }
+  #sh-{{ section.id }} .sh__results:has(.sh__res) ~ .sh__pop { display: none; }
+  #sh-{{ section.id }} .sh__pop-h { margin: 18px 8px 0; font: 700 13px/1.2 'Montserrat', sans-serif; color: var(--sh-muted); }
+  #sh-{{ section.id }} .sh__pop ul { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-top: 8px; }
   #sh-{{ section.id }} .sh__res-all { display: inline-block; margin: 12px 8px 0; font: 700 13.5px/1 'Montserrat', sans-serif; color: var(--sh-ink) !important; text-decoration: underline !important; text-underline-offset: 4px; }
-  @media (max-width: 749px) {
+  @media (max-width: 749.98px) {
     #sh-{{ section.id }} .sh__search { padding: 10px 12px 14px; max-height: calc(100vh - var(--sh-h)); overflow-y: auto; }
     #sh-{{ section.id }} .sh__search-row { gap: 4px; }
     #sh-{{ section.id }} .sh__search-form { height: 48px; padding-left: 14px; }
     #sh-{{ section.id }} .sh__search-go { padding: 0 14px; }
     #sh-{{ section.id }} .sh__results { padding-right: 0; }
-    #sh-{{ section.id }} .sh__results ul { grid-template-columns: 1fr; }
+    #sh-{{ section.id }} .sh__results ul, #sh-{{ section.id }} .sh__pop ul { grid-template-columns: 1fr; }
+    #sh-{{ section.id }} .sh__pop { padding-right: 0; }
   }
 
   /* ---- Narrow phones (under 344px): search bar row under the logo row ----
@@ -342,13 +350,8 @@
   #sh-{{ section.id }} .sh__dfoot a:last-child { background: #1d1d1d; border-color: #1d1d1d; color: #fff; }
 
   /* ---- Breakpoints ---------------------------------------------------- */
-  /* Laptops a notch narrower than the full menu: tighter spacing. */
-  @media (max-width: 1279px) {
-    #sh-{{ section.id }} .sh__bar { gap: 16px; }
-    #sh-{{ section.id }} .sh__link { padding: 0 9px; font-size: 14px; }
-  }
   /* Under 1100: burger + centred logo, menu in the drawer. */
-  @media (max-width: 1099px) {
+  @media (max-width: 1099.98px) {
     #sh-{{ section.id }} { --sh-h: 56px; }
     #sh-{{ section.id }} .sh__bar { gap: 6px; padding: 0 8px; }
     #sh-{{ section.id }} .sh__nav { display: none; }
@@ -359,15 +362,23 @@
     #sh-{{ section.id }} .sh__account { display: none; }
   }
   /* Tablets have room for the account icon. */
-  @media (min-width: 750px) and (max-width: 1099px) {
+  @media (min-width: 750px) and (max-width: 1099.98px) {
     #sh-{{ section.id }} .sh__bar { padding: 0 16px; }
     #sh-{{ section.id }} .sh__account { display: inline-flex; }
   }
 
   /* Big screens follow the page sections, which scale with zoom steps. */
-  @media (min-width: 1920px) { #sh-{{ section.id }} { zoom: 1.12; } }
-  @media (min-width: 2560px) { #sh-{{ section.id }} { zoom: 1.4; } }
-  @media (min-width: 3200px) { #sh-{{ section.id }} { zoom: 1.75; } }
+  @media (min-width: 1600px) { #sh-{{ section.id }} { --hz: 1.06; } }
+  @media (min-width: 1920px) { #sh-{{ section.id }} { --hz: 1.12; } }
+  @media (min-width: 2200px) { #sh-{{ section.id }} { --hz: 1.4; } }
+  @media (min-width: 2560px) { #sh-{{ section.id }} { --hz: 1.65; } }
+  @media (min-width: 3200px) { #sh-{{ section.id }} { --hz: 2; } }
+  /* Newer browsers grow it smoothly instead: 1x at 1280px, 1.12x at 1920px,
+     then faster to 1.65x at 2560px, at most 2x. */
+  @supports (zoom: calc(100vw / 1px)) {
+    @media (min-width: 1280px) { #sh-{{ section.id }} { --hz: clamp(1, max(1 + (100vw - 1280px) / 5333px, 1.12 + (100vw - 1920px) / 1207.5px), 2); } }
+  }
+  #sh-{{ section.id }} { zoom: var(--hz, 1); }
 
   @media (prefers-reduced-motion: reduce) {
     #sh-{{ section.id }} *, #sh-{{ section.id }} *::before, #sh-{{ section.id }} *::after { transition: none !important; animation: none !important; }
@@ -453,8 +464,7 @@
         </a>
       {%- endif -%}
       <a class="sh__icon sh__cart" href="{{ routes.cart_url }}" id="cart-icon-bubble" aria-label="Cart, {{ cart.item_count }} item{% if cart.item_count != 1 %}s{% endif %}">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8L5 8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-        {%- if cart.item_count > 0 -%}<span class="sh__count">{{ cart.item_count }}</span>{%- endif -%}
+        {%- render 'sh-cart-icon' -%}
       </a>
     </div>
   </header>
@@ -482,6 +492,30 @@
     </button>
     </div>
     <div class="sh__results" aria-live="polite"></div>
+    {%- liquid
+      assign pop = s.popular_collection
+      if pop == blank
+        assign pop = collections['best-sellers']
+      endif
+    -%}
+    {%- if pop.products_count > 0 and s.popular_count > 0 -%}
+      <div class="sh__pop">
+        {%- if s.popular_heading != blank -%}<p class="sh__pop-h">{{ s.popular_heading }}</p>{%- endif -%}
+        <ul>
+          {%- assign shown = 0 -%}
+          {%- for p in pop.products -%}
+            {%- if p.available == false -%}{%- continue -%}{%- endif -%}
+            {%- if shown >= s.popular_count -%}{%- break -%}{%- endif -%}
+            {%- assign shown = shown | plus: 1 -%}
+            <li><a class="sh__res" href="{{ p.url }}">
+              {%- if p.featured_image -%}<img src="{{ p.featured_image | image_url: width: 120 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
+              <span><span class="sh__res-t">{{ p.title }}</span><span class="sh__res-p">{{ p.price | money_without_trailing_zeros }}
+                {%- if p.compare_at_price > p.price -%}<s>{{ p.compare_at_price | money_without_trailing_zeros }}</s>{%- endif -%}</span></span>
+            </a></li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
   </div>
 
   {%- comment -%} Phones and tablets: the menu in a slide-in drawer (a native dialog: focus trap and Esc for free). {%- endcomment -%}
@@ -688,6 +722,9 @@
     { "type": "image_picker", "id": "him_image", "label": "For Him photo (transparent PNG)" },
     { "type": "header", "content": "Other" },
     { "type": "text", "id": "search_placeholder", "label": "Search placeholder", "default": "Search for period care, weight, stamina..." },
+    { "type": "collection", "id": "popular_collection", "label": "Products shown when search opens", "info": "Shown before anything is typed. Defaults to Best Sellers. Sold-out products are skipped." },
+    { "type": "text", "id": "popular_heading", "label": "Heading above them", "default": "Best sellers" },
+    { "type": "range", "id": "popular_count", "label": "How many", "min": 0, "max": 8, "step": 1, "default": 6, "info": "0 hides them." },
     { "type": "text", "id": "whatsapp", "label": "WhatsApp number (with country code)", "default": "919355539355" }
   ],
   "presets": [{ "name": "sehatUP header" }]

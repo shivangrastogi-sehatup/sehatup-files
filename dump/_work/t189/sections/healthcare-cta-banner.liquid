@@ -1,0 +1,1164 @@
+{% doc %}
+  @prompt
+    Create a highly flexible responsive healthcare hero banner section with multiple layout modes and extensive customization.    Layout variations:1. Full-width background image with overlay content (left-aligned)2. Split layout with white/light background on left, image on right3. Background image with optional foreground doctor/person image overlaySection structure:- Background image with position controls (X/Y axis movement)- Optional white/light overlay panel on left side- Content area with:  * Main heading (e.g., "Struggling with stress, hormones, weight or sexual health?")  * Subheading with color accent support (e.g., "Find the real cause in 60 seconds" - with "60 seconds" in red/pink)  * Body text/description  * Flexible button group: 1 or 2 buttons  * Button 1: Primary style (filled background)  * Button 2: Secondary style (outline/ghost)- Optional foreground image (doctor/person) with resize and position controlsRequirements:- Fully responsive layout with intelligent scaling:  * Desktop: full-width hero, content positioned left/center, optional foreground image on right  * Tablet: adjusted spacing, maintained layout structure  * Mobile: stacked content, full-width, background repositioned, foreground image hidden or repositioned  * Adaptive scaling: When viewport width increases and extra space is available, automatically scale up text sizes, button dimensions, and image sizes proportionally to fill the space elegantly without leaving excessive whitespace  * Fluid typography: Use clamp() or viewport-based units (vw, vh) to smoothly scale heading, subheading, and body text between minimum and maximum sizes  * Responsive buttons: Scale button padding, font size, and dimensions based on available space  * Dynamic image sizing: Foreground and background images should scale proportionally with viewport, with controls for min/max sizes- Extensive settings for layout modes, images, typography, colors, buttons, spacing, and scaling controls- Support for gradient overlays, parallax effects, and scroll animations- Full accessibility with proper contrast and alt text
+{% enddoc %}
+{% assign ai_gen_id = section.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-healthcare-hero-{{ ai_gen_id }} {
+    display: block;
+    position: relative;
+    width: 100%;
+    min-height: clamp(400px, 60vh, 800px);
+    overflow: hidden;
+  }
+
+  .ai-healthcare-hero__background-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  .ai-healthcare-hero__background-image-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: {{ section.settings.bg_position_x }}% {{ section.settings.bg_position_y }}%;
+  }
+
+  .ai-healthcare-hero__background-placeholder-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-healthcare-hero__background-placeholder-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    max-width: 600px;
+    max-height: 600px;
+  }
+
+  .ai-healthcare-hero__overlay-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: {{ section.settings.overlay_gradient }};
+    opacity: {{ section.settings.overlay_opacity | divided_by: 100.0 }};
+    z-index: 2;
+  }
+
+  .ai-healthcare-hero__container-{{ ai_gen_id }} {
+    position: relative;
+    max-width: {{ section.settings.container_width }}px;
+    margin: 0 auto;
+    padding: clamp(40px, 8vw, {{ section.settings.section_padding_top }}px) clamp(20px, 4vw, {{ section.settings.section_padding_horizontal }}px) clamp(40px, 8vw, {{ section.settings.section_padding_bottom }}px);
+    z-index: 3;
+    display: flex;
+    align-items: {{ section.settings.content_vertical_align }};
+    min-height: clamp(400px, 60vh, 800px);
+  }
+
+  .ai-healthcare-hero__layout-{{ ai_gen_id }} {
+    display: flex;
+    width: 100%;
+    gap: clamp(30px, 5vw, 60px);
+    align-items: center;
+    {% if section.settings.layout_mode == 'split' %}
+      flex-direction: row;
+    {% elsif section.settings.layout_mode == 'full_width' %}
+      flex-direction: row;
+    {% else %}
+      flex-direction: row;
+    {% endif %}
+  }
+
+  .ai-healthcare-hero__content-panel-{{ ai_gen_id }} {
+    {% if section.settings.layout_mode == 'split' %}
+      background-color: {{ section.settings.panel_bg_color }};
+      padding: clamp(30px, 5vw, {{ section.settings.panel_padding }}px);
+      border-radius: {{ section.settings.panel_border_radius }}px;
+      box-shadow: 0 {{ section.settings.panel_shadow_y }}px {{ section.settings.panel_shadow_blur }}px rgba(0, 0, 0, {{ section.settings.panel_shadow_opacity | divided_by: 100.0 }});
+      flex: 0 0 {{ section.settings.content_width }}%;
+      max-width: {{ section.settings.content_width }}%;
+    {% elsif section.settings.layout_mode == 'full_width' %}
+      flex: 0 0 {{ section.settings.content_width }}%;
+      max-width: {{ section.settings.content_width }}%;
+    {% else %}
+      flex: 0 0 {{ section.settings.content_width }}%;
+      max-width: {{ section.settings.content_width }}%;
+    {% endif %}
+  }
+
+  .ai-healthcare-hero__heading-{{ ai_gen_id }} {
+    font-family: {{ section.settings.heading_font.family }}, {{ section.settings.heading_font.fallback_families }};
+    font-weight: {{ section.settings.heading_font.weight }};
+    font-size: clamp({{ section.settings.heading_size_mobile }}px, {{ section.settings.heading_size_mobile | plus: section.settings.heading_size_desktop | divided_by: 2.0 | times: 0.05 }}vw, {{ section.settings.heading_size_desktop }}px);
+    line-height: {{ section.settings.heading_line_height }};
+    color: {{ section.settings.heading_color }};
+    margin: 0 0 clamp(12px, 2vw, {{ section.settings.heading_spacing }}px) 0;
+    text-align: {{ section.settings.text_align }};
+  }
+
+  .ai-healthcare-hero__subheading-{{ ai_gen_id }} {
+    font-family: {{ section.settings.subheading_font.family }}, {{ section.settings.subheading_font.fallback_families }};
+    font-weight: {{ section.settings.subheading_font.weight }};
+    font-size: clamp({{ section.settings.subheading_size_mobile }}px, {{ section.settings.subheading_size_mobile | plus: section.settings.subheading_size_desktop | divided_by: 2.0 | times: 0.04 }}vw, {{ section.settings.subheading_size_desktop }}px);
+    line-height: {{ section.settings.subheading_line_height }};
+    color: {{ section.settings.subheading_color }};
+    margin: 0 0 clamp(16px, 2.5vw, {{ section.settings.subheading_spacing }}px) 0;
+    text-align: {{ section.settings.text_align }};
+  }
+
+  .ai-healthcare-hero__subheading-accent-{{ ai_gen_id }} {
+    color: {{ section.settings.accent_color }};
+  }
+
+  .ai-healthcare-hero__body-{{ ai_gen_id }} {
+    font-size: clamp({{ section.settings.body_size_mobile }}px, {{ section.settings.body_size_mobile | plus: section.settings.body_size_desktop | divided_by: 2.0 | times: 0.03 }}vw, {{ section.settings.body_size_desktop }}px);
+    line-height: {{ section.settings.body_line_height }};
+    color: {{ section.settings.body_color }};
+    margin: 0 0 clamp(20px, 3vw, {{ section.settings.body_spacing }}px) 0;
+    text-align: {{ section.settings.text_align }};
+  }
+
+  .ai-healthcare-hero__buttons-{{ ai_gen_id }} {
+    display: flex;
+    gap: clamp(12px, 2vw, {{ section.settings.button_gap }}px);
+    {% if section.settings.text_align == 'center' %}
+      justify-content: center;
+    {% elsif section.settings.text_align == 'right' %}
+      justify-content: flex-end;
+    {% else %}
+      justify-content: flex-start;
+    {% endif %}
+    flex-wrap: wrap;
+  }
+
+  .ai-healthcare-hero__button-{{ ai_gen_id }} {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp({{ section.settings.button_padding_mobile }}px, 1.5vw, {{ section.settings.button_padding_desktop }}px) clamp({{ section.settings.button_padding_mobile | times: 2 }}px, 3vw, {{ section.settings.button_padding_desktop | times: 2 }}px);
+    font-size: clamp({{ section.settings.button_text_size_mobile }}px, 1.2vw, {{ section.settings.button_text_size_desktop }}px);
+    font-weight: {{ section.settings.button_font_weight }};
+    border-radius: {{ section.settings.button_border_radius }}px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: {{ section.settings.button_border_width }}px solid;
+  }
+
+  .ai-healthcare-hero__button--primary-{{ ai_gen_id }} {
+    background-color: {{ section.settings.button_primary_bg }};
+    color: {{ section.settings.button_primary_text_color }};
+    border-color: {{ section.settings.button_primary_bg }};
+  }
+
+  .ai-healthcare-hero__button--primary-{{ ai_gen_id }}:hover {
+    background-color: {{ section.settings.button_primary_hover_bg }};
+    border-color: {{ section.settings.button_primary_hover_bg }};
+    color: {{ section.settings.button_primary_hover_text }};
+  }
+
+  .ai-healthcare-hero__button--secondary-{{ ai_gen_id }} {
+    background-color: {{ section.settings.button_secondary_bg }};
+    color: {{ section.settings.button_secondary_text_color }};
+    border-color: {{ section.settings.button_secondary_border }};
+  }
+
+  .ai-healthcare-hero__button--secondary-{{ ai_gen_id }}:hover {
+    background-color: {{ section.settings.button_secondary_hover_bg }};
+    border-color: {{ section.settings.button_secondary_hover_border }};
+    color: {{ section.settings.button_secondary_hover_text }};
+  }
+
+  .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} {
+    {% if section.settings.layout_mode == 'split' %}
+      flex: 1;
+      display: flex;
+      align-items: {{ section.settings.foreground_vertical_align }};
+      justify-content: {{ section.settings.foreground_horizontal_align }};
+    {% else %}
+      position: absolute;
+      top: {{ section.settings.foreground_position_y }}%;
+      right: {{ section.settings.foreground_position_x }}%;
+      transform: translate({{ section.settings.foreground_position_x }}%, -{{ section.settings.foreground_position_y }}%);
+      z-index: 4;
+    {% endif %}
+  }
+
+  .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img {
+    width: clamp({{ section.settings.foreground_size_mobile }}px, {{ section.settings.foreground_size_mobile | plus: section.settings.foreground_size_desktop | divided_by: 2.0 | times: 0.1 }}vw, {{ section.settings.foreground_size_desktop }}px);
+    height: auto;
+    object-fit: contain;
+    border-radius: {{ section.settings.foreground_border_radius }}px;
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-healthcare-hero__layout-{{ ai_gen_id }} {
+      flex-direction: column;
+    }
+
+    .ai-healthcare-hero__content-panel-{{ ai_gen_id }} {
+      flex: 1;
+      max-width: 100%;
+    }
+
+    .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} {
+      {% if section.settings.hide_foreground_mobile %}
+        display: none;
+      {% else %}
+        position: relative;
+        top: auto;
+        right: auto;
+        transform: none;
+        width: 100%;
+        justify-content: center;
+      {% endif %}
+    }
+
+    .ai-healthcare-hero__background-image-{{ ai_gen_id }} {
+      object-position: {{ section.settings.bg_position_x_mobile }}% {{ section.settings.bg_position_y_mobile }}%;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-healthcare-hero__buttons-{{ ai_gen_id }} {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .ai-healthcare-hero__button-{{ ai_gen_id }} {
+      width: 100%;
+    }
+  }
+{% endstyle %}
+
+<healthcare-hero-{{ ai_gen_id }} class="ai-healthcare-hero-{{ ai_gen_id }}" {{ section.shopify_attributes }}>
+  <div class="ai-healthcare-hero__background-{{ ai_gen_id }}">
+    {% if section.settings.background_image %}
+      <img
+        src="{{ section.settings.background_image | image_url: width: 2400 }}"
+        alt="{{ section.settings.background_image.alt | escape }}"
+        loading="lazy"
+        width="{{ section.settings.background_image.width }}"
+        height="{{ section.settings.background_image.height }}"
+        class="ai-healthcare-hero__background-image-{{ ai_gen_id }}"
+      >
+    {% else %}
+      <div class="ai-healthcare-hero__background-placeholder-{{ ai_gen_id }}">
+        {{ 'hero-apparel-1' | placeholder_svg_tag }}
+      </div>
+    {% endif %}
+    {% if section.settings.show_overlay %}
+      <div class="ai-healthcare-hero__overlay-{{ ai_gen_id }}"></div>
+    {% endif %}
+  </div>
+
+  <div class="ai-healthcare-hero__container-{{ ai_gen_id }}">
+    <div class="ai-healthcare-hero__layout-{{ ai_gen_id }}">
+      <div class="ai-healthcare-hero__content-panel-{{ ai_gen_id }}">
+        {% if section.settings.heading != blank %}
+          <h1 class="ai-healthcare-hero__heading-{{ ai_gen_id }}">
+            {{ section.settings.heading }}
+          </h1>
+        {% endif %}
+
+        {% if section.settings.subheading != blank %}
+          <div class="ai-healthcare-hero__subheading-{{ ai_gen_id }}">
+            {% if section.settings.accent_text != blank %}
+              {% assign subheading_parts = section.settings.subheading | split: section.settings.accent_text %}
+              {% if subheading_parts.size > 1 %}
+                {{ subheading_parts[0] }}<span class="ai-healthcare-hero__subheading-accent-{{ ai_gen_id }}">{{ section.settings.accent_text }}</span>{{ subheading_parts[1] }}
+              {% else %}
+                {{ section.settings.subheading }}
+              {% endif %}
+            {% else %}
+              {{ section.settings.subheading }}
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% if section.settings.body_text != blank %}
+          <div class="ai-healthcare-hero__body-{{ ai_gen_id }}">
+            {{ section.settings.body_text }}
+          </div>
+        {% endif %}
+
+        {% if section.settings.show_buttons %}
+          <div class="ai-healthcare-hero__buttons-{{ ai_gen_id }}">
+            {% if section.settings.button_primary_label != blank %}
+              <a
+                href="{{ section.settings.button_primary_link }}"
+                class="ai-healthcare-hero__button-{{ ai_gen_id }} ai-healthcare-hero__button--primary-{{ ai_gen_id }}"
+              >
+                {{ section.settings.button_primary_label }}
+              </a>
+            {% endif %}
+
+            {% if section.settings.show_button_secondary and section.settings.button_secondary_label != blank %}
+              <a
+                href="{{ section.settings.button_secondary_link }}"
+                class="ai-healthcare-hero__button-{{ ai_gen_id }} ai-healthcare-hero__button--secondary-{{ ai_gen_id }}"
+              >
+                {{ section.settings.button_secondary_label }}
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+
+      {% if section.settings.show_foreground_image and section.settings.foreground_image %}
+        <div class="ai-healthcare-hero__foreground-image-{{ ai_gen_id }}">
+          <img
+            src="{{ section.settings.foreground_image | image_url: width: 1200 }}"
+            alt="{{ section.settings.foreground_image.alt | escape }}"
+            loading="lazy"
+            width="{{ section.settings.foreground_image.width }}"
+            height="{{ section.settings.foreground_image.height }}"
+          >
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</healthcare-hero-{{ ai_gen_id }}>
+
+<script>
+(function() {
+  class HealthcareHero{{ ai_gen_id }} extends HTMLElement {
+    constructor() {
+      super();
+    }
+
+    connectedCallback() {
+      this.setupParallax();
+      this.setupScrollAnimations();
+    }
+
+    setupParallax() {
+      {% if section.settings.enable_parallax %}
+        const background = this.querySelector('.ai-healthcare-hero__background-image-{{ ai_gen_id }}');
+        if (!background) return;
+
+        const handleScroll = () => {
+          const scrolled = window.pageYOffset;
+          const rate = scrolled * {{ section.settings.parallax_speed | divided_by: 100.0 }};
+          background.style.transform = `translateY(${rate}px)`;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+      {% endif %}
+    }
+
+    setupScrollAnimations() {
+      {% if section.settings.enable_scroll_animations %}
+        const contentPanel = this.querySelector('.ai-healthcare-hero__content-panel-{{ ai_gen_id }}');
+        const foregroundImage = this.querySelector('.ai-healthcare-hero__foreground-image-{{ ai_gen_id }}');
+
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.style.opacity = '1';
+              entry.target.style.transform = 'translateY(0)';
+            }
+          });
+        }, { threshold: 0.1 });
+
+        if (contentPanel) {
+          contentPanel.style.opacity = '0';
+          contentPanel.style.transform = 'translateY(30px)';
+          contentPanel.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+          observer.observe(contentPanel);
+        }
+
+        if (foregroundImage) {
+          foregroundImage.style.opacity = '0';
+          foregroundImage.style.transform = 'translateY(30px)';
+          foregroundImage.style.transition = 'opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s';
+          observer.observe(foregroundImage);
+        }
+      {% endif %}
+    }
+  }
+
+  customElements.define('healthcare-hero-{{ ai_gen_id }}', HealthcareHero{{ ai_gen_id }});
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Healthcare hero banner",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_mode",
+      "label": "Layout mode",
+      "options": [
+        {
+          "value": "full_width",
+          "label": "Full width with overlay"
+        },
+        {
+          "value": "split",
+          "label": "Split layout"
+        },
+        {
+          "value": "overlay_foreground",
+          "label": "Background with foreground image"
+        }
+      ],
+      "default": "full_width"
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "label": "Container width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1600
+    },
+    {
+      "type": "select",
+      "id": "content_vertical_align",
+      "label": "Content vertical alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "content_width",
+      "label": "Content width",
+      "min": 30,
+      "max": 70,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "header",
+      "content": "Background image"
+    },
+    {
+      "type": "image_picker",
+      "id": "background_image",
+      "label": "Background image"
+    },
+    {
+      "type": "range",
+      "id": "bg_position_x",
+      "label": "Horizontal position (desktop)",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "bg_position_y",
+      "label": "Vertical position (desktop)",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "bg_position_x_mobile",
+      "label": "Horizontal position (mobile)",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "bg_position_y_mobile",
+      "label": "Vertical position (mobile)",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_parallax",
+      "label": "Enable parallax effect",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "parallax_speed",
+      "label": "Parallax speed",
+      "min": 10,
+      "max": 50,
+      "step": 5,
+      "unit": "%",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Overlay"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_overlay",
+      "label": "Show overlay",
+      "default": true
+    },
+    {
+      "type": "color_background",
+      "id": "overlay_gradient",
+      "label": "Overlay gradient",
+      "default": "linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 100%)"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "header",
+      "content": "Content panel"
+    },
+    {
+      "type": "color",
+      "id": "panel_bg_color",
+      "label": "Panel background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "panel_padding",
+      "label": "Panel padding",
+      "min": 20,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "panel_border_radius",
+      "label": "Panel border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "panel_shadow_opacity",
+      "label": "Panel shadow opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "panel_shadow_y",
+      "label": "Panel shadow vertical offset",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "panel_shadow_blur",
+      "label": "Panel shadow blur",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Heading"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Struggling with stress, hormones, weight or sexual health?"
+    },
+    {
+      "type": "font_picker",
+      "id": "heading_font",
+      "label": "Heading font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "heading_size_desktop",
+      "label": "Heading size (desktop)",
+      "min": 24,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "heading_size_mobile",
+      "label": "Heading size (mobile)",
+      "min": 18,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 28
+    },
+    {
+      "type": "range",
+      "id": "heading_line_height",
+      "label": "Heading line height",
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.2
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "range",
+      "id": "heading_spacing",
+      "label": "Heading spacing",
+      "min": 8,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Subheading"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Find the real cause in 60 seconds"
+    },
+    {
+      "type": "text",
+      "id": "accent_text",
+      "label": "Accent text",
+      "default": "60 seconds"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent color",
+      "default": "#ee204a"
+    },
+    {
+      "type": "font_picker",
+      "id": "subheading_font",
+      "label": "Subheading font",
+      "default": "montserrat_n4"
+    },
+    {
+      "type": "range",
+      "id": "subheading_size_desktop",
+      "label": "Subheading size (desktop)",
+      "min": 16,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "subheading_size_mobile",
+      "label": "Subheading size (mobile)",
+      "min": 14,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "subheading_line_height",
+      "label": "Subheading line height",
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.4
+    },
+    {
+      "type": "color",
+      "id": "subheading_color",
+      "label": "Subheading color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "range",
+      "id": "subheading_spacing",
+      "label": "Subheading spacing",
+      "min": 8,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Body text"
+    },
+    {
+      "type": "richtext",
+      "id": "body_text",
+      "label": "Body text",
+      "default": "<p>Take our quick assessment to discover personalized wellness solutions tailored to your unique health needs.</p>"
+    },
+    {
+      "type": "range",
+      "id": "body_size_desktop",
+      "label": "Body size (desktop)",
+      "min": 14,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "body_size_mobile",
+      "label": "Body size (mobile)",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "body_line_height",
+      "label": "Body line height",
+      "min": 1.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1.6
+    },
+    {
+      "type": "color",
+      "id": "body_color",
+      "label": "Body color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "range",
+      "id": "body_spacing",
+      "label": "Body spacing",
+      "min": 16,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "select",
+      "id": "text_align",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Buttons"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_buttons",
+      "label": "Show buttons",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "button_primary_label",
+      "label": "Primary button label",
+      "default": "Take assessment"
+    },
+    {
+      "type": "url",
+      "id": "button_primary_link",
+      "label": "Primary button link"
+    },
+    {
+      "type": "color",
+      "id": "button_primary_bg",
+      "label": "Primary button background",
+      "default": "#ee204a"
+    },
+    {
+      "type": "color",
+      "id": "button_primary_text_color",
+      "label": "Primary button text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "button_primary_hover_bg",
+      "label": "Primary button hover background",
+      "default": "#d01d42"
+    },
+    {
+      "type": "color",
+      "id": "button_primary_hover_text",
+      "label": "Primary button hover text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_button_secondary",
+      "label": "Show secondary button",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "button_secondary_label",
+      "label": "Secondary button label",
+      "default": "Learn more"
+    },
+    {
+      "type": "url",
+      "id": "button_secondary_link",
+      "label": "Secondary button link"
+    },
+    {
+      "type": "color",
+      "id": "button_secondary_bg",
+      "label": "Secondary button background",
+      "default": "rgba(0, 0, 0, 0)"
+    },
+    {
+      "type": "color",
+      "id": "button_secondary_text_color",
+      "label": "Secondary button text color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "color",
+      "id": "button_secondary_border",
+      "label": "Secondary button border color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "color",
+      "id": "button_secondary_hover_bg",
+      "label": "Secondary button hover background",
+      "default": "#2b3845"
+    },
+    {
+      "type": "color",
+      "id": "button_secondary_hover_text",
+      "label": "Secondary button hover text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "button_secondary_hover_border",
+      "label": "Secondary button hover border color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "range",
+      "id": "button_text_size_desktop",
+      "label": "Button text size (desktop)",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "button_text_size_mobile",
+      "label": "Button text size (mobile)",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "button_padding_desktop",
+      "label": "Button padding (desktop)",
+      "min": 8,
+      "max": 24,
+      "step": 2,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "button_padding_mobile",
+      "label": "Button padding (mobile)",
+      "min": 6,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "button_border_radius",
+      "label": "Button border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 6
+    },
+    {
+      "type": "range",
+      "id": "button_border_width",
+      "label": "Button border width",
+      "min": 0,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 2
+    },
+    {
+      "type": "range",
+      "id": "button_font_weight",
+      "label": "Button font weight",
+      "min": 400,
+      "max": 700,
+      "step": 100,
+      "default": 600
+    },
+    {
+      "type": "range",
+      "id": "button_gap",
+      "label": "Button gap",
+      "min": 8,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Foreground image"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_foreground_image",
+      "label": "Show foreground image",
+      "default": false
+    },
+    {
+      "type": "image_picker",
+      "id": "foreground_image",
+      "label": "Foreground image"
+    },
+    {
+      "type": "range",
+      "id": "foreground_size_desktop",
+      "label": "Foreground size (desktop)",
+      "min": 200,
+      "max": 800,
+      "step": 50,
+      "unit": "px",
+      "default": 500
+    },
+    {
+      "type": "range",
+      "id": "foreground_size_mobile",
+      "label": "Foreground size (mobile)",
+      "min": 150,
+      "max": 400,
+      "step": 25,
+      "unit": "px",
+      "default": 250
+    },
+    {
+      "type": "range",
+      "id": "foreground_position_x",
+      "label": "Foreground horizontal position",
+      "min": 0,
+      "max": 50,
+      "step": 5,
+      "unit": "%",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "foreground_position_y",
+      "label": "Foreground vertical position",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "select",
+      "id": "foreground_vertical_align",
+      "label": "Foreground vertical alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "foreground_horizontal_align",
+      "label": "Foreground horizontal alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "foreground_border_radius",
+      "label": "Foreground border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_foreground_mobile",
+      "label": "Hide foreground on mobile",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Section padding top",
+      "min": 20,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Section padding bottom",
+      "min": 20,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "section_padding_horizontal",
+      "label": "Section padding horizontal",
+      "min": 20,
+      "max": 80,
+      "step": 5,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Animations"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_scroll_animations",
+      "label": "Enable scroll animations",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Healthcare CTA banner"
+    }
+  ]
+}
+{% endschema %}

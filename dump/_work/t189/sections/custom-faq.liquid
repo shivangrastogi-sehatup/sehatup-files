@@ -1,0 +1,122 @@
+{% if product.metafields.custom.product_faqs.value != blank %}
+  <section class="faq-section">
+    <div class="page-width">
+      <h2 class="faq-title">Frequently Asked Questions</h2>
+      <div class="faq-container">
+        {% for faq in product.metafields.custom.product_faqs.value %}
+          <div class="faq-item">
+            <div class="faq-question" tabindex="0">
+              <span>{{ faq.question }}</span>
+              <span class="faq-toggle">+</span>
+            </div>
+            <div class="faq-answer">
+              <p>{{ faq.answer }}</p>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+
+    .faq-section {
+      width: 100%;
+      padding: 60px 5%;
+      background-color: #fff;
+      text-align: center;
+    }
+
+    .faq-title {
+      font-size: 2rem;
+      margin-bottom: 30px;
+    }
+
+    .faq-container {
+      display: grid;
+      gap: 20px;
+      max-width: 1600px;
+      margin: auto;
+    }
+
+    .faq-item {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .faq-question {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 18px;
+      color: #333;
+      outline: none;
+    }
+
+    .faq-toggle {
+      font-size: 20px;
+      font-weight: bold;
+      margin-left: 10px;
+      transition: transform 0.3s ease;
+      display: inline-block; /* ensures rotation doesn't cut off */
+    }
+
+    .faq-answer {
+      height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
+      padding-top: 0;
+    }
+
+    .faq-item.active .faq-answer {
+      height: auto; /* will be set dynamically via JS */
+      opacity: 1;
+      padding-top: 10px;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const faqItems = document.querySelectorAll('.faq-item');
+
+      faqItems.forEach((item) => {
+        const question = item.querySelector('.faq-question');
+        const toggle = item.querySelector('.faq-toggle');
+        const answer = item.querySelector('.faq-answer');
+
+        // Pre-calculate scrollHeight for smooth transition
+        answer.style.height = '0px';
+
+        question.addEventListener('click', () => {
+          const isActive = item.classList.contains('active');
+
+          faqItems.forEach(faq => {
+            faq.classList.remove('active');
+            faq.querySelector('.faq-toggle').textContent = '+';
+            faq.querySelector('.faq-answer').style.height = '0px';
+          });
+
+          if (!isActive) {
+            item.classList.add('active');
+            toggle.textContent = '-';
+            answer.style.height = answer.scrollHeight + 'px'; // smooth open
+          }
+        });
+
+        question.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            question.click();
+          }
+        });
+      });
+    });
+  </script>
+{% endif %}

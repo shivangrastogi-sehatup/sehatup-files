@@ -726,6 +726,17 @@
   #lead-popup-{{ section.id }} .lead-popup__form[hidden],
   #lead-popup-{{ section.id }} .lead-popup__success[hidden] { display: none !important; }
 
+  /* Big screens: the dialog grows in the same steps as the Health Score 360
+     sections, so it is not a small box in the middle of a 4K screen. Each step
+     also needs a tall enough window (about 700px of dialog times the step, in
+     90% of the height), so the bigger dialog never runs off a wide, short screen. */
+  @media (min-width: 1680px) and (min-height: 871px)  { #lead-popup-{{ section.id }} .lead-popup__dialog { zoom: 1.12; } }
+  @media (min-width: 1920px) and (min-height: 972px)  { #lead-popup-{{ section.id }} .lead-popup__dialog { zoom: 1.25; } }
+  @media (min-width: 2240px) and (min-height: 1128px) { #lead-popup-{{ section.id }} .lead-popup__dialog { zoom: 1.45; } }
+  @media (min-width: 2560px) and (min-height: 1284px) { #lead-popup-{{ section.id }} .lead-popup__dialog { zoom: 1.65; } }
+  @media (min-width: 3200px) and (min-height: 1556px) { #lead-popup-{{ section.id }} .lead-popup__dialog { zoom: 2; } }
+  @media (min-width: 3840px) and (min-height: 1867px) { #lead-popup-{{ section.id }} .lead-popup__dialog { zoom: 2.4; } }
+
   @media (prefers-reduced-motion: reduce) {
     #lead-popup-{{ section.id }} .lead-popup__overlay,
     #lead-popup-{{ section.id }} .lead-popup__dialog,

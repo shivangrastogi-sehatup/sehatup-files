@@ -1,0 +1,224 @@
+{%- comment -%}
+  About Us: the experts, as tall photo panels side by side. One panel is open
+  at a time: it widens, the person slides to its right edge and their name,
+  degree and what they do appear on the left. Hover (or tap / keyboard) opens
+  another. The row has a fixed height, so opening a panel never moves the page.
+  Under 1100px the panels become plain cards in a swipe row.
+  Photos are the transparent cut-outs used on For Her / For Him.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+-%}
+
+<style>
+  #atm-{{ section.id }} {
+    --red: #ee204a; --red-ink: #d81f48; --ink: #1d1d1d; --soft: #5c5c5c; --stone: #f6f0ec; --line: #e8e0d9;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+    padding: {{ s.padding_top }}px clamp(16px, 4vw, 48px) {{ s.padding_bottom }}px;
+    background: {{ s.background | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif; overflow-x: clip;
+  }
+  #atm-{{ section.id }} .atm__in { max-width: 1160px; margin: 0 auto; }
+  #atm-{{ section.id }} .atm__head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 48px; align-items: end; margin-bottom: 40px; }
+  #atm-{{ section.id }} .atm__h { margin: 0; font: 800 clamp(32px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #atm-{{ section.id }} .atm__sub { margin: 0; max-width: 460px; justify-self: end; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--soft); text-wrap: pretty; }
+
+  #atm-{{ section.id }} .atm__row { display: flex; gap: 16px; height: clamp(420px, 36vw, 480px); }
+  #atm-{{ section.id }} .atm__p { position: relative; flex: 1 1 0; min-width: 0; border-radius: 28px; overflow: hidden; background: var(--stone); transition: flex-grow .8s var(--ease); }
+  #atm-{{ section.id }} .atm__p.on { flex-grow: 3.4; }
+  #atm-{{ section.id }} .atm__pic { position: absolute; inset: 0; }
+  #atm-{{ section.id }} .atm__pic img {
+    position: absolute; bottom: 0; left: 50%; width: auto; height: 100%; max-width: none;
+    transform: translateX(-50%); transition: left .8s var(--ease), transform .8s var(--ease);
+  }
+  #atm-{{ section.id }} .atm__p.on .atm__pic img { left: 100%; transform: translateX(-100%); }
+  #atm-{{ section.id }} .atm__ini { position: absolute; inset: 0; display: grid; place-items: center; font: 300 96px/1 'Montserrat', sans-serif; color: var(--soft); opacity: .35; }
+
+  /* Closed panel: a small name card at the bottom. */
+  #atm-{{ section.id }} .atm__tag {
+    position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 12px 14px; border-radius: 16px; background: #fff;
+    display: grid; gap: 2px; transition: opacity .35s ease .35s;
+  }
+  #atm-{{ section.id }} .atm__tag b { font: 700 14.5px/1.3 'Montserrat', sans-serif; color: var(--ink); }
+  #atm-{{ section.id }} .atm__tag span { font: 500 13px/1.3 'Montserrat', sans-serif; color: var(--soft); }
+  #atm-{{ section.id }} .atm__p.on .atm__tag { opacity: 0; transition: opacity .2s ease; }
+
+  /* Open panel: the full text on the left. */
+  #atm-{{ section.id }} .atm__txt {
+    position: absolute; left: 36px; top: 36px; bottom: 36px; width: clamp(220px, 20vw, 260px);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+  }
+  #atm-{{ section.id }} .atm__p.on .atm__txt { opacity: 1; transform: none; pointer-events: auto; transition: opacity .5s ease .3s, transform .7s var(--ease) .3s; }
+  #atm-{{ section.id }} .atm__sys { margin: 0 0 10px; font: 700 14px/1.3 'Montserrat', sans-serif; color: var(--red-ink); }
+  #atm-{{ section.id }} .atm__name { margin: 0 0 8px; font: 800 clamp(24px, 2.2vw, 32px)/1.12 'Montserrat', sans-serif; letter-spacing: -.01em; color: var(--ink); }
+  #atm-{{ section.id }} .atm__deg { margin: 0; font: 600 14.5px/1.45 'Montserrat', sans-serif; color: var(--soft); }
+  #atm-{{ section.id }} .atm__role { margin: 16px 0 0; padding-top: 16px; border-top: 1px solid rgba(29, 29, 29, .12); font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--ink); }
+
+  #atm-{{ section.id }} .atm__hit { position: absolute; inset: 0; z-index: 1; width: 100%; padding: 0; border: 0; border-radius: inherit; background: none; cursor: pointer; }
+  #atm-{{ section.id }} .atm__p.on .atm__hit { cursor: default; }
+  #atm-{{ section.id }} .atm__hit:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
+
+  #atm-{{ section.id }} .atm__foot { margin-top: 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; }
+  #atm-{{ section.id }} .atm__btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 30px; border-radius: 999px; background: var(--red-ink); color: #fff; font: 700 16px/1 'Montserrat', sans-serif; text-decoration: none; transition: transform .2s ease, background-color .2s ease; }
+  @media (hover: hover) { #atm-{{ section.id }} .atm__btn:hover { transform: translateY(-2px); background: #c11a3f; } }
+  #atm-{{ section.id }} .atm__btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  #atm-{{ section.id }} .atm__btn svg { width: 19px; height: 19px; fill: currentColor; }
+  #atm-{{ section.id }} .atm__note { margin: 0; font: 500 15px/1.5 'Montserrat', sans-serif; color: var(--soft); }
+
+  /* Entrance: panels rise one after another. */
+  #atm-{{ section.id }}.js .atm__p { opacity: 0; }
+  #atm-{{ section.id }}.js.in .atm__p { animation: atm-up-{{ section.id }} .9s var(--ease) calc(var(--i) * .1s) both; }
+  @keyframes atm-up-{{ section.id }} { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+
+  /* Under 1100px: plain cards in a swipe row, everything visible. */
+  @media (max-width: 1099.98px) {
+    #atm-{{ section.id }} .atm__head { grid-template-columns: minmax(0, 1fr); margin-bottom: 28px; }
+    #atm-{{ section.id }} .atm__sub { justify-self: start; }
+    #atm-{{ section.id }} .atm__row {
+      height: auto; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+      margin: 0 calc(-1 * clamp(16px, 4vw, 48px)); padding: 4px clamp(16px, 4vw, 48px) 16px; scroll-padding: 0 clamp(16px, 4vw, 48px);
+    }
+    #atm-{{ section.id }} .atm__row::-webkit-scrollbar { display: none; }
+    #atm-{{ section.id }} .atm__p, #atm-{{ section.id }} .atm__p.on { flex: 0 0 clamp(260px, 42%, 340px); display: flex; flex-direction: column; background: #fff; border: 1px solid var(--line); border-radius: 24px; scroll-snap-align: start; }
+    #atm-{{ section.id }} .atm__pic { position: relative; inset: auto; aspect-ratio: 1; background: var(--stone); }
+    #atm-{{ section.id }} .atm__pic img, #atm-{{ section.id }} .atm__p.on .atm__pic img { left: 0; width: 100%; object-fit: cover; object-position: center top; transform: none; transition: none; }
+    #atm-{{ section.id }} .atm__tag, #atm-{{ section.id }} .atm__hit { display: none; }
+    #atm-{{ section.id }} .atm__txt, #atm-{{ section.id }} .atm__p.on .atm__txt { position: static; width: auto; padding: 20px 22px 24px; justify-content: flex-start; opacity: 1; transform: none; transition: none; }
+    #atm-{{ section.id }} .atm__name { font-size: 21px; }
+    #atm-{{ section.id }} .atm__role { margin-top: 12px; padding-top: 12px; font-size: 15px; }
+  }
+  @media (max-width: 749.98px) {
+    #atm-{{ section.id }} .atm__h { font-size: 30px; }
+    #atm-{{ section.id }} .atm__sub { font-size: 15px; }
+    #atm-{{ section.id }} .atm__p, #atm-{{ section.id }} .atm__p.on { flex-basis: 78%; }
+    #atm-{{ section.id }} .atm__foot { margin-top: 20px; }
+    #atm-{{ section.id }} .atm__btn { width: 100%; justify-content: center; }
+    #atm-{{ section.id }} .atm__note { width: 100%; text-align: center; font-size: 13.5px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #atm-{{ section.id }} *, #atm-{{ section.id }}.js.in .atm__p { transition: none !important; animation: none !important; }
+    #atm-{{ section.id }}.js .atm__p { opacity: 1; }
+  }
+
+  @media (min-width: 1680px) { #atm-{{ section.id }} .atm__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #atm-{{ section.id }} .atm__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #atm-{{ section.id }} .atm__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #atm-{{ section.id }} .atm__in { zoom: 2; } }
+</style>
+
+<section id="atm-{{ section.id }}" class="atm">
+  <div class="atm__in">
+    <div class="atm__head">
+      <h2 class="atm__h">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="atm__sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="atm__row">
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        <article class="atm__p{% if forloop.first %} on{% endif %}" style="--i: {{ forloop.index0 }}" {{ block.shopify_attributes }}>
+          <div class="atm__pic">
+            {%- if b.photo != blank -%}
+              <img src="{{ b.photo | image_url: width: 800 }}"
+                   srcset="{{ b.photo | image_url: width: 500 }} 500w, {{ b.photo | image_url: width: 800 }} 800w, {{ b.photo | image_url: width: 1100 }} 1100w"
+                   sizes="(max-width: 749.98px) 78vw, (max-width: 1099.98px) 340px, 480px"
+                   alt="{{ b.name | escape }}" loading="lazy" width="800" height="{{ 800 | divided_by: b.photo.aspect_ratio | round }}">
+            {%- else -%}
+              <span class="atm__ini" aria-hidden="true">{{ b.system | slice: 0 }}</span>
+            {%- endif -%}
+          </div>
+          <div class="atm__tag" aria-hidden="true"><b>{{ b.name }}</b><span>{{ b.system }}</span></div>
+          <div class="atm__txt">
+            {%- if b.system != blank -%}<p class="atm__sys">{{ b.system }}</p>{%- endif -%}
+            {%- if b.name != blank -%}<h3 class="atm__name">{{ b.name }}</h3>{%- endif -%}
+            {%- if b.degree != blank -%}<p class="atm__deg">{{ b.degree }}</p>{%- endif -%}
+            {%- if b.role != blank -%}<p class="atm__role">{{ b.role }}</p>{%- endif -%}
+          </div>
+          <button class="atm__hit" type="button" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-label="{{ b.name | escape }}, {{ b.system | escape }}"></button>
+        </article>
+      {%- endfor -%}
+    </div>
+
+    {%- if s.button != blank or s.footnote != blank -%}
+      <div class="atm__foot">
+        {%- if s.button != blank -%}
+          <a class="atm__btn" href="{{ s.button_link | default: '#' }}"{% if s.button_link contains 'wa.me' %} target="_blank" rel="noopener"{% endif %}>
+            {%- if s.button_link contains 'wa.me' -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>{%- endif -%}
+            {{ s.button }}
+          </a>
+        {%- endif -%}
+        {%- if s.footnote != blank -%}<p class="atm__note">{{ s.footnote }}</p>{%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('atm-{{ section.id }}');
+    if (!root) return;
+    var panels = [].slice.call(root.querySelectorAll('.atm__p'));
+    var wide = window.matchMedia('(min-width: 1100px) and (hover: hover)');
+    var timer;
+
+    function open(i) {
+      panels.forEach(function (p, k) {
+        p.classList.toggle('on', k === i);
+        p.querySelector('.atm__hit').setAttribute('aria-expanded', k === i ? 'true' : 'false');
+      });
+    }
+    panels.forEach(function (p, i) {
+      var hit = p.querySelector('.atm__hit');
+      hit.addEventListener('click', function () { open(i); });
+      hit.addEventListener('focus', function () { open(i); });
+      // A short wait, so sweeping the mouse across the row doesn't open every panel on the way.
+      p.addEventListener('mouseenter', function () {
+        if (!wide.matches) return;
+        clearTimeout(timer);
+        timer = setTimeout(function () { open(i); }, 110);
+      });
+      p.addEventListener('mouseleave', function () { clearTimeout(timer); });
+    });
+
+    if (!('IntersectionObserver' in window)) return;
+    root.classList.add('js');
+    var io = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { root.classList.add('in'); io.disconnect(); }
+    }, { threshold: .2 });
+    io.observe(root.querySelector('.atm__row'));
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "About: team",
+  "tag": "div",
+  "class": "section-about-team",
+  "max_blocks": 4,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Real experts. Real names." },
+    { "type": "textarea", "id": "subheading", "label": "Subheading" },
+    { "type": "text", "id": "button", "label": "Button", "info": "Leave empty for no button." },
+    { "type": "url", "id": "button_link", "label": "Button link", "info": "A wa.me link shows the WhatsApp icon." },
+    { "type": "text", "id": "footnote", "label": "Line next to the button" },
+    { "type": "color", "id": "background", "label": "Background", "default": "#ffffff" },
+    { "type": "range", "id": "padding_top", "label": "Space above", "min": 16, "max": 120, "step": 4, "unit": "px", "default": 64 },
+    { "type": "range", "id": "padding_bottom", "label": "Space below", "min": 16, "max": 120, "step": 4, "unit": "px", "default": 64 }
+  ],
+  "blocks": [
+    {
+      "type": "doctor",
+      "name": "Expert",
+      "settings": [
+        { "type": "image_picker", "id": "photo", "label": "Photo", "info": "A cut-out photo with a transparent background works best." },
+        { "type": "text", "id": "system", "label": "System", "default": "Ayurveda" },
+        { "type": "text", "id": "name", "label": "Name" },
+        { "type": "text", "id": "degree", "label": "Degree / experience", "info": "Leave empty rather than guess." },
+        { "type": "text", "id": "role", "label": "What they do for you" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "About: team" }]
+}
+{% endschema %}

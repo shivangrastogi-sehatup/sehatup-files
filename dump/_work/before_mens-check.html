@@ -1,0 +1,2456 @@
+<!doctype html><html lang="en">
+  <head><script data-source-attribution="shopify.event_observer.bootstrap">
+(function(){let e=navigator,t=`prototype`,n=`sendBeacon`,r=e[n],i=fetch,a=XMLHttpRequest[t],{open:o,send:s}=a,c=`EventListener`,l=`add${c}`,u=`remove${c}`,d=EventTarget[t],f=d[l],p=d[u],m=e=>Error((e=document.currentScript)&&[e?.src,e?.id||e?.dataset?.sourceAttribution]),h=(e=[],t=0)=>(e.p=n=>e[t++%1e3]=n,[e,t=>(e.forEach(e.p=t),e.length=0)]),[g,_]=h(),[v,y]=h(),b,x=new WeakMap,S=e=>e&&g.p([e,b||[m()]]);d[l]=function(e,t,n){let r=this,i=t?.handleEvent||t,a=x.get(t),o=m();i?.call&&!a&&x.set(t,a=function(e){b=[o,e.type];try{i.call(t==i?this:t,e)}finally{b=null}}),v.p([e,o,a,r?.tagName||r+``,r?.id]),f.call(r,e,a||t,n)},d[u]=function(e,t,n){p.call(this,e,x.get(t)||t,n)},a.open=function(e,t){x.set(this,[t+``,e]),o.apply(this,arguments)},a.send=function(e){S(x.get(this)),s.call(this,e)},fetch=(e,t)=>(S([(e?.url||e)+``,t?.method]),i(e,t)),e[n]=(t,n)=>(S([t+``,``]),r.call(e,t,n)),setTimeout(()=>import("//www.sehatup.com/cdn/shopifycloud/storefront/assets/storefront/event_observer_reporter-ed358274.js").then(e=>e.$(_,y,f,i,`92456878383`)))})();
+//# sourceURL=event-observer-collector.js
+</script>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://www.sehatup.com/pages/mens-check"><link rel="icon" type="image/png" href="//www.sehatup.com/cdn/shop/files/favicon.png?crop=center&height=32&v=1789365420&width=32"><title>Men&#39;s Wellness Consultation | sehatUP</title>
+
+<script>
+(function () {
+  'use strict';
+
+  var FIRST = 'sehatup_attr_first';
+  var LAST  = 'sehatup_attr_last';
+  var UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+  function read(key) {
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode */ }
+  }
+
+  function hostOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
+  }
+
+  /**
+   * A readable source label even when the marketer forgot the UTMs.
+   *
+   * This matters more here than it looks: 90% of leads arrive with no referrer at
+   * all, because Meta and Instagram in-app browsers strip it and WhatsApp sends
+   * none. When that happens the click ids are the only surviving evidence of a
+   * paid click, so they are treated as a first-class signal, not a fallback.
+   */
+  function deriveSource(params, referrer) {
+    var utmSource = params.get('utm_source');
+    if (utmSource) return utmSource.toLowerCase();
+
+    if (params.get('fbclid')) return 'meta';
+    if (params.get('gclid') || params.get('gbraid') || params.get('wbraid')) return 'google';
+    if (params.get('ttclid')) return 'tiktok';
+
+    var host = hostOf(referrer);
+    if (!host) return 'direct';
+    if (/(^|\.)(facebook|instagram|fb|l\.instagram)\./.test(host + '.')) return 'meta';
+    if (/(^|\.)google\./.test(host + '.')) return 'google-organic';
+    if (/whatsapp|wa\.me|l\.wl\.co/.test(host)) return 'whatsapp';
+    if (/(^|\.)(youtube|youtu\.be)\./.test(host + '.')) return 'youtube';
+    if (host.indexOf('sehatup.com') !== -1) return 'internal';
+    return host;
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var referrer = document.referrer || '';
+
+  var touch = {
+    source: deriveSource(params, referrer),
+    landing_page: window.location.pathname,
+    referrer: referrer,
+    referrer_host: hostOf(referrer),
+    at: new Date().toISOString()
+  };
+  UTM.forEach(function (k) { touch[k] = params.get(k) || ''; });
+  // Click ids are kept raw as well - they are what lets you reconcile a lead
+  // against the ad platform's own reporting later.
+  ['gclid', 'fbclid', 'ttclid', 'gbraid', 'wbraid'].forEach(function (k) {
+    if (params.get(k)) touch[k] = params.get(k);
+  });
+
+  var hasSignal = UTM.some(function (k) { return touch[k]; }) ||
+                  touch.gclid || touch.fbclid || touch.ttclid ||
+                  (touch.referrer_host && touch.referrer_host.indexOf('sehatup.com') === -1);
+
+  // FIRST touch is written once and never overwritten - it answers "which ad
+  // originally found this person", which is what you pay for. LAST touch moves
+  // every time a new campaign brings them back, and answers "what closed them".
+  // Storing only one of the two throws away half the question; Shopify itself
+  // reports both for a reason.
+  if (hasSignal) {
+    if (!read(FIRST)) write(FIRST, touch);
+    write(LAST, touch);
+  } else if (!read(FIRST)) {
+    write(FIRST, touch);   // genuinely direct, and worth recording as such
+  }
+
+  window.SehatUpAttribution = {
+    first: function () { return read(FIRST) || null; },
+    last:  function () { return read(LAST) || read(FIRST) || null; },
+
+    /** Flat object ready to merge into a lead record. */
+    fields: function () {
+      var f = read(FIRST) || {};
+      var l = read(LAST) || f;
+      return {
+        // Deliberately NOT called "source". The lead popup already writes
+        // source: 'lead_popup' to record which form captured the lead, and merging a
+        // second "source" over it would destroy that and confuse every report built on it.
+        traffic_source: f.source || 'direct',
+        utm_source: f.utm_source || '',
+        utm_medium: f.utm_medium || '',
+        utm_campaign: f.utm_campaign || '',
+        utm_content: f.utm_content || '',
+        utm_term: f.utm_term || '',
+        landing_page: f.landing_page || '',
+        referrer: f.referrer || '',
+        gclid: f.gclid || '',
+        fbclid: f.fbclid || '',
+        first_seen_at: f.at || '',
+        last_traffic_source: l.source || '',
+        last_utm_campaign: l.utm_campaign || '',
+        attributed_page: window.location.pathname
+      };
+    },
+
+    /** Clears stored attribution. Only for testing. */
+    reset: function () {
+      try { localStorage.removeItem(FIRST); localStorage.removeItem(LAST); } catch (e) {}
+    }
+  };
+})();
+</script>
+
+    <script>!function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:"6YvDyuZQsPeKJ7bhguTQEB"});</script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="//www.sehatup.com/cdn/shop/t/63/assets/landing.css?v=6447263948309989881792148877" rel="stylesheet" type="text/css" media="all" />
+
+    <script>window.performance && window.performance.mark && window.performance.mark('shopify.content_for_header.start');</script><meta name="google-site-verification" content="qXogZTRtdWmh8lCahUl6rdff0tQyh0fvlfKwet6LFtk">
+<meta id="shopify-digital-wallet" name="shopify-digital-wallet" content="/92456878383/digital_wallets/dialog">
+<link rel="ucp" href="/.well-known/ucp" version="2026-08-25"><script async="async" src="/checkouts/internal/preloads.js?locale=en-IN"></script>
+<script id="shopify-features" type="application/json">{"accessToken":"30daf6735e7ac53a4d073f93d68617e4","betas":["rich-media-storefront-analytics"],"domain":"www.sehatup.com","predictiveSearch":true,"shopId":92456878383,"locale":"en"}</script>
+<script>var Shopify = Shopify || {};
+Shopify.shop = "0ec320-gj.myshopify.com";
+Shopify.locale = "en";
+Shopify.currency = {"active":"INR","rate":"1.0"};
+Shopify.country = "IN";
+Shopify.theme = {"name":"website healthscore new design","id":189138927919,"schema_name":"Trade","schema_version":"15.4.1","theme_store_id":2699,"role":"main"};
+Shopify.theme.handle = "null";
+Shopify.theme.style = {"id":null,"handle":null};
+Shopify.cdnHost = "www.sehatup.com/cdn";
+Shopify.routes = Shopify.routes || {};
+Shopify.routes.root = "/";
+Shopify.shopJsCdnBaseUrl = "https://cdn.shopify.com/shopifycloud/shop-js";
+Shopify.SignInWithShop = Shopify.SignInWithShop || {};
+Shopify.SignInWithShop.User = Shopify.SignInWithShop.User || {};
+Shopify.SignInWithShop.User.recognized = false;</script>
+<script type="module">!function(o){(o.Shopify=o.Shopify||{}).modules=!0}(window);</script>
+<script>!function(o){function n(){var o=[];function n(){o.push(Array.prototype.slice.apply(arguments))}return n.q=o,n}var t=o.Shopify=o.Shopify||{};t.loadFeatures=n(),t.autoloadFeatures=n()}(window);</script>
+<script>
+  window.Shopify = window.Shopify || {};
+  window.Shopify.SignInWithShop = window.Shopify.SignInWithShop || {};
+  window.Shopify.SignInWithShop.assetMetrics = { sampleRate: 0.25 };
+  window.Shopify.SignInWithShop.eligible = true;
+</script>
+<script id="shop-js-analytics" type="application/json">{"pageType":"page"}</script>
+<script defer="defer" async type="module" src="https://cdn.shopify.com/shopifycloud/shop-js/modules/v2/loader.init-shop-cart-sync.en.esm.js"></script>
+<script type="module">
+  await import("https://cdn.shopify.com/shopifycloud/shop-js/modules/v2/loader.init-shop-cart-sync.en.esm.js");
+
+  window.Shopify.SignInWithShop?.initShopCartSync?.({"fedCMEnabled":true,"windoidEnabled":true});
+
+</script>
+<script>
+  window.Shopify = window.Shopify || {};
+  if (!window.Shopify.featureAssets) window.Shopify.featureAssets = {};
+  window.Shopify.featureAssets['shop-js'] = {"avatar":["modules/v2/loader.avatar.en.esm.js"],"checkout-modal":["modules/v2/loader.checkout-modal.en.esm.js"],"init-customer-accounts-sign-up":["modules/v2/loader.init-customer-accounts-sign-up.en.esm.js"],"init-customer-accounts":["modules/v2/loader.init-customer-accounts.en.esm.js"],"init-fed-cm":["modules/v2/loader.init-fed-cm.en.esm.js"],"init-shop-cart-sync":["modules/v2/loader.init-shop-cart-sync.en.esm.js"],"init-shop-email-lookup-coordinator":["modules/v2/loader.init-shop-email-lookup-coordinator.en.esm.js"],"init-shop-for-new-customer-accounts":["modules/v2/loader.init-shop-for-new-customer-accounts.en.esm.js"],"init-shop-user-recognition":["modules/v2/loader.init-shop-user-recognition.en.esm.js"],"init-windoid":["modules/v2/loader.init-windoid.en.esm.js"],"lead-capture":["modules/v2/loader.lead-capture.en.esm.js"],"listener":["modules/v2/loader.listener.en.esm.js"],"pay-button":["modules/v2/loader.pay-button.en.esm.js"],"payment-terms":["modules/v2/loader.payment-terms.en.esm.js"],"shop-button":["modules/v2/loader.shop-button.en.esm.js"],"shop-cart-sync":["modules/v2/loader.shop-cart-sync.en.esm.js"],"shop-cash-offers":["modules/v2/loader.shop-cash-offers.en.esm.js"],"shop-follow-button":["modules/v2/loader.shop-follow-button.en.esm.js"],"shop-login-button":["modules/v2/loader.shop-login-button.en.esm.js"],"shop-login":["modules/v2/loader.shop-login.en.esm.js"],"shop-toast-manager":["modules/v2/loader.shop-toast-manager.en.esm.js"],"shop-user-recognition":["modules/v2/loader.shop-user-recognition.en.esm.js"]};
+</script>
+<script>(function() {
+  var isLoaded = false;
+  function asyncLoad() {
+    if (isLoaded) return;
+    isLoaded = true;
+    var urls = ["https:\/\/s3.ap-south-1.amazonaws.com\/media.intelliticks.com\/company\/GgbHGAprcvQx26qKL_c\/shopify\/qr-tracking.js?shop=0ec320-gj.myshopify.com","https:\/\/cdn.shopify.com\/s\/files\/1\/0597\/3783\/3627\/files\/tptinstall.min.js?v=1718591634\u0026t=tapita-seo-script-tags\u0026shop=0ec320-gj.myshopify.com","https:\/\/spfy-pxl.archive-digger.com\/assets\/script_tag.js?shopId=0ec320-gj.myshopify.com\u0026taboolaId=1969166\u0026espd=true\u0026ecav=true\u0026eh=true\u0026ess=true\u0026ep=true\u0026eatc=true\u0026eprv=true\u0026ecv=true\u0026epv=true\u0026esc=true\u0026shop=0ec320-gj.myshopify.com","https:\/\/widget.taggbox.com\/embed.min.js?shop=0ec320-gj.myshopify.com"];
+    for (var i = 0; i < urls.length; i++) {
+      var s = document.createElement('script');
+      s.type = 'text/javascript';
+      s.async = true;
+      s.src = urls[i];
+      var x = document.getElementsByTagName('script')[0];
+      x.parentNode.insertBefore(s, x);
+    }
+  };
+  if(window.attachEvent) {
+    window.attachEvent('onload', asyncLoad);
+  } else {
+    window.addEventListener('load', asyncLoad, false);
+  }
+})();</script>
+<script id="__st">var __st={"a":92456878383,"offset":19800,"reqid":"e4a8cdeb-2d99-4077-8eea-60400929ac1f-1792153052","pageurl":"www.sehatup.com\/pages\/mens-check?v=20576","s":"pages-165458280751","u":"1f4292c894ac","p":"page","rtyp":"page","rid":165458280751};</script>
+<script>window.ShopifyPaypalV4VisibilityTracking = true;</script>
+<script id="form-persister">!function(){'use strict';const t='contact',e='new_comment',n=[[t,t],['blogs',e],['comments',e],[t,'customer']],o='password',r='form_key',c=['recaptcha-v3-token','g-recaptcha-response','h-captcha-response',o],s=()=>{try{return window.sessionStorage}catch{return}},i='__shopify_v',u=t=>t.elements[r],a=function(){const t=[...n].map((([t,e])=>`form[action*='/${t}']:not([data-nocaptcha='true']) input[name='form_type'][value='${e}']`)).join(',');var e;return e=t,()=>e?[...document.querySelectorAll(e)].map((t=>t.form)):[]}();function m(t){const e=u(t);a().includes(t)&&(!e||!e.value)&&function(t){try{if(!s())return;!function(t){const e=s();if(!e)return;const n=u(t);if(!n)return;const o=n.value;o&&e.removeItem(o)}(t);const e=Array.from(Array(32),(()=>Math.random().toString(36)[2])).join('');!function(t,e){u(t)||t.append(Object.assign(document.createElement('input'),{type:'hidden',name:r})),t.elements[r].value=e}(t,e),function(t,e){const n=s();if(!n)return;const r=[...t.querySelectorAll(`input[type='${o}']`)].map((({name:t})=>t)),u=[...c,...r],a={};for(const[o,c]of new FormData(t).entries())u.includes(o)||(a[o]=c);n.setItem(e,JSON.stringify({[i]:1,action:t.action,data:a}))}(t,e)}catch(e){console.error('failed to persist form',e)}}(t)}const f=t=>{if('true'===t.dataset.persistBound)return;const e=function(t,e){const n=function(t){return'function'==typeof t.submit?t.submit:HTMLFormElement.prototype.submit}(t).bind(t);return function(){let t;return()=>{t||(t=!0,(()=>{try{e(),n()}catch(t){(t=>{console.error('form submit failed',t)})(t)}})(),setTimeout((()=>t=!1),250))}}()}(t,(()=>{m(t)}));!function(t,e){if('function'==typeof t.submit&&'function'==typeof e)try{t.submit=e}catch{}}(t,e),t.addEventListener('submit',(t=>{t.preventDefault(),e()})),t.dataset.persistBound='true'};!function(){function t(t){const e=(t=>{const e=t.target;return e instanceof HTMLFormElement?e:e&&e.form})(t);e&&m(e)}document.addEventListener('submit',t),document.addEventListener('DOMContentLoaded',(()=>{const e=a();for(const t of e)f(t);var n;n=document.body,new window.MutationObserver((t=>{for(const e of t)if('childList'===e.type&&e.addedNodes.length)for(const t of e.addedNodes)1===t.nodeType&&'FORM'===t.tagName&&a().includes(t)&&f(t)})).observe(n,{childList:!0,subtree:!0,attributes:!1}),document.removeEventListener('submit',t)}))}()}();</script>
+<script integrity="sha256-JjoPp5ZfB1sSAs5SQaol1x1GgvveM+BgmRzyDexInEQ=" data-source-attribution="shopify.loadfeatures" defer="defer" src="//www.sehatup.com/cdn/shopifycloud/storefront/assets/storefront/load_feature-1bd60354.js" crossorigin="anonymous"></script>
+<script>(function () {var userAgent = navigator.userAgent;var platform = navigator.platform;var maxTouchPoints = navigator.maxTouchPoints || 0;var isIOS = /iPad|iPhone|iPod/.test(platform) || (platform === 'MacIntel' && maxTouchPoints > 1);var isMacSafari = platform.indexOf('Mac') === 0 && /Safari/.test(userAgent) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Android/.test(userAgent);var isAppleSafari = isIOS || isMacSafari;if (isAppleSafari) {fetch('/sf_private_access_tokens' + location.search).catch(function () {});}function browserMajorVersion(pattern) {var match = userAgent.match(pattern);return match ? parseInt(match[1], 10) : null;}function shouldLoadAutosizesPolyfill() {if (!window.PerformanceObserver?.supportedEntryTypes?.includes('paint')) {return false;}var chromeVersion = browserMajorVersion(/Chrome\/(\d+)/);if (chromeVersion !== null) {return chromeVersion < 126;}var firefoxVersion = browserMajorVersion(/Firefox\/(\d+)/);if (firefoxVersion !== null) {return firefoxVersion < 150;}var safariVersion = isAppleSafari ? browserMajorVersion(/Version\/(\d+).*Safari\//) : null;if (safariVersion !== null) {return safariVersion < 27;}return true;}if (shouldLoadAutosizesPolyfill()) {var autosizesScript = document.createElement('script');autosizesScript.async = true;autosizesScript.crossOrigin = 'anonymous';autosizesScript.src = "//www.sehatup.com/cdn/shopifycloud/storefront/assets/storefront/autosizes-84416378.js";(document.head || document.documentElement).appendChild(autosizesScript);}window.ShopifyAnalytics = window.ShopifyAnalytics || {};window.ShopifyAnalytics.performance = window.ShopifyAnalytics.performance || {};(function () {var LONG_FRAME_THRESHOLD = 50;var longAnimationFrames = [];var activeRafId = null;function collectLongFrames() {var previousTime = null;function rafMonitor(now) {if (activeRafId === null) {return;}var delta = now - previousTime;if (delta > LONG_FRAME_THRESHOLD) {longAnimationFrames.push({startTime: previousTime,endTime: now,});}previousTime = now;activeRafId = requestAnimationFrame(rafMonitor);}previousTime = performance.now();activeRafId = requestAnimationFrame(rafMonitor);}if (!window.PerformanceObserver?.supportedEntryTypes?.includes('long-animation-frame')) {collectLongFrames();var timeoutId = setTimeout(function () {cancelAnimationFrame(activeRafId);}, 10000);window.ShopifyAnalytics.performance.getLongAnimationFrames = function (stopCollection) {if (stopCollection === undefined) {stopCollection = false;}if (stopCollection) {clearTimeout(timeoutId);cancelAnimationFrame(activeRafId);}return longAnimationFrames;};}})();})();</script><script id="shopify-origin-trials" async="async" integrity="sha256-qJbe/jEZBHtr5W/BlA2cKAz3vkXu6vJQyLjgvgCC86g=" src="//cdn.shopify.com/shopifycloud/storefront/assets/storefront/origin_trials-318ab40a.js" crossorigin="anonymous" onload="window.__shopifyOriginTrialsDone = true" onerror="window.__shopifyOriginTrialsDone = true"></script>
+<script>
+  window.Shopify = window.Shopify || {};
+  window.Shopify.MCP = window.Shopify.MCP || {};
+  window.Shopify.MCP.enabled = true;
+  window.Shopify.MCP.shop = "0ec320-gj.myshopify.com";
+  window.Shopify.MCP.mcpEndpoint = "https:\/\/www.sehatup.com\/api\/mcp";
+  window.Shopify.MCP.tools = [{"name":"search_shop_policies_and_faqs","description":"Used to get facts about the stores policies, products, or services.\nSome examples of questions you can ask are:\n  - What is your return policy?\n  - What is your shipping policy?\n  - What is your phone number?\n  - What are your hours of operation?\"\nSet policy_types to also get the store's written policies (full text and URL).\n","inputSchema":{"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"query":{"type":"string","description":"A natural language query."},"context":{"type":"string","description":"Additional information about the request such as user demographics, mood, location, or other relevant details that could help in tailoring the response appropriately."},"policy_types":{"type":"array","items":{"type":"string","enum":["refund","shipping","privacy","terms_of_service","terms_of_sale","subscription","legal_notice","contact"]},"description":"Policy kinds to fetch, chosen from the user's question — e.g. [\"refund\"] for returns\/exchanges\/damaged items, [\"contact\"] for phone\/hours\/address. Include every kind the question touches. Omit it to get only FAQ answers."}},"required":["query"]}}];
+</script>
+<script>(()=>{var d="shopify:webmcp_adapter_loaded",n=Symbol.for("shopify.webmcp_adapter_loading");function s(c,a,{win:r=window,doc:o=document}={}){function p(){try{return r.localStorage.getItem(d)==="true"}catch{return!1}}function l(){try{r.localStorage.setItem(d,"true")}catch{}}function u(){return typeof(o.modelContext||r.navigator?.modelContext)?.registerTool=="function"}function f(){if(r[n]||!u())return;let t=o.head||o.getElementsByTagName("head")[0];if(!t)return;let e=o.createElement("script");e.type="module",e.crossOrigin="anonymous",a&&(e.integrity=a),e.src=c,e.addEventListener("load",l,{once:!0}),e.addEventListener("error",()=>{r[n]=!1},{once:!0}),t.appendChild(e),r[n]=!0}function _(t){let e=o.getElementById("shopify-origin-trials");if(!e||r.__shopifyOriginTrialsDone){t();return}e.addEventListener("load",t,{once:!0}),e.addEventListener("error",t,{once:!0})}function i(){_(()=>r.setTimeout(f,0))}function m(){o.addEventListener("DOMContentLoaded",i,{once:!0})}p()?i():m()}s("\/\/www.sehatup.com\/cdn\/shopifycloud\/storefront\/assets\/storefront\/webmcp-f427de6a.js","sha256-ypGF+5vIq4Psw4WG7nsVtdd\/TCfsJWnrNuACdqLCElY=");})();
+</script>
+<script data-source-attribution="shopify.dynamic_checkout.dynamic.init">var Shopify=Shopify||{};Shopify.PaymentButton=Shopify.PaymentButton||{isStorefrontPortableWallets:!0,init:function(){window.Shopify.PaymentButton.init=function(){};var t=document.createElement("script");t.src="https://www.sehatup.com/cdn/shopifycloud/portable-wallets/latest/portable-wallets.en.js",t.type="module",document.head.appendChild(t)}};
+</script>
+<script data-source-attribution="shopify.dynamic_checkout.buyer_consent">
+  function portableWalletsHideBuyerConsent(e){var t=document.getElementById("shopify-buyer-consent"),n=document.getElementById("shopify-subscription-policy-button");t&&n&&(t.classList.add("hidden"),t.setAttribute("aria-hidden","true"),n.removeEventListener("click",e))}function portableWalletsShowBuyerConsent(e){var t=document.getElementById("shopify-buyer-consent"),n=document.getElementById("shopify-subscription-policy-button");t&&n&&(t.classList.remove("hidden"),t.removeAttribute("aria-hidden"),n.addEventListener("click",e))}window.Shopify?.PaymentButton&&(window.Shopify.PaymentButton.hideBuyerConsent=portableWalletsHideBuyerConsent,window.Shopify.PaymentButton.showBuyerConsent=portableWalletsShowBuyerConsent);
+</script>
+<script data-source-attribution="shopify.dynamic_checkout.cart.bootstrap">document.addEventListener("DOMContentLoaded",(function(){function t(){return document.querySelector("shopify-accelerated-checkout-cart, shopify-accelerated-checkout")}if(t())Shopify.PaymentButton.init();else{new MutationObserver((function(e,n){t()&&(Shopify.PaymentButton.init(),n.disconnect())})).observe(document.body,{childList:!0,subtree:!0})}}));
+</script>
+
+<script id="shopify-cfh-end">window.performance && window.performance.mark && window.performance.mark('shopify.content_for_header.end');</script>
+
+    <script>
+      (function (c, l, a, r, i, t, y) {
+        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+        t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
+        y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+      })(window, document, 'clarity', 'script', 'tvlois2qku');
+    </script>
+  <!-- BEGIN app block: shopify://apps/judge-me-reviews/blocks/judgeme_core/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8 --><!-- Start of Judge.me Core -->
+
+
+
+
+
+
+
+<link rel="dns-prefetch" href="https://cdn.judge.me">
+<link rel="dns-prefetch" href="https://cdn1.judge.me">
+<link rel="dns-prefetch" href="https://api.judge.me">
+
+
+<script data-cfasync='false' class='jdgm-settings-script'>window.jdgmSettings={"pagination":5,"disable_web_reviews":false,"coupon_receiving_condition":"any_review","coupon_value_type":"percentage","coupon_value_percentage":10,"coupon_value_fixed_amount":0,"coupon_discount_type":"single","coupon_tier_text_enabled":false,"coupon_tier_text_percentage":10,"coupon_tier_text_fixed_amount":0,"coupon_tier_photo_enabled":false,"coupon_tier_photo_percentage":10,"coupon_tier_photo_fixed_amount":0,"coupon_tier_video_enabled":false,"coupon_tier_video_percentage":10,"coupon_tier_video_fixed_amount":0,"enable_coupons":false,"badge_no_review_text":"No reviews","badge_n_reviews_text":"{{ n }} review/reviews","badge_star_color":"#FD735E","hide_badge_preview_if_no_reviews":false,"badge_hide_text":false,"enforce_center_preview_badge":false,"widget_title":"Customer Reviews","widget_open_form_text":"Write a review","widget_close_form_text":"Cancel review","widget_refresh_page_text":"Refresh page","widget_summary_text":"Based on {{ number_of_reviews }} review/reviews","widget_no_review_text":"Be the first to write a review","widget_name_field_text":"Display name","widget_verified_name_field_text":"Verified Name (public)","widget_name_placeholder_text":"Display name","widget_required_field_error_text":"This field is required.","widget_email_field_text":"Email address","widget_verified_email_field_text":"Verified Email (private, can not be edited)","widget_email_placeholder_text":"Your email address","widget_email_field_error_text":"Please enter a valid email address.","widget_rating_field_text":"Rating","widget_review_title_field_text":"Review Title","widget_review_title_placeholder_text":"Give your review a title","widget_review_body_field_text":"Review content","widget_review_body_placeholder_text":"Start writing here...","widget_pictures_field_text":"Picture/Video (optional)","widget_submit_review_text":"Submit Review","widget_submit_verified_review_text":"Submit Verified Review","widget_submit_success_msg_with_auto_publish":"Thank you! Please refresh the page in a few moments to see your review. You can remove or edit your review by logging into \u003ca href='https://judge.me/login' target='_blank' rel='nofollow noopener'\u003eJudge.me\u003c/a\u003e","widget_submit_success_msg_no_auto_publish":"Thank you! Your review will be published as soon as it is approved by the shop admin. You can remove or edit your review by logging into \u003ca href='https://judge.me/login' target='_blank' rel='nofollow noopener'\u003eJudge.me\u003c/a\u003e","widget_show_default_reviews_out_of_total_text":"Showing {{ n_reviews_shown }} out of {{ n_reviews }} reviews.","widget_show_all_link_text":"Show all","widget_show_less_link_text":"Show less","widget_author_said_text":"{{ reviewer_name }} said:","widget_days_text":"{{ n }} days ago","widget_weeks_text":"{{ n }} week/weeks ago","widget_months_text":"{{ n }} month/months ago","widget_years_text":"{{ n }} year/years ago","widget_yesterday_text":"Yesterday","widget_today_text":"Today","widget_replied_text":"\u003e\u003e {{ shop_name }} replied:","widget_read_more_text":"Read more","widget_reviewer_name_as_initial":"","widget_rating_filter_color":"#fbcd0a","widget_rating_filter_see_all_text":"See all reviews","widget_sorting_most_recent_text":"Most Recent","widget_sorting_highest_rating_text":"Highest Rating","widget_sorting_lowest_rating_text":"Lowest Rating","widget_sorting_with_pictures_text":"Only Pictures","widget_sorting_most_helpful_text":"Most Helpful","widget_open_question_form_text":"Ask a question","widget_reviews_subtab_text":"Reviews","widget_questions_subtab_text":"Questions","widget_question_label_text":"Question","widget_answer_label_text":"Answer","widget_question_placeholder_text":"Write your question here","widget_submit_question_text":"Submit Question","widget_question_submit_success_text":"Thank you for your question! We will notify you once it gets answered.","widget_star_color":"#FD735E","verified_badge_text":"Verified","verified_badge_bg_color":"","verified_badge_text_color":"","verified_badge_placement":"left-of-reviewer-name","widget_review_max_height":"","widget_hide_border":false,"widget_social_share":false,"widget_thumb":false,"widget_review_location_show":false,"widget_location_format":"","all_reviews_include_out_of_store_products":true,"all_reviews_out_of_store_text":"(out of store)","all_reviews_pagination":100,"all_reviews_product_name_prefix_text":"about","enable_review_pictures":true,"enable_question_anwser":false,"widget_theme":"align","review_date_format":"mm/dd/yyyy","default_sort_method":"most-recent","enable_ai_review_visibility":true,"widget_product_reviews_subtab_text":"Product Reviews","widget_shop_reviews_subtab_text":"Shop Reviews","widget_other_products_reviews_text":"Reviews for other products","widget_store_reviews_subtab_text":"Store reviews","widget_product_variant_reference_text":"Review for","widget_no_store_reviews_text":"This store hasn't received any reviews yet","widget_web_restriction_product_reviews_text":"This product hasn't received any reviews yet","widget_no_items_text":"No items found","widget_show_more_text":"Show more","widget_write_a_store_review_text":"Write a Store Review","widget_product_and_store_reviews_text":"Product and store reviews","widget_reviews_in_collection_text":"Reviews in this collection","widget_other_languages_heading":"Reviews in Other Languages","widget_translate_review_text":"Translate review to {{ language }}","widget_translating_review_text":"Translating...","widget_show_original_translation_text":"Show original ({{ language }})","widget_translate_review_failed_text":"Review couldn't be translated.","widget_translate_review_retry_text":"Retry","widget_translate_review_try_again_later_text":"Try again later","show_product_url_for_grouped_product":false,"widget_sorting_pictures_first_text":"Pictures First","show_pictures_on_all_rev_page_mobile":false,"show_pictures_on_all_rev_page_desktop":false,"floating_tab_hide_mobile_install_preference":false,"floating_tab_button_name":"★ Reviews","floating_tab_title":"Let customers speak for us","floating_tab_button_color":"","floating_tab_button_background_color":"","floating_tab_url":"","floating_tab_url_enabled":false,"floating_tab_tab_style":"text","all_reviews_text_badge_text":"Customers rate us {{ shop.metafields.judgeme.all_reviews_rating | round: 1 }}/5 based on {{ shop.metafields.judgeme.all_reviews_count }} reviews.","all_reviews_text_badge_text_branded_style":"{{ shop.metafields.judgeme.all_reviews_rating | round: 1 }} out of 5 stars based on {{ shop.metafields.judgeme.all_reviews_count }} reviews","is_all_reviews_text_badge_a_link":false,"show_stars_for_all_reviews_text_badge":false,"all_reviews_text_badge_url":"","all_reviews_text_style":"text","all_reviews_text_color_style":"judgeme_brand_color","all_reviews_text_color":"#108474","all_reviews_text_show_jm_brand":false,"featured_carousel_show_header":false,"featured_carousel_title":"Let customers speak for us","testimonials_carousel_title":"Customers are saying","videos_carousel_title":"Real customer stories","cards_carousel_title":"Customers are saying","featured_carousel_count_text":"from {{ n }} reviews","featured_carousel_add_link_to_all_reviews_page":false,"featured_carousel_url":"","featured_carousel_show_images":true,"featured_carousel_autoslide_interval":5,"featured_carousel_arrows_on_the_sides":false,"featured_carousel_height":250,"featured_carousel_width":80,"featured_carousel_image_size":0,"featured_carousel_image_height":250,"featured_carousel_arrow_color":"#eeeeee","verified_count_badge_style":"branded","verified_count_badge_orientation":"horizontal","verified_count_badge_color_style":"judgeme_brand_color","verified_count_badge_color":"#108474","is_verified_count_badge_a_link":false,"verified_count_badge_url":"","verified_count_badge_show_jm_brand":true,"widget_rating_preset_default":5,"widget_first_sub_tab":"product-reviews","widget_show_histogram":true,"widget_histogram_use_custom_color":false,"widget_pagination_use_custom_color":false,"widget_star_use_custom_color":false,"widget_verified_badge_use_custom_color":false,"widget_write_review_use_custom_color":false,"picture_reminder_submit_button":"Upload Pictures","enable_review_videos":false,"mute_video_by_default":false,"widget_sorting_videos_first_text":"Videos First","widget_review_pending_text":"Pending","featured_carousel_items_for_large_screen":3,"social_share_options_order":"Facebook,Twitter","remove_microdata_snippet":true,"disable_json_ld":false,"enable_json_ld_products":false,"preview_badge_show_question_text":false,"preview_badge_no_question_text":"No questions","preview_badge_n_question_text":"{{ number_of_questions }} question/questions","qa_badge_show_icon":false,"qa_badge_position":"same-row","remove_judgeme_branding":true,"widget_add_search_bar":false,"widget_search_bar_placeholder":"Search","widget_sorting_verified_only_text":"Verified only","widget_sorting_most_relevant_text":"Most Relevant","featured_carousel_theme":"aligned","featured_carousel_show_rating":true,"featured_carousel_show_title":true,"featured_carousel_show_body":true,"featured_carousel_show_date":false,"featured_carousel_show_reviewer":true,"featured_carousel_show_product":true,"featured_carousel_header_background_color":"#108474","featured_carousel_header_text_color":"#ffffff","featured_carousel_name_product_separator":"reviewed","featured_carousel_full_star_background":"#EBFD00","featured_carousel_empty_star_background":"#1B0D0D","featured_carousel_vertical_theme_background":"#f9fafb","featured_carousel_verified_badge_enable":true,"featured_carousel_verified_badge_color":"#108474","featured_carousel_border_style":"round","featured_carousel_review_line_length_limit":3,"featured_carousel_more_reviews_button_text":"Read more reviews","featured_carousel_view_product_button_text":"View product","all_reviews_page_load_reviews_on":"scroll","all_reviews_page_load_more_text":"Load More Reviews","disable_fb_tab_reviews":false,"enable_ajax_cdn_cache":false,"widget_advanced_speed_features":5,"widget_public_name_text":"displayed publicly like","default_reviewer_name":"John Smith","default_reviewer_name_has_non_latin":true,"widget_reviewer_anonymous":"Anonymous","medals_widget_title":"Judge.me Review Medals","medals_widget_background_color":"#f9fafb","medals_widget_position":"footer_all_pages","medals_widget_border_color":"#f9fafb","medals_widget_verified_text_position":"left","medals_widget_use_monochromatic_version":false,"medals_widget_elements_color":"#108474","show_reviewer_avatar":true,"widget_invalid_yt_video_url_error_text":"Not a YouTube video URL","widget_max_length_field_error_text":"Please enter no more than {0} characters.","widget_show_country_flag":false,"widget_show_collected_via_shop_app":true,"widget_verified_by_shop_badge_style":"light","widget_verified_by_shop_text":"Verified by Shop","widget_show_photo_gallery":true,"widget_load_with_code_splitting":true,"widget_ugc_install_preference":false,"widget_ugc_title":"Made by us, Shared by you","widget_ugc_subtitle":"Tag us to see your picture featured in our page","widget_ugc_arrows_color":"#ffffff","widget_ugc_primary_button_text":"Buy Now","widget_ugc_primary_button_background_color":"#108474","widget_ugc_primary_button_text_color":"#ffffff","widget_ugc_primary_button_border_width":"0","widget_ugc_primary_button_border_style":"none","widget_ugc_primary_button_border_color":"#108474","widget_ugc_primary_button_border_radius":"25","widget_ugc_secondary_button_text":"Load More","widget_ugc_secondary_button_background_color":"#ffffff","widget_ugc_secondary_button_text_color":"#108474","widget_ugc_secondary_button_border_width":"2","widget_ugc_secondary_button_border_style":"solid","widget_ugc_secondary_button_border_color":"#108474","widget_ugc_secondary_button_border_radius":"25","widget_ugc_reviews_button_text":"View Reviews","widget_ugc_reviews_button_background_color":"#ffffff","widget_ugc_reviews_button_text_color":"#108474","widget_ugc_reviews_button_border_width":"2","widget_ugc_reviews_button_border_style":"solid","widget_ugc_reviews_button_border_color":"#108474","widget_ugc_reviews_button_border_radius":"25","widget_ugc_reviews_button_link_to":"judgeme-reviews-page","widget_ugc_show_post_date":true,"widget_ugc_max_width":"800","widget_rating_metafield_value_type":true,"widget_primary_color":"#993733","widget_enable_secondary_color":false,"widget_secondary_color":"#edf5f5","widget_summary_average_rating_text":"{{ average_rating }} out of 5","widget_media_grid_title":"Customer photos \u0026 videos","widget_media_grid_see_more_text":"See more","widget_round_style":true,"widget_show_product_medals":true,"widget_verified_by_judgeme_text":"Verified by Judge.me","widget_show_store_medals":true,"widget_verified_by_judgeme_text_in_store_medals":"Verified by Judge.me","widget_media_field_exceed_quantity_message":"Sorry, we can only accept {{ max_media }} for one review.","widget_media_field_exceed_limit_message":"{{ file_name }} is too large, please select a {{ media_type }} less than {{ size_limit }}MB.","widget_review_submitted_text":"Review Submitted!","widget_question_submitted_text":"Question Submitted!","widget_close_form_text_question":"Cancel","widget_write_your_answer_here_text":"Write your answer here","widget_enabled_branded_link":true,"widget_show_collected_by_judgeme":false,"widget_reviewer_name_color":"","widget_write_review_text_color":"","widget_write_review_bg_color":"","widget_collected_by_judgeme_text":"collected by Judge.me","widget_pagination_type":"load_more","widget_load_more_text":"Load More","widget_load_more_color":"#108474","widget_full_review_text":"Full Review","widget_read_more_reviews_text":"Read More Reviews","widget_read_questions_text":"Read Questions","widget_questions_and_answers_text":"Questions \u0026 Answers","widget_verified_by_text":"Verified by","widget_verified_text":"Verified","widget_number_of_reviews_text":"{{ number_of_reviews }} reviews","widget_back_button_text":"Back","widget_next_button_text":"Next","widget_custom_forms_filter_button":"Filters","custom_forms_style":"horizontal","widget_show_review_information":false,"how_reviews_are_collected":"How reviews are collected?","widget_show_review_keywords":false,"widget_gdpr_statement":"How we use your data: We'll only contact you about the review you left, and only if necessary. By submitting your review, you agree to Judge.me's \u003ca href='https://judge.me/terms' target='_blank' rel='nofollow noopener'\u003eterms\u003c/a\u003e, \u003ca href='https://judge.me/privacy' target='_blank' rel='nofollow noopener'\u003eprivacy\u003c/a\u003e and \u003ca href='https://judge.me/content-policy' target='_blank' rel='nofollow noopener'\u003econtent\u003c/a\u003e policies.","widget_multilingual_sorting_enabled":false,"widget_translate_review_content_enabled":false,"widget_translate_review_content_method":"manual","popup_widget_review_selection":"automatically_with_pictures","popup_widget_round_border_style":true,"popup_widget_show_title":true,"popup_widget_show_body":true,"popup_widget_show_reviewer":false,"popup_widget_show_product":true,"popup_widget_show_pictures":true,"popup_widget_use_review_picture":true,"popup_widget_show_on_home_page":true,"popup_widget_show_on_product_page":false,"popup_widget_show_on_collection_page":true,"popup_widget_show_on_cart_page":true,"popup_widget_position":"bottom_left","popup_widget_first_review_delay":5,"popup_widget_duration":5,"popup_widget_interval":5,"popup_widget_review_count":5,"popup_widget_hide_on_mobile":true,"popup_widget_source_mode":"auto","popup_widget_page_product":"current_product","popup_widget_page_collection":"current_collection","popup_widget_page_cart":"cart_mode","popup_widget_page_home":"all","popup_widget_star_rating":"all","popup_widget_review_type":"all","popup_widget_top_up_thin_pages":true,"popup_widget_corner_styling":"soft","review_snippet_widget_round_border_style":true,"review_snippet_widget_card_color":"#FFFFFF","review_snippet_widget_text_color":"#000000","review_snippet_widget_lighter_text_color":"#7B7B7B","review_snippet_widget_slider_arrows_background_color":"#FFFFFF","review_snippet_widget_slider_arrows_color":"#000000","review_snippet_widget_star_color":"#993733","show_product_variant":false,"all_reviews_product_variant_label_text":"Variant: ","widget_show_verified_branding":false,"widget_ai_summary_title":"Customers say","widget_ai_summary_disclaimer":"Summarized and selected by AI from recent customer reviews","widget_show_ai_summary":false,"widget_show_ai_summary_bg":false,"write_review_button_visibility":"everyone","store_summary_widget_heading":"Customers rate this store","store_summary_widget_button_text":"View customer reviews","store_summary_widget_button_theme_text":"See AI reviews summary","widget_show_review_title_input":true,"widget_autofill_review_title":true,"redirect_reviewers_invited_via_email":"external_form","request_store_review_after_product_review":false,"request_review_other_products_in_order":false,"review_form_color_scheme":"default","review_form_corner_style":"square","review_form_star_color":"#993733","review_form_text_color":"#333333","review_form_background_color":"#ffffff","review_form_field_background_color":"#fafafa","review_form_button_color":"#993733","review_form_button_text_color":"#ffffff","review_form_modal_overlay_color":"#000000","review_form_theme":"multi_step","review_form_location":"in_store_popup","review_form_external_page_background_color":"#C5F7F0","review_content_screen_title_text":"How would you rate this product?","review_content_introduction_text":"We would love it if you would share a bit about your experience.","store_review_form_title_text":"How would you rate this store?","store_review_form_introduction_text":"We would love it if you would share a bit about your experience.","show_review_guidance_text":true,"one_star_review_guidance_text":"Poor","five_star_review_guidance_text":"Great","customer_information_screen_title_text":"About you","customer_information_introduction_text":"Please tell us more about you.","custom_questions_screen_title_text":"Your experience in more detail","custom_questions_introduction_text":"Here are a few questions to help us understand more about your experience.","review_submitted_screen_title_text":"Thanks for your review!","review_submitted_screen_thank_you_text":"We are processing it and it will appear on the store soon.","review_submitted_screen_email_verification_text":"Please confirm your email by clicking the link we just sent you. This helps us keep reviews authentic.","confirm_email_screen_title_text":"Confirm your email","confirm_email_screen_message_text":"To help keep reviews authentic, we'll send you a secure link to continue writing your review. It only takes a moment.","check_email_screen_title_text":"Check your email","check_email_screen_message_text":"We sent you an email to {{ email }}. Click the button on the email to continue.","check_email_screen_resend_message_text":"Email resent!","check_email_resend_hint_text":"Didn't get the email? Check your spam folder or [resend the email].","verification_email_rate_limit_error_text":"You've reached the limit for review attempts on this product. Please check your inbox or try again later.","review_submitted_request_store_review_text":"Would you like to share your experience of shopping with us?","review_submitted_review_other_products_text":"Would you like to review these products?","store_review_screen_title_text":"Would you like to share your experience of shopping with us?","store_review_introduction_text":"We value your feedback and use it to improve. Please share any thoughts or suggestions you have.","reviewer_media_screen_title_picture_text":"Share a picture","reviewer_media_introduction_picture_text":"Upload a photo to support your review.","reviewer_media_screen_title_video_text":"Share a video","reviewer_media_introduction_video_text":"Upload a video to support your review.","reviewer_media_screen_title_picture_or_video_text":"Share a picture or video","reviewer_media_introduction_picture_or_video_text":"Upload a photo or video to support your review.","reviewer_media_youtube_url_text":"Paste your Youtube URL here","advanced_settings_next_step_button_text":"Next","advanced_settings_close_review_button_text":"Close","modal_write_review_flow":true,"write_review_flow_required_text":"Required","write_review_flow_privacy_message_text":"We respect your privacy.","write_review_flow_anonymous_text":"Post review as anonymous","write_review_flow_visibility_text":"This won't be visible to other customers.","write_review_flow_multiple_selection_help_text":"Select as many as you like","write_review_flow_single_selection_help_text":"Select one option","write_review_flow_required_field_error_text":"This field is required","write_review_flow_invalid_email_error_text":"Please enter a valid email address","write_review_flow_max_length_error_text":"Max. {{ max_length }} characters.","write_review_flow_media_upload_text":"\u003cb\u003eClick to upload\u003c/b\u003e or drag and drop","write_review_flow_gdpr_statement":"We'll only contact you about your review if necessary. By submitting your review, you agree to our \u003ca href='https://judge.me/terms' target='_blank' rel='nofollow noopener'\u003eterms and conditions\u003c/a\u003e and \u003ca href='https://judge.me/privacy' target='_blank' rel='nofollow noopener'\u003eprivacy policy\u003c/a\u003e.","rating_only_reviews_enabled":false,"show_negative_reviews_help_screen":false,"new_review_flow_help_screen_rating_threshold":3,"negative_review_resolution_screen_title_text":"Tell us more","negative_review_resolution_text":"Your experience matters to us. If there were issues with your purchase, we're here to help. Feel free to reach out to us, we'd love the opportunity to make things right.","negative_review_resolution_button_text":"Contact us","negative_review_resolution_proceed_with_review_text":"Leave a review","negative_review_resolution_subject":"Issue with purchase from {{ shop_name }}.{{ order_name }}","coupon_promo_intro_any_review_text":"Write a review and get a coupon for {{ amount }} off your next purchase","coupon_promo_intro_with_photo_text":"Write a review and add a photo or video to get a coupon for {{ amount }} off your next purchase","coupon_promo_intro_with_video_text":"Write a review and add a video to get a coupon for {{ amount }} off your next purchase","coupon_promo_intro_up_to_any_review_text":"Write a review and get a coupon for up to {{ amount }} off your next purchase","coupon_promo_intro_up_to_with_photo_text":"Write a review and add a photo or video to get a coupon for up to {{ amount }} off your next purchase","coupon_promo_intro_external_text":"Write a review and get a reward for your next purchase","coupon_promo_intro_external_with_photo_text":"Write a review and add a photo or video to get a reward for your next purchase","coupon_promo_intro_external_with_video_text":"Write a review and add a video to get a reward for your next purchase","coupon_promo_media_photo_text":"Add a photo or video and get a coupon for {{ amount }} off your next purchase","coupon_promo_media_photo_only_text":"Add a photo and get a coupon for {{ amount }} off your next purchase","coupon_promo_media_video_text":"Add a video and get a coupon for {{ amount }} off your next purchase","coupon_promo_media_external_photo_text":"Add a photo or video and get a reward for your next purchase","coupon_promo_media_external_photo_only_text":"Add a photo and get a reward for your next purchase","coupon_promo_media_external_video_text":"Add a video and get a reward for your next purchase","coupon_promo_success_text":"You've got a coupon for your next purchase at {{ shop_name }}!","coupon_promo_success_subtext":"You'll receive your coupon email within the hour.","preview_badge_collection_page_install_status":false,"widget_review_custom_css":"","preview_badge_custom_css":"","preview_badge_stars_count":"5-stars","featured_carousel_custom_css":"","floating_tab_custom_css":"","all_reviews_widget_custom_css":"","medals_widget_custom_css":"","verified_badge_custom_css":"","all_reviews_text_custom_css":"","transparency_badges_collected_via_store_invite":false,"transparency_badges_from_another_provider":false,"transparency_badges_collected_from_store_visitor":false,"transparency_badges_collected_by_verified_review_provider":true,"transparency_badges_earned_reward":false,"transparency_badges_collected_via_store_invite_text":"Review collected via store invitation","transparency_badges_from_another_provider_text":"Review collected from another provider","transparency_badges_collected_from_store_visitor_text":"Review collected from a store visitor","transparency_badges_written_in_google_text":"Review written in Google","transparency_badges_written_in_etsy_text":"Review written in Etsy","transparency_badges_written_in_shop_app_text":"Review written in Shop App","transparency_badges_earned_reward_text":"Review earned a reward for future purchase","product_review_widget_per_page":4,"widget_other_languages_reviews_per_page":3,"widget_store_review_label_text":"Review about the store","widget_cart_mode_aggregate_heading_text":"Customers rate this store","widget_sort_by_text":"Sort by","checkout_comment_extension_title_on_product_page":"Customer Comments","checkout_comment_extension_num_latest_comment_show":5,"checkout_comment_extension_format":"name_and_timestamp","checkout_comment_customer_name":"last_initial","checkout_comment_comment_notification":true,"preview_badge_collection_page_install_preference":false,"preview_badge_home_page_install_preference":false,"preview_badge_product_page_install_preference":false,"review_widget_install_preference":"","review_carousel_install_preference":false,"floating_reviews_tab_install_preference":"none","verified_reviews_count_badge_install_preference":false,"all_reviews_text_install_preference":false,"review_widget_best_location":false,"judgeme_medals_install_preference":false,"review_widget_revamp_enabled":false,"review_widget_qna_enabled":false,"review_widget_header_theme":"minimal","review_widget_widget_title_enabled":true,"review_widget_header_text_size":"medium","review_widget_header_text_weight":"regular","review_widget_average_rating_style":"compact","review_widget_bar_chart_enabled":true,"review_widget_bar_chart_type":"numbers","review_widget_bar_chart_style":"standard","review_widget_expanded_media_gallery_enabled":false,"review_widget_show_review_highlights":false,"review_widget_show_review_keywords_in_gray":false,"review_widget_reviews_section_theme":"standard","review_widget_image_style":"thumbnails","review_widget_review_image_ratio":"square","review_widget_stars_size":"medium","review_widget_verified_badge":"standard_text","review_widget_review_title_text_size":"medium","review_widget_review_text_size":"medium","review_widget_review_text_length":"medium","review_widget_number_of_columns_desktop":3,"review_widget_carousel_transition_speed":5,"review_widget_custom_questions_answers_display":"always","review_widget_card_section_size":"small","review_widget_button_text_color":"#FFFFFF","review_widget_text_color":"#000000","review_widget_lighter_text_color":"#7B7B7B","review_widget_corner_styling":"soft","review_widget_review_word_singular":"review","review_widget_review_word_plural":"reviews","review_widget_voting_label":"Helpful?","review_widget_shop_reply_label":"Reply from {{ shop_name }}:","review_widget_filters_title":"Filters","review_widget_filter_rating_title":"Rating","review_widget_filter_keyword_title":"Keyword","review_widget_clear_filters_text":"Clear filters","review_widget_expand_more_text":"More","review_widget_review_highlights_title":"Review highlights","qna_widget_question_word_singular":"Question","qna_widget_question_word_plural":"Questions","qna_widget_answer_reply_label":"Answer from {{ answerer_name }}:","qna_content_screen_title_text":"Ask a question about this product","qna_widget_question_required_field_error_text":"Please enter your question.","qna_widget_flow_gdpr_statement":"We'll only contact you about your question if necessary. By submitting your question, you agree to our \u003ca href='https://judge.me/terms' target='_blank' rel='nofollow noopener'\u003eterms and conditions\u003c/a\u003e and \u003ca href='https://judge.me/privacy' target='_blank' rel='nofollow noopener'\u003eprivacy policy\u003c/a\u003e.","qna_widget_question_submitted_text":"Thanks for your question!","qna_widget_close_form_text_question":"Close","qna_widget_question_submit_success_text":"We’ll notify you by email when your question is answered.","all_reviews_widget_v2025_enabled":false,"all_reviews_widget_v2025_header_theme":"default","all_reviews_widget_v2025_widget_title_enabled":true,"all_reviews_widget_v2025_header_text_size":"medium","all_reviews_widget_v2025_header_text_weight":"regular","all_reviews_widget_v2025_average_rating_style":"compact","all_reviews_widget_v2025_bar_chart_enabled":true,"all_reviews_widget_v2025_bar_chart_type":"numbers","all_reviews_widget_v2025_bar_chart_style":"standard","all_reviews_widget_v2025_expanded_media_gallery_enabled":false,"all_reviews_widget_v2025_show_store_medals":true,"all_reviews_widget_v2025_show_photo_gallery":true,"all_reviews_widget_v2025_show_review_keywords":false,"all_reviews_widget_v2025_show_ai_summary":false,"all_reviews_widget_v2025_show_ai_summary_bg":false,"all_reviews_widget_v2025_show_review_highlights":false,"all_reviews_widget_v2025_show_review_keywords_in_gray":false,"all_reviews_widget_v2025_add_search_bar":false,"all_reviews_widget_v2025_default_sort_method":"most-recent","all_reviews_widget_v2025_reviews_per_page":10,"all_reviews_widget_v2025_reviews_section_theme":"default","all_reviews_widget_v2025_image_style":"thumbnails","all_reviews_widget_v2025_review_image_ratio":"square","all_reviews_widget_v2025_stars_size":"medium","all_reviews_widget_v2025_verified_badge":"standard_text","all_reviews_widget_v2025_review_title_text_size":"medium","all_reviews_widget_v2025_review_text_size":"medium","all_reviews_widget_v2025_review_text_length":"medium","all_reviews_widget_v2025_number_of_columns_desktop":3,"all_reviews_widget_v2025_carousel_transition_speed":5,"all_reviews_widget_v2025_custom_questions_answers_display":"always","all_reviews_widget_v2025_review_dates":false,"all_reviews_widget_v2025_card_section_size":"small","all_reviews_widget_v2025_show_product_variant":false,"all_reviews_widget_v2025_show_reviewer_avatar":true,"all_reviews_widget_v2025_reviewer_name_as_initial":"","all_reviews_widget_v2025_review_location_show":false,"all_reviews_widget_v2025_location_format":"","all_reviews_widget_v2025_show_country_flag":false,"all_reviews_widget_v2025_widget_thumb":false,"all_reviews_widget_v2025_verified_by_shop_badge_style":"light","all_reviews_widget_v2025_social_share":false,"all_reviews_widget_v2025_social_share_options_order":"Facebook,Twitter,LinkedIn,Pinterest","all_reviews_widget_v2025_pagination_type":"standard","all_reviews_widget_v2025_button_text_color":"#FFFFFF","all_reviews_widget_v2025_text_color":"#000000","all_reviews_widget_v2025_lighter_text_color":"#7B7B7B","all_reviews_widget_v2025_corner_styling":"soft","all_reviews_widget_v2025_title":"Customer reviews","all_reviews_widget_v2025_ai_summary_title":"Customers say about this store","all_reviews_widget_v2025_no_review_text":"Be the first to write a review","all_reviews_widget_v2025_review_highlights_title":"Review highlights","reviews_grid_widget_show_sample_reviews":false,"reviews_grid_widget_review_selection":"all","reviews_grid_widget_select_products":[],"reviews_grid_widget_show_media_only":false,"reviews_grid_widget_display_order":"media_first","reviews_grid_widget_card_grouping":"per_media","reviews_grid_widget_columns_desktop":3,"reviews_grid_widget_rows_desktop":3,"reviews_grid_widget_columns_mobile":2,"reviews_grid_widget_rows_mobile":6,"reviews_grid_widget_show_stars":true,"reviews_grid_widget_show_reviewer_name":true,"reviews_grid_widget_show_review_title_on_hover_desktop":true,"reviews_grid_widget_corner_styling":"soft","reviews_grid_widget_card_spacing":"medium","reviews_grid_widget_header_text_color":"#000000","reviews_grid_widget_star_and_reviewer_name_color":"#F9F9F9","reviews_grid_widget_overlay_and_background_color":"#000000","reviews_grid_widget_content_color":"#F9F9F9","reviews_grid_widget_header_text":"From our customers","reviews_grid_widget_show_average_rating":true,"trust_badge_enabled":false,"trust_badge_structure":"outline","trust_badge_color":"black","trust_badge_star":"black","trust_badge_rating_display_default":"show_avg_text","platform":"shopify","branding_url":"https://app.judge.me/reviews","branding_text":"Powered by Judge.me","locale":"en","reply_name":"SEHATUP WELLNESS PRIVATE LIMITED","shop_currency":"INR","widget_version":"3.0","footer":true,"autopublish":true,"review_dates":false,"enable_custom_form":false,"shop_locale":"en","enable_multi_locales_translations":true,"show_review_title_input":true,"autofill_review_title":true,"review_verification_email_status":"always","require_verification_before_submit":false,"sign_in_with_shop_enabled":false,"customer_account_validation_enabled":true,"most_relevant_sort_enabled":false,"widget_events_v4_impressions_enabled":false,"widget_events_review_grain_enabled":false,"widget_events_v4_time_in_view_enabled":false,"widget_events_v4_session_key_enabled":false,"widget_events_v4_interactions_enabled":false,"widget_attribution_exposure_timestamps_enabled":false,"widget_attribution_v4_exposures_enabled":false,"coupon_promo_invited_eligible":true,"coupon_promo_web_eligible":false,"uses_coupon_integration":false,"uses_external_coupon":false,"hostname_allowlist":"","can_be_branded":false,"rtl_stars_enabled_ar":true,"rtl_stars_enabled_he":true,"reply_name_text":"SEHATUP WELLNESS PRIVATE LIMITED"};</script> <style class='jdgm-settings-style'>.jdgm-xx{left:0}:root{--jdgm-primary-color: #993733;--jdgm-secondary-color: rgba(153,55,51,0.1);--jdgm-star-color: #FD735E;--jdgm-write-review-text-color: white;--jdgm-write-review-bg-color: #993733;--jdgm-paginate-color: #993733;--jdgm-border-radius: 10;--jdgm-reviewer-name-color: #993733}.jdgm-histogram__bar-content{background-color:#993733}.jdgm-rev[data-verified-buyer=true] .jdgm-rev__icon.jdgm-rev__icon:after,.jdgm-rev__buyer-badge.jdgm-rev__buyer-badge{color:white;background-color:#993733}.jdgm-review-widget--small .jdgm-gallery.jdgm-gallery .jdgm-gallery__thumbnail-link:nth-child(8) .jdgm-gallery__thumbnail-wrapper.jdgm-gallery__thumbnail-wrapper:before{content:"See more"}@media only screen and (min-width: 768px){.jdgm-gallery.jdgm-gallery .jdgm-gallery__thumbnail-link:nth-child(8) .jdgm-gallery__thumbnail-wrapper.jdgm-gallery__thumbnail-wrapper:before{content:"See more"}}.jdgm-preview-badge .jdgm-star.jdgm-star{color:#FD735E}.jdgm-rev .jdgm-rev__timestamp,.jdgm-quest .jdgm-rev__timestamp,.jdgm-carousel-item__timestamp{display:none !important}.jdgm-author-all-initials{display:none !important}.jdgm-author-last-initial{display:none !important}.jdgm-rev-widg__title{visibility:hidden}.jdgm-rev-widg__summary-text{visibility:hidden}.jdgm-prev-badge__text{visibility:hidden}.jdgm-rev__prod-link-prefix:before{content:'about'}.jdgm-rev__variant-label:before{content:'Variant: '}.jdgm-rev__out-of-store-text:before{content:'(out of store)'}@media only screen and (min-width: 768px){.jdgm-rev__pics .jdgm-rev_all-rev-page-picture-separator,.jdgm-rev__pics .jdgm-rev__product-picture{display:none}}@media only screen and (max-width: 768px){.jdgm-rev__pics .jdgm-rev_all-rev-page-picture-separator,.jdgm-rev__pics .jdgm-rev__product-picture{display:none}}.jdgm-preview-badge[data-template="product"]{display:none !important}.jdgm-preview-badge[data-template="collection"]{display:none !important}.jdgm-preview-badge[data-template="index"]{display:none !important}.jdgm-review-widget[data-from-snippet="true"]{display:none !important}.jdgm-verified-count-badget[data-from-snippet="true"]{display:none !important}.jdgm-carousel-wrapper[data-from-snippet="true"]{display:none !important}.jdgm-all-reviews-text[data-from-snippet="true"]{display:none !important}.jdgm-medals-section[data-from-snippet="true"]{display:none !important}.jdgm-ugc-media-wrapper[data-from-snippet="true"]{display:none !important}.jdgm-rev__transparency-badge[data-badge-type="review_collected_via_store_invitation"]{display:none !important}.jdgm-rev__transparency-badge[data-badge-type="review_collected_from_another_provider"]{display:none !important}.jdgm-rev__transparency-badge[data-badge-type="review_collected_from_store_visitor"]{display:none !important}.jdgm-rev__transparency-badge[data-badge-type="review_earned_for_future_purchase"]{display:none !important}.jdgm-review-snippet-widget{--jdgm-snippet-card-color: #fff;--jdgm-snippet-text-color: #000;--jdgm-snippet-lighter-text-color: #7B7B7B;--jdgm-snippet-star-color: #993733;--jdgm-snippet-border-radius: 8px;--jdgm-snippet-arrows-bg-color: #fff;--jdgm-snippet-arrows-color: #000}.jdgm-review-snippet-widget .jdgm-rev-snippet-widget__cards-container .jdgm-rev-snippet-card{border-radius:8px;background:#fff}.jdgm-review-snippet-widget .jdgm-rev-snippet-widget__cards-container .jdgm-rev-snippet-card__rev-rating .jdgm-star{color:#993733}.jdgm-review-snippet-widget .jdgm-rev-snippet-widget__prev-btn,.jdgm-review-snippet-widget .jdgm-rev-snippet-widget__next-btn{border-radius:50%;background:#fff}.jdgm-review-snippet-widget .jdgm-rev-snippet-widget__prev-btn>svg,.jdgm-review-snippet-widget .jdgm-rev-snippet-widget__next-btn>svg{fill:#000}.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jm-mfp-content,.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jdgm-full-rev__icon,.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jdgm-full-rev__pic-img,.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jdgm-full-rev__reply{border-radius:8px}.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jdgm-full-rev[data-verified-buyer="true"] .jdgm-full-rev__icon::after{border-radius:8px}.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jdgm-full-rev .jdgm-rev__buyer-badge{border-radius:calc( 8px / 2 )}.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jdgm-full-rev .jdgm-full-rev__replier::before{content:'SEHATUP WELLNESS PRIVATE LIMITED'}.jdgm-full-rev-modal.rev-snippet-widget .jm-mfp-container .jdgm-full-rev .jdgm-full-rev__product-button{border-radius:calc( 8px * 6 )}
+</style> <style class='jdgm-settings-style'></style>
+
+  
+  
+  
+  <style class='jdgm-miracle-styles'>
+  @-webkit-keyframes jdgm-spin{0%{-webkit-transform:rotate(0deg);-ms-transform:rotate(0deg);transform:rotate(0deg)}100%{-webkit-transform:rotate(359deg);-ms-transform:rotate(359deg);transform:rotate(359deg)}}@keyframes jdgm-spin{0%{-webkit-transform:rotate(0deg);-ms-transform:rotate(0deg);transform:rotate(0deg)}100%{-webkit-transform:rotate(359deg);-ms-transform:rotate(359deg);transform:rotate(359deg)}}@font-face{font-family:'JudgemeStar';src:url("data:application/x-font-woff;charset=utf-8;base64,d09GRgABAAAAAAScAA0AAAAABrAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGRlRNAAAEgAAAABoAAAAcbyQ+3kdERUYAAARgAAAAHgAAACAAMwAGT1MvMgAAAZgAAABGAAAAVi+vS9xjbWFwAAAB8AAAAEAAAAFKwBMjvmdhc3AAAARYAAAACAAAAAj//wADZ2x5ZgAAAkAAAAEJAAABdH33LXtoZWFkAAABMAAAAC0AAAA2BroQKWhoZWEAAAFgAAAAHAAAACQD5QHQaG10eAAAAeAAAAAPAAAAFAYAAABsb2NhAAACMAAAAA4AAAAOAO4AeG1heHAAAAF8AAAAHAAAACAASgAvbmFtZQAAA0wAAADeAAABkorWfVZwb3N0AAAELAAAACkAAABEp3ubLXgBY2BkYADhPPP4OfH8Nl8ZuJkYQODS2fRrCPr/aSYGxq1ALgcDWBoAO60LkwAAAHgBY2BkYGDc+v80gx4TAwgASaAICmABAFB+Arl4AWNgZGBgYGPQYWBiAAIwyQgWc2AAAwAHVQB6eAFjYGRiYJzAwMrAwejDmMbAwOAOpb8ySDK0MDAwMbByMsCBAAMCBKS5pjA4PGB4wMR44P8BBj3GrQymQGFGkBwAjtgK/gAAeAFjYoAAEA1jAwAAZAAHAHgB3crBCcAwDEPRZydkih567CDdf4ZskmLwFBV8xBfCaC4BXkOUmx4sU0h2ngNb9V0vQCxaRKIAevT7fGWuBrEAAAAAAAAAAAA0AHgAugAAeAF9z79Kw1AUx/FzTm7un6QmJtwmQ5Bg1abgEGr/BAqlU6Gju+Cgg1MkQ/sA7Vj7BOnmO/gUvo2Lo14NqIO6/IazfD8HEODtmQCfoANwNsyp2/GJt3WKQrd1NLiYYWx2PBqOsmJMEOznPOTzfSCrhAtbbLdmeFLJV9eKd63WLrZcIcuaEVdssWCKM6pLCfTVOYbz/0pNSMSZKLIZpvh78sAUH6PlMrreTCabP9r+Z/puPZ2ur/RqpQHgh+MIegCnXeM4MRAPjYN//5tj4ZtTjkFqEdmeMShlEJ7tVAly2TAkx6R68Fl4E/aVvn8JqHFQ4JS1434gXKcuL31dDhzs3YbsEOAd/IU88gAAAHgBfY4xTgMxEEVfkk0AgRCioKFxQYd2ZRtpixxgRU2RfhU5q5VWseQ4JdfgAJyBlmNwAM7ABRhZQ0ORwp7nr+eZAa54YwYg9zm3ynPOeFRe8MCrciXOh/KSS76UV5L/iDmrLiS5AeU519wrL3jmSbkS5115yR2fyivJv9kx0ZMZ2RLZw27q87iNQi8EBo5FSPIMw3HqBboi5lKTGAGDp8FKXWP+t9TU01Lj5His1Ba6uM9dTEMwvrFmbf5GC/q2drW3ruXUhhsCiQOjznFlCzYhHUZp4xp76vsvQh89CQAAeAFjYGJABowM6IANLMrEyMTIzMjCXpyRWJBqZshWXJJYBKOMAFHFBucAAAAAAAAB//8AAngBY2BkYGDgA2IJBhBgAvKZGViBJAuYxwAABJsAOgAAeAFjYGBgZACCk535hiD60tn0azAaAEqpB6wAAA==") format("woff");font-weight:normal;font-style:normal}.jdgm-star{font-family:'JudgemeStar';display:inline !important;text-decoration:none !important;padding:0 4px 0 0 !important;margin:0 !important;font-weight:bold;opacity:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.jdgm-star:hover{opacity:1}.jdgm-star:last-of-type{padding:0 !important}.jdgm-star.jdgm--on:before{content:"\e000"}.jdgm-star.jdgm--off:before{content:"\e001"}.jdgm-star.jdgm--half:before{content:"\e002"}.jdgm-widget *{margin:0;line-height:1.4;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;-webkit-overflow-scrolling:touch}.jdgm-hidden{display:none !important;visibility:hidden !important}.jdgm-temp-hidden{display:none}.jdgm-spinner{width:40px;height:40px;margin:auto;border-radius:50%;border-top:2px solid #eee;border-right:2px solid #eee;border-bottom:2px solid #eee;border-left:2px solid #ccc;-webkit-animation:jdgm-spin 0.8s infinite linear;animation:jdgm-spin 0.8s infinite linear}.jdgm-spinner:empty{display:block}.jdgm-prev-badge{display:block !important}
+
+</style>
+
+
+  
+  
+   
+
+
+  
+    
+    
+    
+      <link id="judgeme_widget_align_css" rel="stylesheet" type="text/css" media="nope!" onload="this.media='all'" href="https://cdn.shopify.com/extensions/01a14416-995f-7951-a981-854ef92a0fd4/judgeme-786/assets/widget_v3_theme_align.css">
+    
+  
+
+
+<script data-cfasync='false' class='jdgm-script'>
+!function(e){window.jdgm=window.jdgm||{};
+/* INF-1976 */
+var _jdgmBlocked=function(){var raw=(window.jdgmSettings||{}).hostname_allowlist;var list=(raw==null?"":""+raw).split(/[\s,]+/).map(function(h){return h.trim().toLowerCase().replace(/\.$/,"");}).filter(function(h){return h;});if(!list.length)return false;var host=(e.location.hostname||"").toLowerCase().replace(/\.$/,"");if(/(^|\.)shopifypreview\.com$/.test(host))return false;var bare=host.replace(/^www\./,"");for(var i=0;i<list.length;i++){var en=list[i];if(en.indexOf("*.")===0){var b=en.slice(2);if(host===b||host.slice(-(b.length+1))==="."+b)return false;}else if(bare===en.replace(/^www\./,""))return false;}return true;}();
+if(_jdgmBlocked){jdgm._loaderExecuted=true;jdgm._blocked=true;var _jdgmS=e.createElement("style");_jdgmS.textContent='[class^="jdgm-"],[class*=" jdgm-"]{display:none !important}';(e.head||e.documentElement).appendChild(_jdgmS);return;}
+jdgm.CDN_HOST="https://cdnwidget.judge.me/",jdgm.CDN_HOST_ALT="https://cdn2.judge.me/cdn/widget_frontend/",jdgm.API_HOST="https://api.judge.me/",jdgm.CDN_BASE_URL="https://cdn.shopify.com/extensions/01a14416-995f-7951-a981-854ef92a0fd4/judgeme-786/assets/",jdgm.CDN_API_HOST="https://cdn.judge.me/",
+jdgm.docReady=function(d){(e.attachEvent?"complete"===e.readyState:"loading"!==e.readyState)?
+setTimeout(d,0):e.addEventListener("DOMContentLoaded",d)},jdgm.loadCSS=function(d,t,o,a){
+!o&&jdgm.loadCSS.requestedUrls.indexOf(d)>=0||(jdgm.loadCSS.requestedUrls.push(d),
+(a=e.createElement("link")).rel="stylesheet",a.class="jdgm-stylesheet",a.media="nope!",
+a.href=d,a.onload=function(){this.media="all",t&&setTimeout(t)},e.body.appendChild(a))},
+jdgm.loadCSS.requestedUrls=[],jdgm.loadJS=function(e,d){var t=new XMLHttpRequest;
+t.onreadystatechange=function(){4===t.readyState&&t.status>=200&&t.status<300&&(Function(t.response)(),d&&d(t.response))},
+t.open("GET",e),t.onerror=function(){if(e.indexOf(jdgm.CDN_HOST)===0&&jdgm.CDN_HOST_ALT!==jdgm.CDN_HOST){var f=e.replace(jdgm.CDN_HOST,jdgm.CDN_HOST_ALT);jdgm.loadJS(f,d)}},t.send()},jdgm.docReady((function(){(window.jdgmLoadCSS||e.querySelectorAll(
+".jdgm-widget, .jdgm-all-reviews-page").length>0)&&(jdgmSettings.widget_load_with_code_splitting?
+parseFloat(jdgmSettings.widget_version)>=3?jdgm.loadCSS(jdgm.CDN_BASE_URL+"widget_v3_base.css"):
+jdgm.loadCSS(jdgm.CDN_BASE_URL+"widget_base.css"):jdgm.loadCSS(jdgm.CDN_BASE_URL+"shopify_v2.css")
+)}))}(document);
+</script>
+<noscript><link rel="stylesheet" type="text/css" media="all" href="https://cdn.shopify.com/extensions/01a14416-995f-7951-a981-854ef92a0fd4/judgeme-786/assets/shopify_v2.css"></noscript>
+
+<!-- BEGIN app snippet: theme_fix_tags -->
+<script>
+  (function() {
+    var jdgmThemeFixes = null;
+    if (!jdgmThemeFixes) return;
+
+    // "All themes" fix: CSS and JS applied on every theme. CSS is injected
+    // before the per-theme fix so the theme-specific CSS wins the cascade.
+    // HTML is never applied globally (too risky).
+    var allThemesFix = jdgmThemeFixes['all'];
+    if (allThemesFix && allThemesFix.css) {
+      var allStyleTag = document.createElement('style');
+      allStyleTag.classList.add('jdgm-theme-fix-style-all');
+      allStyleTag.innerHTML = allThemesFix.css;
+      document.head.append(allStyleTag);
+    };
+
+    if (allThemesFix && allThemesFix.js) {
+      var allScriptTag = document.createElement('script');
+      allScriptTag.classList.add('jdgm-theme-fix-script-all');
+      allScriptTag.innerHTML = allThemesFix.js;
+      document.head.append(allScriptTag);
+    };
+
+    var thisThemeFix = jdgmThemeFixes[Shopify.theme.id];
+    if (!thisThemeFix) return;
+
+    if (thisThemeFix.html) {
+      document.addEventListener("DOMContentLoaded", function() {
+        var htmlDiv = document.createElement('div');
+        htmlDiv.classList.add('jdgm-theme-fix-html');
+        htmlDiv.innerHTML = thisThemeFix.html;
+        document.body.append(htmlDiv);
+      });
+    };
+
+    if (thisThemeFix.css) {
+      var styleTag = document.createElement('style');
+      styleTag.classList.add('jdgm-theme-fix-style');
+      styleTag.innerHTML = thisThemeFix.css;
+      document.head.append(styleTag);
+    };
+
+    if (thisThemeFix.js) {
+      var scriptTag = document.createElement('script');
+      scriptTag.classList.add('jdgm-theme-fix-script');
+      scriptTag.innerHTML = thisThemeFix.js;
+      document.head.append(scriptTag);
+    };
+  })();
+</script>
+<!-- END app snippet -->
+<!-- End of Judge.me Core -->
+
+
+
+<!-- END app block --><script src="https://cdn.shopify.com/extensions/01a14416-995f-7951-a981-854ef92a0fd4/judgeme-786/assets/loader.js" type="text/javascript" defer="defer"></script>
+<meta property="og:image" content="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/sehatup-share-1200x630.png?v=1790863018" />
+<meta property="og:image:secure_url" content="https://cdn.shopify.com/s/files/1/0924/5687/8383/files/sehatup-share-1200x630.png?v=1790863018" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<link href="https://monorail-edge.shopifysvc.com" rel="dns-prefetch">
+<script>(function(){if ("sendBeacon" in navigator && "performance" in window) {try {var session_token_from_headers = performance.getEntriesByType('navigation')[0].serverTiming.find(x => x.name == '_s').description;} catch {var session_token_from_headers = undefined;}var session_cookie_matches = document.cookie.match(/_shopify_s=([^;]*)/);var session_token_from_cookie = session_cookie_matches && session_cookie_matches.length === 2 ? session_cookie_matches[1] : "";var session_token = session_token_from_headers || session_token_from_cookie || "";function handle_abandonment_event(e) {var entries = performance.getEntries().filter(function(entry) {return /monorail-edge.shopifysvc.com/.test(entry.name);});if (!window.abandonment_tracked && entries.length === 0) {window.abandonment_tracked = true;var currentMs = Date.now();var navigation_start = performance.timing.navigationStart;var payload = {shop_id: 92456878383,url: window.location.href,navigation_start,duration: currentMs - navigation_start,session_token,page_type: "page"};window.navigator.sendBeacon("https://monorail-edge.shopifysvc.com/v1/produce", JSON.stringify({schema_id: "online_store_buyer_site_abandonment/1.1",payload: payload,metadata: {event_created_at_ms: currentMs,event_sent_at_ms: currentMs}}));}}window.addEventListener('pagehide', handle_abandonment_event);}}());</script>
+<script>
+  window.__TREKKIE_SHIM_QUEUE = window.__TREKKIE_SHIM_QUEUE || [];
+</script>
+<script>(function(){var wpmLoader=function(){"use strict";var e=/Googlebot|Storebot-Google|bingbot|Baiduspider|YandexBot|DuckDuckBot|Slurp|facebookexternalhit|Twitterbot|LinkedInBot|Applebot|AdsBot-Google|Mediapartners-Google|APIs-Google|PetalBot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Acunetix|PerplexityBot|Perplexity-User/i,t=/bytedance/i;function i(){try{var e=document.cookie;if(!e||"string"!=typeof e)return;for(var t=0,i=e.split(";");t<i.length;t++){var n=i[t],r=n.indexOf("=");if(-1!==r){var o=n.slice(0,r).trim();if(o){var a=void 0;try{a=decodeURIComponent(o)}catch(e){a=o}if("_shopify_s"===a){var d=n.slice(r+1).trim();try{return decodeURIComponent(d)}catch(e){return d}}}}}return}catch(e){return}}function n(e){try{"undefined"!=typeof console&&"function"==typeof console.warn&&console.warn(e)}catch(e){}}function r(e,t){return"string"==typeof e&&e.length>0&&e.length<=t?e:void 0}function o(e){var t;switch(null==(t=null==e?void 0:e.navigation)?void 0:t.type){case 0:return"navigate";case 1:return"reload";case 2:return"back_forward";default:return}}function a(){var e,t,i;try{var n=null==(i=null==(t=null==(e=self.ShopifyAnalytics)?void 0:e.lib)?void 0:t.trekkie)?void 0:i.state;return"awaiting-consent"===n||"initialized"===n?n:void 0}catch(e){return}}return function(d,s,u,l){var c=arguments.length>4&&void 0!==arguments[4]?arguments[4]:{};try{var p=c.trekkieShim;!0!==p&&"true"!==p||null!=window.__TREKKIE_SHIM_QUEUE||(window.__TREKKIE_SHIM_QUEUE=[])}catch(e){}var f,v,h,y,g=(v=(f={modern:/Edge?\/(1{2}[4-9]|1[2-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Firefox\/(1{2}[4-9]|1[2-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Chrom(ium|e)\/(9{2}|\d{3,})\.\d+(\.\d+|)|(Maci|X1{2}).+ Version\/(15\.\d+|(1[6-9]|[2-9]\d|\d{3,})\.\d+)([,.]\d+|)( \(\w+\)|)( Mobile\/\w+|) Safari\/|Chrome.+OPR\/(9{2}|\d{3,})\.\d+\.\d+|(CPU[ +]OS|iPhone[ +]OS|CPU[ +]iPhone|CPU IPhone OS|CPU iPad OS)[ +]+(15[._]\d+|(1[6-9]|[2-9]\d|\d{3,})[._]\d+)([._]\d+|)|Android:?[ /-](14[89]|1[5-9]\d|[2-9]\d{2}|\d{4,})(\.\d+|)(\.\d+|)|Android.+Firefox\/(15\d|1[6-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Android.+Chrom(ium|e)\/(14[89]|1[5-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|SamsungBrowser\/([2-9]\d|\d{3,})\.\d+/,legacy:/Edge?\/(1[6-9]|[2-9]\d|\d{3,})\.\d+(\.\d+|)|Firefox\/(5[4-9]|[6-9]\d|\d{3,})\.\d+(\.\d+|)|Chrom(ium|e)\/(5[1-9]|[6-9]\d|\d{3,})\.\d+(\.\d+|)([\d.]+$|.*Safari\/(?![\d.]+ Edge\/[\d.]+$))|(Maci|X1{2}).+ Version\/(10\.\d+|(1[1-9]|[2-9]\d|\d{3,})\.\d+)([,.]\d+|)( \(\w+\)|)( Mobile\/\w+|) Safari\/|Chrome.+OPR\/(3[89]|[4-9]\d|\d{3,})\.\d+\.\d+|(CPU[ +]OS|iPhone[ +]OS|CPU[ +]iPhone|CPU IPhone OS|CPU iPad OS)[ +]+(10[._]\d+|(1[1-9]|[2-9]\d|\d{3,})[._]\d+)([._]\d+|)|Android:?[ /-](14[89]|1[5-9]\d|[2-9]\d{2}|\d{4,})(\.\d+|)(\.\d+|)|Mobile Safari.+OPR\/([89]\d|\d{3,})\.\d+\.\d+|Android.+Firefox\/(15\d|1[6-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Android.+Chrom(ium|e)\/(14[89]|1[5-9]\d|[2-9]\d{2}|\d{4,})\.\d+(\.\d+|)|Android.+(UC? ?Browser|UCWEB|U3)[ /]?(15\.([5-9]|\d{2,})|(1[6-9]|[2-9]\d|\d{3,})\.\d+)\.\d+|SamsungBrowser\/(5\.\d+|([6-9]|\d{2,})\.\d+)|Android.+MQ{2}Browser\/(14(\.(9|\d{2,})|)|(1[5-9]|[2-9]\d|\d{3,})(\.\d+|))(\.\d+|)|K[Aa][Ii]OS\/(3\.\d+|([4-9]|\d{2,})\.\d+)(\.\d+|)/}).modern,h=f.legacy,(y=navigator.userAgent).match(e)?"bot":y.match(v)?"modern":y.match(h)?"legacy":y.match(t)?"bot":"unknown"),m=function(e){var t,i,n=r(e,128);try{var a=window.performance,d=null==(t=null==a?void 0:a.getEntriesByType)?void 0:t.call(a,"navigation")[0];if(!d)return{requestId:n,navigationType:o(a)};var s="type"in d?r(d.type,64):void 0,u="serverTiming"in d&&Array.isArray(d.serverTiming)?d.serverTiming:[];return{requestId:null!=n?n:r(null==(i=u.find(function(e){return"requestID"===e.name}))?void 0:i.description,128),navigationType:s}}catch(e){return{requestId:n}}}(c.requestId),w=function(e){var t=e.version,r=e.browserTarget,o=e.surface,a=e.shopId,d=e.monorailEndpoint,s=window.location.href;return{emit:function(e){var u=e.status,l=e.errorMsg,c=e.failureReason,p=e.useKeepaliveFallback,f=void 0!==p&&p,v=e.navigationType,h=e.pagehidePersisted,y=e.requestId,g=e.trekkieState;if(d){var m,w;try{var b=(new Date).getTime();m=JSON.stringify({metadata:{event_sent_at_ms:b},events:[{schema_id:"web_pixels_manager_load/3.3",payload:{version:t,bundle_target:r,page_url:s,status:u,surface:o,error_msg:l,failure_reason:c,navigation_type:v,pagehide_persisted:h,request_id:y,trekkie_state:g,shop_id:a,visit_token:i()},metadata:{event_created_at_ms:b}}]})}catch(e){return}try{if("function"==typeof window.navigator.sendBeacon&&-1===(w=window.navigator.userAgent).indexOf("iPhone; CPU iPhone OS 12_")&&-1===w.indexOf("iPad; CPU OS 12_")&&-1===w.indexOf("iPod touch; CPU iPhone OS 12_")&&window.navigator.sendBeacon.bind(window.navigator)(d,m))return}catch(e){}if(f)try{"function"==typeof window.fetch&&window.fetch(d,{method:"POST",headers:{"Content-Type":"text/plain"},body:m,keepalive:!0}).catch(function(){})}catch(e){}else try{var _=new XMLHttpRequest;_.open("POST",d,!0),_.setRequestHeader("Content-Type","text/plain"),_.send(m)}catch(e){n("[Web Pixels Manager] Got an unhandled error while logging to Monorail.")}}else n("[Web Pixels Manager] No Monorail endpoint provided, skipping logging.")}}}({version:u,browserTarget:g,surface:d.surface,shopId:d.shopId,monorailEndpoint:d.monorailEndpoint});if(Boolean(null==(_=null==(b=window.Shopify)?void 0:b.analytics)?void 0:_.replayQueue))w.emit({status:"setup-skipped",errorMsg:"replay queue already initialized."});else{var b,_;w.emit({status:"setup-started"}),window.Shopify=window.Shopify||{};var S=window.Shopify;S.analytics=S.analytics||{};var P=S.analytics;P.replayQueue=[],P.publish=function(e,t,i){return P.replayQueue.push([e,t,i]),!0};try{self.performance.mark("wpm:start")}catch(e){}var k,C="modern"===g?"modern":"legacy",E=(null!=l?l:{modern:"",legacy:""})[C],I=[(k={baseUrl:s,hashVersion:u,buildTarget:C}).baseUrl,"/wpm","/b",k.hashVersion,"modern"===k.buildTarget?"m":"l",".js"].join(""),O=!1,T=!1;try{c.browserTarget=g,function(){O=!0;try{window.addEventListener("pagehide",M)}catch(e){O=!1}}(),R(function(){try{R(x)}catch(e){D(e)}}),w.emit({status:"loading",requestId:m.requestId,navigationType:m.navigationType,trekkieState:a()})}catch(e){D(e)}}function U(){var e;if(q(),!function(){var e,t;return Boolean(null==(t=null==(e=window.Shopify)?void 0:e.analytics)?void 0:t.initialized)}()){var t,i,n;try{if("function"!=typeof(null==(e=window.webPixelsManager)?void 0:e.init))return void A();if(!(null!==(n=i=t=window.webPixelsManager.init(d))&&"function"!=typeof n&&Object(n)===n&&"publish"in i&&"function"==typeof i.publish&&"publishCustomEvent"in i&&"function"==typeof i.publishCustomEvent&&"visitor"in i&&"function"==typeof i.visitor))return void A()}catch(e){return void A(e)}var r=window.Shopify.analytics;r.replayQueue.forEach(function(e){var i=e[0],n=e[1],r=e[2];t.publishCustomEvent(i,n,r)}),r.replayQueue=[],r.publish=t.publishCustomEvent,r.visitor=t.visitor,r.initialized=!0}}function A(e){B("manager_api_unavailable",void 0===e?void 0:Q(e))}function x(){B("script_load_failed","".concat(I," has failed to load"))}function B(e,t){T||(T=!0,q(),w.emit({status:"failed",errorMsg:t,failureReason:e,requestId:m.requestId,navigationType:m.navigationType,trekkieState:a()}))}function M(e){O&&(q(),w.emit({status:"pagehide-while-loading",useKeepaliveFallback:!0,pagehidePersisted:e.persisted,requestId:m.requestId,navigationType:m.navigationType,trekkieState:a()}))}function q(){O=!1;try{window.removeEventListener("pagehide",M)}catch(e){}}function R(e){var t;!function(e){var t=e.src,i=e.async,n=void 0===i||i,r=e.onload,o=e.onerror,a=e.sri,d=e.scriptDataAttributes,s=void 0===d?{}:d,u=document.createElement("script"),l=document.querySelector("head"),c=document.querySelector("body");if(u.async=n,u.src=t,a&&(u.integrity=a,u.crossOrigin="anonymous"),s)for(var p in s)if(Object.prototype.hasOwnProperty.call(s,p))try{u.dataset[p]=String(s[p])}catch(e){}if(r&&u.addEventListener("load",r),o&&u.addEventListener("error",o),l)l.appendChild(u);else{if(!c)throw new Error("Did not find a head or body element to append the script");c.appendChild(u)}}({src:I,async:!0,onload:U,onerror:e,sri:(t=E,"string"==typeof t&&/^sha384-[A-Za-z0-9+/=]+$/.test(t)?E:""),scriptDataAttributes:c})}function D(e){B("script_append_failed",Q(e))}function Q(e){return e instanceof Error?e.message:"Unknown error"}}}();wpmLoader({shopId: 92456878383,storefrontBaseUrl: "https://www.sehatup.com",extensionsBaseUrl: "https://extensions.shopifycdn.com/cdn/shopifycloud/web-pixels-manager",monorailEndpoint: "https://www.sehatup.com/.well-known/shopify/monorail/unstable/produce_batch",surface: "storefront-renderer",enabledBetaFlags: ["4c64608a","16072cab"],webPixelsConfigList: [{"id":"2510127407","configuration":"{\"accountID\":\"1969166\",\"domain\":\"spfy-pxl.archive-digger.com\"}","eventPayloadVersion":"v1","runtimeContext":"STRICT","scriptVersion":"8e6a4470ba80e2e0e10abe8ba61a8621","type":"APP","apiClientId":117664743425,"privacyPurposes":["ANALYTICS","MARKETING","SALE_OF_DATA"],"dataSharingAdjustments":{"protectedCustomerApprovalScopes":[],"dataSharingControls":["share_all_events"]},"dataSharingState":"optimized"},{"id":"2028765487","configuration":"{\"subdomain\":\"0ec320-gj\"}","eventPayloadVersion":"v1","runtimeContext":"STRICT","scriptVersion":"42cd9b1f0fb7c1cae5cd21175cef6782","type":"APP","apiClientId":1615517,"privacyPurposes":["ANALYTICS","MARKETING","SALE_OF_DATA"],"dataSharingAdjustments":{"protectedCustomerApprovalScopes":["read_customer_address","read_customer_email","read_customer_name","read_customer_personal_data","read_customer_phone"],"dataSharingControls":["share_all_events"]},"dataSharingState":"unrestricted","enabledFlags":["9a3ed68a"]},{"id":"2009465135","configuration":"{\"config\":\"{\\\"google_tag_ids\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\",\\\"GT-PLWBND3D\\\"],\\\"target_country\\\":\\\"ZZ\\\",\\\"gtag_events\\\":[{\\\"type\\\":\\\"begin_checkout\\\",\\\"action_label\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\/jHEfCJXZzscbENLl57JA\\\"]},{\\\"type\\\":\\\"search\\\",\\\"action_label\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\/w4UQCKHZzscbENLl57JA\\\"]},{\\\"type\\\":\\\"remove_from_cart\\\",\\\"action_label\\\":\\\"G-ZGNFCMQ8MR\\\"},{\\\"type\\\":\\\"view_item\\\",\\\"action_label\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\/NuE2CJ7ZzscbENLl57JA\\\",\\\"MC-WVEVCT92RS\\\"]},{\\\"type\\\":\\\"add_shipping_info\\\",\\\"action_label\\\":\\\"G-ZGNFCMQ8MR\\\"},{\\\"type\\\":\\\"purchase\\\",\\\"action_label\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\/rxFlCOySyMcbENLl57JA\\\",\\\"MC-WVEVCT92RS\\\"]},{\\\"type\\\":\\\"page_view\\\",\\\"action_label\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\/hcC5CJvZzscbENLl57JA\\\",\\\"MC-WVEVCT92RS\\\"]},{\\\"type\\\":\\\"view_item_list\\\",\\\"action_label\\\":\\\"G-ZGNFCMQ8MR\\\"},{\\\"type\\\":\\\"add_payment_info\\\",\\\"action_label\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\/Aq4UCKTZzscbENLl57JA\\\"]},{\\\"type\\\":\\\"add_to_cart\\\",\\\"action_label\\\":[\\\"G-ZGNFCMQ8MR\\\",\\\"AW-17286427346\\\/AnB7CJjZzscbENLl57JA\\\"]},{\\\"type\\\":\\\"view_cart\\\",\\\"action_label\\\":\\\"G-ZGNFCMQ8MR\\\"}],\\\"enable_monitoring_mode\\\":false}\"}","eventPayloadVersion":"v1","runtimeContext":"OPEN","scriptVersion":"a3321ca85cf5aaf6b57585fcd8d67b3a","type":"APP","apiClientId":1780363,"privacyPurposes":[],"dataSharingAdjustments":{"protectedCustomerApprovalScopes":["read_customer_address","read_customer_email","read_customer_name","read_customer_personal_data","read_customer_phone"],"dataSharingControls":["share_all_events"]},"dataSharingState":"optimized","enabledFlags":["9a3ed68a"]},{"id":"1910276399","configuration":"{\"projectId\":\"tvlois2qku\"}","eventPayloadVersion":"v1","runtimeContext":"STRICT","scriptVersion":"d8a2bb2ccbb513dc8e8b6937f4b8033e","type":"APP","apiClientId":240074326017,"privacyPurposes":[],"capabilities":["advanced_dom_events"],"dataSharingAdjustments":{"protectedCustomerApprovalScopes":["read_customer_personal_data"],"dataSharingControls":["share_all_events"]},"dataSharingState":"unrestricted"},{"id":"1425506607","configuration":"{\"webPixelName\":\"Judge.me\"}","eventPayloadVersion":"v1","runtimeContext":"STRICT","scriptVersion":"8acc938b1a30dc7624e304493ca567d7","type":"APP","apiClientId":683015,"privacyPurposes":["ANALYTICS"],"dataSharingAdjustments":{"protectedCustomerApprovalScopes":["read_customer_email","read_customer_name","read_customer_personal_data","read_customer_phone"],"dataSharingControls":["share_all_events"]},"dataSharingState":"unrestricted"},{"id":"1336377647","configuration":"{\"pixel_id\":\"1493824617935460\",\"pixel_type\":\"facebook_pixel\"}","eventPayloadVersion":"v1","runtimeContext":"OPEN","scriptVersion":"bd2f978c17a94bbb8a74d43de2165dc5","type":"APP","apiClientId":2329312,"privacyPurposes":["ANALYTICS","MARKETING","SALE_OF_DATA"],"dataSharingAdjustments":{"protectedCustomerApprovalScopes":["read_customer_address","read_customer_email","read_customer_name","read_customer_personal_data","read_customer_phone"],"dataSharingControls":["share_all_events"]},"dataSharingState":"optimized","enabledFlags":["9a3ed68a"]},{"id":"220266799","eventPayloadVersion":"1","runtimeContext":"LAX","scriptVersion":"3","type":"CUSTOM","privacyPurposes":["ANALYTICS","MARKETING","SALE_OF_DATA"],"name":"Meta AddToCart Pixel"},{"id":"shopify-app-pixel","configuration":"{}","eventPayloadVersion":"v1","runtimeContext":"STRICT","scriptVersion":"0530","apiClientId":"shopify-pixel","type":"APP","privacyPurposes":["ANALYTICS","MARKETING"]},{"id":"shopify-custom-pixel","eventPayloadVersion":"v1","runtimeContext":"LAX","scriptVersion":"0530","apiClientId":"shopify-pixel","type":"CUSTOM","privacyPurposes":["ANALYTICS","MARKETING"]}],isMerchantRequest: false,initData: {"shop":{"name":"SEHATUP WELLNESS PRIVATE LIMITED","paymentSettings":{"currencyCode":"INR"},"myshopifyDomain":"0ec320-gj.myshopify.com","countryCode":"IN","storefrontUrl":"https:\/\/www.sehatup.com"},"customer":null,"cart":null,"checkout":null,"productVariants":[],"products":[{"id":"10482254709039","handle":"vaji-bati","isCollective":null,"title":null,"type":null,"untranslatedTitle":null,"url":null,"vendor":null,"remoteShopId":null,"variants":[{"id":"51170218901807","image":null,"price":null,"sku":null,"title":null,"untranslatedTitle":null}]},{"id":"10478503625007","handle":"pure-himalayan-shilajit-resin-20g","isCollective":null,"title":null,"type":null,"untranslatedTitle":null,"url":null,"vendor":null,"remoteShopId":null,"variants":[{"id":"50972820996399","image":null,"price":null,"sku":null,"title":null,"untranslatedTitle":null}]},{"id":"10541726236975","handle":"p-e-e-d-integrated-kit","isCollective":null,"title":null,"type":null,"untranslatedTitle":null,"url":null,"vendor":null,"remoteShopId":null,"variants":[{"id":"51157471330607","image":null,"price":null,"sku":null,"title":null,"untranslatedTitle":null}]},{"id":"10541727220015","handle":"kern-drops","isCollective":null,"title":null,"type":null,"untranslatedTitle":null,"url":null,"vendor":null,"remoteShopId":null,"variants":[{"id":"51170217853231","image":null,"price":null,"sku":null,"title":null,"untranslatedTitle":null}]},{"id":"10608626893103","handle":"shaktisurge","isCollective":null,"title":null,"type":null,"untranslatedTitle":null,"url":null,"vendor":null,"remoteShopId":null,"variants":[{"id":"51392125731119","image":null,"price":null,"sku":null,"title":null,"untranslatedTitle":null}]}],"purchasingCompany":null},},"https://www.sehatup.com/cdn","957c9fdbw3fdd5ae0p166c77f8m3762736b",{"modern":"","legacy":""},{"trekkieShim":true,"agentContext":true,"apiClientId":"580111","facebookCapiEnabled":"true","themeId":"189138927919","themeStoreId":"2699","themePublished":"true","eventMetadataId":"a9de84d5-384c-4d2c-88f9-25cd293dba63","pageType":"page","resourceId":"165458280751","shopId":"92456878383","storefrontBaseUrl":"https:\/\/www.sehatup.com","extensionBaseUrl":"https:\/\/extensions.shopifycdn.com\/cdn\/shopifycloud\/web-pixels-manager","surface":"storefront-renderer","enabledBetaFlags":"[\"4c64608a\", \"16072cab\"]","isMerchantRequest":"false","hashVersion":"957c9fdbw3fdd5ae0p166c77f8m3762736b","publish":"custom","events":"[[\"page_viewed\",{}]]"});})();</script><script>
+  window.ShopifyAnalytics = window.ShopifyAnalytics || {};
+  window.ShopifyAnalytics.meta = window.ShopifyAnalytics.meta || {};
+  window.ShopifyAnalytics.meta.currency = 'INR';
+  var meta = {"page":{"pageType":"page","resourceType":"page","resourceId":165458280751,"requestId":"e4a8cdeb-2d99-4077-8eea-60400929ac1f-1792153052"}};
+  for (var attr in meta) {
+    window.ShopifyAnalytics.meta[attr] = meta[attr];
+  }
+</script>
+<script class="analytics">
+  (function () {
+    var customDocumentWrite = function(content) {
+      var jquery = null;
+
+      if (window.jQuery) {
+        jquery = window.jQuery;
+      } else if (window.Checkout && window.Checkout.$) {
+        jquery = window.Checkout.$;
+      }
+
+      if (jquery) {
+        jquery('body').append(content);
+      }
+    };
+
+    var hasLoggedConversion = function(token) {
+      if (token) {
+        return document.cookie.indexOf('loggedConversion=' + token) !== -1;
+      }
+      return false;
+    }
+
+    var setCookieIfConversion = function(token) {
+      if (token) {
+        var twoMonthsFromNow = new Date(Date.now());
+        twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+
+        document.cookie = 'loggedConversion=' + token + '; expires=' + twoMonthsFromNow;
+      }
+    }
+
+    var trekkie = window.ShopifyAnalytics.lib = window.trekkie = window.trekkie || [];
+    window.ShopifyAnalytics.lib.trekkie = window.trekkie;
+    if (trekkie.integrations) {
+      return;
+    }
+    trekkie.methods = [
+      'identify',
+      'page',
+      'ready',
+      'track',
+      'trackForm',
+      'trackLink'
+    ];
+    trekkie.factory = function(method) {
+      return function() {
+        var args = Array.prototype.slice.call(arguments);
+        args.unshift(method);
+        trekkie.push(args);
+        if (method == 'track' || method == 'page') {
+          var pageUrl;
+          try {
+            pageUrl = window.location.href;
+          } catch (e) {}
+          var pageReferrer;
+          try {
+            pageReferrer = document.referrer;
+          } catch (e) {}
+          try {
+            if (window.__TREKKIE_SHIM_QUEUE == null) {
+              window.__TREKKIE_SHIM_QUEUE = [];
+            }
+            window.__TREKKIE_SHIM_QUEUE.push({
+              from: 'trekkie-stub',
+              method: method,
+              args: args.slice(1),
+              pageContext: {
+                url: pageUrl,
+                referrer: pageReferrer
+              }
+            });
+          } catch (e) {
+            // no-op
+          }
+        }
+        return trekkie;
+      };
+    };
+    for (var i = 0; i < trekkie.methods.length; i++) {
+      var key = trekkie.methods[i];
+      trekkie[key] = trekkie.factory(key);
+    }
+    trekkie.load = function(config) {
+      trekkie.config = config || {};
+      trekkie.config.initialDocumentCookie = document.cookie;
+      var first = document.getElementsByTagName('script')[0];
+var script = document.createElement('script');
+script.type = 'text/javascript';
+script.onerror = function(e) {
+  var scriptFallback = document.createElement('script');
+  scriptFallback.type = 'text/javascript';
+  scriptFallback.onerror = function(error) {
+          var Monorail = {
+      produce: function produce(monorailDomain, schemaId, payload) {
+        var currentMs = new Date().getTime();
+        var event = {
+          schema_id: schemaId,
+          payload: payload,
+          metadata: {
+            event_created_at_ms: currentMs,
+            event_sent_at_ms: currentMs
+          }
+        };
+        return Monorail.sendRequest("https://" + monorailDomain + "/v1/produce", JSON.stringify(event));
+      },
+      sendRequest: function sendRequest(endpointUrl, payload) {
+        // Try the sendBeacon API
+        if (window && window.navigator && typeof window.navigator.sendBeacon === 'function' && typeof window.Blob === 'function' && !Monorail.isIos12()) {
+          var blobData = new window.Blob([payload], {
+            type: 'text/plain'
+          });
+
+          if (window.navigator.sendBeacon(endpointUrl, blobData)) {
+            return true;
+          } // sendBeacon was not successful
+
+        } // XHR beacon
+
+        var xhr = new XMLHttpRequest();
+
+        try {
+          xhr.open('POST', endpointUrl);
+          xhr.setRequestHeader('Content-Type', 'text/plain');
+          xhr.send(payload);
+        } catch (e) {
+          console.log(e);
+        }
+
+        return false;
+      },
+      isIos12: function isIos12() {
+        return window.navigator.userAgent.lastIndexOf('iPhone; CPU iPhone OS 12_') !== -1 || window.navigator.userAgent.lastIndexOf('iPad; CPU OS 12_') !== -1;
+      }
+    };
+    Monorail.produce('monorail-edge.shopifysvc.com',
+      'trekkie_storefront_load_errors/1.1',
+      {shop_id: 92456878383,
+      theme_id: 189138927919,
+      app_name: "storefront",
+      context_url: window.location.href,
+      source_url: "//www.sehatup.com/cdn/s/trekkie.storefront.32ff6085714fe9c4d5859e332c5de5f8759a859e.min.js"});
+
+  };
+  scriptFallback.async = true;
+  scriptFallback.src = '//www.sehatup.com/cdn/s/trekkie.storefront.32ff6085714fe9c4d5859e332c5de5f8759a859e.min.js';
+  first.parentNode.insertBefore(scriptFallback, first);
+};
+script.async = true;
+script.src = '//www.sehatup.com/cdn/s/trekkie.storefront.32ff6085714fe9c4d5859e332c5de5f8759a859e.min.js';
+first.parentNode.insertBefore(script, first);
+
+    };
+    trekkie.load(
+      {"Trekkie":{"appName":"storefront","development":false,"defaultAttributes":{"shopId":92456878383,"isMerchantRequest":null,"themeId":189138927919,"themeCityHash":"8008608517045394421","contentLanguage":"en","currency":"INR","eventMetadataId":"a9de84d5-384c-4d2c-88f9-25cd293dba63"},"isServerSideCookieWritingEnabled":true,"monorailRegion":"shop_domain","enabledBetaFlags":["764d78cb","4c64608a"]},"Session Attribution":{},"S2S":{"facebookCapiEnabled":true,"source":"trekkie-storefront-renderer","apiClientId":580111}}
+    );
+
+    var loaded = false;
+    trekkie.ready(function() {
+      if (loaded) return;
+      loaded = true;
+
+      window.ShopifyAnalytics.lib = window.trekkie;
+
+      var originalDocumentWrite = document.write;
+      document.write = customDocumentWrite;
+      try { window.ShopifyAnalytics.merchantGoogleAnalytics.call(this); } catch(error) {};
+      document.write = originalDocumentWrite;
+
+      var match = window.location.pathname.match(/checkouts\/(.+)\/(thank_you|post_purchase)/)
+      var token = match? match[1]: undefined;
+      if (!hasLoggedConversion(token)) {
+        setCookieIfConversion(token);
+        
+      }
+    });
+
+    window.ShopifyAnalytics.lib.page(null,{"pageType":"page","resourceType":"page","resourceId":165458280751,"requestId":"e4a8cdeb-2d99-4077-8eea-60400929ac1f-1792153052","shopifyEmitted":true});
+
+    var eventsListenerScript = document.createElement('script');
+    eventsListenerScript.async = true;
+    eventsListenerScript.src = "//www.sehatup.com/cdn/shopifycloud/storefront/assets/shop_events_listener-4e26a9ce.js";
+    document.getElementsByTagName('head')[0].appendChild(eventsListenerScript);
+})();</script>
+<script
+  defer
+  src="https://www.sehatup.com/cdn/shopifycloud/perf-kit/shopify-perf-kit-3.11.0.min.js"
+  data-application="storefront-renderer"
+  data-shop-id="92456878383"
+  data-render-region="gcp-asia-southeast1"
+  data-page-type="page"
+  data-theme-instance-id="189138927919"
+  data-theme-name="Trade"
+  data-theme-version="15.4.1"
+  data-monorail-region="shop_domain"
+  data-resource-timing-sampling-rate="10"
+  data-shs="true"
+  data-shs-beacon="true"
+  data-shs-export-with-fetch="true"
+  data-shs-logs-sample-rate="1"
+  data-shs-beacon-endpoint="https://www.sehatup.com/api/collect"
+></script>
+<meta name="shopify-y" content="e7c8b4e2-bb04-422f-97f7-30d8129bdf98" data-expiration="1823710652000"><meta name="shopify-s" content="cc970e22-b77a-400b-aa8a-e5b0082ea6f3" data-expiration="1792154852000">
+</head>
+  <body class="lp-body">
+    <main id="MainContent" role="main">
+      <div id="shopify-section-template--27674755137839__header" class="shopify-section"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Google+Sans:wght@400;500;600;700&display=swap">
+<link href="//www.sehatup.com/cdn/shop/t/63/assets/landing-men.css?v=54915549819096708651792148876" rel="stylesheet" type="text/css" media="all" />
+<script>document.body.classList.add('lm-page');</script>
+<script type="module">
+  import 'https://cdn.jsdelivr.net/npm/number-flow@0.6.2/+esm';
+  var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('[data-lp-timer] b').forEach(function (b) {
+    var f = document.createElement('number-flow');
+    f.format = { minimumIntegerDigits: 2 };
+    f.trend = -1;
+    if (!b.hasAttribute('data-h')) f.digits = { 1: { max: 5 } };
+    f.animated = !still;
+    f.update(Number(b.textContent) || 0);
+    b.style.display = 'none';
+    b.after(f);
+    new MutationObserver(function () { f.update(Number(b.textContent) || 0); })
+      .observe(b, { childList: true, characterData: true, subtree: true });
+  });
+</script>
+
+<header class="lm-top" style="--lm-logo: 168px;">
+  <div class="lm-wrap lm-top__in"><details class="lm-menu" data-lm-menu>
+        <summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="lm-menu__open" d="M4 7h16M4 12h16M4 17h16"/><path class="lm-menu__close" d="M6 6l12 12M18 6L6 18"/></svg></summary>
+        <div class="lm-menu__panel">
+          <nav aria-label="Menu"><a href="/">Home<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></a><a href="/pages/about-us">About<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></a><a href="/pages/contact">Contact Us<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></a></nav><a class="lm-btn lm-btn--red" href="#book">Book Free Consultation<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a><a class="lm-btn lm-btn--line" href="https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor%20privately" target="_blank" rel="noopener">Chat with us on WhatsApp</a></div>
+      </details><a class="lm-top__logo" href="/" aria-label="sehatUP home"><img src="https://www.sehatup.com/cdn/shop/files/New_Logo_Red_and_Black_without_tagline.webp?v=1773229485&width=300" alt="sehatUP" width="128" height="28"></a>
+    <nav class="lm-top__nav" aria-label="sehatUP"><a href="/">Home</a><a href="/pages/about-us">About</a><a href="/pages/contact">Contact Us</a></nav><a class="lm-btn lm-btn--red lm-top__btn" href="#book">Book Free Consultation<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div>
+</header>
+<script>
+  (function () {
+    var m = document.querySelector('[data-lm-menu]');
+    if (!m) return;
+    m.addEventListener('click', function (e) { if (e.target.closest('.lm-menu__panel a')) m.open = false; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.open = false; });
+    matchMedia('(min-width: 700px)').addEventListener('change', function (q) { if (q.matches) m.open = false; });
+  })();
+</script><a class="lm-wa" href="https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor%20privately" target="_blank" rel="noopener" aria-label="Chat with us">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg><span>Chat with us</span></a>
+</div><div id="shopify-section-template--27674755137839__hero" class="shopify-section"><section class="lm-hero lm-hero--glow lm-hero--box lm-hero--img-left" style="--lm-glow: #fbdcd3; --lm-hw: 50%; --lm-hz: 1.0; --lm-hy: 25%; --lm-hm: 300px; --lm-hg: 120px;"><div class="lm-wrap lm-hero__in"><div class="lm-hero__bg"><img src="//www.sehatup.com/cdn/shop/files/Tense_Evening_in_the_Bedroom.png?v=1791865729&amp;width=1800" srcset="//www.sehatup.com/cdn/shop/files/Tense_Evening_in_the_Bedroom.png?v=1791865729&amp;width=700 700w, //www.sehatup.com/cdn/shop/files/Tense_Evening_in_the_Bedroom.png?v=1791865729&amp;width=1000 1000w, //www.sehatup.com/cdn/shop/files/Tense_Evening_in_the_Bedroom.png?v=1791865729&amp;width=1400 1400w, //www.sehatup.com/cdn/shop/files/Tense_Evening_in_the_Bedroom.png?v=1791865729&amp;width=1800 1800w" width="1800" height="1142" loading="eager" fetchpriority="high" sizes="(max-width: 749px) 100vw, 60vw">
+</div><div class="lm-hero__copy">
+      <h1 class="lm-hero__h">Struggling to <span class="lm-mark">last longer</span> in bed?</h1><p class="lm-hero__sub">It's more common than you think. Don't ignore it.</p><div class="lm-hero__cta"><a class="lm-btn lm-btn--red" href="#book"><span>Book an Appointment</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a><a class="lm-btn lm-btn--line" href="/pages/mens-health-questionnaire"><span>Check Your Health Score 360</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div><div class="lm-hero__proof">
+          <span class="lm-hero__avs" aria-hidden="true"><i class="has-img"><img src="//www.sehatup.com/cdn/shop/files/Joyful_South_Asian_Man_Portrait.webp?crop=center&amp;height=400&amp;v=1791885615&amp;width=400" alt="" srcset="//www.sehatup.com/cdn/shop/files/Joyful_South_Asian_Man_Portrait.webp?crop=center&amp;height=120&amp;v=1791885615&amp;width=120 120w, //www.sehatup.com/cdn/shop/files/Joyful_South_Asian_Man_Portrait.webp?crop=center&amp;height=200&amp;v=1791885615&amp;width=200 200w, //www.sehatup.com/cdn/shop/files/Joyful_South_Asian_Man_Portrait.webp?crop=center&amp;height=300&amp;v=1791885615&amp;width=300 300w, //www.sehatup.com/cdn/shop/files/Joyful_South_Asian_Man_Portrait.webp?crop=center&amp;height=400&amp;v=1791885615&amp;width=400 400w" width="42" height="42" loading="eager" sizes="42px"></i><i class="has-img"><img src="//www.sehatup.com/cdn/shop/files/Joyful_Rooftop_Portrait.webp?crop=center&amp;height=400&amp;v=1791885616&amp;width=400" alt="" srcset="//www.sehatup.com/cdn/shop/files/Joyful_Rooftop_Portrait.webp?crop=center&amp;height=120&amp;v=1791885616&amp;width=120 120w, //www.sehatup.com/cdn/shop/files/Joyful_Rooftop_Portrait.webp?crop=center&amp;height=200&amp;v=1791885616&amp;width=200 200w, //www.sehatup.com/cdn/shop/files/Joyful_Rooftop_Portrait.webp?crop=center&amp;height=300&amp;v=1791885616&amp;width=300 300w, //www.sehatup.com/cdn/shop/files/Joyful_Rooftop_Portrait.webp?crop=center&amp;height=400&amp;v=1791885616&amp;width=400 400w" width="42" height="42" loading="eager" sizes="42px"></i><i class="has-img"><img src="//www.sehatup.com/cdn/shop/files/Warm_Professional_Headshot.webp?crop=center&amp;height=400&amp;v=1791885615&amp;width=400" alt="" srcset="//www.sehatup.com/cdn/shop/files/Warm_Professional_Headshot.webp?crop=center&amp;height=120&amp;v=1791885615&amp;width=120 120w, //www.sehatup.com/cdn/shop/files/Warm_Professional_Headshot.webp?crop=center&amp;height=200&amp;v=1791885615&amp;width=200 200w, //www.sehatup.com/cdn/shop/files/Warm_Professional_Headshot.webp?crop=center&amp;height=300&amp;v=1791885615&amp;width=300 300w, //www.sehatup.com/cdn/shop/files/Warm_Professional_Headshot.webp?crop=center&amp;height=400&amp;v=1791885615&amp;width=400 400w" width="42" height="42" loading="eager" sizes="42px"></i></span>
+          <span class="lm-hero__proof-t">
+            <b>Trusted by 10,000+ men</b><span><i aria-hidden="true">★★★★★</i> (4.5/5)</span></span>
+        </div></div>
+  </div></section>
+
+
+</div><div id="shopify-section-template--27674755137839__concerns" class="shopify-section"><section id="symptoms" class="lm-sec" style="--lm-si: 64px;">
+  <div class="lm-wrap">
+    <div class="lm-head">
+      <h2 class="lm-h2">Are these the symptoms you're <span class="lm-mark">also facing?</span></h2></div>
+
+    <div class="lm-sym" data-lm-sym><ul class="lm-sym__grid" role="list"><li ><button class="lm-sym__card" type="button" aria-pressed="false" data-name="Erection problems" data-value="Erection issues"><span class="lm-sym__ic" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M6 12h10l8 12 6-6 12 16"/><path d="M42 26v8h-8"/></svg></span><span class="lm-sym__t">
+                <b>Erection problems</b><span>Not staying firm when it matters.</span></span><span class="lm-sym__tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m4 8 3 3 5-6"/></svg></span></button></li><li ><button class="lm-sym__card" type="button" aria-pressed="false" data-name="Early ejaculation" data-value="Early ejaculation"><span class="lm-sym__ic" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="26" cy="27" r="15"/><path d="M26 27l6-7M21 6h10M26 6v6M39 13l3-3"/><path d="M3 22h7M5 28h5M3 34h7"/></svg></span><span class="lm-sym__t">
+                <b>Early ejaculation</b><span>Finishing sooner than you want.</span></span><span class="lm-sym__tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m4 8 3 3 5-6"/></svg></span></button></li><li ><button class="lm-sym__card" type="button" aria-pressed="false" data-name="Low libido" data-value="Low libido"><span class="lm-sym__ic" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M24 40 9 26a9 9 0 0 1 13-13l2 2 2-2a9 9 0 0 1 13 13z"/><path d="M14 25h7l3-5 3 5h7" opacity=".9"/></svg></span><span class="lm-sym__t">
+                <b>Low libido</b><span>The interest just is not there lately.</span></span><span class="lm-sym__tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m4 8 3 3 5-6"/></svg></span></button></li><li ><button class="lm-sym__card" type="button" aria-pressed="false" data-name="Performance anxiety" data-value="Performance anxiety"><span class="lm-sym__ic" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M28 42v-6h5a4 4 0 0 0 4-4v-5l4-1-4-7A15 15 0 1 0 15 34v8"/><path d="M19 17c2-3 7-3 8 1 1 3-4 4-2 8M22 31h.01"/></svg></span><span class="lm-sym__t">
+                <b>Performance anxiety</b><span>Too much worry, not enough enjoying.</span></span><span class="lm-sym__tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m4 8 3 3 5-6"/></svg></span></button></li><li ><button class="lm-sym__card" type="button" aria-pressed="false" data-name="Low stamina and weakness" data-value="Low stamina"><span class="lm-sym__ic" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="4" y="14" width="34" height="20" rx="4"/><path d="M42 21v6"/><rect x="9" y="19" width="5" height="10" rx="1" fill="currentColor" stroke="none"/><path d="M26 17l-4 7h6l-4 7"/></svg></span><span class="lm-sym__t">
+                <b>Low stamina and weakness</b><span>Tired before you even start.</span></span><span class="lm-sym__tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m4 8 3 3 5-6"/></svg></span></button></li><li ><button class="lm-sym__card" type="button" aria-pressed="false" data-name="Other Private intimate concerns" data-value="Something else"><span class="lm-sym__ic" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M42 23a17 17 0 0 1-24.6 15.2L7 41l2.8-9.7A17 17 0 1 1 42 23z"/><path d="M20 19a5 5 0 1 1 6.5 4.8c-1.3.4-2.5 1.5-2.5 3v1.2M24 33h.01"/></svg></span><span class="lm-sym__t">
+                <b>Other Private intimate concerns</b><span>A private worry you are not sure about.</span></span><span class="lm-sym__tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m4 8 3 3 5-6"/></svg></span></button></li></ul><div class="lm-sym__go">
+        <a class="lm-btn lm-btn--red" href="#book" data-base="Talk to a doctor for free" data-pick="Talk to a doctor about [x]">Talk to a doctor for free<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div></div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.currentScript.previousElementSibling.querySelector('[data-lm-sym]');
+    if (!root) return;
+    var cards = root.querySelectorAll('.lm-sym__card');
+    var go = root.querySelector('.lm-sym__go a');
+    if (!go) return;
+    var label = go.firstChild;
+    var picked = null;
+    cards.forEach(function (c) {
+      c.addEventListener('click', function () {
+        var on = c !== picked;
+        cards.forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+        picked = on ? c : null;
+        if (on) c.setAttribute('aria-pressed', 'true');
+        label.textContent = on ? go.dataset.pick.replace('[x]', c.dataset.name.toLowerCase()) : go.dataset.base;
+      });
+    });
+    go.addEventListener('click', function () {
+      if (!picked) return;
+      var sel = document.querySelector('#book select[name="concern"]');
+      if (!sel) return;
+      var want = (picked.dataset.value || picked.dataset.name).toLowerCase();
+      Array.prototype.forEach.call(sel.options, function (o) { if (o.text.toLowerCase() === want) sel.value = o.value || o.text; });
+    });
+  })();
+</script>
+
+
+</div><div id="shopify-section-template--27674755137839__stories" class="shopify-section"><section id="reviews" class="lm-sec lm-sec--stone lm-stories--split" style="--lm-vn: 5;">
+  <div class="lm-wrap">
+    <div class="lm-stories__head">
+      <div>
+        <h2 class="lm-h2">Our <span class="lm-mark">Success</span> Stories</h2></div></div><div class="lm-stories__grid"><div class="lm-stories__vcol"><div class="lm-vids"><div class="lm-vid" ><div class="lm-vid__empty">Add a customer video in the theme editor</div></div><div class="lm-vid" ><div class="lm-vid__empty">Add a customer video in the theme editor</div></div><div class="lm-vid" ><div class="lm-vid__empty">Add a customer video in the theme editor</div></div><div class="lm-vid" ><div class="lm-vid__empty">Add a customer video in the theme editor</div></div></div><input class="lm-vslider" type="range" min="0" max="1000" value="0" step="1" aria-label="Slide through the videos"></div><div class="lm-stories__rcol"><style>
+  .jmr { position: relative; font-family: 'Montserrat', sans-serif; }
+  .jmr[hidden] { display: none; }
+  .jmr__row { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; padding: 2px; }
+  .jmr__row::-webkit-scrollbar { display: none; }
+  .jmr__card {
+    position: relative; flex: 0 0 calc((100% - 40px) / 3); min-width: 0; scroll-snap-align: start; box-sizing: border-box;
+    display: flex; flex-direction: column; min-height: 264px; padding: 24px 24px 20px;
+    border-radius: 20px; background: var(--jmr-card, #faf7f5); border: 1px solid #efe7e2; text-align: left;
+  }
+  .jmr__img { position: absolute; top: 22px; right: 22px; width: 56px; height: 56px; border-radius: 14px; object-fit: cover; background: #fff; box-shadow: 0 4px 12px rgba(60, 30, 20, .08); }
+  .jmr__stars { padding-right: 64px; margin-bottom: 14px; color: #f5a623; font-size: 17px; letter-spacing: 3px; line-height: 1; }
+  .jmr__t { padding-right: 64px; margin: 0 0 6px; font: 700 16px/1.35 'Montserrat', sans-serif; color: #1d1d1d; }
+  .jmr__b { margin: 0; font: 400 14px/1.6 'Montserrat', sans-serif; color: #5c5c5c; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .jmr__foot { display: flex; align-items: baseline; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid #ebe3dd; min-width: 0; }
+  .jmr__name { flex: none; font: 700 13.5px/1.3 'Montserrat', sans-serif; color: #1d1d1d; }
+  .jmr__on { flex: none; font: 500 12.5px/1.3 'Montserrat', sans-serif; color: #5c5c5c; }
+  .jmr a.jmr__prod { min-width: 0; font: 700 13px/1.3 'Montserrat', sans-serif; color: #d81f48; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jmr a.jmr__prod:hover { text-decoration: underline; }
+  .jmr__nav { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }
+  .jmr__arrow { width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 1.5px solid #e8e0d9; background: #fff; color: #1d1d1d; display: grid; place-items: center; cursor: pointer; transition: border-color .2s ease; }
+  .jmr__arrow:hover { border-color: #d81f48; }
+  .jmr__arrow:focus-visible { outline: 2px solid #1d1d1d; outline-offset: 3px; }
+  .jmr__arrow svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  @media (max-width: 1023px) { .jmr__card { flex-basis: calc((100% - 20px) / 2); } }
+  @media (max-width: 599px) { .jmr__row { gap: 12px; } .jmr__card { flex-basis: 86%; min-height: 240px; padding: 20px 18px 18px; } .jmr__img { top: 18px; right: 18px; width: 50px; height: 50px; } }
+  @media (prefers-reduced-motion: reduce) { .jmr__row { scroll-behavior: auto; } }
+</style>
+
+<div class="jmr" id="jmr-template--27674755137839__stories" data-min="4" data-max="18" data-hide="" hidden>
+  <div class="jmr__row" aria-label="Customer reviews"></div>
+  <div class="jmr__nav">
+    <button class="jmr__arrow" type="button" data-dir="-1" aria-label="Previous reviews"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5"/></svg></button>
+    <button class="jmr__arrow" type="button" data-dir="1" aria-label="Next reviews"><svg viewBox="0 0 16 16"><path d="m6 3 5 5-5 5"/></svg></button>
+  </div>
+  <script type="application/json">
+    {"vaji-bati": { "t": "Vaji Bati", "i": "\/\/www.sehatup.com\/cdn\/shop\/files\/Vaji_Bati.webp?v=1773727366\u0026width=160", "u": "\/products\/vaji-bati" },
+"pure-himalayan-shilajit-resin-20g": { "t": "Pure Himalayan Shilajit Resin - 20g", "i": "\/\/www.sehatup.com\/cdn\/shop\/files\/pure-himalayan-shilajit-resin.webp?v=1773727203\u0026width=160", "u": "\/products\/pure-himalayan-shilajit-resin-20g" },
+"p-e-e-d-integrated-kit": { "t": "Confidence \u0026 Performance Booster Kit", "i": "\/\/www.sehatup.com\/cdn\/shop\/files\/Vaji_Bati_Kern_Drop.webp?v=1789472349\u0026width=160", "u": "\/products\/p-e-e-d-integrated-kit" },
+"kern-drops": { "t": "Kern Drops", "i": "\/\/www.sehatup.com\/cdn\/shop\/files\/Page1.webp?v=1770455626\u0026width=160", "u": "\/products\/kern-drops" },
+"shaktisurge": { "t": "Daily Energy \u0026 Stamina Support Kit", "i": "\/\/www.sehatup.com\/cdn\/shop\/files\/Shilajit_Ashwagandha.webp?v=1773726886\u0026width=160", "u": "\/products\/shaktisurge" }
+}
+  </script>
+</div>
+
+<script>
+  (function () {
+    var root = document.getElementById('jmr-template--27674755137839__stories');
+    if (!root) return;
+    var row = root.querySelector('.jmr__row');
+    var products = JSON.parse(root.querySelector('script[type="application/json"]').textContent || '{}');
+    var MIN = Number(root.dataset.min), MAX = Number(root.dataset.max);
+    var HIDE = (root.dataset.hide || '').toLowerCase().split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var base = 'https://api.judge.me/reviews/all_reviews_js_based?url=0ec320-gj.myshopify.com&shop_domain=0ec320-gj.myshopify.com&platform=shopify&review_type=product-reviews&page=';
+    var found = [];
+
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+    function tidy(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
+
+    function load(page) {
+      return fetch(base + page).then(function (r) { return r.json(); }).then(function (j) {
+        var revs = new DOMParser().parseFromString(j.html || '', 'text/html').querySelectorAll('.jdgm-rev');
+        revs.forEach(function (e) {
+          var q = function (s) { return e.querySelector(s); };
+          var link = q('.jdgm-rev__prod-link');
+          var handle = ((link && link.getAttribute('href')) || '').split('/products/')[1];
+          handle = handle ? handle.split(/[?#]/)[0] : '';
+          var rate = q('.jdgm-rev__rating');
+          var rating = rate ? Number(rate.getAttribute('data-score')) : 0;
+          var body = tidy(q('.jdgm-rev__body') && q('.jdgm-rev__body').textContent);
+          if (!products[handle] || rating < MIN || body.length < 12) return;
+          if (HIDE.some(function (h) { return body.toLowerCase().indexOf(h) > -1; })) return;
+          found.push({ h: handle, r: rating, b: body, t: tidy(q('.jdgm-rev__title') && q('.jdgm-rev__title').textContent), a: tidy(q('.jdgm-rev__author') && q('.jdgm-rev__author').textContent) || 'Anonymous' });
+        });
+        if (revs.length >= 25 && page < 8 && found.length < MAX) return load(page + 1);
+      });
+    }
+
+    function card(v) {
+      var p = products[v.h];
+      var c = el('article', 'jmr__card');
+      if (p.i) { var img = el('img', 'jmr__img'); img.src = p.i; img.alt = p.t; img.width = 56; img.height = 56; img.loading = 'lazy'; c.appendChild(img); }
+      var st = el('div', 'jmr__stars', '★★★★★'.slice(0, v.r)); st.setAttribute('aria-label', v.r + ' out of 5 stars'); c.appendChild(st);
+      if (v.t) c.appendChild(el('h3', 'jmr__t', v.t));
+      if (v.b.toLowerCase() !== v.t.toLowerCase()) c.appendChild(el('p', 'jmr__b', v.b));
+      var f = el('div', 'jmr__foot');
+      f.appendChild(el('span', 'jmr__name', v.a));
+      f.appendChild(el('span', 'jmr__on', 'on'));
+      var a = el('a', 'jmr__prod', p.t); a.href = p.u; f.appendChild(a);
+      c.appendChild(f);
+      return c;
+    }
+
+    load(1).then(function () {
+      if (!found.length) return;
+      found.slice(0, MAX).forEach(function (v) { row.appendChild(card(v)); });
+      root.hidden = false;
+
+      function step() { var c = row.querySelector('.jmr__card'); return c ? c.offsetWidth + parseFloat(getComputedStyle(row).columnGap || 20) : row.clientWidth; }
+      function go(dir) {
+        var end = row.scrollLeft + row.clientWidth >= row.scrollWidth - 8;
+        if (dir > 0 && end) row.scrollTo({ left: 0 });
+        else if (dir < 0 && row.scrollLeft < 8) row.scrollTo({ left: row.scrollWidth });
+        else row.scrollBy({ left: step() * dir });
+      }
+      root.querySelectorAll('.jmr__arrow').forEach(function (b) { b.addEventListener('click', function () { go(Number(b.dataset.dir)); }); });
+
+      /* Moves on by itself while on screen; any hover, touch or focus pauses it. */
+      if (still) return;
+      var held = false, seen = false, timer;
+      ['mouseenter', 'focusin', 'touchstart'].forEach(function (ev) { root.addEventListener(ev, function () { held = true; }, { passive: true }); });
+      ['mouseleave', 'focusout'].forEach(function (ev) { root.addEventListener(ev, function () { held = false; }); });
+      root.addEventListener('touchend', function () { setTimeout(function () { held = false; }, 4000); }, { passive: true });
+      if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { seen = e[0].isIntersecting; }).observe(root);
+      else seen = true;
+      timer = setInterval(function () { if (seen && !held && !document.hidden) go(1); }, 4000);
+    }).catch(function () {});
+  })();
+</script></div></div></div>
+</section><script>
+  (function () {
+    var sec = document.currentScript.previousElementSibling;
+    var row = sec.querySelector('.lm-vids');
+    var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function step(dir) {
+      var card = row.querySelector('.lm-vid');
+      row.scrollBy({ left: (card ? card.offsetWidth + 14 : 240) * dir, behavior: 'smooth' });
+    }
+    sec.querySelectorAll('.lm-arrow').forEach(function (b) {
+      b.addEventListener('click', function () { step(Number(b.dataset.dir)); });
+    });
+
+    var bar = sec.querySelector('.lm-vslider');
+    var dragging = false;
+    function sync() {
+      if (!bar || dragging) return;
+      var max = row.scrollWidth - row.clientWidth;
+      var v = max > 0 ? Math.round(row.scrollLeft / max * 1000) : 0;
+      bar.value = v;
+      bar.style.setProperty('--p', v / 10 + '%');
+    }
+    if (bar) {
+      row.addEventListener('scroll', sync, { passive: true });
+      window.addEventListener('resize', sync);
+      bar.addEventListener('pointerdown', function () { dragging = true; row.style.scrollBehavior = 'auto'; });
+      bar.addEventListener('input', function () {
+        var max = row.scrollWidth - row.clientWidth;
+        row.scrollLeft = bar.value / 1000 * max;
+        bar.style.setProperty('--p', bar.value / 10 + '%');
+      });
+      ['pointerup', 'pointercancel', 'change'].forEach(function (ev) { bar.addEventListener(ev, function () { dragging = false; row.style.scrollBehavior = ''; }); });
+      sync();
+    }
+
+    if (!sec.classList.contains('lm-stories--split') || calm) return;
+
+    var seen = false, held = false;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { seen = e[0].isIntersecting; }, { threshold: .2 }).observe(sec);
+    function playing() { return [].some.call(row.querySelectorAll('video'), function (v) { return !v.paused; }); }
+    ['mouseenter', 'touchstart', 'focusin'].forEach(function (ev) { row.addEventListener(ev, function () { held = true; }, { passive: true }); });
+    if (bar) bar.addEventListener('pointerdown', function () { held = true; setTimeout(function () { held = false; }, 6000); });
+    ['mouseleave', 'focusout'].forEach(function (ev) { row.addEventListener(ev, function () { held = false; }); });
+    row.addEventListener('touchend', function () { setTimeout(function () { held = false; }, 4000); }, { passive: true });
+    setInterval(function () {
+      if (!seen || held || dragging || document.hidden || playing()) return;
+      if (row.scrollLeft + row.clientWidth >= row.scrollWidth - 4) row.scrollTo({ left: 0, behavior: 'smooth' });
+      else step(1);
+    }, 4000);
+
+    var list = sec.querySelector('.lm-stories__rcol .jmr__row');
+    if (!list) return;
+    function marquee() {
+      var cards = [].slice.call(list.querySelectorAll('.jmr__card'));
+      if (cards.length < 2 || list.classList.contains('is-mq')) return;
+      cards.forEach(function (c) { var d = c.cloneNode(true); d.setAttribute('aria-hidden', 'true'); list.appendChild(d); });
+      list.style.setProperty('--mq-dur', (cards.length * 6) + 's');
+      list.classList.add('is-mq');
+    }
+    if (list.querySelector('.jmr__card')) marquee();
+    else new MutationObserver(function (m, o) { if (list.querySelector('.jmr__card')) { o.disconnect(); setTimeout(marquee, 50); } }).observe(list, { childList: true });
+  })();
+</script>
+</div><div id="shopify-section-template--27674755137839__trust" class="shopify-section"><section class="lm-sec" style="--lm-wi: 520px; --lm-wic: 56px;">
+  <div class="lm-wrap lm-whyl">
+    <div>
+      <h2 class="lm-h2 lm-whyl__h">Why do thousands <span class="lm-mark">trust sehatUP?</span></h2>
+      <ul class="lm-whyl__list" data-lm-anim><li >
+            <span class="lm-whyl__ic" aria-hidden="true"><img src="//www.sehatup.com/cdn/shop/files/Caring_Hands_with_Health_Symbols.webp?v=1792062258&amp;width=240" alt="" srcset="//www.sehatup.com/cdn/shop/files/Caring_Hands_with_Health_Symbols.webp?v=1792062258&amp;width=80 80w, //www.sehatup.com/cdn/shop/files/Caring_Hands_with_Health_Symbols.webp?v=1792062258&amp;width=160 160w, //www.sehatup.com/cdn/shop/files/Caring_Hands_with_Health_Symbols.webp?v=1792062258&amp;width=240 240w" width="240" height="240" loading="lazy" sizes="40px" style="width: 80%; height: 80%; object-fit: contain;">
+</span>
+            <b>Treat Root Cause, Not Just Symptoms</b><span>Combining Allopathy, Homoeopathy & Ayurveda for a root cause treatment.</span></li><li >
+            <span class="lm-whyl__ic" aria-hidden="true"><img src="//www.sehatup.com/cdn/shop/files/02-why-improved-performance.webp?v=1792062281&amp;width=240" alt="" srcset="//www.sehatup.com/cdn/shop/files/02-why-improved-performance.webp?v=1792062281&amp;width=80 80w, //www.sehatup.com/cdn/shop/files/02-why-improved-performance.webp?v=1792062281&amp;width=160 160w, //www.sehatup.com/cdn/shop/files/02-why-improved-performance.webp?v=1792062281&amp;width=240 240w" width="240" height="240" loading="lazy" sizes="40px" style="width: 80%; height: 80%; object-fit: contain;">
+</span>
+            <b>85% Improved Performance</b><span>Verified treatment success rate</span></li><li >
+            <span class="lm-whyl__ic" aria-hidden="true"><img src="//www.sehatup.com/cdn/shop/files/03-why-improved-relationships.webp?v=1792062281&amp;width=240" alt="" srcset="//www.sehatup.com/cdn/shop/files/03-why-improved-relationships.webp?v=1792062281&amp;width=80 80w, //www.sehatup.com/cdn/shop/files/03-why-improved-relationships.webp?v=1792062281&amp;width=160 160w, //www.sehatup.com/cdn/shop/files/03-why-improved-relationships.webp?v=1792062281&amp;width=240 240w" width="240" height="240" loading="lazy" sizes="40px" style="width: 80%; height: 80%; object-fit: contain;">
+</span>
+            <b>92% Improved Relationships</b><span>Enhanced connection and intimacy</span></li><li >
+            <span class="lm-whyl__ic" aria-hidden="true"><img src="//www.sehatup.com/cdn/shop/files/Doctor_Consultation_Chat_Icon_4d89a5bf-a6af-4b41-bb3f-34ad9e23a386.webp?v=1792062800&amp;width=240" alt="" srcset="//www.sehatup.com/cdn/shop/files/Doctor_Consultation_Chat_Icon_4d89a5bf-a6af-4b41-bb3f-34ad9e23a386.webp?v=1792062800&amp;width=80 80w, //www.sehatup.com/cdn/shop/files/Doctor_Consultation_Chat_Icon_4d89a5bf-a6af-4b41-bb3f-34ad9e23a386.webp?v=1792062800&amp;width=160 160w, //www.sehatup.com/cdn/shop/files/Doctor_Consultation_Chat_Icon_4d89a5bf-a6af-4b41-bb3f-34ad9e23a386.webp?v=1792062800&amp;width=240 240w" width="240" height="240" loading="lazy" sizes="40px" style="width: 80%; height: 80%; object-fit: contain;">
+</span>
+            <b>Doctor + Therapist Follow-up Included</b><span>Comprehensive care beyond medication</span></li><li >
+            <span class="lm-whyl__ic" aria-hidden="true"><img src="//www.sehatup.com/cdn/shop/files/Magenta_Shield_Check_Icon_94b88799-4b4c-4e74-8d32-760bb729b35f.webp?v=1792062281&amp;width=240" alt="" srcset="//www.sehatup.com/cdn/shop/files/Magenta_Shield_Check_Icon_94b88799-4b4c-4e74-8d32-760bb729b35f.webp?v=1792062281&amp;width=80 80w, //www.sehatup.com/cdn/shop/files/Magenta_Shield_Check_Icon_94b88799-4b4c-4e74-8d32-760bb729b35f.webp?v=1792062281&amp;width=160 160w, //www.sehatup.com/cdn/shop/files/Magenta_Shield_Check_Icon_94b88799-4b4c-4e74-8d32-760bb729b35f.webp?v=1792062281&amp;width=240 240w" width="240" height="240" loading="lazy" sizes="40px" style="width: 80%; height: 80%; object-fit: contain;">
+</span>
+            <b>We are certified</b><span class="lm-whyl__logos"><img src="//www.sehatup.com/cdn/shop/files/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp?v=1773229179&amp;width=160" alt="ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717" srcset="//www.sehatup.com/cdn/shop/files/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp?v=1773229179&amp;width=160 160w" width="160" height="160" loading="lazy"><img src="//www.sehatup.com/cdn/shop/files/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp?v=1773229178&amp;width=160" alt="gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49" srcset="//www.sehatup.com/cdn/shop/files/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp?v=1773229178&amp;width=160 160w" width="160" height="170" loading="lazy"><img src="//www.sehatup.com/cdn/shop/files/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp?v=1773229179&amp;width=160" alt="doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2" srcset="//www.sehatup.com/cdn/shop/files/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp?v=1773229179&amp;width=160 160w" width="160" height="160" loading="lazy"></span></li></ul>
+    </div><div class="lm-whyl__img"><img src="//www.sehatup.com/cdn/shop/files/Warm_Doctor-Patient_Consultation_1_copy.webp?v=1791881964&amp;width=900" srcset="//www.sehatup.com/cdn/shop/files/Warm_Doctor-Patient_Consultation_1_copy.webp?v=1791881964&amp;width=420 420w, //www.sehatup.com/cdn/shop/files/Warm_Doctor-Patient_Consultation_1_copy.webp?v=1791881964&amp;width=640 640w, //www.sehatup.com/cdn/shop/files/Warm_Doctor-Patient_Consultation_1_copy.webp?v=1791881964&amp;width=900 900w" width="900" height="900" loading="lazy" sizes="(max-width: 749px) 70vw, 440px"></div></div>
+</section>
+<script>
+  (function () {
+    var list = document.currentScript.previousElementSibling.querySelector('[data-lm-anim]');
+    if (!list || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    list.classList.add('lm-anim');
+    new IntersectionObserver(function (es, io) {
+      if (!es[0].isIntersecting) return;
+      list.classList.add('is-in'); io.disconnect();
+    }, { threshold: .25 }).observe(list);
+  })();
+</script>
+
+
+</div><div id="shopify-section-template--27674755137839__couple_banner" class="shopify-section"><section class="lm-sec lm-banner-sec" style="--lm-br: 3 / 1; --lm-bm: 240px; --lm-bx: 50%; --lm-by: 50%; --lm-bb: 3px;">
+  <div class=""><div class="lm-banner lm-banner--full"><picture><img src="//www.sehatup.com/cdn/shop/files/Golden_Morning_Bedside_Embrace.webp?v=1791892567&amp;width=2400" alt="" srcset="//www.sehatup.com/cdn/shop/files/Golden_Morning_Bedside_Embrace.webp?v=1791892567&amp;width=800 800w, //www.sehatup.com/cdn/shop/files/Golden_Morning_Bedside_Embrace.webp?v=1791892567&amp;width=1200 1200w, //www.sehatup.com/cdn/shop/files/Golden_Morning_Bedside_Embrace.webp?v=1791892567&amp;width=1600 1600w, //www.sehatup.com/cdn/shop/files/Golden_Morning_Bedside_Embrace.webp?v=1791892567&amp;width=2000 2000w, //www.sehatup.com/cdn/shop/files/Golden_Morning_Bedside_Embrace.webp?v=1791892567&amp;width=2400 2400w" width="2400" height="800" loading="lazy" sizes="100vw">
+        </picture></div></div>
+</section>
+</div><div id="shopify-section-template--27674755137839__ready" class="shopify-section"><section class="lm-sec" style="--lm-oi: 34px;">
+  <div class="lm-wrap">
+    <div class="lm-head">
+      <h2 class="lm-h2">Start your Happy <span class="lm-mark">S#X Journey</span></h2></div>
+    <ul class="lm-cards3"><li >
+          <div class="lm-opt lm-opt--hi">
+            <span class="lm-opt__media" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3.5H5a1 1 0 0 0-1 1V9a5 5 0 0 0 10 0V4.5a1 1 0 0 0-1-1h-1"/><path d="M9 14v1.5a4.5 4.5 0 0 0 9 0V13"/><circle cx="18" cy="11" r="2"/></svg></span>
+            <b class="lm-opt__title">Talk to a doctor</b><p class="lm-opt__text">Have questions? Talk them through with a doctor, in Hindi or English.</p><a class="lm-btn lm-btn--red" href="#book">Book Free Consultation<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div>
+        </li><li >
+          <div class="lm-opt lm-opt--hi">
+            <span class="lm-opt__media" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1M8.5 11l1.6 1.6 3-3M8.5 16.5l1.6 1.6 3-3"/></svg></span>
+            <b class="lm-opt__title">Take a 2-minute assessment</b><p class="lm-opt__text">Not ready to talk yet? Understand your symptoms privately first.</p><a class="lm-btn lm-btn--red" href="/pages/mens-health-questionnaire">Take Free Assessment<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div>
+        </li><li >
+          <div class="lm-opt lm-opt--hi">
+            <span class="lm-opt__media" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.3-4.4a8.5 8.5 0 1 1 15.7-4.5z"/><path d="M9 8.3c-.4 0-.9.5-.9 1.3 0 2.6 3 5.7 5.7 5.7.8 0 1.3-.5 1.3-.9v-1l-1.9-.8-.7.9a4.7 4.7 0 0 1-2.6-2.6l.9-.7-.8-1.9z"/></svg></span>
+            <b class="lm-opt__title">Chat on WhatsApp</b><p class="lm-opt__text">Still have a question? Drop us a message and we will help.</p><a class="lm-btn lm-btn--red" href="https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor%20privately" target="_blank" rel="noopener">Chat on WhatsApp<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div>
+        </li></ul>
+  </div>
+</section>
+
+
+</div><div id="shopify-section-template--27674755137839__book" class="shopify-section"><section id="book" class="lp-sec lp-sec--cream" style="--lp-iw: 46%; --lp-ih: 94%;">
+  <div class="lp-wrap lp-book">
+    <div class="lp-book__left">
+      <h2 class="lp-book__h">Consult with a Doctor <span class="lp-hl">for FREE</span></h2><p class="lp-book__sub">Book your slot and get expert guidance for your concerns.</p><ul class="lp-trust"><li><span class="lp-trust__ic"><svg class="lp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+</span>100% Free Consultation</li><li><span class="lp-trust__ic"><svg class="lp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+</span>Private and Confidential</li><li><span class="lp-trust__ic"><svg class="lp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/><path d="M9 14v3a3 3 0 0 0 6 0"/></svg>
+</span>Expert Doctors</li></ul><div class="lp-book__img"><img src="//www.sehatup.com/cdn/shop/t/63/assets/lm-doctor.webp?v=13907538733117460001792148877" alt="Dr. Jayant Kumar" loading="lazy" width="900" height="1392"><span class="lp-book__cap"><b>Dr. Jayant Kumar</b><span>BAMS (Ayurveda), 5 years experience</span></span></div></div>
+
+    <div class="lp-form" id="book-form" data-lp-form data-source="landing_men" data-gender="male" data-collection="popup_leads" data-sheet="https://script.google.com/macros/s/AKfycbzKIXsQgIqaEJLEuaRiSZnnrX3Lm2XChW_EakO3gzRqcwSw3UAvxqZTPZiMq8ly0UQ1/exec" data-redirect="/pages/booking-confirmed">
+      <div class="lp-form__body">
+        <h3 class="lp-form__h">Book Your Free Consultation</h3><p class="lp-form__sub">Limited slots available.</p><form novalidate>
+          <div class="lp-fields">
+            <div class="lp-field">
+              <label for="lp-name-template--27674755137839__book">Full name</label>
+              <input id="lp-name-template--27674755137839__book" name="name" autocomplete="name" placeholder="Your name" required>
+            </div>
+            <div class="lp-field">
+              <label for="lp-phone-template--27674755137839__book">Phone number</label>
+              <div class="lp-phone"><span>+91</span><input id="lp-phone-template--27674755137839__book" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="10-digit mobile" required></div>
+            </div>
+            <div class="lp-field">
+              <label for="lp-age-template--27674755137839__book">Age</label>
+              <input id="lp-age-template--27674755137839__book" name="age" type="number" inputmode="numeric" min="15" max="90" placeholder="Your age">
+            </div>
+            <div class="lp-field">
+              <label for="lp-concern-template--27674755137839__book">Primary concern</label>
+              <select id="lp-concern-template--27674755137839__book" name="concern">
+                <option value="">Choose one</option><option>Early ejaculation</option><option>
+Erection issues</option><option>
+Low libido</option><option>
+Performance anxiety</option><option>
+Low stamina</option><option>
+Something else</option></select>
+            </div>
+            <div class="lp-field lp-field--full">
+              <label for="lp-time-template--27674755137839__book">Preferred consultation time</label>
+              <select id="lp-time-template--27674755137839__book" name="time">
+                <option value="">Any time</option><option>Morning (9 am to 12 pm)</option><option>
+Afternoon (12 pm to 4 pm)</option><option>
+Evening (4 pm to 8 pm)</option></select>
+            </div>
+          </div>
+          <button class="lp-btn lp-btn--block" type="submit">Book My Free Slot<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+          <p class="lp-form__err" role="alert"></p>
+          <p class="lp-form__privacy"><svg class="lp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+Your information is private and secure.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</div><div id="shopify-section-template--27674755137839__unsure" class="shopify-section"><section class="lm-sec lm-sec--pop lm-sec--pop-full" style="--pop-r: 100px; --pop-l: #fdf4f5; --pop-d: #f1b6c3; --pop-m: 50px;">
+  <div class="lm-wrap">
+    <div class="lm-pop lm-pop--oneline" style="--pop: 120; --pop-space: 30%; --pop-hs: 34px; --pop-nx: 0%;">
+      <div class="lm-pop__copy">
+        <h2 class="lm-h2">Not sure what's the problem with <span class="lm-mark">your Champ?</span></h2><p class="lm-sub">Take our self-assessment to get personalised recommendations based on your symptoms and concerns.</p><a class="lm-btn lm-btn--red" href="/pages/mens-health-questionnaire">Take the Private Assessment<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div><div class="lm-pop__img"><img src="//www.sehatup.com/cdn/shop/files/Confused_Man_Shrugging_in_Glasses.webp?v=1791885534&amp;width=1000" alt="" srcset="//www.sehatup.com/cdn/shop/files/Confused_Man_Shrugging_in_Glasses.webp?v=1791885534&amp;width=500 500w, //www.sehatup.com/cdn/shop/files/Confused_Man_Shrugging_in_Glasses.webp?v=1791885534&amp;width=800 800w, //www.sehatup.com/cdn/shop/files/Confused_Man_Shrugging_in_Glasses.webp?v=1791885534&amp;width=1000 1000w" width="1000" height="702" loading="lazy" sizes="(max-width: 749px) 70vw, 420px"></div></div>
+  </div>
+</section>
+</div><div id="shopify-section-template--27674755137839__floating_video" class="shopify-section fpv-section"><div
+  class="fpv"
+  id="fpv-template--27674755137839__floating_video"
+  data-fpv
+  data-side="left"
+  data-money-format="Rs. {{amount}}"
+>
+
+  <div class="fpv__dock" data-fpv-dock>
+    <div class="fpv__dock-inner">
+      <button type="button" class="fpv__dock-open" data-fpv-open aria-label="Watch video">
+        <video class="fpv__dock-video" muted loop playsinline preload="metadata" aria-hidden="true">
+          <source src="https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4" type="video/mp4">
+        </video>
+      </button><button type="button" class="fpv__dock-sound" data-fpv-dock-sound aria-pressed="false" aria-label="Turn sound on">
+          <svg class="fpv__ds-off" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M17 9l4 6M21 9l-4 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg class="fpv__ds-on" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button><button type="button" class="fpv__dock-dismiss" data-fpv-dismiss aria-label="Hide this video">&#215;</button>
+    </div>
+  </div>
+
+  <div class="fpv__overlay" data-fpv-overlay hidden>
+    <div class="fpv__backdrop" data-fpv-close></div>
+
+    <div class="fpv__stage" role="dialog" aria-modal="true" aria-label="Watch video">
+      <video class="fpv__video" data-fpv-video playsinline loop preload="none">
+        <source src="https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4" type="video/mp4">
+      </video>
+
+      <div
+        class="fpv__progress"
+        data-fpv-progress
+        role="slider"
+        aria-label="Video progress"
+        aria-orientation="horizontal"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+        tabindex="0"
+      >
+        <span class="fpv__progress-fill" data-fpv-fill></span>
+        <span class="fpv__progress-knob" data-fpv-knob></span>
+      </div>
+
+      <div class="fpv__top">
+        <button type="button" class="fpv__icon" data-fpv-close aria-label="Close video">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+
+        <div class="fpv__top-right">
+          <button type="button" class="fpv__icon" data-fpv-sound aria-label="Unmute" aria-pressed="false">
+            <svg class="fpv__ico-muted" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M17 9l4 6M21 9l-4 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg class="fpv__ico-loud" viewBox="0 0 24 24" width="18" height="18"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" class="fpv__icon" data-fpv-playpause aria-label="Pause">
+            <svg class="fpv__ico-pause" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            <svg class="fpv__ico-play" viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div></div>
+  </div>
+</div><style>
+  #fpv-template--27674755137839__floating_video {
+    --fpv-accent: #ee204a;
+    --fpv-accent-dark: #d51038;
+    --fpv-ink: #1d1d1d;
+    --fpv-muted: #555555;
+    --fpv-line: #e5e5e5;
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__dock {
+    position: fixed;
+    bottom: 32px;
+    left: 16px;
+    z-index: 60;
+    width: 92px;
+    animation: fpv-dock-in-template--27674755137839__floating_video .55s cubic-bezier(.18, .9, .28, 1.06) .9s both;
+  }
+  #fpv-template--27674755137839__floating_video[data-side="right"] .fpv__dock {
+    left: auto;
+    right: 16px;
+    animation-name: fpv-dock-in-right-template--27674755137839__floating_video;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__dock[hidden] { display: none; }
+
+  #fpv-template--27674755137839__floating_video .fpv__dock[data-return="true"] { animation-duration: .38s; animation-delay: 0s; }
+
+  #fpv-template--27674755137839__floating_video .fpv__dock[data-leaving="true"] {
+    animation: fpv-dock-out-template--27674755137839__floating_video .34s cubic-bezier(.6, 0, .78, 0) both;
+  }
+  #fpv-template--27674755137839__floating_video[data-side="right"] .fpv__dock[data-leaving="true"] {
+    animation-name: fpv-dock-out-right-template--27674755137839__floating_video;
+  }
+
+  @keyframes fpv-dock-in-template--27674755137839__floating_video {
+    from { opacity: 0; transform: translateX(-140%) scale(.94); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  @keyframes fpv-dock-out-template--27674755137839__floating_video {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(-140%) scale(.94); }
+  }
+  @keyframes fpv-dock-in-right-template--27674755137839__floating_video {
+    from { opacity: 0; transform: translateX(140%) scale(.94); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  @keyframes fpv-dock-out-right-template--27674755137839__floating_video {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(140%) scale(.94); }
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__dock-inner {
+    position: relative;
+    transition: transform .22s cubic-bezier(.16, 1, .3, 1);
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__dock-open {
+    display: block;
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    cursor: pointer;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .28);
+    position: relative;
+    transition: box-shadow .22s ease;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__dock-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  @media (hover: hover) and (pointer: fine) {
+    #fpv-template--27674755137839__floating_video .fpv__dock:hover .fpv__dock-inner {
+      transform: translateY(-3px) scale(1.04);
+    }
+    #fpv-template--27674755137839__floating_video .fpv__dock:hover .fpv__dock-open {
+      box-shadow: 0 16px 34px rgba(0, 0, 0, .34);
+    }
+  }
+
+  /* Sound button over the middle of the small video (optional). */
+  #fpv-template--27674755137839__floating_video .fpv__dock-sound {
+    position: absolute; left: 50%; top: 50%; z-index: 2;
+    width: 38px; height: 38px; margin: -19px 0 0 -19px; padding: 0;
+    border: 0; border-radius: 50%;
+    background: rgba(0, 0, 0, .5); color: #fff;
+    display: grid; place-items: center; cursor: pointer;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+  }
+  #fpv-template--27674755137839__floating_video .fpv__dock-sound:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  #fpv-template--27674755137839__floating_video .fpv__dock-sound .fpv__ds-on,
+  #fpv-template--27674755137839__floating_video .fpv__dock-sound[aria-pressed="true"] .fpv__ds-off { display: none; }
+  #fpv-template--27674755137839__floating_video .fpv__dock-sound[aria-pressed="true"] .fpv__ds-on { display: block; }
+  /* Mouse: hidden until the small video is hovered (or the button has keyboard focus). */
+  @media (hover: hover) {
+    #fpv-template--27674755137839__floating_video .fpv__dock-sound { opacity: 0; transform: scale(.85); transition: opacity .2s ease, transform .2s ease; }
+    #fpv-template--27674755137839__floating_video .fpv__dock:hover .fpv__dock-sound,
+    #fpv-template--27674755137839__floating_video .fpv__dock-sound:focus-visible { opacity: 1; transform: none; }
+  }
+  /* Touch screens (no hover): a small icon in the bottom-right corner, like reels. */
+  @media (hover: none) {
+    #fpv-template--27674755137839__floating_video .fpv__dock-sound { left: auto; top: auto; right: 6px; bottom: 6px; margin: 0; width: 26px; height: 26px; }
+    #fpv-template--27674755137839__floating_video .fpv__dock-sound svg { width: 14px; height: 14px; }
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__dock-dismiss {
+    position: absolute;
+    top: -8px; right: -8px;
+    width: 24px; height: 24px;
+    border-radius: 999px;
+    border: 1px solid var(--fpv-line);
+    background: #fff;
+    color: var(--fpv-ink);
+    font: 400 14px/1 sans-serif;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .18);
+    display: grid; place-items: center;
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__overlay[hidden] { display: none; }
+
+  #fpv-template--27674755137839__floating_video .fpv__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(12, 10, 11, .72);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    animation: fpv-fade .26s ease both;
+  }
+  @keyframes fpv-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  #fpv-template--27674755137839__floating_video .fpv__stage {
+    position: relative;
+    z-index: 1;
+    aspect-ratio: 9 / 16;
+    height: min(747px, 86vh, calc((100vw - 48px) * 16 / 9));
+    width: auto;
+    max-width: calc(100vw - 48px);
+    border-radius: 18px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .5);
+    animation: fpv-rise .34s cubic-bezier(.16, 1, .3, 1) both;
+  }
+  @keyframes fpv-rise {
+    from { opacity: 0; transform: translateY(20px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 26px 12px 28px;
+    background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0));
+  }
+  #fpv-template--27674755137839__floating_video .fpv__top-right { display: flex; gap: 8px; }
+
+  #fpv-template--27674755137839__floating_video .fpv__icon {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .38);
+    color: #fff;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: background .18s ease, transform .12s ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #fpv-template--27674755137839__floating_video .fpv__icon:hover { background: var(--fpv-accent); }
+  }
+  #fpv-template--27674755137839__floating_video .fpv__icon:active { transform: scale(.92); }
+  #fpv-template--27674755137839__floating_video .fpv__icon:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  #fpv-template--27674755137839__floating_video .fpv__ico-loud,
+  #fpv-template--27674755137839__floating_video .fpv__ico-play { display: none; }
+  #fpv-template--27674755137839__floating_video [data-fpv-sound][aria-pressed="true"] .fpv__ico-loud { display: block; }
+  #fpv-template--27674755137839__floating_video [data-fpv-sound][aria-pressed="true"] .fpv__ico-muted { display: none; }
+  #fpv-template--27674755137839__floating_video [data-fpv-playpause][data-paused="true"] .fpv__ico-play { display: block; }
+  #fpv-template--27674755137839__floating_video [data-fpv-playpause][data-paused="true"] .fpv__ico-pause { display: none; }
+
+  #fpv-template--27674755137839__floating_video .fpv__progress {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    height: 20px;
+    z-index: 4;
+    background: none;
+    cursor: pointer;
+    touch-action: none;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__progress::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 3px;
+    margin-top: -1.5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .34);
+  }
+  #fpv-template--27674755137839__floating_video .fpv__progress-fill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 3px;
+    margin-top: -1.5px;
+    width: 0%;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 0 4px rgba(0, 0, 0, .5);
+  }
+  #fpv-template--27674755137839__floating_video .fpv__progress-knob {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 11px; height: 11px;
+    margin-left: -5.5px;
+    margin-top: -5.5px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .45);
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__progress:hover .fpv__progress-knob,
+  #fpv-template--27674755137839__floating_video .fpv__progress:focus-visible .fpv__progress-knob,
+  #fpv-template--27674755137839__floating_video .fpv__progress[data-dragging="true"] .fpv__progress-knob { opacity: 1; }
+  #fpv-template--27674755137839__floating_video .fpv__progress:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+
+  #fpv-template--27674755137839__floating_video .fpv__card {
+    position: absolute;
+    left: 10px; right: 10px; bottom: 10px;
+    z-index: 3;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .72);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, .5);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .28);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__card-head { display: flex; align-items: center; gap: 9px; }
+  #fpv-template--27674755137839__floating_video .fpv__thumb {
+    width: 40px; height: 40px;
+    flex: none;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #f2f2f2;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  #fpv-template--27674755137839__floating_video .fpv__title {
+    font-weight: 700; font-size: 11.5px; line-height: 1.25;
+    color: var(--fpv-ink);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: -1px;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__price { font-weight: 700; font-size: 13px; line-height: 1; color: var(--fpv-accent); }
+
+  #fpv-template--27674755137839__floating_video .fpv__buy { display: flex; gap: 7px; }
+  #fpv-template--27674755137839__floating_video .fpv__select {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .9);
+    font-weight: 400; font-size: 12px; line-height: 1;
+    color: var(--fpv-ink);
+  }
+
+  #fpv-template--27674755137839__floating_video .fpv__qty {
+    flex: none;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(0, 0, 0, .12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .9);
+    overflow: hidden;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__qty button {
+    width: 28px; height: 34px;
+    border: none;
+    background: transparent;
+    color: var(--fpv-ink);
+    font-weight: 400; font-size: 15px; line-height: 1;
+    cursor: pointer;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__qty button:active { background: #f4f4f4; }
+  #fpv-template--27674755137839__floating_video .fpv__qty input {
+    width: 26px;
+    height: 34px;
+    border: none;
+    text-align: center;
+    font-weight: 600; font-size: 12px; line-height: 1;
+    color: var(--fpv-ink);
+    background: transparent;
+  }
+  #fpv-template--27674755137839__floating_video .fpv__qty input:focus { outline: none; }
+
+  #fpv-template--27674755137839__floating_video .fpv__atc {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 999px;
+    background: var(--fpv-accent);
+    color: #fff;
+    font-weight: 700; font-size: 13.5px; line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background .18s ease, transform .1s ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #fpv-template--27674755137839__floating_video .fpv__atc:hover { background: var(--fpv-accent-dark); }
+  }
+  #fpv-template--27674755137839__floating_video .fpv__atc:active { transform: translateY(1px); }
+  #fpv-template--27674755137839__floating_video .fpv__atc:disabled { opacity: .65; cursor: default; }
+
+  #fpv-template--27674755137839__floating_video .fpv__spinner { display: none; }
+  #fpv-template--27674755137839__floating_video .fpv__atc[data-loading="true"] .fpv__spinner {
+    display: block;
+    width: 14px; height: 14px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    animation: fpv-spin .7s linear infinite;
+  }
+  @keyframes fpv-spin { to { transform: rotate(360deg); } }
+
+  #fpv-template--27674755137839__floating_video .fpv__status {
+    margin: 0;
+    font-weight: 500; font-size: 11px; line-height: 1.35;
+    text-align: center;
+    color: var(--fpv-muted);
+  }
+  #fpv-template--27674755137839__floating_video .fpv__status:empty { display: none; }
+  #fpv-template--27674755137839__floating_video .fpv__status[data-state="error"] { color: #d01d42; }
+  #fpv-template--27674755137839__floating_video .fpv__status a { color: inherit; font-weight: 700; }
+
+  @media (max-width: 767px) {
+    #fpv-template--27674755137839__floating_video .fpv__stage {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      aspect-ratio: auto;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    #fpv-template--27674755137839__floating_video .fpv__backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: #000; }
+    #fpv-template--27674755137839__floating_video .fpv__progress { top: calc(12px + env(safe-area-inset-top)); }
+    #fpv-template--27674755137839__floating_video .fpv__card {
+      left: 12px; right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+    #fpv-template--27674755137839__floating_video .fpv__top { padding-top: calc(26px + env(safe-area-inset-top)); }
+    #fpv-template--27674755137839__floating_video .fpv__dock { bottom: 20px; left: 12px; width: 78px; }
+    /* vertical drags still scroll the page; horizontal ones are ours */
+    #fpv-template--27674755137839__floating_video .fpv__dock { touch-action: pan-y; }
+    #fpv-template--27674755137839__floating_video .fpv__dock[data-dragging] { cursor: grabbing; }
+    #fpv-template--27674755137839__floating_video[data-side="right"] .fpv__dock { left: auto; right: 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #fpv-template--27674755137839__floating_video .fpv__dock,
+    #fpv-template--27674755137839__floating_video .fpv__stage,
+    #fpv-template--27674755137839__floating_video .fpv__backdrop { animation: none; }
+    #fpv-template--27674755137839__floating_video .fpv__dock-inner,
+    #fpv-template--27674755137839__floating_video .fpv__dock-open,
+    #fpv-template--27674755137839__floating_video .fpv__icon,
+    #fpv-template--27674755137839__floating_video .fpv__atc { transition: none; }
+  }
+</style>
+
+<script>
+  (function () {
+    var root = document.getElementById('fpv-template--27674755137839__floating_video');
+    if (!root || root.dataset.fpvBooted === '1') return;
+    root.dataset.fpvBooted = '1';
+
+    var $ = function (sel) { return root.querySelector(sel); };
+    var dock      = $('[data-fpv-dock]');
+    var overlay   = $('[data-fpv-overlay]');
+    var video     = $('[data-fpv-video]');
+    var progress  = $('[data-fpv-progress]');
+    var fill      = $('[data-fpv-fill]');
+    var knob      = $('[data-fpv-knob]');
+    var soundBtn  = $('[data-fpv-sound]');
+    var playBtn   = $('[data-fpv-playpause]');
+    var variantEl = $('[data-fpv-variant]');
+    var qtyInput  = $('[data-fpv-qty-input]');
+    var priceEl   = $('[data-fpv-price]');
+    var atc       = $('[data-fpv-atc]');
+    var atcLabel  = $('[data-fpv-atc-label]');
+    var statusEl  = $('[data-fpv-status]');
+
+    var variants = [];
+    try { variants = JSON.parse(root.parentNode.querySelector('[data-fpv-variants]').textContent); }
+    catch (e) { try { variants = JSON.parse(document.querySelector('[data-fpv-variants]').textContent); } catch (e2) { variants = []; } }
+
+    var dockDismissed = false;
+    var dockVideo = $('.fpv__dock-video');
+    var dockReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var dockPlaying = false;
+    function playDock() {
+      if (dockPlaying || !dockVideo) return;
+      dockPlaying = true;
+      var p = dockVideo.play();
+      if (p && p.catch) p.catch(function () {});
+    }
+
+    // Optional sound button on the small video.
+    var dockSound = $('[data-fpv-dock-sound]');
+    function syncDockSound() {
+      if (!dockSound) return;
+      var on = !dockVideo.muted;
+      dockSound.setAttribute('aria-pressed', on ? 'true' : 'false');
+      dockSound.setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+    }
+    if (dockSound && dockVideo) {
+      dockSound.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dockVideo.muted = !dockVideo.muted;
+        if (dockVideo.paused) { var pp = dockVideo.play(); if (pp && pp.catch) pp.catch(function () {}); }
+        syncDockSound();
+      });
+      // Whenever the small player is hidden (closed, near the footer, big
+      // player open), its sound goes off.
+      new MutationObserver(function () {
+        if (dock.hidden && !dockVideo.muted) { dockVideo.muted = true; syncDockSound(); }
+      }).observe(dock, { attributes: true, attributeFilter: ['hidden'] });
+    }
+
+    dock.addEventListener('animationend', function (e) {
+      if (e.animationName.indexOf('fpv-dock-in') === 0) playDock();
+    });
+    if (dockReduceMotion) playDock();
+    setTimeout(playDock, 2200);
+
+    var priorOverflow = '', priorPad = '';
+    function lockScroll() {
+      var gap = window.innerWidth - document.documentElement.clientWidth;
+      priorOverflow = document.body.style.overflow;
+      priorPad = document.body.style.paddingRight;
+      document.body.style.overflow = 'hidden';
+      if (gap > 0) {
+        var cur = parseFloat(getComputedStyle(document.body).paddingRight) || 0;
+        document.body.style.paddingRight = (cur + gap) + 'px';
+      }
+    }
+    function unlockScroll() {
+      document.body.style.overflow = priorOverflow;
+      document.body.style.paddingRight = priorPad;
+    }
+
+    var lastFocused = null;
+
+    function openPlayer() {
+      if (!overlay.hidden) return;
+      lastFocused = document.activeElement;
+      overlay.hidden = false;
+      dock.hidden = true;
+      lockScroll();
+      setStatus('');
+      var withSound = !!(dockSound && dockVideo && !dockVideo.muted);
+      if (dockVideo) { dockVideo.pause(); dockVideo.muted = true; syncDockSound(); }
+      video.muted = !withSound;
+      syncSound();
+      var p = video.play();
+      if (p && p.catch) p.catch(function () { syncPlay(); });
+      syncPlay();
+      $('[data-fpv-close]').focus({ preventScroll: true });
+    }
+
+    function closePlayer() {
+      if (overlay.hidden) return;
+      video.pause();
+      stopTracking();
+      overlay.hidden = true;
+      unlockScroll();
+      if (!dockDismissed && !atFooter) {
+        dock.removeAttribute('data-leaving');
+        dock.setAttribute('data-return', 'true');
+      }
+      dock.hidden = dockDismissed || atFooter;
+      if (dockVideo && !dock.hidden) { var dp = dockVideo.play(); if (dp && dp.catch) dp.catch(function () {}); }
+      if (lastFocused && lastFocused.focus) lastFocused.focus({ preventScroll: true });
+    }
+
+    $('[data-fpv-open]').addEventListener('click', openPlayer);
+    root.querySelectorAll('[data-fpv-close]').forEach(function (el) {
+      el.addEventListener('click', closePlayer);
+    });
+
+    $('[data-fpv-dismiss]').addEventListener('click', function () {
+      dockDismissed = true;
+      if (dockReduceMotion) { dock.hidden = true; return; }
+      dock.setAttribute('data-leaving', 'true');
+      var gone = false;
+      function finish() {
+        if (gone) return;
+        gone = true;
+        dock.hidden = true;
+        dock.removeAttribute('data-leaving');
+      }
+      dock.addEventListener('animationend', finish, { once: true });
+      setTimeout(finish, 500);
+    });
+
+    /* ── Swipe the dock away (touch) ───────────────────────────────────────
+       Drag it toward the edge it is docked against: it follows the finger and
+       fades as it goes, so you can see the dismissal before you commit. Let go
+       short of the threshold and it springs back; carry on past it and it
+       leaves. Vertical drags are left to the page, so scrolling still works
+       with a finger on the video. */
+    (function () {
+      var DISMISS_PX = 72;        // far enough to mean it
+      var FADE_OVER = 130;        // fully faded by here
+      var FLICK = 0.5;            // px per ms: a quick flick counts regardless
+      var startX = 0, startY = 0, startT = 0;
+      var dx = 0, dragging = false, decided = false, swallowClick = false;
+      var toLeft = root.getAttribute('data-side') !== 'right';
+
+      function setDrag(on) {
+        dock.style.transition = on ? 'none' : 'transform .32s cubic-bezier(.22,.9,.3,1), opacity .32s ease';
+      }
+
+      function reset() {
+        setDrag(false);
+        // explicit, not cleared: the slide-in animation has been switched off
+        dock.style.transform = 'translateX(0px)';
+        dock.style.opacity = '1';
+      }
+
+      dock.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse') return;      // pointer devices have the × button
+        startX = e.clientX; startY = e.clientY; startT = e.timeStamp;
+        dx = 0; dragging = false; decided = false;
+        // The dock slides in with a CSS animation whose "both" fill keeps
+        // applying its transform for the life of the page. A running animation
+        // beats an inline style, so without this the video never moved with
+        // the finger and only disappeared at the end of the gesture.
+        dock.style.animation = 'none';
+        // Keep every move on this element even when the finger leaves it.
+        try { dock.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+
+      dock.addEventListener('pointermove', function (e) {
+        if (!startT) return;
+        var mx = e.clientX - startX, my = e.clientY - startY;
+
+        if (!decided) {
+          if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+          // a mostly vertical drag belongs to the page, not to us
+          decided = true;
+          dragging = Math.abs(mx) > Math.abs(my) && (toLeft ? mx < 0 : mx > 0);
+          if (dragging) { setDrag(true); dock.setAttribute('data-dragging', 'true'); }
+        }
+        if (!dragging) return;
+
+        // only toward the docked edge, with a little resistance the other way
+        dx = toLeft ? Math.min(0, mx) : Math.max(0, mx);
+        var travelled = Math.min(1, Math.abs(dx) / FADE_OVER);
+        dock.style.transform = 'translateX(' + dx + 'px)';
+        dock.style.opacity = String(Math.max(0.08, 1 - travelled));
+        e.preventDefault();
+      }, { passive: false });
+
+      function release(e) {
+        if (!startT) return;
+        var was = dragging;
+        var speed = Math.abs(dx) / Math.max(1, e.timeStamp - startT);
+        startT = 0; dragging = false; decided = false;
+        if (!was) return;
+
+        dock.removeAttribute('data-dragging');
+        swallowClick = true;
+        setTimeout(function () { swallowClick = false; }, 0);
+
+        if (Math.abs(dx) > DISMISS_PX || speed > FLICK) {
+          dockDismissed = true;
+          setDrag(false);
+          dock.style.transform = 'translateX(' + (toLeft ? -1 : 1) * (dock.offsetWidth + 40) + 'px)';
+          dock.style.opacity = '0';
+          setTimeout(function () { dock.hidden = true; reset(); }, 300);
+        } else {
+          reset();
+        }
+      }
+
+      dock.addEventListener('pointerup', release);
+      // A cancelled pointer is the browser taking the gesture away, not a
+      // decision to dismiss, so put the video back.
+      dock.addEventListener('pointercancel', function () {
+        startT = 0; dragging = false; decided = false;
+        dock.removeAttribute('data-dragging');
+        reset();
+      });
+
+      // a drag that ends on the video should not also open the player
+      dock.addEventListener('click', function (e) {
+        if (!swallowClick) return;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+    })();
+
+    var atFooter = false;
+
+    function findFooter() {
+      try {
+        var footers = document.querySelectorAll(
+          '[id*="shopify-section"][id*="footer"], footer, .footer, [class*="site-footer"]'
+        );
+        return footers.length ? footers[footers.length - 1] : null;
+      } catch (e) { return null; }
+    }
+
+    function hideForFooter() {
+      if (dockDismissed || atFooter) return;
+      atFooter = true;
+      if (!overlay.hidden || dock.hidden) return;
+      if (dockReduceMotion) { dock.hidden = true; return; }
+      dock.removeAttribute('data-return');
+      dock.setAttribute('data-leaving', 'true');
+      var gone = false;
+      function finish() {
+        if (gone) return;
+        gone = true;
+        dock.removeAttribute('data-leaving');
+        if (atFooter) dock.hidden = true;
+      }
+      dock.addEventListener('animationend', finish, { once: true });
+      setTimeout(finish, 500);
+    }
+
+    function showAfterFooter() {
+      if (!atFooter) return;
+      atFooter = false;
+      if (dockDismissed || !overlay.hidden) return;
+      dock.removeAttribute('data-leaving');
+      if (!dockReduceMotion) dock.setAttribute('data-return', 'true');
+      dock.hidden = false;
+    }
+
+    function watchFooter() {
+      var footerEl = findFooter();
+      if (!footerEl || !('IntersectionObserver' in window)) return;
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) hideForFooter();
+          else showAfterFooter();
+        });
+      }, {
+        rootMargin: '0px 0px -40px 0px',
+        threshold: 0
+      }).observe(footerEl);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', watchFooter, { once: true });
+    } else {
+      watchFooter();
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (overlay.hidden) return;
+      if (e.key === 'Escape') { closePlayer(); return; }
+      if (e.key === ' ' && e.target === progress) { e.preventDefault(); togglePlay(); return; }
+      if (e.key !== 'Tab') return;
+      var f = overlay.querySelectorAll('button, select, input, [href], [tabindex="0"]');
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    function syncPlay() {
+      var paused = video.paused;
+      playBtn.setAttribute('data-paused', paused ? 'true' : 'false');
+      playBtn.setAttribute('aria-label', paused ? 'Play' : 'Pause');
+    }
+    function togglePlay() {
+      if (video.paused) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
+      else video.pause();
+      syncPlay();
+    }
+    function syncSound() {
+      soundBtn.setAttribute('aria-pressed', video.muted ? 'false' : 'true');
+      soundBtn.setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute');
+    }
+
+    playBtn.addEventListener('click', togglePlay);
+    soundBtn.addEventListener('click', function () { video.muted = !video.muted; syncSound(); });
+    video.addEventListener('play', syncPlay);
+    video.addEventListener('pause', syncPlay);
+    video.addEventListener('click', togglePlay);
+
+    var rafId = null;
+    var lastAria = -1;
+
+    function paint(pct) {
+      fill.style.width = pct + '%';
+      knob.style.left = pct + '%';
+      var rounded = Math.round(pct);
+      if (rounded !== lastAria) {
+        lastAria = rounded;
+        progress.setAttribute('aria-valuenow', rounded);
+      }
+    }
+
+    function frame() {
+      if (video.duration && !isNaN(video.duration) && progress.dataset.dragging !== 'true') {
+        paint(video.currentTime / video.duration * 100);
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+    function startTracking() { if (rafId === null) rafId = requestAnimationFrame(frame); }
+    function stopTracking() {
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    video.addEventListener('playing', startTracking);
+    video.addEventListener('pause', stopTracking);
+    video.addEventListener('ended', stopTracking);
+    video.addEventListener('seeked', function () {
+      if (video.paused && video.duration) paint(video.currentTime / video.duration * 100);
+    });
+    video.addEventListener('loadedmetadata', function () { paint(0); });
+
+    function seekTo(clientX) {
+      if (!video.duration || isNaN(video.duration)) return;
+      var r = progress.getBoundingClientRect();
+      var pct = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+      video.currentTime = pct * video.duration;
+      paint(pct * 100);
+    }
+
+    progress.addEventListener('pointerdown', function (e) {
+      progress.dataset.dragging = 'true';
+      progress.setPointerCapture(e.pointerId);
+      seekTo(e.clientX);
+    });
+    progress.addEventListener('pointermove', function (e) {
+      if (progress.dataset.dragging === 'true') seekTo(e.clientX);
+    });
+    ['pointerup', 'pointercancel'].forEach(function (evt) {
+      progress.addEventListener(evt, function () { progress.dataset.dragging = 'false'; });
+    });
+    progress.addEventListener('keydown', function (e) {
+      if (!video.duration) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); video.currentTime = Math.min(video.duration, video.currentTime + 5); }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 5); }
+    });
+
+    var MONEY_FORMAT = root.dataset.moneyFormat || '{{amount}}';
+
+    function formatFallback(cents, format) {
+      var placeholder = /\{\{\s*(\w+)\s*\}\}/;
+      function group(num, precision, thousands, decimal) {
+        if (isNaN(num) || num === null) return '0';
+        var fixed = (num / 100.0).toFixed(precision);
+        var parts = fixed.split('.');
+        var whole = parts[0].replace(/(\d)(?=(\d\d\d)+(?!\d))/g, '$1' + thousands);
+        return whole + (parts[1] ? decimal + parts[1] : '');
+      }
+      var m = format.match(placeholder);
+      var out;
+      switch (m && m[1]) {
+        case 'amount_no_decimals': out = group(cents, 0, ',', '.'); break;
+        case 'amount_with_comma_separator': out = group(cents, 2, '.', ','); break;
+        case 'amount_no_decimals_with_comma_separator': out = group(cents, 0, '.', ','); break;
+        default: out = group(cents, 2, ',', '.');
+      }
+      return format.replace(placeholder, out);
+    }
+
+    function money(cents) {
+      if (window.Shopify && typeof window.Shopify.formatMoney === 'function') {
+        return window.Shopify.formatMoney(cents, MONEY_FORMAT);
+      }
+      return formatFallback(cents, MONEY_FORMAT);
+    }
+
+    function unitPrice() {
+      var id = variantEl ? String(variantEl.value) : null;
+      var v = variants.filter(function (x) { return String(x.id) === id; })[0];
+      return v ? v.price : (variants[0] ? variants[0].price : 0);
+    }
+
+    function paintPrice() {
+      if (priceEl) priceEl.textContent = money(unitPrice() * currentQty());
+    }
+
+    var hasCard = !!atc;
+
+    function currentQty() {
+      if (!qtyInput) return 1;
+      var n = parseInt(String(qtyInput.value).replace(/\D/g, ''), 10);
+      return (!n || n < 1) ? 1 : Math.min(n, 99);
+    }
+    function setStatus(msg, state) {
+      if (!statusEl) return;
+      statusEl.innerHTML = msg || '';
+      if (state) statusEl.setAttribute('data-state', state);
+      else statusEl.removeAttribute('data-state');
+    }
+
+    if (hasCard) {
+      root.querySelectorAll('[data-fpv-qty]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          qtyInput.value = Math.max(1, currentQty() + parseInt(btn.dataset.fpvQty, 10));
+          paintPrice();
+        });
+      });
+      qtyInput.addEventListener('input', paintPrice);
+      qtyInput.addEventListener('blur', function () { qtyInput.value = currentQty(); paintPrice(); });
+
+      if (variantEl && variantEl.tagName === 'SELECT') {
+        variantEl.addEventListener('change', function () { paintPrice(); setStatus(''); });
+      }
+
+      paintPrice();
+    }
+
+    if (hasCard) atc.addEventListener('click', async function () {
+      var id = variantEl ? variantEl.value : null;
+      if (!id) { setStatus('Choose an option first.', 'error'); return; }
+
+      atc.disabled = true;
+      atc.setAttribute('data-loading', 'true');
+      atcLabel.textContent = 'Adding…';
+      setStatus('');
+
+      try {
+        var res = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ items: [{ id: Number(id), quantity: currentQty() }] }),
+        });
+        if (!res.ok) {
+          var problem = await res.json().catch(function () { return {}; });
+          throw new Error(problem.description || problem.message || 'Add to cart failed');
+        }
+
+        document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('cart:build', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('ajaxProduct:added', { bubbles: true }));
+        document.dispatchEvent(new CustomEvent('cart:updated', { bubbles: true }));
+
+        unlockScroll();
+        window.location.href = '/cart';
+        return;
+      } catch (err) {
+        console.error('[floating video] add to cart failed:', err);
+        setStatus(err.message || 'Could not add to cart. Please try again.', 'error');
+      } finally {
+        atc.disabled = false;
+        atc.removeAttribute('data-loading');
+        atcLabel.textContent = "Add to cart";
+      }
+    });
+  })();
+</script>
+</div>
+    </main><!-- BEGIN sections: footer-group -->
+<div id="shopify-section-sections--27674755629359__footer" class="shopify-section shopify-section-group-footer-group">
+
+<footer class="footer">
+
+  <!-- MAIN CONTENT -->
+  <div class="footer-inner">
+    <div class="footer-container">
+
+      <!-- BRAND -->
+      <div class="footer-col footer-branding">
+        
+          <a href="/" class="footer-logo-wrap">
+            <img
+              src="//www.sehatup.com/cdn/shop/files/New_Logo_Red_and_White_with_tagline_1_medium.webp?v=1773470988"
+              alt="sehatUP Logo"
+              class="footer-logo"
+              style="width: 160px;"
+            >
+          </a>
+        
+
+        
+          <p class="footer-heading">One You. One Health. One sehatUP.</p>
+        
+        <p class="footer-tagline">
+          Bringing Allopathy, Ayurveda and Homeopathy together for a more integrated approach to healthcare.
+        </p>
+
+        <div class="footer-contact">
+          
+            <div class="contact-item">
+              <span class="contact-icon">
+                <img src="//www.sehatup.com/cdn/shop/files/telephone_1_small.webp?v=1773470810" alt="">
+              </span>
+              <a href="tel:+91 93555-39355" class="contact-link">
+                +91 93555-39355
+              </a>
+            </div>
+          
+
+          
+            <div class="contact-item">
+              <span class="contact-icon">
+                <img src="//www.sehatup.com/cdn/shop/files/mail_small.webp?v=1773470843" alt="">
+              </span>
+              <a href="mailto:support@sehatup.com" class="contact-link">
+                support@sehatup.com
+              </a>
+            </div>
+          
+
+          
+            <div class="contact-item">
+              <span class="contact-icon">
+                <img src="//www.sehatup.com/cdn/shop/files/location-pin_small.webp?v=1773470826" alt="">
+              </span>
+              
+              <a href="https://maps.app.goo.gl/AWmy2txBYvwnPq3u7" target="_blank" rel="noopener" class="contact-text">C-79, C Block, Sector 2, Noida, Uttar Pradesh 201301</a>
+            </div>
+          
+        </div>
+
+      </div>
+
+      <!-- QUICK LINKS -->
+      <nav class="footer-col footer-menu">
+        <h3 class="footer-title">Quick Links</h3>
+        <ul>
+          
+            <li><a href="/pages/for-him">For Him</a></li>
+          
+            <li><a href="/pages/for-her">For Her</a></li>
+          
+            <li><a href="/pages/health-score-360">Health Score 360</a></li>
+          
+            <li><a href="/pages/combos">Combos</a></li>
+          
+        </ul>
+      </nav>
+
+      <!-- SUPPORT -->
+      <nav class="footer-col footer-menu">
+        <h3 class="footer-title">Support</h3>
+        <ul>
+          
+            <li><a href="/policies/terms-of-service">Terms & Condition</a></li>
+          
+            <li><a href="/policies/privacy-policy">Privacy Policy</a></li>
+          
+            <li><a href="/policies/refund-policy">Refund Policy</a></li>
+          
+            <li><a href="/policies/shipping-policy">Shipping</a></li>
+          
+        </ul>
+      </nav>
+
+      <!-- COMPANY -->
+      <nav class="footer-col footer-menu">
+        <h3 class="footer-title">Company</h3>
+        <ul>
+          
+            <li><a href="/pages/about-us">About Us</a></li>
+          
+            <li><a href="/pages/contact">Contact Us</a></li>
+          
+        </ul>
+      </nav>
+
+      <!-- ALSO AVAILABLE ON --><section class="footer-stockists" aria-labelledby="footer-stockists-title">
+          <h3 class="footer-stockists-title" id="footer-stockists-title">Also available on</h3>
+          <div class="footer-stockists-shelf"><a class="footer-stockist" href="https://www.1mg.com/marketer/212-healthcare-pvt.ltd-91497" target="_blank" rel="noopener"
+                   style="--stockist-scale: 0.7"
+                    ><img
+                    src="//www.sehatup.com/cdn/shop/files/Tata_1mg.webp?v=1788936833&width=400"
+                    alt="Tata 1 Mg"
+                    loading="lazy" decoding="async"
+                    width="996" height="221"></a><a class="footer-stockist" href="https://www.jiomart.com/products?brand=SehatUP&journey=shop-all" target="_blank" rel="noopener"
+                   style="--stockist-scale: 0.9"
+                    ><img
+                    src="//www.sehatup.com/cdn/shop/files/Jiomart-02.webp?v=1788936834&width=400"
+                    alt="Jio Mart"
+                    loading="lazy" decoding="async"
+                    width="1025" height="373"></a><a class="footer-stockist" href="https://www.amazon.in/stores/page/872AD0A5-8644-498A-A735-01E996C03F8A?ingress=2&lp_context_asin=B0FKTF2N9W&lp_context_query=sehatup&visitId=5bfa9c14-5ad5-43fb-ac3d-de470e6cb784&ref_=ast_bln" target="_blank" rel="noopener"
+                   style="--stockist-scale: 0.75"
+                    ><img
+                    src="//www.sehatup.com/cdn/shop/files/Amazon-03.webp?v=1788936834&width=400"
+                    alt="Amazon"
+                    loading="lazy" decoding="async"
+                    width="1025" height="373"></a><a class="footer-stockist" href="https://www.flipkart.com/search?q=sehatupWellness&otracker=search&otracker1=search&marketplace=FLIPKART&as-show=on&as=off" target="_blank" rel="noopener"
+                   style="--stockist-scale: 1.05"
+                    ><img
+                    src="//www.sehatup.com/cdn/shop/files/Flipkart-04.webp?v=1788936834&width=400"
+                    alt="Flipkart"
+                    loading="lazy" decoding="async"
+                    width="1025" height="373"></a><a class="footer-stockist" href="https://blinkit.com/s/?q=sehatup" target="_blank" rel="noopener"
+                   style="--stockist-scale: 0.6"
+                    ><img
+                    src="//www.sehatup.com/cdn/shop/files/Blinkit-05.webp?v=1788936833&width=400"
+                    alt="Blinkit"
+                    loading="lazy" decoding="async"
+                    width="1025" height="373"></a><a class="footer-stockist" href="https://www.healthmug.com/products/sexual-wellness/38?brand=2654" target="_blank" rel="noopener"
+                   style="--stockist-scale: 1.2"
+                    ><img
+                    src="//www.sehatup.com/cdn/shop/files/Healthmug-06.webp?v=1788936834&width=400"
+                    alt="HealthMug"
+                    loading="lazy" decoding="async"
+                    width="1025" height="373"></a></div>
+        </section></div>
+  </div>
+
+  <!-- SECOND LINE - ABOVE COPYRIGHT -->
+  <div class="footer-separator"></div>
+
+  <!-- BOTTOM -->
+  <div class="footer-bottom">
+    <p>© 2026 SehatUP. All rights reserved.</p>
+
+    <div class="footer-social">
+      
+      <a href="https://www.facebook.com/sehatup/" target="_blank" rel="noopener" aria-label="Facebook">
+<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h4v4h-3c-.6 0-1 .4-1 1v2h4l-1 4h-3v7h-4v-7H6v-4h3V8c0-3 2-5 4-5z"></path></svg></a>
+
+<a href="https://www.instagram.com/sehatupofficial/" target="_blank" rel="noopener" aria-label="Instagram">
+<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5H7zm5 5a5 5 0 110 10 5 5 0 010-10zm0 2.2A2.8 2.8 0 1014.8 12 2.8 2.8 0 0012 9.2zM17.5 6.5a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"></path></svg></a>
+
+<a href="https://www.linkedin.com/company/sehatup" target="_blank" rel="noopener" aria-label="LinkedIn">
+<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 3a2 2 0 100 4 2 2 0 000-4zm-2 6h4v12H2zm7 0h4v2c.7-1.2 2.3-2 4-2 3.3 0 5 2.2 5 6v6h-4v-5.5c0-2-.7-3.3-2.5-3.3-1.7 0-2.5 1.2-2.5 3.3V21H9z"></path></svg></a>
+
+<a href="https://www.youtube.com/@sehatupofficial" target="_blank" rel="noopener" aria-label="YouTube">
+<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 8s-.2-1.6-.8-2.3c-.8-.9-1.7-.9-2.1-1C17.2 4.5 12 4.5 12 4.5s-5.2 0-8.1.2c-.4.1-1.3.1-2.1 1C1.2 6.4 1 8 1 8S.8 9.9.8 11.8v1.4C.8 15.1 1 17 1 17s.2 1.6.8 2.3c.8.9 1.9.9 2.4 1 1.7.2 7.8.2 7.8.2s5.2 0 8.1-.2c.4-.1 1.3-.1 2.1-1 .6-.7.8-2.3.8-2.3s.2-1.9.2-3.8v-1.4C23.2 9.9 23 8 23 8zM9.8 15.2V8.8L15.5 12l-5.7 3.2z"></path></svg></a>
+    </div>
+  </div>
+
+</footer>
+
+<style>
+.footer {
+  background: #0f0f0f;
+  color: #ffffff;
+  font-size: 13px;
+  padding: 20px;
+}
+
+/* PADDING CONTROL */
+.footer-inner {
+  padding: 56px 0 40px;
+}
+
+/* SHARED WIDTH */
+.footer-container {
+  
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* GRID */
+.footer-container {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 40px;
+  /* Rows are tighter than columns: the stockist shelf sits on a second row and
+     a 40px row gap would push the footer taller instead of using space that is
+     already empty beside the brand column. */
+  row-gap: 24px;
+  align-items: flex-start;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* LOGO */
+.footer-logo-wrap {
+  margin-bottom: 14px;
+}
+
+/* TEXT */
+.footer-tagline {
+  margin: 0 0 22px;
+  line-height: 1.6;
+}
+
+.footer-heading {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* HEADINGS */
+.footer-title {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+
+/* CONTACT */
+.footer-contact .contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.contact-icon {
+  width: 48px;
+  height: 48px;
+  background: #2a2a2a;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.contact-icon img {
+  width: 20px;
+  height: 20px;
+}
+
+/* LINKS FIX */
+.contact-link {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.contact-link:hover {
+  text-decoration: underline;
+}
+
+.contact-text {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.contact-text:hover {
+  text-decoration: underline;
+}
+
+/* MENUS */
+.footer-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footer-menu li {
+  margin-bottom: 10px;
+}
+
+.footer-menu a {
+  color: #dddddd;
+  text-decoration: none;
+}
+
+.footer-menu a:hover {
+  color: #ffffff;
+}
+
+/* ── ALSO AVAILABLE ON ─────────────────────────────────────────────────────
+   Measured on the live footer at a 1280px viewport: the three link columns are
+   169px tall against the brand column's 326px, leaving an empty 828 x 157px
+   rectangle to their right. The shelf goes there, so on a laptop this section
+   costs no extra footer height at all.
+
+   No frame and no dividers: the logos sit straight on the footer, separated by
+   space alone. That means the gap has to be wide enough to read as a separator
+   on its own - too tight and six white wordmarks run together into one band. */
+.footer-stockists {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  align-self: end;
+  min-width: 0;
+}
+/* The brand column spans both rows, so the shelf sits beside it rather than
+   below everything. */
+.footer-branding {
+  grid-row: 1 / span 2;
+}
+
+.footer-stockists-title {
+  font-size: 13px;
+  font-weight: 600;
+  /* Quieter than the link headings: this labels the shelf, it is not a fourth
+     navigation column competing with them. */
+  color: #ffffff;
+  opacity: 0.62;
+  margin: 0 0 12px;
+}
+
+.footer-stockists-shelf {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  /* Column gap is generous, row gap tighter: side by side the logos need real
+     separation, stacked they already have their own whitespace. */
+  gap: 20px 30px;
+  align-items: center;
+}
+
+.footer-stockist {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The grid gap does the spacing now, so the cell adds none of its own. */
+  padding: 0;
+  min-width: 0;
+  text-decoration: none;
+  /* Slightly held back at rest so the shelf reads as one quiet row rather than
+     six competing white blocks; full strength on hover. */
+  opacity: 0.82;
+  transition: opacity 0.2s ease;
+}
+
+/* Every file is the same canvas, but not the same drawing: some wordmarks are
+   six letters, some are nine, some carry a mark as well. Matching them by pixel
+   height therefore does not match them optically. --stockist-scale is a per-logo
+   multiplier set on the block, so one wordmark can be nudged without touching
+   the rest. It multiplies whichever height applies at the current breakpoint.
+
+   Only useful for logos bound by their HEIGHT. A very wide lockup is bound by
+   the cell's width instead, and no CSS can make it taller - that one is fixed by
+   trimming the empty margin inside the file itself. */
+.footer-stockist img {
+  display: block;
+  height: auto;
+  /* The multiplier has to move BOTH bounds. A logo is limited by whichever it
+     hits first, and which one that is depends on its shape: a squarish mark runs
+     out of height, a long wordmark runs out of width. Scaling only the height
+     cap did nothing at all to the wordmarks, which are the ones that look wrong.
+     The base is 84% so there is room to grow as well as shrink; min() stops a
+     large setting from eating the gap between neighbours. */
+  width: min(calc(84% * var(--stockist-scale, 1)), 100%);
+  max-height: calc(44px * var(--stockist-scale, 1));
+  object-fit: contain;
+}
+
+/* No logo picked yet: the cell still says which marketplace it is. */
+.footer-stockist-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  opacity: 0.55;
+  text-align: center;
+}
+
+a.footer-stockist:hover {
+  opacity: 1;
+}
+a.footer-stockist:focus-visible {
+  opacity: 1;
+  outline: 2px solid #ffffff;
+  /* Positive offset now: with no cell border to sit inside, the ring reads
+     better just outside the logo. */
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* FIRST LINE - UNDER CONTACT INFO (LEFT COLUMN ONLY) */
+.contact-separator {
+  height: 1px;
+  background: #ffffff;
+  opacity: 0.5;
+  margin: 24px 0 0 0;
+  width: 100%;
+}
+
+/* SECOND LINE - ABOVE COPYRIGHT (FULL WIDTH) */
+.footer-separator {
+  display: block;        /* Ensure it's treated as a block */
+  height: 1px;
+  width: 100%;           /* Ensure it stretches */
+  background-color: #ffffff !important;
+  opacity: 1;
+  
+  margin: 16px auto 16px;
+  padding: 0;            /* Remove padding from the line itself */
+  border: none;          /* Ensure no borders are interfering */
+}
+
+/* BOTTOM */
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding-bottom: 24px;
+  
+  margin: 0 auto;
+  padding: 0 16px 24px;
+}
+
+.footer-social {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer-social a{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+}
+
+.footer-social svg{
+  width: 20px;
+  height: 20px;
+  display: block;
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
+}
+
+.footer-social a:hover svg{
+  opacity: 1;
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+  .footer-container {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Two columns leaves no empty space to slot the shelf into, so it becomes a
+     full-width band under the links. */
+  .footer-branding {
+    grid-row: auto;
+  }
+  .footer-stockists {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin-top: 4px;
+  }
+  .footer-stockists-shelf {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  /* Three cells across a full-width footer are far wider than six were in the
+     laptop void, so the logos are width-bound here and a tall cap only adds dead
+     space above and below. */
+  .footer-stockist img {
+    max-height: calc(25px * var(--stockist-scale, 1));
+  }
+  .contact-separator {
+    display: none; /* Hide first line on tablet/mobile */
+  }
+}
+
+@media (max-width: 576px) {
+  .footer-container {
+    grid-template-columns: 1fr;
+  }
+  .footer-stockists-shelf {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .footer-stockist {
+    padding: 12px 8px;
+  }
+  .footer-stockist img {
+    max-height: calc(30px * var(--stockist-scale, 1));
+  }
+  .footer-bottom {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .contact-separator {
+    display: none; /* Hide first line on mobile */
+  }
+}
+
+</style>
+
+
+</div>
+<!-- END sections: footer-group --><script src="//www.sehatup.com/cdn/shop/t/63/assets/landing.js?v=39776342381156528721792148877" defer></script>
+  <style> * {-webkit-tap-highlight-color: transparent;} button,a,input,select,textarea,[role="button"] {-webkit-tap-highlight-color: transparent;} </style>
+<script src="https://cdn.shopify.com/storefront/standard-actions.js" type="module" data-source-attribution="shopify.standard_actions"></script>
+</body>
+</html>

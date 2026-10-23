@@ -1,0 +1,794 @@
+{% assign uid = section.id %}
+
+<style>
+    #shopify-section-{{ section.id }},
+    .ic-wrap-{{uid}}{ background:#fff; }
+
+    .ic-wrap-{{uid}}{
+      max-width:1080px;
+      margin:auto;
+      padding:50px 16px;
+    }
+
+    /* HEADER */
+    .ic-header-{{uid}}{ text-align:center; margin-bottom:32px; }
+    /* margin-top:0 matters: the theme's default h2 adds about 40px on top of this
+       section's own 50px padding, which left a big empty gap above the heading. */
+    .ic-header-{{uid}} h2{ font-size: clamp(24px, 3.4vw, 64px); font-weight:700; margin:0 0 10px; line-height:1.14; color: #1D1D1D;}
+    .ic-header-{{uid}} p{ margin:0; color:#666; font-size: clamp(14px, 1.5vw, 34px); color: #1D1D1D;}
+
+    /* DESKTOP GRID */
+    .ic-grid-{{uid}}{
+      display:grid;
+      grid-template-columns:546fr 645fr;
+      gap:18px;
+    }
+
+    .ic-card-base{
+      position:relative;
+      border-radius:18px;
+      overflow:hidden;
+    }
+
+    .ic-ayurveda-{{uid}}{ aspect-ratio:546/700; }
+    .ic-landscape-{{uid}}{ aspect-ratio:645/338; }
+
+    .ic-img-{{uid}}{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    /* A slow, small zoom on hover. Enough to make the cards feel alive without
+       turning into a card-hover effect on everything. */
+    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+      .ic-card-base .ic-img-{{uid}}{ transition: transform .6s cubic-bezier(.22,.7,.3,1); }
+      .ic-card-base:hover .ic-img-{{uid}}{ transform: scale(1.04); }
+    }
+
+    .ic-float-{{uid}}{
+      position:absolute;
+      right:18px;
+      bottom:18px;
+      border-radius:14px;
+      padding:16px 18px;
+      box-shadow:0 10px 26px rgba(20,24,60,.14);
+      width: 39rem;
+      max-width:85%;
+      display:flex;
+      align-items:center;
+      gap:0;
+    }
+
+    .ic-float-{{uid}}.ic-layout-vertical{
+      flex-direction:column;
+      align-items:flex-start;
+    }
+
+    .ic-float-{{uid}}.ic-layout-horizontal{
+      flex-direction:row;
+      align-items:center;
+    }
+
+    .ic-icon-wrap{
+      flex-shrink:0;
+    }
+
+    .ic-icon-wrap img{
+      width:40px;
+      height:40px;
+      object-fit:contain;
+    }
+
+    .ic-float-{{uid}}.ic-layout-vertical .ic-icon-wrap{
+      align-self:{{ section.settings.icon_align_vertical }};
+    }
+
+    .ic-text-content{
+      flex:1;
+    }
+
+    .ic-float-{{uid}} h3{
+      /* was clamp(14px, 2.4vw, 35px): 14px on a phone, too small to scan */
+      font-size: clamp(19px, 2.4vw, 35px);
+      color: #1D1D1D;
+      font-weight:700;
+      margin-bottom:6px;
+      margin-top: 0;
+    }
+
+    .ic-float-{{uid}} p{
+      /* was clamp(10px, 1vw, 20px): 10px on a phone */
+      font-size: clamp(15px, 1vw, 20px);
+      color: #1D1D1D;
+      line-height:1.45;
+      margin:0;
+    }
+
+    /* STRIP */
+    .ic-strip-{{uid}}{
+      margin-top:42px;
+      {% if section.settings.strip_show_bg %}
+      background:{{ section.settings.strip_bg_color }};
+      {% endif %}
+      {% if section.settings.strip_show_border %}
+      border: 1px solid {{ section.settings.strip_border_color }};
+      {% endif %}
+      border-radius:18px;
+      padding: clamp(18px, 2.2vw, 26px) clamp(18px, 3vw, 32px);
+      text-align:{{ section.settings.strip_alignment }};
+      /* was clamp(10px, 1.2vw, 20px): 10px on a phone */
+      font-size: clamp(16px, 1.2vw, 20px);
+      color:{{ section.settings.strip_text_color }};
+      line-height:1.6;
+      /* full width of the card grid above it, not a narrow centred column */
+      max-width: none;
+    }
+
+    .ic-strip-{{uid}} .ic-highlight{
+      color:{{ section.settings.strip_highlight_color }};
+      font-weight:{{ section.settings.strip_highlight_weight }};
+    }
+
+    /* ================= MOBILE SLIDER ================= */
+    @media(max-width:768px){
+
+        /* MOBILE HEADER CONTROL */
+        .ic-header-{{uid}} h2{
+          font-size: {{ section.settings.mobile_heading_size }}px;
+          line-height: 1.2;
+        }
+
+        .ic-header-{{uid}} p{
+          font-size: {{ section.settings.mobile_subtitle_size }}px;
+          line-height: 1.4;
+        }
+
+
+      .ic-grid-{{uid}}{ display:none; }
+
+      /* break out of the wrapper's 16px padding so the cards get the full
+         screen width, with a small peek of the next one */
+      .ic-mobile-slider{
+        position:relative;
+        display:block;
+        margin-inline:-16px;
+      }
+
+      /* Classic swipe carousel: the cards slide, and a slice of the next one
+         shows on the right so it is obvious there is more to see. */
+      .ic-stage-{{uid}}{
+        display:flex;
+        gap:12px;
+        overflow-x:auto;
+        overscroll-behavior-x:contain;
+        scroll-snap-type:x mandatory;
+        scroll-padding-left:16px;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+        padding:10px 16px 0;
+      }
+      .ic-stage-{{uid}}::-webkit-scrollbar{ display:none; }
+
+      .ic-mobile-card{
+        position:relative;
+        flex:0 0 calc(100% - 46px);
+        height: {{ section.settings.mobile_card_height }}px;
+        scroll-snap-align:start;
+        border-radius:18px;
+        overflow:hidden;
+      }
+
+      .ic-mobile-card .ic-img-{{uid}}{
+        width:100%;
+        height:100%;
+        object-fit:cover;
+      }
+
+      /* the pastel box was pinned bottom-right at 85% width, which looked
+         off-centre on a phone; even margins on both sides instead */
+      .ic-mobile-card .ic-float-{{uid}}{
+        left:14px;
+        right:14px;
+        bottom:14px;
+        width:auto;
+        max-width:none;
+      }
+
+      .ic-arrow{ display:none; }
+      .ic-tabs-{{uid}}{ display:none; }
+      .ic-swipe-{{uid}}{ display:none; }
+
+      /* Pagination: one rail with a crimson bar that slides as you scroll.
+         It is driven directly by the scroll position, so it tracks your finger
+         instead of jumping when a card snaps. */
+      .ic-dots-{{uid}}{
+        display:block;
+        position:relative;
+        width:104px;
+        height:5px;
+        margin:18px auto 0;
+        border-radius:999px;
+        background:#e9e9ee;
+        overflow:hidden;
+      }
+
+      .ic-bar-{{uid}}{
+        position:absolute;
+        top:0;
+        left:0;
+        height:100%;
+        border-radius:999px;
+        background:{{ section.settings.strip_highlight_color }};
+        min-width:22px;
+        will-change: transform;
+      }
+
+    }
+
+    @media(min-width:769px){
+      .ic-mobile-slider{ display:none; }
+    }
+</style>
+
+<div class="ic-wrap-{{uid}}">
+  <div class="ic-header-{{uid}}">
+    <h2>{{ section.settings.main_title }}</h2>
+    <p>{{ section.settings.main_subtitle }}</p>
+  </div>
+
+  <!-- DESKTOP GRID -->
+  <div class="ic-grid-{{uid}}">
+    <div class="ic-card-base ic-ayurveda-{{uid}}">
+      {% if section.settings.card1_bg_image %}
+        <img
+          src="{{ section.settings.card1_bg_image | image_url: width:1200 }}"
+          srcset="{{ section.settings.card1_bg_image | image_url: width:500 }} 500w,
+                  {{ section.settings.card1_bg_image | image_url: width:800 }} 800w,
+                  {{ section.settings.card1_bg_image | image_url: width:1200 }} 1200w"
+          sizes="(min-width: 769px) 50vw, 92vw"
+          width="{{ section.settings.card1_bg_image.width }}"
+          height="{{ section.settings.card1_bg_image.height }}"
+          loading="lazy"
+          decoding="async"
+          class="ic-img-{{uid}}"
+          alt="{{ section.settings.card1_title }}"
+        >
+      {% endif %}
+      <div class="ic-float-{{uid}} ic-layout-{{ section.settings.icon_layout }}" style="background:{{ section.settings.card1_box_bg }}">
+        {% if section.settings.card1_icon %}
+          <div class="ic-icon-wrap">
+            <img src="{{ section.settings.card1_icon | image_url: width:120 }}" alt="" width="40" height="40" loading="lazy" decoding="async">
+          </div>
+        {% endif %}
+        <div class="ic-text-content">
+          <h3>{{ section.settings.card1_title }}</h3>
+          <p>{{ section.settings.card1_description }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;gap:18px;">
+      <div class="ic-card-base ic-landscape-{{uid}}">
+        {% if section.settings.card2_bg_image %}
+          <img
+            src="{{ section.settings.card2_bg_image | image_url: width:1200 }}"
+            srcset="{{ section.settings.card2_bg_image | image_url: width:500 }} 500w,
+                    {{ section.settings.card2_bg_image | image_url: width:800 }} 800w,
+                    {{ section.settings.card2_bg_image | image_url: width:1200 }} 1200w"
+            sizes="(min-width: 769px) 50vw, 92vw"
+            width="{{ section.settings.card2_bg_image.width }}"
+            height="{{ section.settings.card2_bg_image.height }}"
+            loading="lazy"
+            decoding="async"
+            class="ic-img-{{uid}}"
+            alt="{{ section.settings.card2_title }}"
+          >
+        {% endif %}
+        <div class="ic-float-{{uid}} ic-layout-{{ section.settings.icon_layout }}" style="background:{{ section.settings.card2_box_bg }}">
+          {% if section.settings.card2_icon %}
+            <div class="ic-icon-wrap">
+              <img src="{{ section.settings.card2_icon | image_url: width:120 }}" alt="" width="40" height="40" loading="lazy" decoding="async">
+            </div>
+          {% endif %}
+          <div class="ic-text-content">
+            <h3>{{ section.settings.card2_title }}</h3>
+            <p>{{ section.settings.card2_description }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="ic-card-base ic-landscape-{{uid}}">
+        {% if section.settings.card3_bg_image %}
+          <img
+            src="{{ section.settings.card3_bg_image | image_url: width:1200 }}"
+            srcset="{{ section.settings.card3_bg_image | image_url: width:500 }} 500w,
+                    {{ section.settings.card3_bg_image | image_url: width:800 }} 800w,
+                    {{ section.settings.card3_bg_image | image_url: width:1200 }} 1200w"
+            sizes="(min-width: 769px) 50vw, 92vw"
+            width="{{ section.settings.card3_bg_image.width }}"
+            height="{{ section.settings.card3_bg_image.height }}"
+            loading="lazy"
+            decoding="async"
+            class="ic-img-{{uid}}"
+            alt="{{ section.settings.card3_title }}"
+          >
+        {% endif %}
+        <div class="ic-float-{{uid}} ic-layout-{{ section.settings.icon_layout }}" style="background:{{ section.settings.card3_box_bg }}">
+          {% if section.settings.card3_icon %}
+            <div class="ic-icon-wrap">
+              <img src="{{ section.settings.card3_icon | image_url: width:120 }}" alt="" width="40" height="40" loading="lazy" decoding="async">
+            </div>
+          {% endif %}
+          <div class="ic-text-content">
+            <h3>{{ section.settings.card3_title }}</h3>
+            <p>{{ section.settings.card3_description }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE SLIDER -->
+  <div class="ic-mobile-slider">
+
+
+    <div class="ic-stage-{{uid}}">
+      <!-- Card 1 -->
+      <div class="ic-mobile-card">
+        {% if section.settings.card1_bg_image %}
+          <img
+            src="{{ section.settings.card1_bg_image | image_url: width:1200 }}"
+            srcset="{{ section.settings.card1_bg_image | image_url: width:500 }} 500w,
+                    {{ section.settings.card1_bg_image | image_url: width:800 }} 800w,
+                    {{ section.settings.card1_bg_image | image_url: width:1200 }} 1200w"
+            sizes="(min-width: 769px) 50vw, 92vw"
+            width="{{ section.settings.card1_bg_image.width }}"
+            height="{{ section.settings.card1_bg_image.height }}"
+            loading="lazy"
+            decoding="async"
+            class="ic-img-{{uid}}"
+            alt="{{ section.settings.card1_title }}"
+          >
+        {% endif %}
+        <div class="ic-float-{{uid}} ic-layout-{{ section.settings.icon_layout }}" style="background:{{ section.settings.card1_box_bg }}">
+          {% if section.settings.card1_icon %}
+            <div class="ic-icon-wrap">
+              <img src="{{ section.settings.card1_icon | image_url: width:120 }}" alt="" width="40" height="40" loading="lazy" decoding="async">
+            </div>
+          {% endif %}
+          <div class="ic-text-content">
+            <h3>{{ section.settings.card1_title }}</h3>
+            <p>{{ section.settings.card1_description }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="ic-mobile-card">
+        {% if section.settings.card2_bg_image %}
+          <img
+            src="{{ section.settings.card2_bg_image | image_url: width:1200 }}"
+            srcset="{{ section.settings.card2_bg_image | image_url: width:500 }} 500w,
+                    {{ section.settings.card2_bg_image | image_url: width:800 }} 800w,
+                    {{ section.settings.card2_bg_image | image_url: width:1200 }} 1200w"
+            sizes="(min-width: 769px) 50vw, 92vw"
+            width="{{ section.settings.card2_bg_image.width }}"
+            height="{{ section.settings.card2_bg_image.height }}"
+            loading="lazy"
+            decoding="async"
+            class="ic-img-{{uid}}"
+            alt="{{ section.settings.card2_title }}"
+          >
+        {% endif %}
+        <div class="ic-float-{{uid}} ic-layout-{{ section.settings.icon_layout }}" style="background:{{ section.settings.card2_box_bg }}">
+          {% if section.settings.card2_icon %}
+            <div class="ic-icon-wrap">
+              <img src="{{ section.settings.card2_icon | image_url: width:120 }}" alt="" width="40" height="40" loading="lazy" decoding="async">
+            </div>
+          {% endif %}
+          <div class="ic-text-content">
+            <h3>{{ section.settings.card2_title }}</h3>
+            <p>{{ section.settings.card2_description }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="ic-mobile-card">
+        {% if section.settings.card3_bg_image %}
+          <img
+            src="{{ section.settings.card3_bg_image | image_url: width:1200 }}"
+            srcset="{{ section.settings.card3_bg_image | image_url: width:500 }} 500w,
+                    {{ section.settings.card3_bg_image | image_url: width:800 }} 800w,
+                    {{ section.settings.card3_bg_image | image_url: width:1200 }} 1200w"
+            sizes="(min-width: 769px) 50vw, 92vw"
+            width="{{ section.settings.card3_bg_image.width }}"
+            height="{{ section.settings.card3_bg_image.height }}"
+            loading="lazy"
+            decoding="async"
+            class="ic-img-{{uid}}"
+            alt="{{ section.settings.card3_title }}"
+          >
+        {% endif %}
+        <div class="ic-float-{{uid}} ic-layout-{{ section.settings.icon_layout }}" style="background:{{ section.settings.card3_box_bg }}">
+          {% if section.settings.card3_icon %}
+            <div class="ic-icon-wrap">
+              <img src="{{ section.settings.card3_icon | image_url: width:120 }}" alt="" width="40" height="40" loading="lazy" decoding="async">
+            </div>
+          {% endif %}
+          <div class="ic-text-content">
+            <h3>{{ section.settings.card3_title }}</h3>
+            <p>{{ section.settings.card3_description }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% if section.settings.dots_position == 'below_cards' %}
+      <div class="ic-dots-{{uid}}"></div>
+    {% endif %}
+  </div>
+
+  <div class="ic-strip-{{uid}}">
+    {{ section.settings.strip_text_before }}
+    <span class="ic-highlight">{{ section.settings.strip_text_highlight }}</span>
+    {{ section.settings.strip_text_after }}
+  </div>
+  {% if section.settings.dots_position == 'below_text' %}
+    <div class="ic-dots-{{uid}}"></div>
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const track = document.querySelector('.ic-stage-{{uid}}');
+    const cards = [...document.querySelectorAll('.ic-mobile-card')];
+    const rail = document.querySelector('.ic-dots-{{uid}}');
+    if (!track || !cards.length || !rail) return;
+
+    // one moving bar, sized to the share of the row you can see
+    rail.innerHTML = '';
+    const bar = Object.assign(document.createElement('div'), { className: 'ic-bar-{{uid}}' });
+    rail.appendChild(bar);
+
+    let ticking = false;
+
+    function paint() {
+      const max = track.scrollWidth - track.clientWidth;
+      const share = Math.min(1, track.clientWidth / track.scrollWidth);
+      const w = Math.max(18, rail.clientWidth * share);
+      const p = max > 0 ? Math.min(1, Math.max(0, track.scrollLeft / max)) : 0;
+      bar.style.width = w + 'px';
+      bar.style.transform = 'translateX(' + ((rail.clientWidth - w) * p) + 'px)';
+    }
+
+    track.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { ticking = false; paint(); });
+    }, { passive: true });
+
+    window.addEventListener('resize', paint);
+    paint();
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Integrated Care Cards",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Main Header"
+    },
+    {
+      "type": "text",
+      "id": "main_title",
+      "label": "Main Title",
+      "default": "Our Integrated Treatment System"
+    },
+    {
+      "type": "text",
+      "id": "main_subtitle",
+      "label": "Main Subtitle",
+      "default": "We Combine Three Proven Medical Sciences To Fix The Root Cause Instead Of Masking Symptoms."
+    },
+    {
+      "type": "header",
+      "content": "Icon/Logo Settings"
+    },
+    {
+      "type": "select",
+      "id": "icon_layout",
+      "label": "Icon Layout",
+      "options": [
+        {
+          "value": "vertical",
+          "label": "Vertical (Icon above text)"
+        },
+        {
+          "value": "horizontal",
+          "label": "Horizontal (Icon beside text)"
+        }
+      ],
+      "default": "vertical"
+    },
+    {
+      "type": "select",
+      "id": "icon_align_vertical",
+      "label": "Icon Alignment (Vertical Layout)",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "flex-start",
+      "info": "Only applies when Icon Layout is Vertical"
+    },
+    {
+      "type": "header",
+      "content": "Card 1 - Ayurveda"
+    },
+    {
+      "type": "image_picker",
+      "id": "card1_bg_image",
+      "label": "Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "card1_icon",
+      "label": "Icon/Logo"
+    },
+    {
+      "type": "color",
+      "id": "card1_box_bg",
+      "label": "Info Box Background",
+      "default": "#d4f4dd"
+    },
+    {
+      "type": "text",
+      "id": "card1_title",
+      "label": "Title",
+      "default": "Ayurveda"
+    },
+    {
+      "type": "textarea",
+      "id": "card1_description",
+      "label": "Description",
+      "default": "Hormonal & metabolic balance"
+    },
+    {
+      "type": "header",
+      "content": "Card 2 - Homeopathy"
+    },
+    {
+      "type": "image_picker",
+      "id": "card2_bg_image",
+      "label": "Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "card2_icon",
+      "label": "Icon/Logo"
+    },
+    {
+      "type": "color",
+      "id": "card2_box_bg",
+      "label": "Info Box Background",
+      "default": "#fef3e8"
+    },
+    {
+      "type": "text",
+      "id": "card2_title",
+      "label": "Title",
+      "default": "Homeopathy"
+    },
+    {
+      "type": "textarea",
+      "id": "card2_description",
+      "label": "Description",
+      "default": "Personalized, long-lasting healing"
+    },
+    {
+      "type": "header",
+      "content": "Card 3 - Modern Medicine"
+    },
+    {
+      "type": "image_picker",
+      "id": "card3_bg_image",
+      "label": "Background Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "card3_icon",
+      "label": "Icon/Logo"
+    },
+    {
+      "type": "color",
+      "id": "card3_box_bg",
+      "label": "Info Box Background",
+      "default": "#fef0f0"
+    },
+    {
+      "type": "text",
+      "id": "card3_title",
+      "label": "Title",
+      "default": "Modern Medicine"
+    },
+    {
+      "type": "textarea",
+      "id": "card3_description",
+      "label": "Description",
+      "default": "Evidence-led diagnostics & fast relief"
+    },
+    {
+      "type": "header",
+      "content": "Bottom Strip Settings"
+    },
+    {
+      "type": "text",
+      "id": "strip_text_before",
+      "label": "Text Before Highlight",
+      "default": "Each Plan Blends The Best Of All Three - So You Get Results That Are"
+    },
+    {
+      "type": "text",
+      "id": "strip_text_highlight",
+      "label": "Highlighted Text",
+      "default": "Fast, Safe, And Sustainable."
+    },
+    {
+      "type": "text",
+      "id": "strip_text_after",
+      "label": "Text After Highlight",
+      "default": "TEXT"
+    },
+    {
+      "type": "checkbox",
+      "id": "strip_show_bg",
+      "label": "Show Background Color",
+      "default": false
+    },
+    {
+      "type": "color",
+      "id": "strip_bg_color",
+      "label": "Background Color",
+      "default": "#F5F5F5"
+    },
+    {
+      "type": "checkbox",
+      "id": "strip_show_border",
+      "label": "Show Border",
+      "default": false
+    },
+    {
+      "type": "color",
+      "id": "strip_border_color",
+      "label": "Border Color",
+      "default": "#ff6b6b"
+    },
+    {
+      "type": "select",
+      "id": "strip_alignment",
+      "label": "Text Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "color",
+      "id": "strip_text_color",
+      "label": "Normal Text Color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "strip_highlight_color",
+      "label": "Highlighted Text Color",
+      "default": "#000000"
+    },
+    {
+      "type": "select",
+      "id": "strip_highlight_weight",
+      "label": "Highlighted Text Weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "600",
+          "label": "Semi-Bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "range",
+      "id": "strip_font_size",
+      "label": "Font Size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Mobile Settings"
+    },
+    {
+      "type": "range",
+      "id": "mobile_heading_size",
+      "label": "Mobile Heading Size",
+      "min": 18,
+      "max": 36,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "mobile_subtitle_size",
+      "label": "Mobile Subtitle Size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "mobile_card_height",
+      "label": "Mobile Card Height",
+      "min": 250,
+      "max": 500,
+      "step": 10,
+      "unit": "px",
+      "default": 380
+    },
+    {
+      "type": "select",
+      "id": "dots_position",
+      "label": "Dots Position (Mobile)",
+      "options": [
+        {
+          "value": "below_cards",
+          "label": "Below Cards"
+        },
+        {
+          "value": "below_text",
+          "label": "Below Bottom Text"
+        }
+      ],
+      "default": "below_cards"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Integrated Care Cards"
+    }
+  ]
+}
+{% endschema %}

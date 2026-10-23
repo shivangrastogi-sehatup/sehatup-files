@@ -1,0 +1,832 @@
+{% doc %}
+  @prompt
+    Create a responsive "Why It Matters" section with a two-column layout featuring a circular health diagram and informational content.Layout structure:Left column:- Circular diagram with "360 PLAN" in center (red circle)- Six health icons arranged in a circle around the center, connected by dashed lines:  * Blood test/lab icon (top-left)  * Shield with DNA icon (top)  * Brain/mental health icon (top-right)  * Sleep/bed icon (right)  * Pelvic health icon (bottom-right)  * Calendar/period tracking icon (bottom-left)Right column:- Heading: "Why It Matters"- Paragraph 1: "Most people wait for symptoms to get 'serious' before acting. That's the biggest mistake."- Paragraph 2: "Health Score 360 helps you understand early signals related to"- Tag pills in a flexible grid layout:  * Row 1: "Metabolism" (green), "Hormonal imbalance" (beige), "Stress" (light purple)  * Row 2: "Sleep" (pink), "Weight fluctuations" (yellow), "Sexual performance" (light green)  * Row 3: "Period irregularities" (light pink)Requirements:- Fully responsive layout:  * Desktop: 2 columns (diagram left, content right)  * Tablet: 2 columns with adjusted spacing  * Mobile: stacked (diagram on top, content below)- Settings schema to customize:  * Heading text  * Paragraph text (2 separate fields)  * Central circle text and color  * Upload custom diagram image OR use built-in SVG  * Tag pills as blocks: text, background color, text color for each pill  * Add/remove/reorder tag pills  * Typography: heading size, body text size  * Spacing: section padding, column gap, tag spacing  * Color pickers: heading color, text color, circle color, tag colors  * Layout options: diagram position (left/right), alignment- Tag pills should have rounded corners and subtle backgrounds- Diagram should scale proportionally on all devices- Mobile: center-aligned content, full-width tags- Include hover effects on tag pills (optional)- Max-width container for desktop- Flexible block system for health signal tags
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-why-matters-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    padding: {{ block.settings.section_padding_top }}px {{ block.settings.section_padding_horizontal }}px {{ block.settings.section_padding_bottom }}px;
+    background-color: {{ block.settings.background_color }};
+  }
+
+  .ai-why-matters-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.max_width }}px;
+    margin: 0 auto;
+  }
+
+  .ai-why-matters-layout-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: {{ block.settings.column_gap }}px;
+    align-items: center;
+  }
+
+  .ai-why-matters-layout-{{ ai_gen_id }}.diagram-right {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ai-why-matters-layout-{{ ai_gen_id }}.diagram-right .ai-why-matters-diagram-{{ ai_gen_id }} {
+    order: 2;
+  }
+
+  .ai-why-matters-layout-{{ ai_gen_id }}.diagram-right .ai-why-matters-content-{{ ai_gen_id }} {
+    order: 1;
+  }
+
+  .ai-why-matters-diagram-{{ ai_gen_id }} {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .ai-why-matters-diagram-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    aspect-ratio: 1;
+  }
+
+  .ai-why-matters-diagram-wrapper-{{ ai_gen_id }} img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .ai-why-matters-diagram-svg-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ai-why-matters-content-{{ ai_gen_id }} {
+    padding: 20px;
+  }
+
+  .ai-why-matters-heading-{{ ai_gen_id }} {
+    font-size: clamp(24px,3.4vw,64px);
+    color: {{ block.settings.heading_color }};
+    margin: 0 0 {{ block.settings.heading_spacing }}px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: {{ block.settings.content_alignment }};
+  }
+
+  .ai-why-matters-paragraph-{{ ai_gen_id }} {
+    font-size: clamp(10px, 1.2vw, 20px);
+    color: {{ block.settings.text_color }};
+    margin: 0 0 {{ block.settings.paragraph_spacing }}px;
+    line-height: 1.6;
+    text-align: {{ block.settings.content_alignment }};
+  }
+
+  .ai-why-matters-paragraph-{{ ai_gen_id }}:last-of-type {
+    margin-bottom: {{ block.settings.tags_top_spacing }}px;
+  }
+
+  .ai-why-matters-tags-{{ ai_gen_id }} {
+    display: flex;
+    flex-wrap: wrap;
+    gap: {{ block.settings.tag_spacing }}px;
+    {% if block.settings.content_alignment == 'center' %}
+      justify-content: center;
+    {% elsif block.settings.content_alignment == 'right' %}
+      justify-content: flex-end;
+    {% else %}
+      justify-content: flex-start;
+    {% endif %}
+  }
+
+  .ai-why-matters-tag-{{ ai_gen_id }} {
+    display: inline-block;
+    padding: {{ block.settings.tag_padding_vertical }}px {{ block.settings.tag_padding_horizontal }}px;
+    border-radius: {{ block.settings.tag_border_radius }}px;
+    font-size: clamp(10px, 1.2vw, 20px);
+    font-weight: 500;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  {% if block.settings.enable_tag_hover %}
+    .ai-why-matters-tag-{{ ai_gen_id }}:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+  {% endif %}
+
+  @media screen and (max-width: 989px) {
+    .ai-why-matters-layout-{{ ai_gen_id }} {
+      grid-template-columns: 1fr;
+      gap: {{ block.settings.mobile_row_gap }}px;
+    }
+
+    .ai-why-matters-layout-{{ ai_gen_id }}.diagram-right .ai-why-matters-diagram-{{ ai_gen_id }} {
+      order: 1;
+    }
+
+    .ai-why-matters-layout-{{ ai_gen_id }}.diagram-right .ai-why-matters-content-{{ ai_gen_id }} {
+      order: 2;
+    }
+
+    .ai-why-matters-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size | times: 0.85 }}px;
+      text-align: {{ block.settings.mobile_alignment }};
+    }
+
+    .ai-why-matters-paragraph-{{ ai_gen_id }} {
+      font-size: {{ block.settings.text_size | times: 0.95 }}px;
+      text-align: {{ block.settings.mobile_alignment }};
+    }
+
+    .ai-why-matters-tags-{{ ai_gen_id }} {
+      {% if block.settings.mobile_alignment == 'center' %}
+        justify-content: center;
+      {% elsif block.settings.mobile_alignment == 'right' %}
+        justify-content: flex-end;
+      {% else %}
+        justify-content: flex-start;
+      {% endif %}
+    }
+
+    .ai-why-matters-diagram-wrapper-{{ ai_gen_id }} {
+      max-width: 400px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-why-matters-{{ ai_gen_id }} {
+      padding: {{ block.settings.section_padding_top | times: 0.7 }}px {{ block.settings.section_padding_horizontal | times: 0.7 }}px {{ block.settings.section_padding_bottom | times: 0.7 }}px;
+    }
+
+    .ai-why-matters-content-{{ ai_gen_id }} {
+      padding: 10px;
+    }
+
+    .ai-why-matters-diagram-{{ ai_gen_id }} {
+      padding: 10px;
+    }
+
+    .ai-why-matters-diagram-wrapper-{{ ai_gen_id }} {
+      max-width: 320px;
+    }
+
+    .ai-why-matters-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.heading_size | times: 0.75 }}px;
+    }
+
+    .ai-why-matters-paragraph-{{ ai_gen_id }} {
+      font-size: {{ block.settings.text_size | times: 0.9 }}px;
+    }
+
+    .ai-why-matters-tag-{{ ai_gen_id }} {
+      font-size: {{ block.settings.tag_text_size | times: 0.9 }}px;
+    }
+  }
+{% endstyle %}
+
+<why-it-matters-{{ ai_gen_id }} class="ai-why-matters-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-why-matters-container-{{ ai_gen_id }}">
+    <div class="ai-why-matters-layout-{{ ai_gen_id }} {% if block.settings.diagram_position == 'right' %}diagram-right{% endif %}">
+      <div class="ai-why-matters-diagram-{{ ai_gen_id }}">
+        <div class="ai-why-matters-diagram-wrapper-{{ ai_gen_id }}">
+          {% if block.settings.custom_diagram_image %}
+            <img
+              src="{{ block.settings.custom_diagram_image | image_url: width: 1000 }}"
+              alt="{{ block.settings.custom_diagram_image.alt | escape }}"
+              loading="lazy"
+              width="{{ block.settings.custom_diagram_image.width }}"
+              height="{{ block.settings.custom_diagram_image.height }}"
+            >
+          {% else %}
+            <svg class="ai-why-matters-diagram-svg-{{ ai_gen_id }}" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="250" cy="250" r="60" fill="{{ block.settings.center_circle_color }}" stroke="{{ block.settings.center_circle_border_color }}" stroke-width="3"/>
+              <text x="250" y="250" text-anchor="middle" dominant-baseline="central" fill="{{ block.settings.center_text_color }}" font-size="18" font-weight="600">{{ block.settings.center_circle_text }}</text>
+              
+              <circle cx="250" cy="100" r="35" fill="{{ block.settings.icon_bg_color }}" stroke="{{ block.settings.icon_border_color }}" stroke-width="2"/>
+              <path d="M 250 120 L 250 190" stroke="{{ block.settings.connector_color }}" stroke-width="2" stroke-dasharray="5,5"/>
+              <text x="250" y="105" text-anchor="middle" font-size="24" fill="{{ block.settings.icon_color }}">🧬</text>
+              
+              <circle cx="390" cy="160" r="35" fill="{{ block.settings.icon_bg_color }}" stroke="{{ block.settings.icon_border_color }}" stroke-width="2"/>
+              <path d="M 370 180 L 295 225" stroke="{{ block.settings.connector_color }}" stroke-width="2" stroke-dasharray="5,5"/>
+              <text x="390" y="165" text-anchor="middle" font-size="24" fill="{{ block.settings.icon_color }}">🧠</text>
+              
+              <circle cx="390" cy="340" r="35" fill="{{ block.settings.icon_bg_color }}" stroke="{{ block.settings.icon_border_color }}" stroke-width="2"/>
+              <path d="M 370 320 L 295 275" stroke="{{ block.settings.connector_color }}" stroke-width="2" stroke-dasharray="5,5"/>
+              <text x="390" y="345" text-anchor="middle" font-size="24" fill="{{ block.settings.icon_color }}">🛏️</text>
+              
+              <circle cx="250" cy="400" r="35" fill="{{ block.settings.icon_bg_color }}" stroke="{{ block.settings.icon_border_color }}" stroke-width="2"/>
+              <path d="M 250 380 L 250 310" stroke="{{ block.settings.connector_color }}" stroke-width="2" stroke-dasharray="5,5"/>
+              <text x="250" y="405" text-anchor="middle" font-size="24" fill="{{ block.settings.icon_color }}">📅</text>
+              
+              <circle cx="110" cy="340" r="35" fill="{{ block.settings.icon_bg_color }}" stroke="{{ block.settings.icon_border_color }}" stroke-width="2"/>
+              <path d="M 130 320 L 205 275" stroke="{{ block.settings.connector_color }}" stroke-width="2" stroke-dasharray="5,5"/>
+              <text x="110" y="345" text-anchor="middle" font-size="24" fill="{{ block.settings.icon_color }}">🩺</text>
+              
+              <circle cx="110" cy="160" r="35" fill="{{ block.settings.icon_bg_color }}" stroke="{{ block.settings.icon_border_color }}" stroke-width="2"/>
+              <path d="M 130 180 L 205 225" stroke="{{ block.settings.connector_color }}" stroke-width="2" stroke-dasharray="5,5"/>
+              <text x="110" y="165" text-anchor="middle" font-size="24" fill="{{ block.settings.icon_color }}">🔬</text>
+            </svg>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="ai-why-matters-content-{{ ai_gen_id }}">
+        {% if block.settings.heading != blank %}
+          <h2 class="ai-why-matters-heading-{{ ai_gen_id }}">{{ block.settings.heading }}</h2>
+        {% endif %}
+
+        {% if block.settings.paragraph_1 != blank %}
+          <p class="ai-why-matters-paragraph-{{ ai_gen_id }}">{{ block.settings.paragraph_1 }}</p>
+        {% endif %}
+
+        {% if block.settings.paragraph_2 != blank %}
+          <p class="ai-why-matters-paragraph-{{ ai_gen_id }}">{{ block.settings.paragraph_2 }}</p>
+        {% endif %}
+
+        <div class="ai-why-matters-tags-{{ ai_gen_id }}">
+          {% if block.settings.tag_1_text != blank %}
+            <span class="ai-why-matters-tag-{{ ai_gen_id }}" style="background-color: {{ block.settings.tag_1_bg }}; color: {{ block.settings.tag_1_text_color }};">
+              {{ block.settings.tag_1_text }}
+            </span>
+          {% endif %}
+          {% if block.settings.tag_2_text != blank %}
+            <span class="ai-why-matters-tag-{{ ai_gen_id }}" style="background-color: {{ block.settings.tag_2_bg }}; color: {{ block.settings.tag_2_text_color }};">
+              {{ block.settings.tag_2_text }}
+            </span>
+          {% endif %}
+          {% if block.settings.tag_3_text != blank %}
+            <span class="ai-why-matters-tag-{{ ai_gen_id }}" style="background-color: {{ block.settings.tag_3_bg }}; color: {{ block.settings.tag_3_text_color }};">
+              {{ block.settings.tag_3_text }}
+            </span>
+          {% endif %}
+          {% if block.settings.tag_4_text != blank %}
+            <span class="ai-why-matters-tag-{{ ai_gen_id }}" style="background-color: {{ block.settings.tag_4_bg }}; color: {{ block.settings.tag_4_text_color }};">
+              {{ block.settings.tag_4_text }}
+            </span>
+          {% endif %}
+          {% if block.settings.tag_5_text != blank %}
+            <span class="ai-why-matters-tag-{{ ai_gen_id }}" style="background-color: {{ block.settings.tag_5_bg }}; color: {{ block.settings.tag_5_text_color }};">
+              {{ block.settings.tag_5_text }}
+            </span>
+          {% endif %}
+          {% if block.settings.tag_6_text != blank %}
+            <span class="ai-why-matters-tag-{{ ai_gen_id }}" style="background-color: {{ block.settings.tag_6_bg }}; color: {{ block.settings.tag_6_text_color }};">
+              {{ block.settings.tag_6_text }}
+            </span>
+          {% endif %}
+          {% if block.settings.tag_7_text != blank %}
+            <span class="ai-why-matters-tag-{{ ai_gen_id }}" style="background-color: {{ block.settings.tag_7_bg }}; color: {{ block.settings.tag_7_text_color }};">
+              {{ block.settings.tag_7_text }}
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</why-it-matters-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class WhyItMatters{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        this.setupAccessibility();
+      }
+
+      setupAccessibility() {
+        const heading = this.querySelector('.ai-why-matters-heading-{{ ai_gen_id }}');
+        if (heading && !heading.hasAttribute('role')) {
+          heading.setAttribute('role', 'heading');
+          heading.setAttribute('aria-level', '2');
+        }
+      }
+    }
+
+    customElements.define('why-it-matters-{{ ai_gen_id }}', WhyItMatters{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Why it matters",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "label": "Maximum width",
+      "min": 800,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1200
+    },
+    {
+      "type": "select",
+      "id": "diagram_position",
+      "label": "Diagram position",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "Column gap",
+      "min": 20,
+      "max": 100,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "mobile_row_gap",
+      "label": "Mobile row gap",
+      "min": 20,
+      "max": 80,
+      "step": 10,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 120,
+      "step": 10,
+      "unit": "px",
+      "default": 60
+    },
+    {
+      "type": "range",
+      "id": "section_padding_horizontal",
+      "label": "Horizontal padding",
+      "min": 0,
+      "max": 80,
+      "step": 10,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Content"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Why It Matters"
+    },
+    {
+      "type": "textarea",
+      "id": "paragraph_1",
+      "label": "Paragraph 1",
+      "default": "Most people wait for symptoms to get 'serious' before acting. That's the biggest mistake."
+    },
+    {
+      "type": "textarea",
+      "id": "paragraph_2",
+      "label": "Paragraph 2",
+      "default": "Health Score 360 helps you understand early signals related to"
+    },
+    {
+      "type": "select",
+      "id": "content_alignment",
+      "label": "Content alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "mobile_alignment",
+      "label": "Mobile alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "label": "Heading size",
+      "min": 20,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "text_size",
+      "label": "Text size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "heading_spacing",
+      "label": "Heading bottom spacing",
+      "min": 10,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "paragraph_spacing",
+      "label": "Paragraph spacing",
+      "min": 10,
+      "max": 40,
+      "step": 5,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "tags_top_spacing",
+      "label": "Tags top spacing",
+      "min": 10,
+      "max": 50,
+      "step": 5,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Heading",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#262626"
+    },
+    {
+      "type": "header",
+      "content": "Diagram"
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_diagram_image",
+      "label": "Custom diagram image"
+    },
+    {
+      "type": "paragraph",
+      "content": "Upload a custom diagram or use the built-in SVG diagram below"
+    },
+    {
+      "type": "text",
+      "id": "center_circle_text",
+      "label": "Center text",
+      "default": "360 PLAN"
+    },
+    {
+      "type": "color",
+      "id": "center_circle_color",
+      "label": "Center circle",
+      "default": "#ff4444"
+    },
+    {
+      "type": "color",
+      "id": "center_circle_border_color",
+      "label": "Center circle border",
+      "default": "#cc0000"
+    },
+    {
+      "type": "color",
+      "id": "center_text_color",
+      "label": "Center text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "icon_bg_color",
+      "label": "Icon background",
+      "default": "#f0f0f0"
+    },
+    {
+      "type": "color",
+      "id": "icon_border_color",
+      "label": "Icon border",
+      "default": "#cccccc"
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Icon",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "connector_color",
+      "label": "Connector lines",
+      "default": "#999999"
+    },
+    {
+      "type": "header",
+      "content": "Tag pills"
+    },
+    {
+      "type": "range",
+      "id": "tag_spacing",
+      "label": "Tag spacing",
+      "min": 5,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "range",
+      "id": "tag_padding_vertical",
+      "label": "Tag vertical padding",
+      "min": 4,
+      "max": 20,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "tag_padding_horizontal",
+      "label": "Tag horizontal padding",
+      "min": 10,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "tag_border_radius",
+      "label": "Tag border radius",
+      "min": 0,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "tag_text_size",
+      "label": "Tag text size",
+      "min": 10,
+      "max": 18,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_tag_hover",
+      "label": "Enable hover effects",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Tag 1"
+    },
+    {
+      "type": "text",
+      "id": "tag_1_text",
+      "label": "Text",
+      "default": "Metabolism"
+    },
+    {
+      "type": "color",
+      "id": "tag_1_bg",
+      "label": "Background",
+      "default": "#e8f5e9"
+    },
+    {
+      "type": "color",
+      "id": "tag_1_text_color",
+      "label": "Text color",
+      "default": "#2e7d32"
+    },
+    {
+      "type": "header",
+      "content": "Tag 2"
+    },
+    {
+      "type": "text",
+      "id": "tag_2_text",
+      "label": "Text",
+      "default": "Hormonal imbalance"
+    },
+    {
+      "type": "color",
+      "id": "tag_2_bg",
+      "label": "Background",
+      "default": "#f5f5dc"
+    },
+    {
+      "type": "color",
+      "id": "tag_2_text_color",
+      "label": "Text color",
+      "default": "#8b7355"
+    },
+    {
+      "type": "header",
+      "content": "Tag 3"
+    },
+    {
+      "type": "text",
+      "id": "tag_3_text",
+      "label": "Text",
+      "default": "Stress"
+    },
+    {
+      "type": "color",
+      "id": "tag_3_bg",
+      "label": "Background",
+      "default": "#e8e4f3"
+    },
+    {
+      "type": "color",
+      "id": "tag_3_text_color",
+      "label": "Text color",
+      "default": "#6a5acd"
+    },
+    {
+      "type": "header",
+      "content": "Tag 4"
+    },
+    {
+      "type": "text",
+      "id": "tag_4_text",
+      "label": "Text",
+      "default": "Sleep"
+    },
+    {
+      "type": "color",
+      "id": "tag_4_bg",
+      "label": "Background",
+      "default": "#ffe4e1"
+    },
+    {
+      "type": "color",
+      "id": "tag_4_text_color",
+      "label": "Text color",
+      "default": "#cd5c5c"
+    },
+    {
+      "type": "header",
+      "content": "Tag 5"
+    },
+    {
+      "type": "text",
+      "id": "tag_5_text",
+      "label": "Text",
+      "default": "Weight fluctuations"
+    },
+    {
+      "type": "color",
+      "id": "tag_5_bg",
+      "label": "Background",
+      "default": "#fffacd"
+    },
+    {
+      "type": "color",
+      "id": "tag_5_text_color",
+      "label": "Text color",
+      "default": "#daa520"
+    },
+    {
+      "type": "header",
+      "content": "Tag 6"
+    },
+    {
+      "type": "text",
+      "id": "tag_6_text",
+      "label": "Text",
+      "default": "Sexual performance"
+    },
+    {
+      "type": "color",
+      "id": "tag_6_bg",
+      "label": "Background",
+      "default": "#e0f2f1"
+    },
+    {
+      "type": "color",
+      "id": "tag_6_text_color",
+      "label": "Text color",
+      "default": "#00796b"
+    },
+    {
+      "type": "header",
+      "content": "Tag 7"
+    },
+    {
+      "type": "text",
+      "id": "tag_7_text",
+      "label": "Text",
+      "default": "Period irregularities"
+    },
+    {
+      "type": "color",
+      "id": "tag_7_bg",
+      "label": "Background",
+      "default": "#fce4ec"
+    },
+    {
+      "type": "color",
+      "id": "tag_7_text_color",
+      "label": "Text color",
+      "default": "#c2185b"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Why it matters"
+    }
+  ]
+}
+{% endschema %}

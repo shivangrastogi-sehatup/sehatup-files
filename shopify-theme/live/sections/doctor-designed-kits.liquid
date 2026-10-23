@@ -112,18 +112,18 @@
 
 <style>
   .care-kits-container {
-    max-width: 1200px;
+    max-width: 1320px;
     margin: 0 auto;
-    padding: 0 16px;
+    padding: 0 clamp(16px, 4vw, 24px);
   }
 
   .care-kits-heading {
     text-align: center;
-    /* matched to "How sehatUP Works" and "Conditions we Solve" */
-    font-size: clamp(25px, 3.3vw, 60px);
-    font-weight: 700;
-    line-height: 1.08;
-    letter-spacing: -0.03em;
+    /* the Health Score 360 section heading */
+    font-size: clamp(30px, 3.6vw, 52px);
+    font-weight: 800;
+    line-height: 1.06;
+    letter-spacing: -0.02em;
     margin-bottom: clamp(24px, 4vw, 48px);
     color: #1d1d1d;
     text-wrap: balance;
@@ -440,6 +440,15 @@
       max-width: 100%;
     }
   }
+  @media (min-width: 750px) and (max-width: 1099.98px) { .care-kits-heading { font-size: 38px; } }
+  @media (max-width: 749.98px) { .care-kits-heading { font-size: 30px; } }
+  /* Big screens: the same steps and widths as the Health Score 360 sections. */
+  @media (min-width: 1680px) { .care-kits-container { zoom: 1.12; } }
+  @media (min-width: 1920px) { .care-kits-container { zoom: 1.25; max-width: 1360px; } }
+  @media (min-width: 2240px) { .care-kits-container { zoom: 1.45; } }
+  @media (min-width: 2560px) { .care-kits-container { zoom: 1.65; max-width: 1440px; } }
+  @media (min-width: 3200px) { .care-kits-container { zoom: 2; } }
+  @media (min-width: 3840px) { .care-kits-container { zoom: 2.4; } }
 </style>
 
 {% schema %}

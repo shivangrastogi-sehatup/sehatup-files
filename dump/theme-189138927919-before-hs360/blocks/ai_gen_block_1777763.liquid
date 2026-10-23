@@ -1,0 +1,918 @@
+{% doc %}
+  @prompt
+    Create a flexible product description section with multiple image layout blocks that adapts responsively across mobile, tablet, and desktop. The section should support:
+    
+    1. Full-width image blocks with overlay text capability for hero-style product images
+    2. Three-column grid blocks that display benefit cards with images, headings, and bullet points side-by-side
+    3. Each block should have a setting to choose the layout type (full-width single image, two-column, or three-column grid)
+    4. Image blocks should support text overlays with customizable headings and descriptions
+    5. Grid blocks should allow individual configuration for each card including image upload, heading, subheading, and bullet point lists
+    6. Fully responsive design that stacks columns vertically on mobile, shows 2 columns on tablet, and 3 columns on desktop
+    7. Settings schema for each block to control: layout type, image selection, text content, background colors, text colors, and spacing options
+    8. Support for mixing different block types within the same section (full-width images followed by grid layouts)
+    
+    The design should match premium wellness product pages with clean spacing, professional typography, and smooth transitions between layout types., what i wanted , the height of the image it will take automatically and manually we can change if want otherwise the default should be in this way for big big screen make them align center so left side and right side have auto margin and for laptop screens they take full height and width . and for mobile the whole image will be resized smoothly to cover the full height and width of the image
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-product-desc-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    padding: {{ block.settings.section_padding_top }}px 0 {{ block.settings.section_padding_bottom }}px;
+  }
+
+  .ai-product-desc-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.container_width }}px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .ai-product-desc-full-width-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: {{ block.settings.image_border_radius }}px;
+    margin-bottom: {{ block.settings.block_spacing }}px;
+  }
+
+  .ai-product-desc-full-width-{{ ai_gen_id }}:last-child {
+    margin-bottom: 0;
+  }
+
+  .ai-product-desc-image-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    {% if block.settings.use_custom_height %}
+      height: {{ block.settings.full_width_height }}px;
+    {% else %}
+      height: auto;
+    {% endif %}
+  }
+
+  .ai-product-desc-image-wrapper-{{ ai_gen_id }} img {
+    width: 100%;
+    {% if block.settings.use_custom_height %}
+      height: 100%;
+      object-fit: cover;
+    {% else %}
+      height: auto;
+      display: block;
+    {% endif %}
+  }
+
+  .ai-product-desc-image-placeholder-{{ ai_gen_id }} {
+    width: 100%;
+    {% if block.settings.use_custom_height %}
+      height: {{ block.settings.full_width_height }}px;
+    {% else %}
+      min-height: 400px;
+    {% endif %}
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-product-desc-image-placeholder-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    max-width: 300px;
+    max-height: 300px;
+  }
+
+  .ai-product-desc-overlay-{{ ai_gen_id }} {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: {{ block.settings.overlay_vertical_align }};
+    align-items: {{ block.settings.overlay_horizontal_align }};
+    padding: 40px;
+    background: {{ block.settings.overlay_background }};
+    text-align: {{ block.settings.overlay_text_align }};
+  }
+
+  .ai-product-desc-overlay-heading-{{ ai_gen_id }} {
+    color: {{ block.settings.overlay_text_color }};
+    font-size: {{ block.settings.overlay_heading_size }}px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    line-height: 1.2;
+  }
+
+  .ai-product-desc-overlay-text-{{ ai_gen_id }} {
+    color: {{ block.settings.overlay_text_color }};
+    font-size: {{ block.settings.overlay_text_size }}px;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  .ai-product-desc-grid-{{ ai_gen_id }} {
+    display: grid;
+    grid-template-columns: repeat({{ block.settings.desktop_columns }}, 1fr);
+    gap: {{ block.settings.grid_gap }}px;
+    margin-bottom: {{ block.settings.block_spacing }}px;
+  }
+
+  .ai-product-desc-grid-{{ ai_gen_id }}:last-child {
+    margin-bottom: 0;
+  }
+
+  .ai-product-desc-card-{{ ai_gen_id }} {
+    background-color: {{ block.settings.card_background }};
+    border-radius: {{ block.settings.card_border_radius }}px;
+    padding: {{ block.settings.card_padding }}px;
+    text-align: {{ block.settings.card_text_align }};
+  }
+
+  .ai-product-desc-card-image-{{ ai_gen_id }} {
+    width: 100%;
+    height: {{ block.settings.card_image_height }}px;
+    margin-bottom: 20px;
+    border-radius: {{ block.settings.card_image_radius }}px;
+    overflow: hidden;
+  }
+
+  .ai-product-desc-card-image-{{ ai_gen_id }} img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .ai-product-desc-card-image-placeholder-{{ ai_gen_id }} {
+    width: 100%;
+    height: 100%;
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-product-desc-card-image-placeholder-{{ ai_gen_id }} svg {
+    width: 80px;
+    height: 80px;
+  }
+
+  .ai-product-desc-card-heading-{{ ai_gen_id }} {
+    color: {{ block.settings.card_heading_color }};
+    font-size: {{ block.settings.card_heading_size }}px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    line-height: 1.3;
+  }
+
+  .ai-product-desc-card-subheading-{{ ai_gen_id }} {
+    color: {{ block.settings.card_text_color }};
+    font-size: {{ block.settings.card_subheading_size }}px;
+    margin: 0 0 16px;
+    line-height: 1.5;
+  }
+
+  .ai-product-desc-card-bullets-{{ ai_gen_id }} {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+  }
+
+  .ai-product-desc-card-bullets-{{ ai_gen_id }} li {
+    color: {{ block.settings.card_text_color }};
+    font-size: {{ block.settings.card_bullet_size }}px;
+    line-height: 1.6;
+    margin-bottom: 8px;
+    padding-left: 24px;
+    position: relative;
+  }
+
+  .ai-product-desc-card-bullets-{{ ai_gen_id }} li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: {{ block.settings.card_bullet_icon_color }};
+    font-weight: 600;
+  }
+
+  @media screen and (max-width: 989px) {
+    .ai-product-desc-grid-{{ ai_gen_id }} {
+      grid-template-columns: repeat({{ block.settings.tablet_columns }}, 1fr);
+    }
+
+    .ai-product-desc-overlay-{{ ai_gen_id }} {
+      padding: 30px;
+    }
+
+    .ai-product-desc-overlay-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.overlay_heading_size | times: 0.8 }}px;
+    }
+
+    .ai-product-desc-overlay-text-{{ ai_gen_id }} {
+      font-size: {{ block.settings.overlay_text_size | times: 0.9 }}px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-product-desc-container-{{ ai_gen_id }} {
+      padding: 0;
+    }
+
+    .ai-product-desc-full-width-{{ ai_gen_id }} {
+      border-radius: 0;
+    }
+
+    .ai-product-desc-grid-{{ ai_gen_id }} {
+      grid-template-columns: 1fr;
+      gap: {{ block.settings.grid_gap | times: 0.7 }}px;
+    }
+
+    .ai-product-desc-image-wrapper-{{ ai_gen_id }} {
+      {% if block.settings.use_custom_height %}
+        height: auto;
+      {% endif %}
+    }
+
+    .ai-product-desc-image-wrapper-{{ ai_gen_id }} img {
+      height: auto;
+      object-fit: contain;
+    }
+
+    .ai-product-desc-overlay-{{ ai_gen_id }} {
+      padding: 20px;
+    }
+
+    .ai-product-desc-overlay-heading-{{ ai_gen_id }} {
+      font-size: {{ block.settings.overlay_heading_size | times: 0.6 }}px;
+    }
+
+    .ai-product-desc-overlay-text-{{ ai_gen_id }} {
+      font-size: {{ block.settings.overlay_text_size | times: 0.8 }}px;
+    }
+
+    .ai-product-desc-card-{{ ai_gen_id }} {
+      padding: {{ block.settings.card_padding | times: 0.7 }}px;
+    }
+  }
+{% endstyle %}
+
+<div class="ai-product-desc-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-product-desc-container-{{ ai_gen_id }}">
+    {% if block.settings.layout_type == 'full_width' %}
+      <div class="ai-product-desc-full-width-{{ ai_gen_id }}">
+        <div class="ai-product-desc-image-wrapper-{{ ai_gen_id }}">
+          {% if block.settings.full_width_image %}
+            <img
+              src="{{ block.settings.full_width_image | image_url: width: 2000 }}"
+              alt="{{ block.settings.full_width_image.alt | escape }}"
+              loading="lazy"
+              width="{{ block.settings.full_width_image.width }}"
+              height="{{ block.settings.full_width_image.height }}"
+            >
+          {% else %}
+            <div class="ai-product-desc-image-placeholder-{{ ai_gen_id }}">
+              {{ 'image' | placeholder_svg_tag }}
+            </div>
+          {% endif %}
+        </div>
+
+        {% if block.settings.show_overlay %}
+          <div class="ai-product-desc-overlay-{{ ai_gen_id }}">
+            {% if block.settings.overlay_heading != blank %}
+              <h2 class="ai-product-desc-overlay-heading-{{ ai_gen_id }}">
+                {{ block.settings.overlay_heading }}
+              </h2>
+            {% endif %}
+            {% if block.settings.overlay_text != blank %}
+              <div class="ai-product-desc-overlay-text-{{ ai_gen_id }}">
+                {{ block.settings.overlay_text }}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+
+    {% elsif block.settings.layout_type == 'two_column' or block.settings.layout_type == 'three_column' %}
+      <div class="ai-product-desc-grid-{{ ai_gen_id }}">
+        {% for i in (1..3) %}
+          {% liquid
+            assign card_enabled_key = 'card_' | append: i | append: '_enabled'
+            assign card_image_key = 'card_' | append: i | append: '_image'
+            assign card_heading_key = 'card_' | append: i | append: '_heading'
+            assign card_subheading_key = 'card_' | append: i | append: '_subheading'
+            assign card_bullet_1_key = 'card_' | append: i | append: '_bullet_1'
+            assign card_bullet_2_key = 'card_' | append: i | append: '_bullet_2'
+            assign card_bullet_3_key = 'card_' | append: i | append: '_bullet_3'
+            assign card_bullet_4_key = 'card_' | append: i | append: '_bullet_4'
+
+            assign card_enabled = block.settings[card_enabled_key]
+            assign card_image = block.settings[card_image_key]
+            assign card_heading = block.settings[card_heading_key]
+            assign card_subheading = block.settings[card_subheading_key]
+            assign card_bullet_1 = block.settings[card_bullet_1_key]
+            assign card_bullet_2 = block.settings[card_bullet_2_key]
+            assign card_bullet_3 = block.settings[card_bullet_3_key]
+            assign card_bullet_4 = block.settings[card_bullet_4_key]
+          %}
+
+          {% if card_enabled %}
+            {% if block.settings.layout_type == 'two_column' and i > 2 %}
+              {% break %}
+            {% endif %}
+
+            <div class="ai-product-desc-card-{{ ai_gen_id }}">
+              <div class="ai-product-desc-card-image-{{ ai_gen_id }}">
+                {% if card_image %}
+                  <img
+                    src="{{ card_image | image_url: width: 800 }}"
+                    alt="{{ card_image.alt | escape }}"
+                    loading="lazy"
+                    width="{{ card_image.width }}"
+                    height="{{ card_image.height }}"
+                  >
+                {% else %}
+                  <div class="ai-product-desc-card-image-placeholder-{{ ai_gen_id }}">
+                    {{ 'product-1' | placeholder_svg_tag }}
+                  </div>
+                {% endif %}
+              </div>
+
+              {% if card_heading != blank %}
+                <h3 class="ai-product-desc-card-heading-{{ ai_gen_id }}">
+                  {{ card_heading }}
+                </h3>
+              {% endif %}
+
+              {% if card_subheading != blank %}
+                <p class="ai-product-desc-card-subheading-{{ ai_gen_id }}">
+                  {{ card_subheading }}
+                </p>
+              {% endif %}
+
+              {% if card_bullet_1 != blank or card_bullet_2 != blank or card_bullet_3 != blank or card_bullet_4 != blank %}
+                <ul class="ai-product-desc-card-bullets-{{ ai_gen_id }}">
+                  {% if card_bullet_1 != blank %}
+                    <li>{{ card_bullet_1 }}</li>
+                  {% endif %}
+                  {% if card_bullet_2 != blank %}
+                    <li>{{ card_bullet_2 }}</li>
+                  {% endif %}
+                  {% if card_bullet_3 != blank %}
+                    <li>{{ card_bullet_3 }}</li>
+                  {% endif %}
+                  {% if card_bullet_4 != blank %}
+                    <li>{{ card_bullet_4 }}</li>
+                  {% endif %}
+                </ul>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Product layout",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout_type",
+      "label": "Layout type",
+      "options": [
+        {
+          "value": "full_width",
+          "label": "Full-width image"
+        },
+        {
+          "value": "two_column",
+          "label": "Two-column grid"
+        },
+        {
+          "value": "three_column",
+          "label": "Three-column grid"
+        }
+      ],
+      "default": "full_width"
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "label": "Container width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1400
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "range",
+      "id": "block_spacing",
+      "label": "Block spacing",
+      "min": 0,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 40
+    },
+    {
+      "type": "header",
+      "content": "Full-width image"
+    },
+    {
+      "type": "image_picker",
+      "id": "full_width_image",
+      "label": "Image"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_custom_height",
+      "label": "Use custom height",
+      "default": false,
+      "info": "Enable to set a fixed height, disable for automatic height"
+    },
+    {
+      "type": "range",
+      "id": "full_width_height",
+      "label": "Custom height",
+      "min": 300,
+      "max": 800,
+      "step": 50,
+      "unit": "px",
+      "default": 500,
+      "info": "Only applies when custom height is enabled"
+    },
+    {
+      "type": "range",
+      "id": "image_border_radius",
+      "label": "Border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "header",
+      "content": "Overlay"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_overlay",
+      "label": "Show overlay",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "overlay_heading",
+      "label": "Heading",
+      "default": "Premium Wellness"
+    },
+    {
+      "type": "textarea",
+      "id": "overlay_text",
+      "label": "Text",
+      "default": "Experience the difference with our scientifically-formulated supplements"
+    },
+    {
+      "type": "color",
+      "id": "overlay_background",
+      "label": "Background",
+      "default": "rgba(0, 0, 0, 0.4)"
+    },
+    {
+      "type": "color",
+      "id": "overlay_text_color",
+      "label": "Text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "select",
+      "id": "overlay_vertical_align",
+      "label": "Vertical alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "overlay_horizontal_align",
+      "label": "Horizontal alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "flex-end",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "overlay_text_align",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "overlay_heading_size",
+      "label": "Heading size",
+      "min": 20,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "overlay_text_size",
+      "label": "Text size",
+      "min": 12,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "header",
+      "content": "Grid layout"
+    },
+    {
+      "type": "select",
+      "id": "desktop_columns",
+      "label": "Desktop columns",
+      "options": [
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "select",
+      "id": "tablet_columns",
+      "label": "Tablet columns",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "range",
+      "id": "grid_gap",
+      "label": "Gap between cards",
+      "min": 12,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "header",
+      "content": "Card style"
+    },
+    {
+      "type": "color",
+      "id": "card_background",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "card_heading_color",
+      "label": "Heading color",
+      "default": "#2b3845"
+    },
+    {
+      "type": "color",
+      "id": "card_text_color",
+      "label": "Text color",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "card_bullet_icon_color",
+      "label": "Bullet icon color",
+      "default": "#ee204a"
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "Card padding",
+      "min": 12,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "card_border_radius",
+      "label": "Card border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "select",
+      "id": "card_text_align",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "card_image_height",
+      "label": "Image height",
+      "min": 150,
+      "max": 400,
+      "step": 10,
+      "unit": "px",
+      "default": 240
+    },
+    {
+      "type": "range",
+      "id": "card_image_radius",
+      "label": "Image border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "card_heading_size",
+      "label": "Heading size",
+      "min": 16,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "card_subheading_size",
+      "label": "Subheading size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "card_bullet_size",
+      "label": "Bullet text size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 14
+    },
+    {
+      "type": "header",
+      "content": "Card 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_1_enabled",
+      "label": "Enable card 1",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "card_1_image",
+      "label": "Image"
+    },
+    {
+      "type": "text",
+      "id": "card_1_heading",
+      "label": "Heading",
+      "default": "Natural Ingredients"
+    },
+    {
+      "type": "textarea",
+      "id": "card_1_subheading",
+      "label": "Subheading",
+      "default": "Sourced from the finest organic farms"
+    },
+    {
+      "type": "text",
+      "id": "card_1_bullet_1",
+      "label": "Bullet point 1",
+      "default": "100% organic certified"
+    },
+    {
+      "type": "text",
+      "id": "card_1_bullet_2",
+      "label": "Bullet point 2",
+      "default": "Non-GMO verified"
+    },
+    {
+      "type": "text",
+      "id": "card_1_bullet_3",
+      "label": "Bullet point 3",
+      "default": "Third-party tested"
+    },
+    {
+      "type": "text",
+      "id": "card_1_bullet_4",
+      "label": "Bullet point 4",
+      "default": "Sustainably sourced"
+    },
+    {
+      "type": "header",
+      "content": "Card 2"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_2_enabled",
+      "label": "Enable card 2",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "card_2_image",
+      "label": "Image"
+    },
+    {
+      "type": "text",
+      "id": "card_2_heading",
+      "label": "Heading",
+      "default": "Science-Backed"
+    },
+    {
+      "type": "textarea",
+      "id": "card_2_subheading",
+      "label": "Subheading",
+      "default": "Formulated by leading nutritionists"
+    },
+    {
+      "type": "text",
+      "id": "card_2_bullet_1",
+      "label": "Bullet point 1",
+      "default": "Clinically proven results"
+    },
+    {
+      "type": "text",
+      "id": "card_2_bullet_2",
+      "label": "Bullet point 2",
+      "default": "Research-backed formulas"
+    },
+    {
+      "type": "text",
+      "id": "card_2_bullet_3",
+      "label": "Bullet point 3",
+      "default": "Expert-approved dosages"
+    },
+    {
+      "type": "text",
+      "id": "card_2_bullet_4",
+      "label": "Bullet point 4",
+      "default": "Quality guaranteed"
+    },
+    {
+      "type": "header",
+      "content": "Card 3"
+    },
+    {
+      "type": "checkbox",
+      "id": "card_3_enabled",
+      "label": "Enable card 3",
+      "default": true
+    },
+    {
+      "type": "image_picker",
+      "id": "card_3_image",
+      "label": "Image"
+    },
+    {
+      "type": "text",
+      "id": "card_3_heading",
+      "label": "Heading",
+      "default": "Premium Quality"
+    },
+    {
+      "type": "textarea",
+      "id": "card_3_subheading",
+      "label": "Subheading",
+      "default": "Manufactured in certified facilities"
+    },
+    {
+      "type": "text",
+      "id": "card_3_bullet_1",
+      "label": "Bullet point 1",
+      "default": "GMP certified production"
+    },
+    {
+      "type": "text",
+      "id": "card_3_bullet_2",
+      "label": "Bullet point 2",
+      "default": "Purity tested"
+    },
+    {
+      "type": "text",
+      "id": "card_3_bullet_3",
+      "label": "Bullet point 3",
+      "default": "No artificial additives"
+    },
+    {
+      "type": "text",
+      "id": "card_3_bullet_4",
+      "label": "Bullet point 4",
+      "default": "Vegan-friendly options"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product layout"
+    }
+  ]
+}
+{% endschema %}

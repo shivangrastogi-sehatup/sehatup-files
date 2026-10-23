@@ -1,0 +1,125 @@
+{% assign sid = section.id %}
+
+<style>
+  .sehatUP-feature-{{ sid }} {
+    background: {{ section.settings.section_bg_color }};
+    padding: {{ section.settings.section_padding_top }}px {{ section.settings.section_padding_horizontal }}px {{ section.settings.section_padding_bottom }}px;
+  }
+
+  .sehatUP-feature__container-{{ sid }}{
+    max-width: {{ section.settings.container_max_width }}px;
+    margin: auto;
+  }
+
+  .sehatUP-feature__heading-{{ sid }}{
+    text-align: {{ section.settings.heading_alignment }};
+    font-size: clamp(24px, 3.4vw, 64px);
+    font-weight: {{ section.settings.heading_weight }};
+    margin-bottom: {{ section.settings.heading_margin_bottom }}px;
+    color: {{ section.settings.heading_color }};
+  }
+
+  .sehatUP-feature__grid-{{ sid }}{
+    display: grid;
+    grid-template-columns: repeat({{ section.settings.columns_desktop }},1fr);
+    gap: {{ section.settings.grid_gap }}px;
+  }
+
+  .sehatUP-feature__item{
+    display:flex;
+    gap:20px;
+    align-items:flex-start;
+  }
+
+  .sehatUP-feature__item img{
+    width: {{ section.settings.icon_size }}px;
+  }
+
+  .sehatUP-feature__title{
+    font-size: clamp(14px, 1.4vw, 19px);
+    font-weight: {{ section.settings.title_weight }};
+    color: {{ section.settings.title_color }};
+    margin-bottom:8px;
+  }
+
+  .sehatUP-feature__desc{
+    font-size: clamp(10px, 1vw, 20px);
+    color: {{ section.settings.description_color }};
+  }
+
+  @media(max-width: 768px){
+    .sehatUP-feature__grid-{{ sid }}{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+
+<section class="sehatUP-feature-{{ sid }}">
+  <div class="sehatUP-feature__container-{{ sid }}">
+    
+    <h2 class="sehatUP-feature__heading-{{ sid }}">
+      {{ section.settings.section_heading }}
+    </h2>
+
+    <div class="sehatUP-feature__grid-{{ sid }}">
+      {% for block in section.blocks %}
+        <div class="sehatUP-feature__item" {{ block.shopify_attributes }}>
+          {% if block.settings.icon %}
+            <img src="{{ block.settings.icon | image_url }}" alt="">
+          {% endif %}
+          <div>
+            <div class="sehatUP-feature__title">{{ block.settings.title }}</div>
+            <div class="sehatUP-feature__desc">{{ block.settings.description }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "sehatUP Feature Grid",
+  "settings": [
+    { "type": "text", "id": "section_heading", "label": "Heading", "default": "What Makes sehatUP Different" },
+    { "type": "color", "id": "section_bg_color", "label": "Background", "default": "#f9f9f9" },
+
+    { "type": "range", "id": "container_max_width", "min": 800, "max": 1600, "step": 50, "unit": "px", "default": 1200, "label": "Container Width" },
+
+    { "type": "range", "id": "section_padding_top", "min": 0, "max": 120, "step": 5, "unit": "px", "default": 60, "label": "Top Padding" },
+    { "type": "range", "id": "section_padding_bottom", "min": 0, "max": 120, "step": 5, "unit": "px", "default": 60, "label": "Bottom Padding" },
+    { "type": "range", "id": "section_padding_horizontal", "min": 0, "max": 100, "step": 5, "unit": "px", "default": 20, "label": "Side Padding" },
+
+    { "type": "select", "id": "heading_alignment", "options": [{"value":"left","label":"Left"},{"value":"center","label":"Center"},{"value":"right","label":"Right"}], "default":"center", "label":"Heading Alignment"},
+    { "type": "color", "id": "heading_color", "default": "#262626", "label": "Heading Color"},
+    { "type": "range", "id": "heading_size", "min": 20, "max": 60, "step": 2, "unit": "px", "default": 32, "label": "Heading Size"},
+    { "type": "range", "id": "heading_weight", "min": 300, "max": 900, "step": 100, "default": 700, "label": "Heading Weight"},
+    { "type": "range", "id": "heading_margin_bottom", "min": 0, "max": 80, "step": 5, "unit": "px", "default": 40, "label": "Heading Spacing"},
+
+    { "type": "range", "id": "columns_desktop", "min": 1, "max": 4, "step": 1, "default": 3, "label": "Columns Desktop"},
+    { "type": "range", "id": "grid_gap", "min": 0, "max": 60, "step": 5, "unit": "px", "default": 30, "label": "Grid Gap"},
+
+    { "type": "range", "id": "icon_size", "min": 30, "max": 120, "step": 5, "unit": "px", "default": 60, "label": "Icon Size"},
+
+    { "type": "range", "id": "title_size", "min": 14, "max": 30, "step": 2, "unit": "px", "default": 20, "label": "Title Size"},
+    { "type": "range", "id": "title_weight", "min": 300, "max": 900, "step": 100, "default": 600, "label": "Title Weight"},
+    { "type": "color", "id": "title_color", "default": "#262626", "label": "Title Color"},
+
+    { "type": "range", "id": "description_size", "min": 12, "max": 22, "step": 1, "unit": "px", "default": 15, "label": "Description Size"},
+    { "type": "color", "id": "description_color", "default": "#666666", "label": "Description Color"}
+  ],
+  "blocks": [
+    {
+      "type": "feature",
+      "name": "Feature",
+      "settings": [
+        { "type": "image_picker", "id": "icon", "label": "Icon" },
+        { "type": "text", "id": "title", "label": "Title" },
+        { "type": "richtext", "id": "description", "label": "Description" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "sehatUP Feature Grid" }]
+}
+{% endschema %}

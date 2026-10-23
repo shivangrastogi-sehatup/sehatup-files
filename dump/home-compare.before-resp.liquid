@@ -1,0 +1,134 @@
+{%- comment -%}
+  Home: the usual way vs the sehatUP way. Desktop: a three-column table, the
+  sehatUP column sits on a white card. Phones: one card per row. Rows rise in
+  one after another on first view. Each row is a block.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #hcp-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --soft: #8a827c; --line: #e8e0d9; --btn: #d81f48;
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    padding: clamp(56px, 6vw, 104px) clamp(16px, 4vw, 48px); background: {{ s.section_bg | default: '#faf7f5' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hcp-{{ section.id }} .hcp__in { max-width: 1060px; margin: 0 auto; }
+  #hcp-{{ section.id }} .hcp__head { max-width: 720px; margin: 0 auto 40px; text-align: center; }
+  #hcp-{{ section.id }} .hcp__h { margin: 0 0 16px; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #hcp-{{ section.id }} .hcp__sub { margin: 0; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+
+  #hcp-{{ section.id }} .hcp__t { margin: 0; padding: 0; list-style: none; }
+  #hcp-{{ section.id }} .hcp__r { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.25fr); }
+  #hcp-{{ section.id }} .hcp__r > * { padding: 20px 24px; border-bottom: 1px solid var(--line); }
+  #hcp-{{ section.id }} .hcp__r > :last-child { background: #fff; border-bottom-color: #f1ebe6; }
+  #hcp-{{ section.id }} .hcp__r:first-child > :last-child { border-radius: 24px 24px 0 0; }
+  #hcp-{{ section.id }} .hcp__r:last-child > :last-child { border-radius: 0 0 24px 24px; border-bottom: 0; }
+  #hcp-{{ section.id }} .hcp__r:last-child > * { border-bottom: 0; }
+  #hcp-{{ section.id }} .hcp__top > * { padding-top: 26px; padding-bottom: 16px; font: 700 15px/1.2 'Montserrat', sans-serif; color: var(--mute); }
+  #hcp-{{ section.id }} .hcp__top > :last-child { font: 800 19px/1.2 'Montserrat', sans-serif; color: var(--btn); }
+  #hcp-{{ section.id }} .hcp__l { font: 700 16px/1.4 'Montserrat', sans-serif; color: var(--ink); }
+  #hcp-{{ section.id }} .hcp__u, #hcp-{{ section.id }} .hcp__o { display: flex; gap: 12px; align-items: flex-start; }
+  #hcp-{{ section.id }} .hcp__u { font: 400 15.5px/1.45 'Montserrat', sans-serif; color: var(--soft); }
+  #hcp-{{ section.id }} .hcp__o { font: 600 16px/1.45 'Montserrat', sans-serif; color: var(--ink); }
+  #hcp-{{ section.id }} .hcp__u i, #hcp-{{ section.id }} .hcp__o i { flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; }
+  #hcp-{{ section.id }} .hcp__u i { background: #ece6e1; color: var(--soft); }
+  #hcp-{{ section.id }} .hcp__o i { background: var(--btn); color: #fff; transition: transform .5s cubic-bezier(.34, 1.56, .64, 1) calc(var(--i) * .08s + .3s); }
+  #hcp-{{ section.id }} i svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  #hcp-{{ section.id }} .hcp__foot { margin: 36px 0 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 24px; }
+  #hcp-{{ section.id }} .hcp__btn { display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 30px; border-radius: 999px; background: var(--btn); color: #fff; text-decoration: none; font: 700 16px/1 'Montserrat', sans-serif; transition: background-color .2s; }
+  @media (hover: hover) { #hcp-{{ section.id }} .hcp__btn:hover { background: #c11a3f; color: #fff; } }
+  #hcp-{{ section.id }} .hcp__btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  #hcp-{{ section.id }} .hcp__btn svg { width: .9em; height: .9em; }
+  #hcp-{{ section.id }} .hcp__note { font: 500 14.5px/1.4 'Montserrat', sans-serif; color: var(--mute); }
+
+  #hcp-{{ section.id }}.js .hcp__r { opacity: 0; transform: translateY(14px); }
+  #hcp-{{ section.id }}.js .hcp__o i { transform: scale(0); }
+  #hcp-{{ section.id }}.js.in .hcp__r { opacity: 1; transform: none; transition: opacity .5s ease calc(var(--i) * .08s), transform .7s var(--ease) calc(var(--i) * .08s); }
+  #hcp-{{ section.id }}.js.in .hcp__o i { transform: none; }
+
+  @media (max-width: 749.98px) {
+    #hcp-{{ section.id }} .hcp__h { font-size: 30px; }
+    #hcp-{{ section.id }} .hcp__sub { font-size: 15px; }
+    #hcp-{{ section.id }} .hcp__head { margin-bottom: 24px; }
+    #hcp-{{ section.id }} .hcp__t { display: grid; gap: 10px; }
+    #hcp-{{ section.id }} .hcp__top { display: none !important; }
+    #hcp-{{ section.id }} .hcp__r { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 18px; border-radius: 20px; background: #fff; }
+    #hcp-{{ section.id }} .hcp__r > *, #hcp-{{ section.id }} .hcp__r > :last-child { padding: 0; border: 0; border-radius: 0 !important; background: none; }
+    #hcp-{{ section.id }} .hcp__l { font-size: 13px; color: var(--btn); }
+    #hcp-{{ section.id }} .hcp__u { font-size: 14px; }
+    #hcp-{{ section.id }} .hcp__o { font-size: 15px; }
+    #hcp-{{ section.id }} .hcp__btn { width: 100%; justify-content: center; }
+  }
+  @media (min-width: 1680px) { #hcp-{{ section.id }} .hcp__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hcp-{{ section.id }} .hcp__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #hcp-{{ section.id }} .hcp__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hcp-{{ section.id }} .hcp__in { zoom: 2; } }
+  @media (prefers-reduced-motion: reduce) { #hcp-{{ section.id }} * { transition: none !important; } }
+</style>
+
+<section id="hcp-{{ section.id }}">
+  <div class="hcp__in">
+    <div class="hcp__head">
+      <h2 class="hcp__h">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="hcp__sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+    <ul class="hcp__t" role="list">
+      <li class="hcp__r hcp__top" style="--i: 0" aria-hidden="true"><span></span><span>{{ s.usual_label }}</span><span>{{ s.ours_label }}</span></li>
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        <li class="hcp__r" style="--i: {{ forloop.index }}" {{ block.shopify_attributes }}>
+          <span class="hcp__l">{{ b.label }}</span>
+          <span class="hcp__u"><i aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></i><span><span class="visually-hidden">{{ s.usual_label }}: </span>{{ b.usual }}</span></span>
+          <span class="hcp__o"><i aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5"/></svg></i><span><span class="visually-hidden">{{ s.ours_label }}: </span>{{ b.ours }}</span></span>
+        </li>
+      {%- endfor -%}
+    </ul>
+    {%- if s.button != blank -%}
+      <div class="hcp__foot">
+        <a class="hcp__btn" href="{{ s.button_link | default: '#' }}">{{ s.button }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+        {%- if s.note != blank -%}<span class="hcp__note">{{ s.note }}</span>{%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hcp-{{ section.id }}');
+    if (!root || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    root.classList.add('js');
+    var io = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { root.classList.add('in'); io.disconnect(); }
+    }, { threshold: .15 });
+    io.observe(root.querySelector('.hcp__t'));
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Home: compare",
+  "tag": "div",
+  "max_blocks": 10,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What makes sehatUP different" },
+    { "type": "textarea", "id": "subheading", "label": "Line under it" },
+    { "type": "text", "id": "usual_label", "label": "Left column", "default": "The usual way" },
+    { "type": "text", "id": "ours_label", "label": "Right column", "default": "With sehatUP" },
+    { "type": "text", "id": "button", "label": "Button" },
+    { "type": "url", "id": "button_link", "label": "Button link" },
+    { "type": "text", "id": "note", "label": "Line next to the button" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#faf7f5" }
+  ],
+  "blocks": [
+    {
+      "type": "row",
+      "name": "Row",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Topic", "default": "Who looks at you" },
+        { "type": "text", "id": "usual", "label": "The usual way", "default": "One doctor, one system" },
+        { "type": "text", "id": "ours", "label": "With sehatUP", "default": "Experts from three systems, together" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Home: compare" }]
+}
+{% endschema %}

@@ -1,0 +1,1114 @@
+{% doc %}
+  @prompt
+    Image is only for the search bar of the mobile and tablet layout . 
+    
+    create a navbar header, with responsive layout for desktop,laptop,tablet,and mobile . 
+    
+    with these options also :
+    
+    1. Sticky working
+    2. logo on left middle ,etc setting 
+    3. search user cart button , and when it is laptop and desktop then not just show the icon for the search bar , make a trending capsule like text input and search icon inside but make sure when user clicks on it then popular product will be showing there and when type something then predictive search happens . 
+    4. and make the layout responsive . when only search icon is showing then at that time if someone clicks the icon then a extbox modal type opens with a animation coming from top and a bit smooth animation and shows as i pasted image .
+    5. for mobile layout only show search and cart icon make the navigation hamburder contain the login
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-navbar-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    background-color: {{ block.settings.navbar_bg_color }};
+    border-bottom: 1px solid {{ block.settings.border_color }};
+    z-index: 1000;
+  }
+
+  .ai-navbar-{{ ai_gen_id }} {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    will-change: transform;
+    transition: transform 0.35s ease, padding 0.35s ease;
+  }
+
+  .ai-navbar-{{ ai_gen_id }}.hidden {
+    transform: translateY(-100%);
+  }
+
+  .ai-navbar-{{ ai_gen_id }}.scrolled img {
+    max-width: calc({{ block.settings.logo_width }}px * 0.85);
+    transition: max-width 0.35s ease;
+  }
+
+  .ai-navbar-container-{{ ai_gen_id }} {
+    max-width: {{ block.settings.container_width }}px;
+    margin: 0 auto;
+    padding: {{ block.settings.navbar_padding }}px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .ai-navbar-left-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: 0 0 auto;
+  }
+
+  .ai-navbar-center-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+  }
+
+  .ai-navbar-right-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 0 0 auto;
+  }
+
+  .ai-navbar-logo-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+  }
+
+  .ai-navbar-logo-{{ ai_gen_id }} img {
+    max-width: {{ block.settings.logo_width }}px;
+    height: auto;
+  }
+
+  .ai-navbar-logo-placeholder-{{ ai_gen_id }} {
+    width: {{ block.settings.logo_width }}px;
+    height: 40px;
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+
+  .ai-navbar-logo-placeholder-{{ ai_gen_id }} svg {
+    width: 100%;
+    height: 100%;
+    max-width: 100px;
+  }
+
+  .ai-navbar-nav-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .ai-navbar-nav-{{ ai_gen_id }} a {
+    color: {{ block.settings.nav_text_color }};
+    text-decoration: none;
+    font-size: {{ block.settings.nav_font_size }}px;
+    font-weight: {{ block.settings.nav_font_weight }};
+    transition: color 0.3s ease;
+  }
+
+  .ai-navbar-nav-{{ ai_gen_id }} a:hover {
+    color: {{ block.settings.nav_hover_color }};
+  }
+
+  .ai-navbar-search-desktop-{{ ai_gen_id }} {
+    position: relative;
+    width: 100%;
+    max-width: {{ block.settings.search_bar_width }}px;
+  }
+
+  .ai-navbar-search-input-wrapper-{{ ai_gen_id }} {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .ai-navbar-search-input-{{ ai_gen_id }} {
+    width: 100%;
+    padding: 10px 40px 10px 16px;
+    border: 1px solid {{ block.settings.search_border_color }};
+    border-radius: {{ block.settings.search_border_radius }}px;
+    background-color: {{ block.settings.search_bg_color }};
+    color: {{ block.settings.search_text_color }};
+    font-size: 14px;
+  }
+
+  .ai-navbar-search-input-{{ ai_gen_id }}::placeholder {
+    color: {{ block.settings.search_placeholder_color }};
+  }
+
+  .ai-navbar-search-icon-{{ ai_gen_id }} {
+    position: absolute;
+    right: 12px;
+    width: 20px;
+    height: 20px;
+    color: {{ block.settings.icon_color }};
+    pointer-events: none;
+  }
+
+  .ai-navbar-search-results-{{ ai_gen_id }} {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background-color: {{ block.settings.dropdown_bg_color }};
+    border: 1px solid {{ block.settings.border_color }};
+    border-radius: {{ block.settings.search_border_radius }}px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-height: 400px;
+    overflow-y: auto;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+    z-index: 100;
+  }
+
+  .ai-navbar-search-results-{{ ai_gen_id }}.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .ai-navbar-search-section-{{ ai_gen_id }} {
+    padding: 12px 0;
+  }
+
+  .ai-navbar-search-section-{{ ai_gen_id }}:not(:last-child) {
+    border-bottom: 1px solid {{ block.settings.border_color }};
+  }
+
+  .ai-navbar-search-section-title-{{ ai_gen_id }} {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: {{ block.settings.search_text_color }};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .ai-navbar-search-item-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+    color: {{ block.settings.search_text_color }};
+  }
+
+  .ai-navbar-search-item-{{ ai_gen_id }}:hover {
+    background-color: {{ block.settings.search_hover_bg }};
+  }
+
+  .ai-navbar-search-item-image-{{ ai_gen_id }} {
+    width: 50px;
+    height: 50px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    object-fit: cover;
+  }
+
+  .ai-navbar-search-item-info-{{ ai_gen_id }} {
+    flex: 1;
+  }
+
+  .ai-navbar-search-item-title-{{ ai_gen_id }} {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+
+  .ai-navbar-search-item-price-{{ ai_gen_id }} {
+    font-size: 13px;
+    color: {{ block.settings.nav_text_color }};
+  }
+
+  .ai-navbar-icons-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .ai-navbar-icon-btn-{{ ai_gen_id }} {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: {{ block.settings.icon_color }};
+    position: relative;
+    transition: color 0.3s ease;
+  }
+
+  .ai-navbar-icon-btn-{{ ai_gen_id }}:hover {
+    color: {{ block.settings.icon_hover_color }};
+  }
+
+  .ai-navbar-icon-btn-{{ ai_gen_id }} svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ai-navbar-cart-count-{{ ai_gen_id }} {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: {{ block.settings.cart_badge_bg }};
+    color: {{ block.settings.cart_badge_text }};
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  .ai-navbar-hamburger-{{ ai_gen_id }} {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: {{ block.settings.icon_color }};
+  }
+
+  .ai-navbar-hamburger-{{ ai_gen_id }} svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ai-navbar-mobile-menu-{{ ai_gen_id }} {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 80%;
+    max-width: 320px;
+    height: 100vh;
+    background-color: {{ block.settings.navbar_bg_color }};
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease;
+    z-index: 2000;
+    overflow-y: auto;
+  }
+
+  .ai-navbar-mobile-menu-{{ ai_gen_id }}.active {
+    left: 0;
+  }
+
+  .ai-navbar-mobile-header-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid {{ block.settings.border_color }};
+  }
+
+  .ai-navbar-mobile-close-{{ ai_gen_id }} {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: {{ block.settings.icon_color }};
+  }
+
+  .ai-navbar-mobile-close-{{ ai_gen_id }} svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ai-navbar-mobile-nav-{{ ai_gen_id }} {
+    list-style: none;
+    margin: 0;
+    padding: 20px 0;
+  }
+
+  .ai-navbar-mobile-nav-{{ ai_gen_id }} li {
+    border-bottom: 1px solid {{ block.settings.border_color }};
+  }
+
+  .ai-navbar-mobile-nav-{{ ai_gen_id }} a {
+    display: block;
+    padding: 16px 20px;
+    color: {{ block.settings.nav_text_color }};
+    text-decoration: none;
+    font-size: 16px;
+    transition: background-color 0.2s ease;
+  }
+
+  .ai-navbar-mobile-nav-{{ ai_gen_id }} a:hover {
+    background-color: {{ block.settings.search_hover_bg }};
+  }
+
+  .ai-navbar-mobile-user-{{ ai_gen_id }} {
+    padding: 20px;
+    border-top: 1px solid {{ block.settings.border_color }};
+  }
+
+  .ai-navbar-mobile-user-link-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    color: {{ block.settings.nav_text_color }};
+    text-decoration: none;
+    font-size: 16px;
+  }
+
+  .ai-navbar-mobile-user-link-{{ ai_gen_id }} svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ai-navbar-overlay-{{ ai_gen_id }} {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 1500;
+  }
+
+  .ai-navbar-overlay-{{ ai_gen_id }}.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .ai-navbar-search-modal-{{ ai_gen_id }} {
+    position: fixed;
+    top: -100%;
+    left: 0;
+    width: 100%;
+    background-color: {{ block.settings.navbar_bg_color }};
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2000;
+    padding: 20px;
+  }
+
+  .ai-navbar-search-modal-{{ ai_gen_id }}.active {
+    top: 0;
+  }
+
+  .ai-navbar-search-modal-header-{{ ai_gen_id }} {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .ai-navbar-search-modal-input-{{ ai_gen_id }} {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid {{ block.settings.search_border_color }};
+    border-radius: {{ block.settings.search_border_radius }}px;
+    background-color: {{ block.settings.search_bg_color }};
+    color: {{ block.settings.search_text_color }};
+    font-size: 16px;
+  }
+
+  .ai-navbar-search-modal-close-{{ ai_gen_id }} {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: {{ block.settings.icon_color }};
+  }
+
+  .ai-navbar-search-modal-close-{{ ai_gen_id }} svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ai-navbar-search-modal-results-{{ ai_gen_id }} {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  @media screen and (max-width: 1024px) {
+    .ai-navbar-nav-{{ ai_gen_id }} {
+      display: none;
+    }
+
+    .ai-navbar-search-desktop-{{ ai_gen_id }} {
+      display: none;
+    }
+
+    .ai-navbar-icon-btn-{{ ai_gen_id }}.user-desktop {
+      display: none;
+    }
+
+    .ai-navbar-hamburger-{{ ai_gen_id }} {
+      display: block;
+    }
+  }
+
+  @media screen and (min-width: 1025px) {
+    .ai-navbar-icon-btn-{{ ai_gen_id }}.search-mobile {
+      display: none;
+    }
+
+    {% if block.settings.logo_position == 'left' %}
+      .ai-navbar-center-{{ ai_gen_id }} {
+        justify-content: flex-start;
+      }
+    {% elsif block.settings.logo_position == 'center' %}
+      .ai-navbar-left-{{ ai_gen_id }} {
+        flex: 1;
+      }
+      .ai-navbar-right-{{ ai_gen_id }} {
+        flex: 1;
+        justify-content: flex-end;
+      }
+    {% endif %}
+  }
+
+  @media screen and (max-width: 768px) {
+    .ai-navbar-container-{{ ai_gen_id }} {
+      padding: {{ block.settings.navbar_padding | times: 0.7 }}px 16px;
+    }
+
+    .ai-navbar-mobile-menu-{{ ai_gen_id }} {
+      width: 85%;
+    }
+  }
+{% endstyle %}
+
+<navbar-header-{{ ai_gen_id }}
+  class="ai-navbar-{{ ai_gen_id }} {% if block.settings.enable_sticky %}sticky{% endif %}"
+  {{ block.shopify_attributes }}
+>
+  <div class="ai-navbar-container-{{ ai_gen_id }}">
+    <div class="ai-navbar-left-{{ ai_gen_id }}">
+      <button class="ai-navbar-hamburger-{{ ai_gen_id }}" aria-label="Open menu">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      {% if block.settings.logo_position == 'left' %}
+        <a href="/" class="ai-navbar-logo-{{ ai_gen_id }}">
+          {% if block.settings.logo %}
+            <img src="{{ block.settings.logo | image_url: width: 400 }}" alt="{{ shop.name }}" loading="lazy">
+          {% else %}
+            <div class="ai-navbar-logo-placeholder-{{ ai_gen_id }}">
+              {{ 'image' | placeholder_svg_tag }}
+            </div>
+          {% endif %}
+        </a>
+      {% endif %}
+    </div>
+
+    <div class="ai-navbar-center-{{ ai_gen_id }}">
+      {% if block.settings.logo_position == 'center' %}
+        <a href="/" class="ai-navbar-logo-{{ ai_gen_id }}">
+          {% if block.settings.logo %}
+            <img src="{{ block.settings.logo | image_url: width: 400 }}" alt="{{ shop.name }}" loading="lazy">
+          {% else %}
+            <div class="ai-navbar-logo-placeholder-{{ ai_gen_id }}">
+              {{ 'image' | placeholder_svg_tag }}
+            </div>
+          {% endif %}
+        </a>
+      {% endif %}
+
+      <nav>
+        {% if block.settings.menu != blank %}
+          <ul class="ai-navbar-nav-{{ ai_gen_id }}">
+            {% for link in linklists[block.settings.menu].links %}
+              <li>
+                <a href="{{ link.url }}">
+                  {{ link.title }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </nav>
+    </div>
+
+    <div class="ai-navbar-right-{{ ai_gen_id }}">
+      <div class="ai-navbar-search-desktop-{{ ai_gen_id }}">
+        <div class="ai-navbar-search-input-wrapper-{{ ai_gen_id }}">
+          <input
+            type="text"
+            class="ai-navbar-search-input-{{ ai_gen_id }}"
+            placeholder="{{ block.settings.search_placeholder }}"
+            aria-label="Search"
+          >
+          <svg
+            class="ai-navbar-search-icon-{{ ai_gen_id }}"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <div class="ai-navbar-search-results-{{ ai_gen_id }}"></div>
+      </div>
+
+      <div class="ai-navbar-icons-{{ ai_gen_id }}">
+        <button class="ai-navbar-icon-btn-{{ ai_gen_id }} search-mobile" aria-label="Search">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+
+        <a href="/account" class="ai-navbar-icon-btn-{{ ai_gen_id }} user-desktop" aria-label="Account">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </a>
+
+        <a href="/cart" class="ai-navbar-icon-btn-{{ ai_gen_id }}" aria-label="Cart">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          <span class="ai-navbar-cart-count-{{ ai_gen_id }}">{{ cart.item_count }}</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="ai-navbar-mobile-menu-{{ ai_gen_id }}">
+    <div class="ai-navbar-mobile-header-{{ ai_gen_id }}">
+      <a href="/" class="ai-navbar-logo-{{ ai_gen_id }}">
+        {% if block.settings.logo %}
+          <img src="{{ block.settings.logo | image_url: width: 200 }}" alt="{{ shop.name }}" loading="lazy">
+        {% else %}
+          <div class="ai-navbar-logo-placeholder-{{ ai_gen_id }}">
+            {{ 'image' | placeholder_svg_tag }}
+          </div>
+        {% endif %}
+      </a>
+      <button class="ai-navbar-mobile-close-{{ ai_gen_id }}" aria-label="Close menu">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <ul class="ai-navbar-mobile-nav-{{ ai_gen_id }}">
+      {% if block.settings.nav_link_1_text != blank %}
+        <li>
+          <a href="{{ block.settings.nav_link_1_url }}">{{ block.settings.nav_link_1_text }}</a>
+        </li>
+      {% endif %}
+      {% if block.settings.nav_link_2_text != blank %}
+        <li>
+          <a href="{{ block.settings.nav_link_2_url }}">{{ block.settings.nav_link_2_text }}</a>
+        </li>
+      {% endif %}
+      {% if block.settings.nav_link_3_text != blank %}
+        <li>
+          <a href="{{ block.settings.nav_link_3_url }}">{{ block.settings.nav_link_3_text }}</a>
+        </li>
+      {% endif %}
+      {% if block.settings.nav_link_4_text != blank %}
+        <li>
+          <a href="{{ block.settings.nav_link_4_url }}">{{ block.settings.nav_link_4_text }}</a>
+        </li>
+      {% endif %}
+      {% if block.settings.nav_link_5_text != blank %}
+        <li>
+          <a href="{{ block.settings.nav_link_5_url }}">{{ block.settings.nav_link_5_text }}</a>
+        </li>
+      {% endif %}
+    </ul>
+
+    <div class="ai-navbar-mobile-user-{{ ai_gen_id }}">
+      <a href="/account/login" class="ai-navbar-mobile-user-link-{{ ai_gen_id }}">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+        <span>Login / Register</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="ai-navbar-search-modal-{{ ai_gen_id }}">
+    <div class="ai-navbar-search-modal-header-{{ ai_gen_id }}">
+      <input
+        type="text"
+        class="ai-navbar-search-modal-input-{{ ai_gen_id }}"
+        placeholder="{{ block.settings.search_placeholder }}"
+        aria-label="Search"
+      >
+      <button class="ai-navbar-search-modal-close-{{ ai_gen_id }}" aria-label="Close search">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="ai-navbar-search-modal-results-{{ ai_gen_id }}"></div>
+  </div>
+
+  <div class="ai-navbar-overlay-{{ ai_gen_id }}"></div>
+</navbar-header-{{ ai_gen_id }}>
+
+<script>
+(() => {
+  class NavbarHeader{{ ai_gen_id }} extends HTMLElement {
+    constructor() {
+      super();
+      this.lastScroll = 0;
+      this.searchTimeout = null;
+
+      this.searchInput = this.querySelector('.ai-navbar-search-input-{{ ai_gen_id }}');
+      this.searchResults = this.querySelector('.ai-navbar-search-results-{{ ai_gen_id }}');
+
+      this.popularProducts = {{ block.settings.popular_products | json }};
+    }
+
+    connectedCallback() {
+      this.handleScroll();
+      this.setupSearch();
+      this.loadPopularProducts();
+    }
+
+    handleScroll() {
+      window.addEventListener('scroll', () => {
+        const current = window.scrollY;
+
+        if (current > 80) this.classList.add('scrolled');
+        else this.classList.remove('scrolled');
+
+        if (current > this.lastScroll && current > 120) {
+          this.classList.add('hidden');
+        } else {
+          this.classList.remove('hidden');
+        }
+
+        this.lastScroll = current;
+      });
+    }
+
+    setupSearch() {
+      if (!this.searchInput) return;
+
+      this.searchInput.addEventListener('focus', () => {
+        if (!this.searchInput.value) {
+          this.showPopularProducts();
+        }
+      });
+
+      this.searchInput.addEventListener('input', e => {
+        clearTimeout(this.searchTimeout);
+        const q = e.target.value.trim();
+
+        if (!q) {
+          this.showPopularProducts();
+        } else {
+          this.searchTimeout = setTimeout(() => {
+            this.fetchSearch(q);
+          }, 300);
+        }
+      });
+
+      document.addEventListener('click', e => {
+        if (!this.contains(e.target)) {
+          this.searchResults.classList.remove('active');
+        }
+      });
+    }
+
+    loadPopularProducts() {
+      if (this.popularProducts?.length) return;
+
+      fetch('/collections/all/products.json?limit=6')
+        .then(r => r.json())
+        .then(d => this.popularProducts = d.products || []);
+    }
+
+    showPopularProducts() {
+      if (!this.popularProducts?.length) return;
+
+      let html = `<div class="ai-navbar-search-section-title-{{ ai_gen_id }}">Popular Products</div>`;
+      this.popularProducts.slice(0,5).forEach(p => {
+        const img = p.images[0]?.replace(/(\.[^.]*)$/, '_100x$1');
+        const price = this.formatMoney(p.variants[0].price);
+
+        html += `
+          <a class="ai-navbar-search-item-{{ ai_gen_id }}" href="/products/${p.handle}">
+            <img loading="lazy" decoding="async" src="${img}" class="ai-navbar-search-item-image-{{ ai_gen_id }}">
+            <div>
+              <div>${p.title}</div>
+              <small>${price}</small>
+            </div>
+          </a>`;
+      });
+
+      this.searchResults.innerHTML = html;
+      this.searchResults.classList.add('active');
+    }
+
+    fetchSearch(q) {
+      fetch(`/search/suggest.json?q=${encodeURIComponent(q)}&resources[type]=product&resources[limit]=5`)
+        .then(r => r.json())
+        .then(d => {
+          const products = d.resources.results.products || [];
+          if (!products.length) return;
+
+          let html = `<div class="ai-navbar-search-section-title-{{ ai_gen_id }}">Products</div>`;
+          products.forEach(p => {
+            const img = p.image?.replace(/(\.[^.]*)$/, '_100x$1');
+            const price = this.formatMoney(p.price);
+
+            html += `
+              <a class="ai-navbar-search-item-{{ ai_gen_id }}" href="${p.url}">
+                <img loading="lazy" decoding="async" src="${img}" class="ai-navbar-search-item-image-{{ ai_gen_id }}">
+                <div>
+                  <div>${p.title}</div>
+                  <small>${price}</small>
+                </div>
+              </a>`;
+          });
+
+          this.searchResults.innerHTML = html;
+          this.searchResults.classList.add('active');
+        });
+    }
+
+    formatMoney(cents) {
+      if (typeof cents === 'string') cents = cents.replace('.', '');
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 0
+      }).format(cents / 100);
+    }
+  }
+
+  customElements.define('navbar-header-{{ ai_gen_id }}', NavbarHeader{{ ai_gen_id }});
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Responsive navbar",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "General"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_sticky",
+      "label": "Enable sticky navbar",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "label": "Container width",
+      "min": 1000,
+      "max": 1600,
+      "step": 100,
+      "unit": "px",
+      "default": 1400
+    },
+    {
+      "type": "range",
+      "id": "navbar_padding",
+      "label": "Vertical padding",
+      "min": 8,
+      "max": 40,
+      "step": 4,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "desktop_width_percent",
+      "label": "Desktop width",
+      "min": 50,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "header",
+      "content": "Logo"
+    },
+    {
+      "type": "image_picker",
+      "id": "logo",
+      "label": "Logo image"
+    },
+    {
+      "type": "range",
+      "id": "logo_width",
+      "label": "Logo width",
+      "min": 50,
+      "max": 300,
+      "step": 10,
+      "unit": "px",
+      "default": 150
+    },
+    {
+      "type": "select",
+      "id": "logo_position",
+      "label": "Logo position",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Navigation links"
+    },
+    {
+      "type": "text",
+      "id": "nav_link_1_text",
+      "label": "Link 1 text",
+      "default": "Home"
+    },
+    {
+      "type": "url",
+      "id": "nav_link_1_url",
+      "label": "Link 1 URL"
+    },
+    {
+      "type": "text",
+      "id": "nav_link_2_text",
+      "label": "Link 2 text",
+      "default": "Shop"
+    },
+    {
+      "type": "url",
+      "id": "nav_link_2_url",
+      "label": "Link 2 URL"
+    },
+    {
+      "type": "text",
+      "id": "nav_link_3_text",
+      "label": "Link 3 text",
+      "default": "About"
+    },
+    {
+      "type": "url",
+      "id": "nav_link_3_url",
+      "label": "Link 3 URL"
+    },
+    {
+      "type": "text",
+      "id": "nav_link_4_text",
+      "label": "Link 4 text"
+    },
+    {
+      "type": "url",
+      "id": "nav_link_4_url",
+      "label": "Link 4 URL"
+    },
+    {
+      "type": "text",
+      "id": "nav_link_5_text",
+      "label": "Link 5 text"
+    },
+    {
+      "type": "url",
+      "id": "nav_link_5_url",
+      "label": "Link 5 URL"
+    },
+    {
+      "type": "header",
+      "content": "Search"
+    },
+    {
+      "type": "text",
+      "id": "search_placeholder",
+      "label": "Search placeholder",
+      "default": "Search products..."
+    },
+    {
+      "type": "range",
+      "id": "search_bar_width",
+      "label": "Search bar width",
+      "min": 200,
+      "max": 500,
+      "step": 20,
+      "unit": "px",
+      "default": 400
+    },
+    {
+      "type": "range",
+      "id": "search_border_radius",
+      "label": "Search border radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "product_list",
+      "id": "popular_products",
+      "label": "Popular products",
+      "limit": 6
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "range",
+      "id": "nav_font_size",
+      "label": "Navigation font size",
+      "min": 12,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "select",
+      "id": "nav_font_weight",
+      "label": "Navigation font weight",
+      "options": [
+        {
+          "value": "400",
+          "label": "Normal"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semi-bold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        }
+      ],
+      "default": "500"
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "navbar_bg_color",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "nav_text_color",
+      "label": "Navigation text",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "nav_hover_color",
+      "label": "Navigation hover",
+      "default": "#797068"
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "Icon",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "icon_hover_color",
+      "label": "Icon hover",
+      "default": "#797068"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border",
+      "default": "#e5e5e5"
+    },
+    {
+      "type": "color",
+      "id": "search_bg_color",
+      "label": "Search background",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "search_text_color",
+      "label": "Search text",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "search_placeholder_color",
+      "label": "Search placeholder",
+      "default": "#999999"
+    },
+    {
+      "type": "color",
+      "id": "search_border_color",
+      "label": "Search border",
+      "default": "#e5e5e5"
+    },
+    {
+      "type": "color",
+      "id": "dropdown_bg_color",
+      "label": "Dropdown background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "search_hover_bg",
+      "label": "Search item hover",
+      "default": "#f4f4f4"
+    },
+    {
+      "type": "color",
+      "id": "cart_badge_bg",
+      "label": "Cart badge background",
+      "default": "#262626"
+    },
+    {
+      "type": "color",
+      "id": "cart_badge_text",
+      "label": "Cart badge text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Navigation menu"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Responsive navbar"
+    }
+  ]
+}
+{% endschema %}

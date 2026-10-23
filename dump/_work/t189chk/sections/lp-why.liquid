@@ -1,0 +1,72 @@
+{%- comment -%}
+  "Why does it happen?" A slim stat banner, then the root causes as a row of
+  cards (big icon image or fallback line icon, title, one line). Below: a closing line with a link to the booking form.
+  Medical wording: have a doctor confirm the stat and causes.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<section id="why" class="lp-why-sec">
+  <div class="lp-wrap">
+    <div class="lp-why-head">
+      <h2 class="lp-why-h">{{ s.heading }}{% if s.highlight != blank %} <span class="lp-hl">{{ s.highlight }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="lp-why-sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+    <div class="lp-why-stat">
+      {%- if s.stat_image != blank -%}
+        <span class="lp-why-stat__img">{{ s.stat_image | image_url: width: 400 | image_tag: loading: 'lazy', alt: '' }}</span>
+      {%- endif -%}
+      <p class="lp-why-stat__text"><b><span class="lp-hl">{{ s.stat_number }}</span> {{ s.stat_unit }}</b> {{ s.stat_text }}</p>
+    </div>
+    {%- if s.stat_note != blank -%}<p class="lp-why-stat__note">{{ s.stat_note }}</p>{%- endif -%}
+    <ul class="lp-why-list">
+      {%- for block in section.blocks -%}
+        <li class="lp-why-item" {{ block.shopify_attributes }}>
+          <span class="lp-why-item__ic">
+            {%- if block.settings.icon_image != blank -%}
+              {{ block.settings.icon_image | image_url: width: 240 | image_tag: loading: 'lazy', alt: '' }}
+            {%- else -%}
+              {% render 'lp-icon', name: block.settings.icon %}
+            {%- endif -%}
+          </span>
+          <span class="lp-why-item__t">{{ block.settings.title }}</span>
+          <span class="lp-why-item__x">{{ block.settings.text }}</span>
+        </li>
+      {%- endfor -%}
+    </ul>
+    {%- if s.closing != blank -%}
+      <p class="lp-why-close">{{ s.closing }}{% if s.link_text != blank %} <a href="#book">{{ s.link_text }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>{% endif %}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "LP why it happens",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Why does it" },
+    { "type": "text", "id": "highlight", "label": "Heading ending in red", "default": "happen?" },
+    { "type": "text", "id": "subheading", "label": "Line under the heading", "default": "It is rarely just one thing. These are the most common root causes." },
+    { "type": "header", "content": "Stat card" },
+    { "type": "image_picker", "id": "stat_image", "label": "Stat image (e.g. three figures)" },
+    { "type": "text", "id": "stat_number", "label": "Stat number (in red)", "default": "1 in 3" },
+    { "type": "text", "id": "stat_unit", "label": "Stat word after the number", "default": "men" },
+    { "type": "textarea", "id": "stat_text", "label": "Stat line", "default": "face early ejaculation at some point in life. It is common, and it is treatable." },
+    { "type": "text", "id": "stat_note", "label": "Small source note (optional)" },
+    { "type": "header", "content": "Closing line" },
+    { "type": "text", "id": "closing", "label": "Closing line", "default": "Most men have more than one cause. A doctor finds which ones are yours." },
+    { "type": "text", "id": "link_text", "label": "Link to the booking form", "default": "Find my root cause" }
+  ],
+  "blocks": [
+    { "type": "cause", "name": "Root cause", "settings": [
+      { "type": "image_picker", "id": "icon_image", "label": "Icon image (transparent PNG)" },
+      { "type": "select", "id": "icon", "label": "Fallback icon (when no image)", "options": [
+        { "value": "brain", "label": "Mind" }, { "value": "scale", "label": "Balance" }, { "value": "heart", "label": "Heart" },
+        { "value": "link", "label": "Nerve / link" }, { "value": "battery", "label": "Battery / sleep" }, { "value": "check", "label": "Check" }
+      ], "default": "brain" },
+      { "type": "text", "id": "title", "label": "Title", "default": "Stress and anxiety" },
+      { "type": "text", "id": "text", "label": "One line", "default": "A worried mind triggers a faster response." }
+    ] }
+  ],
+  "presets": [{ "name": "LP why it happens" }]
+}
+{% endschema %}
