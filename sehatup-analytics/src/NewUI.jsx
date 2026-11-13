@@ -17,7 +17,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import PriceCalculator from './components/PriceCalculator';
 import CartLinkGenerator from './components/CartLinkGenerator';
-import { EXPORT_COLUMNS, DATE_PRESETS, resolveDateRange, exportToExcel, exportOrdersToExcel, exportShipmentsToExcel, exportPopupLeadsToExcel, popupLeadReceivedAt } from './utils/exports';
+import { EXPORT_COLUMNS, DATE_PRESETS, resolveDateRange, exportToExcel, exportOrdersToExcel, exportShipmentsToExcel, exportPopupLeadsToExcel, exportMetaEventsToExcel, popupLeadReceivedAt } from './utils/exports';
 
 /**
  * Which Firestore collection a submission actually lives in.
@@ -13261,7 +13261,7 @@ const NAV = {
   doctor: ["doctor", "submissions", "prescriptions", "cart_links", "settings"],
   telesales: ["submissions", "prescriptions", "calculator", "cart_links", "settings"],
   operations: ["order_create", "orders", "crm_orders", "shipments", "shipment_tracking", "cart_links", "settings"],
-  marketing: ["home", "submissions", "prescriptions", "doctor", "cart_links", "popup_leads", "settings"],
+  marketing: ["home", "submissions", "prescriptions", "doctor", "cart_links", "popup_leads", "meta_events", "settings"],
   website_developer: ["focused_editor", "data_studio", "cart_links", "settings"],
 };
 
@@ -13283,6 +13283,7 @@ const ITEMS = {
   calculator: { label: "Price calculator", icon: "receipt", route: "calculator" },
   cart_links: { label: "Cart link generator", icon: "link", route: "cart_links" },
   popup_leads: { label: "Popup leads", icon: "clipboard", route: "popup_leads" },
+  meta_events: { label: "Meta events", icon: "bar", route: "meta_events" },
   shipments: { label: "Shipments", icon: "truck", route: "shipments" },
   users: { label: "Roles & users", icon: "shield", route: "admin" },
   focused_editor: { label: "Quick Editor", icon: "filter", route: "focused_editor" },
@@ -14602,6 +14603,7 @@ function Screen({ route, setRoute, tweaks, openCustomer, openSubmission, me }) {
     case "calculator": return <PriceCalculator me={me} canRx={canRx} />;
     case "cart_links": return <CartLinkGenerator />;
     case "popup_leads": return <PopupLeadsScreen />;
+    case "meta_events": return <MetaEventsScreen />;
     case "shipments": return <ShipmentsScreen ctx={route.ctx} />;
     // "marketing" was merged into the unified Analytics Dashboard ("home");
     // stale saved routes fall through to the default Dashboard render.
@@ -14730,6 +14732,129 @@ function PopupLeadsScreen() {
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)' }}>
           <div className="hstack-8" style={{ fontSize: 12.5 }}>
             <span className="muted num">{filtered.length} shown{filtered.length !== rows.length ? ` of ${rows.length}` : ''}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Leads QuickReply reported to Meta (Conversions API), e.g. a chat marked Qualified Lead.
+   Written only by the qrMetaEvents Cloud Function into meta_capi_events; read-only here.
+   "Sent to Meta" is Yes only when Meta's reply said it received the event. */
+const metaEventAt = (r) => (r.eventAt?.toDate?.() || r.lastReceivedAt?.toDate?.() || null);
+function MetaEventsScreen() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [search, setSearch] = useState('');
+  const [datePreset, setDatePreset] = useState('all');
+  const [onlyFailed, setOnlyFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setErr('');
+        const snap = await getDocs(query(collection(db, 'meta_capi_events'), orderBy('lastReceivedAt', 'desc'), limit(2000)));
+        if (alive) setRows(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        if (!alive) return;
+        console.error('[meta events] load failed:', e);
+        setErr(e?.code === 'permission-denied'
+          ? 'Your account cannot read Meta events. Ask an admin to deploy the Firestore rule for meta_capi_events.'
+          : 'Could not load Meta events. Check your connection and try again.');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const [start, end] = resolveDateRange(datePreset, null);
+    const q = search.trim().toLowerCase();
+    return rows.filter(r => {
+      if (onlyFailed && r.metaOk) return false;
+      if (start || end) {
+        const at = metaEventAt(r);
+        if (!at || (start && at < start) || (end && at > end)) return false;
+      }
+      return !q || [r.name, r.phone, r.agentName, r.leadStage, r.event].some(v => String(v || '').toLowerCase().includes(q));
+    });
+  }, [rows, search, datePreset, onlyFailed]);
+  const okCount = filtered.filter(r => r.metaOk).length;
+
+  return (
+    <div className="col" style={{ gap: 14 }}>
+      <div className="card">
+        <div className="toolbar">
+          <select className="select" value={datePreset} onChange={e => setDatePreset(e.target.value)} style={{ width: 'auto', height: 30, fontSize: 12, borderRadius: 6 }}>
+            {DATE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+          <label className="hstack-6" style={{ alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={onlyFailed} onChange={e => setOnlyFailed(e.target.checked)} /> Only not received by Meta
+          </label>
+          {(search.trim() || datePreset !== 'all' || onlyFailed) && (
+            <button className="btn sm" onClick={() => { setSearch(''); setDatePreset('all'); setOnlyFailed(false); }} style={{ fontSize: 11.5, gap: 4 }}>
+              <Icon name="x" size={12} /> Clear
+            </button>
+          )}
+          <span className="spacer" />
+          <div style={{ position: 'relative', width: 240 }}>
+            <input className="input" placeholder="Name, phone, agent..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 32, height: 30 }} />
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}><Icon name="search" size={13} /></span>
+          </div>
+          <button className="btn sm primary" onClick={() => exportMetaEventsToExcel(filtered, metaEventAt)} disabled={loading || filtered.length === 0} title="Download the currently filtered events as an Excel file" style={{ fontSize: 11.5, gap: 4 }}>
+            <Icon name="download" size={12} /> Export
+          </button>
+        </div>
+
+        <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 560, maxWidth: '100%' }}>
+          <table className="tbl" style={{ minWidth: 980 }}>
+            <thead>
+              <tr>
+                <th style={{ whiteSpace: 'nowrap' }}>Marked at</th>
+                <th>Name</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Phone</th>
+                <th>Event</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Lead stage</th>
+                <th>Agent</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Sent to Meta</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Meta reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="8"><div className="empty"><Icon name="refresh" size={20} /><div>Loading Meta events…</div></div></td></tr>
+              ) : err ? (
+                <tr><td colSpan="8"><div className="empty"><Icon name="x" size={20} /><div>{err}</div></div></td></tr>
+              ) : filtered.map(r => {
+                const at = metaEventAt(r);
+                return (
+                  <tr key={r.id}>
+                    <td className="num" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{at ? at.toLocaleString('en-IN') : (r.eventTime || '')}</td>
+                    <td style={{ fontWeight: 600 }}>{r.name || ''}</td>
+                    <td className="num" style={{ whiteSpace: 'nowrap' }}>{r.phone || ''}</td>
+                    <td>{r.event || ''}</td>
+                    <td>{r.leadStage || ''}</td>
+                    <td>{r.agentName || ''}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 600, color: r.metaOk ? 'var(--fg)' : 'var(--risk-moderate)' }} title={r.hits > 1 ? `Received ${r.hits} times` : ''}>{r.metaOk ? 'Yes' : 'No'}</td>
+                    <td className="muted num" style={{ fontSize: 11.5 }}>{r.metaFbtraceId || ''}</td>
+                  </tr>
+                );
+              })}
+              {!loading && !err && filtered.length === 0 && (
+                <tr><td colSpan="8"><div className="empty"><Icon name="bar" size={20} /><div>{rows.length ? 'No events match this filter' : 'No Meta events yet'}</div></div></td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)' }}>
+          <div className="hstack-8" style={{ fontSize: 12.5 }}>
+            <span className="muted num">{filtered.length} shown{filtered.length !== rows.length ? ` of ${rows.length}` : ''} · {okCount} received by Meta · {filtered.length - okCount} not received</span>
           </div>
         </div>
       </div>

@@ -179,6 +179,11 @@ service cloud.firestore {
       allow create: if true;
       allow read: if hasRole(['marketing']);
     }
+    // Meta Conversions API events QuickReply reported (written only by the qrMetaEvents
+    // function). Marketing reads them in the CRM "Meta events" page.
+    match /meta_capi_events/{doc} {
+      allow read: if hasRole(['marketing']);
+    }
     match /admin_audit_logs/{doc} {
       allow read: if isAdmin();
       allow create: if hasRole(['website_developer']);

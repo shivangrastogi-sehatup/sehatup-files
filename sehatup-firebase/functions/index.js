@@ -3486,6 +3486,68 @@ exports.qrLogRun = onRequest(
   },
 );
 
+// ── Meta Conversions API event log (QuickReply → us) ─────────────────────────
+// QuickReply sends Meta a "QualifiedLead" event when an agent sets a chat's lead stage to
+// Qualified Lead, then calls this endpoint with the same event so we keep our own record
+// of what was reported to Meta (collection meta_capi_events).
+//
+// Auth: header x-webhook-token (or ?token=) must equal QR_META_EVENTS_TOKEN in functions/.env.
+// Fails closed: no token configured = every call rejected.
+// Doc id = QuickReply's "id" ("<userId>_QualifiedLead"), so a retry updates the same record;
+// hits counts how many times it arrived. raw keeps the whole body in case their format changes.
+exports.qrMetaEvents = onRequest(
+  { region: "us-central1", timeoutSeconds: 15, memory: "256MiB" },
+  async (req, res) => {
+    try {
+      if (req.method !== "POST") return res.status(405).json({ ok: false, error: "use POST" });
+      const expected = process.env.QR_META_EVENTS_TOKEN;
+      const given = req.get("x-webhook-token") || req.query.token;
+      if (!expected || given !== expected) return res.status(401).json({ ok: false, error: "unauthorized" });
+
+      const b = (req.body && typeof req.body === "object") ? req.body : null;
+      if (!b) return res.status(400).json({ ok: false, error: "body must be JSON" });
+      const p = (b.payload && typeof b.payload === "object") ? b.payload : {};
+      const meta = (p.metaResponse && typeof p.metaResponse === "object") ? p.metaResponse : {};
+      const str = (v) => (v == null ? "" : String(v).trim());
+
+      const event = str(b.event) || "unknown";
+      const userId = str(p.userId);
+      const id = (str(b.id) || (userId ? `${userId}_${event}` : "")).replace(/\//g, "_");
+      const eventMs = Date.parse(str(b.event_time));
+      const received = Number(meta.events_received);
+
+      const doc = {
+        event,
+        eventTime: str(b.event_time),
+        eventAt: Number.isNaN(eventMs) ? null : Firestore.Timestamp.fromMillis(eventMs),
+        phone: str(b.phone).replace(/[^\d]/g, ""),
+        name: str(b.name),
+        agentId: str(b.agentId),
+        agentName: str(b.agentName),
+        type: str(p._type),
+        userId,
+        conversationId: str(p.conversationId),
+        leadStage: str(p.leadStage),
+        metaEventsReceived: Number.isNaN(received) ? null : received,
+        metaFbtraceId: str(meta.fbtrace_id),
+        metaOk: received > 0, // Meta accepted it only if events_received >= 1
+        raw: b,
+        hits: FieldValue.increment(1),
+        lastReceivedAt: FieldValue.serverTimestamp(),
+      };
+
+      const col = getFirestore().collection("meta_capi_events");
+      const ref = id ? col.doc(id) : col.doc();
+      await ref.set(doc, { merge: true });
+      console.log(`[qrMetaEvents] ${event} phone=${doc.phone || "?"} stage=${doc.leadStage || "-"} metaOk=${doc.metaOk} id=${ref.id}`);
+      return res.status(200).json({ ok: true, id: ref.id });
+    } catch (err) {
+      console.error("[qrMetaEvents] failed:", err.message);
+      return res.status(500).json({ ok: false, error: "server error" });
+    }
+  },
+);
+
 // ── AI run reader (powers the ai_runs dashboard) ─────────────────────────────
 // Read side of the flight recorder: returns ai_runs as JSON for the static dashboard
 // (n8n/workflows/ai-runs-dashboard.html). CORS-open + token-gated (same QR_CONTEXT_TOKEN),

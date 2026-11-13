@@ -336,3 +336,29 @@ export function exportPopupLeadsToExcel(rows) {
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   saveAs(new Blob([buf], { type: 'application/octet-stream' }), `popup_leads_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
+
+// Meta Conversions API events (CRM "Meta events" page). eventAt(row) gives the event's Date.
+export function exportMetaEventsToExcel(rows, eventAt) {
+  if (!rows || rows.length === 0) { alert('No events to export for the current filter.'); return; }
+  const data = rows.map(r => {
+    const at = eventAt(r);
+    return {
+      'Marked at': at ? at.toLocaleString('en-IN') : (r.eventTime || ''),
+      'Name': r.name || '',
+      // Leading apostrophe keeps Excel from turning the phone into a number.
+      'Phone': r.phone ? `'${r.phone}` : '',
+      'Event': r.event || '',
+      'Lead stage': r.leadStage || '',
+      'Agent': r.agentName || '',
+      'Sent to Meta': r.metaOk ? 'Yes' : 'No',
+      'Meta events received': r.metaEventsReceived ?? '',
+      'Meta reference (fbtrace_id)': r.metaFbtraceId || '',
+      'QuickReply user ID': r.userId || '',
+      'Conversation ID': r.conversationId || '',
+    };
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Meta events');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `meta_events_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
