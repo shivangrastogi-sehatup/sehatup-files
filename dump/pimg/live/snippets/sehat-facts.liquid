@@ -1,0 +1,76 @@
+{%- comment -%}
+  Product facts, kept in the theme (one place to edit).
+  Source: each product's own description and instructions in the store;
+  only the wording was tidied. Change the store text and this together.
+
+  Usage: {% capture x %}{% render 'sehat-facts', handle: product.handle, field: 'use' %}{% endcapture %}
+  Fields:
+    use          one short "how to take it" line
+    items        for a kit: the handles of the products inside, comma separated
+    ingredients  the ingredients the store names for it, comma separated
+  A product that is not listed returns nothing, and callers fall back.
+{%- endcomment -%}
+{%- liquid
+  assign use = ''
+  assign items = ''
+  assign ingredients = ''
+  case handle
+    when 'p-e-e-d-integrated-kit'
+      assign items = 'kern-drops,vaji-bati'
+      assign ingredients = 'Ashwagandha,Shilajit,Safed Musli'
+    when 'shaktisurge'
+      assign items = 'ashwagandha-tablets,pure-himalayan-shilajit-resin-20g'
+    when 'shilajit-sticks-energy-stamina-kit'
+      assign items = 'ashwagandha-tablets,sehatup-shilajit-honey-sticks'
+    when 'macho-metabolism'
+      assign items = 'garcenia-cambogia-drops,slimtox-energy-tea'
+    when 'calm-curve-control'
+      assign items = 'garcenia-cambogia-drops,leanroutine'
+    when 'her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness'
+      assign items = 'harmen,tea-for-period-cramps'
+    when 'kern-drops'
+      assign use = 'Up to 20 drops in a little water, 2 to 3 times a day.'
+    when 'vaji-bati'
+      assign use = '1 to 2 tablets a day with lukewarm water.'
+      assign ingredients = 'Ashwagandha,Shilajit,Safed Musli'
+    when 'ashwagandha-tablets'
+      assign use = '1 to 2 tablets a day with water, preferably after meals.'
+    when 'pure-himalayan-shilajit-resin-20g'
+      assign use = 'One 250 mg serving a day with the spoon provided, on its own or in lukewarm milk or water.'
+    when 'sehatup-shilajit-honey-sticks'
+      assign use = '1 stick a day, on its own or mixed into warm water or milk.'
+      assign ingredients = 'Fulvic acid,Humic substances,Trace minerals'
+    when 'garcenia-cambogia-drops'
+      assign use = 'Follow the serving size on the label, preferably before meals.'
+      assign ingredients = 'HCA (hydroxycitric acid)'
+    when 'slimtox-energy-tea'
+      assign use = '1 teaspoon in 150 ml of hot water for 5 minutes, in the morning or early afternoon, up to twice a day.'
+    when 'leanroutine'
+      assign use = '1 tea bag in hot water for 3 to 4 minutes, in the evening.'
+    when 'harmen'
+      assign use = '2 to 3 times during your monthly cycle, as your doctor advises.'
+    when 'tea-for-period-cramps'
+      assign use = '1 teaspoon in 150 ml of hot water for 5 minutes, up to twice a day.'
+    when 'orlistat-60-mg'
+      assign use = '1 capsule with each main meal that contains fat, up to 3 a day.'
+    when 'diaboglob'
+      assign use = '1 tablet twice a day, after breakfast and after dinner.'
+    when 'vitamin-d3k2'
+      assign use = '1 tablet a day with your morning or afternoon meal.'
+    when 'thyrostatin-3x'
+      assign use = '1 tablet a day, or as your doctor prescribes.'
+    when 'aloezy-intimate-foam-wash'
+      assign use = 'Apply a little to wet skin, then rinse off.'
+      assign ingredients = 'Neem,Manjuphal,Aloe vera,Tulsi'
+    when 'boldup-100', 'boldup-50-mg'
+      assign use = '1 tablet 30 to 60 minutes before. Do not take more than the recommended dose in 24 hours.'
+  endcase
+  case field
+    when 'use'
+      echo use
+    when 'items'
+      echo items
+    when 'ingredients'
+      echo ingredients
+  endcase
+-%}

@@ -29,17 +29,21 @@
         "white_panel_opacity": 10,
         "white_panel_rounded": true,
         "white_panel_border_radius": 20,
-        "foreground_image": "shopify://shop_images/doctors_integrated.webp",
+        "foreground_image": "shopify://shop_images/doctors_image.webp",
         "foreground_image_scale": 135,
         "foreground_image_fit": "contain",
         "foreground_position_x": "right",
         "foreground_position_y": "bottom",
-        "foreground_offset_x": 0,
+        "foreground_offset_x": 3,
         "foreground_offset_y": 0,
         "foreground_trim_bottom": 0,
         "hide_foreground_mobile": false,
         "split_layout": false,
         "mobile_crop_foreground": false,
+        "fg_text_clear": false,
+        "mobile_wash": 94,
+        "fg_grow": false,
+        "mobile_fg_height": 0,
         "kicker": "",
         "heading": "India’s First Integrated Digital Health Clinic",
         "heading_red": "",
@@ -48,6 +52,7 @@
         "subheading_highlight": "60 seconds",
         "subheading_highlight_color": "#ff4757",
         "body_text": "<p>Talk to expert doctors about sexual, hormonal & weight concerns, privately and confidentially.</p>",
+        "body_max_em": 38,
         "content_position": "left",
         "content_max_width": 1400,
         "content_text_max_width": 700,
@@ -97,6 +102,7 @@
         "button_padding_horizontal": 32,
         "button_border_radius": 50,
         "button_spacing": 32,
+        "desktop_height_vh": 62,
         "section_min_height": 390,
         "section_padding_top": 60,
         "section_padding_bottom": 60,
@@ -110,9 +116,9 @@
         "mobile_content_alignment": "center",
         "mobile_background_position_x": "center",
         "mobile_background_position_y": "center",
-        "mobile_background_image": "shopify://shop_images/Blurred-Minimalist-Reception-Lobby.webp",
+        "mobile_background_image": "shopify://shop_images/Blurred-Minimalist-Reception-Lobby_2.webp",
         "mobile_bg_focus_x": 50,
-        "mobile_foreground_image": "shopify://shop_images/doctors_integrated.webp"
+        "mobile_foreground_image": "shopify://shop_images/doctors_image.webp"
       }
     },
     "reviews": {
@@ -133,13 +139,15 @@
         "show_product": false,
         "arrows": "sides",
         "heading": "Real people. Real results.",
-        "subheading": "Honest reviews from customers who took the first step.",
+        "subheading": "",
+        "rating_value": "",
         "rating_line": "[rating] · Trusted by 25,000+ patients",
         "accent_color": "#ee204a",
         "review_products": [],
         "min_rating": 4,
         "review_hide": "",
         "side_score": "4.5",
+        "mobile_heading": "Our patient stories",
         "side_title": "Loved by people who took the first step.",
         "side_text": "",
         "side_note": "",
@@ -158,23 +166,26 @@
     "integrated": {
       "type": "home-integrated",
       "settings": {
-        "heading": "One clinic, three systems, one plan.",
+        "heading": "Why choose",
+        "heading_red": "Integrated approach?",
         "subheading": "",
+        "hide_sub_mobile": false,
         "animate": true,
-        "brand_text": "sehatUP",
-        "plan_label": "Your plan",
-        "sys1_image": "shopify://shop_images/Rectangle_17.webp",
+        "animation_style": "spread",
+        "photo_zoom": 140,
+        "plan_label": "sehatUP's|Personalized|Plan",
+        "sys1_image": "shopify://shop_images/Ayurveda.webp",
         "sys1_name": "Ayurveda",
         "sys1_text": "Lifestyle balance, digestion and long-term healing.",
-        "sys2_image": "shopify://shop_images/Rectangle_17_1.webp",
+        "sys2_image": "shopify://shop_images/homeopathy.webp",
         "sys2_name": "Homeopathy",
         "sys2_text": "Gentle, root-cause care with minimal side effects.",
-        "sys3_image": "shopify://shop_images/Rectangle_17_2.webp",
+        "sys3_image": "shopify://shop_images/Modern_medicine.webp",
         "sys3_name": "Modern medicine",
         "sys3_text": "Accurate diagnosis and fast relief when needed.",
-        "closing_red": "Your integrated plan.",
-        "closing": "Made by our doctors, together.",
-        "button": "Take the free Health Score 360",
+        "closing_red": "",
+        "closing": "Together, they give you one complete [[360°]] care plan.",
+        "button": "Take free Health Score 360",
         "button_link": "shopify://pages/health-score-360",
         "section_bg": "#ffffff"
       }
@@ -299,7 +310,7 @@
       ],
       "settings": {
         "heading": "What makes sehatUP different",
-        "subheading": "One path, zero confusion. You don't run from doctor to doctor. We bring the whole team to you.",
+        "subheading": "One path, zero confusion. You don't run from doctor to doctor. <br>We bring the whole team to you.",
         "usual_label": "The usual way",
         "ours_label": "With sehatUP",
         "button": "Start with the free Health Score",
@@ -401,6 +412,7 @@
         "more_kicker": "Not sure where to start?",
         "more_label": "Take the 2-minute Health Score",
         "more_link": "shopify://pages/health-score-360",
+        "show_arrows": true,
         "section_bg": "#ffffff"
       }
     },
@@ -414,8 +426,8 @@
         "title_1": "Take your Health Score",
         "text_1": "Free. No sign-up. Simple, honest questions about your body.",
         "day_2": "Within 24 hours",
-        "title_2": "A doctor calls you",
-        "text_2": "Ayurveda, Homeopathy and Allopathy doctors review your score together, in Hindi or English.",
+        "title_2": "A doctor consults you",
+        "text_2": "Your score is reviewed together by Ayurveda, Homeopathy and Allopathy doctors, who talk to you in Hindi or English.",
         "call_image": "shopify://shop_images/Dr._Shefali.webp",
         "call_image_y": 12,
         "call_name": "sehatUP Doctor",
@@ -424,14 +436,14 @@
         "doctor_1_label": "Ayurveda",
         "doctor_2_image": "shopify://shop_images/Dr._Shefali.webp",
         "doctor_2_label": "Homeopathy",
-        "doctor_3_image": "shopify://shop_images/Devika_Chugh.webp",
+        "doctor_3_image": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
         "doctor_3_label": "Allopathy",
         "day_3": "Day 3 to 5",
-        "title_3": "Your kit arrives",
-        "text_3": "Packed discreetly. The label has your address, and product names show only their first few letters. Confirm with just ₹50 and pay the rest on delivery, or pay in full online.",
+        "title_3": "Your personalised kit arrives",
+        "text_3": "Only what your doctor chose for you, packed discreetly. Confirm with ₹50 and pay the rest on delivery, or pay in full online.",
         "pay_line": "₹50 paid · rest on delivery",
         "day_4": "Every month",
-        "title_4": "Your plan keeps improving",
+        "title_4": "Your Health keeps improving",
         "text_4": "A WhatsApp check-in each month. Most people notice first changes in 4 to 6 weeks, and your plan changes as your body responds.",
         "chat_logo": "shopify://shop_images/Favicon_black.webp",
         "chat_name": "sehatUP",
@@ -465,7 +477,7 @@
         "doc_allo": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Smiling_Woman_in_White_Coat_with_Crossed_Arms.webp",
+            "photo": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
             "system": "Psychology",
             "name": "Ms. Devika Chugh",
             "degree": "Counselling Psychologist, 5 years experience",
@@ -480,11 +492,12 @@
       ],
       "settings": {
         "eyebrow": "Who reviews your Health Score",
-        "heading": "Three experts. One Personalized Health plan.",
-        "subheading": "Our Ayurveda, Homeopathy and counselling experts review your Health Score 360 results to understand your wellness needs and help create a personalized care plan.",
-        "footnote": "Talk to them in Hindi or English, on a call that suits you.",
+        "heading": "Meet Our Medical Experts",
+        "subheading": "",
+        "footnote": "",
         "button": "",
         "button_link": "",
+        "button_style": "auto",
         "background": "#faf7f5",
         "padding_top": 88,
         "padding_bottom": 80,
@@ -617,6 +630,42 @@
         "padding_bottom": 80
       }
     },
+    "sehat_certs_BnB6xK": {
+      "type": "sehat-certs",
+      "blocks": {
+        "cert_a8gYxW": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "cert_RADLND": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "cert_X3an6h": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "cert_a8gYxW",
+        "cert_RADLND",
+        "cert_X3an6h"
+      ],
+      "settings": {
+        "section_bg": "#ffffff",
+        "heading": "Certified and doctor-checked",
+        "subheading": "What you take is made to approved standards and chosen by real doctors."
+      }
+    },
     "progress_light": {
       "type": "sehat-progress",
       "blocks": {
@@ -662,12 +711,15 @@
       "settings": {
         "heading": "Real People.",
         "highlight": "Real Progress.",
+        "rotate_prefix": "Real",
+        "rotate_words": "People.|Progress.",
+        "rotate_seconds": 2.5,
         "subheading": "",
         "note": "",
-        "style": "glass",
+        "style": "rows",
         "overlap": 0,
         "overlap_mobile": 0,
-        "glow": true,
+        "glow": false,
         "glow_left": "#f8e1e6",
         "glow_right": "#f3e4d8",
         "dots": true,
@@ -675,8 +727,8 @@
         "count_up": true,
         "background_color": "#ffffff",
         "accent_color": "#ee204a",
-        "padding_top": 56,
-        "padding_bottom": 64,
+        "padding_top": 40,
+        "padding_bottom": 16,
         "padding_top_mobile": 28,
         "padding_bottom_mobile": 28
       }
@@ -788,6 +840,8 @@
         "story": "<p>sehatUP began with a simple aim to make healthcare easier to understand and better connected. To make healthcare choices easier to understand, we placed Ayurveda, Homeopathy, and Modern Medicine on a single platform. Our mission is to help people make more informed choices about their health.</p>",
         "more_label": "Read our story",
         "more_link": "shopify://pages/about-us",
+        "show_more_videos": false,
+        "video_note": "Watch our founders on why we built sehatUP",
         "play_label": "Play video",
         "section_bg": "#ffffff"
       }
@@ -851,7 +905,7 @@
         "tunnel_fade": 55,
         "background_color": "#ffffff",
         "max_width": 1200,
-        "padding_top": 60,
+        "padding_top": 24,
         "padding_bottom": 20
       }
     },
@@ -951,8 +1005,8 @@
       ],
       "settings": {
         "section_bg": "#faf7f5",
-        "heading": "Your questions, answered.",
-        "subheading": "Straight answers about cost, privacy, safety and what happens next.",
+        "heading": "Frequently Asked Questions",
+        "subheading": "",
         "contact_text": "Ask us on WhatsApp",
         "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question",
         "open_first": true,
@@ -980,7 +1034,7 @@
         "show_view_all": true,
         "view_all_text": "Read All Blogs",
         "card_radius": 16,
-        "padding_top": 12,
+        "padding_top": 28,
         "padding_bottom": 80
       }
     },
@@ -1022,6 +1076,7 @@
     "journey",
     "doctors",
     "doctor_designed_kits_Wb6YeW",
+    "sehat_certs_BnB6xK",
     "progress_light",
     "numbers",
     "founders",

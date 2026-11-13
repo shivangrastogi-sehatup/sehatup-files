@@ -1,0 +1,54 @@
+{
+  "condition": "PCOD with Mood Swings, Anxiety, Overthinking & Insomnia",
+  "subtitle": "Diet planned considering hormonal imbalance, stress factors & nervous system support",
+  "meals": [
+    {
+      "time": "Early Morning (7:00–8:00 AM)",
+      "food": "Lukewarm water + 2 walnuts + 4 soaked almonds",
+      "benefit": "Supports brain health & reduces anxiety"
+    },
+    {
+      "time": "Breakfast (High Protein + Brain Support)",
+      "food": "Besan chilla + curd / Eggs + toast / Oats + seeds",
+      "benefit": "Stabilizes mood & reduces cravings"
+    },
+    {
+      "time": "Mid-Morning",
+      "food": "1 fruit (banana/apple/papaya)",
+      "benefit": "Maintains energy & prevents irritability"
+    },
+    {
+      "time": "Lunch",
+      "food": "2 roti + sabzi + dal/paneer + salad",
+      "benefit": "Balanced meal supports hormones & mental stability"
+    },
+    {
+      "time": "Evening Snack",
+      "food": "Herbal tea / normal tea (no sugar) + makhana/chana",
+      "benefit": "Prevents anxiety spikes in evening"
+    },
+    {
+      "time": "Dinner (Light & Early)",
+      "food": "1–2 roti + sabzi OR soup + paneer",
+      "benefit": "Light dinner improves sleep quality"
+    }
+  ],
+  "dailyAddons": {
+    "food": "Flax seeds, pumpkin seeds, walnuts",
+    "benefit": "Supports hormonal balance & brain function"
+  },
+  "specialFocus": {
+    "title": "Sleep Support Routine",
+    "food": "1 glass warm milk at night (if suits) or chamomile tea",
+    "benefit": "Avoid phone 30–45 mins before sleep"
+  },
+  "avoidFoods": [
+    "Caffeine excess, sugar, late night eating, junk food",
+    "These worsen anxiety & sleep disturbance"
+  ],
+  "lifestyle": [
+    "30 min walk, deep breathing, proper sleep routine",
+    "Stress management is essential for recovery"
+  ],
+  "followUp": "Review after 15 days"
+}

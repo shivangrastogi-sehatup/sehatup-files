@@ -8499,7 +8499,8 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                           onChange={e => { setOrderDiscountCode(e.target.value); setCodeDropdownOpen(true); }}
                         />
                         {codeDropdownOpen && (
-                          <div className="fade-in" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20, border: "1px solid var(--border)", borderRadius: 8, maxHeight: 220, overflowY: "auto", background: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.18)" }}>
+                          /* In the page flow, not floating: the popup body scrolls (overflow auto), which clipped a floating list. */
+                          <div className="fade-in" style={{ marginTop: 4, border: "1px solid var(--border)", borderRadius: 8, maxHeight: 220, overflowY: "auto", background: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.18)" }}>
                             {discountCodeLoading ? (
                               <div className="muted" style={{ fontSize: 12.5, padding: "10px 12px" }}>Loading active codes…</div>
                             ) : discountCodeError ? (

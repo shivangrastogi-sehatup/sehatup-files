@@ -1,0 +1,182 @@
+{%- comment -%}
+  Shop by category: a heading, then one round photo per category with its name
+  and one line underneath. Each card jumps to the shelf or kit on the same page.
+  One section for For Him, For Her and Combos: only the cards change.
+
+  Look: plain ivory background, one flat sand colour in every circle (a
+  transparent cut-out sits on it), a thin gold ring. Hover (laptops): the card
+  lifts a little, the ring turns red and the picture grows slightly inside its
+  circle. Nothing leaves the circle.
+  Phones to 4K: wraps in rows and grows in the same steps as the other sections.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+{%- assign n = section.blocks.size -%}
+<style>
+  #scat-{{ section.id }} { --ink: #1d1d1d; --mute: #5f5a56; --red: #d81f48; --gold: {{ s.ring_color | default: '#d99a2b' }}; --disc: {{ s.disc_color | default: '#efd9c4' }}; --ease: cubic-bezier(.22, 1, .36, 1); --cs: {% if s.circle_size > 0 %}{{ s.circle_size }}px{% elsif n > 3 %}200px{% else %}280px{% endif %}; --cs-m: {{ s.circle_size_mobile | default: 140 }}px; --gx: {% if s.gap > 0 %}{{ s.gap }}px{% else %}clamp(24px, 5.5vw, 84px){% endif %}; padding: clamp(36px, 4.4vw, 60px) clamp(16px, 3vw, 48px) clamp(30px, 3.4vw, 48px); background: {% if s.section_bg == blank or s.section_bg == '#ffffff' %}#fffaf3{% else %}{{ s.section_bg }}{% endif %}; font-family: 'Montserrat', sans-serif; color: var(--ink); }
+  #scat-{{ section.id }} * { box-sizing: border-box; letter-spacing: normal; }
+  #scat-{{ section.id }} .scat__in { max-width: 1240px; margin: 0 auto; }
+  #scat-{{ section.id }} .scat__head { max-width: 680px; margin: 0 auto clamp(22px, 3vw, 40px); text-align: center; }
+  #scat-{{ section.id }} .scat__h { margin: 0; font: 800 clamp(26px, 2.8vw, 38px)/1.1 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #scat-{{ section.id }} .scat__sub { margin: 10px 0 0; font: 400 16px/1.55 'Montserrat', sans-serif; color: var(--mute); }
+  #scat-{{ section.id }} .scat__grid { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: clamp(26px, 3vw, 44px) var(--gx); }
+  #scat-{{ section.id }} .scat__grid > li { flex: 0 1 max(calc(var(--cs) * var(--k, 1)), var(--w, 230px)); min-width: 0; }
+
+  #scat-{{ section.id }} .scat__card { display: flex; flex-direction: column; align-items: center; text-align: center; color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: transform .5s var(--ease); }
+  /* The circle: one flat sand colour with a thin gold ring. A photo fills it; a transparent cut-out sits on the sand. */
+  #scat-{{ section.id }} .scat__ph { position: relative; width: 100%; max-width: calc(var(--cs) * var(--k, 1)); margin: 0 auto; aspect-ratio: 1; }
+  #scat-{{ section.id }} .scat__disc { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: var(--disc); box-shadow: 0 0 0 3px var(--gold); transition: box-shadow .4s var(--ease); transform: translateZ(0); }
+  #scat-{{ section.id }} .scat__disc img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--focus, center 25%); transform: scale(var(--z, 1)); transform-origin: var(--focus, center 25%); transition: transform .8s var(--ease); }
+
+  #scat-{{ section.id }} .scat__t { margin: 20px 4px 0; font: 700 clamp(17px, 1.5vw, 22px)/1.3 'Montserrat', sans-serif; color: var(--ink); text-wrap: balance; transition: color .3s ease; }
+  #scat-{{ section.id }} .scat__d { margin: 6px 2px 0; max-width: var(--tw, 24em); font: 400 15px/1.5 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #scat-{{ section.id }} .scat__go { display: inline-flex; align-items: center; gap: 6px; margin: 10px 2px 0; font: 700 14px/1 'Montserrat', sans-serif; color: var(--red); }
+  #scat-{{ section.id }} .scat__go svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s ease; }
+
+  @media (hover: hover) and (pointer: fine) {
+    #scat-{{ section.id }} .scat__card:hover { transform: translateY(-4px); }
+    #scat-{{ section.id }} .scat__card:hover .scat__disc { box-shadow: 0 0 0 3px var(--red); }
+    #scat-{{ section.id }} .scat__card:hover .scat__disc img { transform: scale(calc(var(--z, 1) * 1.06)); }
+    #scat-{{ section.id }} .scat__card:hover .scat__t { color: var(--red); }
+    #scat-{{ section.id }} .scat__card:hover .scat__go svg { transform: translateX(3px); }
+  }
+  #scat-{{ section.id }} .scat__card:focus-visible { outline: none; }
+  #scat-{{ section.id }} .scat__card:focus-visible .scat__disc { box-shadow: 0 0 0 3px #fffaf3, 0 0 0 6px var(--ink); }
+
+  @media (max-width: 749.98px) {
+    #scat-{{ section.id }} { padding: 34px 16px 28px; }
+    #scat-{{ section.id }} .scat__h { font-size: 30px; }
+    #scat-{{ section.id }} .scat__sub { font-size: 15px; }
+    /* One swipeable row: each card snaps into place and the next one peeks in. When all cards fit, they stay centred. */
+    #scat-{{ section.id }} .scat__grid { flex-wrap: nowrap; justify-content: safe center; gap: 14px; margin: 0 -16px; padding: 4px 16px 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    #scat-{{ section.id }} .scat__grid::-webkit-scrollbar { display: none; }
+    #scat-{{ section.id }} .scat__grid > li { flex: 0 0 clamp(132px, 40vw, 190px); scroll-snap-align: start; }
+    #scat-{{ section.id }} .scat__ph { max-width: calc(var(--cs-m) * var(--k, 1)); }
+    #scat-{{ section.id }} .scat__t { margin-top: 12px; font-size: 15px; }
+    #scat-{{ section.id }} .scat__d { font-size: 13px; }
+    #scat-{{ section.id }} .scat__dots { display: flex; justify-content: center; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+    #scat-{{ section.id }} .scat__dots[hidden] { display: none; }
+    #scat-{{ section.id }} .scat__dots button { display: block; width: 7px; height: 7px; margin: 0; padding: 0; border: 0; border-radius: 999px; background: #e3d3c2; cursor: pointer; transition: width .3s ease, background-color .3s ease; }
+    #scat-{{ section.id }} .scat__dots button[aria-current="true"] { width: 22px; background: #8f1836; }
+    #scat-{{ section.id }} .scat__dots button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  }
+  @media (min-width: 750px) { #scat-{{ section.id }} .scat__dots { display: none; } }
+  @media (prefers-reduced-motion: reduce) { #scat-{{ section.id }} * { transition: none !important; } }
+  @media (min-width: 1680px) { #scat-{{ section.id }} .scat__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #scat-{{ section.id }} .scat__in { zoom: 1.25; } }
+  @media (min-width: 2240px) { #scat-{{ section.id }} .scat__in { zoom: 1.45; } }
+  @media (min-width: 2560px) { #scat-{{ section.id }} .scat__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #scat-{{ section.id }} .scat__in { zoom: 2; } }
+  @media (min-width: 3840px) { #scat-{{ section.id }} .scat__in { zoom: 2.4; } }
+</style>
+
+<section id="scat-{{ section.id }}">
+  {%- if s.anchor != blank -%}<span id="{{ s.anchor | handleize }}" style="position: relative; top: -90px; display: block; height: 0; visibility: hidden;" aria-hidden="true"></span>{%- endif -%}
+  <div class="scat__in">
+    {%- if s.heading != blank -%}
+      <div class="scat__head">
+        <h2 class="scat__h">{{ s.heading }}</h2>
+        {%- if s.subheading != blank -%}<p class="scat__sub">{{ s.subheading }}</p>{%- endif -%}
+      </div>
+    {%- endif -%}
+    <ul class="scat__grid">
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        <li style="--k: {{ b.size | default: 100 | divided_by: 100.0 }}; --z: {{ b.zoom | default: 100 | divided_by: 100.0 }};{% if b.card_width > 0 %} --w: {{ b.card_width }}px; --tw: 100%;{% endif %}" {{ block.shopify_attributes }}>
+          {%- assign href = b.link | default: '#' -%}{%- assign c0 = href | slice: 0 -%}{%- if href.size > 1 and c0 == '#' -%}{%- assign href = href | remove_first: '#' | handleize | prepend: '#' -%}{%- endif -%}
+          <a class="scat__card" href="{{ href }}">
+            <span class="scat__ph" style="--focus: {{ b.focus | default: 'center 25%' }}">
+              <span class="scat__disc">
+                {%- if b.image != blank -%}
+                  {{ b.image | image_url: width: 800 | image_tag: loading: 'lazy', widths: '300, 450, 600, 800', sizes: '(max-width: 749px) 280px, 460px' }}
+                {%- elsif b.product != blank and b.product.featured_image != blank -%}
+                  {{ b.product.featured_image | image_url: width: 800 | image_tag: loading: 'lazy', widths: '300, 450, 600, 800', sizes: '(max-width: 749px) 280px, 460px' }}
+                {%- elsif b.image_asset != blank -%}
+                  <img src="{{ b.image_asset | asset_url }}" alt="" loading="lazy" width="600" height="750">
+                {%- endif -%}
+              </span>
+            </span>
+            <span class="scat__t">{{ b.title }}</span>
+            {%- if b.text != blank -%}<span class="scat__d">{{ b.text }}</span>{%- endif -%}
+            {%- if s.link_label != blank -%}<span class="scat__go">{{ s.link_label }}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>{%- endif -%}
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+    {%- if section.blocks.size > 1 -%}
+      <ul class="scat__dots" hidden>
+        {%- for block in section.blocks -%}
+          <li><button type="button" aria-label="Show {{ block.settings.title | escape }}"{% if forloop.first %} aria-current="true"{% endif %}></button></li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('scat-{{ section.id }}');
+    var grid = root && root.querySelector('.scat__grid'), dots = root && root.querySelector('.scat__dots');
+    if (!grid || !dots) return;
+    var cards = [].slice.call(grid.children), btns = [].slice.call(dots.querySelectorAll('button'));
+    function pos(c) { return c.getBoundingClientRect().left - grid.getBoundingClientRect().left + grid.scrollLeft - 16; }
+    function active() {
+      var x = grid.scrollLeft, best = 0, d = Infinity;
+      if (x + grid.clientWidth >= grid.scrollWidth - 2) best = cards.length - 1;
+      else cards.forEach(function (c, i) { var e = Math.abs(pos(c) - x); if (e < d) { d = e; best = i; } });
+      btns.forEach(function (b, i) { b.setAttribute('aria-current', i === best); });
+    }
+    function check() { dots.hidden = grid.scrollWidth <= grid.clientWidth + 2; active(); }
+    var raf;
+    grid.addEventListener('scroll', function () { cancelAnimationFrame(raf); raf = requestAnimationFrame(active); }, { passive: true });
+    btns.forEach(function (b, i) { b.addEventListener('click', function () { grid.scrollTo({ left: pos(cards[i]), behavior: 'smooth' }); }); });
+    addEventListener('resize', check);
+    check();
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Shop by category",
+  "tag": "div",
+  "max_blocks": 8,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Shop by Category" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "text", "id": "link_label", "label": "Link text under each card", "info": "Leave empty to show none." },
+    { "type": "text", "id": "anchor", "label": "Anchor name", "info": "So other buttons can jump here, e.g. find-your-kit" },
+    { "type": "header", "content": "Size and spacing" },
+    { "type": "range", "id": "circle_size", "label": "Circle size", "min": 0, "max": 400, "step": 10, "unit": "px", "default": 0, "info": "0 is automatic: 280px, or 200px when there are more than 3 cards. Grows on big screens like the rest of the page." },
+    { "type": "range", "id": "circle_size_mobile", "label": "Circle size on phones", "min": 80, "max": 200, "step": 5, "unit": "px", "default": 140 },
+    { "type": "range", "id": "gap", "label": "Space between the cards", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 0, "info": "0 is automatic. Larger moves the circles apart." },
+    { "type": "header", "content": "Colours" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#fffaf3", "info": "Pure white shows as the warm ivory of the page." },
+    { "type": "color", "id": "disc_color", "label": "Circle colour", "default": "#efd9c4", "info": "What shows behind a transparent cut-out. One flat colour for every card." },
+    { "type": "color", "id": "ring_color", "label": "Ring colour", "default": "#d99a2b" }
+  ],
+  "blocks": [
+    {
+      "type": "card",
+      "name": "Category",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Round photo", "info": "A photo, or a person cut out on a transparent background (PNG or WebP), which then sits on the circle colour. Square works best." },
+        { "type": "product", "id": "product", "label": "Or a product's picture", "info": "Used when no photo is picked. Good for kits." },
+        { "type": "text", "id": "image_asset", "label": "Or a theme asset file name", "info": "Used only when no photo is picked." },
+        { "type": "select", "id": "focus", "label": "Keep this part of the photo in view", "default": "center 25%", "options": [
+          { "value": "center 25%", "label": "Top centre" },
+          { "value": "center 40%", "label": "Upper middle" },
+          { "value": "center center", "label": "Centre" },
+          { "value": "left 30%", "label": "Left" },
+          { "value": "right 30%", "label": "Right" }
+        ] },
+        { "type": "range", "id": "card_width", "label": "Width of this card", "min": 0, "max": 600, "step": 10, "unit": "px", "default": 0, "info": "0 is automatic. A wider card gives the text under the circle more room and moves the neighbours apart. The circle itself keeps its size." },
+        { "type": "range", "id": "zoom", "label": "Zoom the picture in this circle", "min": 100, "max": 250, "step": 5, "unit": "%", "default": 100, "info": "Enlarges the picture inside the circle, toward the part chosen in Keep this part of the photo in view." },
+        { "type": "range", "id": "size", "label": "Size of this circle", "min": 60, "max": 140, "step": 5, "unit": "%", "default": 100, "info": "Of the section circle size. Use it to even out a photo that looks bigger or smaller than the others." },
+        { "type": "text", "id": "title", "label": "Category", "default": "Sexual Wellness" },
+        { "type": "textarea", "id": "text", "label": "One line under it" },
+        { "type": "text", "id": "link", "label": "Link", "info": "#name of a shelf or kit on this page, or a full link." }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Shop by category", "blocks": [{ "type": "card" }, { "type": "card" }, { "type": "card" }] }]
+}
+{% endschema %}

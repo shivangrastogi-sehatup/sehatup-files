@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sehatUP Medical Prescription</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --ink: #2C2C2C;
+            --muted: #6B7280;
+            --stone: #F5F6F7;
+            --hairline: #E6E8EA;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 4mm 4mm 10mm 4mm;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Montserrat", sans-serif;
+            color: var(--ink);
+            background-color: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        body {
+            width: 100%;
+            position: relative;
+        }
+
+        .page-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .logo {
+            display: block;
+            height: 38px;
+        }
+
+        .contact {
+            text-align: right;
+        }
+
+        .contact-web {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 3px;
+        }
+
+        .contact-small {
+            font-size: 9px;
+            font-weight: 500;
+            color: #64748B;
+            margin-bottom: 2px;
+        }
+
+        .contact-small:last-child {
+            margin-bottom: 0;
+        }
+
+        .patient-wrap {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 8px;
+        }
+
+        .patient-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            background: #F9FAFB;
+            padding: 12px 20px;
+            border-radius: 16px;
+            border: 1px solid #E5E7EB;
+            margin-bottom: 8px;
+        }
+
+        .patient-grid div {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            border: none;
+            padding: 0;
+        }
+
+        .field-name {
+            font-weight: 700;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+        }
+
+        .field-value {
+            font-weight: 700;
+            color: #000;
+            font-size: 14px;
+            letter-spacing: -0.2px;
+        }
+
+        .heading-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 8px;
+        }
+
+        .heading-text {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            text-transform: none;
+            letter-spacing: normal;
+            white-space: nowrap;
+        }
+
+        .rule {
+            height: 1px;
+            background: #E5E7EB;
+            flex-grow: 1;
+        }
+
+        .diagnosis {
+            margin-bottom: 8px;
+        }
+
+        .diagnosis-card {
+            background: #F8FAFC;
+            border: 1px solid #E5E7EB;
+            border-left: 4px solid #F12F46;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .diagnosis-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .diagnosis-notes {
+            font-size: 12.5px;
+            color: #4B5563;
+            line-height: 1.5;
+            letter-spacing: 0.1px;
+        }
+
+        .med-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+        }
+
+        .med-heading .rule {
+            margin: 0 15px;
+        }
+
+        .buy-button {
+            display: flex;
+            align-items: center;
+            background: #FF3B47;
+            color: white;
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(255, 59, 71, 0.3);
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .buy-button svg {
+            margin-right: 8px;
+        }
+
+        .med-box {
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .med-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            page-break-inside: auto;
+        }
+
+        .med-table thead {
+            display: table-header-group;
+        }
+
+        .med-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .med-table th {
+            text-align: left;
+            font-size: 10.5px;
+            font-weight: 800;
+            color: var(--ink);
+            padding: 14px 18px;
+            background: #F8FAFC;
+            border-bottom: 2px solid var(--ink);
+        }
+
+        .med-table td {
+            padding: 15px 14px;
+            border-bottom: 1px solid var(--hairline);
+            vertical-align: top;
+            font-size: 13px;
+        }
+
+        .med-table tr:last-child td {
+            border-bottom: 2px solid var(--ink);
+        }
+
+        .med-table .col-name {
+            width: 42%;
+        }
+
+        .med-table .col-dose {
+            width: 15%;
+            text-align: center;
+        }
+
+        .med-table .col-detail {
+            width: 30%;
+        }
+
+        .med-table .col-time {
+            width: 13%;
+            text-align: right;
+        }
+
+        .med-table .dose-cell {
+            padding: 15px 10px;
+            text-align: center;
+        }
+
+        .med-table .time-cell {
+            text-align: right;
+        }
+
+        .med-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            word-wrap: break-word;
+        }
+
+        .med-note {
+            font-size: 9.5px;
+            font-weight: 400;
+            color: var(--muted);
+        }
+
+        .med-kind {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1E293B;
+            margin-bottom: 2px;
+        }
+
+        .med-duration {
+            font-size: 11px;
+            font-weight: 500;
+            color: #111827;
+        }
+
+        .dose-stack {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .dose-grid {
+            display: grid;
+            grid-template-columns: 14px 4px 14px 4px 14px 4px 14px;
+            align-items: center;
+            justify-items: center;
+            margin-top: -2px;
+        }
+
+        .dose-num {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1E293B;
+        }
+
+        .dose-num.off {
+            color: #CBD5E1;
+        }
+
+        .dose-dash {
+            font-size: 12px;
+            font-weight: 400;
+            color: #E2E8F0;
+        }
+
+        .dose-letter {
+            font-size: 8px;
+            font-weight: 900;
+            color: #1E293B;
+            margin-top: 2px;
+        }
+
+        .dose-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1E293B;
+            line-height: 1.2;
+        }
+
+        .dose-times {
+            font-size: 8.5px;
+            font-weight: 400;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .dose-key {
+            font-size: 10.5px;
+            font-weight: 400;
+            color: #1E293B;
+            margin-bottom: 20px;
+            padding: 0 5px;
+        }
+
+        .guidelines {
+            margin: 30px 0;
+            display: block;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .guidelines .heading-row {
+            margin-bottom: 20px;
+        }
+
+        .guideline-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 40px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .guideline-list li {
+            position: relative;
+            padding-left: 20px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #4B5563;
+        }
+
+        .guideline-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 6.5px;
+            width: 4px;
+            height: 4px;
+            background: #000;
+            border-radius: 50%;
+        }
+
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin: 15px 0 24px;
+            padding-top: 5px;
+            text-align: center;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .signatures.single {
+            justify-content: flex-start;
+        }
+
+        .signer {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+        }
+
+        .signatures.single .signer,
+        .signatures.pair .signer {
+            flex: 0 1 auto;
+        }
+
+        .signature-images {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 55px;
+            margin-bottom: 8px;
+        }
+
+        .signature-images img {
+            height: 28px;
+            width: auto;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .signer-name {
+            font-size: 11px;
+            font-weight: 900;
+            color: #000;
+            text-transform: uppercase;
+        }
+
+        .signer-degree {
+            font-size: 7.5px;
+            line-height: 1.2;
+            color: #475569;
+            white-space: pre-line;
+        }
+
+        .signer-reg {
+            font-size: 7.5px;
+            font-weight: 700;
+            color: #000;
+            margin-top: 3px;
+        }
+
+        .disclaimer {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid #F3F4F6;
+        }
+
+        .disclaimer p {
+            margin: 0;
+            font-size: 7.5px;
+            font-weight: 400;
+            line-height: 1.4;
+            color: #9CA3AF;
+        }
+
+        .disclaimer-label {
+            font-size: 7px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .diet-page {
+            padding: 0 2mm 4mm 2mm;
+            page-break-before: always;
+            break-before: page;
+        }
+
+        .diet-banner {
+            background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%);
+            border-radius: 12px;
+            padding: 14px 22px;
+            margin-bottom: 18px;
+            text-align: center;
+        }
+
+        .diet-banner-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+            color: #FFFFFF;
+        }
+
+        .diet-banner-text img {
+            width: 22px;
+            height: 22px;
+        }
+
+        .diet-banner-price {
+            font-weight: 800;
+            color: #6EE7B7;
+        }
+
+        .diet-intro {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .diet-title {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+            color: #0F172A;
+            margin-bottom: 9px;
+        }
+
+        .diet-condition {
+            margin-bottom: 10px;
+        }
+
+        .condition-tag {
+            display: inline-block;
+            padding: 3px 11px;
+            border: 1px solid #FECDD3;
+            border-radius: 6px;
+            background: #FFF1F2;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #F12F46;
+        }
+
+        .prepared-by {
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748B;
+        }
+
+        .prepared-by span {
+            font-weight: 700;
+            color: #0F172A;
+        }
+
+        .diet-subtitle {
+            margin-top: 7px;
+            font-size: 9px;
+            font-style: italic;
+            line-height: 1.55;
+            color: #475569;
+        }
+
+        .card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .card.can-split {
+            break-inside: auto;
+            page-break-inside: auto;
+        }
+
+        .card.gap-10 {
+            margin-bottom: 10px;
+        }
+
+        .card.gap-12 {
+            margin-bottom: 12px;
+        }
+
+        .card-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .card-pair.single {
+            grid-template-columns: 1fr;
+        }
+
+        .card-pair.last {
+            margin-bottom: 12px;
+        }
+
+        .meal-card {
+            padding: 14px 16px;
+        }
+
+        .card-label {
+            margin-bottom: 8px;
+            font-size: 8.5px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #475569;
+        }
+
+        .meal-card .card-label,
+        .addon-card .card-label {
+            margin-bottom: 7px;
+        }
+
+        .icon-card .card-label {
+            margin-bottom: 3px;
+        }
+
+        .note-card .card-label {
+            margin-bottom: 5px;
+        }
+
+        .card-label.green {
+            color: #059669;
+        }
+
+        .card-label.amber {
+            color: #D97706;
+        }
+
+        .card-label.violet {
+            color: #6D28D9;
+        }
+
+        .card-label.blue {
+            color: #2563EB;
+        }
+
+        .dot-item {
+            position: relative;
+            margin-bottom: 4px;
+            padding-left: 14px;
+            font-size: 10.5px;
+            line-height: 1.5;
+            color: #334155;
+        }
+
+        .dot-item::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 6px;
+            width: 4px;
+            height: 4px;
+            background: #94A3B8;
+            border-radius: 50%;
+        }
+
+        .dot-item.light::before {
+            background: #CBD5E1;
+        }
+
+        .meal-card .dot-item {
+            margin-bottom: 3px;
+        }
+
+        .tip-item {
+            position: relative;
+            margin-bottom: 4px;
+            padding-left: 16px;
+            font-size: 10.5px;
+            line-height: 1.5;
+            color: #334155;
+        }
+
+        .tip-number {
+            position: absolute;
+            left: 0;
+            font-size: 9px;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .card-text {
+            margin-bottom: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.55;
+            color: #0F172A;
+        }
+
+        .meal-card .card-text {
+            margin-bottom: 5px;
+        }
+
+        .card-benefit {
+            font-size: 8.5px;
+            font-style: italic;
+            line-height: 1.45;
+            color: #475569;
+        }
+
+        .meal-card .card-benefit {
+            margin-top: 7px;
+            padding-top: 6px;
+            border-top: 1px solid #F1F5F9;
+        }
+
+        .icon-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .icon-card img {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .icon-value {
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.45;
+            color: #0F172A;
+        }
+
+        .note-text {
+            font-size: 10.5px;
+            font-style: italic;
+            line-height: 1.55;
+            color: #334155;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-head">
+        <div>
+            <img class="logo" src="{{logoBase64}}" alt="sehatUP">
+        </div>
+        <div class="contact">
+            <div class="contact-web">www.sehatup.com</div>
+            <div class="contact-small">support@sehatup.com</div>
+            <div class="contact-small">+91-9355539355</div>
+        </div>
+    </div>
+
+    <div class="patient-wrap">
+        <div class="patient-grid">
+            <div><span class="field-name">Patient Name</span> <span class="field-value">{{patientName}}</span></div>
+            <div><span class="field-name">Age / Gender</span> <span class="field-value">{{patientAge}} / {{patientGender}}</span></div>
+            <div><span class="field-name">Date of Consultation</span> <span class="field-value">{{consultationDate}}</span></div>
+            <div><span class="field-name">Prescription ID</span> <span class="field-value">{{prescriptionID}}</span></div>
+        </div>
+    </div>
+
+    <div class="diagnosis">
+        <div class="heading-row">
+            <h3 class="heading-text">Clinical Diagnosis</h3>
+            <div class="rule"></div>
+        </div>
+        <div class="diagnosis-card">
+            <div class="diagnosis-name">{{primaryDiagnosis}}</div>
+            {{#if clinicalFindings}}
+            <div class="diagnosis-notes">{{clinicalFindings}}</div>
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="med-heading">
+        <h2 class="heading-text">Medication Prescribed</h2>
+        <div class="rule"></div>
+        <a class="buy-button" href="{{#if cartLink}}{{cartLink}}{{else}}https://sehatup.com/{{/if}}" target="_blank">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            BUY NOW MEDICINES
+        </a>
+    </div>
+
+    <div class="med-box">
+        <table class="med-table">
+            <thead>
+                <tr>
+                    <th class="col-name">MEDICINE NAME</th>
+                    <th class="col-dose">DOSAGE</th>
+                    <th class="col-detail">MEDICINE DETAILS</th>
+                    <th class="col-time">DURATION</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each recommendedProducts}}
+                <tr>
+                    <td>
+                        <div class="med-name">{{this.name}}</div>
+                        {{#if this.contains}}
+                        <div class="med-note">{{this.contains}}</div>
+                        {{/if}}
+                    </td>
+
+                    <td class="dose-cell">
+                        {{#if (eq this.dosageType "schedule")}}
+                        <div class="dose-stack">
+                            <div class="dose-grid">
+                                <span class="dose-num{{#if (eq this.dosage.[0] "0")}} off{{/if}}">{{this.dosage.[0]}}</span>
+                                <span class="dose-dash">-</span>
+                                <span class="dose-num{{#if (eq this.dosage.[1] "0")}} off{{/if}}">{{this.dosage.[1]}}</span>
+                                <span class="dose-dash">-</span>
+                                <span class="dose-num{{#if (eq this.dosage.[2] "0")}} off{{/if}}">{{this.dosage.[2]}}</span>
+                                <span class="dose-dash">-</span>
+                                <span class="dose-num{{#if (eq this.dosage.[3] "0")}} off{{/if}}">{{this.dosage.[3]}}</span>
+
+                                <span class="dose-letter">M</span>
+                                <div></div>
+                                <span class="dose-letter">A</span>
+                                <div></div>
+                                <span class="dose-letter">E</span>
+                                <div></div>
+                                <span class="dose-letter">N</span>
+                            </div>
+                        </div>
+                        {{else}}
+                        <div class="dose-stack">
+                            <div class="dose-value">{{this.dosageValue}} {{#if (eq this.dosageType "drops")}}Drops{{/if}}</div>
+                            {{#if this.dosageFrequency}}
+                            <div class="dose-times">{{this.dosageFrequency}} Times / Day</div>
+                            {{/if}}
+                        </div>
+                        {{/if}}
+                    </td>
+                    <td>
+                        <div class="med-kind">{{this.type}} | {{this.timing}}</div>
+                        <div class="med-note">{{this.instruction}}</div>
+                    </td>
+                    <td class="time-cell">
+                        <div class="med-duration">{{this.duration}}</div>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="dose-key">
+        M-A-E-N: Morning - Afternoon - Evening - Night
+    </div>
+
+    <div class="guidelines">
+        <div class="heading-row">
+            <h2 class="heading-text">Lifestyle &amp; Dietary Guidelines</h2>
+            <div class="rule"></div>
+        </div>
+        <ul class="guideline-list">
+            {{#each guidelines}}
+            <li>{{this}}</li>
+            {{/each}}
+        </ul>
+    </div>
+
+    <div class="signatures{{#if (eq (len doctors) 1)}} single{{else if (eq (len doctors) 2)}} pair{{/if}}">
+        {{#each doctors}}
+        <div class="signer">
+            <div class="signature-images">
+                {{#each this.signatures}}
+                <img src="{{this}}">
+                {{/each}}
+            </div>
+            <div class="signer-name">{{this.name}}</div>
+            <div class="signer-degree">{{this.qualification}}</div>
+            {{#if this.registrationNo}}
+            <div class="signer-reg">REG NO: {{this.registrationNo}}</div>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="disclaimer">
+        <p>
+            <span class="disclaimer-label">Disclaimer:</span> This digital prescription is issued by registered medical practitioners via Sehatup Wellness Pvt Ltd. It is based on the online consultation and the information provided by the patient. * Not for medico-legal purposes. Do not self-medicate.
+        </p>
+    </div>
+
+    {{#if hasDietPlan}}
+    <div class="diet-page">
+
+        <div class="diet-banner">
+            <div class="diet-banner-text">
+                <img src="{{baseUrl}}/PDF-Assets/prescription/celebration.png" alt="">
+                Your Complimentary Free Personalized Diet Plan&nbsp;<span class="diet-banner-price">(Worth ₹1500)</span>&nbsp;is Ready!
+            </div>
+        </div>
+
+        <div class="diet-intro">
+            <div class="diet-title">
+                Diet &amp; Lifestyle Plan
+            </div>
+            <div class="diet-condition">
+                <span class="condition-tag">Condition: {{dietPlan.condition}}</span>
+            </div>
+            <div class="prepared-by">
+                Prepared by: <span>Dr. Somya Sharma (BHMS, Dietician)</span>
+            </div>
+            {{#if dietPlan.subtitle}}
+            <div class="diet-subtitle">
+                {{dietPlan.subtitle}}
+            </div>
+            {{/if}}
+        </div>
+
+        {{#if dietPlan.understandingItems}}
+        <div class="card can-split gap-10">
+            <div class="card-label">Understanding Your Condition</div>
+            {{#each dietPlan.understandingItems}}
+            <div class="dot-item">{{this}}</div>
+            {{/each}}
+        </div>
+        {{/if}}
+
+        <div class="card-pair">
+            {{#each dietPlan.meals}}
+            <div class="card meal-card">
+                <div class="card-label">{{this.time}}</div>
+                {{#if this.food}}
+                <div class="card-text">{{this.food}}</div>
+                {{/if}}
+                {{#if this.items}}
+                {{#each this.items}}
+                <div class="dot-item">{{this}}</div>
+                {{/each}}
+                {{/if}}
+                {{#if this.benefit}}
+                <div class="card-benefit">{{this.benefit}}</div>
+                {{/if}}
+            </div>
+            {{/each}}
+        </div>
+
+        {{#if dietPlan.dailyAddons}}
+        <div class="card-pair{{#unless dietPlan.specialFocus}} single{{/unless}}">
+            <div class="card addon-card">
+                <div class="card-label green">Daily Add-ons</div>
+                <div class="card-text">{{dietPlan.dailyAddons.food}}</div>
+                <div class="card-benefit">{{dietPlan.dailyAddons.benefit}}</div>
+            </div>
+            {{#if dietPlan.specialFocus}}
+            <div class="card addon-card">
+                <div class="card-label amber">Special Focus — {{dietPlan.specialFocus.title}}</div>
+                <div class="card-text">{{dietPlan.specialFocus.food}}</div>
+                <div class="card-benefit">{{dietPlan.specialFocus.benefit}}</div>
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        {{#if dietPlan.advancedTips}}
+        <div class="card gap-10">
+            <div class="card-label violet">Advanced Dietician Tips</div>
+            {{#each dietPlan.advancedTips}}
+            <div class="tip-item">
+                <span class="tip-number">{{add @index 1}}.</span>
+                {{this}}
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+
+        <div class="card-pair">
+            {{#if dietPlan.avoidFoods}}
+            <div class="card">
+                <div class="card-label">Foods to Avoid / Limit</div>
+                {{#each dietPlan.avoidFoods}}
+                <div class="dot-item light">{{this}}</div>
+                {{/each}}
+            </div>
+            {{/if}}
+            <div class="card">
+                <div class="card-label blue">Lifestyle Instructions</div>
+                {{#each dietPlan.lifestyle}}
+                <div class="dot-item light">{{this}}</div>
+                {{/each}}
+            </div>
+        </div>
+
+        <div class="card-pair last{{#unless dietPlan.hydration}} single{{/unless}}">
+            {{#if dietPlan.hydration}}
+            <div class="card icon-card">
+                <img src="{{baseUrl}}/PDF-Assets/prescription/hydration.png" alt="">
+                <div>
+                    <div class="card-label">Hydration</div>
+                    <div class="icon-value">{{dietPlan.hydration}}</div>
+                </div>
+            </div>
+            {{/if}}
+            {{#if dietPlan.followUp}}
+            <div class="card icon-card">
+                <img src="{{baseUrl}}/PDF-Assets/prescription/calendar.png" alt="">
+                <div>
+                    <div class="card-label">Follow-Up</div>
+                    <div class="icon-value">{{dietPlan.followUp}}</div>
+                </div>
+            </div>
+            {{/if}}
+        </div>
+
+        {{#if dietPlan.note}}
+        <div class="card note-card gap-12">
+            <div class="card-label">Note</div>
+            <div class="note-text">{{dietPlan.note}}</div>
+        </div>
+        {{/if}}
+
+    </div>
+    {{/if}}
+
+</body>
+
+</html>

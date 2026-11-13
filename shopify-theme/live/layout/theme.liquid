@@ -555,25 +555,14 @@
         body #MainContent .hcn__d { display: none !important; }
         body #MainContent .hcn__list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border: 0 !important; }
         body #MainContent .hcn__list > li { min-width: 0; }
-        body #MainContent .hcn__row { height: 100%; display: flex !important; flex-direction: column; align-items: flex-start; gap: 6px !important; padding: 14px 14px 44px !important; border: 1px solid #e8e0d9 !important; border-radius: 16px; background: #fff; }
+        body #MainContent .hcn__row { height: 100%; display: flex !important; flex-direction: column; align-items: flex-start; gap: 6px !important; padding: 14px 14px var(--hcn-pb, 44px) !important; border: 1px solid #e8e0d9 !important; border-radius: 16px; background: #fff; }
         body #MainContent .hcn__row::before { border-radius: 16px !important; }
         body #MainContent .hcn__who { order: -1; margin: 0 !important; font-size: 11.5px !important; }
         body #MainContent .hcn__t { font-size: 15.5px !important; line-height: 1.25 !important; }
         body #MainContent .hcn__go { position: absolute; right: 10px; bottom: 10px; width: 28px !important; height: 28px !important; }
         body #MainContent .hcn__go svg { width: 13px !important; height: 13px !important; }
-        /* Doctors: a shorter photo frame (head to waist) and three lines about each */
-        body #MainContent .hdr__photo { aspect-ratio: 5 / 4 !important; }
-        body #MainContent .hdr__photo img { object-fit: cover !important; object-position: 50% 8% !important; }
+        /* Doctors: three lines about each (the photo shows in full, as on every screen) */
         body #MainContent .hdr__role { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-        /* Kits: a 2 x 2 grid of tiles; the description goes, the title and photo stay */
-        body #MainContent .care-kits-row { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px !important; }
-        body #MainContent .care-kits-row + .care-kits-row { margin-top: 10px !important; }
-        body #MainContent .care-kit-title-row { padding: 14px 14px 0 !important; }
-        body #MainContent .care-kit-title { font-size: 15px !important; line-height: 1.25 !important; min-height: 3.75em; }
-        body #MainContent .care-kit-description { display: none !important; }
-        body #MainContent .care-kit-text { padding: 0 14px 8px !important; }
-        body #MainContent .care-kit-button { min-height: 36px !important; padding: 0 16px !important; font-size: 12.5px !important; }
-        body #MainContent .care-kit-image { max-height: 120px !important; max-width: 100% !important; }
         /* Founders: the story to four lines (the link reads the rest), the two founders side by side */
         body #MainContent .hfd__story { text-align: center; }
         body #MainContent .hfd__story p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
@@ -585,7 +574,6 @@
         body #MainContent .hfd__more { align-self: center !important; }
         /* Compare and FAQ: tighter rows */
         body #MainContent .hcp__r { padding: 16px 0 !important; gap: 8px !important; }
-        body #MainContent .hcp__u { font-size: 13.5px !important; }
         body #MainContent .hfq__q { padding: 15px 2px !important; font-size: 15.5px !important; }
       }
     </style>

@@ -15,7 +15,7 @@
   #hcp-{{ section.id }} .hcp__h { margin: 0 0 16px; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
   #hcp-{{ section.id }} .hcp__sub { margin: 0 auto; max-width: 720px; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
 
-  #hcp-{{ section.id }} .hcp__t { margin: 0; padding: 0; list-style: none; }
+  #hcp-{{ section.id }} .hcp__t { max-width: 1000px; margin: 0 auto; padding: 0; list-style: none; } /* a compact, readable table; the heading above keeps the full width */
   #hcp-{{ section.id }} .hcp__r { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.25fr); }
   #hcp-{{ section.id }} .hcp__r > * { padding: 20px 24px; border-bottom: 1px solid var(--line); }
   #hcp-{{ section.id }} .hcp__r > :last-child { background: #fff; border-bottom-color: #f1ebe6; }
@@ -30,7 +30,7 @@
   #hcp-{{ section.id }} .hcp__o { font: 600 16px/1.45 'Montserrat', sans-serif; color: var(--ink); }
   #hcp-{{ section.id }} .hcp__u i, #hcp-{{ section.id }} .hcp__o i { flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; }
   #hcp-{{ section.id }} .hcp__u i { background: #ece6e1; color: var(--soft); }
-  #hcp-{{ section.id }} .hcp__o i { background: var(--btn); color: #fff; transition: transform .5s cubic-bezier(.34, 1.56, .64, 1) calc(var(--i) * .08s + .3s); }
+  #hcp-{{ section.id }} .hcp__o i { background: rgba(216, 31, 72, .12); color: var(--btn); transition: transform .5s cubic-bezier(.34, 1.56, .64, 1) calc(var(--i) * .08s + .3s); }
   #hcp-{{ section.id }} i svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 
   #hcp-{{ section.id }} .hcp__foot { margin: 36px 0 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 24px; }
@@ -55,18 +55,39 @@
     #hcp-{{ section.id }} .hcp__u { font-size: 14.5px; }
     #hcp-{{ section.id }} .hcp__top > :last-child { font-size: 17px; }
   }
+  #hcp-{{ section.id }} .hcp__sw { display: none; }
   @media (max-width: 749.98px) {
+    /* Phones: a switch between the two sides. It opens on "With sehatUP" (ticks);
+       "The usual way" swaps the same card to the crosses. The row labels go. */
+    #hcp-{{ section.id }} .hcp__sw { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 0 14px; padding: 4px; border-radius: 999px; background: #efe8e2; }
+    #hcp-{{ section.id }} .hcp__sw button { height: 44px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--mute); font: 700 14px/1 'Montserrat', sans-serif; cursor: pointer; transition: background-color .25s ease, color .25s ease, box-shadow .25s ease; }
+    /* The switch reads as a switch: a darker track with a thin outline, the chosen side filled
+       (a white pill with a clear shadow on a darker stone track) with white bold text, the other side
+       plain dark text so it is clearly tappable. */
+    #hcp-{{ section.id }} .hcp__sw { background: #e6ddd6; box-shadow: inset 0 0 0 1px rgba(29, 29, 29, .08); }
+    #hcp-{{ section.id }} .hcp__sw button { color: #7a716b; font-weight: 600; }
+    #hcp-{{ section.id }} .hcp__sw button[aria-pressed="true"] { background: #fff; color: var(--ink); font-weight: 800; box-shadow: 0 1px 2px rgba(29, 29, 29, .08), 0 6px 16px -6px rgba(29, 29, 29, .28); }
+    /* "With sehatUP" in the brand red when it is the chosen side. */
+    #hcp-{{ section.id }} .hcp__sw button[data-side="o"][aria-pressed="true"] { color: var(--btn); }
+    #hcp-{{ section.id }} .hcp__sw button:active { transform: scale(.97); }
+    #hcp-{{ section.id }} .hcp__sw button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    #hcp-{{ section.id }} .hcp__l { display: none !important; }
+    #hcp-{{ section.id }} .hcp__u { display: none !important; }
+    #hcp-{{ section.id }}.hcp--usual .hcp__u { display: flex !important; }
+    #hcp-{{ section.id }}.hcp--usual .hcp__o { display: none !important; }
+    #hcp-{{ section.id }} :is(.hcp__u, .hcp__o) { animation: hcp-swap-{{ section.id }} .35s ease both; }
+    @keyframes hcp-swap-{{ section.id }} { from { opacity: 0; } to { opacity: 1; } }
     #hcp-{{ section.id }} .hcp__h { font-size: 30px; }
     #hcp-{{ section.id }} .hcp__sub { font-size: 15px; }
     #hcp-{{ section.id }} .hcp__head { margin-bottom: 24px; }
     /* One white card for all the points, rows split by hairlines. */
     #hcp-{{ section.id }} .hcp__t { display: block; padding: 2px 20px; border-radius: 22px; background: #fff; box-shadow: 0 1px 0 rgba(29, 29, 29, .03), 0 10px 30px rgba(29, 29, 29, .05); }
     #hcp-{{ section.id }} .hcp__top { display: none !important; }
-    #hcp-{{ section.id }} .hcp__r { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 20px 0; border-top: 1px solid var(--line); }
+    #hcp-{{ section.id }} .hcp__r { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 16px 0; border-top: 1px solid var(--line); }
     #hcp-{{ section.id }} .hcp__top + .hcp__r { border-top: 0; }
     #hcp-{{ section.id }} .hcp__r > *, #hcp-{{ section.id }} .hcp__r > :last-child { padding: 0; border: 0; border-radius: 0 !important; background: none; }
-    #hcp-{{ section.id }} .hcp__l { font-size: 13px; color: var(--btn); }
-    #hcp-{{ section.id }} .hcp__u { font-size: 14px; }
+    #hcp-{{ section.id }} .hcp__l { font-size: 13px; color: var(--mute); }
+    #hcp-{{ section.id }} .hcp__u { font-size: 15px; color: var(--mute); }
     #hcp-{{ section.id }} .hcp__o { font-size: 15px; }
     #hcp-{{ section.id }} .hcp__btn { width: 100%; justify-content: center; text-align: center; text-wrap: balance; line-height: 1.25; padding-top: 12px; padding-bottom: 12px; height: auto; min-height: 56px; }
   }
@@ -89,6 +110,10 @@
       <h2 class="hcp__h">{{ s.heading }}</h2>
       {%- if s.subheading != blank -%}<p class="hcp__sub">{{ s.subheading }}</p>{%- endif -%}
     </div>
+    <div class="hcp__sw" role="group" aria-label="Compare">
+      <button type="button" data-side="u" aria-pressed="false">{{ s.usual_label }}</button>
+      <button type="button" data-side="o" aria-pressed="true">{{ s.ours_label }}</button>
+    </div>
     <ul class="hcp__t" role="list">
       <li class="hcp__r hcp__top" style="--i: 0" aria-hidden="true"><span></span><span>{{ s.usual_label }}</span><span>{{ s.ours_label }}</span></li>
       {%- for block in section.blocks -%}
@@ -109,6 +134,30 @@
   </div>
 </section>
 
+<script>
+  (function () {
+    var root = document.getElementById('hcp-{{ section.id }}');
+    if (!root) return;
+    var sw = root.querySelector('.hcp__sw');
+    if (sw) sw.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-side]');
+      if (!b || b.getAttribute('aria-pressed') === 'true') return;
+      // The two sides have different text lengths, so the card changes height. Grow or
+      // shrink it smoothly from the old height to the new one instead of jumping.
+      var card = root.querySelector('.hcp__t'), h0 = card ? card.offsetHeight : 0;
+      root.classList.toggle('hcp--usual', b.dataset.side === 'u');
+      sw.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      if (!card || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var h1 = card.offsetHeight;
+      if (Math.abs(h1 - h0) < 2) return;
+      card.style.transition = 'none'; card.style.overflow = 'hidden'; card.style.height = h0 + 'px';
+      card.offsetHeight;
+      card.style.transition = 'height .4s cubic-bezier(.22, 1, .36, 1)'; card.style.height = h1 + 'px';
+      clearTimeout(card._t);
+      card._t = setTimeout(function () { card.style.height = ''; card.style.overflow = ''; card.style.transition = ''; }, 450);
+    });
+  })();
+</script>
 <script>
   (function () {
     var root = document.getElementById('hcp-{{ section.id }}');

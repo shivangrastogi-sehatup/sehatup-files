@@ -25,7 +25,7 @@
   #ssf-{{ section.id }} {
     --ssf-text: #1d1d1d; --ssf-muted: #5f5a56; --ssf-line: #e8e0d9; --ssf-soft: #f6f0ec;
     --ssf-ink: {{ s.accent_color | color_darken: 8 }};
-    padding: clamp(36px, 5vw, 64px) clamp(16px, 3vw, 48px) 0;
+    padding: clamp(28px, 3vw, 40px) clamp(16px, 3vw, 48px) 0;
     background: #fff; font-family: 'Montserrat', sans-serif; color: var(--ssf-text);
   }
   #ssf-{{ section.id }} * { box-sizing: border-box; }
@@ -71,6 +71,19 @@
     #ssf-{{ section.id }} .ssf__head { display: block; }
     #ssf-{{ section.id }} .ssf__all { display: inline-block; margin-top: 12px; }
   }
+  {%- if s.center %}
+  /* Centred: heading, line and View all stacked in the middle; when there are fewer
+     products than columns, they sit in the middle too instead of hugging the left. */
+  #ssf-{{ section.id }} .ssf__head { flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+  #ssf-{{ section.id }} .ssf__sub { margin-left: auto; margin-right: auto; }
+  @media (min-width: 900px) {
+    #ssf-{{ section.id }} .ssf__grid { grid-template-columns: repeat(auto-fit, minmax(0, calc((100% - 54px) / 4))); justify-content: center; }
+  }
+  @media (max-width: 899px) {
+    #ssf-{{ section.id }} .ssf__head { padding-right: 0; }
+    #ssf-{{ section.id }} .ssf__grid { justify-content: safe center; }
+  }
+  {%- endif %}
   /* Row mode (an intro is set): intro panel first, then every product in a
      swipeable row with arrow buttons, like the old store shelf. */
   #ssf-{{ section.id }}.ssf--row .ssf__grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; gap: 18px; padding-bottom: 4px; }
@@ -96,6 +109,19 @@
   @media (min-width: 1680px) { #ssf-{{ section.id }} .ssf__inner { zoom: 1.12; } }
   @media (min-width: 1920px) { #ssf-{{ section.id }} .ssf__inner { zoom: 1.25; } }
   @media (min-width: 2560px) { #ssf-{{ section.id }} .ssf__inner { zoom: 1.65; } }
+  #ssf-{{ section.id }} :is(h2, h3) { color: #1d1d1d; }
+  @media (max-width: 749.98px) {
+    #ssf-{{ section.id }} .ssf__all { color: var(--ssf-ink); text-decoration-color: var(--ssf-ink); text-decoration-thickness: 2px; }
+    #ssf-{{ section.id }} .ssf__off { color: var(--ssf-text); }
+    #ssf-{{ section.id }} .ssf__use { display: none; }
+    {%- unless s.red_buttons_mobile %}
+    #ssf-{{ section.id }} .ssf__add { background: #1d1d1d; }
+    #ssf-{{ section.id }} .ssf__add:hover:not(:disabled) { background: #000; }
+    #ssf-{{ section.id }} .ssf__qty { border-color: #1d1d1d; color: #1d1d1d; }
+    {%- endunless %}
+  }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  @media (max-width: 749.98px) { #ssf-{{ section.id }} .ssf__sub { max-width: none; } #ssf-{{ section.id }} .ssf__intro b { text-wrap: wrap; } }
 </style>
 
 <section id="ssf-{{ section.id }}" class="ssf{% if row %} ssf--row{% endif %}">
@@ -260,6 +286,8 @@
     { "type": "checkbox", "id": "show_use", "label": "Show the short 'how to take it' line", "default": false },
     { "type": "text", "id": "anchor", "label": "Anchor name", "info": "Jump links use #name, for example #sexual-wellness." },
     { "type": "text", "id": "legacy_anchor", "label": "Older anchor id (optional)", "info": "Keeps an existing menu link working: paste the part after # from the old link." },
+    { "type": "checkbox", "id": "center", "label": "Centre the heading and the products", "default": false },
+    { "type": "checkbox", "id": "red_buttons_mobile", "label": "Phones: Add to cart in the accent colour", "info": "Off: black on phones.", "default": false },
     { "type": "color", "id": "accent_color", "label": "Accent colour", "default": "#d81f48" }
   ],
   "presets": [{ "name": "sehatUP product shelf" }]

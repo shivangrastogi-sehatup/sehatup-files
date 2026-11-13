@@ -6,6 +6,7 @@
 | Ashwagandha 30 Tablets (Free sample) | ₹399.00 | ₹399.00 | ₹359.10 |
 | Ashwagandha Tablets | ₹499.00 | ₹799.00 | ₹449.10 |
 | Boldup – 100 mg | ₹490.00 | ₹698.00 | ₹441.00 |
+| Boldup – 50 mg | ₹369.00 | ₹498.00 | ₹332.10 |
 | Confidence & Performance Booster Kit | ₹1099.00 | ₹1999.00 | ₹989.10 |
 | Daily Energy & Stamina Support Kit | ₹1699.00 | ₹3298.00 | ₹1529.10 |
 | Diaboglob | ₹934.00 | ₹1099.00 | ₹840.60 |

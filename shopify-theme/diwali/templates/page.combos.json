@@ -1,0 +1,627 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "combos_hero": {
+      "type": "hero-healthcare-banner",
+      "name": "Healthcare hero banner",
+      "settings": {
+        "layout_mode": "background-with-overlay-image",
+        "desktop_width_percent": 100,
+        "background_image": "shopify://shop_images/Soft_Ivory_Gradient_with_Windowpane_Shadows.webp",
+        "background_image_size": "cover",
+        "background_position_x": "center",
+        "background_position_y": "center",
+        "background_shift_x": 0,
+        "background_overlay_opacity": 100,
+        "background_overlay_color": "#000000",
+        "background_overlay_strength": 0,
+        "show_white_panel": false,
+        "white_panel_width": 45,
+        "white_panel_color": "#ffffff",
+        "white_panel_opacity": 95,
+        "white_panel_rounded": true,
+        "white_panel_border_radius": 20,
+        "foreground_image": "shopify://shop_images/Bearded_Couple_Behind_Marble_Table_copy.webp",
+        "foreground_image_scale": 115,
+        "foreground_image_fit": "contain",
+        "foreground_position_x": "right",
+        "foreground_position_y": "bottom",
+        "foreground_offset_x": 0,
+        "foreground_offset_y": 0,
+        "foreground_trim_bottom": 0,
+        "hide_foreground_mobile": false,
+        "split_layout": false,
+        "mobile_crop_foreground": false,
+        "fg_text_clear": true,
+        "mobile_wash": 94,
+        "fg_grow": true,
+        "mobile_fg_height": 0,
+        "kicker": "",
+        "heading": "Kits that work better together.",
+        "heading_red": "better together.",
+        "heading_red_color": "#ee204a",
+        "subheading_prefix": "Save up to",
+        "subheading_highlight": "45% on doctor-made combos",
+        "subheading_highlight_color": "#ee204a",
+        "body_text": "<p>Each kit pairs the right Ayurveda, Homeopathy and modern medicine for one goal, with a free doctor consultation on every order.</p>",
+        "body_max_em": 0,
+        "content_position": "left",
+        "content_max_width": 1400,
+        "content_text_max_width": 650,
+        "heading_size": 46,
+        "heading_weight": "700",
+        "heading_color": "#1d1d1d",
+        "subheading_size": 26,
+        "subheading_weight": "500",
+        "subheading_color": "#1d1d1d",
+        "body_size": 17,
+        "body_color": "#333333",
+        "text_shadow_enabled": false,
+        "festive_text": false,
+        "dark_text_fade": false,
+        "light_text_fade": true,
+        "button_1_text": "Find my kit",
+        "button_1_link": "#find-your-kit",
+        "button_1_style": "filled",
+        "button_1_bg_color": "#ee204a",
+        "button_1_text_color": "#ffffff",
+        "button_1_border_color": "#ee204a",
+        "button_1_hover_bg_color": "#c8183c",
+        "button_1_hover_text_color": "#ffffff",
+        "button_1_hover_border_color": "#c8183c",
+        "show_button_2": true,
+        "enable_doctor_new_tab": true,
+        "button_2_text": "Take free Health Score",
+        "button_2_link": "shopify://pages/health-score-360",
+        "button_2_style": "outline",
+        "button_2_bg_color": "#1d1d1d",
+        "button_2_text_color": "#1d1d1d",
+        "button_2_border_color": "#1d1d1d",
+        "button_2_hover_bg_color": "#1d1d1d",
+        "button_2_hover_text_color": "#ffffff",
+        "button_2_hover_border_color": "#1d1d1d",
+        "note": "",
+        "trust_text": "Trusted by 25,000+ patients",
+        "rating": "4.5",
+        "trust_count": 4,
+        "trust_initials": "R, A, S, P, K",
+        "avatar_1": "shopify://shop_images/Warm_Portrait_with_Red_Dupatta.webp",
+        "avatar_2": "shopify://shop_images/Joyful_South_Asian_Man_Portrait.webp",
+        "avatar_3": "shopify://shop_images/Warm_Indian_Portrait_with_Embroidered_Details.webp",
+        "avatar_4": "shopify://shop_images/Joyful_Rooftop_Portrait.webp",
+        "button_layout": "horizontal",
+        "button_font_size": 16,
+        "button_font_weight": "600",
+        "button_padding_vertical": 14,
+        "button_padding_horizontal": 32,
+        "button_border_radius": 50,
+        "button_spacing": 24,
+        "desktop_height_vh": 80,
+        "section_min_height": 390,
+        "section_padding_top": 30,
+        "section_padding_bottom": 30,
+        "section_padding_horizontal": 40,
+        "content_spacing": 16,
+        "enable_mobile_overrides": false,
+        "section_min_height_mobile": 600,
+        "section_padding_top_mobile": 20,
+        "section_padding_bottom_mobile": 40,
+        "section_padding_horizontal_mobile": 16,
+        "mobile_content_alignment": "center",
+        "mobile_background_position_x": "center",
+        "mobile_background_position_y": "center",
+        "mobile_bg_focus_x": 50
+      }
+    },
+    "goals": {
+      "type": "shop-category",
+      "blocks": {
+        "card_1": {
+          "type": "card",
+          "settings": {
+            "image": "shopify://shop_images/Post-Workout_Smile_in_the_Greenery.webp",
+            "product": "",
+            "image_asset": "him-problem-stamina.webp",
+            "focus": "center 25%",
+            "card_width": 250,
+            "zoom": 100,
+            "size": 100,
+            "title": "Performance & stamina",
+            "text": "",
+            "link": "#mens-performance-kit"
+          }
+        },
+        "card_2": {
+          "type": "card",
+          "settings": {
+            "image": "shopify://shop_images/Smiling_Athlete_in_Warm_Sunlight.webp",
+            "product": "",
+            "image_asset": "him-problem-weight.webp",
+            "focus": "center 40%",
+            "card_width": 0,
+            "zoom": 100,
+            "size": 100,
+            "title": "Weight loss",
+            "text": "",
+            "link": "#weight-loss-kit"
+          }
+        },
+        "card_3": {
+          "type": "card",
+          "settings": {
+            "image": "shopify://shop_images/Sunset_Serenity_Portrait.webp",
+            "product": "",
+            "image_asset": "",
+            "focus": "center 25%",
+            "card_width": 0,
+            "zoom": 100,
+            "size": 100,
+            "title": "Stress and sleep",
+            "text": "",
+            "link": "#stress-n-sleep-kit"
+          }
+        },
+        "card_4": {
+          "type": "card",
+          "settings": {
+            "image": "shopify://shop_images/Radiant_Outdoor_Portrait_in_Ivory_Kurta.webp",
+            "product": "",
+            "image_asset": "",
+            "focus": "center 25%",
+            "card_width": 0,
+            "zoom": 100,
+            "size": 100,
+            "title": "Hormone balance",
+            "text": "",
+            "link": "#hormone-Kit"
+          }
+        }
+      },
+      "block_order": [
+        "card_1",
+        "card_2",
+        "card_3",
+        "card_4"
+      ],
+      "settings": {
+        "heading": "Find your kit",
+        "subheading": "",
+        "link_label": "",
+        "anchor": "find-your-kit",
+        "circle_size": 200,
+        "circle_size_mobile": 95,
+        "gap": 72,
+        "section_bg": "#ffffff",
+        "disc_color": "#efd9c4",
+        "ring_color": "#d99a2b"
+      }
+    },
+    "kit_compare": {
+      "type": "home-compare",
+      "blocks": {
+        "kr1": {
+          "type": "row",
+          "settings": {
+            "label": "What it treats",
+            "usual": "One symptom at a time",
+            "ours": "The cause and the symptoms, together"
+          }
+        },
+        "kr2": {
+          "type": "row",
+          "settings": {
+            "label": "Who picks it",
+            "usual": "You guess from the label",
+            "ours": "Our doctors, for one goal"
+          }
+        },
+        "kr3": {
+          "type": "row",
+          "settings": {
+            "label": "How the products fit",
+            "usual": "Bought separately, may overlap",
+            "ours": "Made to work together, no doubling up"
+          }
+        },
+        "kr4": {
+          "type": "row",
+          "settings": {
+            "label": "Price",
+            "usual": "Full price for each product",
+            "ours": "Up to 45% less than buying them one by one"
+          }
+        },
+        "kr5": {
+          "type": "row",
+          "settings": {
+            "label": "Help along the way",
+            "usual": "None after you buy",
+            "ours": "A free doctor consultation with every order"
+          }
+        }
+      },
+      "block_order": [
+        "kr1",
+        "kr2",
+        "kr3",
+        "kr4",
+        "kr5"
+      ],
+      "disabled": true,
+      "settings": {
+        "heading": "Why a kit beats a single product",
+        "subheading": "Most problems have more than one cause. A kit covers them in one go.",
+        "usual_label": "One product",
+        "ours_label": "A sehatUP kit",
+        "button": "Find my kit",
+        "button_link": "#find-your-kit",
+        "note": "",
+        "section_bg": "#faf7f5"
+      }
+    },
+    "integrated": {
+      "type": "home-integrated",
+      "disabled": true,
+      "settings": {
+        "heading": "Three sciences. One kit.",
+        "heading_red": "",
+        "subheading": "Each kit mixes what works best from each, chosen by our doctors for one goal.",
+        "hide_sub_mobile": true,
+        "animate": true,
+        "animation_style": "spread",
+        "photo_zoom": 140,
+        "plan_label": "sehatUP's|Personalized|Plan",
+        "sys1_image": "shopify://shop_images/Ayurveda.webp",
+        "sys1_name": "Ayurveda",
+        "sys1_text": "Overall wellness, lifestyle balance and long-term healing.",
+        "sys2_image": "shopify://shop_images/homeopathy.webp",
+        "sys2_name": "Homeopathy",
+        "sys2_text": "Deep root-cause treatment with minimal side effects.",
+        "sys3_image": "shopify://shop_images/Modern_medicine.webp",
+        "sys3_name": "Modern medicine",
+        "sys3_text": "Immediate symptomatic relief and accurate diagnosis.",
+        "closing_red": "One kit,",
+        "closing": "made by your doctors, for one goal and your routine.",
+        "button": "Take free Health Score 360",
+        "button_link": "shopify://pages/health-score-360",
+        "section_bg": "#ffffff"
+      }
+    },
+    "shelf_performance": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Performance and stamina kits",
+        "subheading": "For daily stamina, energy and focus.",
+        "collection": "mens-performance-kit",
+        "products": [],
+        "pinned": [],
+        "limit": 48,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "",
+        "show_use": false,
+        "anchor": "mens-performance-kit",
+        "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_weight": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Weight loss kits",
+        "subheading": "To lift metabolism and burn stubborn fat, safely.",
+        "collection": "weight-loss-packs",
+        "products": [],
+        "pinned": [],
+        "limit": 48,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "",
+        "show_use": false,
+        "anchor": "weight-loss-kit",
+        "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_stress": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Stress and sleep kits",
+        "subheading": "For a calmer mind and better sleep.",
+        "collection": "stress-and-sleeep-kits",
+        "products": [],
+        "pinned": [],
+        "limit": 48,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "",
+        "show_use": false,
+        "anchor": "stress-n-sleep-kit",
+        "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
+        "accent_color": "#d81f48"
+      }
+    },
+    "shelf_hormone": {
+      "type": "sehat-shelf",
+      "settings": {
+        "heading": "Women's hormone balance kits",
+        "subheading": "For mood swings, period problems and PCOS support.",
+        "collection": "hormone-balance-kit",
+        "products": [],
+        "pinned": [],
+        "limit": 48,
+        "intro_title": "",
+        "intro_text": "",
+        "all_label": "",
+        "show_use": false,
+        "anchor": "hormone-Kit",
+        "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
+        "accent_color": "#d81f48"
+      }
+    },
+    "reviews": {
+      "type": "health-trust",
+      "blocks": {
+        "jm_carousel": {
+          "type": "shopify://apps/judge-me-reviews/blocks/featured_carousel/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "maxwidth": 1160
+          }
+        }
+      },
+      "block_order": [
+        "jm_carousel"
+      ],
+      "settings": {
+        "layout": "stacked",
+        "show_product": true,
+        "arrows": "below",
+        "heading": "What our customers say",
+        "subheading": "",
+        "rating_value": "4.5",
+        "rating_line": "[rating] · Trusted by 25,000+ patients",
+        "accent_color": "#ee204a",
+        "review_products": [],
+        "min_rating": 4,
+        "review_hide": "",
+        "side_score": "4.5",
+        "mobile_heading": "",
+        "side_title": "Loved by people who took the first step.",
+        "side_text": "Real reviews from sehatUP customers across India, collected by Judge.me.",
+        "side_note": "Trusted by 25,000+ patients",
+        "side_link_label": "",
+        "side_link": "",
+        "trust_1": "",
+        "trust_1_text": "",
+        "trust_2": "",
+        "trust_2_text": "",
+        "trust_3": "",
+        "trust_3_text": "",
+        "trust_4": "",
+        "trust_4_text": ""
+      }
+    },
+    "certs": {
+      "type": "sehat-certs",
+      "blocks": {
+        "c1": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "c2": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "c3": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "settings": {
+        "section_bg": "#ffffff",
+        "heading": "Certified and doctor-checked",
+        "subheading": "What you take is made to approved standards and chosen by real doctors."
+      }
+    },
+    "note": {
+      "type": "sehat-product-story",
+      "blocks": {
+        "p1": {
+          "type": "promise",
+          "settings": {
+            "lead": "A doctor is part of it.",
+            "text": "Every order includes a consultation with one of our doctors, at no extra cost. They can adjust the plan to suit you.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p2": {
+          "type": "promise",
+          "settings": {
+            "lead": "[advance] now, rest on delivery.",
+            "text": "You pay the rest only when the parcel is in your hands. Or pay in full online and shipping is free.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p3": {
+          "type": "promise",
+          "settings": {
+            "lead": "Nobody else will know.",
+            "text": "It arrives in a plain box with nothing printed on the outside, and what you tell us stays with your doctor.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p4": {
+          "type": "promise",
+          "settings": {
+            "lead": "Ask before you buy.",
+            "text": "Not sure where to start? Message us and get an answer first.",
+            "link_label": "Chat with us on WhatsApp",
+            "link": "https://wa.me/918287006498?text=Hi%2C%20I%20have%20a%20question%20about%20your%20kits"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "section_bg": "#ffffff",
+        "plain_card": false,
+        "note_heading": "Before you order, four things you can count on.",
+        "note_text": "sehatUP is a clinic, not a supplement shop. This is how we look after an order.",
+        "doc_1": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+        "doc_2": "shopify://shop_images/Dr._Shefali.webp",
+        "doc_3": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
+        "doc_names": "Dr. Jayant Kumar, Dr. Shefali Chhicholia and Ms. Devika Chugh",
+        "doc_caption": "The experts behind your plan",
+        "show_rating": true,
+        "show_promise_text": true,
+        "advance_amount": 50,
+        "show_expect": true,
+        "expect_heading": "What to expect",
+        "expect_note": "Results vary from person to person.",
+        "doc_title": "",
+        "doc_text": "Our doctors guide you on the right dose and answer your questions.",
+        "doc_button": "Talk to a doctor",
+        "doc_link": "",
+        "accent_color": "#d81f48"
+      }
+    },
+    "faq": {
+      "type": "health-faq",
+      "blocks": {
+        "faq_UihQ8d": {
+          "type": "question",
+          "settings": {
+            "question": "How can I start my care plan?",
+            "answer": "<p>After your purchase, our doctors will conduct a comprehensive evaluation of your concerns, medical history, and lifestyle to customize the plan to meet your specific needs.</p>"
+          }
+        },
+        "faq_rV6rBK": {
+          "type": "question",
+          "settings": {
+            "question": "Is my information confidential?",
+            "answer": "<p>Confidentiality and clarity are our priorities. Your data is held in strict confidence, and the information you share will solely be utilized for transparent communication and to deliver effective care.</p>"
+          }
+        },
+        "faq_48qNFz": {
+          "type": "question",
+          "settings": {
+            "question": "Are the products safe?",
+            "answer": "<p>Our products are approved by AYUSH. All our products are formulated by experts and are safe to use, and free from harmful chemicals.</p>"
+          }
+        },
+        "faq_dNp9Uq": {
+          "type": "question",
+          "settings": {
+            "question": "Is my treatment plan customized to my needs?",
+            "answer": "<p>The plans provided offer a glimpse of what you can anticipate in your customized plan, but every individual's needs vary, and our doctors excel in leading you toward your unique journey to well-being.</p>"
+          }
+        },
+        "faq_fhPWwT": {
+          "type": "question",
+          "settings": {
+            "question": "Do I have to pay for doctor consultation?",
+            "answer": "<p>Your doctor consultation is included at no additional cost with your care plan.</p>"
+          }
+        },
+        "faq_937GHG": {
+          "type": "question",
+          "settings": {
+            "question": "Are medications part of the program?",
+            "answer": "<p>Depending on the diagnosis, our doctors/nutritionists may prescribe medications as part of the treatment plan.<br/>These are selected based on individual needs and may include supplements, prescriptions, or other suitable options.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_UihQ8d",
+        "faq_rV6rBK",
+        "faq_48qNFz",
+        "faq_dNp9Uq",
+        "faq_fhPWwT",
+        "faq_937GHG"
+      ],
+      "settings": {
+        "section_bg": "#faf7f5",
+        "heading": "Frequently Asked Questions",
+        "subheading": "Straight answers before you order.",
+        "contact_text": "Ask us on WhatsApp",
+        "contact_link": "https://wa.me/918287006498?text=Hi%2C%20I%20have%20a%20question%20about%20your%20kits",
+        "open_first": true,
+        "shop_label": "",
+        "shop_1_text": "",
+        "shop_1_link": "",
+        "shop_2_text": "",
+        "shop_2_link": "",
+        "shop_3_text": "",
+        "shop_3_link": "",
+        "accent_color": "#ee204a"
+      }
+    },
+    "cta": {
+      "type": "health-final-cta",
+      "settings": {
+        "festive": true,
+        "festive_kicker": "Shubh Deepavali",
+        "section_bg": "#faf7f5",
+        "heading": "Begin this Diwali with the right kit.",
+        "subheading": "Not sure which kit is yours? Take the free check and a doctor will point you to the right one.",
+        "her_label": "Women's check",
+        "her_link": "shopify://pages/womens-wellness-questionnaire",
+        "him_label": "Men's check",
+        "him_link": "shopify://pages/mens-health-questionnaire",
+        "note": "No sign-up. Your answers stay private."
+      }
+    }
+  },
+  "order": [
+    "combos_hero",
+    "goals",
+    "kit_compare",
+    "integrated",
+    "shelf_stress",
+    "shelf_weight",
+    "shelf_performance",
+    "shelf_hormone",
+    "reviews",
+    "certs",
+    "note",
+    "faq",
+    "cta"
+  ]
+}

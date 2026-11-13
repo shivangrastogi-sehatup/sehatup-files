@@ -1,0 +1,8 @@
+{%- comment -%}
+  The header's cart icon and item count. Rendered by sehat-header and by the
+  cart-icon-bubble section, which add-to-cart scripts (product shelves, cart
+  page, cart drawer) re-fetch after a cart change. One source, so the icon
+  and badge look the same before and after adding an item.
+{%- endcomment -%}
+<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8L5 8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        {%- if cart.item_count > 0 -%}<span class="sh__count">{{ cart.item_count }}</span>{%- endif -%}

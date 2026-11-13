@@ -8,7 +8,7 @@
   #sce-{{ section.id }} { padding: {% if s.section_bg == blank or s.section_bg == '#ffffff' %}clamp(16px, 2.4vw, 32px){% else %}clamp(40px, 5vw, 72px){% endif %} clamp(16px, 3vw, 48px) 0; background: {{ s.section_bg | default: '#ffffff' }}; font-family: 'Montserrat', sans-serif; color: #1d1d1d; }
   #sce-{{ section.id }} * { box-sizing: border-box; }
   #sce-{{ section.id }} .sce__inner { max-width: 1240px; margin: 0 auto; padding: clamp(12px, 1.6vw, 20px) clamp(20px, 3vw, 40px) 0; text-align: center; }
-  #sce-{{ section.id }} .sce__h { margin: 0 auto; max-width: 26em; font: 800 clamp(22px, 2.4vw, 32px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; }
+  #sce-{{ section.id }} .sce__h { margin: 0 auto; max-width: 26em; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; }
   #sce-{{ section.id }} .sce__h small { display: block; margin-top: 8px; font: 500 15px/1.5 'Montserrat', sans-serif; color: #5f5a56; letter-spacing: 0; }
   #sce-{{ section.id }} .sce__list { list-style: none; margin: clamp(24px, 3vw, 36px) 0 0; padding: 0; display: flex; justify-content: center; gap: clamp(24px, 6vw, 88px); flex-wrap: wrap; }
   #sce-{{ section.id }} .sce__item { display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -21,6 +21,22 @@
     #sce-{{ section.id }} .sce__item { gap: 10px; }
     #sce-{{ section.id }} .sce__item b { font-size: 13px; }
   }
+  #sce-{{ section.id }} :is(h2, h3) { color: #1d1d1d; }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  /* Phones: the line under the heading goes; laptops keep it. */
+  @media (max-width: 749.98px) { #sce-{{ section.id }} .sce__inner { padding-left: 0; padding-right: 0; } #sce-{{ section.id }} .sce__h { max-width: none; } #sce-{{ section.id }} .sce__h small { display: none; } }
+  /* Big screens: the same zoom steps as the rest of the site, so it does not stay small on a 4K screen. */
+  @media (min-width: 1680px) { #sce-{{ section.id }} { padding-top: calc(32px * var(--sz, 1)); } }
+  @media (min-width: 1680px) { #sce-{{ section.id }} .sce__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #sce-{{ section.id }} .sce__inner { zoom: 1.25; } }
+  @media (min-width: 2240px) { #sce-{{ section.id }} .sce__inner { zoom: 1.45; } }
+  @media (min-width: 2560px) { #sce-{{ section.id }} .sce__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #sce-{{ section.id }} .sce__inner { zoom: 2; } }
+  @media (min-width: 3840px) { #sce-{{ section.id }} .sce__inner { zoom: 2.4; } }
+  /* Site type scale (Health Score 360): heading 30px phones, 38px tablets, up to 52px laptops; the line under it 15 / 16 / 17px. */
+  #sce-{{ section.id }} .sce__h small { font-size: 17px; }
+  @media (min-width: 750px) and (max-width: 1099.98px) { #sce-{{ section.id }} .sce__h { font-size: 38px; } #sce-{{ section.id }} .sce__h small { font-size: 16px; } }
+  @media (max-width: 749.98px) { #sce-{{ section.id }} .sce__h { font-size: 30px !important; } #sce-{{ section.id }} .sce__h small { font-size: 15px; } }
 </style>
 
 <section id="sce-{{ section.id }}" class="sce">

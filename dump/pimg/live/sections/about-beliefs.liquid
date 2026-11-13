@@ -1,0 +1,104 @@
+{%- comment -%}
+  About Us: what we believe. Heading stays in view on the left (desktop);
+  beliefs are big statements on the right. The one in the middle of the
+  screen is dark with a red number, the rest stay light, so reading feels
+  like moving down a list one line at a time. Only colour changes, nothing
+  moves or resizes. Without script, all are dark. Each belief is a block.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #abl-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --dim: #cbc2bb; --line: #e8e0d9; --btn: #d81f48;
+    padding: clamp(56px, 6vw, 104px) clamp(16px, 4vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #abl-{{ section.id }} .abl__in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(32px, 5.5vw, 88px); align-items: start; }
+  #abl-{{ section.id }} .abl__head { position: sticky; top: 120px; }
+  #abl-{{ section.id }} .abl__h { margin: 0 0 16px; font: 800 clamp(30px, 3.4vw, 48px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #abl-{{ section.id }} .abl__sub { margin: 0; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #abl-{{ section.id }} .abl__list { margin: 0; padding: 0; list-style: none; counter-reset: abl; }
+  #abl-{{ section.id }} .abl__b { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 12px; padding: 30px 0; border-bottom: 1px solid var(--line); counter-increment: abl; }
+  #abl-{{ section.id }} .abl__b:first-child { padding-top: 6px; }
+  #abl-{{ section.id }} .abl__b::before { content: counter(abl, decimal-leading-zero); grid-row: 1 / span 2; padding-top: .55em; font: 700 14px/1 'Montserrat', sans-serif; color: var(--dim); transition: color .4s ease; }
+  #abl-{{ section.id }} .abl__t { margin: 0; font: 800 clamp(24px, 2.6vw, 38px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); transition: color .4s ease; }
+  #abl-{{ section.id }} .abl__d { margin: 10px 0 0; max-width: 560px; font: 400 16.5px/1.6 'Montserrat', sans-serif; color: var(--mute); transition: color .4s ease; }
+  #abl-{{ section.id }}.js .abl__b .abl__t, #abl-{{ section.id }}.js .abl__b .abl__d { color: var(--dim); }
+  #abl-{{ section.id }}.js .abl__b.on .abl__t { color: var(--ink); }
+  #abl-{{ section.id }}.js .abl__b.on .abl__d { color: var(--mute); }
+  #abl-{{ section.id }} .abl__b.on::before { color: var(--btn); }
+
+  @media (max-width: 899.98px) {
+    #abl-{{ section.id }} .abl__in { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    #abl-{{ section.id }} .abl__head { position: static; }
+  }
+  @media (max-width: 749.98px) {
+    #abl-{{ section.id }} .abl__h { font-size: 30px; }
+    #abl-{{ section.id }} .abl__sub { font-size: 15px; }
+    #abl-{{ section.id }} .abl__b { grid-template-columns: 34px minmax(0, 1fr); padding: 22px 0; }
+    #abl-{{ section.id }} .abl__b::before { font-size: 12.5px; }
+    #abl-{{ section.id }} .abl__t { font-size: 22px; }
+    #abl-{{ section.id }} .abl__d { font-size: 14.5px; }
+  }
+  @media (min-width: 1680px) { #abl-{{ section.id }} .abl__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #abl-{{ section.id }} .abl__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #abl-{{ section.id }} .abl__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #abl-{{ section.id }} .abl__in { zoom: 2; } }
+  @media (prefers-reduced-motion: reduce) { #abl-{{ section.id }} * { transition: none !important; } }
+</style>
+
+<section id="abl-{{ section.id }}">
+  <div class="abl__in">
+    <div class="abl__head">
+      <h2 class="abl__h">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="abl__sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+    <ol class="abl__list">
+      {%- for block in section.blocks -%}
+        <li class="abl__b{% if forloop.first %} on{% endif %}" {{ block.shopify_attributes }}>
+          <h3 class="abl__t">{{ block.settings.title }}</h3>
+          {%- if block.settings.text != blank -%}<p class="abl__d">{{ block.settings.text }}</p>{%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ol>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('abl-{{ section.id }}');
+    if (!root || !('IntersectionObserver' in window)) return;
+    var items = [].slice.call(root.querySelectorAll('.abl__b'));
+    root.classList.add('js');
+    // The belief crossing a thin band in the middle of the screen is the lit one.
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        items.forEach(function (it) { it.classList.toggle('on', it === e.target); });
+      });
+    }, { rootMargin: '-45% 0px -45% 0px' });
+    items.forEach(function (it) { io.observe(it); });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "About: beliefs",
+  "tag": "div",
+  "max_blocks": 8,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What we believe" },
+    { "type": "textarea", "id": "subheading", "label": "Line under it" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" }
+  ],
+  "blocks": [
+    {
+      "type": "belief",
+      "name": "Belief",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Belief", "default": "Treat the person, not just the problem." },
+        { "type": "textarea", "id": "text", "label": "What it means" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "About: beliefs" }]
+}
+{% endschema %}

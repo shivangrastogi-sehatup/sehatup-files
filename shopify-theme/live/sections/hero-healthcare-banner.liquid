@@ -42,7 +42,7 @@
          but never shorter than the height set in the theme editor. */
       /* Aims for 62% of the screen height, up to 900px, but grows past that
          when the text needs more room, so nothing is ever cut off. */
-      min-height: min(max({{ section.settings.section_min_height }}px, 62svh), 900px);
+      min-height: min(max({{ section.settings.section_min_height }}px, {{ section.settings.desktop_height_vh | default: 62 }}svh), 900px);
       overflow: hidden;
       /* Keeps the z-indexes below inside the hero, so it never paints over the sticky header. */
       isolation: isolate;
@@ -102,7 +102,9 @@
     {% if section.settings.light_text_fade %}
       @media (max-width: 1040px) {
         .ai-healthcare-hero__background-overlay-{{ ai_gen_id }} {
-          background-image: linear-gradient(180deg, rgba(251, 249, 247, .94) 0%, rgba(251, 249, 247, .82) 45%, rgba(251, 249, 247, 0) 70%);
+          {%- assign wash = section.settings.mobile_wash | default: 94 | divided_by: 100.0 -%}
+          {%- assign wash_mid = wash | times: 0.87 -%}
+          background-image: linear-gradient(180deg, rgba(251, 249, 247, {{ wash }}) 0%, rgba(251, 249, 247, {{ wash_mid }}) 45%, rgba(251, 249, 247, 0) 70%);
         }
       }
     {% endif %}
@@ -131,7 +133,7 @@
       max-width: {{ section.settings.content_max_width }}px;
       margin: 0 auto;
       padding: {{ section.settings.section_padding_top }}px clamp(20px, 4vw, {{ section.settings.section_padding_horizontal }}px) {{ section.settings.section_padding_bottom }}px;
-      min-height: min(max({{ section.settings.section_min_height }}px, 62svh), 900px);
+      min-height: min(max({{ section.settings.section_min_height }}px, {{ section.settings.desktop_height_vh | default: 62 }}svh), 900px);
       display: flex;
       align-items: center;
       {% if section.settings.content_position == 'left' %}
@@ -184,6 +186,9 @@
       color: {{ section.settings.body_color }};
       margin: 0 0 {{ section.settings.content_spacing }}px;
       line-height: 1.6;
+      {%- if section.settings.body_max_em > 0 %}
+      max-width: {{ section.settings.body_max_em }}em;
+      {%- endif %}
       {% if section.settings.text_shadow_enabled %}
         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       {% endif %}
@@ -312,7 +317,7 @@
 
       .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img {
         /* Scales with the hero, which now grows on large screens. */
-        height: calc(max({{ section.settings.section_min_height }}px, 62svh) * {{ fg_scale }} / 100);
+        height: calc(max({{ section.settings.section_min_height }}px, {{ section.settings.desktop_height_vh | default: 62 }}svh) * {{ fg_scale }} / 100);
         max-height: 100%;
         width: auto;
         object-fit: {{ section.settings.foreground_image_fit }};
@@ -325,6 +330,47 @@
       }
     {% endif %}
 
+    {% if has_fg and section.settings.fg_grow %}
+      /* Laptop and up: the photo lives in a box on the right that is as tall as the
+         banner and as wide as the scale asks for (100% = 42% of the screen, never more
+         than 60% of the banner). The photo is fitted inside the box, so it is never cut
+         off; it just gets as big as the box allows at each screen size. The horizontal
+         offset moves the box in from the right edge, or past it with a negative value. */
+      @media (min-width: 1041px) {
+        .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} { top: 0; bottom: 0; left: auto; right: {{ fg_ox }}%; width: min(calc(42vw * {{ fg_scale }} / 100), 60%); height: 100%; transform: none; display: flex; align-items: flex-end; justify-content: flex-end; }
+        .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img { width: 100%; height: 100%; max-width: none; max-height: 100%; object-fit: contain; object-position: right bottom; }
+      }
+      {%- if section.settings.fg_text_clear %}
+      {%- assign fg_ar = section.settings.foreground_image.aspect_ratio | default: 1.5 %}
+      /* The text stops 24px before the photo's real left edge. The photo's real width is
+         the smaller of its box and (banner height x image shape); its left edge is then
+         the screen width minus the offset minus that width. */
+      @media (min-width: 1041px) {
+        .ai-healthcare-hero-{{ ai_gen_id }} {
+          --hb-h: min(max({{ section.settings.section_min_height }}px, {{ section.settings.desktop_height_vh | default: 62 }}svh), calc(900px * var(--sz, 1)));
+          --hb-pic: min(min(calc(42vw * {{ fg_scale }} / 100), 60vw), calc(var(--hb-h) * {{ fg_ar }}));
+          /* The text starts where the container padding ends: max(24px, (100vw - 1272px) / 2), or 5vw from 1414px. */
+          --hb-pad: max(24px, calc((100vw - 1272px) / 2));
+          --hb-text: calc(100vw - {{ fg_ox }}vw - var(--hb-pic) - var(--hb-pad) - 16px);
+        }
+        .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__content-{{ ai_gen_id }} { max-width: var(--hb-text); }
+        /* Slightly slimmer buttons so the pair fits on one row beside the photo. */
+        .ai-healthcare-hero-{{ ai_gen_id }}.ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__button-{{ ai_gen_id }} { padding-left: clamp(22px, 1.9vw, 40px); padding-right: clamp(22px, 1.9vw, 40px); }
+      }
+      @media (min-width: 1414px) { .ai-healthcare-hero-{{ ai_gen_id }} { --hb-pad: 5vw; } }
+      /* The text block is zoomed up on big screens; divide by the same zoom. */
+      {%- assign zw = '2240:1.16,2560:1.32,3200:1.6,3840:1.92' | split: ',' -%}
+      {%- for z in zw -%}{%- assign zp = z | split: ':' %}
+      @media (min-width: {{ zp[0] }}px) { .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__content-{{ ai_gen_id }} { max-width: calc(var(--hb-text) / {{ zp[1] }}); } }
+      {%- endfor %}
+      {%- endif %}
+      /* Big screens: the rest of the page scales up in steps (--sz, set in theme.liquid),
+         so the banner's 900px height cap scales with it; otherwise on a 2560px or 4K
+         screen the banner, and the photo with it, stays small. */
+      @media (min-width: 1680px) {
+        .ai-healthcare-hero-{{ ai_gen_id }}, .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__container-{{ ai_gen_id }} { min-height: min(max({{ section.settings.section_min_height }}px, {{ section.settings.desktop_height_vh | default: 62 }}svh), calc(900px * var(--sz, 1))); }
+      }
+    {% endif %}
     {% if section.settings.layout_mode == 'background-with-overlay-image' and section.settings.foreground_image %}
       /* Tall, narrow windows (e.g. 1209 x 1300): the doctors take their size from
          the hero's height, so they grew wider than their half and ran under the
@@ -621,6 +667,37 @@
       }
     }
   {% endif %}
+    /* Phones only: the line under "Find the real cause" goes; tablets and up keep it. */
+    @media (max-width: 749.98px) { .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__body-{{ ai_gen_id }} { display: none; } }
+
+    {% if has_fg and section.settings.hide_foreground_mobile == false %}
+    /* Phones: heading and the line under it, then the doctors, then the buttons and
+       the trust row. The text block stops being a box of its own so its parts can be
+       ordered around the photo; the doctors' cut-off bottom fades into the banner. */
+    @media (max-width: 749.98px) {
+      .ai-healthcare-hero-{{ ai_gen_id }} { display: flex; flex-direction: column; padding: 24px 16px 28px; text-align: center; }
+      .ai-healthcare-hero__container-{{ ai_gen_id }}, .ai-healthcare-hero__content-{{ ai_gen_id }} { display: contents; }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > * { position: relative; z-index: 3; order: 5; }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > .ai-healthcare-hero__kicker-{{ ai_gen_id }} { order: 0; }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > .ai-healthcare-hero__heading-{{ ai_gen_id }} { order: 1; }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > .ai-healthcare-hero__subheading-{{ ai_gen_id }}, .ai-healthcare-hero__content-{{ ai_gen_id }} > .ai-healthcare-hero__body-{{ ai_gen_id }} { order: 2; }
+      .ai-healthcare-hero-{{ ai_gen_id }} > .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} { order: 3; margin: 6px -16px 0; width: auto; z-index: 2; }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > .ai-healthcare-hero__buttons-{{ ai_gen_id }} { order: 4; margin-top: -10px; justify-content: center; }
+      .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img {
+        -webkit-mask-image: linear-gradient(to bottom, #000 74%, rgba(0,0,0,.88) 80%, rgba(0,0,0,.62) 87%, rgba(0,0,0,.3) 94%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 74%, rgba(0,0,0,.88) 80%, rgba(0,0,0,.62) 87%, rgba(0,0,0,.3) 94%, transparent 100%);
+      }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > .ai-healthcare-hero__heading-{{ ai_gen_id }} { margin-bottom: 0; }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > .ai-healthcare-hero__subheading-{{ ai_gen_id }} { margin: 8px 0 0; }
+      .ai-healthcare-hero__content-{{ ai_gen_id }} > .tp { justify-content: center; margin-top: 18px; }
+      {%- if section.settings.mobile_fg_height > 0 %}
+      /* A tall photo capped to a set height, centred, so the text and buttons fit the first screen. */
+      .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__foreground-image-{{ ai_gen_id }} img { max-height: {{ section.settings.mobile_fg_height }}px; object-fit: contain; object-position: center bottom; }
+      {%- endif %}
+    }
+    {% endif %}
+    /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+    @media (max-width: 749.98px) { .ai-healthcare-hero-{{ ai_gen_id }} .ai-healthcare-hero__heading-{{ ai_gen_id }} { text-wrap: wrap; } }
 {% endstyle %}
 
 <healthcare-hero-{{ ai_gen_id }} class="ai-healthcare-hero-{{ ai_gen_id }}" {{ section.shopify_attributes }}>
@@ -1086,8 +1163,8 @@
       "type": "range",
       "id": "foreground_offset_x",
       "label": "Horizontal offset",
-      "info": "Distance in from the chosen edge. Ignored when position is Center.",
-      "min": 0,
+      "info": "Distance in from the chosen edge; a minus value pushes the photo past it. Ignored when position is Center.",
+      "min": -30,
       "max": 40,
       "step": 1,
       "unit": "%",
@@ -1135,6 +1212,42 @@
       "label": "Crop to subject on mobile",
       "info": "For wide cut-out images with the person/product on one side: shows a square crop from that side (uses the horizontal position above) so it fills the phone width.",
       "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "fg_text_clear",
+      "label": "Laptop: keep the text clear of the photo box",
+      "info": "With the photo box on, the text wraps before it instead of running under the photo.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "mobile_wash",
+      "label": "Phones: light wash over the top",
+      "info": "How strongly the top of the banner is lightened behind the text on phones and tablets. Lower = the photo shows through darker.",
+      "min": 0,
+      "max": 100,
+      "step": 2,
+      "unit": "%",
+      "default": 94
+    },
+    {
+      "type": "checkbox",
+      "id": "fg_grow",
+      "label": "Laptop: fit the photo in a box (never cut off)",
+      "info": "The photo fits inside a box on the right, as tall as the banner. Image size sets the box width (100% = 42% of the screen, 60% of the banner at most). Horizontal offset moves it in, or out past the edge with a minus value.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "mobile_fg_height",
+      "label": "Photo height on phones",
+      "info": "0 = full phone width. Use it for tall photos so the buttons stay on the first screen.",
+      "min": 0,
+      "max": 600,
+      "step": 10,
+      "unit": "px",
+      "default": 0
     },
     {
       "type": "header",
@@ -1187,6 +1300,16 @@
       "id": "body_text",
       "label": "Body text",
       "default": "<p>India's first digital clinic where doctors from Ayurveda, Homeopathy and Allopathy work together for you.</p>"
+    },
+    {
+      "type": "range",
+      "id": "body_max_em",
+      "label": "Body text line length",
+      "info": "0 = as wide as the text area. Lower wraps the body text sooner.",
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "default": 0
     },
     {
       "type": "select",
@@ -1627,6 +1750,16 @@
     {
       "type": "header",
       "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "desktop_height_vh",
+      "label": "Height on laptop and up (% of screen height)",
+      "min": 40,
+      "max": 100,
+      "step": 2,
+      "unit": "%",
+      "default": 62
     },
     {
       "type": "range",

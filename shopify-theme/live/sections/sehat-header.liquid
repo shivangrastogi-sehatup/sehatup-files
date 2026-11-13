@@ -459,7 +459,7 @@
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
       {%- if shop.customer_accounts_enabled -%}
-        <a class="sh__icon sh__account" href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}" aria-label="{% if customer %}Your account{% else %}Log in{% endif %}">
+        <a class="sh__icon sh__account" href="{% if customer %}{{ routes.account_url }}{% else %}https://app.sehatup.com/auth/signin{% endif %}" aria-label="{% if customer %}Your account{% else %}Log in{% endif %}">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </a>
       {%- endif -%}
@@ -523,7 +523,7 @@
     <div class="sh__drawer-in">
       <div class="sh__drawer-top">
         <a href="{{ routes.root_url }}" class="sh__logo" aria-label="{{ shop.name | escape }} home">
-          {%- if settings.logo != blank -%}{{ settings.logo | image_url: width: 320 | image_tag: alt: shop.name, width: 130, height: nil, loading: 'lazy' }}{%- else -%}{{ shop.name }}{%- endif -%}
+          {%- if settings.logo != blank -%}<img src="{{ settings.logo | image_url: width: 320 }}" alt="{{ shop.name | escape }}" width="130" loading="lazy">{%- else -%}{{ shop.name }}{%- endif -%}
         </a>
         <button type="button" class="sh__icon" data-sh-close aria-label="Close menu" autofocus>
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -560,7 +560,7 @@
 
       <div class="sh__dfoot">
         {%- if shop.customer_accounts_enabled -%}
-          <a href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}">{% if customer %}Your account{% else %}Log in{% endif %}</a>
+          <a href="{% if customer %}{{ routes.account_url }}{% else %}https://app.sehatup.com/auth/signin{% endif %}">{% if customer %}Your account{% else %}Log in{% endif %}</a>
         {%- endif -%}
         {%- if s.whatsapp != blank -%}
           <a href="https://wa.me/{{ s.whatsapp | remove: '+' | remove: ' ' }}" target="_blank" rel="noopener">Chat on WhatsApp</a>

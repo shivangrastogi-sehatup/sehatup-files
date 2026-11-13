@@ -147,12 +147,12 @@
           "enable_popup": true,
           "show_on_home": true,
           "target_page": "health-score-360",
-          "popup_delay": 10,
-          "scroll_trigger_percent": 60,
-          "max_shows": 2,
+          "popup_delay": 0,
+          "scroll_trigger_percent": 50,
+          "max_shows": 1,
           "count_per_page": true,
           "show_photo": true,
-          "eyebrow": "Trusted by thousands of happy patients",
+          "eyebrow": "Free consultation with real doctors",
           "popup_heading": "Start Your Health Journey Today",
           "popup_subheading": "Get personalized guidance from our expert doctors across Allopathy, Ayurveda and Homeopathy.",
           "button_text": "Get free consultation",
@@ -168,7 +168,8 @@
           "collect_email": true,
           "accent_color": "#ee204a",
           "overlay_opacity": 55,
-          "firestore_collection": "popup_leads"
+          "firestore_collection": "popup_leads",
+          "repeat_days": 0
         }
       }
     },

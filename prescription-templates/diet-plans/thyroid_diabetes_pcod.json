@@ -1,0 +1,55 @@
+{
+  "condition": "PCOD with Thyroid Imbalance, Sugar Tendency, Leucorrhea & Weakness",
+  "subtitle": "Diet planned considering hormonal imbalance, metabolism disturbance & nutritional deficiency",
+  "meals": [
+    {
+      "time": "Early Morning (7:00–8:00 AM)",
+      "food": "Lukewarm water + 1 tsp soaked methi seeds",
+      "benefit": "Helps control sugar levels & supports hormonal balance"
+    },
+    {
+      "time": "Breakfast (High Protein)",
+      "food": "Besan chilla + curd  /  Eggs + toast  /  Vegetable oats + seeds",
+      "benefit": "Supports thyroid, reduces hairfall & controls cravings"
+    },
+    {
+      "time": "Mid-Morning",
+      "food": "1 fruit (apple/guava/papaya)",
+      "benefit": "Maintains steady energy levels"
+    },
+    {
+      "time": "Lunch",
+      "food": "2 roti + sabzi + dal/paneer + salad",
+      "benefit": "Improves digestion & supports hormones"
+    },
+    {
+      "time": "Evening Snack",
+      "food": "Tea (no sugar) + roasted chana/makhana",
+      "benefit": "Prevents weakness & cravings"
+    },
+    {
+      "time": "Dinner",
+      "food": "1–2 roti + sabzi OR soup + paneer",
+      "benefit": "Light dinner improves metabolism & reduces bloating"
+    }
+  ],
+  "dailyAddons": {
+    "food": "Flax seeds, pumpkin seeds, walnuts, black raisins",
+    "benefit": "Helps in hairfall, weakness & hormonal balance"
+  },
+  "specialFocus": {
+    "title": "Leucorrhea & Overall Health",
+    "food": "Curd (daytime), coconut water, green vegetables",
+    "benefit": "Supports leucorrhea & overall health"
+  },
+  "avoidFoods": [
+    "Sugar, junk food, packaged food",
+    "Limit tea/coffee"
+  ],
+  "lifestyle": [
+    "Daily walk",
+    "Proper sleep",
+    "Stress management"
+  ],
+  "followUp": "Review after 15 days"
+}

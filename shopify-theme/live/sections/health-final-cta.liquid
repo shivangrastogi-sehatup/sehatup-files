@@ -15,13 +15,13 @@
     position: relative; overflow: hidden; max-width: 1272px; margin: 0 auto; padding: 96px 40px;
     border-radius: 28px; background: #1d1d1d; color: #fff; text-align: center;
   }
-  /* Two soft glows, rose and teal, hinting at For Her and For Him. */
+  /* Two soft glows, rose and warm stone, hinting at For Her and For Him. */
   #hfc-{{ section.id }} .hfc__inner::before,
   #hfc-{{ section.id }} .hfc__inner::after {
     content: ""; position: absolute; width: 520px; height: 520px; border-radius: 50%; filter: blur(80px); opacity: .22; pointer-events: none;
   }
   #hfc-{{ section.id }} .hfc__inner::before { left: -160px; bottom: -300px; background: #ee204a; }
-  #hfc-{{ section.id }} .hfc__inner::after { right: -160px; top: -300px; background: #2bb3a3; }
+  #hfc-{{ section.id }} .hfc__inner::after { right: -160px; top: -300px; background: #f3e4d8; }
   /* Explicit colour: the theme's global h2 colour would otherwise win over the
      inherited white and leave the heading dark-on-dark. */
   #hfc-{{ section.id }} .hfc__heading { color: #fff; position: relative; margin: 0 auto 16px; max-width: 860px; font: 800 clamp(30px, 4vw, 58px)/1.05 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
@@ -34,7 +34,7 @@
   }
   #hfc-{{ section.id }} .hfc__btn span { transition: transform .2s ease; }
   #hfc-{{ section.id }} .hfc__btn--her { background: #fde2e7; color: #b3123a; }
-  #hfc-{{ section.id }} .hfc__btn--him { background: #d9f0ee; color: #0f6b62; }
+  #hfc-{{ section.id }} .hfc__btn--him { background: #f6f0ec; color: #1d1d1d; }
   @media (hover: hover) { #hfc-{{ section.id }} .hfc__btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .25); } }
   @media (hover: hover) { #hfc-{{ section.id }} .hfc__btn:hover span { transform: translateX(3px); } }
   #hfc-{{ section.id }} .hfc__btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
@@ -67,6 +67,8 @@
   /* ...and a little wider at each step, like the rows above. */
   @media (min-width: 1920px) { #hfc-{{ section.id }} .hfc__inner { max-width: 1312px; } }
   @media (min-width: 2560px) { #hfc-{{ section.id }} .hfc__inner { max-width: 1392px; } }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  @media (max-width: 749.98px) { #hfc-{{ section.id }} .hfc__heading { text-wrap: wrap; } }
 </style>
 
 <section id="hfc-{{ section.id }}" class="hfc">

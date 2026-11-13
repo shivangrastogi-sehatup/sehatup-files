@@ -14,7 +14,7 @@
 {%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
 <style>
   #htr-{{ section.id }} { --htr-text: #1d1d1d; --htr-muted: #5c5c5c; --htr-accent: {{ s.accent_color }}; background: #fff; font-family: 'Montserrat', sans-serif; color: var(--htr-text); }
-  #htr-{{ section.id }} .htr__inner { max-width: 1320px; margin: 0 auto; padding: 64px 24px 80px; }
+  #htr-{{ section.id }} .htr__inner { max-width: 1320px; margin: 0 auto; padding: 40px 24px 40px; }
   #htr-{{ section.id }} .htr__head { text-align: center; max-width: 1100px; margin: 0 auto 40px; }
   #htr-{{ section.id }} .htr__heading { color: var(--htr-text); margin: 0 0 12px; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
   #htr-{{ section.id }} .htr__sub { margin: 0 auto; max-width: min(620px, 43vw); font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--htr-muted); }
@@ -38,6 +38,10 @@
   #htr-{{ section.id }} .htr__rating span::before { content: "\00B7"; margin-right: 8px; color: var(--htr-muted); }
   #htr-{{ section.id }} .htr__rating[hidden] { display: none; }
   #htr-{{ section.id }} .htr__rating i { font-style: normal; color: #f5a623; letter-spacing: 1px; }
+  #htr-{{ section.id }} .htr__rating i.htr__stars { position: relative; display: inline-block; color: #e3d9d1; }
+  #htr-{{ section.id }} .htr__rating i.htr__stars i { position: absolute; left: 0; top: 0; width: var(--f, 100%); overflow: hidden; white-space: nowrap; color: #f5a623; }
+  /* The side panel's .htr__stars sets line-height 0 (for its SVG stars); without this the gold layer is 0px tall and fully clipped. */
+  #htr-{{ section.id }} .htr__rating i.htr__stars, #htr-{{ section.id }} .htr__rating i.htr__stars i { line-height: 1.2; }
   /* The rating now sits in our header; Judge.me's own title row would repeat it. */
   #htr-{{ section.id }} .htr__reviews .jdgm-carousel-title-and-link { display: none !important; }
 
@@ -149,8 +153,11 @@
   #htr-{{ section.id }}.htr--noprod .htr__reviews .jdgm-carousel-item__review-title { padding-right: 0; }
 
   /* "Rating on the left" layout: a score panel beside the carousel, cards on white. */
+  #htr-{{ section.id }} .htr__mhead { display: none; }
   #htr-{{ section.id }} .htr__side-wrap { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: clamp(28px, 4vw - 8px, 56px); align-items: center; }
-  #htr-{{ section.id }}.htr--side .htr__inner { padding-top: 48px; padding-bottom: 28px; }
+  #htr-{{ section.id }}.htr--side .htr__inner { padding-top: 48px; padding-bottom: 8px; }
+  /* Judge.me adds 24px above and below its widget; that was the gap under the cards. */
+  #htr-{{ section.id }} .htr__reviews .jdgm-widget { margin-top: 0; margin-bottom: 0; }
   #htr-{{ section.id }} .htr__side { display: flex; flex-direction: column; gap: 10px; }
   #htr-{{ section.id }} .htr__score { display: flex; align-items: baseline; gap: 6px; margin: 0; }
   #htr-{{ section.id }} .htr__score b { font: 800 44px/1 'Montserrat', sans-serif; letter-spacing: -.03em; color: var(--htr-text); }
@@ -188,26 +195,19 @@
   }
   @media (max-width: 749.98px) {
     #htr-{{ section.id }}.htr--side .htr__inner { padding: 32px 16px 44px; }
-    /* Phones: centred. The big score, and to its right the stars with "out of 5" under them;
-       the line under the rating centred below. */
-    #htr-{{ section.id }} .htr__side { display: grid; grid-template-columns: 1fr auto auto 1fr; column-gap: 0; row-gap: 4px; align-items: center; text-align: center; }
-    #htr-{{ section.id }} .htr__stars, #htr-{{ section.id }} .htr__score span { justify-self: start; text-align: left; }
-    #htr-{{ section.id }} .htr__score { display: contents; }
-    #htr-{{ section.id }} .htr__score b { grid-column: 2; grid-row: 1 / span 2; margin-right: 12px; }
-    #htr-{{ section.id }} .htr__stars { grid-column: 3; grid-row: 1; align-self: end; }
-    #htr-{{ section.id }} .htr__score span { grid-column: 3; grid-row: 2; align-self: start; }
-    #htr-{{ section.id }} .htr__side > :not(.htr__score):not(.htr__stars) { grid-column: 1 / -1; }
-    #htr-{{ section.id }} .htr__side-title { margin-top: 10px; }
-    #htr-{{ section.id }} .htr__score b { font-size: 48px; }
-    #htr-{{ section.id }} .htr__stars svg { width: 20px; height: 20px; }
-    #htr-{{ section.id }} .htr__side-title { font-size: 19px; }
-    #htr-{{ section.id }} .htr__side-text { font-size: 14.5px; }
+    /* Phones: only the review cards. The rating panel is a laptop thing. */
+    #htr-{{ section.id }}.htr--side .htr__side { display: none; }
+    /* Phones: a short heading instead of the rating panel. */
+    #htr-{{ section.id }} .htr__mhead { display: block; margin: 0 0 18px; text-align: center; font: 800 30px/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--htr-text); text-wrap: balance; }
     /* Phones show one card at a time across the full width, so there is room for
        most reviews in full: up to 6 lines of review text (was 3), card a bit taller. */
     #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item, #htr-{{ section.id }}.htr--side .htr__reviews .jdgm-carousel-item { height: 324px; padding: 24px 28px 20px; }
     #htr-{{ section.id }} .htr__reviews .jdgm-carousel-item__review-body { -webkit-line-clamp: 6; line-clamp: 6; }
     #htr-{{ section.id }}.htr--side .htr__reviews .jdgm-carousel__arrows { justify-content: center; padding-left: 0; }
   }
+  #htr-{{ section.id }} :is(h2, h3) { color: var(--htr-text); }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  @media (max-width: 749.98px) { #htr-{{ section.id }} .htr__heading, #htr-{{ section.id }} .htr__mhead, #htr-{{ section.id }} .htr__side-title, #htr-{{ section.id }} .htr__side-text { text-wrap: wrap; } }
 </style>
 
 {%- liquid
@@ -225,7 +225,7 @@
     <div class="htr__head">
       {%- if s.heading != blank -%}<h2 class="htr__heading">{{ s.heading }}</h2>{%- endif -%}
       {%- if s.subheading != blank -%}<p class="htr__sub">{{ s.subheading }}</p>{%- endif -%}
-      {%- if s.rating_line != blank -%}<p class="htr__rating" data-rating data-line="{{ s.rating_line | escape }}" hidden></p>{%- endif -%}
+      {%- if s.rating_line != blank -%}<p class="htr__rating" data-rating data-line="{{ s.rating_line | escape }}"{% if s.rating_value != blank %} data-score="{{ s.rating_value | escape }}"{% endif %} hidden></p>{%- endif -%}
     </div>
     {%- endunless -%}
 
@@ -251,6 +251,7 @@
     </ul>
     {%- endif -%}
 
+    {%- if side and s.mobile_heading != blank -%}<h2 class="htr__mhead">{{ s.mobile_heading }}</h2>{%- endif -%}
     {%- if side -%}
     <div class="htr__side-wrap">
       <div class="htr__side">
@@ -296,13 +297,15 @@
     (function look() {
       var r = root.querySelector('.htr__reviews .jdgm-all-reviews-rating[data-score]');
       var c = root.querySelector('.htr__reviews .jdgm-all-reviews-rating-wrapper');
-      var score = r && parseFloat(r.getAttribute('data-score'));
+      // A rating typed into the section settings wins; otherwise the live Judge.me average.
+      var score = parseFloat(out.getAttribute('data-score')) || (r && parseFloat(r.getAttribute('data-score')));
       var count = c && (c.textContent.match(/\d+/) || [])[0];
       var needR = line.indexOf('[rating]') > -1, needC = line.indexOf('[count]') > -1;
       if ((!needR || score) && (!needC || count)) {
         var parts = line.replace('[rating]', score ? score.toFixed(1) : '').replace('[count]', count || '').split(' · ');
         out.textContent = '';
-        if (needR) out.insertAdjacentHTML('beforeend', '<i aria-hidden="true">★★★★★</i>');
+        // Five stars, gold filled to the score (4.5 = four and a half), grey behind.
+        if (needR) out.insertAdjacentHTML('beforeend', '<i class="htr__stars" aria-hidden="true" style="--f: ' + Math.min(100, Math.max(0, score / 5 * 100)) + '%">★★★★★<i>★★★★★</i></i>');
         var b = document.createElement('b'); b.textContent = parts.shift(); out.appendChild(b);
         if (parts.length) { var sp = document.createElement('span'); sp.textContent = parts.join(' · '); out.appendChild(sp); }
         out.hidden = false;
@@ -327,7 +330,8 @@
       { "value": "sides", "label": "On the left and right sides" }
     ], "default": "below", "info": "On phones the arrows always sit below." },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Real people. Real results.", "info": "Empty hides it." },
-    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Honest reviews from customers who took the first step." },
+    { "type": "textarea", "id": "subheading", "label": "Subheading" },
+    { "type": "text", "id": "rating_value", "label": "Rating shown in the stars", "info": "For example 4.5. Leave empty to use the live Judge.me average. Only used where the rating line has [rating]." },
     { "type": "text", "id": "rating_line", "label": "Rating line", "default": "[rating] from [count] reviews", "info": "[rating] = live Judge.me average, [count] = number of reviews. e.g. [rating] · Trusted by 25,000+ patients. Empty hides the line." },
     { "type": "color", "id": "accent_color", "label": "Icon colour", "default": "#ee204a" },
     { "type": "product_list", "id": "review_products", "label": "Only reviews of these products", "limit": 20, "info": "Leave empty to use the Judge.me carousel block." },
@@ -335,6 +339,7 @@
     { "type": "text", "id": "review_hide", "label": "Hide reviews containing", "info": "Words or phrases, comma separated. A review that contains any of them is skipped." },
     { "type": "header", "content": "Rating panel (Rating on the left layout)" },
     { "type": "text", "id": "side_score", "label": "Rating", "default": "4.5", "info": "Out of 5. Fills the stars, e.g. 4.5 fills four and a half. Empty hides the number and stars." },
+    { "type": "text", "id": "mobile_heading", "label": "Heading on phones", "info": "Shown above the review cards on phones only (the rating panel is hidden there). Leave empty for none." },
     { "type": "text", "id": "side_title", "label": "Title", "default": "Loved by people who took the first step." },
     { "type": "textarea", "id": "side_text", "label": "Text", "default": "Real reviews from sehatUP customers across India, collected by Judge.me." },
     { "type": "text", "id": "side_note", "label": "Line under the text", "default": "Trusted by 25,000+ patients" },

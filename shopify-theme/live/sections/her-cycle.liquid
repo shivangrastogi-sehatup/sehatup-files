@@ -24,11 +24,11 @@
   #hcy-{{ section.id }} [data-phase="luteal"] { --c: #a8848a; }
 
   #hcy-{{ section.id }} .hcy__head { max-width: 640px; margin: 0 auto; padding: clamp(40px, 5vw, 72px) 16px 0; text-align: center; }
-  #hcy-{{ section.id }} h2 { margin: 0; font: 800 clamp(26px, 2.8vw, 36px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hcy-{{ section.id }} h2 { margin: 0; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
   #hcy-{{ section.id }} .hcy__lead { margin: 10px 0 0; font: 500 15.5px/1.6 'Montserrat', sans-serif; color: var(--hcy-muted); text-wrap: pretty; }
 
   /* Stage: month bar (tabs) over a row of four slides. */
-  #hcy-{{ section.id }} .hcy__stage { max-width: 1160px; margin: 0 auto; padding: clamp(24px, 3vw, 40px) clamp(16px, 3vw, 48px) 0; }
+  #hcy-{{ section.id }} .hcy__stage { max-width: 1160px; margin: 0 auto; padding: clamp(24px, 3vw, 40px) clamp(16px, 3vw, 48px) clamp(20px, 2.2vw, 32px); }
 
   /* Month bar */
   #hcy-{{ section.id }} .hcy__month { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; max-width: 900px; margin: 0 auto; padding: 5px; border-radius: 18px; background: var(--hcy-stone); }
@@ -52,6 +52,8 @@
   @media (prefers-reduced-motion: reduce) { #hcy-{{ section.id }} .hcy__slide, #hcy-{{ section.id }} .hcy__slide.is-now { transition: none; } }
   #hcy-{{ section.id }} .hcy__slide { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(24px, 5vw, 72px); align-items: center; padding-right: 4px; }
   #hcy-{{ section.id }} .hcy__big { margin: 0; font: 800 clamp(84px, 11vw, 150px)/.9 'Montserrat', sans-serif; letter-spacing: -.05em; color: var(--c); font-variant-numeric: tabular-nums; }
+  /* The tight letter-spacing crowded the dash against the digits. */
+  #hcy-{{ section.id }} .hcy__dash { margin: 0 .1em; }
   #hcy-{{ section.id }} .hcy__big small { display: block; margin-top: 10px; font: 700 14px/1 'Montserrat', sans-serif; letter-spacing: .02em; color: var(--hcy-muted); }
   #hcy-{{ section.id }} .hcy__name { margin: 14px 0 0; font: 800 clamp(24px, 2.6vw, 32px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; }
   #hcy-{{ section.id }} .hcy__what { margin: 0; font: 600 clamp(17px, 1.6vw, 20px)/1.5 'Montserrat', sans-serif; }
@@ -64,21 +66,49 @@
   #hcy-{{ section.id }} .hcy__slide a { display: inline-block; margin-top: 12px; font: 700 14px/1.3 'Montserrat', sans-serif; color: var(--hcy-ink); text-decoration: underline; text-underline-offset: 4px; }
   #hcy-{{ section.id }} .hcy__slide a:focus-visible { outline: 2px solid var(--hcy-text); outline-offset: 3px; }
 
-  #hcy-{{ section.id }} .hcy__fine { max-width: 640px; margin: 0 auto; padding: 28px 16px clamp(40px, 5vw, 72px); text-align: center; font: 500 13px/1.5 'Montserrat', sans-serif; color: var(--hcy-muted); }
+  /* The note sits right under the month tabs. */
+  #hcy-{{ section.id }} .hcy__fine { max-width: 820px; margin: clamp(18px, 2vw, 26px) auto 0; padding: 0 16px; text-align: center; font: 800 clamp(20px, 2vw, 28px)/1.3 'Montserrat', sans-serif; letter-spacing: -.01em; color: var(--hcy-text); text-wrap: balance; }
+  #hcy-{{ section.id }} .hcy__fine em { font-style: normal; color: var(--hcy-red); }
 
   @media (max-width: 749px) {
     #hcy-{{ section.id }} .hcy__month { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     #hcy-{{ section.id }} .hcy__seg { padding: 10px 12px; }
     #hcy-{{ section.id }} .hcy__seg span { font-size: 13px; }
     #hcy-{{ section.id }} .hcy__slide { grid-template-columns: 1fr; gap: 14px; }
-    #hcy-{{ section.id }} .hcy__big { font-size: 64px; }
-    #hcy-{{ section.id }} .hcy__name { margin-top: 8px; font-size: 22px; }
+    /* Phones: the days number on the left over two rows; on the right the day range, then the phase name big. */
+    #hcy-{{ section.id }} .hcy__slide > div:first-child { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 16px; align-items: center; }
+    #hcy-{{ section.id }} .hcy__big { display: contents; }
+    #hcy-{{ section.id }} .hcy__num { grid-column: 1; grid-row: 1 / span 2; font: 800 clamp(48px, 15vw, 64px)/.9 'Montserrat', sans-serif; letter-spacing: -.05em; color: var(--c); }
+    #hcy-{{ section.id }} .hcy__big small { grid-column: 2; grid-row: 1; align-self: end; margin: 0 0 4px; font-size: 13px; line-height: 1.3; }
+    #hcy-{{ section.id }} .hcy__name { grid-column: 2; grid-row: 2; align-self: start; margin: 0; font-size: clamp(22px, 7vw, 28px); line-height: 1.12; }
+    #hcy-{{ section.id }} .hcy__lead { display: none; }
+    /* Phones: tighter spacing, and the long explanation under the phase name goes (the tags and the doctor note stay). */
+    #hcy-{{ section.id }} .hcy__head { padding-top: 20px; }
+    #hcy-{{ section.id }} .hcy__stage { padding-top: 16px; }
+    #hcy-{{ section.id }} .hcy__rail { margin-top: 16px; }
+    #hcy-{{ section.id }} .hcy__what { display: none; }
+    #hcy-{{ section.id }} .hcy__label:first-of-type { margin-top: 4px; }
+    #hcy-{{ section.id }} .hcy__fine { margin-top: 14px; font-size: 19px; text-wrap: wrap; }
+    #hcy-{{ section.id }} .hcy__stage { padding-bottom: 24px; }
     #hcy-{{ section.id }} .hcy__what { font-size: 15.5px; }
     #hcy-{{ section.id }} .hcy__label { margin: 14px 0 8px; }
     #hcy-{{ section.id }} .hcy__tags li { padding: 6px 11px; font-size: 13px; }
     #hcy-{{ section.id }} .hcy__doc { margin-top: 14px; padding-top: 12px; }
     #hcy-{{ section.id }} .hcy__doc p:not(.hcy__label) { font-size: 13.5px; }
   }
+  /* Big screens: the same zoom steps as the other sections (Health Score 360 scale). */
+  @media (min-width: 1680px) { #hcy-{{ section.id }} :is(.hcy__head, .hcy__stage) { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hcy-{{ section.id }} :is(.hcy__head, .hcy__stage) { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hcy-{{ section.id }} :is(.hcy__head, .hcy__stage) { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hcy-{{ section.id }} :is(.hcy__head, .hcy__stage) { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hcy-{{ section.id }} :is(.hcy__head, .hcy__stage) { zoom: 2; } }
+  @media (min-width: 3840px) { #hcy-{{ section.id }} :is(.hcy__head, .hcy__stage) { zoom: 2.4; } }
+  /* The theme paints h2/h3 blue-grey; keep this section charcoal like the rest of the page. */
+  #hcy-{{ section.id }} :is(h2, h3) { color: var(--hcy-text); }
+  /* Site type scale (Health Score 360): heading 30px phones, 38px tablets, up to 52px laptops; the line under it 15 / 16 / 17px. */
+  #hcy-{{ section.id }} .hcy__lead { font-size: 17px; }
+  @media (min-width: 750px) and (max-width: 1099.98px) { #hcy-{{ section.id }} h2 { font-size: 38px; } #hcy-{{ section.id }} .hcy__lead { font-size: 16px; } }
+  @media (max-width: 749.98px) { #hcy-{{ section.id }} h2 { font-size: 30px !important; } #hcy-{{ section.id }} .hcy__lead { font-size: 15px; } }
 </style>
 
 <section id="hcy-{{ section.id }}">
@@ -97,6 +127,7 @@
         {%- endfor -%}
       </div>
 
+      {%- if s.fine != blank -%}<p class="hcy__fine">{{ s.fine | escape | replace: '[[', '<em>' | replace: ']]', '</em>' }}</p>{%- endif -%}
       <div class="hcy__rail">
         {%- for id in ids -%}
           {%- liquid
@@ -112,7 +143,7 @@
           -%}
           <div class="hcy__slide{% if forloop.first %} is-now{% endif %}" role="tabpanel" data-phase="{{ id }}">
             <div>
-              <p class="hcy__big">{{ a }}&ndash;{{ z }}<small>Day {{ a }} to {{ z }} of your month</small></p>
+              <p class="hcy__big"><span class="hcy__num">{{ a }}<span class="hcy__dash">&ndash;</span>{{ z }}</span><small>Day {{ a }} to {{ z }} of your month</small></p>
               <h3 class="hcy__name">{{ s[k_name] }}</h3>
             </div>
             <div>
@@ -130,7 +161,6 @@
       </div>
     </div>
   </div>
-  {%- if s.fine != blank -%}<p class="hcy__fine">{{ s.fine }}</p>{%- endif -%}
 </section>
 
 <script>
@@ -179,7 +209,7 @@
     { "type": "textarea", "id": "lead", "label": "Lead", "default": "Your body changes through the month. Here is what is normal, and when to see a doctor." },
     { "type": "text", "id": "label_feel", "label": "Tags label", "default": "You may feel" },
     { "type": "text", "id": "label_doctor", "label": "Doctor label", "default": "See a doctor if" },
-    { "type": "textarea", "id": "fine", "label": "Small print", "default": "Every woman is different. A cycle of 21 to 35 days is normal." },
+    { "type": "textarea", "id": "fine", "label": "Line under the month tabs", "default": "Every woman is different. A cycle of [[21 to 35 days]] is normal.", "info": "Put [[double square brackets]] around the words to show in red." },
 
     { "type": "header", "content": "Day 1 to 5" },
     { "type": "text", "id": "period_name", "label": "Name", "default": "Period" },

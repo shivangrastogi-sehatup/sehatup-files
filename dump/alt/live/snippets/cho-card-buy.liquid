@@ -1,0 +1,37 @@
+{%- comment -%}
+  Card buttons for the collection grid (quick add = "Choice + Add to cart + Buy now").
+  Accepts card_product. Variant picker only when the product has more than one variant.
+{%- endcomment -%}
+{%- assign v = card_product.selected_or_first_available_variant -%}
+<form class="cho-buy" action="{{ routes.cart_add_url }}" method="post" data-cho-buy>
+  <input type="hidden" name="id" value="{{ v.id }}">
+  <input type="hidden" name="quantity" value="1">
+  <input type="hidden" name="productUrl" value="{{ card_product.url }}">
+  {%- unless card_product.has_only_default_variant -%}
+    <div class="cho-pick">
+      <button type="button" class="cho-pick__btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Choose {{ card_product.options.first | escape }}">
+        <span class="cho-pick__val">{{ v.title }}</span>
+        <svg viewBox="0 0 10 6" aria-hidden="true"><path fill="currentColor" d="M9.354.646a.5.5 0 0 0-.708 0L5 4.293 1.354.646a.5.5 0 0 0-.708.708l4 4a.5.5 0 0 0 .708 0l4-4a.5.5 0 0 0 0-.708"/></svg>
+      </button>
+      <ul class="cho-pick__list" role="listbox" hidden>
+        {%- for variant in card_product.variants -%}
+          <li>
+            <button type="button" class="cho-pick__opt" role="option" data-v="{{ variant.id }}" data-t="{{ variant.title | escape }}" data-p="₹{{ variant.price | money_without_currency | remove: '.00' }}"{% if variant.compare_at_price > variant.price %} data-c="₹{{ variant.compare_at_price | money_without_currency | remove: '.00' }}" data-o="{{ variant.compare_at_price | minus: variant.price | times: 100.0 | divided_by: variant.compare_at_price | round }}"{% endif %} aria-selected="{% if variant.id == v.id %}true{% else %}false{% endif %}"{% unless variant.available %} disabled{% endunless %}>
+              <span>{{ variant.title }}</span>
+              {%- unless variant.available -%}<span class="cho-pick__price">Sold out</span>{%- endunless -%}
+            </button>
+          </li>
+        {%- endfor -%}
+      </ul>
+    </div>
+  {%- endunless -%}
+  <div class="cho-buy__row">
+    <button type="submit" class="cho-buy__add"{% unless card_product.available %} disabled{% endunless %}>{% if card_product.available %}Add to cart{% else %}Sold out{% endif %}</button>
+    {%- if card_product.available -%}
+      <div class="cho-buy__fast">
+        <div class="shiprocket-headless" data-type="product"></div>
+        <button type="submit" class="cho-buy__now" name="return_to" value="/checkout">Buy now</button>
+      </div>
+    {%- endif -%}
+  </div>
+</form>

@@ -44,7 +44,7 @@
   {%- unless template.name == 'product' -%}
   /* On landing pages the section stands on its own: space above it, and the
      same width and side margins as the product shelves around it. */
-  #sps-{{ section.id }} { padding: clamp(48px, 6vw, 88px) clamp(16px, 3vw, 48px) clamp(40px, 5vw, 64px); }
+  #sps-{{ section.id }} { padding: clamp(48px, 6vw, 88px) clamp(16px, 3vw, 48px) clamp(24px, 2.5vw, 32px); }
   #sps-{{ section.id }} .sps__inner { max-width: 1240px; }
   {%- endunless -%}
   #sps-{{ section.id }} .sps__heading { margin: 0 0 20px; font: 800 clamp(24px, 2.6vw, 34px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; }
@@ -65,6 +65,9 @@
   #sps-{{ section.id }} .sps__faces img + img { margin-left: -16px; }
   #sps-{{ section.id }} .sps__docs p { margin: 0; font: 500 13.5px/1.45 'Montserrat', sans-serif; color: var(--sps-muted); }
   #sps-{{ section.id }} .sps__docs b { display: block; font-weight: 700; color: var(--sps-text); }
+  /* No names: just the faces, larger. */
+  #sps-{{ section.id }} .sps__docs--faces .sps__faces img { width: 76px; height: 76px; }
+  #sps-{{ section.id }} .sps__docs--faces .sps__faces img + img { margin-left: -20px; }
   #sps-{{ section.id }} .sps__rated { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(29, 29, 29, .1); font: 500 13.5px/1.4 'Montserrat', sans-serif; color: var(--sps-muted); text-decoration: none; display: block; }
   #sps-{{ section.id }} .sps__rated b { font: 800 17px/1 'Montserrat', sans-serif; color: var(--sps-text); margin-right: 2px; }
   #sps-{{ section.id }} .sps__rated i { font-style: normal; color: #f5a623; margin-right: 6px; }
@@ -152,6 +155,34 @@
   @media (min-width: 1680px) { #sps-{{ section.id }} .sps__inner { zoom: 1.12; } }
   @media (min-width: 1920px) { #sps-{{ section.id }} .sps__inner { zoom: 1.25; } }
   @media (min-width: 2560px) { #sps-{{ section.id }} .sps__inner { zoom: 1.65; } }
+  #sps-{{ section.id }} :is(h2, h3) { color: var(--sps-text); }
+  @media (max-width: 599.98px) {
+    #sps-{{ section.id }} .sps__note { gap: 20px; padding: 22px 16px; }
+    #sps-{{ section.id }} .sps__note .sps__heading { font-size: 26px; }
+    #sps-{{ section.id }} .sps__lead { display: none; }
+    #sps-{{ section.id }} .sps__docs { margin-top: 16px; gap: 12px; }
+    #sps-{{ section.id }} .sps__faces img { width: 44px; height: 44px; }
+    #sps-{{ section.id }} .sps__faces img + img { margin-left: -12px; }
+    #sps-{{ section.id }} .sps__docs p { font-size: 12.5px; }
+    #sps-{{ section.id }} .sps__docs--faces .sps__faces img { width: 64px; height: 64px; }
+    #sps-{{ section.id }} .sps__docs--faces .sps__faces img + img { margin-left: -16px; }
+    #sps-{{ section.id }} .sps__docs--faces { justify-content: center; }
+    #sps-{{ section.id }} .sps__rated { margin-top: 14px; padding-top: 12px; }
+    #sps-{{ section.id }} .sps__promise { padding: 14px 0; }
+    #sps-{{ section.id }} .sps__promise h3 { font-size: 18px; }
+    #sps-{{ section.id }} .sps__promise p { margin-top: 5px; font-size: 14px; line-height: 1.5; }
+    #sps-{{ section.id }} .sps__promise a { margin-top: 8px; font-size: 14px; }
+  }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  /* Phones only: the doctor names and the line under each promise are hidden; laptops keep them. */
+  @media (max-width: 749.98px) { #sps-{{ section.id }} .sps__docs p, #sps-{{ section.id }} .sps__promise p { display: none; } }
+  /* Phones: the three doctor photos centred and larger, so faces are clear. */
+  @media (max-width: 749.98px) {
+    #sps-{{ section.id }} .sps__docs { justify-content: center; }
+    #sps-{{ section.id }} .sps__docs .sps__faces img { width: 76px; height: 76px; object-position: center 15%; }
+    #sps-{{ section.id }} .sps__docs .sps__faces img + img { margin-left: -14px; }
+  }
+  @media (max-width: 749.98px) { #sps-{{ section.id }} .sps__note .sps__heading { text-wrap: wrap; } #sps-{{ section.id }} .sps__lead, #sps-{{ section.id }} .sps__promise p, #sps-{{ section.id }} .sps__step span { max-width: none; } }
 </style>
 
 <section id="sps-{{ section.id }}" class="sps">
@@ -162,24 +193,24 @@
           <h2 class="sps__heading">{{ s.note_heading }}</h2>
           {%- if s.note_text != blank -%}<p class="sps__lead">{{ s.note_text }}</p>{%- endif -%}
           {%- if s.doc_1 != blank or s.doc_2 != blank or s.doc_3 != blank -%}
-            <div class="sps__docs">
+            <div class="sps__docs{% if s.doc_names == blank and s.doc_caption == blank %} sps__docs--faces{% endif %}">
               <span class="sps__faces">
-                {%- if s.doc_1 != blank -%}<img src="{{ s.doc_1 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
-                {%- if s.doc_2 != blank -%}<img src="{{ s.doc_2 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
-                {%- if s.doc_3 != blank -%}<img src="{{ s.doc_3 | image_url: width: 160 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
+                {%- if s.doc_1 != blank -%}<img src="{{ s.doc_1 | image_url: width: 240 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
+                {%- if s.doc_2 != blank -%}<img src="{{ s.doc_2 | image_url: width: 240 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
+                {%- if s.doc_3 != blank -%}<img src="{{ s.doc_3 | image_url: width: 240 }}" alt="" loading="lazy" width="56" height="56">{%- endif -%}
               </span>
-              <p><b>{{ s.doc_names }}</b>{{ s.doc_caption }}</p>
+              {%- if s.doc_names != blank or s.doc_caption != blank -%}<p><b>{{ s.doc_names }}</b>{{ s.doc_caption }}</p>{%- endif -%}
             </div>
           {%- endif -%}
           {%- if s.show_rating and jm_count > 0 -%}
-            <a class="sps__rated" href="{% if template.name == 'product' %}#judgeme_product_reviews{% else %}#reviews{% endif %}"><b>{{ jm_rating }}</b><i aria-hidden="true">★</i><span>rated by {{ jm_count }} customers across the store</span></a>
+            <a class="sps__rated" href="{% if template.name == 'product' %}#judgeme_product_reviews{% else %}#reviews{% endif %}"><b>{{ jm_rating }}</b><i aria-hidden="true">★</i><span>rated by our customers</span></a>
           {%- endif -%}
         </div>
         <ul class="sps__promises">
           {%- for block in promises -%}
             <li class="sps__promise" {{ block.shopify_attributes }}>
               <h3>{{ block.settings.lead | replace: '[advance]', adv }}</h3>
-              {%- if block.settings.text != blank -%}<p>{{ block.settings.text | replace: '[advance]', adv }}</p>{%- endif -%}
+              {%- if block.settings.text != blank and s.show_promise_text != false -%}<p>{{ block.settings.text | replace: '[advance]', adv }}</p>{%- endif -%}
               {%- if block.settings.link_label != blank and block.settings.link != blank -%}
                 <a href="{{ block.settings.link }}"{% if block.settings.link contains 'wa.me' %} target="_blank" rel="noopener"{% endif %}>{{ block.settings.link_label }}</a>
               {%- endif -%}
@@ -300,6 +331,7 @@
     { "type": "text", "id": "doc_names", "label": "Doctor names", "default": "Dr. Jayant Kumar and Dr. Shefali Chhicholia" },
     { "type": "text", "id": "doc_caption", "label": "Line under the names", "default": "Two of the doctors behind your plan" },
     { "type": "checkbox", "id": "show_rating", "label": "Show the live store rating", "default": true },
+    { "type": "checkbox", "id": "show_promise_text", "label": "Show the line under each promise", "default": true },
     { "type": "header", "content": "Timeline and doctor strip" },
     { "type": "number", "id": "advance_amount", "label": "Advance to confirm an order (Rs.)", "default": 50 },
     { "type": "paragraph", "content": "Timeline per product: fill the product metafield 'custom.what_to_expect' (multi-line text, one step per line, written as: When | what happens). Products without it use the timeline blocks below." },

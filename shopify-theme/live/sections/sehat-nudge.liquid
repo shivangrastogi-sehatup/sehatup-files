@@ -14,6 +14,9 @@
   #snu-{{ section.id }} .snu__btn:hover { background: {{ s.accent_color | color_darken: 10 }}; }
   #snu-{{ section.id }} .snu__btn:focus-visible { outline: 2px solid #1d1d1d; outline-offset: 3px; }
   @media (max-width: 599px) { #snu-{{ section.id }} .snu__btn { width: 100%; justify-content: center; } }
+  #snu-{{ section.id }} :is(h2, h3) { color: #1d1d1d; }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  @media (max-width: 749.98px) { #snu-{{ section.id }} .snu__t span { display: none; } #snu-{{ section.id }} .snu__inner { justify-content: center; text-align: center; } #snu-{{ section.id }} .snu__t { width: 100%; } #snu-{{ section.id }} .snu__inner { justify-content: center; text-align: center; } #snu-{{ section.id }} .snu__t { width: 100%; } #snu-{{ section.id }} .snu__inner { padding: 18px 16px; } }
 </style>
 
 <section id="snu-{{ section.id }}" class="snu">

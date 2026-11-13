@@ -173,7 +173,7 @@
                     {%- assign pk = 'photo_' | append: i -%}
                     {%- assign who = L[forloop.index0] | split: '|' -%}
                     <li class="in" style="--i: {{ forloop.index0 }}">
-                      <span class="ph">{%- if b.settings[pk] != blank -%}{{ b.settings[pk] | image_url: width: 240, height: 240, crop: 'top' | image_tag: alt: '', loading: 'lazy', width: 84, height: 84 }}{%- endif -%}</span>
+                      <span class="ph">{%- if b.settings[pk] != blank -%}<img src="{{ b.settings[pk] | image_url: width: 240, height: 240, crop: 'top' }}" alt="" loading="lazy" width="84" height="84">{%- endif -%}</span>
                       <b>{{ who[0] | strip }}</b><small>{{ who[1] | strip }}</small>
                     </li>
                   {%- endfor -%}

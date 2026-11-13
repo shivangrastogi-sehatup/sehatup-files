@@ -173,14 +173,15 @@
 
     .blog-grid::-webkit-scrollbar { display: none; }
 
+    /* Phones: one big card fills the screen with a sliver of the next, like a blog feed. */
     .blog-card {
-      flex: 0 0 calc(100% - 74px);
+      flex: 0 0 calc(100% - 30px);
       min-width: 0;
       scroll-snap-align: start;
     }
 
-    .blog-card__content { padding: 14px 16px 16px; gap: 6px; }
-    .blog-card__title { font-size: 18px; }
+    .blog-card__content { padding: 16px 18px 18px; gap: 8px; }
+    .blog-card__title { font-size: 20px; }
     .blog-card__excerpt { font-size: 15px; }
     .blog-card__date { font-size: 13px; }
 
@@ -197,11 +198,12 @@
       transition: background .25s ease, width .25s ease;
     }
     .blog-dots button[aria-selected="true"] { background: #1d1d1d; width: 20px; border-radius: 4px; }
-    .blog-hint { margin: 10px 0 0; text-align: center; color: #55555f; font-size: 14px; }
 
     .blog-view-all { padding-inline: 16px; }
   }
 
+  /* Small tablets: two cards and a sliver. */
+  @media (min-width: 600px) and (max-width: 768px) { .blog-card { flex-basis: calc(50% - 28px); } }
   @media (prefers-reduced-motion: reduce) {
     .blog-card,
     .blog-card__image img { transition: none; }
@@ -236,7 +238,7 @@
                   srcset="{{ article.image | image_url: width: 400 }} 400w,
                           {{ article.image | image_url: width: 700 }} 700w,
                           {{ article.image | image_url: width: 1000 }} 1000w"
-                  sizes="(max-width: 768px) 78vw, 340px"
+                  sizes="(max-width: 599px) 92vw, (max-width: 768px) 46vw, 400px"
                   alt="{{ article.title | escape }}"
                   width="{{ article.image.width }}"
                   height="{{ article.image.height }}"
@@ -263,7 +265,6 @@
 
       <div class="blog-swipe" hidden>
         <div class="blog-dots" role="tablist" aria-label="Choose an article"></div>
-        <p class="blog-hint"><span aria-hidden="true">&#8592;</span> Swipe to see more <span aria-hidden="true">&#8594;</span></p>
       </div>
     {% endif %}
 

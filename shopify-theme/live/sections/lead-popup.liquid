@@ -757,6 +757,7 @@
   data-delay="{{ section.settings.popup_delay | default: 0.5 }}"
   data-scroll-percent="{{ section.settings.scroll_trigger_percent | default: 60 }}"
   data-max-shows="{{ section.settings.max_shows | default: 2 }}"
+  data-repeat-days="{{ section.settings.repeat_days | default: 0 }}"
   data-session-key="lead_popup_seen_{{ section.id }}{{ scope_key }}"
   data-firestore-collection="{{ section.settings.firestore_collection | default: 'popup_leads' }}"
   data-template="{{ template }}"
@@ -1038,7 +1039,23 @@
       try { localStorage.setItem(CONVERTED_KEY, new Date().toISOString()); }
       catch (e) { /* private mode, or storage full */ }
     }
-    function exhausted() { return converted() || shownCount() >= maxShows; }
+    /* "Seen it", remembered across visits in localStorage, separately for each
+       page: the home page and the Health Score page each show it once, whether
+       or not the visitor already saw it on the other. repeat_days 0 means once
+       and never again; N means again after N days. Someone who submitted the
+       form is never asked again (converted). */
+    var SEEN_KEY = 'sehatup_lead_popup_seen_at:' + (location.pathname.replace(/\/+$/, '') || '/');
+    var repeatDays = parseFloat(root.dataset.repeatDays || '0') || 0;
+    function seenRecently() {
+      var t;
+      try { t = Date.parse(localStorage.getItem(SEEN_KEY) || ''); } catch (e) { return false; }
+      if (!t) return false;
+      return repeatDays <= 0 || Date.now() - t < repeatDays * 864e5;
+    }
+    function markSeen() {
+      try { localStorage.setItem(SEEN_KEY, new Date().toISOString()); } catch (e) { /* private mode */ }
+    }
+    function exhausted() { return converted() || seenRecently() || shownCount() >= maxShows; }
 
     /* ------------------------------------------------------------------
        Writer adapter.
@@ -1133,6 +1150,7 @@
       root.hidden = false;
       lockScroll();
       bumpShown();
+      if (!force) markSeen();
       // Only stop listening once there are no showings left to give.
       if (exhausted()) teardownTriggers();
 
@@ -1218,8 +1236,10 @@
       ticking = true;
       window.requestAnimationFrame(function () {
         ticking = false;
-        // shownCount() >= 1 keeps this as the SECOND showing, never the first.
-        if (!(shownCount() >= 1 && scrollDepth() >= scrollPct)) return;
+        // With a delay set, the scroll depth is the SECOND showing (after the
+        // delay's). With the delay off (0), the scroll depth is the only trigger.
+        if (delay > 0 && shownCount() < 1) return;
+        if (scrollDepth() < scrollPct) return;
         // A fast flick can pass the threshold and stop scrolling inside the
         // re-arm window. No further scroll event would come to retry, so the
         // popup waited for the next scroll. Check again when the window ends.
@@ -1235,20 +1255,34 @@
     function teardownTriggers() {
       if (timerId) { clearTimeout(timerId); timerId = null; }
       if (rearmTimer) { clearTimeout(rearmTimer); rearmTimer = null; }
-      if (scrollBound) { window.removeEventListener('scroll', onScroll); scrollBound = false; }
+      if (scrollBound) {
+        window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('scrollend', onScroll);
+        window.removeEventListener('resize', onScroll);
+        scrollBound = false;
+      }
     }
 
     if (!exhausted()) {
       // Showing one. Skipped if this session already had it, so a page change
       // does not restart the sequence from the top.
-      if (delay >= 0 && shownCount() === 0) {
+      if (delay > 0 && shownCount() === 0) {
         timerId = setTimeout(function () { openPopup('delay'); }, delay);
       }
       if (scrollPct > 0) {
+        /* The depth is checked on every scroll frame and compared with >=, so a
+           fast flick that jumps from 30% to 90% between two frames still opens it,
+           on the first frame past the line. scrollend and resize catch the cases
+           where no further scroll event comes (a fling that stops past the line,
+           or the page getting longer as images load). */
         window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('scrollend', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll, { passive: true });
         scrollBound = true;
-        // Deliberately not called here: on a page loaded already past the
-        // threshold this would fire showing two before showing one appeared.
+        // With the delay off, a page reopened already past the line (back button)
+        // gets the check once it has settled. With a delay, this stays off so the
+        // second showing can never come before the first.
+        if (delay <= 0) window.addEventListener('load', function () { setTimeout(onScroll, 300); }, { once: true });
       }
     }
 
@@ -1535,12 +1569,12 @@
     },
     {
       "type": "paragraph",
-      "content": "The delay opens it the first time. The scroll depth opens it the second time, after the visitor has dismissed the first."
+      "content": "Set the delay to 0 to open it only at the scroll depth. With a delay, the delay opens it the first time and the scroll depth the second time."
     },
     {
       "type": "range",
       "id": "popup_delay",
-      "label": "First showing after",
+      "label": "First showing after (0 = off)",
       "min": 0,
       "max": 30,
       "step": 0.5,
@@ -1550,7 +1584,7 @@
     {
       "type": "range",
       "id": "scroll_trigger_percent",
-      "label": "Second showing after scrolling past",
+      "label": "Show after scrolling past",
       "min": 0,
       "max": 100,
       "step": 5,
@@ -1567,6 +1601,17 @@
       "step": 1,
       "default": 2,
       "info": "Someone who submits the form is never shown it again, whatever this is set to."
+    },
+    {
+      "type": "range",
+      "id": "repeat_days",
+      "label": "Show it again after",
+      "min": 0,
+      "max": 30,
+      "step": 1,
+      "unit": "d",
+      "default": 0,
+      "info": "0 = once per visitor on each page it is on (the home page and the custom page each show it once)."
     },
     {
       "type": "checkbox",

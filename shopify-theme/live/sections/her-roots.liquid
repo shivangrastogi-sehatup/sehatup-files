@@ -14,15 +14,19 @@
   assign signs = section.blocks | where: 'type', 'sign'
   assign roots = section.blocks | where: 'type', 'root'
   assign more = signs.size | minus: s.mobile_signs
+  assign desk_more = 0
+  if s.desktop_signs > 0
+    assign desk_more = signs.size | minus: s.desktop_signs
+  endif
 -%}
 <style>
   #hrt-{{ section.id }} {
     --hrt-red: #ee204a; --hrt-ink: #d81f48; --hrt-text: #1d1d1d; --hrt-muted: #5f5a56; --hrt-line: #e8e0d9; --hrt-blush: #fdf0f2;
-    padding: clamp(40px, 5vw, 72px) clamp(16px, 3vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; font-family: 'Montserrat', sans-serif; color: var(--hrt-text);
+    padding: clamp(40px, 4.4vw, 64px) clamp(16px, 3vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; font-family: 'Montserrat', sans-serif; color: var(--hrt-text);
   }
   #hrt-{{ section.id }} * { box-sizing: border-box; }
   #hrt-{{ section.id }} .hrt__inner { max-width: 820px; margin: 0 auto; text-align: center; }
-  #hrt-{{ section.id }} h2 { margin: 0; font: 800 clamp(26px, 2.8vw, 36px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hrt-{{ section.id }} h2 { margin: 0; color: var(--hrt-text); font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
   #hrt-{{ section.id }} .hrt__lead { max-width: 600px; margin: 10px auto 0; font: 500 15.5px/1.6 'Montserrat', sans-serif; color: var(--hrt-muted); text-wrap: pretty; }
 
   #hrt-{{ section.id }} .hrt__ask { margin: clamp(24px, 3vw, 32px) 0 14px; font: 700 14px/1.4 'Montserrat', sans-serif; }
@@ -45,7 +49,14 @@
   #hrt-{{ section.id }} .hrt__sign[aria-pressed="true"] .hrt__ic { background: #fff; color: var(--hrt-red); }
   #hrt-{{ section.id }} .hrt__sign[aria-pressed="true"] .plus { display: none; }
   #hrt-{{ section.id }} .hrt__sign[aria-pressed="true"] .tick { display: block; }
-  #hrt-{{ section.id }} .hrt__more { display: none; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px dashed #d9cdc4; background: transparent; font: 700 14px/1 'Montserrat', sans-serif; color: var(--hrt-ink); cursor: pointer; }
+  /* See more / See less: a white pill with a soft red shadow and a chevron that flips when open. */
+  #hrt-{{ section.id }} .hrt__more { display: none; gap: 8px; min-height: 44px; padding: 0 18px 0 22px; border-radius: 999px; border: 0; background: #fff; box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 8px 20px -10px rgba(216, 31, 72, .45); font: 700 14px/1 'Montserrat', sans-serif; color: var(--hrt-ink); cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
+  #hrt-{{ section.id }} .hrt__more:active { transform: scale(.97); }
+  @media (hover: hover) { #hrt-{{ section.id }} .hrt__more:hover { transform: translateY(-1px); box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 12px 24px -10px rgba(216, 31, 72, .55); } }
+  #hrt-{{ section.id }} .hrt__chev { width: 22px; height: 22px; padding: 4px; border-radius: 50%; background: #fdecef; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .35s cubic-bezier(.2, .9, .25, 1); }
+  #hrt-{{ section.id }} .hrt__more[aria-expanded="true"] .hrt__chev { transform: rotate(180deg); }
+  /* The chips sit in a track; it only takes part in the layout on phones when the list is open. */
+  #hrt-{{ section.id }} .hrt__track { display: contents; }
   #hrt-{{ section.id }} :is(.hrt__sign, .hrt__more, .hrt__clear, .hrt__btn, .hrt__res a):focus-visible { outline: 2px solid var(--hrt-text); outline-offset: 3px; }
 
   /* Result card: bordered, fixed room, the words fade, nothing below moves. */
@@ -71,16 +82,54 @@
   #hrt-{{ section.id }} .hrt__note { margin: 0; font: 500 12px/1.5 'Montserrat', sans-serif; color: var(--hrt-muted); }
 
   @media (max-width: 749px) {
+    /* Phones: less air above and below the section. */
+    #hrt-{{ section.id }} { padding: 32px 16px; }
+    /* Phones: the line under the heading goes; laptops keep it. */
+    #hrt-{{ section.id }} .hrt__lead { display: none; }
     #hrt-{{ section.id }} .hrt__signs { gap: 8px; }
     #hrt-{{ section.id }} .hrt__sign { font-size: 13.5px; min-height: 42px; }
+    /* Phones: first the opening signs wrapped in a few rows with a "See more" button.
+       Tapping it turns the list into three rows that scroll sideways, edge to edge,
+       with the chips sliding in one after another. */
     #hrt-{{ section.id }} .hrt__signs:not(.is-open) .hrt__sign:nth-child(n + {{ s.mobile_signs | plus: 1 }}) { display: none; }
-    #hrt-{{ section.id }} .hrt__signs:not(.is-open) .hrt__more { display: inline-flex; align-items: center; }
+    {%- if more > 0 %}
+    #hrt-{{ section.id }} .hrt__more { display: inline-flex; align-items: center; margin-top: 12px; }
+    {%- else %}
+    #hrt-{{ section.id }} .hrt__more { display: none; }
+    {%- endif %}
+    #hrt-{{ section.id }} .hrt__signs.is-open .hrt__track { display: flex; flex-wrap: wrap; gap: 8px; width: var(--hrt-track, max-content); }
+    #hrt-{{ section.id }} .hrt__signs.is-open { display: block; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 10px; scroll-padding-inline: 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    #hrt-{{ section.id }} .hrt__signs.is-open::-webkit-scrollbar { display: none; }
+    #hrt-{{ section.id }} .hrt__signs.is-open .hrt__sign { animation: hrt-in-{{ section.id }} .45s cubic-bezier(.2, .9, .25, 1) both; animation-delay: calc(var(--i, 0) * 35ms); }
     #hrt-{{ section.id }} .hrt__res { min-height: 230px; }
     #hrt-{{ section.id }} .hrt__btn { width: 100%; }
   }
+  {%- if desk_more > 0 %}
+  /* Laptops: the first few signs, then View more / View less. */
+  @media (min-width: 750px) {
+    #hrt-{{ section.id }} .hrt__signs:not(.is-open) .hrt__sign:nth-child(n + {{ s.desktop_signs | plus: 1 }}) { display: none; }
+    #hrt-{{ section.id }} .hrt__more { display: inline-flex; align-items: center; margin-top: 14px; }
+    #hrt-{{ section.id }} .hrt__signs.is-open .hrt__sign { animation: hrt-in-{{ section.id }} .45s cubic-bezier(.2, .9, .25, 1) both; animation-delay: calc((var(--i, 0) - {{ s.desktop_signs }}) * 35ms); }
+  }
+  {%- endif %}
+  @keyframes hrt-in-{{ section.id }} { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) {
+    #hrt-{{ section.id }} .hrt__signs.is-open .hrt__sign { animation: none; }
     #hrt-{{ section.id }} .hrt__res > div { transition: none; }
   }
+  /* Big screens: the same zoom steps as the rest of the site, so it does not stay small on a 4K screen.
+     The space above and below grows with it (--sz from theme.liquid), so the band is not cramped. */
+  @media (min-width: 1680px) { #hrt-{{ section.id }} { padding-top: calc(64px * var(--sz, 1)); padding-bottom: calc(64px * var(--sz, 1)); } }
+  @media (min-width: 1680px) { #hrt-{{ section.id }} .hrt__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hrt-{{ section.id }} .hrt__inner { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hrt-{{ section.id }} .hrt__inner { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hrt-{{ section.id }} .hrt__inner { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hrt-{{ section.id }} .hrt__inner { zoom: 2; } }
+  @media (min-width: 3840px) { #hrt-{{ section.id }} .hrt__inner { zoom: 2.4; } }
+  /* Site type scale (Health Score 360): heading 30px phones, 38px tablets, up to 52px laptops; the line under it 15 / 16 / 17px. */
+  #hrt-{{ section.id }} .hrt__lead { font-size: 17px; }
+  @media (min-width: 750px) and (max-width: 1099.98px) { #hrt-{{ section.id }} h2 { font-size: 38px; } #hrt-{{ section.id }} .hrt__lead { font-size: 16px; } }
+  @media (max-width: 749.98px) { #hrt-{{ section.id }} h2 { font-size: 30px !important; } #hrt-{{ section.id }} .hrt__lead { font-size: 15px; } }
 </style>
 
 <section id="hrt-{{ section.id }}">
@@ -89,14 +138,14 @@
     {%- if s.lead != blank -%}<p class="hrt__lead">{{ s.lead }}</p>{%- endif -%}
 
     <p class="hrt__ask">{{ s.step_1 }}<span aria-live="polite"><span class="hrt__n">{{ s.hint }}</span><button type="button" class="hrt__clear" hidden>Clear</button></span></p>
-    <div class="hrt__signs" role="group" aria-label="{{ s.step_1 | escape }}">
+    <div class="hrt__signs" role="group" aria-label="{{ s.step_1 | escape }}"><div class="hrt__track">
       {%- for b in signs -%}
-        <button type="button" class="hrt__sign" aria-pressed="false" data-sign="{{ b.settings.label | strip | escape }}" {{ b.shopify_attributes }}>
+        <button type="button" class="hrt__sign" style="--i: {{ forloop.index0 }}" aria-pressed="false" data-sign="{{ b.settings.label | strip | escape }}" {{ b.shopify_attributes }}>
           <span class="hrt__ic" aria-hidden="true"><svg class="plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg><svg class="tick" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>{{ b.settings.label }}
         </button>
       {%- endfor -%}
-      {%- if more > 0 -%}<button type="button" class="hrt__more" aria-expanded="false">+ See {{ more }} more</button>{%- endif -%}
-    </div>
+    </div></div>
+    {%- if more > 0 or desk_more > 0 -%}<button type="button" class="hrt__more" aria-expanded="false"><span class="hrt__more-t">See more</span><svg class="hrt__chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>{%- endif -%}
 
     <div class="hrt__res" aria-live="polite">
       <div class="hrt__idle">
@@ -170,10 +219,28 @@
     });
     clear.addEventListener('click', function () { tiles.forEach(function (t) { t.setAttribute('aria-pressed', 'false'); }); update(); });
     var more = el.querySelector('.hrt__more');
+    var list = el.querySelector('.hrt__signs');
+    // Phones say See more / See less, laptops View more / View less.
+    var wide = matchMedia('(min-width: 750px)');
+    var track = el.querySelector('.hrt__track');
+    function label() { if (!more) return; var open = list.classList.contains('is-open'); more.querySelector('.hrt__more-t').textContent = wide.matches ? (open ? 'View less' : 'View more') : (open ? 'See less' : 'See more'); }
+    // Phones, open: pick the narrowest track width that lays the chips out in 3 rows, each chip its own width.
+    function fit() {
+      if (wide.matches || !list.classList.contains('is-open')) return;
+      var chips = tiles.filter(function (c) { return c.offsetWidth; }), gap = 8;
+      var total = chips.reduce(function (s, c) { return s + c.offsetWidth + gap; }, 0), widest = Math.max.apply(null, chips.map(function (c) { return c.offsetWidth; }));
+      var w = Math.max(Math.ceil(total / 3), widest), rows;
+      do { track.style.setProperty('--hrt-track', w + 'px'); rows = new Set(chips.map(function (c) { return c.offsetTop; })).size; w += 12; } while (rows > 3 && w < total + 12);
+    }
+    window.addEventListener('resize', fit);
+    label();
+    if (wide.addEventListener) wide.addEventListener('change', label);
     if (more) more.addEventListener('click', function () {
-      more.parentNode.classList.add('is-open');
-      more.setAttribute('aria-expanded', 'true');
-      more.hidden = true;
+      var open = !list.classList.contains('is-open');
+      list.classList.toggle('is-open', open);
+      more.setAttribute('aria-expanded', open ? 'true' : 'false');
+      label();
+      if (open) fit(); else list.scrollLeft = 0;
     });
   })();
 </script>
@@ -192,6 +259,7 @@
     { "type": "text", "id": "top_label", "label": "Label above the strongest cause", "default": "Most of your signs point to" },
     { "type": "text", "id": "also_label", "label": "Label before other causes", "default": "Also linked:" },
     { "type": "range", "id": "mobile_signs", "label": "Signs shown on phones before See more", "min": 3, "max": 10, "step": 1, "default": 6 },
+    { "type": "range", "id": "desktop_signs", "label": "Signs shown on laptops before View more", "info": "0 = show all, no button.", "min": 0, "max": 12, "step": 1, "default": 0 },
     { "type": "text", "id": "button", "label": "Button" },
     { "type": "url", "id": "button_link", "label": "Button link" },
     { "type": "text", "id": "note", "label": "Small note" }

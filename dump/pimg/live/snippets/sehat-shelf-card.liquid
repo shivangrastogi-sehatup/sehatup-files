@@ -1,0 +1,56 @@
+{%- comment -%} One product card for sehat-shelf: a link to the product, then an Add to cart button (first available variant). Params: p (product), show_use, show_desc. {%- endcomment -%}
+{%- liquid
+  assign name = p.title | remove: ' - sehatUP' | remove: ' | SehatUP' | remove: ' | sehatUP' | split: ' | ' | first
+  assign v = p.selected_or_first_available_variant
+  assign photo = v.featured_image | default: p.featured_image
+  capture use
+    render 'sehat-facts', handle: p.handle, field: 'use'
+  endcapture
+  assign use = use | strip
+  assign desc = p.description | split: '[/description]' | first | remove: '[description]' | replace: '<', ' <' | strip_html | strip_newlines | replace: '&nbsp;', ' ' | strip | truncate: 180
+-%}
+<div class="ssf__card">
+  <a class="ssf__link" href="{{ p.url }}">
+    <div class="ssf__img">
+      {%- if photo != blank -%}
+        <img src="{{ photo | image_url: width: 500 }}" srcset="{{ photo | image_url: width: 300 }} 300w, {{ photo | image_url: width: 500 }} 500w" sizes="(max-width: 899px) 62vw, 290px" alt="{{ photo.alt | default: name | escape }}" loading="lazy" width="500" height="500">
+      {%- endif -%}
+      <span class="ssf__off" data-off{% unless v.compare_at_price > v.price %} hidden{% endunless %}>{% if v.compare_at_price > v.price %}{{ v.compare_at_price | minus: v.price | times: 100.0 | divided_by: v.compare_at_price | round }}{% endif %}% off</span>
+    </div>
+    <h3 class="ssf__name">{{ name }}</h3>
+    {%- if show_desc -%}<p class="ssf__desc">{{ desc }}</p>{%- endif -%}
+    {%- if show_use and use != '' -%}<p class="ssf__use">{{ use }}</p>{%- endif -%}
+    <p class="ssf__price">
+      <span data-now>{{ v.price | money_without_trailing_zeros }}</span>
+      <s data-was{% unless v.compare_at_price > v.price %} hidden{% endunless %}><span class="visually-hidden">Was </span><span data-was-v>{{ v.compare_at_price | money_without_trailing_zeros }}</span></s>
+    </p>
+  </a>
+  {%- unless p.has_only_default_variant -%}
+    {%- comment -%} Pack picker: changes the price shown and which pack Add to cart adds. {%- endcomment -%}
+    <div class="ssf__pick">
+      <button type="button" class="ssf__pick-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Choose {{ p.options.first | escape }} for {{ name | escape }}">
+        <span class="ssf__pick-val">{{ v.title }}</span>
+        <svg viewBox="0 0 10 6" aria-hidden="true"><path fill="currentColor" d="M9.354.646a.5.5 0 0 0-.708 0L5 4.293 1.354.646a.5.5 0 0 0-.708.708l4 4a.5.5 0 0 0 .708 0l4-4a.5.5 0 0 0 0-.708"/></svg>
+      </button>
+      <ul class="ssf__pick-list" role="listbox" hidden>
+        {%- for variant in p.variants -%}
+          {%- assign vimg = variant.featured_image | default: p.featured_image -%}
+          <li><button type="button" class="ssf__pick-opt" role="option" data-v="{{ variant.id }}"{% if vimg != blank %} data-img="{{ vimg | image_url: width: 500 }}" data-img2="{{ vimg | image_url: width: 300 }}"{% endif %} data-t="{{ variant.title | escape }}" data-p="{{ variant.price | money_without_trailing_zeros | escape }}"{% if variant.compare_at_price > variant.price %} data-c="{{ variant.compare_at_price | money_without_trailing_zeros | escape }}" data-o="{{ variant.compare_at_price | minus: variant.price | times: 100.0 | divided_by: variant.compare_at_price | round }}"{% endif %} aria-selected="{% if variant.id == v.id %}true{% else %}false{% endif %}"{% unless variant.available %} disabled{% endunless %}><span>{{ variant.title }}</span>{%- unless variant.available -%}<em>Sold out</em>{%- endunless -%}</button></li>
+        {%- endfor -%}
+      </ul>
+    </div>
+  {%- endunless -%}
+  {%- if p.available -%}
+    {%- assign in_cart = 0 -%}
+    {%- for it in cart.items -%}{%- if it.variant_id == v.id -%}{%- assign in_cart = in_cart | plus: it.quantity -%}{%- endif -%}{%- endfor -%}
+    <button type="button" class="ssf__add" data-variant="{{ v.id }}" aria-label="Add {{ name | escape }} to cart"{% if in_cart > 0 %} hidden{% endif %}>Add to cart</button>
+    {%- comment -%} Once it is in the cart the button becomes a counter, kept in step with the cart. {%- endcomment -%}
+    <div class="ssf__qty" data-qty="{{ v.id }}"{% if in_cart == 0 %} hidden{% endif %}>
+      <button type="button" data-step="-1" aria-label="One less {{ name | escape }}">&minus;</button>
+      <span data-count aria-live="polite">{{ in_cart | at_least: 1 }}</span>
+      <button type="button" data-step="1" aria-label="One more {{ name | escape }}">+</button>
+    </div>
+  {%- else -%}
+    <button type="button" class="ssf__add" disabled>Sold out</button>
+  {%- endif -%}
+</div>

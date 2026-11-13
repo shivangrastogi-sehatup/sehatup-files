@@ -305,6 +305,8 @@
   }
 
   @media (max-width: 749.98px) { #hj-{{ section.id }} .hj__heading, #hj-{{ section.id }} .hj__text { max-width: none; } }
+  /* Phones: each step is its number, when, title and phone; the sentence under the title goes. */
+  @media (max-width: 749.98px) { #hj-{{ section.id }} .hj__text { display: none; } }
 
   @media (prefers-reduced-motion: reduce) {
     #hj-{{ section.id }} * { transition: none !important; animation: none !important; }
@@ -657,8 +659,8 @@
     { "type": "textarea", "id": "text_1", "label": "Text", "default": "Free. No sign-up. Simple, honest questions about your body." },
     { "type": "header", "content": "2. The doctor call" },
     { "type": "text", "id": "day_2", "label": "When", "default": "Within 24 hours" },
-    { "type": "text", "id": "title_2", "label": "Title", "default": "A doctor calls you" },
-    { "type": "textarea", "id": "text_2", "label": "Text", "default": "Ayurveda, Homeopathy and Allopathy doctors review your score together, in Hindi or English." },
+    { "type": "text", "id": "title_2", "label": "Title", "default": "A doctor consults you" },
+    { "type": "textarea", "id": "text_2", "label": "Text", "default": "Your score is reviewed together by Ayurveda, Homeopathy and Allopathy doctors, who talk to you in Hindi or English." },
     { "type": "image_picker", "id": "call_image", "label": "Doctor on the call (portrait)" },
     { "type": "range", "id": "call_image_y", "label": "Call photo: move down", "min": 0, "max": 30, "step": 1, "unit": "%", "default": 12, "info": "Moves the photo down so the name and timer at the top do not cover the face." },
     { "type": "text", "id": "call_name", "label": "Caller name", "default": "sehatUP Doctor" },
@@ -671,8 +673,8 @@
     { "type": "text", "id": "doctor_3_label", "label": "Doctor 3 system", "default": "Allopathy" },
     { "type": "header", "content": "3. The kit" },
     { "type": "text", "id": "day_3", "label": "When", "default": "Day 3 to 5" },
-    { "type": "text", "id": "title_3", "label": "Title", "default": "Your kit arrives" },
-    { "type": "textarea", "id": "text_3", "label": "Text", "default": "In a plain box. Nobody knows what is inside. Confirm with just ₹50 and pay the rest on delivery, or pay in full online." },
+    { "type": "text", "id": "title_3", "label": "Title", "default": "Your personalised kit arrives" },
+    { "type": "textarea", "id": "text_3", "label": "Text", "default": "Only what your doctor chose for you, packed discreetly. Confirm with ₹50 and pay the rest on delivery, or pay in full online." },
     { "type": "text", "id": "pay_line", "label": "Payment line on the phone", "default": "₹50 paid · rest on delivery" },
     { "type": "image_picker", "id": "box_image", "label": "Box photo (transparent PNG)", "info": "Leave empty to show a simple drawn box." },
     { "type": "header", "content": "4. The check-ins" },

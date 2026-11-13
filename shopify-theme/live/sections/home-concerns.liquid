@@ -32,6 +32,8 @@
   #hcn-{{ section.id }} .hcn__h span { color: var(--btn); }
   #hcn-{{ section.id }} .hcn__n { color: var(--btn) !important; }
   #hcn-{{ section.id }} .hcn__more { border-bottom-color: var(--btn) !important; }
+  #hcn-{{ section.id }}.hcn--noarrow .hcn__go { display: none; }
+  #hcn-{{ section.id }}.hcn--noarrow .hcn__row { grid-template-columns: 44px minmax(0, 1fr) auto; }
   #hcn-{{ section.id }} .hcn__go { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--line); background: #fff; transition: background-color .3s, border-color .3s, color .3s; }
   #hcn-{{ section.id }} .hcn__go svg { width: 16px; height: 16px; transition: transform .3s var(--ease); }
   @media (hover: hover) {
@@ -71,8 +73,16 @@
     #hcn-{{ section.id }} .hcn__who { grid-column: 1; grid-row: 1; margin-bottom: -4px; font-size: 12px; }
     #hcn-{{ section.id }} .hcn__body { grid-column: 1; }
     #hcn-{{ section.id }} .hcn__go { grid-column: 2; grid-row: 1 / span 2; width: 38px; height: 38px; }
+    /* Phones: the arrow in each tile is brand red. */
+    #hcn-{{ section.id }} .hcn__go { color: var(--btn); border-color: rgba(216, 31, 72, .4); }
     #hcn-{{ section.id }} .hcn__t { font-size: 19px; }
     #hcn-{{ section.id }} .hcn__d { font-size: 14px; }
+    /* Phones: less air between the heading, the link and the tiles; each tile sized to its text, with the arrow on the right instead of a reserved empty strip at the bottom. */
+    #hcn-{{ section.id }} .hcn__in { gap: 18px; }
+    #hcn-{{ section.id }} .hcn__h { margin-bottom: 4px; }
+    body #MainContent #hcn-{{ section.id }} .hcn__more { margin-top: 10px; }
+    body #MainContent #hcn-{{ section.id }} .hcn__row { justify-content: center; min-height: 76px; padding: 12px 44px 12px 14px !important; }
+    body #MainContent #hcn-{{ section.id }} .hcn__go { top: 50%; bottom: auto; margin-top: -14px; }
   }
   @media (min-width: 1680px) { #hcn-{{ section.id }} .hcn__in { zoom: 1.12; } }
   @media (min-width: 1920px) { #hcn-{{ section.id }} .hcn__in { zoom: 1.25; } }
@@ -87,7 +97,7 @@
   @media (prefers-reduced-motion: reduce) { #hcn-{{ section.id }} * { transition: none !important; } }
 </style>
 
-<section id="hcn-{{ section.id }}">
+<section id="hcn-{{ section.id }}"{% if s.show_arrows == false %} class="hcn--noarrow" style="--hcn-pb: 14px"{% endif %}>
   <div class="hcn__in">
     <div class="hcn__head">
       <h2 class="hcn__h">{{ s.heading }}{% if s.heading_red != blank %} <span>{{ s.heading_red }}</span>{% endif %}</h2>
@@ -136,6 +146,7 @@
     { "type": "text", "id": "more_kicker", "label": "Small line above the link", "default": "Not sure where to start?" },
     { "type": "text", "id": "more_label", "label": "Link", "default": "Take the 2-minute Health Score" },
     { "type": "url", "id": "more_link", "label": "Link to", "info": "Also used by rows without their own link." },
+    { "type": "checkbox", "id": "show_arrows", "label": "Show the arrow on each row", "default": true, "info": "Off removes the arrow from every row and tile." },
     { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" }
   ],
   "blocks": [

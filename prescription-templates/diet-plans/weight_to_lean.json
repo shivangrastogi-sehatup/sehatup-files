@@ -1,0 +1,53 @@
+{
+  "condition": "PCOD with Weight Gain, Acne, Hairfall & Irregular Periods",
+  "subtitle": "Diet planned considering hormonal imbalance, metabolism disturbance & digestive issues",
+  "meals": [
+    {
+      "time": "Early Morning (7:00–8:00 AM)",
+      "food": "1 glass lukewarm water + lemon (without sugar) + 1 tsp soaked methi seeds",
+      "benefit": "Helps improve digestion, reduce bloating & support fat metabolism"
+    },
+    {
+      "time": "Breakfast (8:30–9:30 AM)",
+      "food": "Option 1: 2 besan chilla + curd  |  Option 2: Vegetable oats + seeds mix  |  Option 3: 2 eggs + 1 multigrain toast",
+      "benefit": "High protein breakfast helps reduce acne, hairfall & controls cravings"
+    },
+    {
+      "time": "Mid-Morning (11:00–12:00 PM)",
+      "food": "1 fruit (apple/guava/papaya)",
+      "benefit": "Maintains energy levels & prevents overeating"
+    },
+    {
+      "time": "Lunch (1:30–2:30 PM)",
+      "food": "2 multigrain roti + 1 bowl sabzi + 1 bowl dal/paneer + salad before meal",
+      "benefit": "Balanced meal supports hormonal balance & weight control"
+    },
+    {
+      "time": "Evening Snack (5:00–6:00 PM)",
+      "food": "Green tea / normal tea (without sugar) + roasted chana / makhana",
+      "benefit": "Controls cravings & supports metabolism"
+    },
+    {
+      "time": "Dinner (7:30–8:30 PM)",
+      "food": "1–2 roti + sabzi OR vegetable soup + paneer",
+      "benefit": "Light dinner helps reduce bloating & supports fat loss"
+    }
+  ],
+  "dailyAddons": {
+    "food": "Flax seeds – 1 tsp, Pumpkin seeds – 1 tsp, 2 walnuts",
+    "benefit": "Supports hormonal balance, reduces acne & hairfall"
+  },
+  "avoidFoods": [
+    "Avoid sugar, bakery, fried & packaged food",
+    "Limit rice, potato, banana, mango",
+    "Reduce excess tea/coffee"
+  ],
+  "hydration": "2.5–3 litres water daily",
+  "lifestyle": [
+    "30–40 min daily walk/exercise",
+    "Proper sleep (7–8 hrs)",
+    "Avoid late night eating"
+  ],
+  "followUp": "Review after 15 days",
+  "note": "This diet focuses on hormonal balance, weight reduction & improvement in skin and hair health."
+}

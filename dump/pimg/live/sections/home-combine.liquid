@@ -1,0 +1,206 @@
+{%- comment -%}
+  Home: how the three systems work together, shown on a real concern.
+  Pick a concern (tabs); three system cards say what each one does for it,
+  lines draw down from the cards into one red-tinted "Your plan" bar.
+  All texts for all concerns sit stacked in the same grid cell, so switching
+  only crossfades and the page never moves. Phones: cards stack, no lines.
+  Each concern is a block.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #hcb-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --stone: #f6f0ec; --line: #e8e0d9; --tint: #fdecef; --btn: #d81f48;
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    padding: clamp(56px, 6vw, 104px) clamp(16px, 4vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hcb-{{ section.id }} .hcb__in { max-width: 1160px; margin: 0 auto; }
+  #hcb-{{ section.id }} .hcb__head { max-width: 760px; margin: 0 auto 32px; text-align: center; }
+  #hcb-{{ section.id }} .hcb__h { margin: 0 0 16px; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #hcb-{{ section.id }} .hcb__h em { font-style: normal; color: var(--btn); }
+  #hcb-{{ section.id }} .hcb__sub { margin: 0 auto; max-width: 600px; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+
+  #hcb-{{ section.id }} .hcb__tabs { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 0 0 32px; }
+  #hcb-{{ section.id }} .hcb__tab { height: 46px; padding: 0 22px; border: 1.5px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); font: 600 15px/1 'Montserrat', sans-serif; cursor: pointer; transition: background-color .25s, border-color .25s, color .25s; }
+  #hcb-{{ section.id }} .hcb__tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  @media (hover: hover) { #hcb-{{ section.id }} .hcb__tab:not([aria-selected="true"]):hover { border-color: var(--ink); } }
+  #hcb-{{ section.id }} .hcb__tab:focus-visible { outline: 2px solid var(--btn); outline-offset: 3px; }
+
+  #hcb-{{ section.id }} .hcb__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  #hcb-{{ section.id }} .hcb__card { padding: 28px 26px 26px; border-radius: 24px; background: var(--stone); }
+  #hcb-{{ section.id }} .hcb__sys { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  #hcb-{{ section.id }} .hcb__sys svg { flex: none; width: 26px; height: 26px; fill: none; stroke: var(--btn); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  #hcb-{{ section.id }} .hcb__sys b { font: 800 21px/1.2 'Montserrat', sans-serif; }
+  #hcb-{{ section.id }} .hcb__role { margin: 0 0 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(29, 29, 29, .1); font: 600 14px/1.4 'Montserrat', sans-serif; color: var(--mute); }
+  #hcb-{{ section.id }} .hcb__stack { display: grid; }
+  #hcb-{{ section.id }} .hcb__stack > p { grid-area: 1 / 1; margin: 0; opacity: 0; transform: translateY(8px); transition: opacity .25s ease, transform .25s ease; }
+  #hcb-{{ section.id }} .hcb__stack > p.on { opacity: 1; transform: none; transition: opacity .5s ease var(--d, 0s), transform .6s var(--ease) var(--d, 0s); }
+  #hcb-{{ section.id }} .hcb__card .hcb__stack > p { font: 500 16.5px/1.5 'Montserrat', sans-serif; color: var(--ink); }
+  #hcb-{{ section.id }} .hcb__card:nth-child(2) { --d: .08s; }
+  #hcb-{{ section.id }} .hcb__card:nth-child(3) { --d: .16s; }
+
+  #hcb-{{ section.id }} .hcb__rail { display: block; width: 100%; height: 56px; overflow: visible; }
+  #hcb-{{ section.id }} .hcb__rail path { fill: none; stroke: var(--btn); stroke-width: 1.6; stroke-dasharray: 1; stroke-dashoffset: 1; vector-effect: non-scaling-stroke; opacity: .55; }
+  #hcb-{{ section.id }} .hcb__rail.draw path { stroke-dashoffset: 0; transition: stroke-dashoffset .9s var(--ease); }
+  #hcb-{{ section.id }} .hcb__rail.draw path:nth-child(2) { transition-delay: .1s; }
+  #hcb-{{ section.id }} .hcb__rail.draw path:nth-child(3) { transition-delay: .2s; }
+
+  #hcb-{{ section.id }} .hcb__plan { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 24px; align-items: center; padding: 24px 30px; border-radius: 24px; background: var(--tint); }
+  #hcb-{{ section.id }} .hcb__plan > b { font: 800 19px/1.2 'Montserrat', sans-serif; color: var(--btn); white-space: nowrap; }
+  #hcb-{{ section.id }} .hcb__plan .hcb__stack > p { --d: .35s; font: 700 clamp(17px, 1.5vw, 20px)/1.45 'Montserrat', sans-serif; color: var(--ink); }
+
+  #hcb-{{ section.id }} .hcb__foot { margin: 28px 0 0; text-align: center; }
+  #hcb-{{ section.id }} .hcb__btn { display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 30px; border-radius: 999px; background: var(--btn); color: #fff; text-decoration: none; font: 700 16px/1 'Montserrat', sans-serif; transition: background-color .2s; }
+  @media (hover: hover) { #hcb-{{ section.id }} .hcb__btn:hover { background: #c11a3f; color: #fff; } }
+  #hcb-{{ section.id }} .hcb__btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  #hcb-{{ section.id }} .hcb__btn svg { width: .9em; height: .9em; }
+
+  @media (max-width: 899.98px) {
+    #hcb-{{ section.id }} .hcb__cards { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    #hcb-{{ section.id }} .hcb__card { display: grid; grid-template-columns: minmax(0, 1fr); padding: 20px 20px 18px; }
+    #hcb-{{ section.id }} .hcb__role { margin-bottom: 12px; padding-bottom: 12px; }
+    #hcb-{{ section.id }} .hcb__rail { display: none; }
+    #hcb-{{ section.id }} .hcb__plan { margin-top: 10px; grid-template-columns: minmax(0, 1fr); padding: 20px; }
+  }
+  @media (max-width: 749.98px) {
+    #hcb-{{ section.id }} .hcb__h { font-size: 30px; }
+    #hcb-{{ section.id }} .hcb__sub { font-size: 15px; }
+    #hcb-{{ section.id }} .hcb__tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; margin: 0 -16px 24px; padding: 0 16px; scrollbar-width: none; }
+    #hcb-{{ section.id }} .hcb__tabs::-webkit-scrollbar { display: none; }
+    #hcb-{{ section.id }} .hcb__tab { flex: none; height: 42px; padding: 0 18px; font-size: 14px; }
+    #hcb-{{ section.id }} .hcb__card .hcb__stack > p { font-size: 15px; }
+    #hcb-{{ section.id }} .hcb__btn { width: 100%; justify-content: center; }
+  }
+  @media (min-width: 1680px) { #hcb-{{ section.id }} .hcb__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hcb-{{ section.id }} .hcb__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #hcb-{{ section.id }} .hcb__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hcb-{{ section.id }} .hcb__in { zoom: 2; } }
+  @media (prefers-reduced-motion: reduce) { #hcb-{{ section.id }} * { transition: none !important; } }
+</style>
+
+{%- capture icon_ayur -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-8 5-13 15-14-1 10-6 15-14 15"/><path d="M5 19c3-4 6-7 10-9"/></svg>{%- endcapture -%}
+{%- capture icon_homeo -%}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 15a2.5 2.5 0 0 0 2.5 2.5"/></svg>{%- endcapture -%}
+{%- capture icon_modern -%}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="m9.5 9.5 5 5"/></svg>{%- endcapture -%}
+
+<section id="hcb-{{ section.id }}">
+  <div class="hcb__in">
+    <div class="hcb__head">
+      <h2 class="hcb__h">{{ s.heading }}</h2>
+      {%- if s.subheading != blank -%}<p class="hcb__sub">{{ s.subheading }}</p>{%- endif -%}
+    </div>
+
+    <div class="hcb__tabs" role="tablist" aria-label="{{ s.tabs_label | escape }}">
+      {%- for block in section.blocks -%}
+        <button class="hcb__tab" type="button" role="tab" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" {{ block.shopify_attributes }}>{{ block.settings.name }}</button>
+      {%- endfor -%}
+    </div>
+
+    <div class="hcb__board" aria-live="polite">
+      <div class="hcb__cards">
+        {%- for sys in (1..3) -%}
+          {%- case sys -%}
+            {%- when 1 -%}{%- assign key = 'ayur' -%}{%- assign icon = icon_ayur -%}{%- assign sname = s.ayur_name -%}{%- assign srole = s.ayur_role -%}
+            {%- when 2 -%}{%- assign key = 'homeo' -%}{%- assign icon = icon_homeo -%}{%- assign sname = s.homeo_name -%}{%- assign srole = s.homeo_role -%}
+            {%- else -%}{%- assign key = 'modern' -%}{%- assign icon = icon_modern -%}{%- assign sname = s.modern_name -%}{%- assign srole = s.modern_role -%}
+          {%- endcase -%}
+          <div class="hcb__card">
+            <div class="hcb__sys">{{ icon }}<b>{{ sname }}</b></div>
+            {%- if srole != blank -%}<p class="hcb__role">{{ srole }}</p>{%- endif -%}
+            <div class="hcb__stack">
+              {%- for block in section.blocks -%}<p{% if forloop.first %} class="on"{% endif %}>{{ block.settings[key] }}</p>{%- endfor -%}
+            </div>
+          </div>
+        {%- endfor -%}
+      </div>
+      <svg class="hcb__rail" viewBox="0 0 300 56" preserveAspectRatio="none" aria-hidden="true">
+        <path pathLength="1" d="M50 0 C50 34 150 22 150 56"/>
+        <path pathLength="1" d="M150 0 L150 56"/>
+        <path pathLength="1" d="M250 0 C250 34 150 22 150 56"/>
+      </svg>
+      <div class="hcb__plan">
+        <b>{{ s.plan_label }}</b>
+        <div class="hcb__stack">
+          {%- for block in section.blocks -%}<p{% if forloop.first %} class="on"{% endif %}>{{ block.settings.plan }}</p>{%- endfor -%}
+        </div>
+      </div>
+    </div>
+
+    {%- if s.button != blank -%}
+      <p class="hcb__foot"><a class="hcb__btn" href="{{ s.button_link | default: '#' }}">{{ s.button }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></p>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hcb-{{ section.id }}');
+    if (!root) return;
+    var tabs = [].slice.call(root.querySelectorAll('.hcb__tab'));
+    var stacks = [].slice.call(root.querySelectorAll('.hcb__stack'));
+    var rail = root.querySelector('.hcb__rail');
+
+    function draw() {
+      rail.classList.remove('draw');
+      void rail.getBoundingClientRect();
+      rail.classList.add('draw');
+    }
+    function go(i) {
+      tabs.forEach(function (t, k) { t.setAttribute('aria-selected', k === i ? 'true' : 'false'); t.tabIndex = k === i ? 0 : -1; });
+      stacks.forEach(function (st) { [].forEach.call(st.children, function (p, k) { p.classList.toggle('on', k === i); }); });
+      draw();
+    }
+    tabs.forEach(function (t, i) {
+      t.tabIndex = i ? -1 : 0;
+      t.addEventListener('click', function () { go(i); });
+      t.addEventListener('keydown', function (e) {
+        var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        var n = (i + d + tabs.length) % tabs.length;
+        go(n); tabs[n].focus();
+      });
+    });
+
+    if (!('IntersectionObserver' in window)) { rail.classList.add('draw'); return; }
+    var io = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { draw(); io.disconnect(); }
+    }, { threshold: .4 });
+    io.observe(rail);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Home: three systems",
+  "tag": "div",
+  "max_blocks": 6,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "This isn't alternative medicine. It's complete medicine." },
+    { "type": "textarea", "id": "subheading", "label": "Line under it" },
+    { "type": "text", "id": "tabs_label", "label": "Tabs label (screen readers)", "default": "Pick a concern" },
+    { "type": "text", "id": "ayur_name", "label": "System 1", "default": "Ayurveda" },
+    { "type": "text", "id": "ayur_role", "label": "System 1 job", "default": "Balance from the root" },
+    { "type": "text", "id": "homeo_name", "label": "System 2", "default": "Homeopathy" },
+    { "type": "text", "id": "homeo_role", "label": "System 2 job", "default": "Gentle and personal" },
+    { "type": "text", "id": "modern_name", "label": "System 3", "default": "Modern medicine" },
+    { "type": "text", "id": "modern_role", "label": "System 3 job", "default": "Clear answers, faster relief" },
+    { "type": "text", "id": "plan_label", "label": "Plan label", "default": "Your plan" },
+    { "type": "text", "id": "button", "label": "Button" },
+    { "type": "url", "id": "button_link", "label": "Button link" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" }
+  ],
+  "blocks": [
+    {
+      "type": "concern",
+      "name": "Concern",
+      "settings": [
+        { "type": "text", "id": "name", "label": "Tab", "default": "Weight gain" },
+        { "type": "textarea", "id": "ayur", "label": "What system 1 does" },
+        { "type": "textarea", "id": "homeo", "label": "What system 2 does" },
+        { "type": "textarea", "id": "modern", "label": "What system 3 does" },
+        { "type": "textarea", "id": "plan", "label": "The plan you get" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Home: three systems" }]
+}
+{% endschema %}

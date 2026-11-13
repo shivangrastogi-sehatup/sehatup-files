@@ -9,11 +9,11 @@
 <style>
   #hfx-{{ section.id }} {
     --hfx-red: #ee204a; --hfx-ink: #d81f48; --hfx-text: #1d1d1d; --hfx-muted: #5f5a56; --hfx-off: #e3d9d1; --hfx-line: #ece4de;
-    padding: clamp(36px, 4.4vw, 64px) clamp(16px, 3vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; font-family: 'Montserrat', sans-serif; color: var(--hfx-text);
+    padding: clamp(36px, 4.4vw, 64px) clamp(16px, 3vw, 48px) clamp(20px, 2.4vw, 32px); background: {{ s.section_bg | default: '#ffffff' }}; font-family: 'Montserrat', sans-serif; color: var(--hfx-text);
   }
   #hfx-{{ section.id }} * { box-sizing: border-box; }
   #hfx-{{ section.id }} .hfx__wrap { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 80px); align-items: center; }
-  #hfx-{{ section.id }} h2 { margin: 0; font: 800 clamp(26px, 2.8vw, 36px)/1.15 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #hfx-{{ section.id }} h2 { margin: 0; color: var(--hfx-text); font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
   #hfx-{{ section.id }} .hfx__lead { margin: 12px 0 0; font: 500 15.5px/1.6 'Montserrat', sans-serif; color: var(--hfx-muted); text-wrap: pretty; }
   #hfx-{{ section.id }} .hfx__close { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--hfx-line); font: 600 15px/1.5 'Montserrat', sans-serif; text-wrap: pretty; }
 
@@ -23,8 +23,12 @@
   #hfx-{{ section.id }} .hfx__fig { grid-row: 1 / span 3; margin: 0; font: 800 clamp(32px, 3.2vw, 42px)/1 'Montserrat', sans-serif; letter-spacing: -.03em; color: var(--hfx-ink); white-space: nowrap; }
   #hfx-{{ section.id }} .hfx__fig small { display: block; margin-top: 8px; font: 700 11px/1 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--hfx-muted); }
   #hfx-{{ section.id }} .hfx__text { margin: 0; font: 500 14.5px/1.5 'Montserrat', sans-serif; color: var(--hfx-text); }
-  #hfx-{{ section.id }} .hfx__src { margin: 0; font: 500 11.5px/1.4 'Montserrat', sans-serif; color: var(--hfx-muted); }
-  #hfx-{{ section.id }} .hfx__src a { color: inherit; }
+  #hfx-{{ section.id }} a.hfx__fact { color: inherit; text-decoration: none; transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+  @media (hover: hover) and (pointer: fine) { #hfx-{{ section.id }} a.hfx__fact:hover { transform: translateY(-2px); } }
+  #hfx-{{ section.id }} a.hfx__fact:focus-visible { outline: 2px solid var(--hfx-text); outline-offset: 4px; border-radius: 12px; }
+  /* The card opens its study in a new tab; the red line says so. */
+  #hfx-{{ section.id }} .hfx__src { margin: 0; font: 600 13px/1.4 'Montserrat', sans-serif; color: var(--hfx-text); }
+  #hfx-{{ section.id }} .hfx__src svg { display: inline-block; width: 15px; height: 15px; margin-left: 5px; vertical-align: -2px; fill: none; stroke: var(--hfx-ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
   /* Pictogram: N women, the last one red. */
   #hfx-{{ section.id }} .hfx__people { display: flex; gap: 6px; align-items: flex-end; margin-bottom: 6px; }
@@ -50,9 +54,44 @@
     #hfx-{{ section.id }} .hfx__fig { grid-row: auto; margin-bottom: 10px; }
     #hfx-{{ section.id }} .hfx__fig small { display: inline; margin: 0 0 0 10px; vertical-align: middle; }
   }
+  #hfx-{{ section.id }} .hfx__who, #hfx-{{ section.id }} .hfx__mfoot { display: none; }
+  @media (max-width: 749.98px) {
+    /* Phones: less air above and below the section. */
+    #hfx-{{ section.id }} { padding: 28px 16px 14px; }
+    #hfx-{{ section.id }} .hfx__wrap { gap: 18px; }
+    #hfx-{{ section.id }} .hfx__head .hfx__lead,
+    #hfx-{{ section.id }} .hfx__head .hfx__close,
+    #hfx-{{ section.id }} .hfx__fact .hfx__text { display: none; }
+    #hfx-{{ section.id }} .hfx__fact .hfx__src { margin-top: 12px; }
+    #hfx-{{ section.id }} .hfx__facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+    #hfx-{{ section.id }} .hfx__fact { display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 14px; border-radius: 16px; background: #fbf8f6; border: 1px solid #efe7e2; }
+    #hfx-{{ section.id }} .hfx__fact + .hfx__fact { border-top: 1px solid #efe7e2; background: #fcf6f7; }
+    #hfx-{{ section.id }} .hfx__fig { display: flex; flex-direction: column-reverse; margin: 0; font-size: clamp(22px, 6.6vw, 30px); }
+    #hfx-{{ section.id }} .hfx__fig small { display: block; margin: 0 0 10px; font-size: 10.5px; letter-spacing: .1em; }
+    #hfx-{{ section.id }} .hfx__who { display: block; margin: 6px 0 12px; font: 500 12.5px/1.3 'Montserrat', sans-serif; color: var(--hfx-muted); }
+    #hfx-{{ section.id }} .hfx__people { gap: 3px; margin: auto 0 0; }
+    #hfx-{{ section.id }} .hfx__people svg { width: 9px; height: 18px; }
+    #hfx-{{ section.id }} .hfx__bar { width: 100%; margin: auto 0 4px; height: 6px; }
+    #hfx-{{ section.id }} .hfx__range b { font-size: 10px; }
+    #hfx-{{ section.id }} .hfx__mfoot { display: block; }
+    #hfx-{{ section.id }} .hfx__mfoot .hfx__close { margin-top: 14px; padding-top: 0; border-top: 0; font-size: 15px; }
+  }
   @media (prefers-reduced-motion: reduce) {
     #hfx-{{ section.id }}.is-pre .hfx__people svg, #hfx-{{ section.id }}.is-pre .hfx__range { opacity: 1; transform: none; }
   }
+  /* Big screens: the same zoom steps as the rest of the site, so it does not stay small on a 4K screen.
+     The space above and below grows with it (--sz from theme.liquid), so the section is not cramped. */
+  @media (min-width: 1680px) { #hfx-{{ section.id }} { padding-top: calc(64px * var(--sz, 1)); padding-bottom: calc(32px * var(--sz, 1)); } }
+  @media (min-width: 1680px) { #hfx-{{ section.id }} .hfx__wrap { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hfx-{{ section.id }} .hfx__wrap { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hfx-{{ section.id }} .hfx__wrap { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hfx-{{ section.id }} .hfx__wrap { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hfx-{{ section.id }} .hfx__wrap { zoom: 2; } }
+  @media (min-width: 3840px) { #hfx-{{ section.id }} .hfx__wrap { zoom: 2.4; } }
+  /* Site type scale (Health Score 360): heading 30px phones, 38px tablets, up to 52px laptops; the line under it 15 / 16 / 17px. */
+  #hfx-{{ section.id }} .hfx__lead { font-size: 17px; }
+  @media (min-width: 750px) and (max-width: 1099.98px) { #hfx-{{ section.id }} h2 { font-size: 38px; } #hfx-{{ section.id }} .hfx__lead { font-size: 16px; } }
+  @media (max-width: 749.98px) { #hfx-{{ section.id }} h2 { font-size: 30px !important; } #hfx-{{ section.id }} .hfx__lead { font-size: 15px; } }
 </style>
 
 <section id="hfx-{{ section.id }}">
@@ -63,22 +102,27 @@
       {%- if s.close != blank -%}<p class="hfx__close">{{ s.close }}</p>{%- endif -%}
     </div>
     <div class="hfx__facts">
-      <div class="hfx__fact">
+      {%- if s.pcos_link != blank -%}<a class="hfx__fact" href="{{ s.pcos_link }}" target="_blank" rel="noopener">{%- else -%}<div class="hfx__fact">{%- endif -%}
         <p class="hfx__fig">1 in {{ s.pcos_n }}<small>{{ s.pcos_issue }}</small></p>
+        <span class="hfx__who">Indian women</span>
         <div class="hfx__people" aria-hidden="true">
           {%- for i in (1..s.pcos_n) -%}
             <svg viewBox="0 0 24 48" style="transition-delay: {{ forloop.index0 | times: 60 }}ms"{% if forloop.last %} class="is-her"{% endif %}><circle cx="12" cy="7" r="6"/><path d="M12 15c-4.4 0-6.5 3.5-7.4 8L2 38h5.5l1.2 10h6.6l1.2-10H22l-2.6-15c-.9-4.5-3-8-7.4-8z"/></svg>
           {%- endfor -%}
         </div>
         <p class="hfx__text">{{ s.pcos_text }}</p>
-        {%- if s.pcos_source != blank -%}<p class="hfx__src">Source: <a href="{{ s.pcos_link }}" target="_blank" rel="noopener">{{ s.pcos_source }}</a></p>{%- endif -%}
-      </div>
-      <div class="hfx__fact">
-        <p class="hfx__fig">{{ s.pain_low }}-{{ s.pain_high }}%<small>{{ s.pain_issue }}</small></p>
-        <div class="hfx__bar" aria-hidden="true"><div class="hfx__range"><b>{{ s.pain_low }}%</b><b>{{ s.pain_high }}%</b></div></div>
+        {%- if s.pcos_link != blank -%}<p class="hfx__src" title="{{ s.pcos_source | escape }}">View source <svg class="hfx__arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 12.5L12 4M5.5 3.8h6.7v6.7"/></svg></p>{%- endif -%}
+      {%- if s.pcos_link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+      {%- if s.pain_link != blank -%}<a class="hfx__fact" href="{{ s.pain_link }}" target="_blank" rel="noopener">{%- else -%}<div class="hfx__fact">{%- endif -%}
+        <p class="hfx__fig">{% if s.pain_low > 0 %}{{ s.pain_low }}-{% endif %}{{ s.pain_high }}%<small>{{ s.pain_issue }}</small></p>
+        <span class="hfx__who">of Indian women</span>
+        <div class="hfx__bar" aria-hidden="true"><div class="hfx__range"><b>{% if s.pain_low > 0 %}{{ s.pain_low }}%{% endif %}</b><b>{{ s.pain_high }}%</b></div></div>
         <p class="hfx__text">{{ s.pain_text }}</p>
-        {%- if s.pain_source != blank -%}<p class="hfx__src">Source: <a href="{{ s.pain_link }}" target="_blank" rel="noopener">{{ s.pain_source }}</a></p>{%- endif -%}
-      </div>
+        {%- if s.pain_link != blank -%}<p class="hfx__src" title="{{ s.pain_source | escape }}">View source <svg class="hfx__arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 12.5L12 4M5.5 3.8h6.7v6.7"/></svg></p>{%- endif -%}
+      {%- if s.pain_link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+    </div>
+    <div class="hfx__mfoot">
+      {%- if s.close != blank -%}<p class="hfx__close">{{ s.close }}</p>{%- endif -%}
     </div>
   </div>
 </section>
@@ -111,7 +155,7 @@
     { "type": "url", "id": "pcos_link", "label": "Source link" },
     { "type": "header", "content": "Painful periods (range bar)" },
     { "type": "text", "id": "pain_issue", "label": "Label", "default": "Painful periods" },
-    { "type": "range", "id": "pain_low", "label": "Low %", "min": 0, "max": 100, "step": 1, "default": 46 },
+    { "type": "range", "id": "pain_low", "label": "Low %", "info": "0 shows one number (the High %) instead of a range.", "min": 0, "max": 100, "step": 1, "default": 46 },
     { "type": "range", "id": "pain_high", "label": "High %", "min": 0, "max": 100, "step": 1, "default": 76 },
     { "type": "textarea", "id": "pain_text", "label": "Text" },
     { "type": "text", "id": "pain_source", "label": "Source" },

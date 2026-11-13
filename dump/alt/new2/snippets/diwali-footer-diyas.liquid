@@ -1,0 +1,46 @@
+{%- comment -%}
+  Diwali: a row of lit diyas sitting on the top edge of the footer (half over the page, half over the footer),
+  on a thin gold line. Theme settings > Diwali: show or hide, your own diya image, size and spacing.
+  It takes no space in the layout and does not move.
+{%- endcomment -%}
+{%- if settings.dw_footer_diyas -%}
+  {%- assign size = settings.dw_footer_diya_size | default: 44 -%}
+  {%- assign gap = settings.dw_footer_diya_gap | default: 76 -%}
+  <style>
+    .dw-fd { position: relative; z-index: 5; height: 0; pointer-events: none; }
+    /* the gold edge the diyas sit on */
+    .dw-fd::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px;
+      background: linear-gradient(90deg, rgba(217, 154, 43, 0), #d99a2b 12%, #f2c46d 50%, #d99a2b 88%, rgba(217, 154, 43, 0)); }
+    /* the diyas stand on the line: the bottom of each bowl rests exactly on it
+       (the drawn diya's base is 84% down its picture; an uploaded image stands on its bottom edge) */
+    .dw-fd__row { position: absolute; left: 0; right: 0; top: calc(var(--fd-size) * var(--fd-base) * -1); height: var(--fd-size);
+      display: flex; justify-content: center; gap: var(--fd-gap); overflow: hidden; }
+    .dw-fd__img { flex: none; display: block; height: var(--fd-size); width: auto; }
+    @media (max-width: 749.98px) {
+      .dw-fd { --fd-size: calc({{ size }}px * .8) !important; --fd-gap: calc({{ gap }}px * .6) !important; }
+    }
+  </style>
+  <div class="dw-fd" aria-hidden="true" style="--fd-size: {{ size }}px; --fd-gap: {{ gap }}px; --fd-base: {% if settings.dw_footer_diya_image != blank %}1{% else %}.84{% endif %};">
+    <svg width="0" height="0" style="position:absolute"><defs><radialGradient id="dw-fd-glow"><stop offset="0" stop-color="#ffc061" stop-opacity=".55"/><stop offset=".55" stop-color="#ffb347" stop-opacity=".18"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient></defs></svg>
+    <div class="dw-fd__row">
+      {%- for i in (1..48) -%}
+        {%- if settings.dw_footer_diya_image != blank -%}
+          {%- if forloop.first -%}
+            {%- assign di = settings.dw_footer_diya_image -%}
+            {%- capture img -%}
+              {%- comment -%} Animated GIFs: served at their own size so they keep moving (resizing can flatten them to one frame). {%- endcomment -%}
+              {%- if di.src contains '.gif' -%}
+                <img class="dw-fd__img" src="{{ di | image_url: width: di.width }}" alt="{{ di.alt | escape }}" loading="lazy" width="{{ di.width }}" height="{{ di.height }}">
+              {%- else -%}
+                {{ di | image_url: height: 160 | image_tag: loading: 'lazy', height: size, class: 'dw-fd__img' }}
+              {%- endif -%}
+            {%- endcapture -%}
+          {%- endif -%}
+          {{ img }}
+        {%- else -%}
+          <svg class="dw-fd__img" viewBox="0 0 64 44" width="64" height="44"><circle cx="32" cy="20" r="21" fill="url(#dw-fd-glow)"/><path d="M15 26h34c0 6.2-7.6 11-17 11s-17-4.8-17-11z" fill="#c8642e"/><path d="M15 26h34" stroke="#7f2f14" stroke-width="1.4"/><path d="M22 31.5q10 3.4 20 0" fill="none" stroke="#f2c46d" stroke-width="1.3" stroke-dasharray=".1 4" stroke-linecap="round"/><path d="M32 25.5v-4" stroke="#2a1208" stroke-width="1.4" stroke-linecap="round"/><path d="M32 21.5c-2.8-3-2.8-6.4 0-10.4 2.8 4 2.8 7.4 0 10.4z" fill="#f7b733"/><path d="M32 20.6c-1.3-1.4-1.3-3 0-4.8 1.3 1.8 1.3 3.4 0 4.8z" fill="#fff4cf"/></svg>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </div>
+{%- endif -%}

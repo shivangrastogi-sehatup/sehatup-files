@@ -1,0 +1,67 @@
+{%- assign s = section.settings -%}
+{%- if s.layout == 'popout' -%}
+<section class="lm-sec lm-sec--pop{% if s.full_width %} lm-sec--pop-full{% endif %}{% if s.image_edge %} lm-sec--pop-edge{% endif %}" style="--pop-r: {{ s.image_right }}px; --pop-l: {{ s.grad_light }}; --pop-d: {{ s.grad_dark }}; --pop-m: {{ s.band_margin }}px;">
+  <div class="lm-wrap">
+    <div class="lm-pop{% if s.image == blank %} lm-pop--noimg{% endif %}{% if s.one_line %} lm-pop--oneline{% endif %}" style="--pop: {{ s.image_size | default: 135 }}; --pop-space: {{ s.image_space | default: 44 }}%; --pop-hs: {{ s.one_line_size | default: 34 }}px; --pop-nx: {{ s.image_nudge | default: 0 }}%;">
+      <div class="lm-pop__copy">
+        <h2 class="lm-h2">{{ s.heading }}{% if s.highlight != blank %} <span class="lm-mark">{{ s.highlight }}</span>{% endif %}</h2>
+        {%- if s.subheading != blank -%}<p class="lm-sub">{{ s.subheading }}</p>{%- endif -%}
+        {%- if s.button != blank -%}
+          <a class="lm-btn lm-btn--red" href="{{ s.link | default: '#' }}">{{ s.button }}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+          {%- if s.note != blank -%}<small>{{ s.note }}</small>{%- endif -%}
+        {%- endif -%}
+      </div>
+      {%- if s.image != blank -%}<div class="lm-pop__img">{{ s.image | image_url: width: 1000 | image_tag: loading: 'lazy', widths: '500, 800, 1000', sizes: '(max-width: 749px) 70vw, 420px', alt: '' }}</div>{%- endif -%}
+    </div>
+  </div>
+</section>
+{%- else -%}
+<section class="lm-sec" style="--lm-ui: {{ s.image_width }}px;">
+  <div class="lm-wrap">
+    <div class="lm-unsure{% if s.image == blank %} lm-unsure--noimg{% endif %}">
+      {%- if s.image != blank -%}<div class="lm-unsure__img">{{ s.image | image_url: width: 400 | image_tag: loading: 'lazy', alt: '' }}</div>{%- endif -%}
+      <div>
+        <h2 class="lm-h2">{{ s.heading }}{% if s.highlight != blank %} <span class="lm-mark">{{ s.highlight }}</span>{% endif %}</h2>
+        {%- if s.subheading != blank -%}<p class="lm-sub">{{ s.subheading }}</p>{%- endif -%}
+      </div>
+      {%- if s.button != blank -%}
+        <div class="lm-unsure__go">
+          <a class="lm-btn lm-btn--red" href="{{ s.link | default: '#' }}">{{ s.button }}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+          {%- if s.note != blank -%}<small>{{ s.note }}</small>{%- endif -%}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "LM not sure",
+  "tag": "div",
+  "settings": [
+    { "type": "select", "id": "layout", "label": "Layout", "default": "inline", "options": [{ "value": "inline", "label": "Picture, text, button in a row" }, { "value": "popout", "label": "Text left, pop-out picture right" }] },
+    { "type": "checkbox", "id": "full_width", "label": "Edge to edge band (pop-out)", "info": "Full width, square edges, gradient background.", "default": false },
+    { "type": "range", "id": "band_margin", "label": "Extra height inside the band", "min": 0, "max": 120, "step": 5, "unit": "px", "default": 0 },
+    { "type": "color", "id": "grad_light", "label": "Gradient, text side", "default": "#fdf4f5" },
+    { "type": "color", "id": "grad_dark", "label": "Gradient, picture side", "default": "#f1b6c3" },
+    { "type": "range", "id": "image_space", "label": "Space kept for the picture (pop-out)", "min": 20, "max": 50, "step": 1, "unit": "%", "default": 44 },
+    { "type": "checkbox", "id": "one_line", "label": "Keep heading and line on one line (wide screens)", "info": "From 1200px wide; smaller screens wrap.", "default": false },
+    { "type": "range", "id": "one_line_size", "label": "One-line heading size", "info": "Lower it if a long heading runs into the picture.", "min": 22, "max": 40, "step": 1, "unit": "px", "default": 34 },
+    { "type": "checkbox", "id": "image_edge", "label": "Place the picture from the screen edge (pop-out)", "default": false },
+    { "type": "range", "id": "image_right", "label": "Distance from the screen right edge", "info": "Used when the option above is on.", "min": 0, "max": 400, "step": 10, "unit": "px", "default": 100 },
+    { "type": "range", "id": "image_nudge", "label": "Nudge the picture right (pop-out)", "info": "For cut-outs with empty space beside the person: moves the picture right by this share of its width.", "min": 0, "max": 45, "step": 1, "unit": "%", "default": 0 },
+    { "type": "range", "id": "image_size", "label": "Picture size (pop-out)", "info": "Over 100 and her head rises above the banner.", "min": 100, "max": 180, "step": 5, "unit": "%", "default": 135 },
+    { "type": "image_picker", "id": "image", "label": "Picture (optional)" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Not sure what's the problem with" },
+    { "type": "text", "id": "highlight", "label": "Heading part with the highlighter", "default": "your Champ?" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
+    { "type": "text", "id": "button", "label": "Button", "default": "Take the Private Assessment" },
+    { "type": "url", "id": "link", "label": "Button link" },
+    { "type": "text", "id": "note", "label": "Small line under the button" },
+    {"type":"header","content":"Sizes"},
+    {"type":"range","id":"image_width","label":"Picture width (row layout)","min":100,"max":320,"step":10,"unit":"px","default":190}
+  ],
+  "presets": [{ "name": "LM not sure" }]
+}
+{% endschema %}

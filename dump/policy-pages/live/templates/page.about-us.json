@@ -1,0 +1,412 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "about-intro",
+      "settings": {
+        "kicker": "PERSONALIZED ONLINE WELLNESS",
+        "heading": "About sehatUP",
+        "subheading": "Get personalized wellness support online through consultations in Ayurveda, Homeopathy, and Allopathy.",
+        "style": "wine",
+        "background": "#f6f0ec",
+        "heading_color": "#1d1d1d",
+        "text_color": "#5f5a56",
+        "kicker_color": "#d81f48",
+        "kicker_bg": "#fdecef"
+      }
+    },
+    "home_problem_Mq37PU": {
+      "type": "home-problem",
+      "disabled": true,
+      "settings": {
+        "heading": "Getting healthy today feels like guesswork.",
+        "lead": "Google says one thing. A doctor says another. A wellness influencer says the opposite. You are left with pills, supplements and zero clarity.",
+        "issue_label": "The real issue",
+        "issue": "Healthcare is fragmented. Every system works alone, and no one treats the whole person.",
+        "voices": "Google|It could be 14 different things. Here are the scariest ones.\nA doctor|Take these for 5 days. Come back if it does not help.\nAn influencer|Skip the medicine. Just drink this green juice every morning.\nA relative|Everyone has this. Just ignore it.",
+        "you_name": "You",
+        "you_line": "So who do I listen to?",
+        "section_bg": "#faf7f5"
+      }
+    },
+    "story_short": {
+      "type": "about-story-lite",
+      "settings": {
+        "heading": "Our story",
+        "quote": "A Journey of Care, Wellness & Trust",
+        "text": "<p>SehatUP began with a straightforward belief: good health depends on the balance between your mind, body, and daily life. Our aim is to make care more accessible, personal, and effective for everyone.We combine Homeopathy, Ayurveda, and Allopathy, tailoring integrated healthcare to your specific needs.&nbsp;</p><p>Bringing these approaches together gives you a broader view of your options and supports informed decisions about your well-being.At SehatUP, everyone deserves clear guidance, thoughtful care, and dependable support. Whether you want to feel better day to day or address a specific health concern, we’re here to help you maintain a healthier lifestyle.</p>",
+        "stat": "25,000+",
+        "stat_label": "people across India have trusted us",
+        "section_bg": "#ffffff"
+      }
+    },
+    "approach": {
+      "type": "home-integrated",
+      "settings": {
+        "heading": "Three systems. One connected approach.",
+        "heading_red": "",
+        "subheading": "",
+        "hide_sub_mobile": false,
+        "animate": true,
+        "animation_style": "spread",
+        "photo_zoom": 140,
+        "plan_label": "sehatUP's|Personalized|Plan",
+        "sys1_image": "shopify://shop_images/Ayurveda.webp",
+        "sys1_name": "Ayurveda",
+        "sys1_text": "Herbs and daily habits that support hormones, digestion and metabolism over time.",
+        "sys2_image": "shopify://shop_images/homeopathy.webp",
+        "sys2_name": "Homeopathy",
+        "sys2_text": "Remedies matched to you, easy to take alongside your routine for steady, long-term care.",
+        "sys3_image": "shopify://shop_images/Modern_medicine.webp",
+        "sys3_name": "Modern medicine",
+        "sys3_text": "Evidence-led checks, and medicine only when a doctor says it fits you.",
+        "closing_red": "",
+        "closing": "This is not alternative medicine. It is [[complete medicine.]]",
+        "button": "Take the free Health Score 360",
+        "button_link": "shopify://pages/health-score-360",
+        "section_bg": "#ffffff"
+      }
+    },
+    "journey": {
+      "type": "about-journey",
+      "blocks": {
+        "chapter_1": {
+          "type": "chapter",
+          "settings": {
+            "label": "Where it began",
+            "title": "Everyone had advice. No one had direction.",
+            "text": "Google said one thing. A doctor said another. A wellness influencer said the opposite. The people we met were not short of medicine. They were short of someone who looked at the whole of them.",
+            "scene": "voices",
+            "stat": "",
+            "stat_label": ""
+          }
+        },
+        "chapter_2": {
+          "type": "chapter",
+          "settings": {
+            "label": "The question",
+            "title": "What if healthcare treated people, not just problems?",
+            "text": "That one question is why sehatUP exists. Our founders asked it again and again, until they decided to build the answer.",
+            "scene": "question",
+            "stat": "",
+            "stat_label": ""
+          }
+        },
+        "chapter_3": {
+          "type": "chapter",
+          "settings": {
+            "label": "The idea",
+            "title": "Three systems, one plan.",
+            "text": "Ayurveda, Homeopathy and Allopathy usually work alone. We put doctors from all three together, so your plan is built around you and not around one system.",
+            "scene": "systems",
+            "stat": "",
+            "stat_label": ""
+          }
+        },
+        "chapter_4": {
+          "type": "chapter",
+          "settings": {
+            "label": "How we do it",
+            "title": "Private, simple and reachable.",
+            "text": "Start with a free Health Score on your phone. Your answers stay private, your kit arrives in a plain box, and our team is a WhatsApp message away.",
+            "scene": "easy",
+            "stat": "",
+            "stat_label": ""
+          }
+        },
+        "chapter_5": {
+          "type": "chapter",
+          "settings": {
+            "label": "Today",
+            "title": "Thousands of people, one clinic.",
+            "text": "We started with a question and a small team. Today, people across India trust sehatUP with their health, and we are only getting started.",
+            "scene": "today",
+            "stat": "25,000+",
+            "stat_label": "patients have trusted us"
+          }
+        }
+      },
+      "block_order": [
+        "chapter_1",
+        "chapter_2",
+        "chapter_3",
+        "chapter_4",
+        "chapter_5"
+      ],
+      "disabled": true,
+      "settings": {
+        "heading": "Our story",
+        "lead": "Why we are here, and how we got here.",
+        "section_bg": "#ffffff",
+        "padding_top": 88,
+        "padding_bottom": 88,
+        "padding_top_mobile": 44,
+        "padding_bottom_mobile": 44
+      }
+    },
+    "purpose": {
+      "type": "about-purpose",
+      "settings": {
+        "heading": "Our mission and our vision",
+        "mission_label": "Our mission",
+        "mission": "To help people make more informed choices about their health, with Ayurveda, Homeopathy and Modern medicine together on one platform.",
+        "mission_note": "",
+        "vision_label": "Our vision",
+        "vision": "A future where good healthcare is understood, trusted and within reach of everyone, whichever system of medicine they believe in.",
+        "vision_note": "",
+        "section_bg": "#faf7f5",
+        "padding_top": 80,
+        "padding_bottom": 80,
+        "padding_top_mobile": 44,
+        "padding_bottom_mobile": 44
+      }
+    },
+    "founders": {
+      "type": "about-founders",
+      "blocks": {
+        "founder1": {
+          "type": "founder",
+          "settings": {
+            "photo": "shopify://shop_images/Photo.webp",
+            "name": "Karan Bhargava",
+            "title": "Founder & CEO",
+            "about": "15+ years building digital health in India, and still asking the same question.",
+            "quote": "What if healthcare treated people, not just problems?"
+          }
+        },
+        "founder2": {
+          "type": "founder",
+          "settings": {
+            "photo": "shopify://shop_images/amit_sir_5e4ba3ea-0d53-4816-bf2b-b305b444b69e.webp",
+            "name": "Amit Singh Sandhu",
+            "title": "Co-founder & CMO",
+            "about": "A brand strategist who knows how shame and stigma keep people away from care.",
+            "quote": "Solutions shouldn't just exist. They should be understood, adopted and trusted."
+          }
+        }
+      },
+      "block_order": [
+        "founder1",
+        "founder2"
+      ],
+      "settings": {
+        "heading": "Meet the founders",
+        "section_bg": "#ffffff",
+        "padding_top": 64,
+        "padding_bottom": 80
+      }
+    },
+    "doctors": {
+      "type": "health-doctors",
+      "blocks": {
+        "doc_homeo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr._Shefali.webp",
+            "system": "Homeopathy",
+            "name": "Dr. Shefali Chhicholia",
+            "degree": "BHMS, MD (Homeopathy), 5 years experience",
+            "role": "Gentle, long-term care for hormones, periods, stamina and stress."
+          }
+        },
+        "doc_ayur": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+            "system": "Ayurveda",
+            "name": "Dr. Jayant Kumar",
+            "degree": "BAMS (Ayurveda), 5 years experience",
+            "role": "Looks for the root cause behind weight, energy and hormone problems."
+          }
+        },
+        "doc_allo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
+            "system": "Psychology",
+            "name": "Ms. Devika Chugh",
+            "degree": "Counselling Psychologist, 5 years experience",
+            "role": "Helps with the stress and worry that often sit behind a health problem."
+          }
+        }
+      },
+      "block_order": [
+        "doc_homeo",
+        "doc_ayur",
+        "doc_allo"
+      ],
+      "settings": {
+        "eyebrow": "The people behind your care",
+        "heading": "Meet Our Experts",
+        "subheading": "",
+        "footnote": "",
+        "button": "Meet Our Experts",
+        "button_link": "https://wa.me/918287006498?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor",
+        "button_style": "filled",
+        "background": "#faf7f5",
+        "padding_top": 88,
+        "padding_bottom": 80,
+        "accent_color": "#ee204a"
+      }
+    },
+    "commitment": {
+      "type": "about-promise",
+      "blocks": {
+        "promise_1": {
+          "type": "promise",
+          "settings": {
+            "icon": "shield",
+            "title": "Quality assured.",
+            "text": "AYUSH approved products and doctor-reviewed plans. No shortcuts.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "promise_2": {
+          "type": "promise",
+          "settings": {
+            "icon": "lock",
+            "title": "Privacy first.",
+            "text": "Your answers are encrypted, and your kit arrives in a plain box with nothing printed on it.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "promise_3": {
+          "type": "promise",
+          "settings": {
+            "icon": "chat",
+            "title": "Always reachable.",
+            "text": "Health doesn't clock out, and neither do we. Message us on WhatsApp whenever you need us.",
+            "link_label": "Chat with us on WhatsApp",
+            "link": "https://wa.me/918287006498?text=Hi%2C%20I%20have%20a%20question"
+          }
+        },
+        "promise_4": {
+          "type": "promise",
+          "settings": {
+            "icon": "wallet",
+            "title": "Easy to start.",
+            "text": "Confirm your order with just ₹50 and pay the rest on delivery, or pay in full online.",
+            "link_label": "",
+            "link": ""
+          }
+        }
+      },
+      "block_order": [
+        "promise_1",
+        "promise_2",
+        "promise_3",
+        "promise_4"
+      ],
+      "settings": {
+        "heading": "Our commitment to you",
+        "lead": "sehatUP is a clinic, not a supplement shop. This is how we look after you.",
+        "section_bg": "#ffffff",
+        "padding_top": 88,
+        "padding_bottom": 88,
+        "padding_top_mobile": 44,
+        "padding_bottom_mobile": 44
+      }
+    },
+    "featured": {
+      "type": "featured-in-custom",
+      "blocks": {
+        "logo_36UmaY": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Bw_healthcare-01.webp",
+            "name": "",
+            "link": ""
+          }
+        },
+        "logo_BJW6U3": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/The_week-01.webp",
+            "name": "",
+            "link": ""
+          }
+        },
+        "logo_rBJCRQ": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/United_news_of_india-01.webp",
+            "name": "",
+            "link": ""
+          }
+        },
+        "logo_qBkEgj": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Silicon_india-01.webp",
+            "name": "",
+            "link": ""
+          }
+        }
+      },
+      "block_order": [
+        "logo_36UmaY",
+        "logo_BJW6U3",
+        "logo_rBJCRQ",
+        "logo_qBkEgj"
+      ],
+      "name": "Featured in",
+      "settings": {
+        "heading": "sehatUP in the News",
+        "page_style": true,
+        "heading_size": 28,
+        "heading_color": "#2b2c2d",
+        "logo_max_width": 140,
+        "logo_spacing": 40,
+        "logo_opacity": 100,
+        "grayscale_amount": 0,
+        "scroll_speed": 30,
+        "pause_on_hover": true,
+        "tunnel_scale": 30,
+        "hover_zoom": 12,
+        "tunnel_fade": 55,
+        "background_color": "#ffffff",
+        "max_width": 1200,
+        "padding_top": 60,
+        "padding_bottom": 68
+      }
+    },
+    "cta": {
+      "type": "health-final-cta",
+      "settings": {
+        "section_bg": "#ffffff",
+        "heading": "Begin this Diwali by understanding your health.",
+        "subheading": "Take the first step towards understanding your overall well-being with sehatUP Health Score 360.",
+        "her_label": "Start for her",
+        "her_link": "shopify://pages/womens-wellness-questionnaire",
+        "him_label": "Start for him",
+        "him_link": "shopify://pages/mens-health-questionnaire",
+        "note": "No sign-up. Your answers stay private.",
+        "festive": true,
+        "festive_kicker": "Shubh Deepavali"
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "home_problem_Mq37PU",
+    "story_short",
+    "approach",
+    "journey",
+    "purpose",
+    "founders",
+    "doctors",
+    "commitment",
+    "featured",
+    "cta"
+  ]
+}

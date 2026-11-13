@@ -1,0 +1,1341 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "blocks_k7CD3w": {
+      "type": "hero-healthcare-banner",
+      "name": "Healthcare hero banner",
+      "settings": {
+        "layout_mode": "background-with-overlay-image",
+        "desktop_width_percent": 100,
+        "background_image": "shopify://shop_images/Diwali_Glow_at_the_Clinic_Reception.webp",
+        "background_image_size": "cover",
+        "background_position_x": "center",
+        "background_position_y": "center",
+        "background_shift_x": -4,
+        "background_overlay_opacity": 100,
+        "background_overlay_color": "#e62020",
+        "background_overlay_strength": 0,
+        "show_white_panel": false,
+        "white_panel_width": 45,
+        "white_panel_color": "#ffffff",
+        "white_panel_opacity": 10,
+        "white_panel_rounded": true,
+        "white_panel_border_radius": 20,
+        "foreground_image": "shopify://shop_images/doctors_image.webp",
+        "foreground_image_scale": 135,
+        "foreground_image_fit": "contain",
+        "foreground_position_x": "right",
+        "foreground_position_y": "bottom",
+        "foreground_offset_x": 3,
+        "foreground_offset_y": 0,
+        "foreground_trim_bottom": 0,
+        "hide_foreground_mobile": false,
+        "split_layout": false,
+        "mobile_crop_foreground": false,
+        "fg_text_clear": false,
+        "mobile_wash": 94,
+        "fg_grow": false,
+        "mobile_fg_height": 0,
+        "kicker": "",
+        "heading": "India’s First Integrated Digital Health Clinic",
+        "heading_red": "",
+        "heading_red_color": "#ee204a",
+        "subheading_prefix": "Find the real cause in",
+        "subheading_highlight": "60 seconds",
+        "subheading_highlight_color": "#ff4757",
+        "body_text": "<p>Talk to expert doctors about sexual, hormonal & weight concerns, privately and confidentially.</p>",
+        "body_max_em": 38,
+        "content_position": "left",
+        "content_max_width": 1400,
+        "content_text_max_width": 700,
+        "heading_size": 54,
+        "heading_weight": "700",
+        "heading_color": "#ffffff",
+        "subheading_size": 26,
+        "subheading_weight": "500",
+        "subheading_color": "#ffffff",
+        "body_size": 19,
+        "body_color": "#ffffff",
+        "text_shadow_enabled": true,
+        "festive_text": true,
+        "dark_text_fade": true,
+        "light_text_fade": false,
+        "button_1_text": "Start Free Assessment",
+        "button_1_link": "shopify://pages/health-score-360",
+        "button_1_style": "filled",
+        "button_1_bg_color": "#ff4757",
+        "button_1_text_color": "#ffffff",
+        "button_1_border_color": "#ff4757",
+        "button_1_hover_bg_color": "#e63946",
+        "button_1_hover_text_color": "#ffffff",
+        "button_1_hover_border_color": "#e63946",
+        "show_button_2": true,
+        "enable_doctor_new_tab": true,
+        "button_2_text": "Talk to a Doctor",
+        "button_2_link": "https://wa.me/918287006498?text=Hi%2C%20I%20need%20assistance",
+        "button_2_style": "outline",
+        "button_2_bg_color": "#ffffff",
+        "button_2_text_color": "#ffffff",
+        "button_2_border_color": "#ffffff",
+        "button_2_hover_bg_color": "#ffffff",
+        "button_2_hover_text_color": "#000000",
+        "button_2_hover_border_color": "#ffffff",
+        "note": "",
+        "trust_text": "Trusted by 25,000+ patients",
+        "rating": "4.5",
+        "trust_count": 4,
+        "trust_initials": "R, A, S, P, K",
+        "avatar_1": "shopify://shop_images/Warm_Portrait_with_Red_Dupatta.webp",
+        "avatar_2": "shopify://shop_images/Joyful_South_Asian_Man_Portrait.webp",
+        "avatar_3": "shopify://shop_images/Warm_Indian_Portrait_with_Embroidered_Details.webp",
+        "avatar_4": "shopify://shop_images/Joyful_Rooftop_Portrait.webp",
+        "button_layout": "horizontal",
+        "button_font_size": 14,
+        "button_font_weight": "600",
+        "button_padding_vertical": 14,
+        "button_padding_horizontal": 32,
+        "button_border_radius": 50,
+        "button_spacing": 32,
+        "desktop_height_vh": 62,
+        "section_min_height": 390,
+        "section_padding_top": 60,
+        "section_padding_bottom": 60,
+        "section_padding_horizontal": 40,
+        "content_spacing": 20,
+        "enable_mobile_overrides": false,
+        "section_min_height_mobile": 600,
+        "section_padding_top_mobile": 20,
+        "section_padding_bottom_mobile": 40,
+        "section_padding_horizontal_mobile": 16,
+        "mobile_content_alignment": "center",
+        "mobile_background_position_x": "center",
+        "mobile_background_position_y": "center",
+        "mobile_background_image": "shopify://shop_images/Warm_Diwali_Hallway_Glow.webp",
+        "mobile_bg_focus_x": 50,
+        "mobile_foreground_image": "shopify://shop_images/doctors_image.webp"
+      }
+    },
+    "diwali_lights": {
+      "type": "diwali-lights",
+      "blocks": {
+        "d1": {
+          "type": "diya",
+          "settings": {
+            "wish": "Energy",
+            "line": "Festive nights, without the afternoon slump."
+          }
+        },
+        "d2": {
+          "type": "diya",
+          "settings": {
+            "wish": "Sleep",
+            "line": "Deep rest, even after late celebrations."
+          }
+        },
+        "d3": {
+          "type": "diya",
+          "settings": {
+            "wish": "Stamina",
+            "line": "Strength for every puja, party and plan."
+          }
+        },
+        "d4": {
+          "type": "diya",
+          "settings": {
+            "wish": "Balance",
+            "line": "Hormones and moods that stay steady."
+          }
+        },
+        "d5": {
+          "type": "diya",
+          "settings": {
+            "wish": "Metabolism",
+            "line": "Enjoy the mithai. Keep your weight on track."
+          }
+        }
+      },
+      "block_order": [
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5"
+      ],
+      "settings": {
+        "show_countdown": false,
+        "diwali_date": "2026-11-08",
+        "heading": "Five diyas, five wishes",
+        "heading_accent": "for your health this Diwali.",
+        "subheading": "Every light is a wish from our doctors to you and your family.",
+        "fireworks": true,
+        "start_lit": true,
+        "hint": "Tap a diya to read its wish.",
+        "done_line": "Your diyas are still glowing.",
+        "gift_kicker": "Shubh Deepavali",
+        "gift_title": "Celebrate this Diwali with good health.",
+        "gift_code": "",
+        "gift_text": "Use this code at checkout on any order.",
+        "gift_text_nocode": "Choose who you are gifting good health to, and see the care kits our doctors made for them.",
+        "button_label": "Choose a gift",
+        "button_link": ""
+      }
+    },
+    "diwali_gifts": {
+      "type": "diwali-gifts",
+      "blocks": {
+        "p2": {
+          "type": "person",
+          "settings": {
+            "label": "Him",
+            "products": [
+              "shilajit-sticks-energy-stamina-kit",
+              "pure-himalayan-shilajit-resin-20g",
+              "p-e-e-d-integrated-kit",
+              "calm-curve-control",
+              "vaji-bati",
+              "vitamin-d3k2",
+              "ashwagandha-tablets",
+              "sehatup-shilajit-honey-sticks"
+            ],
+            "collection": "all-products",
+            "note": "Energy, stamina and our best sellers",
+            "all_link": "shopify://pages/for-him"
+          }
+        },
+        "p3": {
+          "type": "person",
+          "settings": {
+            "label": "Her",
+            "products": [
+              "her-menses-hormoniherb-combo-natural-period-care-hormonal-wellness",
+              "vitamin-d3k2",
+              "macho-metabolism",
+              "aloezy-intimate-foam-wash",
+              "harmen",
+              "slimtox-energy-tea",
+              "tea-for-period-cramps",
+              "garcenia-cambogia-drops"
+            ],
+            "collection": "all-products",
+            "note": "Hormone balance and everyday care",
+            "all_link": "shopify://pages/for-her"
+          }
+        }
+      },
+      "block_order": [
+        "p2",
+        "p3"
+      ],
+      "settings": {
+        "bg_image": "shopify://shop_images/dw-diyas.webp",
+        "kicker": "Diwali gifting",
+        "heading": "Who are you gifting",
+        "heading_accent": "good health to?",
+        "limit": 48,
+        "add_label": "Add to cart",
+        "view_label": "Choose",
+        "all_label": "View all gifts"
+      }
+    },
+    "reviews": {
+      "type": "health-trust",
+      "blocks": {
+        "jm_carousel": {
+          "type": "shopify://apps/judge-me-reviews/blocks/featured_carousel/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
+          "settings": {
+            "maxwidth": 1160
+          }
+        }
+      },
+      "block_order": [
+        "jm_carousel"
+      ],
+      "settings": {
+        "layout": "side",
+        "show_product": false,
+        "arrows": "sides",
+        "heading": "Real people. Real results.",
+        "subheading": "",
+        "rating_value": "",
+        "rating_line": "[rating] · Trusted by 25,000+ patients",
+        "accent_color": "#ee204a",
+        "review_products": [],
+        "min_rating": 4,
+        "review_hide": "",
+        "side_score": "4.5",
+        "mobile_heading": "Our patient stories",
+        "side_title": "Loved by people who took the first step.",
+        "side_text": "",
+        "side_note": "",
+        "side_link_label": "",
+        "side_link": "",
+        "trust_1": "",
+        "trust_1_text": "",
+        "trust_2": "",
+        "trust_2_text": "",
+        "trust_3": "",
+        "trust_3_text": "",
+        "trust_4": "",
+        "trust_4_text": ""
+      }
+    },
+    "integrated": {
+      "type": "home-integrated",
+      "settings": {
+        "heading": "Why choose",
+        "heading_red": "Integrated approach?",
+        "subheading": "",
+        "hide_sub_mobile": false,
+        "animate": true,
+        "animation_style": "spread",
+        "photo_zoom": 140,
+        "plan_label": "sehatUP's|Personalized|Plan",
+        "sys1_image": "shopify://shop_images/Ayurveda.webp",
+        "sys1_name": "Ayurveda",
+        "sys1_text": "Lifestyle balance, digestion and long-term healing.",
+        "sys2_image": "shopify://shop_images/homeopathy.webp",
+        "sys2_name": "Homeopathy",
+        "sys2_text": "Gentle, root-cause care with minimal side effects.",
+        "sys3_image": "shopify://shop_images/Modern_medicine.webp",
+        "sys3_name": "Modern medicine",
+        "sys3_text": "Accurate diagnosis and fast relief when needed.",
+        "closing_red": "",
+        "closing": "Together, they give you one complete [[360°]] care plan.",
+        "button": "Take free Health Score 360",
+        "button_link": "shopify://pages/health-score-360",
+        "section_bg": "#ffffff"
+      }
+    },
+    "combine": {
+      "type": "home-combine",
+      "blocks": {
+        "concern1": {
+          "type": "concern",
+          "settings": {
+            "name": "Weight gain",
+            "ayur": "Herbs and a daily routine that support digestion and metabolism.",
+            "homeo": "Remedies matched to your cravings, stress and sleep.",
+            "modern": "Looks for medical causes like thyroid or sugar problems, and gives faster support when needed.",
+            "plan": "One kit, a food and routine guide, and a monthly check-in as your weight changes."
+          }
+        },
+        "concern2": {
+          "type": "concern",
+          "settings": {
+            "name": "PCOS & periods",
+            "ayur": "Supports hormone balance and regular cycles over time.",
+            "homeo": "Gentle remedies for cramps, mood swings and PMS, matched to you.",
+            "modern": "Evidence-led advice on what your signs mean, and faster relief when you need it.",
+            "plan": "One plan for your cycle, skin and weight together, adjusted every month."
+          }
+        },
+        "concern3": {
+          "type": "concern",
+          "settings": {
+            "name": "Low stamina",
+            "ayur": "Herbs like Shilajit and Ashwagandha for energy and strength.",
+            "homeo": "Remedies for stress and performance worry, with minimal side effects.",
+            "modern": "Fast, proven support for performance, only when your doctor says it fits.",
+            "plan": "One private plan for energy, control and confidence, with a doctor you can message."
+          }
+        },
+        "concern4": {
+          "type": "concern",
+          "settings": {
+            "name": "Stress & sleep",
+            "ayur": "Calming herbs like Ashwagandha and a routine for deeper sleep.",
+            "homeo": "Remedies for restlessness and overthinking, matched to you.",
+            "modern": "Rules out other causes, with short-term relief only when a doctor says so.",
+            "plan": "One plan for calmer days and deeper sleep, and a counsellor if you want to talk."
+          }
+        }
+      },
+      "block_order": [
+        "concern1",
+        "concern2",
+        "concern3",
+        "concern4"
+      ],
+      "disabled": true,
+      "settings": {
+        "heading": "This isn't alternative medicine. It's complete medicine.",
+        "subheading": "We didn't pick one medical system. We joined the strongest parts of three, and your doctors choose the mix that fits you. Pick a concern to see how.",
+        "tabs_label": "Pick a concern",
+        "ayur_name": "Ayurveda",
+        "ayur_role": "Balance from the root",
+        "homeo_name": "Homeopathy",
+        "homeo_role": "Gentle and personal",
+        "modern_name": "Modern medicine",
+        "modern_role": "Clear answers, faster relief",
+        "plan_label": "Your plan",
+        "button": "Find your mix with the free Health Score",
+        "button_link": "shopify://pages/health-score-360",
+        "section_bg": "#ffffff"
+      }
+    },
+    "compare": {
+      "type": "home-compare",
+      "blocks": {
+        "row1": {
+          "type": "row",
+          "settings": {
+            "label": "Who looks at you",
+            "usual": "One doctor, one system",
+            "ours": "Ayurveda, Homeopathy & Modern Medicine experts, together"
+          }
+        },
+        "row2": {
+          "type": "row",
+          "settings": {
+            "label": "What gets treated",
+            "usual": "The symptom you came in with",
+            "ours": "Your health concerns with a personalized care plan"
+          }
+        },
+        "row3": {
+          "type": "row",
+          "settings": {
+            "label": "Your plan",
+            "usual": "The same prescription everyone gets",
+            "ours": "Care tailored to your needs and health assessment"
+          }
+        },
+        "row4": {
+          "type": "row",
+          "settings": {
+            "label": "After you pay",
+            "usual": "You're on your own",
+            "ours": "Monthly follow-ups and plan adjustments"
+          }
+        },
+        "row5": {
+          "type": "row",
+          "settings": {
+            "label": "Privacy",
+            "usual": "A waiting room full of people",
+            "ours": "Private online consultations and confidential care"
+          }
+        }
+      },
+      "block_order": [
+        "row1",
+        "row2",
+        "row3",
+        "row4",
+        "row5"
+      ],
+      "settings": {
+        "heading": "What makes sehatUP different",
+        "subheading": "One path, zero confusion. You don't run from doctor to doctor. <br>We bring the whole team to you.",
+        "usual_label": "The usual way",
+        "ours_label": "With sehatUP",
+        "button": "Start with the free Health Score",
+        "button_link": "shopify://pages/health-score-360",
+        "note": "",
+        "section_bg": "#faf7f5"
+      }
+    },
+    "help_finder": {
+      "type": "home-guide",
+      "blocks": {
+        "cat_him": {
+          "type": "category",
+          "settings": {
+            "title": "For men",
+            "text": "Stamina, weight and energy",
+            "image": "shopify://shop_images/Warm_Living_Room_Portrait.webp",
+            "image_asset": "him-problem-finishing.webp",
+            "focus": "center 25%",
+            "zoom": 100
+          }
+        },
+        "cat_her": {
+          "type": "category",
+          "settings": {
+            "title": "For women",
+            "text": "Periods, hormones and weight",
+            "image": "shopify://shop_images/Warm_Sunlit_Living_Room_Portrait.webp",
+            "image_asset": "",
+            "focus": "center 25%",
+            "zoom": 110
+          }
+        },
+        "cat_all": {
+          "type": "category",
+          "settings": {
+            "title": "For everyone",
+            "text": "Stress, sleep, digestion and immunity",
+            "image": "shopify://shop_images/Warm_Couple_Portrait_at_Home.webp",
+            "image_asset": "",
+            "focus": "center center",
+            "zoom": 120
+          }
+        },
+        "o1": {
+          "type": "option",
+          "settings": {
+            "category": "1",
+            "title": "Sexual wellness",
+            "text": "Stamina, performance and desire",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o2": {
+          "type": "option",
+          "settings": {
+            "category": "1",
+            "title": "Weight & metabolism",
+            "text": "Belly fat, slow metabolism, cravings",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o3": {
+          "type": "option",
+          "settings": {
+            "category": "1",
+            "title": "Energy & strength",
+            "text": "Tiredness, weakness, low drive",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o4": {
+          "type": "option",
+          "settings": {
+            "category": "2",
+            "title": "Periods, hormones & PCOS",
+            "text": "Irregular periods, PCOS signs, mood swings",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o5": {
+          "type": "option",
+          "settings": {
+            "category": "2",
+            "title": "Weight & metabolism",
+            "text": "Belly fat, slow metabolism, cravings",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o6": {
+          "type": "option",
+          "settings": {
+            "category": "2",
+            "title": "Doctor-designed kits",
+            "text": "Care kits chosen for women",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o7": {
+          "type": "option",
+          "settings": {
+            "category": "3",
+            "title": "Stress & anxiety",
+            "text": "Overthinking, restlessness, tension",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o8": {
+          "type": "option",
+          "settings": {
+            "category": "3",
+            "title": "Sleep",
+            "text": "Trouble falling asleep, light sleep, waking up tired",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o9": {
+          "type": "option",
+          "settings": {
+            "category": "3",
+            "title": "Digestion & bloating",
+            "text": "Gas, acidity, constipation",
+            "link": "/pages/health-score-360"
+          }
+        },
+        "o10": {
+          "type": "option",
+          "settings": {
+            "category": "3",
+            "title": "Low energy & immunity",
+            "text": "Tiredness, frequent colds, low resistance",
+            "link": "/pages/health-score-360"
+          }
+        }
+      },
+      "block_order": [
+        "cat_him",
+        "cat_her",
+        "cat_all",
+        "o1",
+        "o2",
+        "o3",
+        "o4",
+        "o5",
+        "o6",
+        "o7",
+        "o8",
+        "o9",
+        "o10"
+      ],
+      "settings": {
+        "heading": "What would you like",
+        "heading_red": "help with?",
+        "subheading": "Pick who it is for, then what is bothering you.",
+        "step1_title": "Who is this for?",
+        "step2_title": "What is bothering you?",
+        "back_label": "Choose again",
+        "more_kicker": "Not sure where to start?",
+        "more_label": "Take the 2-minute Health Score",
+        "more_link": "shopify://pages/health-score-360",
+        "photo_height": 92,
+        "section_bg": "#fffaf3"
+      }
+    },
+    "concerns": {
+      "type": "home-concerns",
+      "blocks": {
+        "concern1": {
+          "type": "concern",
+          "settings": {
+            "title": "Sexual wellness",
+            "text": "Stamina, performance and desire",
+            "who": "Men",
+            "link": "shopify://pages/health-score-360"
+          }
+        },
+        "concern2": {
+          "type": "concern",
+          "settings": {
+            "title": "Hormones & PCOS",
+            "text": "Irregular periods, PCOS signs, mood swings",
+            "who": "Women",
+            "link": "shopify://pages/health-score-360"
+          }
+        },
+        "concern3": {
+          "type": "concern",
+          "settings": {
+            "title": "Weight & metabolism",
+            "text": "Belly fat, slow metabolism, cravings",
+            "who": "Women & men",
+            "link": "shopify://pages/health-score-360"
+          }
+        },
+        "concern4": {
+          "type": "concern",
+          "settings": {
+            "title": "Stress & anxiety",
+            "text": "Overthinking, restlessness, tension",
+            "who": "Everyone",
+            "link": "shopify://pages/health-score-360"
+          }
+        },
+        "concern5": {
+          "type": "concern",
+          "settings": {
+            "title": "Sleep",
+            "text": "Trouble falling asleep, light sleep, waking up tired",
+            "who": "Everyone",
+            "link": "shopify://pages/health-score-360"
+          }
+        },
+        "concern6": {
+          "type": "concern",
+          "settings": {
+            "title": "Digestion & bloating",
+            "text": "Gas, acidity, constipation",
+            "who": "Everyone",
+            "link": "shopify://pages/health-score-360"
+          }
+        },
+        "concern7": {
+          "type": "concern",
+          "settings": {
+            "title": "Low energy",
+            "text": "Tiredness, weakness, low drive",
+            "who": "Everyone",
+            "link": "shopify://pages/health-score-360"
+          }
+        },
+        "concern8": {
+          "type": "concern",
+          "settings": {
+            "title": "Immunity",
+            "text": "Frequent colds, low resistance",
+            "who": "Everyone",
+            "link": "shopify://pages/health-score-360"
+          }
+        }
+      },
+      "block_order": [
+        "concern1",
+        "concern2",
+        "concern3",
+        "concern4",
+        "concern5",
+        "concern6",
+        "concern7",
+        "concern8"
+      ],
+      "disabled": true,
+      "settings": {
+        "heading": "What would you like",
+        "heading_red": "help with?",
+        "subheading": "Pick what feels closest. Our doctors look at the whole picture, because one problem often hides behind another.",
+        "more_kicker": "Not sure where to start?",
+        "more_label": "Take the 2-minute Health Score",
+        "more_link": "shopify://pages/health-score-360",
+        "show_arrows": true,
+        "section_bg": "#ffffff"
+      }
+    },
+    "journey": {
+      "type": "health-journey",
+      "settings": {
+        "eyebrow": "What happens after you start",
+        "accent_color": "#ee204a",
+        "heading": "From your first tap to feeling better",
+        "day_1": "Today",
+        "title_1": "Take your Health Score",
+        "text_1": "Free. No sign-up. Simple, honest questions about your body.",
+        "day_2": "Within 24 hours",
+        "title_2": "A doctor consults you",
+        "text_2": "Your score is reviewed together by Ayurveda, Homeopathy and Allopathy doctors, who talk to you in Hindi or English.",
+        "call_image": "shopify://shop_images/Dr._Shefali.webp",
+        "call_image_y": 12,
+        "call_name": "sehatUP Doctor",
+        "review_line": "Your score is reviewed by 3 doctors",
+        "doctor_1_image": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+        "doctor_1_label": "Ayurveda",
+        "doctor_2_image": "shopify://shop_images/Dr._Shefali.webp",
+        "doctor_2_label": "Homeopathy",
+        "doctor_3_image": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
+        "doctor_3_label": "Allopathy",
+        "day_3": "Day 3 to 5",
+        "title_3": "Your personalised kit arrives",
+        "text_3": "Only what your doctor chose for you, packed discreetly. Confirm with ₹50 and pay the rest on delivery, or pay in full online.",
+        "pay_line": "₹50 paid · rest on delivery",
+        "day_4": "Every month",
+        "title_4": "Your Health keeps improving",
+        "text_4": "A WhatsApp check-in each month. Most people notice first changes in 4 to 6 weeks, and your plan changes as your body responds.",
+        "chat_logo": "shopify://shop_images/Favicon_black.webp",
+        "chat_name": "sehatUP",
+        "chat_q": "Day 30: how is your sleep now?",
+        "chat_a": "Much better, thank you!"
+      }
+    },
+    "doctor_designed_kits_Wb6YeW": {
+      "type": "doctor-designed-kits",
+      "blocks": {
+        "kit_NgckGf": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row1",
+            "card_width": 60,
+            "card_bg": "#eeeeee",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Stress & Sleep Balance Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For calmness, focus and restful sleep.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "/pages/combos#stress-n-sleep-kit",
+            "combined_image": "shopify://shop_images/Stress_sleep_kit.webp",
+            "image_width": 390,
+            "image_height": 310,
+            "image_position_x": 25,
+            "image_scale_1165": 75,
+            "image_scale_1024": 70,
+            "image_scale_900": 80
+          }
+        },
+        "kit_N7cebx": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row1",
+            "card_width": 57,
+            "card_bg": "#f4f4f4",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Women’s Hormone Balance Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For mood swings, period issues and PCOS support.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "/pages/combos#hormone-kit",
+            "combined_image": "shopify://shop_images/women_Hormonal_balance.webp",
+            "image_width": 320,
+            "image_height": 380,
+            "image_position_x": 25,
+            "image_scale_1165": 75,
+            "image_scale_1024": 70,
+            "image_scale_900": 80
+          }
+        },
+        "kit_zXJzM6": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row2",
+            "card_width": 47,
+            "card_bg": "#d6e2f5",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Men’s Performance Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For stamina, confidence and daily energy.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "shopify://products/p-e-e-d-integrated-kit",
+            "combined_image": "shopify://shop_images/Man_performance_copy.webp",
+            "image_width": 300,
+            "image_height": 320,
+            "image_position_x": 15,
+            "image_scale_1165": 80,
+            "image_scale_1024": 75,
+            "image_scale_900": 100
+          }
+        },
+        "kit_HrArxC": {
+          "type": "kit",
+          "settings": {
+            "grid_row": "row2",
+            "card_width": 66,
+            "card_bg": "#ffd3d3",
+            "show_accent": false,
+            "accent_bg": "#f4f4f4",
+            "title": "Weight Management Kit",
+            "title_size": 28,
+            "title_weight": 700,
+            "title_color": "#1d1d1d",
+            "description": "For metabolism, appetite control and healthy fat-burning.",
+            "desc_size": 18,
+            "desc_weight": 700,
+            "desc_color": "#55555f",
+            "button_label": "Buy Now",
+            "button_link": "/pages/combos#weight-loss-kit",
+            "combined_image": "shopify://shop_images/Weight_management_kit_copy.webp",
+            "image_width": 410,
+            "image_height": 480,
+            "image_position_x": 30,
+            "image_scale_1165": 75,
+            "image_scale_1024": 70,
+            "image_scale_900": 80
+          }
+        }
+      },
+      "block_order": [
+        "kit_NgckGf",
+        "kit_N7cebx",
+        "kit_zXJzM6",
+        "kit_HrArxC"
+      ],
+      "name": "Doctor-Designed Care Kits",
+      "settings": {
+        "mobile_image_center": false,
+        "heading": "Doctor-Designed Diwali Care Kits",
+        "padding_top": 24,
+        "padding_bottom": 80
+      }
+    },
+    "doctors": {
+      "type": "health-doctors",
+      "blocks": {
+        "doc_homeo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr._Shefali.webp",
+            "system": "Homeopathy",
+            "name": "Dr. Shefali Chhicholia",
+            "degree": "BHMS, MD (Homeopathy), 5 years experience",
+            "role": "Gentle, long-term support for hormonal balance."
+          }
+        },
+        "doc_ayur": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+            "system": "Ayurveda",
+            "name": "Dr. Jayant Kumar",
+            "degree": "BAMS (Ayurveda), 5 years experience",
+            "role": "Looks for the root cause behind your symptoms."
+          }
+        },
+        "doc_allo": {
+          "type": "doctor",
+          "settings": {
+            "photo": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
+            "system": "Psychology",
+            "name": "Ms. Devika Chugh",
+            "degree": "Counselling Psychologist, 5 years experience",
+            "role": "Helps with stress, mood and worries that affect your health."
+          }
+        }
+      },
+      "block_order": [
+        "doc_homeo",
+        "doc_ayur",
+        "doc_allo"
+      ],
+      "settings": {
+        "eyebrow": "Who reviews your Health Score",
+        "heading": "Meet Our Medical Experts",
+        "subheading": "",
+        "footnote": "Our doctors wish you and your family a healthy, happy Diwali.",
+        "button": "",
+        "button_link": "",
+        "button_style": "auto",
+        "background": "#faf7f5",
+        "padding_top": 88,
+        "padding_bottom": 80,
+        "accent_color": "#ee204a"
+      }
+    },
+    "sehat_certs_BnB6xK": {
+      "type": "sehat-certs",
+      "blocks": {
+        "cert_a8gYxW": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/ayush_icon_e801f909-58ea-4802-a739-50b50a8d4717.webp",
+            "label": "AYUSH Approved"
+          }
+        },
+        "cert_RADLND": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/gmp_icon_dcae8791-da1a-420a-9c09-5b18a1f7cc49.webp",
+            "label": "GMP Certified"
+          }
+        },
+        "cert_X3an6h": {
+          "type": "cert",
+          "settings": {
+            "logo": "shopify://shop_images/doctor_icon_3e0459ff-0a96-4feb-92b6-7d547ee980a2.webp",
+            "label": "Verified Doctors"
+          }
+        }
+      },
+      "block_order": [
+        "cert_a8gYxW",
+        "cert_RADLND",
+        "cert_X3an6h"
+      ],
+      "settings": {
+        "section_bg": "#ffffff",
+        "heading": "Certified and doctor-checked",
+        "subheading": "What you take is made to approved standards and chosen by real doctors."
+      }
+    },
+    "progress_light": {
+      "type": "sehat-progress",
+      "blocks": {
+        "stat_1": {
+          "type": "stat",
+          "settings": {
+            "icon": "moon",
+            "value": "40%",
+            "label": "Better sleep"
+          }
+        },
+        "stat_2": {
+          "type": "stat",
+          "settings": {
+            "icon": "energy",
+            "value": "30%",
+            "label": "Improved energy"
+          }
+        },
+        "stat_3": {
+          "type": "stat",
+          "settings": {
+            "icon": "calm",
+            "value": "25%",
+            "label": "Reduced stress"
+          }
+        },
+        "stat_4": {
+          "type": "stat",
+          "settings": {
+            "icon": "heart",
+            "value": "60%",
+            "label": "Wellness Improved"
+          }
+        }
+      },
+      "block_order": [
+        "stat_1",
+        "stat_2",
+        "stat_3",
+        "stat_4"
+      ],
+      "settings": {
+        "heading": "Real People.",
+        "highlight": "Real Progress.",
+        "rotate_prefix": "Real",
+        "rotate_words": "People.|Progress.",
+        "rotate_seconds": 2.5,
+        "subheading": "",
+        "note": "",
+        "style": "rows",
+        "overlap": 0,
+        "overlap_mobile": 0,
+        "glow": false,
+        "glow_left": "#f8e1e6",
+        "glow_right": "#f3e4d8",
+        "dots": true,
+        "card_tint": "#fdf0f2",
+        "count_up": true,
+        "background_color": "#ffffff",
+        "accent_color": "#ee204a",
+        "padding_top": 40,
+        "padding_bottom": 16,
+        "padding_top_mobile": 28,
+        "padding_bottom_mobile": 28
+      }
+    },
+    "numbers": {
+      "type": "home-numbers",
+      "blocks": {
+        "stat1": {
+          "type": "stat",
+          "settings": {
+            "before": "",
+            "number": "25,000",
+            "after": "+",
+            "label": "patients have trusted us"
+          }
+        },
+        "stat2": {
+          "type": "stat",
+          "settings": {
+            "before": "",
+            "number": "4.5",
+            "after": "/5",
+            "label": "average rating from our patients"
+          }
+        },
+        "stat3": {
+          "type": "stat",
+          "settings": {
+            "before": "",
+            "number": "50",
+            "after": "+",
+            "label": "doctors and health coaches in our network"
+          }
+        },
+        "stat4": {
+          "type": "stat",
+          "settings": {
+            "before": "",
+            "number": "24",
+            "after": "h",
+            "label": "for a doctor to call you after your Health Score"
+          }
+        }
+      },
+      "block_order": [
+        "stat1",
+        "stat2",
+        "stat3",
+        "stat4"
+      ],
+      "disabled": true,
+      "settings": {
+        "heading": "Where Indian healthcare is heading.",
+        "lead": "India's One Nation One Health vision aims to bring traditional and modern medicine together by 2030. sehatUP was built for exactly that: Ayurveda, Homeopathy and Modern medicine in one online clinic, open to anyone with a phone.",
+        "tags": "AYUSH approved products, GMP certified, Verified doctors, Featured in The Week and BW Healthcare",
+        "source": ""
+      }
+    },
+    "founders": {
+      "type": "home-founders",
+      "blocks": {
+        "founder1": {
+          "type": "founder",
+          "settings": {
+            "photo": "shopify://shop_images/Photo.webp",
+            "name": "Karan Bhargava",
+            "title": "Founder & CEO"
+          }
+        },
+        "founder2": {
+          "type": "founder",
+          "settings": {
+            "photo": "shopify://shop_images/amit_sir_5e4ba3ea-0d53-4816-bf2b-b305b444b69e.webp",
+            "name": "Amit Singh Sandhu",
+            "title": "Co-founder & CMO"
+          }
+        },
+        "video1": {
+          "type": "video",
+          "settings": {
+            "video": "https://www.youtube.com/watch?v=_zMOKpxf__o",
+            "title": "Future of Healthcare",
+            "upload_date": "2025-09-23T03:31:27-07:00",
+            "description": ""
+          }
+        },
+        "video2": {
+          "type": "video",
+          "settings": {
+            "video": "https://www.youtube.com/watch?v=nnMmHWpuZz0",
+            "title": "Why we built sehatUP",
+            "upload_date": "2025-09-02T06:34:00-07:00",
+            "description": ""
+          }
+        },
+        "video3": {
+          "type": "video",
+          "settings": {
+            "video": "https://www.youtube.com/watch?v=BFIT6rw6HB4",
+            "title": "Before You Try Ozempic .",
+            "upload_date": "2025-09-28T22:43:10-07:00",
+            "description": ""
+          }
+        }
+      },
+      "block_order": [
+        "founder1",
+        "founder2",
+        "video1",
+        "video2",
+        "video3"
+      ],
+      "settings": {
+        "heading": "Why We Started sehatUP",
+        "story": "<p>sehatUP began with a simple aim to make healthcare easier to understand and better connected. To make healthcare choices easier to understand, we placed Ayurveda, Homeopathy, and Modern Medicine on a single platform. Our mission is to help people make more informed choices about their health.</p>",
+        "more_label": "Read our story",
+        "more_link": "shopify://pages/about-us",
+        "show_more_videos": false,
+        "video_note": "Watch our founders on why we built sehatUP",
+        "play_label": "Play video",
+        "section_bg": "#ffffff"
+      }
+    },
+    "featured": {
+      "type": "featured-in-custom",
+      "blocks": {
+        "logo_L9Lck6": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Bw_healthcare-01.webp",
+            "name": "",
+            "link": "https://www.bwhealthcareworld.com/article/health-tech-startup-sehatup-launches-india%E2%80%99s-first-integrated-digital-health-clinic-536987"
+          }
+        },
+        "logo_QAm76L": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/The_week-01.webp",
+            "name": "",
+            "link": "https://www.theweek.in/news/sci-tech/2024/10/22/india-s-first-integrated-digital-clinic-sehatup-aims-to-deliver-.html"
+          }
+        },
+        "logo_Jharff": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/United_news_of_india-01.webp",
+            "name": "",
+            "link": "https://web.archive.org/web/20250118230824/https://www.uniindia.com/~/health-startup-sehatup-launches-integrated-digital-health-clinic/Business%20Economy/news/3310240.html"
+          }
+        },
+        "logo_xEQpyr": {
+          "type": "logo",
+          "settings": {
+            "logo": "shopify://shop_images/Silicon_india-01.webp",
+            "name": "",
+            "link": "https://www.siliconindia.com/news/sehatup-launches-india-s-first-integrated-digital-health-clinic-nwid-47297.html"
+          }
+        }
+      },
+      "block_order": [
+        "logo_L9Lck6",
+        "logo_QAm76L",
+        "logo_Jharff",
+        "logo_xEQpyr"
+      ],
+      "name": "Featured in",
+      "settings": {
+        "heading": "Featured In",
+        "page_style": true,
+        "heading_size": 28,
+        "heading_color": "#2b2c2d",
+        "logo_max_width": 140,
+        "logo_spacing": 40,
+        "logo_opacity": 100,
+        "grayscale_amount": 0,
+        "scroll_speed": 30,
+        "pause_on_hover": true,
+        "tunnel_scale": 30,
+        "hover_zoom": 12,
+        "tunnel_fade": 55,
+        "background_color": "#ffffff",
+        "max_width": 1200,
+        "padding_top": 24,
+        "padding_bottom": 20
+      }
+    },
+    "faq": {
+      "type": "health-faq",
+      "blocks": {
+        "faq_aRqCW3": {
+          "type": "question",
+          "settings": {
+            "question": "How can I start my care plan?",
+            "answer": "<p>After your purchase, our doctors will conduct a comprehensive evaluation of your concerns, medical history, and lifestyle to customize the plan to meet your specific needs.</p>"
+          }
+        },
+        "faq_zJydFN": {
+          "type": "question",
+          "settings": {
+            "question": "Is my information confidential?",
+            "answer": "<p>Confidentiality and clarity are our priorities. Your data is held in strict confidence, and the information you share will solely be utilized for transparent communication and to deliver effective care.</p>"
+          }
+        },
+        "faq_KNcXU4": {
+          "type": "question",
+          "settings": {
+            "question": "Are the products safe?",
+            "answer": "<p>Our products are approved by AYUSH. All our products are formulated by experts and are safe to use, and free from harmful chemicals.</p>"
+          }
+        },
+        "faq_WCKbh4": {
+          "type": "question",
+          "settings": {
+            "question": "Is my treatment plan customized to my needs?",
+            "answer": "<p>The plans provided offer a glimpse of what you can anticipate in your customized plan, but every individual's needs vary, and our doctors excel in leading you toward your unique journey to well-being.</p>"
+          }
+        },
+        "faq_QKUGTj": {
+          "type": "question",
+          "settings": {
+            "question": "Do I have to pay for doctor consultation?",
+            "answer": "<p>Your doctor consultation is included at no additional cost with your care plan.</p>"
+          }
+        },
+        "faq_Ddc4X7": {
+          "type": "question",
+          "settings": {
+            "question": "Are medications part of the program?",
+            "answer": "<p>Depending on the diagnosis, our doctors/nutritionists may prescribe medications as part of the treatment plan.<br/>These are selected based on individual needs and may include supplements, prescriptions, or other suitable options.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "faq_aRqCW3",
+        "faq_zJydFN",
+        "faq_KNcXU4",
+        "faq_WCKbh4",
+        "faq_QKUGTj",
+        "faq_Ddc4X7"
+      ],
+      "settings": {
+        "section_bg": "#faf7f5",
+        "heading": "Frequently Asked Questions",
+        "subheading": "",
+        "contact_text": "Ask us on WhatsApp",
+        "contact_link": "https://wa.me/918287006498?text=Hi%2C%20I%20have%20a%20question",
+        "open_first": true,
+        "shop_label": "",
+        "shop_1_text": "",
+        "shop_1_link": "",
+        "shop_2_text": "",
+        "shop_2_link": "",
+        "shop_3_text": "",
+        "shop_3_link": "",
+        "accent_color": "#ee204a"
+      }
+    },
+    "blog": {
+      "type": "featured-blog",
+      "name": "t:sections.featured-blog.presets.name",
+      "settings": {
+        "blog": "news",
+        "heading": "<strong>Blogs</strong>",
+        "heading_size": "h2",
+        "columns_desktop": 3,
+        "show_image": true,
+        "show_excerpt": true,
+        "show_date": true,
+        "show_view_all": true,
+        "view_all_text": "Read All Blogs",
+        "card_radius": 16,
+        "padding_top": 12,
+        "padding_bottom": 80
+      }
+    },
+    "cta": {
+      "type": "health-final-cta",
+      "settings": {
+        "festive": true,
+        "festive_kicker": "Shubh Deepavali",
+        "section_bg": "#faf7f5",
+        "heading": "Begin this Diwali with 2 minutes for your health.",
+        "subheading": "Take the free Health Score. A doctor calls you within 24 hours.",
+        "her_label": "Start for her",
+        "her_link": "shopify://pages/womens-wellness-questionnaire",
+        "him_label": "Start for him",
+        "him_link": "shopify://pages/mens-health-questionnaire",
+        "note": "No sign-up. Your answers stay private."
+      }
+    },
+    "video": {
+      "type": "floating-product-video",
+      "name": "Floating video",
+      "settings": {
+        "enable_video": true,
+        "video_source": "link",
+        "dock_preview_url": "",
+        "video_url": "https://cdn.shopify.com/videos/c/o/v/80f74117a12b4fc9b55b38481ae0dad5.mp4",
+        "dock_side": "left",
+        "dock_bottom": 32,
+        "cta_label": "Add to cart",
+        "accent_color": "#ee204a"
+      }
+    }
+  },
+  "order": [
+    "blocks_k7CD3w",
+    "diwali_lights",
+    "diwali_gifts",
+    "reviews",
+    "integrated",
+    "combine",
+    "compare",
+    "help_finder",
+    "concerns",
+    "journey",
+    "doctor_designed_kits_Wb6YeW",
+    "doctors",
+    "sehat_certs_BnB6xK",
+    "progress_light",
+    "numbers",
+    "founders",
+    "featured",
+    "faq",
+    "blog",
+    "cta",
+    "video"
+  ]
+}

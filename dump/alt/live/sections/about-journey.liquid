@@ -1,0 +1,113 @@
+{%- comment -%}
+  About Us: our story. Heading and intro on the left; on the right the chapters
+  read down a thin line, each with its short tag, a title and a few lines. The
+  last chapter can end in one big number. No drawings, no scroll effects.
+  Phones: one column, the line runs down the left.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #ajr-{{ section.id }} { --ink: #1d1d1d; --mute: #5f5a56; --line: #e3d9d1; --red: #d81f48; background: {{ s.section_bg }}; color: var(--ink); font-family: 'Montserrat', sans-serif; padding: {{ s.padding_top }}px 0 {{ s.padding_bottom }}px; }
+  #ajr-{{ section.id }} * { box-sizing: border-box; letter-spacing: normal; }
+  #ajr-{{ section.id }} .ajr__in { max-width: 1120px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+  #ajr-{{ section.id }} .ajr__head { position: sticky; top: 112px; }
+  #ajr-{{ section.id }} .ajr__h { margin: 0 0 14px; font: 800 clamp(30px, 3.6vw, 48px)/1.08 'Montserrat', sans-serif; letter-spacing: -.025em; color: var(--ink); }
+  #ajr-{{ section.id }} .ajr__lead { margin: 0; max-width: 22em; font: 400 clamp(16px, 1.3vw, 18px)/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #ajr-{{ section.id }} .ajr__list { list-style: none; margin: 0; padding: 0; position: relative; }
+  #ajr-{{ section.id }} .ajr__list::before { content: ''; position: absolute; left: 5px; top: 10px; bottom: 10px; width: 1px; background: var(--line); }
+  #ajr-{{ section.id }} .ajr__item { position: relative; padding: 0 0 clamp(28px, 3.2vw, 44px) 36px; }
+  #ajr-{{ section.id }} .ajr__item:last-child { padding-bottom: 0; }
+  #ajr-{{ section.id }} .ajr__item::before { content: ''; position: absolute; left: 0; top: 5px; width: 11px; height: 11px; border-radius: 50%; background: #fff; border: 2px solid var(--red); }
+  #ajr-{{ section.id }} .ajr__item:last-child::before { background: var(--red); }
+  #ajr-{{ section.id }} .ajr__tag { margin: 0 0 6px; font: 600 14px/1.3 'Montserrat', sans-serif; color: var(--red); }
+  #ajr-{{ section.id }} .ajr__t { margin: 0 0 8px; font: 800 clamp(20px, 1.9vw, 26px)/1.25 'Montserrat', sans-serif; letter-spacing: -.015em; color: var(--ink); text-wrap: balance; }
+  #ajr-{{ section.id }} .ajr__x { margin: 0; max-width: 36em; font: 400 clamp(15px, 1.2vw, 17px)/1.65 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #ajr-{{ section.id }} .ajr__stat { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 16px 0 0; }
+  #ajr-{{ section.id }} .ajr__stat b { font: 800 clamp(40px, 4.6vw, 64px)/1 'Montserrat', sans-serif; letter-spacing: -.03em; color: var(--red); }
+  #ajr-{{ section.id }} .ajr__stat span { font: 600 15px/1.4 'Montserrat', sans-serif; color: var(--ink); }
+  @media (max-width: 899.98px) {
+    #ajr-{{ section.id }} .ajr__in { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+    #ajr-{{ section.id }} .ajr__head { position: static; }
+  }
+  @media (max-width: 749.98px) {
+    #ajr-{{ section.id }} { padding-top: {{ s.padding_top_mobile }}px; padding-bottom: {{ s.padding_bottom_mobile }}px; }
+    #ajr-{{ section.id }} .ajr__h { font-size: 30px; }
+    #ajr-{{ section.id }} .ajr__item { padding-left: 30px; }
+  }
+  @media (min-width: 1680px) { #ajr-{{ section.id }} .ajr__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #ajr-{{ section.id }} .ajr__in { zoom: 1.25; } }
+  @media (min-width: 2240px) { #ajr-{{ section.id }} .ajr__in { zoom: 1.45; } }
+  @media (min-width: 2560px) { #ajr-{{ section.id }} .ajr__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #ajr-{{ section.id }} .ajr__in { zoom: 2; } }
+  @media (min-width: 3840px) { #ajr-{{ section.id }} .ajr__in { zoom: 2.4; } }
+</style>
+
+<section id="ajr-{{ section.id }}">
+  <div class="ajr__in">
+    <div class="ajr__head">
+      <h2 class="ajr__h">{{ s.heading }}</h2>
+      {%- if s.lead != blank -%}<p class="ajr__lead">{{ s.lead }}</p>{%- endif -%}
+    </div>
+    <ol class="ajr__list">
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        <li class="ajr__item" {{ block.shopify_attributes }}>
+          {%- if b.label != blank -%}<p class="ajr__tag">{{ b.label }}</p>{%- endif -%}
+          <h3 class="ajr__t">{{ b.title }}</h3>
+          {%- if b.text != blank -%}<p class="ajr__x">{{ b.text }}</p>{%- endif -%}
+          {%- if b.stat != blank -%}<p class="ajr__stat"><b>{{ b.stat }}</b>{%- if b.stat_label != blank -%}<span>{{ b.stat_label }}</span>{%- endif -%}</p>{%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ol>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "About: our story",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Our story" },
+    { "type": "textarea", "id": "lead", "label": "Line under the heading", "default": "Why we are here, and how we got here." },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" },
+    { "type": "range", "id": "padding_top", "label": "Space above", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 88 },
+    { "type": "range", "id": "padding_bottom", "label": "Space below", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 88 },
+    { "type": "range", "id": "padding_top_mobile", "label": "Space above on phones", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 44 },
+    { "type": "range", "id": "padding_bottom_mobile", "label": "Space below on phones", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 44 }
+  ],
+  "blocks": [
+    {
+      "type": "chapter",
+      "name": "Chapter",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Small line above the title", "info": "A year or a short tag, e.g. 2021 or The problem. Optional." },
+        { "type": "text", "id": "title", "label": "Title", "default": "Chapter title" },
+        { "type": "textarea", "id": "text", "label": "Text" },
+        { "type": "select", "id": "scene", "label": "Drawing", "default": "voices", "options": [
+          { "value": "voices", "label": "Many voices, one person" },
+          { "value": "question", "label": "One question" },
+          { "value": "systems", "label": "Three systems, one plan" },
+          { "value": "easy", "label": "Simple and private" },
+          { "value": "today", "label": "People we look after" },
+          { "value": "plain", "label": "Simple plus" }
+        ] },
+        { "type": "image_picker", "id": "image", "label": "Or your own photo", "info": "Replaces the drawing. Landscape photos fit best." },
+        { "type": "text", "id": "stat", "label": "Big number (optional)", "info": "e.g. 25,000+" },
+        { "type": "text", "id": "stat_label", "label": "Under the number" }
+      ]
+    }
+  ],
+  "max_blocks": 8,
+  "presets": [
+    {
+      "name": "About: our story",
+      "blocks": [
+        { "type": "chapter", "settings": { "label": "Where it began", "title": "Everyone had advice. No one had direction.", "text": "Google said one thing. A doctor said another. A wellness influencer said the opposite. The people we met were not short of medicine. They were short of someone who looked at the whole of them.", "scene": "voices" } },
+        { "type": "chapter", "settings": { "label": "The question", "title": "What if healthcare treated people, not just problems?", "text": "That one question is why sehatUP exists. Our founders asked it again and again, until they decided to build the answer.", "scene": "question" } },
+        { "type": "chapter", "settings": { "label": "The idea", "title": "Three systems, one plan.", "text": "Ayurveda, Homeopathy and Allopathy usually work alone. We put doctors from all three together, so your plan is built around you and not around one system.", "scene": "systems" } },
+        { "type": "chapter", "settings": { "label": "How we do it", "title": "Private, simple and reachable.", "text": "Start with a free Health Score on your phone. Your answers stay private, your kit arrives in a plain box, and our team is a WhatsApp message away.", "scene": "easy" } },
+        { "type": "chapter", "settings": { "label": "Today", "title": "Thousands of people, one clinic.", "text": "We started with a question and a small team. Today, people across India trust sehatUP with their health, and we are only getting started.", "scene": "today", "stat": "25,000+", "stat_label": "patients have trusted us" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

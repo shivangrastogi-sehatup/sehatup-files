@@ -81,21 +81,21 @@
         "announcement_M4zJxY": {
           "type": "announcement",
           "settings": {
-            "icon": "shopify://shop_images/announcement_bar_1.webp",
+            "icon": "shopify://shop_images/free-shipping.webp",
             "text": "Free Shipping in Prepaid Orders"
           }
         },
         "announcement_mPiwRL": {
           "type": "announcement",
           "settings": {
-            "icon": "shopify://shop_images/announcement_bar_2.webp",
+            "icon": "shopify://shop_images/shield.webp",
             "text": "100% Trusted"
           }
         },
         "announcement_JYptq8": {
           "type": "announcement",
           "settings": {
-            "icon": "shopify://shop_images/announcement_bar_3.webp",
+            "icon": "shopify://shop_images/doctorIcon.webp",
             "text": "Verified Doctors"
           }
         }
@@ -110,8 +110,8 @@
         "scroll_speed": 30,
         "bg_desktop": "#1c1c1c",
         "padding_desktop": 8,
-        "font_desktop": 15,
-        "icon_desktop": 16,
+        "font_desktop": 17,
+        "icon_desktop": 24,
         "gap_desktop": 60,
         "bg_tablet": "#1c1c1c",
         "padding_tablet": 8,
@@ -120,8 +120,8 @@
         "gap_tablet": 50,
         "bg_mobile": "#1c1c1c",
         "padding_mobile": 8,
-        "font_mobile": 11,
-        "icon_mobile": 16,
+        "font_mobile": 13,
+        "icon_mobile": 24,
         "gap_mobile": 40
       }
     },
@@ -191,6 +191,9 @@
         "her_image": "shopify://shop_images/Smiling_Woman_in_Raspberry_Blouse_copy.webp",
         "him_image": "shopify://shop_images/Smiling_Man_in_Green_Overshirt.webp",
         "search_placeholder": "Search for weight, energy, stress",
+        "popular_collection": "",
+        "popular_heading": "Best sellers",
+        "popular_count": 6,
         "whatsapp": "919355539355"
       }
     },

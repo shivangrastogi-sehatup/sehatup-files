@@ -18,8 +18,6 @@
 <style>
   #shopify-section-{{ section.id }} {
     --ftr-gap: {{ s.logo_spacing }}px;
-    --ftr-shift: 0px;
-    --ftr-dur: {{ s.scroll_speed }}s;
   }
 
   .ftr-{{ sid }} {
@@ -48,6 +46,7 @@
     overflow: hidden;
     width: 100%;
     padding: 24px 0;
+    transform: translateZ(0);
     --ftr-fade: clamp(48px, 10%, 160px);
     -webkit-mask-image: linear-gradient(to right,
       transparent 0, #000 var(--ftr-fade),
@@ -66,21 +65,12 @@
     width: max-content;
     will-change: transform;
   }
-  .ftr-track-{{ sid }}.is-scrolling {
-    animation: ftr-scroll-{{ sid }} var(--ftr-dur) linear infinite;
-  }
   {%- comment -%}
     No animation-play-state here. Freezing on hover snaps from full speed to
     dead stop; the script eases the playback rate instead, which also gives a
     moving logo time to settle before you click it.
   {%- endcomment -%}
 
-  /* Shift by an exact pixel multiple of one set, set from JS. A -50% keyframe
-     only lines up when the track happens to hold exactly two sets. */
-  @keyframes ftr-scroll-{{ sid }} {
-    from { transform: translate3d(0, 0, 0); }
-    to   { transform: translate3d(calc(-1 * var(--ftr-shift)), 0, 0); }
-  }
 
   /* Logos sit straight on the section background — no tile, no card. They only
      scale and fade with distance from the centre, so the ends read as further
@@ -88,7 +78,6 @@
   .ftr-item-{{ sid }} {
     flex: 0 0 auto;
     transform-origin: 50% 50%;
-    will-change: transform, opacity;
   }
 
   .ftr-item-{{ sid }} img {
@@ -188,7 +177,6 @@
   @media (min-width: 3840px) { .ftr-{{ sid }}.ftr--page .ftr-inner-{{ sid }} { zoom: 2.4; } }
 
   @media (prefers-reduced-motion: reduce) {
-    .ftr-track-{{ sid }}.is-scrolling { animation: none; }
     .ftr-track-{{ sid }} { justify-content: center; margin: 0 auto; }
     /* Colour still responds to hover; only the movement is dropped. */
     .ftr-item-{{ sid }} img { transition: opacity .3s ease, filter .3s ease; }
@@ -254,6 +242,11 @@
   // scrolled, or given a per-frame transform.
   var gridQuery = window.matchMedia('(max-width: 599.98px)');
   function isGrid() { return gridQuery.matches; }
+  // Safari repaints the masked strip on every per-logo style write, which is
+  // what flickered and blocked page scrolling, so it gets the plain scroll.
+  var ua = navigator.userAgent;
+  var webkit = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|Android/.test(ua);
+  var scrollAnim = null, lastW = -1;
 
   function clearInline() {
     var nodes = track.querySelectorAll('[data-ftr-item]');
@@ -268,7 +261,8 @@
   }
 
   function build() {
-    track.classList.remove('is-scrolling');
+    if (scrollAnim) { scrollAnim.cancel(); scrollAnim = null; }
+    lastW = wrap.offsetWidth;
     var clones = track.querySelectorAll('[data-ftr-clone]');
     for (var i = 0; i < clones.length; i++) clones[i].remove();
 
@@ -315,14 +309,12 @@
     track.appendChild(frag);
 
     shiftPx = period * k;
-    track.style.setProperty('--ftr-shift', shiftPx + 'px');
-    // Scale the duration with k so the visual speed stays what the merchant set,
-    // however many copies it took to fill the screen.
-    track.style.setProperty('--ftr-dur', (BASE * k) + 's');
-
-    // Restart cleanly so a rebuild doesn't resume mid-way through the old shift.
-    void track.offsetWidth;
-    track.classList.add('is-scrolling');
+    // Shift by an exact pixel multiple of one set. Scale the duration with k so
+    // the visual speed stays what the merchant set.
+    scrollAnim = track.animate(
+      [{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(' + (-shiftPx) + 'px,0,0)' }],
+      { duration: BASE * k * 1000, iterations: Infinity, easing: 'linear' }
+    );
 
     startDepth();
   }
@@ -339,7 +331,7 @@
 
   function startDepth() {
     if (depthRaf) cancelAnimationFrame(depthRaf);
-    if (reduced || isGrid() || (SCALE <= 0 && FADE <= 0)) { clearInline(); return; }
+    if (reduced || isGrid() || webkit || (SCALE <= 0 && FADE <= 0)) { clearInline(); return; }
 
     var nodes = track.querySelectorAll('[data-ftr-item]');
     var cache = [];
@@ -369,7 +361,7 @@
         // Reading getComputedStyle(track).transform instead forces a style
         // recalc every frame, right after this loop has written to dozens of
         // nodes — that read-after-write is what made the strip judder.
-        var a = track.getAnimations()[0];
+        var a = scrollAnim;
         var prog = 0;
         if (a && a.effect) {
           var ct = a.effect.getComputedTiming();
@@ -424,7 +416,7 @@
     var EASE = 0.12;   // per frame, ~500ms to settle
 
     function anim() {
-      return track.getAnimations()[0] || null;
+      return scrollAnim;
     }
     function apply(v) {
       var a = anim();
@@ -446,7 +438,7 @@
       raf = requestAnimationFrame(tick);
     }
 
-    function stop() { if (armed) to(0); }
+    function stop(e) { if (e && e.pointerType && e.pointerType !== 'mouse') return; if (armed) to(0); }
     function go() { armed = true; to(1); }
 
     wrap.addEventListener('pointerenter', stop);
@@ -477,7 +469,7 @@
   {%- endif -%}
 
   var t;
-  function rebuild() { clearTimeout(t); t = setTimeout(build, 150); }
+  function rebuild() { clearTimeout(t); t = setTimeout(function () { if (wrap.offsetWidth !== lastW) build(); }, 150); }
 
   whenImagesSettle(build);
 

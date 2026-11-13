@@ -1,0 +1,27 @@
+/* Shared swipe row, used by the doctors and the care kits.
+   Put class "sh-swipe" on the row that holds the cards: on phones (under 750px)
+   it becomes a sideways swipe row with snapping and no scrollbar, the next card
+   peeking in. Add "sh-swipe--tablet" to swipe on tablets (750 to 1099px) too.
+   Direct children are the cards. Tune with CSS variables on the row:
+   --sw-pad (side padding), --sw-gap, --sw-card (card width, phones),
+   --sw-pad-t, --sw-gap-t, --sw-card-t (the same for tablets). */
+@media (max-width: 749.98px) {
+  .sh-swipe {
+    display: flex; gap: var(--sw-gap, 12px); overflow-x: auto;
+    padding: 4px var(--sw-pad, 16px) 18px;
+    scroll-snap-type: x mandatory; scroll-padding: 0 var(--sw-pad, 16px);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .sh-swipe::-webkit-scrollbar { display: none; }
+  .sh-swipe > * { flex: 0 0 var(--sw-card, 78%); min-width: 0; scroll-snap-align: start; }
+}
+@media (min-width: 750px) and (max-width: 1099.98px) {
+  .sh-swipe--tablet {
+    display: flex; gap: var(--sw-gap-t, 20px); overflow-x: auto;
+    padding: 4px var(--sw-pad-t, 24px) 22px;
+    scroll-snap-type: x mandatory; scroll-padding: 0 var(--sw-pad-t, 24px);
+    scrollbar-width: none;
+  }
+  .sh-swipe--tablet::-webkit-scrollbar { display: none; }
+  .sh-swipe--tablet > * { flex: 0 0 var(--sw-card-t, max(calc((88% - 20px) / 2.15), 290px)); min-width: 0; scroll-snap-align: start; }
+}

@@ -2,7 +2,7 @@
   Home: the problem, told the way people live it. Left: heading and "the
   real issue". Right: a short chat where everyone gives different advice
   (Google, a doctor, an influencer, a relative...), ending with the visitor's
-  own question in red. Bubbles appear one after another on first view.
+  own question in red. The section fades up once, all together, on first view.
   Voices come from a textarea, one "Who|What they say" per line.
 {%- endcomment -%}
 {%- liquid
@@ -31,10 +31,9 @@
   #hpb-{{ section.id }} .hpb__v.you b { color: rgba(255, 255, 255, .8); }
   #hpb-{{ section.id }} .hpb__v.you p { color: #fff; font-weight: 700; }
 
-  #hpb-{{ section.id }}.js .hpb__v { opacity: 0; transform: translateY(16px) scale(.97); }
-  #hpb-{{ section.id }}.js.in .hpb__v { opacity: 1; transform: none; transition: opacity .5s ease calc(var(--i) * .45s), transform .7s var(--ease) calc(var(--i) * .45s); }
-  #hpb-{{ section.id }}.js .hpb__issue { opacity: 0; transform: translateY(12px); }
-  #hpb-{{ section.id }}.js.in .hpb__issue { opacity: 1; transform: none; transition: opacity .6s ease var(--last), transform .8s var(--ease) var(--last); }
+  /* One simple entrance: the whole section fades up together, once, when it comes into view. */
+  #hpb-{{ section.id }}.js .hpb__in { opacity: 0; transform: translateY(14px); }
+  #hpb-{{ section.id }}.js.in .hpb__in { opacity: 1; transform: none; transition: opacity .6s ease, transform .7s var(--ease); }
 
   @media (max-width: 899.98px) {
     #hpb-{{ section.id }} .hpb__in { grid-template-columns: minmax(0, 1fr); gap: 32px; }

@@ -1,0 +1,337 @@
+{%- comment -%}
+  Home: "What would you like help with?" as two steps.
+    1. Pick a category: big photo cards (For men, For women, For everyone).
+    2. See that category's options: its photo on the left, the options as rows on the
+       right, and chips to switch category without going back.
+  Blocks: category (title, line, photo) and option (which category it belongs to,
+  title, signs, link). Without JavaScript the first step is hidden and every
+  category's options are listed, so nothing is lost.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+{%- assign cats = section.blocks | where: 'type', 'category' -%}
+<style>
+  #hgd-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --stone: #f6f0ec; --line: #e8e0d9; --red: #d81f48; --ease: cubic-bezier(.22, 1, .36, 1);
+    padding: clamp(56px, 6vw, 104px) clamp(16px, 4vw, 24px); background: {{ s.section_bg | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hgd-{{ section.id }} * { box-sizing: border-box; letter-spacing: normal; }
+  #hgd-{{ section.id }} button { font-family: inherit; color: inherit; }
+  #hgd-{{ section.id }} .hgd__in { max-width: 1240px; margin: 0 auto; }
+  #hgd-{{ section.id }} .hgd__head { max-width: 1100px; margin: 0 auto clamp(12px, 1.4vw, 20px); text-align: center; }
+  #hgd-{{ section.id }} .hgd__h { margin: 0; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #hgd-{{ section.id }} .hgd__h span { color: var(--red); }
+  #hgd-{{ section.id }} .hgd__sub { margin: 14px auto 0; max-width: 40em; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #hgd-{{ section.id }} .hgd__q { margin: 0; font: 700 clamp(18px, 1.5vw, 22px)/1.3 'Montserrat', sans-serif; color: var(--ink); }
+  #hgd-{{ section.id }} .hgd__q:focus, #hgd-{{ section.id }} .hgd__q:focus-visible { outline: none !important; box-shadow: none !important; }
+
+  /* ---- Step 1: category cards ---- */
+  #hgd-{{ section.id }} .hgd__pick { text-align: center; }
+  #hgd-{{ section.id }} .hgd__cats { list-style: none; margin: clamp(18px, 2vw, 26px) 0 0; padding: 0; display: grid; grid-template-columns: repeat({{ cats.size | at_least: 1 | at_most: 4 }}, minmax(0, 1fr)); gap: clamp(14px, 1.8vw, 24px); }
+  #hgd-{{ section.id }} .hgd__cat { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 26px; overflow: hidden; background: var(--stone); text-align: left; cursor: pointer; transition: transform .5s var(--ease), opacity .35s ease, box-shadow .35s ease; -webkit-tap-highlight-color: transparent; }
+  #hgd-{{ section.id }} .hgd__ph { position: relative; aspect-ratio: 100 / {{ section.settings.photo_height | default: 92 }}; overflow: hidden; background: #efe6df; }
+  #hgd-{{ section.id }} .hgd__ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--focus, center 25%); transform: scale(var(--zoom, 1)); transform-origin: var(--focus, center 25%); transition: transform .9s var(--ease); }
+  #hgd-{{ section.id }} .hgd__word { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; font: 800 clamp(34px, 3.8vw, 56px)/1 'Montserrat', sans-serif; letter-spacing: -.03em; color: #d9cdc4; text-align: center; }
+  #hgd-{{ section.id }} .hgd__cat-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 14px; padding: clamp(16px, 1.6vw, 22px) clamp(18px, 1.8vw, 24px) clamp(18px, 1.8vw, 24px); }
+  #hgd-{{ section.id }} .hgd__cat-t { grid-column: 1; font: 800 clamp(20px, 1.9vw, 26px)/1.15 'Montserrat', sans-serif; letter-spacing: -.01em; color: var(--ink); }
+  #hgd-{{ section.id }} .hgd__cat-d { grid-column: 1; font: 400 14.5px/1.45 'Montserrat', sans-serif; color: var(--mute); }
+  #hgd-{{ section.id }} .hgd__cat-go { grid-column: 2; grid-row: 1 / span 2; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: #fff; border: 1.5px solid var(--line); color: var(--ink); transition: background-color .3s, border-color .3s, color .3s, transform .5s var(--ease); }
+  #hgd-{{ section.id }} .hgd__cat-go svg, #hgd-{{ section.id }} .hgd__go svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  @media (hover: hover) and (pointer: fine) {
+    #hgd-{{ section.id }} .hgd__cats:hover .hgd__cat:not(:hover) { opacity: .55; }
+    #hgd-{{ section.id }} .hgd__cat:hover { transform: translateY(-8px); box-shadow: 0 26px 44px -22px rgba(29, 29, 29, .32); }
+    #hgd-{{ section.id }} .hgd__cat:hover .hgd__ph img { transform: scale(calc(var(--zoom, 1) * 1.07)); }
+    #hgd-{{ section.id }} .hgd__cat:hover .hgd__cat-go { background: var(--red); border-color: var(--red); color: #fff; transform: translateX(3px); }
+  }
+  #hgd-{{ section.id }} .hgd__cat:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  /* ---- Step 2: the options ---- */
+  #hgd-{{ section.id }} .hgd__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; margin-bottom: clamp(18px, 2.2vw, 30px); }
+  #hgd-{{ section.id }} .hgd__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  #hgd-{{ section.id }} .hgd__chip { padding: 11px 20px; border: 1.5px solid var(--line); border-radius: 999px; background: #fff; font: 700 15px/1 'Montserrat', sans-serif; cursor: pointer; transition: background-color .25s, color .25s, border-color .25s; }
+  #hgd-{{ section.id }} .hgd__chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  @media (hover: hover) { #hgd-{{ section.id }} .hgd__chip[aria-pressed="false"]:hover { border-color: var(--ink); } }
+  #hgd-{{ section.id }} .hgd__chip:focus-visible, #hgd-{{ section.id }} .hgd__back:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  #hgd-{{ section.id }} .hgd__back { display: inline-flex; align-items: center; gap: 8px; padding: 6px 0; border: 0; background: none; font: 700 15px/1.3 'Montserrat', sans-serif; color: var(--ink); cursor: pointer; border-bottom: 2px solid var(--line); }
+  @media (hover: hover) { #hgd-{{ section.id }} .hgd__back:hover { border-color: var(--red); } }
+  #hgd-{{ section.id }} .hgd__panel { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 64px); align-items: stretch; }
+  #hgd-{{ section.id }} .hgd__fig { position: relative; margin: 0; border-radius: 26px; overflow: hidden; background: #efe6df; min-height: 340px; }
+  #hgd-{{ section.id }} .hgd__img { position: absolute; inset: 0; opacity: 0; transform: scale(1.05); transition: opacity .55s ease, transform 1.1s var(--ease); }
+  #hgd-{{ section.id }} .hgd__img.is-on { opacity: 1; transform: none; }
+  #hgd-{{ section.id }} .hgd__img img { width: 100%; height: 100%; object-fit: cover; object-position: var(--focus, center 25%); display: block; }
+  #hgd-{{ section.id }} .hgd__img .hgd__word { font-size: clamp(40px, 5vw, 72px); }
+  #hgd-{{ section.id }} .hgd__cap { position: absolute; left: 14px; bottom: 14px; right: 14px; padding: 14px 18px; border-radius: 18px; background: #fff; font: 700 17px/1.3 'Montserrat', sans-serif; color: var(--ink); opacity: 0; transform: translateY(8px); transition: opacity .4s ease .2s, transform .5s var(--ease) .2s; }
+  #hgd-{{ section.id }} .hgd__cap small { display: block; margin-top: 3px; font: 400 13.5px/1.4 'Montserrat', sans-serif; color: var(--mute); }
+  #hgd-{{ section.id }} .hgd__img.is-on .hgd__cap { opacity: 1; transform: none; }
+
+  #hgd-{{ section.id }} .hgd__opts { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); align-self: center; }
+  #hgd-{{ section.id }} .hgd__opt { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 18px; align-items: center; padding: clamp(18px, 1.8vw, 24px) 16px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; isolation: isolate; }
+  #hgd-{{ section.id }} .hgd__opt::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 20px; background: var(--stone); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease); }
+  #hgd-{{ section.id }} .hgd__t { display: block; font: 700 clamp(19px, 1.8vw, 25px)/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #hgd-{{ section.id }} .hgd__d { display: block; margin-top: 6px; font: 400 15px/1.45 'Montserrat', sans-serif; color: var(--mute); }
+  #hgd-{{ section.id }} .hgd__go { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 1.5px solid var(--line); color: var(--ink); transition: background-color .3s, border-color .3s, color .3s; }
+  @media (hover: hover) {
+    #hgd-{{ section.id }} .hgd__opt:hover::before { transform: none; }
+    #hgd-{{ section.id }} .hgd__opt:hover .hgd__go { background: var(--red); border-color: var(--red); color: #fff; }
+  }
+  #hgd-{{ section.id }} .hgd__opt:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; border-radius: 20px; }
+  #hgd-{{ section.id }} .hgd__more { display: flex; justify-content: center; margin: clamp(26px, 3vw, 40px) 0 0; }
+  #hgd-{{ section.id }} .hgd__more a { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 4px; border-bottom: 2px solid var(--red); font: 700 16px/1.3 'Montserrat', sans-serif; color: var(--ink); text-decoration: none; }
+  #hgd-{{ section.id }} .hgd__more small { font: 500 14px/1.3 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* ---- Motion: one move between steps, rows rise in order ---- */
+  #hgd-{{ section.id }} .hgd__pick.is-out { opacity: 0; transform: translateY(-12px); transition: opacity .28s ease, transform .28s ease; }
+  #hgd-{{ section.id }} .hgd__step.is-in { animation: hgd-step-{{ section.id }} .6s var(--ease) both; }
+  #hgd-{{ section.id }} .hgd__opts.is-in .hgd__opt { animation: hgd-row-{{ section.id }} .7s var(--ease) both; animation-delay: calc(var(--i) * 80ms + 120ms); }
+  @keyframes hgd-step-{{ section.id }} { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes hgd-row-{{ section.id }} { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+
+  /* Without JavaScript: no first step, every category's options in a column. */
+  #hgd-{{ section.id }}:not(.js) .hgd__pick, #hgd-{{ section.id }}:not(.js) .hgd__bar, #hgd-{{ section.id }}:not(.js) .hgd__fig { display: none; }
+  #hgd-{{ section.id }}:not(.js) .hgd__panel { grid-template-columns: minmax(0, 1fr); }
+  #hgd-{{ section.id }}:not(.js) .hgd__opts { margin-bottom: 24px; }
+
+  @media (max-width: 899.98px) {
+    #hgd-{{ section.id }} .hgd__panel { grid-template-columns: minmax(0, 1fr); }
+    #hgd-{{ section.id }} .hgd__fig { min-height: 0; aspect-ratio: 16 / 9; }
+    #hgd-{{ section.id }} .hgd__opts { align-self: stretch; }
+  }
+  @media (max-width: 749.98px) {
+    #hgd-{{ section.id }} { padding: 44px 16px; }
+    #hgd-{{ section.id }} .hgd__h { font-size: 30px; }
+    #hgd-{{ section.id }} .hgd__sub { font-size: 15px; }
+    #hgd-{{ section.id }} .hgd__cats { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    #hgd-{{ section.id }} .hgd__cat { flex-direction: row; align-items: center; border-radius: 20px; }
+    #hgd-{{ section.id }} .hgd__ph { flex: 0 0 96px; width: 96px; aspect-ratio: 1; align-self: stretch; height: auto; min-height: 96px; }
+    #hgd-{{ section.id }} .hgd__word { font-size: 22px; }
+    #hgd-{{ section.id }} .hgd__cat-body { flex: 1; padding: 12px 14px; }
+    #hgd-{{ section.id }} .hgd__cat-t { font-size: 18px; }
+    #hgd-{{ section.id }} .hgd__cat-d { font-size: 13px; }
+    #hgd-{{ section.id }} .hgd__cat-go { width: 38px; height: 38px; }
+    #hgd-{{ section.id }} .hgd__bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    #hgd-{{ section.id }} .hgd__chips { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; padding-bottom: 2px; }
+    #hgd-{{ section.id }} .hgd__chips::-webkit-scrollbar { display: none; }
+    #hgd-{{ section.id }} .hgd__chip { flex: none; padding: 10px 16px; font-size: 14px; }
+    #hgd-{{ section.id }} .hgd__fig { display: none; }
+    #hgd-{{ section.id }} .hgd__opt { grid-template-columns: minmax(0, 1fr) 38px; gap: 12px; padding: 16px 4px; }
+    #hgd-{{ section.id }} .hgd__go { width: 38px; height: 38px; }
+    #hgd-{{ section.id }} .hgd__t { font-size: 18px; }
+    #hgd-{{ section.id }} .hgd__d { font-size: 14px; }
+  }
+  @media (min-width: 1680px) { #hgd-{{ section.id }} .hgd__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hgd-{{ section.id }} .hgd__in { zoom: 1.25; } }
+  @media (min-width: 2240px) { #hgd-{{ section.id }} .hgd__in { zoom: 1.45; } }
+  @media (min-width: 2560px) { #hgd-{{ section.id }} .hgd__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hgd-{{ section.id }} .hgd__in { zoom: 2; } }
+  @media (min-width: 3840px) { #hgd-{{ section.id }} .hgd__in { zoom: 2.4; } }
+  @media (prefers-reduced-motion: reduce) {
+    #hgd-{{ section.id }} * { transition: none !important; animation: none !important; }
+    #hgd-{{ section.id }} .hgd__cap { opacity: 1; transform: none; }
+  }
+</style>
+
+<section id="hgd-{{ section.id }}">
+  <div class="hgd__in">
+    <header class="hgd__head">
+      <h2 class="hgd__h">{{ s.heading }}{% if s.heading_red != blank %} <span>{{ s.heading_red }}</span>{% endif %}</h2>
+      {%- if s.subheading != blank -%}<p class="hgd__sub">{{ s.subheading }}</p>{%- endif -%}
+    </header>
+
+    <div class="hgd__stage">
+      <div class="hgd__step hgd__pick" data-pick>
+        <p class="hgd__q">{{ s.step1_title }}</p>
+        <ul class="hgd__cats">
+          {%- for c in cats -%}
+            {%- assign b = c.settings -%}
+            <li {{ c.shopify_attributes }}>
+              <button type="button" class="hgd__cat" data-cat="{{ forloop.index }}">
+                <span class="hgd__ph" style="--focus: {{ b.focus | default: 'center 25%' }}; --zoom: {{ b.zoom | default: 100 | divided_by: 100.0 }}">
+                  {%- if b.image != blank -%}
+                    {%- comment -%} Download size follows the zoom, so a zoomed photo stays sharp. {%- endcomment -%}
+                    {%- assign zf = b.zoom | default: 100 -%}
+                    {%- assign z_m = 96 | times: zf | divided_by: 100 -%}
+                    {%- assign z_d = 400 | times: zf | divided_by: 100 -%}
+                    {%- assign z_l = 500 | times: zf | divided_by: 100 -%}
+                    {%- assign z_xl = 660 | times: zf | divided_by: 100 -%}
+                    {%- assign z_xxl = 960 | times: zf | divided_by: 100 -%}
+                    {%- capture z_sizes -%}(max-width: 749px) {{ z_m }}px, (min-width: 3200px) {{ z_xxl }}px, (min-width: 2240px) {{ z_xl }}px, (min-width: 1680px) {{ z_l }}px, {{ z_d }}px{%- endcapture -%}
+                    {{ b.image | image_url: width: 2400 | image_tag: loading: 'lazy', widths: '200, 400, 600, 900, 1200, 1600, 2000, 2400', sizes: z_sizes }}
+                  {%- elsif b.image_asset != blank -%}
+                    <img src="{{ b.image_asset | asset_url }}" alt="" loading="lazy" width="800" height="740">
+                  {%- else -%}
+                    <span class="hgd__word" aria-hidden="true">{{ b.title }}</span>
+                  {%- endif -%}
+                </span>
+                <span class="hgd__cat-body">
+                  <span class="hgd__cat-t">{{ b.title }}</span>
+                  {%- if b.text != blank -%}<span class="hgd__cat-d">{{ b.text }}</span>{%- endif -%}
+                  <span class="hgd__cat-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
+                </span>
+              </button>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+
+      <div class="hgd__step hgd__optstep" data-opts>
+        <div class="hgd__bar">
+          <div>
+            <p class="hgd__q" tabindex="-1" data-q2>{{ s.step2_title }}</p>
+          </div>
+          <div class="hgd__chips" role="group" aria-label="{{ s.step1_title | escape }}">
+            {%- for c in cats -%}
+              <button type="button" class="hgd__chip" data-cat="{{ forloop.index }}" aria-pressed="false">{{ c.settings.title }}</button>
+            {%- endfor -%}
+          </div>
+        </div>
+        <div class="hgd__panel">
+          <figure class="hgd__fig" aria-hidden="true">
+            {%- for c in cats -%}
+              {%- assign b = c.settings -%}
+              <div class="hgd__img" data-cat="{{ forloop.index }}" style="--focus: {{ b.focus | default: 'center 25%' }}">
+                {%- if b.image != blank -%}
+                  {{ b.image | image_url: width: 1100 | image_tag: loading: 'lazy', widths: '500, 800, 1100', sizes: '(max-width: 899px) 100vw, 480px' }}
+                {%- elsif b.image_asset != blank -%}
+                  <img src="{{ b.image_asset | asset_url }}" alt="" loading="lazy" width="800" height="740">
+                {%- else -%}
+                  <span class="hgd__word">{{ b.title }}</span>
+                {%- endif -%}
+                <figcaption class="hgd__cap">{{ b.title }}{%- if b.text != blank -%}<small>{{ b.text }}</small>{%- endif -%}</figcaption>
+              </div>
+            {%- endfor -%}
+          </figure>
+          <div class="hgd__lists">
+            {%- for c in cats -%}
+              {%- assign ci = forloop.index | append: '' -%}
+              <ul class="hgd__opts" data-for="{{ ci }}" aria-label="{{ c.settings.title | escape }}">
+                {%- assign oi = 0 -%}
+                {%- for o in section.blocks -%}
+                  {%- if o.type == 'option' and o.settings.category == ci -%}
+                    <li style="--i: {{ oi }}" {{ o.shopify_attributes }}>
+                      <a class="hgd__opt" href="{{ o.settings.link | default: s.more_link | default: '#' }}" style="--i: {{ oi }}">
+                        <span><span class="hgd__t">{{ o.settings.title }}</span>{%- if o.settings.text != blank -%}<span class="hgd__d">{{ o.settings.text }}</span>{%- endif -%}</span>
+                        <span class="hgd__go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span>
+                      </a>
+                    </li>
+                    {%- assign oi = oi | plus: 1 -%}
+                  {%- endif -%}
+                {%- endfor -%}
+              </ul>
+            {%- endfor -%}
+          </div>
+        </div>
+        <p class="hgd__back-wrap" style="margin: clamp(18px, 2vw, 26px) 0 0;"><button type="button" class="hgd__back" data-back><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4"/></svg>{{ s.back_label }}</button></p>
+      </div>
+    </div>
+
+    {%- if s.more_label != blank -%}
+      <p class="hgd__more"><a href="{{ s.more_link | default: '#' }}">{%- if s.more_kicker != blank -%}<small>{{ s.more_kicker }}</small>{%- endif -%}<span>{{ s.more_label }} &rarr;</span></a></p>
+    {%- endif -%}
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hgd-{{ section.id }}');
+    if (!root) return;
+    var pick = root.querySelector('[data-pick]'), opts = root.querySelector('[data-opts]');
+    var chips = root.querySelectorAll('.hgd__chip'), cats = root.querySelectorAll('.hgd__cat');
+    var lists = root.querySelectorAll('.hgd__opts'), imgs = root.querySelectorAll('.hgd__img');
+    var q2 = root.querySelector('[data-q2]'), back = root.querySelector('[data-back]');
+    if (!pick || !opts) return;
+    var calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    root.classList.add('js');
+    opts.hidden = true;
+    lists.forEach(function (l) { l.hidden = true; });
+
+    function replay(el) { el.classList.remove('is-in'); void el.offsetWidth; el.classList.add('is-in'); }
+
+    function choose(n) {
+      chips.forEach(function (c) { c.setAttribute('aria-pressed', c.getAttribute('data-cat') === n ? 'true' : 'false'); });
+      imgs.forEach(function (i) { i.classList.toggle('is-on', i.getAttribute('data-cat') === n); });
+      lists.forEach(function (l) {
+        var on = l.getAttribute('data-for') === n;
+        l.hidden = !on;
+        if (on) replay(l);
+      });
+    }
+
+    function toStep2(n) {
+      choose(n);
+      function show() {
+        pick.hidden = true; pick.classList.remove('is-out');
+        opts.hidden = false; replay(opts);
+        if (q2) q2.focus({ preventScroll: true });
+        var top = root.getBoundingClientRect().top;
+        if (top < 0) root.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+      }
+      if (calm) show(); else { pick.classList.add('is-out'); setTimeout(show, 280); }
+    }
+
+    function toStep1() {
+      opts.hidden = true;
+      pick.hidden = false; replay(pick);
+      var first = pick.querySelector('.hgd__cat'); if (first) first.focus({ preventScroll: true });
+    }
+
+    cats.forEach(function (c) { c.addEventListener('click', function () { toStep2(c.getAttribute('data-cat')); }); });
+    chips.forEach(function (c) { c.addEventListener('click', function () { choose(c.getAttribute('data-cat')); }); });
+    if (back) back.addEventListener('click', toStep1);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Home: help finder",
+  "tag": "div",
+  "max_blocks": 24,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "What would you like" },
+    { "type": "text", "id": "heading_red", "label": "Heading, red ending", "default": "help with?" },
+    { "type": "textarea", "id": "subheading", "label": "Line under it", "default": "Pick who it is for, then what is bothering you." },
+    { "type": "text", "id": "step1_title", "label": "Step 1 question", "default": "Who is this for?" },
+    { "type": "text", "id": "step2_title", "label": "Step 2 question", "default": "What is bothering you?" },
+    { "type": "text", "id": "back_label", "label": "Back link", "default": "Choose again" },
+    { "type": "text", "id": "more_kicker", "label": "Small line above the link", "default": "Not sure where to start?" },
+    { "type": "text", "id": "more_label", "label": "Link", "default": "Take the 2-minute Health Score" },
+    { "type": "url", "id": "more_link", "label": "Link to", "info": "Also used by options without their own link." },
+    { "type": "range", "id": "photo_height", "label": "Card photo height", "min": 60, "max": 140, "step": 2, "unit": "%", "default": 92, "info": "Height of the photo on each card, as a share of its width. 100% is square. Phones keep the small square photo." },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" }
+  ],
+  "blocks": [
+    {
+      "type": "category",
+      "name": "Category",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Category", "default": "For men" },
+        { "type": "text", "id": "text", "label": "One line", "default": "Stamina, weight and energy" },
+        { "type": "image_picker", "id": "image", "label": "Photo", "info": "Landscape or portrait, 800 pixels or wider so it stays sharp. Empty shows the category name in large type." },
+        { "type": "text", "id": "image_asset", "label": "Or a theme asset file name", "info": "Used only when no photo is picked." },
+        { "type": "select", "id": "focus", "label": "Keep this part of the photo in view", "default": "center 25%", "options": [
+          { "value": "center 25%", "label": "Top centre" },
+          { "value": "center 40%", "label": "Upper middle" },
+          { "value": "center center", "label": "Centre" },
+          { "value": "left 30%", "label": "Left" },
+          { "value": "right 30%", "label": "Right" }
+        ] },
+        { "type": "range", "id": "zoom", "label": "Photo zoom", "min": 100, "max": 180, "step": 5, "unit": "%", "default": 100, "info": "Zoom into this card's photo. It zooms towards the part chosen above." }
+      ]
+    },
+    {
+      "type": "option",
+      "name": "Option",
+      "settings": [
+        { "type": "select", "id": "category", "label": "Belongs to category number", "info": "1 is the first Category block above, 2 the second, and so on.", "default": "1", "options": [
+          { "value": "1", "label": "Category 1" },
+          { "value": "2", "label": "Category 2" },
+          { "value": "3", "label": "Category 3" },
+          { "value": "4", "label": "Category 4" }
+        ] },
+        { "type": "text", "id": "title", "label": "Option", "default": "Sexual wellness" },
+        { "type": "text", "id": "text", "label": "Signs", "default": "Stamina, performance and desire" },
+        { "type": "text", "id": "link", "label": "Link", "info": "A page, or a page with a shelf, e.g. /pages/for-him#weight" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Home: help finder" }]
+}
+{% endschema %}

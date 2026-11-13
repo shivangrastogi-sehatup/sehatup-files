@@ -15,7 +15,7 @@
       "settings": {
         "layout_mode": "background-with-overlay-image",
         "desktop_width_percent": 100,
-        "background_image": "shopify://shop_images/Sunlit_Curtain_and_Beige_Tile_Wall.webp",
+        "background_image": "shopify://shop_images/for_him_background.webp",
         "background_image_size": "cover",
         "background_position_x": "center",
         "background_position_y": "center",
@@ -29,7 +29,7 @@
         "white_panel_opacity": 10,
         "white_panel_rounded": true,
         "white_panel_border_radius": 20,
-        "foreground_image": "shopify://shop_images/Man_Adjusting_Collar_at_Bathroom_Mirror.webp",
+        "foreground_image": "shopify://shop_images/for_him_person_image.webp",
         "foreground_image_scale": 135,
         "foreground_image_fit": "contain",
         "foreground_position_x": "right",
@@ -40,12 +40,19 @@
         "hide_foreground_mobile": false,
         "split_layout": false,
         "mobile_crop_foreground": false,
+        "fg_text_clear": false,
+        "mobile_wash": 94,
+        "fg_grow": true,
+        "mobile_fg_height": 380,
         "kicker": "For men",
-        "heading": "You're not the only one. Most men just never say it.",
-        "subheading_prefix": "",
-        "subheading_highlight": "",
+        "heading": "Real Masculine Power Starts From the Inside",
+        "heading_red": "",
+        "heading_red_color": "#ee204a",
+        "subheading_prefix": "Feel strong, steady and",
+        "subheading_highlight": "in control",
         "subheading_highlight_color": "#ee204a",
-        "body_text": "<p>Finishing too soon, erections that do not last, low energy, stubborn weight. These are some of the most common reasons men see a doctor, and they can be treated. Our doctors combine Ayurveda, Homeopathy and modern medicine.</p>",
+        "body_text": "<p>Struggling with stamina, low energy or extra weight? Our doctors find the root cause and treat it all together.</p>",
+        "body_max_em": 0,
         "content_position": "left",
         "content_max_width": 1400,
         "content_text_max_width": 650,
@@ -59,7 +66,7 @@
         "body_color": "#333333",
         "text_shadow_enabled": false,
         "light_text_fade": true,
-        "button_1_text": "Take the free Health Score",
+        "button_1_text": "Take free Health Score",
         "button_1_link": "shopify://pages/health-score-360",
         "button_1_style": "filled",
         "button_1_bg_color": "#ee204a",
@@ -70,7 +77,7 @@
         "button_1_hover_border_color": "#c8183c",
         "show_button_2": true,
         "enable_doctor_new_tab": true,
-        "button_2_text": "See the products",
+        "button_2_text": "See Men's products",
         "button_2_link": "#sexual-wellness",
         "button_2_style": "outline",
         "button_2_bg_color": "#1d1d1d",
@@ -79,7 +86,11 @@
         "button_2_hover_bg_color": "#1d1d1d",
         "button_2_hover_text_color": "#ffffff",
         "button_2_hover_border_color": "#1d1d1d",
-        "note": "Free, private, and in Hindi or English.",
+        "note": "",
+        "trust_text": "",
+        "rating": "",
+        "trust_count": 3,
+        "trust_initials": "R, A, S, P, K",
         "button_layout": "horizontal",
         "button_font_size": 16,
         "button_font_weight": "600",
@@ -87,6 +98,7 @@
         "button_padding_horizontal": 32,
         "button_border_radius": 50,
         "button_spacing": 24,
+        "desktop_height_vh": 80,
         "section_min_height": 390,
         "section_padding_top": 30,
         "section_padding_bottom": 30,
@@ -100,7 +112,7 @@
         "mobile_content_alignment": "center",
         "mobile_background_position_x": "center",
         "mobile_background_position_y": "center",
-        "mobile_background_image": "shopify://shop_images/Sunlit_Beige_Tiled_Wall.webp",
+        "mobile_background_image": "shopify://shop_images/for_him_background_mobile.webp",
         "mobile_bg_focus_x": 50
       }
     },
@@ -113,7 +125,7 @@
             "issue": "Finishing too soon",
             "icon": "timer",
             "figure": "18 to 55%",
-            "text": "said they finish sooner than they want to, across published Indian studies.",
+            "text": "finish sooner than they want to, across Indian studies.",
             "source": "Review of Indian studies, Bhat et al., 2026",
             "source_link": "https://doi.org/10.1177/26318318251355733"
           }
@@ -121,12 +133,13 @@
         "f2": {
           "type": "fact",
           "settings": {
-            "issue": "Erection problems",
-            "icon": "pulse",
-            "figure": "20 to 64%",
-            "text": "had trouble getting or keeping an erection, across published Indian studies.",
-            "source": "Review of Indian studies, Bhat et al., 2026",
-            "source_link": "https://doi.org/10.1177/26318318251355733"
+            "issue": "Weight gain",
+            "icon": "balance",
+            "figure": "36%",
+            "text": "are overweight or obese. Across India it is 27 in every 100.",
+            "source": "National Family Health Survey (NFHS-6, 2023-24), men aged 15 to 49",
+            "source_link": "https://vajiramias.com/article/national-family-health-survey-key-findings-of-the-latest-report/6a1a829c19bf453c584f9f2f/",
+            "people": "urban Indian men"
           }
         },
         "q1": {
@@ -188,6 +201,7 @@
       ],
       "settings": {
         "facts_heading": "It's far more common than you think.",
+        "facts_people": "Indian men",
         "facts_lead": "Doctors see these every day. Most men never mention them to anyone, which is why they last longer than they need to.",
         "facts_close": "Both can be treated, and the first step is private: a two-minute check on your phone.",
         "problems_heading": "What's bothering you?",
@@ -195,7 +209,7 @@
         "problems_image": "shopify://shop_images/him-thinking-man.webp",
         "steps_heading": "How men get past it",
         "steps_lead": "Three steps. No waiting room, no awkward questions in person.",
-        "cta_text": "Take the free Health Score",
+        "cta_text": "Take free Health Score",
         "cta_link": "shopify://pages/health-score-360",
         "accent_color": "#d81f48"
       }
@@ -206,31 +220,31 @@
         "doc_homeo": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Shefali.webp",
+            "photo": "shopify://shop_images/Dr._Shefali.webp",
             "system": "Homeopathy",
             "name": "Dr. Shefali Chhicholia",
             "degree": "BHMS, MD (Homeopathy), 5 years experience",
-            "role": "Gentle, long-term help for early finishing and stamina, with no habit-forming pills."
+            "role": "Gentle, long-term support for hormonal balance."
           }
         },
         "doc_ayur": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "photo": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
             "system": "Ayurveda",
             "name": "Dr. Jayant Kumar",
             "degree": "BAMS (Ayurveda), 5 years experience",
-            "role": "Finds the root cause behind weak erections, low energy and slow recovery."
+            "role": "Looks for the root cause behind your symptoms."
           }
         },
         "doc_allo": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Devika.webp",
+            "photo": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
             "system": "Psychology",
             "name": "Ms. Devika Chugh",
             "degree": "Counselling Psychologist, 5 years experience",
-            "role": "Helps with the stress and performance worry that often sit behind it."
+            "role": "Helps with stress, mood and worries that affect your health."
           }
         }
       },
@@ -239,60 +253,47 @@
         "doc_ayur",
         "doc_allo"
       ],
+      "disabled": true,
       "settings": {
         "eyebrow": "Your private care team",
-        "heading": "Real experts. One plan for you.",
-        "subheading": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your answers together. Your plan treats the body and the mind, because for most men it is both.",
-        "button": "Talk to a doctor on WhatsApp",
+        "heading": "Meet Our Medical Experts",
+        "subheading": "",
+        "footnote": "",
+        "button": "Talk to a doctor",
         "button_link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor",
-        "footnote": "Free with every order. In Hindi or English, and nothing you share leaves your doctor.",
-        "accent_color": "#ee204a",
-        "background": "#ffffff",
+        "button_style": "filled",
+        "background": "#faf7f5",
         "padding_top": 32,
-        "padding_bottom": 40
+        "padding_bottom": 40,
+        "accent_color": "#ee204a"
       }
     },
     "integrated": {
-      "type": "sehat-integrated",
-      "blocks": {
-        "m1": {
-          "type": "system",
-          "settings": {
-            "icon": "leaf",
-            "title": "Ayurveda",
-            "job": "Works on the root",
-            "text": "Herbs like ashwagandha and shilajit support stamina, energy, sleep and stress over time."
-          }
-        },
-        "m2": {
-          "type": "system",
-          "settings": {
-            "icon": "drop",
-            "title": "Homeopathy",
-            "job": "Gentle, long-term support",
-            "text": "Easy to take alongside your daily routine, for steady improvement without heavy doses."
-          }
-        },
-        "m3": {
-          "type": "system",
-          "settings": {
-            "icon": "capsule",
-            "title": "Modern medicine",
-            "job": "Faster relief when needed",
-            "text": "Prescribed only when a doctor says it fits you, never as a first guess."
-          }
-        }
-      },
-      "block_order": [
-        "m1",
-        "m2",
-        "m3"
-      ],
+      "type": "home-integrated",
+      "disabled": true,
       "settings": {
-        "heading": "Three kinds of medicine. One plan for you.",
-        "subheading": "Each one does a different job. Your doctors choose the mix that suits you, so you never take more than you need.",
-        "sum": "One plan, made by your doctors, for your body and your routine.",
-        "accent_color": "#d81f48"
+        "heading": "Why sehatUP Integrated Care Works ?",
+        "heading_red": "",
+        "subheading": "The Power Of Three Medical Systems Working Together",
+        "hide_sub_mobile": true,
+        "animate": true,
+        "animation_style": "spread",
+        "photo_zoom": 140,
+        "plan_label": "sehatUP's|Personalized|Plan",
+        "sys1_image": "shopify://shop_images/Ayurveda.webp",
+        "sys1_name": "Ayurveda",
+        "sys1_text": "Overall wellness, lifestyle balance and long-term healing.",
+        "sys2_image": "shopify://shop_images/homeopathy.webp",
+        "sys2_name": "Homeopathy",
+        "sys2_text": "Deep root-cause treatment with minimal side effects.",
+        "sys3_image": "shopify://shop_images/Modern_medicine.webp",
+        "sys3_name": "Modern medicine",
+        "sys3_text": "Immediate symptomatic relief and accurate diagnosis.",
+        "closing_red": "One plan,",
+        "closing": "made by your doctors, for your body and your routine.",
+        "button": "Take free Health Score 360",
+        "button_link": "shopify://pages/health-score-360",
+        "section_bg": "#ffffff"
       }
     },
     "shelf_sexual": {
@@ -310,6 +311,8 @@
         "show_use": true,
         "anchor": "sexual-wellness",
         "legacy_anchor": "shopify-block-AWVVNcnhMMmVtTlNTc__ai_gen_block_1595750_D9fNhM",
+        "center": false,
+        "red_buttons_mobile": true,
         "accent_color": "#d81f48"
       }
     },
@@ -328,6 +331,8 @@
         "show_use": true,
         "anchor": "weight",
         "legacy_anchor": "shopify-block-AMDRQd1MrZXp0TTVEd__ai_gen_block_1595750_jVXcQK",
+        "center": false,
+        "red_buttons_mobile": true,
         "accent_color": "#d81f48"
       }
     },
@@ -346,6 +351,8 @@
         "show_use": true,
         "anchor": "energy",
         "legacy_anchor": "shopify-block-AMEhSNGcvcnJFRnZQW__ai_gen_block_1595750_bBpMEE",
+        "center": false,
+        "red_buttons_mobile": true,
         "accent_color": "#d81f48"
       }
     },
@@ -369,6 +376,19 @@
         "show_use": true,
         "anchor": "kits",
         "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
+        "accent_color": "#d81f48"
+      }
+    },
+    "nudge": {
+      "type": "sehat-nudge",
+      "disabled": true,
+      "settings": {
+        "heading": "Not sure what you need?",
+        "text": "Answer a few private questions and a doctor will point you to the right plan. Free, 2 minutes.",
+        "button": "Take free Health Score",
+        "link": "shopify://pages/health-score-360",
         "accent_color": "#d81f48"
       }
     },
@@ -403,18 +423,9 @@
         "c3"
       ],
       "settings": {
-        "heading": "Made and checked the right way",
+        "section_bg": "#ffffff",
+        "heading": "Certified and doctor-checked",
         "subheading": "What you take is made to approved standards and chosen by real doctors."
-      }
-    },
-    "nudge": {
-      "type": "sehat-nudge",
-      "settings": {
-        "heading": "Not sure which one is right for you?",
-        "text": "Answer a few private questions and a doctor will point you to the right plan. Free, 2 minutes.",
-        "button": "Take the free Health Score",
-        "link": "shopify://pages/health-score-360",
-        "accent_color": "#d81f48"
       }
     },
     "note": {
@@ -432,7 +443,7 @@
         "p2": {
           "type": "promise",
           "settings": {
-            "lead": "[advance] to confirm.",
+            "lead": "[advance] now, rest on delivery.",
             "text": "You pay the rest only when the parcel is in your hands. Or pay in full online and shipping is free.",
             "link_label": "",
             "link": ""
@@ -464,22 +475,25 @@
         "p4"
       ],
       "settings": {
+        "section_bg": "#ffffff",
         "note_heading": "Before you order, four things you can count on.",
         "note_text": "sehatUP is a clinic, not a supplement shop. This is how we look after an order.",
-        "doc_1": "shopify://shop_images/Dr_Jayant_Kumar.webp",
-        "doc_2": "shopify://shop_images/Dr_Shefali.webp",
+        "doc_1": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+        "doc_2": "shopify://shop_images/Dr._Shefali.webp",
+        "doc_3": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
         "doc_names": "Dr. Jayant Kumar, Dr. Shefali Chhicholia and Ms. Devika Chugh",
         "doc_caption": "The experts behind your plan",
         "show_rating": true,
+        "show_promise_text": true,
         "advance_amount": 50,
+        "show_expect": true,
         "expect_heading": "What to expect",
         "expect_note": "Results vary from person to person.",
         "doc_title": "",
         "doc_text": "Our doctors guide you on the right dose and answer your questions.",
         "doc_button": "Talk to a doctor",
         "doc_link": "",
-        "accent_color": "#d81f48",
-        "doc_3": "shopify://shop_images/Dr_Devika.webp"
+        "accent_color": "#d81f48"
       }
     },
     "reviews": {
@@ -496,9 +510,24 @@
         "jm_carousel"
       ],
       "settings": {
+        "layout": "stacked",
+        "show_product": true,
+        "arrows": "below",
         "heading": "What our customers say",
-        "subheading": "Honest reviews from customers who took the first step.",
+        "subheading": "",
+        "rating_value": "4.5",
+        "rating_line": "[rating] · Trusted by 25,000+ patients",
         "accent_color": "#ee204a",
+        "review_products": [],
+        "min_rating": 4,
+        "review_hide": "",
+        "side_score": "4.5",
+        "mobile_heading": "",
+        "side_title": "Loved by people who took the first step.",
+        "side_text": "Real reviews from sehatUP customers across India, collected by Judge.me.",
+        "side_note": "Trusted by 25,000+ patients",
+        "side_link_label": "",
+        "side_link": "",
         "trust_1": "",
         "trust_1_text": "",
         "trust_2": "",
@@ -506,8 +535,7 @@
         "trust_3": "",
         "trust_3_text": "",
         "trust_4": "",
-        "trust_4_text": "",
-        "rating_line": "[rating] · Trusted by 25,000+ patients"
+        "trust_4_text": ""
       }
     },
     "faq": {
@@ -565,23 +593,26 @@
         "faq_7"
       ],
       "settings": {
-        "heading": "Questions men ask us",
-        "subheading": "Straight answers, in private.",
+        "section_bg": "#faf7f5",
+        "heading": "Frequently Asked Questions",
+        "subheading": "",
         "contact_text": "Ask us on WhatsApp",
         "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20men%27s%20health",
         "open_first": true,
-        "shop_1_text": "Shop For Her",
-        "shop_1_link": "shopify://pages/for-her",
-        "shop_2_text": "Shop For Him",
-        "shop_2_link": "shopify://pages/for-him",
-        "shop_3_text": "All combos",
-        "shop_3_link": "shopify://pages/combos",
+        "shop_label": "",
+        "shop_1_text": "",
+        "shop_1_link": "",
+        "shop_2_text": "",
+        "shop_2_link": "",
+        "shop_3_text": "",
+        "shop_3_link": "",
         "accent_color": "#ee204a"
       }
     },
     "cta": {
       "type": "health-final-cta",
       "settings": {
+        "section_bg": "#faf7f5",
         "heading": "Your body is talking. Start listening.",
         "subheading": "Free, private, and it takes 2 minutes.",
         "her_label": "",
@@ -593,8 +624,9 @@
     },
     "sticky": {
       "type": "sehat-sticky-cta",
+      "disabled": true,
       "settings": {
-        "label": "Take the free Health Score",
+        "label": "Take free Health Score",
         "link": "shopify://pages/health-score-360",
         "whatsapp_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20men%27s%20health",
         "accent_color": "#d81f48"

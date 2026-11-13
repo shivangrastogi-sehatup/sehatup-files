@@ -3,7 +3,13 @@
   icon + big value + short label, split by hairlines. Numbers count up once
   the band scrolls into view (skipped for reduced motion).
 {%- endcomment -%}
-{%- assign s = section.settings -%}
+{%- liquid
+  assign s = section.settings
+  assign rot = s.rotate_words | split: '|'
+  assign rot_n = rot.size
+  assign rot_step = s.rotate_seconds | default: 2.5
+  assign rot_total = rot_step | times: rot_n
+-%}
 <style>
   #spg-{{ section.id }} { --spg-accent: {{ s.accent_color }}; background: {{ s.background_color }}; color: #1d1d1d; font-family: 'Montserrat', sans-serif; }
   #spg-{{ section.id }} .spg__in { max-width: 1320px; margin: 0 auto; padding: {{ s.padding_top }}px 24px {{ s.padding_bottom }}px; }
@@ -37,6 +43,53 @@
   #spg-{{ section.id }}.spg--glow::after { background-image: radial-gradient(rgba(29, 29, 29, .07) 1px, transparent 1.4px); background-size: 22px 22px; -webkit-mask-image: radial-gradient(70% 80% at 50% 50%, transparent 35%, #000 100%); mask-image: radial-gradient(70% 80% at 50% 50%, transparent 35%, #000 100%); }
   {%- endif -%}
   #spg-{{ section.id }}.spg--glass .spg__panel { background: radial-gradient(45% 70% at 100% 100%, {{ s.card_tint | color_modify: 'alpha', 0.85 }}, transparent 70%), linear-gradient(135deg, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, .64) 60%, {{ s.card_tint | color_modify: 'alpha', 0.6 }} 100%); }
+  /* Rows style: heading centred on top, the stats in one row of hairline-split
+     columns (2 x 2 on phones), each a big red number, then a small icon beside its label. */
+  /* The whole band sits in one soft stone panel, so it reads as a closed block. */
+  #spg-{{ section.id }}.spg--rows .spg__panel { max-width: 1160px; margin: 0 auto; padding: clamp(28px, 3.6vw, 48px) clamp(12px, 3vw, 40px); border-radius: 28px; background: #f6f0ec; }
+  #spg-{{ section.id }}.spg--rows .spg__head { margin: 0 auto 28px; text-align: center; }
+  #spg-{{ section.id }}.spg--rows .spg__h { font-size: clamp(26px, 2.8vw, 36px); line-height: 1.15; }
+  #spg-{{ section.id }}.spg--rows .spg__list { grid-template-columns: repeat({{ section.blocks.size | at_most: 6 | at_least: 1 }}, minmax(0, 1fr)); }
+  #spg-{{ section.id }}.spg--rows .spg__item { display: grid; grid-template-columns: auto auto; grid-template-areas: 'v v' 'ic l'; justify-content: center; align-items: center; column-gap: 8px; padding: 8px 16px; }
+  #spg-{{ section.id }}.spg--rows .spg__item + .spg__item { border-left: 1px solid rgba(29, 29, 29, .1); }
+  #spg-{{ section.id }}.spg--rows .spg__v { grid-area: v; justify-self: center; color: var(--spg-accent); font-size: clamp(34px, 3.4vw, 46px); }
+  #spg-{{ section.id }}.spg--rows .spg__ic { grid-area: ic; width: 22px; height: 22px; margin: 12px 0 0; color: #5f5a56; }
+  #spg-{{ section.id }}.spg--rows .spg__ic img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  #spg-{{ section.id }}.spg--rows .spg__ic:empty { display: none; }
+  #spg-{{ section.id }}.spg--rows .spg__l { grid-area: l; margin: 12px 0 0; max-width: none; font: 600 15px/1.35 'Montserrat', sans-serif; color: #1d1d1d; }
+  @media (max-width: 749px) {
+    #spg-{{ section.id }}.spg--rows .spg__head { margin-bottom: 12px; }
+    #spg-{{ section.id }}.spg--rows .spg__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* Phones: number, icon, label stacked and centred; lines only between the two columns and the two rows. */
+    #spg-{{ section.id }}.spg--rows .spg__panel { border-radius: 22px; padding: 22px 8px 12px; }
+    #spg-{{ section.id }}.spg--rows .spg__item { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 16px 8px; border-left: 0; }
+    #spg-{{ section.id }}.spg--rows .spg__item + .spg__item { border-left: 0; }
+    #spg-{{ section.id }}.spg--rows .spg__v { order: -1; }
+    #spg-{{ section.id }}.spg--rows .spg__item:nth-child(2n) { border-left: 1px solid rgba(29, 29, 29, .1); }
+    #spg-{{ section.id }}.spg--rows .spg__item:nth-child(n + 3) { border-top: 1px solid rgba(29, 29, 29, .1); }
+    #spg-{{ section.id }}.spg--rows .spg__v { font-size: 32px; }
+    #spg-{{ section.id }}.spg--rows .spg__ic { width: 18px; height: 18px; margin-top: 8px; }
+    #spg-{{ section.id }}.spg--rows .spg__l { margin-top: 8px; font-size: 13.5px; }
+  }
+  /* Rotating word in the heading ("Real People." -> "Real Progress."): the words sit in a
+     column inside a one-line window and slide up one at a time; the first word is
+     repeated at the end so the loop restarts without a jump. Width = the widest word. */
+  /* The fixed word ("Real") stays black; only the sliding words are red. */
+  #spg-{{ section.id }} .spg__h > span[aria-hidden] { color: #1d1d1d; }
+  #spg-{{ section.id }} .spg__rot { display: inline-block; height: 1.15em; overflow: hidden; vertical-align: bottom; color: var(--spg-accent); text-align: left; }
+  #spg-{{ section.id }} .spg__rot-in { display: flex; flex-direction: column; animation: spg-rot-{{ section.id }} {{ rot_total }}s cubic-bezier(.7, 0, .3, 1) infinite; }
+  #spg-{{ section.id }} .spg__rot-in > span { display: block; height: 1.15em; line-height: 1.15em; white-space: nowrap; }
+  @keyframes spg-rot-{{ section.id }} {
+    {%- for w in rot -%}
+      {%- assign i = forloop.index0 -%}
+      {%- assign hold_from = i | times: 100.0 | divided_by: rot_n -%}
+      {%- assign hold_to = i | plus: 0.78 | times: 100.0 | divided_by: rot_n -%}
+      {%- assign y = i | times: -1.15 %}
+    {{ hold_from }}%, {{ hold_to }}% { transform: translateY({{ y }}em); }
+    {%- endfor %}
+    100% { transform: translateY({{ rot_n | times: -1.15 }}em); }
+  }
+  @media (prefers-reduced-motion: reduce) { #spg-{{ section.id }} .spg__rot-in { animation: none; } }
   /* Big screens: the same steps and widths as the Health Score 360 sections
      (it used to stop growing at 2560px and stayed narrower than the rest). */
   @media (min-width: 1680px) { #spg-{{ section.id }} .spg__in { zoom: 1.12; } }
@@ -66,12 +119,16 @@
   }
 </style>
 
-<section id="spg-{{ section.id }}" class="{% if s.style == 'glass' %}spg--glass{% endif %}{% if s.glow %} spg--glow{% endif %}" style="--spg-ov: {% if s.style == 'glass' %}{{ s.overlap }}{% else %}0{% endif %}px;">
+<section id="spg-{{ section.id }}" class="{% if s.style == 'glass' %}spg--glass{% elsif s.style == 'rows' %}spg--rows{% endif %}{% if s.glow %} spg--glow{% endif %}" style="--spg-ov: {% if s.style == 'glass' %}{{ s.overlap }}{% else %}0{% endif %}px;">
   <div class="spg__in">
     <div class="spg__panel">
     {%- if s.heading != blank -%}
       <div class="spg__head">
-        <h2 class="spg__h">{{ s.heading }}{% if s.highlight != blank %} <span>{{ s.highlight }}</span>{% endif %}</h2>
+        {%- if rot_n > 1 -%}
+          <h2 class="spg__h" aria-label="{{ s.rotate_prefix | escape }} {{ rot | join: ' ' | escape }}"><span aria-hidden="true">{{ s.rotate_prefix }} <span class="spg__rot"><span class="spg__rot-in">{%- for w in rot -%}<span>{{ w | strip }}</span>{%- endfor -%}<span>{{ rot.first | strip }}</span></span></span></span></h2>
+        {%- else -%}
+          <h2 class="spg__h">{{ s.heading }}{% if s.highlight != blank %} <span>{{ s.highlight }}</span>{% endif %}</h2>
+        {%- endif -%}
         {%- if s.subheading != blank -%}<p class="spg__sub">{{ s.subheading }}</p>{%- endif -%}
       </div>
     {%- endif -%}
@@ -80,6 +137,9 @@
         {%- assign b = block.settings -%}
         <li class="spg__item" {{ block.shopify_attributes }}>
           <span class="spg__ic" aria-hidden="true">
+            {%- if b.icon_image != blank -%}<img src="{{ b.icon_image | image_url: width: 96 }}" alt="" width="24" height="24" loading="lazy">
+            {%- elsif b.icon == 'none' -%}
+            {%- else -%}
             {%- case b.icon -%}
               {%- when 'moon' -%}<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
               {%- when 'energy' -%}<svg viewBox="0 0 24 24"><path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12z"/></svg>
@@ -96,6 +156,7 @@
               {%- when 'chat' -%}<svg viewBox="0 0 24 24"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.6-4.2A8.5 8.5 0 1 1 20.5 11.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg>
               {%- else -%}<svg viewBox="0 0 24 24"><path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/></svg>
             {%- endcase -%}
+            {%- endif -%}
           </span>
           <span class="spg__v{% if b.value.size > 8 %} spg__v--long{% endif %}" data-spg-v>{{ b.value }}</span>
           {%- if b.label != blank -%}<span class="spg__l">{{ b.label }}</span>{%- endif -%}
@@ -136,9 +197,12 @@
   "settings": [
     { "type": "text", "id": "heading", "label": "Heading", "default": "Real People." },
     { "type": "text", "id": "highlight", "label": "Heading part in colour", "default": "Real Progress." },
+    { "type": "text", "id": "rotate_prefix", "label": "Moving heading: fixed words", "default": "Real", "info": "For example Real. Used when the moving words below are set." },
+    { "type": "text", "id": "rotate_words", "label": "Moving heading: words that slide up", "info": "Separate with |, e.g. People.|Progress. Empty = the normal heading above." },
+    { "type": "range", "id": "rotate_seconds", "label": "Moving heading: seconds per word", "min": 1.5, "max": 5, "step": 0.5, "unit": "s", "default": 2.5 },
     { "type": "textarea", "id": "subheading", "label": "Line under the heading" },
     { "type": "text", "id": "note", "label": "Small note under the stats", "info": "Where the numbers come from, e.g. Reported by customers after 8 weeks. Empty hides it." },
-    { "type": "select", "id": "style", "label": "Style", "default": "plain", "options": [{ "value": "plain", "label": "Plain band" }, { "value": "glass", "label": "Glass panel over the section above" }] },
+    { "type": "select", "id": "style", "label": "Style", "default": "plain", "options": [{ "value": "plain", "label": "Plain band" }, { "value": "rows", "label": "Heading left, stats in rows" }, { "value": "glass", "label": "Glass panel over the section above" }] },
     { "type": "range", "id": "overlap", "label": "Glass: overlap the section above", "min": 0, "max": 200, "step": 10, "unit": "px", "default": 90 },
     { "type": "range", "id": "overlap_mobile", "label": "Glass: overlap on phones", "min": 0, "max": 120, "step": 10, "unit": "px", "default": 40 },
     { "type": "header", "content": "Soft background" },
@@ -161,7 +225,9 @@
       "type": "stat",
       "name": "Stat",
       "settings": [
-        { "type": "select", "id": "icon", "label": "Icon", "default": "chart", "options": [
+        { "type": "image_picker", "id": "icon_image", "label": "Icon image", "info": "Your own icon (PNG, SVG or WebP, square). Used instead of the built-in icon below." },
+        { "type": "select", "id": "icon", "label": "Built-in icon", "default": "chart", "options": [
+          { "value": "none", "label": "None" },
           { "value": "moon", "label": "Moon (sleep)" }, { "value": "energy", "label": "Lightning (energy)" },
           { "value": "calm", "label": "Calm face (stress)" }, { "value": "heart", "label": "Heart" },
           { "value": "pulse", "label": "Pulse" }, { "value": "balance", "label": "Balance (hormones)" },

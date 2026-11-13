@@ -1,0 +1,134 @@
+{%- comment -%}
+  Diwali layer for the whole site (this theme only). Rendered once, right after the header group:
+  the festive serif, the colour tokens the Diwali sections share, a maroon and gold announcement bar,
+  a marigold toran hanging under the header.
+{%- endcomment -%}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500;1,9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --dw-night: #1c0810; --dw-maroon: #4a0d1c; --dw-wine: #7a1430;
+    --dw-gold: #f2c46d; --dw-gold-deep: #d99a2b; --dw-ivory: #fdf6ea; --dw-marigold: #f39a1e;
+    --dw-serif: 'Fraunces', Georgia, serif;
+  }
+
+
+
+  /* ---- Diwali finish on the home page's regular sections ----------------
+     Warm ivory backgrounds (alternating with a deeper cream), the red accent
+     words in festive maroon, a gold diya divider above a few sections, and a
+     gold edge with a soft glow on cards when hovered. All static. */
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) { background: #fffaf3; }
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) :is([id^="htr-"], [id^="hin-"], [id^="hcn-"], [id^="hfd-"], [id^="sps-"], [id^="asl-"], [id^="afd-"], [id^="apr-"], [id^="sp-"], [id^="srv-"]) { background-color: #fffaf3 !important; }
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) :is([id^="hcp-"], [id^="hj-"], [id^="hdr-"], [id^="hfq-"], [id^="apu-"], [id^="srl-"]) { background-color: #fbf2e4 !important; }
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) :is([id^="hin-"], [id^="hcn-"], [id^="spg-"]) h2 span { color: #8f1836 !important; }
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) > .shopify-section:has(:is([id^="hin-"], [id^="hcn-"], [id^="hfd-"], .sps, [id^="afd-"], [id^="apr-"], .ftr--page, .blog-container))::before {
+    content: ""; display: block; position: relative; z-index: 1; height: 44px; margin: 14px 0 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='44' viewBox='0 0 360 44'%3E%3Cdefs%3E%3ClinearGradient id='a' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='150' y2='0'%3E%3Cstop offset='0' stop-color='%23d99a2b' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23d99a2b'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' gradientUnits='userSpaceOnUse' x1='360' y1='0' x2='210' y2='0'%3E%3Cstop offset='0' stop-color='%23d99a2b' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23d99a2b'/%3E%3C/linearGradient%3E%3CradialGradient id='g'%3E%3Cstop offset='0' stop-color='%23ffc061' stop-opacity='.55'/%3E%3Cstop offset='.6' stop-color='%23ffb347' stop-opacity='.15'/%3E%3Cstop offset='1' stop-color='%23ffb347' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M0 30h150' stroke='url(%23a)' stroke-width='1.5'/%3E%3Cpath d='M210 30h150' stroke='url(%23b)' stroke-width='1.5'/%3E%3Cpath d='M156 30l4-4 4 4-4 4z' fill='%23d99a2b'/%3E%3Cpath d='M196 30l4-4 4 4-4 4z' fill='%23d99a2b'/%3E%3Ccircle cx='180' cy='20' r='18' fill='url(%23g)'/%3E%3Cpath d='M166 30h28c0 5.2-6.3 9-14 9s-14-3.8-14-9z' fill='%23c8642e'/%3E%3Cpath d='M166 30h28' stroke='%237f2f14' stroke-width='1.2'/%3E%3Cpath d='M172 34.5q8 2.6 16 0' fill='none' stroke='%23f2c46d' stroke-width='1.2' stroke-dasharray='.1 3.6' stroke-linecap='round'/%3E%3Cpath d='M180 29.5v-3.5' stroke='%232a1208' stroke-width='1.3' stroke-linecap='round'/%3E%3Cpath d='M180 26c-2.6-2.8-2.6-6 0-9.6 2.6 3.6 2.6 6.8 0 9.6z' fill='%23f7b733'/%3E%3Cpath d='M180 25.2c-1.2-1.3-1.2-2.8 0-4.4 1.2 1.6 1.2 3.1 0 4.4z' fill='%23fff4cf'/%3E%3C/svg%3E") center / 360px 44px no-repeat;
+  }
+  #MainContent:has([id^="hcd-"]) :is([id^="hcd-"], [id^="hsg-"], [id^="hkt-"]) { background-color: #fffaf3 !important; }
+  #MainContent:has([id^="hcd-"]) > .shopify-section:first-child [id^="hsg-"], #MainContent:has([id^="hcd-"]) [id^="htr-"] { background-color: #fbf2e4 !important; }
+  #MainContent:has(.ssf) .ssf { background-color: #fffaf3 !important; }
+  /* shelves share the page ivory (no full-width bands); a thin gold line marks where each one starts */
+  #MainContent:has(.ssf) .ssf { box-shadow: inset 0 1px 0 #f0e2c4; padding-top: clamp(18px, 2vw, 26px); padding-bottom: clamp(26px, 3vw, 38px); }
+  #MainContent:has(.ssf) .ssf__off { color: #8f1836; }
+  #MainContent:has(.ssf) .ssf__all { text-decoration-color: #d99a2b; }
+  @media (hover: hover) {
+    /* Product shelves: a gold ring and a soft glow on the product picture */
+    #MainContent:has(.ssf) .ssf__img { transition: box-shadow .25s ease; }
+    #MainContent:has(.ssf) .ssf__card:hover .ssf__img { box-shadow: 0 0 0 1px rgba(217, 154, 43, .65), 0 18px 36px -22px rgba(160, 90, 20, .5); }
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) :is(.hdr__card, .care-kit-card, .blog-card) { transition: box-shadow .25s ease, transform .25s ease; }
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) :is(.hdr__card, .care-kit-card, .blog-card):hover { box-shadow: 0 0 0 1px rgba(217, 154, 43, .65), 0 18px 36px -22px rgba(160, 90, 20, .5) !important; }
+    /* The carousel clips to its own box, which was exactly as tall as the cards, so the hover ring and glow were
+       cut at the top and bottom. 20px of room each way, pulled back with an equal negative margin (nothing moves). */
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .jdgm-carousel__item-container { padding-top: 20px; padding-bottom: 20px; margin-top: -20px; margin-bottom: -20px; }
+    /* the slide itself also crops to its own height (overflow hidden), so its card needs the same room */
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .jdgm-carousel-item { overflow: visible !important; }
+    /* Review cards: the white card is drawn by ::before (10px inside the slide), so the glow goes there:
+       its border warms to gold, the card turns warm ivory and a soft glow fades in, kept inside the 10px
+       around the card (the carousel clips anything beyond it). */
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .jdgm-carousel-item::before { transition: border-color .4s ease, box-shadow .4s ease, background-color .4s ease; }
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .jdgm-carousel-item:hover::before { border-color: #e2b765 !important; background-color: #fffaf1 !important; box-shadow: 0 0 0 3px rgba(242, 196, 109, .22), 0 0 14px -2px rgba(255, 176, 76, .45), inset 0 0 22px -10px rgba(242, 196, 109, .45) !important; }
+  }
+  /* Care kits: warm cards with a small gold "Diwali pick" tag */
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .care-kit-card { position: relative; background: #fbf1e3 !important; border-color: #efdcb8 !important; }
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .care-kit-card::after {
+    content: "Diwali pick"; position: absolute; top: 14px; right: 14px; z-index: 2; padding: 6px 12px; border-radius: 999px;
+    background: linear-gradient(180deg, #f9dc96, #e8ad45); color: #3a0a17; font: 700 12px/1 'Montserrat', sans-serif; letter-spacing: .02em;
+    box-shadow: 0 6px 14px -8px rgba(160, 90, 20, .8);
+  }
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .care-kit-title-row { padding-right: 124px !important; }
+  @media (max-width: 749.98px) {
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) > .shopify-section:has(:is([id^="hin-"], [id^="hcn-"], [id^="hfd-"], .sps, [id^="afd-"], [id^="apr-"], .ftr--page, .blog-container))::before { margin: 10px 0 0; background-size: 270px 33px; height: 33px; }
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .care-kit-card::after { top: 10px; right: 10px; padding: 5px 10px; font-size: 11px; }
+    #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) .care-kit-title-row { padding-right: 100px !important; }
+  }
+
+  /* ---- Diwali finish: product page, blog, article, cart, popup -------------- */
+  /* Product page: warm cream panels, a gold-edged thumbnail and a cream saving tag */
+  #MainContent:has([id^="sp-"]) :is(.sp__track, .sp__pay, .sp__qty) { background-color: #fbf2e4; }
+  #MainContent:has([id^="sp-"]) .sp__save { background: #fbeed0; color: #8f1836; }
+  #MainContent:has([id^="sp-"]) .sp__thumb { border-color: #efdcb8; }
+  #MainContent:has([id^="sp-"]) .sp__folds, #MainContent:has([id^="sp-"]) .sp__bar { border-color: #efdcb8; }
+
+  /* Blog list: ivory page, cards get the gold ring and glow on hover */
+  [class*="ai-blog-listing-"] { background-color: #fffaf3 !important; }
+  [class^="ai-blog-card-template--"] { transition: box-shadow .25s ease; }
+  @media (hover: hover) {
+    [class^="ai-blog-card-template--"]:hover { box-shadow: 0 0 0 1px rgba(217, 154, 43, .65), 0 18px 36px -22px rgba(160, 90, 20, .5); }
+  }
+
+  /* Article: the page palette goes maroon, ivory and cream (the sections set theirs inline, hence !important) */
+  .su-post {
+    --su-brand: #8f1836 !important; --su-brand-deep: #6e1229 !important; --su-wine: #4a0d1c !important;
+    --su-paper: #fffaf3 !important; --su-surface: #fbf2e4 !important; --su-line: #efdcb8 !important;
+  }
+  .su-post { background: #fffaf3; }
+
+  /* Cart page and drawer */
+  #MainContent:has(.cart__items) .cart-item__image-container { background-color: #fbf2e4; }
+  #MainContent:has(.cart__items) :is(.cart-price--discount, .cart-price--sale) { color: #8f1836; }
+  #MainContent:has(.cart__items) .cart-item { border-color: #efdcb8; }
+  cart-drawer .drawer__inner { background: #fffaf3; }
+  cart-drawer .drawer__heading { font-family: var(--dw-serif); color: #4a0d1c; }
+  cart-drawer .drawer__header { border-bottom: 1px solid #efdcb8; }
+
+  /* Lead popup: maroon and gold. The section reads its colours from --lp-* variables */
+  [id^="lead-popup-"] {
+    --lp-accent: #8f1836 !important; --lp-accent-hover: #6e1229 !important; --lp-required: #8f1836 !important;
+    --lp-border: #efdcb8 !important;
+    --lp-panel: url("{{ 'dw-tile.svg' | asset_url }}"), linear-gradient(165deg, #2a0610 0%, #5c1024 52%, #8f1836 100%) !important;
+    --lp-panel-mobile: url("{{ 'dw-tile.svg' | asset_url }}"), linear-gradient(120deg, #2a0610 0%, #5c1024 55%, #8f1836 100%) !important;
+  }
+  [id^="lead-popup-"] .lead-popup__dialog { background: #fffaf3; border: 1px solid #e2b765; }
+  [id^="lead-popup-"] .lead-popup__eyebrow { color: #b8791d !important; }
+  [id^="lead-popup-"] .lead-popup__heading { font-family: var(--dw-serif) !important; font-weight: 700 !important; color: #3a0a17 !important; }
+  [id^="lead-popup-"] .lead-popup__submit { box-shadow: 0 0 0 1px #d99a2b, 0 10px 22px -12px rgba(143, 24, 54, .7); }
+
+  /* "Real People. Real Progress.": the moving words in gold (deeper at the bottom so they read on cream) */
+  #MainContent:is(:has(.dwg), :has(.ssf), :has([id^="asl-"]), :has([id^="sp-"]), :has([class*="ai-blog-listing-"]), :has(.su-post), :has(.cart__items), :has([id^="hcd-"])) h2 .spg__rot .spg__rot-in > span {
+    color: #c98a1c !important;
+    background: linear-gradient(180deg, #efc25a 0%, #d99a2b 50%, #a8690f 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  /* Home: reviews on cream, so it separates from the ivory Integrated section below (other pages keep ivory) */
+  #MainContent:has(.dwg) [id^="htr-"] { background-color: #fbf2e4 !important; }
+  /* ...and the same space above and below the review cards (the section had 48px above and 8px below) */
+  @media (min-width: 750px) { #MainContent:has(.dwg) [id^="htr-"] .htr__inner { padding-top: 40px; padding-bottom: 40px; } }
+
+  /* Home: "What makes sehatUP different" had 56-104px above and below, trimmed by about a quarter */
+  #MainContent:has(.dwg) [id^="hcp-"] { padding-top: clamp(40px, 4.4vw, 76px); padding-bottom: clamp(40px, 4.4vw, 76px); }
+
+  /* Home: less space above "Doctor-Designed Diwali Care Kits" */
+  #MainContent:has(.dwg) .care-kits-section { padding-top: 8px; }
+  #MainContent:has(.dwg) .care-kits-heading { margin-top: 24px; }
+
+  /* "Real People. Real Progress.": the box (not the section) gets the festive styling */
+  #MainContent:has(.dwg) .spg--rows .spg__panel {
+    background: linear-gradient(180deg, #fffaf0 0%, #fbeccc 100%);
+    box-shadow: 0 0 0 1px #e9cf94, 0 0 0 5px rgba(242, 196, 109, .16), 0 26px 50px -32px rgba(160, 90, 20, .5);
+  }
+  #MainContent:has(.dwg) .spg--rows .spg__v { color: #8f1836; }
+
+</style>

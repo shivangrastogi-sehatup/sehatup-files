@@ -1,0 +1,80 @@
+{%- comment -%}
+  About Us intro. Plain and centred: a small line (About sehatUP), the heading,
+  one line under it, on a flat colour or the sehatUP red gradient. No picture, no animation.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #ain-{{ section.id }} { background: {{ s.background }}; color: {{ s.heading_color }}; font-family: 'Montserrat', sans-serif; border-bottom: 1px solid #e8e0d9; }
+  #ain-{{ section.id }} * { box-sizing: border-box; }
+  #ain-{{ section.id }} .ain__in { max-width: 980px; margin: 0 auto; padding: clamp(56px, 7vw, 112px) clamp(16px, 4vw, 48px) clamp(52px, 6.4vw, 100px); text-align: center; }
+  #ain-{{ section.id }} .ain__kick { display: inline-block; margin: 0 0 24px; padding: 10px 22px; border-radius: 999px; background: {{ s.kicker_bg }}; font: 700 14px/1.3 'Montserrat', sans-serif; color: {{ s.kicker_color }}; letter-spacing: .14em; }
+  #ain-{{ section.id }} .ain__h { margin: 0 0 20px; font: 800 clamp(34px, 5.2vw, 80px)/1.06 'Montserrat', sans-serif; letter-spacing: -.025em; color: {{ s.heading_color }}; text-wrap: balance; }
+  #ain-{{ section.id }} .ain__sub { margin: 0 auto; max-width: 36em; font: 400 clamp(16px, 1.75vw, 25px)/1.6 'Montserrat', sans-serif; color: {{ s.text_color }}; text-wrap: pretty; }
+  {%- unless s.style == 'flat' or s.style == blank %}
+  /* Dark styles: white type and a glassy pill on a lit gradient. */
+  #ain-{{ section.id }} { position: relative; overflow: hidden; border-bottom: 0; color: #fff; }
+  #ain-{{ section.id }} .ain__h { color: #fff; }
+  #ain-{{ section.id }} .ain__sub { color: rgba(255, 255, 255, .86); }
+  #ain-{{ section.id }} .ain__kick { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .26); }
+  {%- endunless %}
+  {%- case s.style %}
+  {%- when 'brand' %}
+  /* sehatUP red, deep: dark crimson into brand red, soft light top right. */
+  #ain-{{ section.id }} { background: radial-gradient(70% 90% at 85% -10%, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 60%), radial-gradient(60% 80% at 0% 110%, rgba(60, 4, 18, .55), rgba(60, 4, 18, 0) 65%), linear-gradient(135deg, #7a0b24 0%, #a8102f 45%, #d81f48 100%); }
+  {%- when 'wine' %}
+  /* Wine: a deep red-brown, calm and premium, with a faint red glow. */
+  #ain-{{ section.id }} { background: radial-gradient(60% 80% at 80% 0%, rgba(238, 32, 74, .30), rgba(238, 32, 74, 0) 60%), linear-gradient(160deg, #3d0a17 0%, #5c1022 55%, #2a0710 100%); }
+  {%- when 'charcoal' %}
+  /* Charcoal: near-black with a single brand-red light from the top right. */
+  #ain-{{ section.id }} { background: radial-gradient(55% 75% at 92% -5%, rgba(238, 32, 74, .45), rgba(238, 32, 74, 0) 62%), linear-gradient(180deg, #232020 0%, #1a1717 100%); }
+  #ain-{{ section.id }} .ain__kick { background: rgba(238, 32, 74, .18); box-shadow: inset 0 0 0 1px rgba(238, 32, 74, .45); }
+  {%- when 'ember' %}
+  /* Ember: charcoal on the left warming into brand red on the right. */
+  #ain-{{ section.id }} { background: radial-gradient(50% 70% at 100% 100%, rgba(255, 120, 140, .18), rgba(255, 120, 140, 0) 60%), linear-gradient(110deg, #1d1d1d 0%, #3b1219 40%, #8e0f2c 75%, #c8183c 100%); }
+  {%- endcase %}
+  @media (max-width: 749.98px) {
+    #ain-{{ section.id }} .ain__in { padding: 44px 16px 40px; }
+    #ain-{{ section.id }} .ain__kick { font-size: 12px; margin-bottom: 18px; padding: 8px 16px; letter-spacing: .1em; }
+    #ain-{{ section.id }} .ain__h { font-size: clamp(30px, 8.4vw, 38px); margin-bottom: 14px; }
+  }
+  @media (min-width: 1680px) { #ain-{{ section.id }} .ain__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #ain-{{ section.id }} .ain__in { zoom: 1.25; } }
+  @media (min-width: 2240px) { #ain-{{ section.id }} .ain__in { zoom: 1.45; } }
+  @media (min-width: 2560px) { #ain-{{ section.id }} .ain__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #ain-{{ section.id }} .ain__in { zoom: 2; } }
+  @media (min-width: 3840px) { #ain-{{ section.id }} .ain__in { zoom: 2.4; } }
+</style>
+
+<section id="ain-{{ section.id }}">
+  <div class="ain__in">
+    {%- if s.kicker != blank -%}<p class="ain__kick">{{ s.kicker }}</p>{%- endif -%}
+    <h1 class="ain__h">{{ s.heading }}</h1>
+    {%- if s.subheading != blank -%}<p class="ain__sub">{{ s.subheading }}</p>{%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "About: intro",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "kicker", "label": "Small line above the heading", "default": "PERSONALIZED ONLINE WELLNESS" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "About sehatUP" },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading", "default": "Get personalized wellness support online through consultations in Ayurveda, Homeopathy, and Allopathy." },
+    { "type": "select", "id": "style", "label": "Style", "default": "flat", "options": [
+      { "value": "flat", "label": "Flat colour (set below)" },
+      { "value": "brand", "label": "Deep sehatUP red" },
+      { "value": "wine", "label": "Wine" },
+      { "value": "charcoal", "label": "Charcoal with a red light" },
+      { "value": "ember", "label": "Ember: charcoal into red" }
+    ] },
+    { "type": "header", "content": "Colours (flat style)" },
+    { "type": "color", "id": "background", "label": "Background", "default": "#f6f0ec" },
+    { "type": "color", "id": "heading_color", "label": "Heading", "default": "#1d1d1d" },
+    { "type": "color", "id": "text_color", "label": "Line under the heading", "default": "#5f5a56" },
+    { "type": "color", "id": "kicker_color", "label": "Small line", "default": "#d81f48" },
+    { "type": "color", "id": "kicker_bg", "label": "Small line pill background", "default": "#fdecef" }
+  ],
+  "presets": [{ "name": "About: intro" }]
+}
+{% endschema %}

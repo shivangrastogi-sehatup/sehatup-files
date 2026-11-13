@@ -1,0 +1,311 @@
+{%- comment -%}
+  Diwali gift finder: "Who are you gifting?" A candle-lit night: string lights across the top, real diyas
+  glowing behind, a stack of mithai boxes and gifts, and products under little strings of lights.
+  Each pill is a block with its own collection; cards add to the cart in place.
+  Photos: Pexels (free licence, no credit needed), saved in assets as dw-*.webp.
+{%- endcomment -%}
+{%- assign sid = section.id -%}
+<style>
+  #dwg-{{ sid }} { position: relative; overflow: hidden; isolation: isolate; color: #fbeedd;
+    background: radial-gradient(70% 60% at 78% 30%, #4a1512 0%, #22090d 55%, #14070a 100%); }
+  #dwg-{{ sid }} .dwg__bg { position: absolute; top: 0; right: 0; z-index: -1; width: 64%; height: 760px; object-fit: cover; object-position: 30% 40%; opacity: .85;
+    -webkit-mask-image: radial-gradient(70% 70% at 62% 42%, #000 35%, transparent 78%); mask-image: radial-gradient(70% 70% at 62% 42%, #000 35%, transparent 78%); }
+
+  /* String lights across the top; the glow layer breathes (opacity only, its own layer) */
+  #dwg-{{ sid }} .dwg__lights { position: relative; height: 80px; margin-bottom: -40px; }
+  #dwg-{{ sid }} .dwg__lights svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  #dwg-{{ sid }} .dwg__glow { opacity: .85; }
+
+  #dwg-{{ sid }} .dwg__in { position: relative; max-width: 1272px; margin: 0 auto; padding: 40px 24px 84px; zoom: var(--sz, 1); }
+  #dwg-{{ sid }} .dwg__head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 40px; }
+  #dwg-{{ sid }} .dwg__k { margin: 0; font: italic 500 20px/1 var(--dw-serif, Georgia, serif); color: var(--dw-gold, #f2c46d); }
+  #dwg-{{ sid }} .dwg__h { margin: 14px 0 0; max-width: 13ch; font: 500 clamp(36px, 4.2vw, 60px)/1.04 var(--dw-serif, Georgia, serif); color: #fff6e8; letter-spacing: -.01em; }
+  #dwg-{{ sid }} .dwg__h em { font-style: italic; color: var(--dw-gold, #f2c46d); }
+  #dwg-{{ sid }} .dwg__tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+  #dwg-{{ sid }} .dwg__tab { min-height: 46px; padding: 0 22px; border: 1.5px solid rgba(242, 196, 109, .45); border-radius: 999px; background: rgba(255, 240, 210, .06); color: #fbeedd; cursor: pointer;
+    font: 700 15px/1 'Montserrat', sans-serif; transition: background .2s, color .2s, border-color .2s; }
+  #dwg-{{ sid }} .dwg__tab:hover { border-color: var(--dw-gold, #f2c46d); }
+  #dwg-{{ sid }} .dwg__tab[aria-selected="true"] { background: var(--dw-gold, #f2c46d); border-color: var(--dw-gold, #f2c46d); color: #2a0a10; box-shadow: 0 0 24px -4px rgba(242, 196, 109, .6); }
+
+  /* The chosen person's products, set down like three framed photos on a table */
+  #dwg-{{ sid }} .dwg__stack { position: relative; }
+  #dwg-{{ sid }} .dwg__boxes { position: relative; height: 380px; }
+  #dwg-{{ sid }} .dwg__boxes[hidden] { display: none; }
+  #dwg-{{ sid }} .dwg__boxes:not([hidden]) .dwg__box { animation: dwg-drop .5s cubic-bezier(.2, .8, .3, 1) both; }
+  #dwg-{{ sid }} .dwg__boxes:not([hidden]) .dwg__box--2 { animation-delay: .06s; }
+  #dwg-{{ sid }} .dwg__boxes:not([hidden]) .dwg__box--3 { animation-delay: .12s; }
+  @keyframes dwg-drop { from { opacity: 0; translate: 0 14px; } }
+  #dwg-{{ sid }} .dwg__box { position: absolute; display: block; aspect-ratio: 1; border: 7px solid #fff8ec; border-radius: 16px; background: #fff; overflow: hidden;
+    box-shadow: 0 24px 50px -18px rgba(0, 0, 0, .7), 0 0 60px -20px rgba(255, 170, 70, .45); transition: transform .35s cubic-bezier(.3, 1.4, .5, 1); }
+  #dwg-{{ sid }} .dwg__box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #dwg-{{ sid }} .dwg__box--1 { left: 2%; top: 46px; width: 38%; transform: rotate(-7deg); }
+  #dwg-{{ sid }} .dwg__box--2 { left: 31%; top: 0; width: 40%; transform: rotate(3deg); z-index: 2; }
+  #dwg-{{ sid }} .dwg__box--3 { right: 2%; top: 120px; width: 37%; transform: rotate(-4deg); z-index: 3; }
+  #dwg-{{ sid }} .dwg__boxes:hover .dwg__box--1 { transform: rotate(-10deg) translate(-8px, -4px); }
+  #dwg-{{ sid }} .dwg__boxes:hover .dwg__box--2 { transform: rotate(1deg) translateY(-8px); }
+  #dwg-{{ sid }} .dwg__boxes:hover .dwg__box--3 { transform: rotate(-1deg) translate(8px, 4px); }
+
+  #dwg-{{ sid }} .dwg__panel { margin-top: 16px; }
+  #dwg-{{ sid }} .dwg__panel:not([hidden]) { animation: dwg-in .3s ease both; }
+  @keyframes dwg-in { from { opacity: 0; } }
+  #dwg-{{ sid }} .dwg__note { margin: 0 0 22px; max-width: 52ch; font: 500 16px/1.55 'Montserrat', sans-serif; color: rgba(251, 238, 221, .78); }
+  #dwg-{{ sid }} .dwg__rail { position: relative; }
+  #dwg-{{ sid }} .dwg__track { display: flex; gap: 22px; margin: 0 -8px; padding: 8px 8px 16px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 8px; scroll-behavior: smooth; overscroll-behavior-x: contain; scrollbar-width: none; }
+  #dwg-{{ sid }} .dwg__track::-webkit-scrollbar { display: none; }
+  #dwg-{{ sid }} .dwg__track > .dwg__card { flex: 0 0 calc((100% - 3 * 22px) / 4.3); min-width: 0; scroll-snap-align: start; }
+  #dwg-{{ sid }} .dwg__arrow { position: absolute; z-index: 3; top: 38%; width: 44px; height: 44px; margin: 0; padding: 0; display: grid; place-items: center; border: 1.5px solid var(--dw-gold, #f2c46d); border-radius: 50%;
+    background: #2a0a10; color: var(--dw-gold, #f2c46d); cursor: pointer; box-shadow: 0 10px 24px -10px rgba(0, 0, 0, .7); transition: background-color .2s, color .2s, opacity .2s; }
+  #dwg-{{ sid }} .dwg__arrow[hidden] { display: none; }
+  #dwg-{{ sid }} .dwg__arrow:disabled { opacity: 0; pointer-events: none; }
+  #dwg-{{ sid }} .dwg__arrow:hover { background: var(--dw-gold, #f2c46d); color: #2a0a10; }
+  #dwg-{{ sid }} .dwg__arrow:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  #dwg-{{ sid }} .dwg__arrow--prev { left: -22px; }
+  #dwg-{{ sid }} .dwg__arrow--next { right: -22px; }
+  #dwg-{{ sid }} .dwg__card { position: relative; display: flex; flex-direction: column; border-radius: 18px; background: #fff; color: #1d1d1d;
+    box-shadow: 0 22px 44px -26px rgba(0, 0, 0, .8); transition: transform .25s, box-shadow .25s; }
+  #dwg-{{ sid }} .dwg__card:hover { transform: translateY(-4px); box-shadow: 0 26px 50px -24px rgba(0, 0, 0, .8), 0 0 40px -10px rgba(255, 190, 90, .55); }
+  #dwg-{{ sid }} .dwg__media { display: block; aspect-ratio: 1; border-radius: 18px 18px 0 0; background: #f8efe2; overflow: hidden; }
+  #dwg-{{ sid }} .dwg__media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s; }
+  #dwg-{{ sid }} .dwg__card:hover .dwg__media img { transform: scale(1.04); }
+  #dwg-{{ sid }} .dwg__body { display: flex; flex-direction: column; flex: 1; gap: 8px; padding: 16px 16px 18px; }
+  #dwg-{{ sid }} .dwg__t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.6em; font: 700 16px/1.3 'Montserrat', sans-serif; color: #1d1d1d; text-decoration: none; }
+  #dwg-{{ sid }} .dwg__price { display: flex; align-items: baseline; gap: 8px; margin: 0; font: 800 17px/1 'Montserrat', sans-serif; color: #1d1d1d; }
+  #dwg-{{ sid }} .dwg__price s { font-weight: 500; font-size: 14px; color: #8a817b; }
+  #dwg-{{ sid }} .dwg__add { display: flex; align-items: center; justify-content: center; min-height: 46px; margin-top: auto; border: 0; border-radius: 999px; background: #d81f48; color: #fff;
+    font: 700 15px/1 'Montserrat', sans-serif; text-decoration: none; cursor: pointer; transition: background .2s; }
+  #dwg-{{ sid }} .dwg__add:hover { background: #ee204a; }
+  #dwg-{{ sid }} .dwg__add.is-done { background: #2a0a10; }
+  /* View all: a clear gold outline button */
+  #dwg-{{ sid }} .dwg__view { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; margin-top: 18px; padding: 0 22px; border: 1.5px solid var(--dw-gold, #f2c46d); border-radius: 999px;
+    color: var(--dw-gold, #f2c46d); text-decoration: none; font: 700 15px/1 'Montserrat', sans-serif; transition: background-color .2s, color .2s; }
+  #dwg-{{ sid }} .dwg__view[hidden] { display: none; }
+  #dwg-{{ sid }} .dwg__view:hover { background: var(--dw-gold, #f2c46d); color: #2a0a10; }
+  #dwg-{{ sid }} .dwg__view--end { display: flex; width: max-content; margin: 30px auto 0; }
+  #dwg-{{ sid }} .dwg__all { display: table; margin: 30px auto 0; font: 700 15px/1 'Montserrat', sans-serif; color: var(--dw-gold, #f2c46d); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+  #dwg-{{ sid }} .dwg__empty { grid-column: 1 / -1; padding: 30px; text-align: center; color: rgba(251, 238, 221, .7); font: 500 14px/1.5 'Montserrat', sans-serif; }
+
+  @media (max-width: 989.98px) {
+    #dwg-{{ sid }} .dwg__track > .dwg__card { flex-basis: calc((100% - 2 * 22px) / 2.5); }
+    #dwg-{{ sid }} .dwg__arrow--prev { left: -12px; }
+    #dwg-{{ sid }} .dwg__arrow--next { right: -12px; }
+  }
+  @media (max-width: 749.98px) {
+    #dwg-{{ sid }} .dwg__bg { width: 100%; height: 420px; opacity: .6; object-position: 40% 40%;
+      -webkit-mask-image: linear-gradient(#000 40%, transparent); mask-image: linear-gradient(#000 40%, transparent); }
+    #dwg-{{ sid }} .dwg__lights { height: 56px; margin-bottom: -28px; }
+    #dwg-{{ sid }} .dwg__in { padding: 28px 0 52px; }
+    #dwg-{{ sid }} .dwg__head { display: flex; flex-direction: column-reverse; gap: 22px; min-height: 0; text-align: center; }
+    #dwg-{{ sid }} .dwg__text { padding: 0 16px; }
+    #dwg-{{ sid }} .dwg__boxes { width: 100%; max-width: 360px; height: 220px; margin: 0 auto; }
+    #dwg-{{ sid }} .dwg__box { border-width: 4px; border-radius: 12px; }
+    #dwg-{{ sid }} .dwg__box--1 { left: 3%; top: 30px; width: 38%; }
+    #dwg-{{ sid }} .dwg__box--2 { left: 31%; top: 0; width: 40%; }
+    #dwg-{{ sid }} .dwg__box--3 { right: 3%; top: 64px; width: 37%; }
+    #dwg-{{ sid }} .dwg__view { margin-top: 14px; }
+    #dwg-{{ sid }} .dwg__view--end { margin-top: 18px; }
+    #dwg-{{ sid }} .dwg__k { font-size: 17px; }
+    #dwg-{{ sid }} .dwg__h { max-width: none; margin-top: 10px; font-size: 32px; }
+    #dwg-{{ sid }} .dwg__tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; margin: 20px -16px 0; padding: 4px 16px 6px; scrollbar-width: none; }
+    #dwg-{{ sid }} .dwg__tabs::-webkit-scrollbar { display: none; }
+    #dwg-{{ sid }} .dwg__tab { flex: none; min-height: 42px; padding: 0 18px; font-size: 14px; }
+    #dwg-{{ sid }} .dwg__tabs .dwg__tab:first-child { margin-left: auto; }
+    #dwg-{{ sid }} .dwg__tabs .dwg__tab:last-child { margin-right: auto; }
+    #dwg-{{ sid }} .dwg__panel { margin-top: 18px; }
+    #dwg-{{ sid }} .dwg__note { margin: 0 16px 16px; font-size: 14.5px; text-align: center; }
+    #dwg-{{ sid }} .dwg__track { gap: 14px; margin: 0; padding: 4px 16px 14px; scroll-padding: 0 16px; }
+    #dwg-{{ sid }} .dwg__track > .dwg__card { flex-basis: 64%; }
+    #dwg-{{ sid }} .dwg__arrow { display: none; }
+    #dwg-{{ sid }} .dwg__card:hover { transform: none; }
+    #dwg-{{ sid }} .dwg__body { padding: 12px 12px 14px; }
+    #dwg-{{ sid }} .dwg__t { font-size: 14.5px; }
+    #dwg-{{ sid }} .dwg__price { font-size: 16px; }
+    #dwg-{{ sid }} .dwg__add { min-height: 42px; font-size: 14px; }
+    #dwg-{{ sid }} .dwg__all { margin-top: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #dwg-{{ sid }} .dwg__panel { animation: none !important; } }
+
+  /* Flow: heading, choices and the person's line centred over the diya glow; the products right under them */
+  #dwg-{{ sid }} .dwg__head { display: block; min-height: 0; text-align: center; }
+  #dwg-{{ sid }} .dwg__h { max-width: none; margin-left: auto; margin-right: auto; text-wrap: balance; }
+  #dwg-{{ sid }} .dwg__tabs { justify-content: center; }
+  #dwg-{{ sid }} .dwg__panel { margin-top: 22px; }
+  #dwg-{{ sid }} .dwg__note { margin: 0 auto 26px; max-width: 46ch; text-align: center; font: italic 500 20px/1.4 var(--dw-serif, Georgia, serif); color: var(--dw-gold, #f2c46d); }
+  #dwg-{{ sid }} .dwg__bg { left: 0; right: 0; width: 100%; height: 640px; object-position: 50% 45%; opacity: .5;
+    -webkit-mask-image: radial-gradient(60% 75% at 50% 30%, #000 30%, transparent 80%); mask-image: radial-gradient(60% 75% at 50% 30%, #000 30%, transparent 80%); }
+  #dwg-{{ sid }} .dwg__in { padding-top: 56px; }
+  @media (max-width: 749.98px) {
+    #dwg-{{ sid }} .dwg__in { padding-top: 34px; }
+    #dwg-{{ sid }} .dwg__note { margin: 0 16px 12px; font-size: 16.5px; }
+    #dwg-{{ sid }} .dwg__bg { height: 460px; }
+  }
+</style>
+<section id="dwg-{{ sid }}" class="dwg">
+  <span id="diwali-gifts" style="position: relative; top: -90px; display: block; height: 0; visibility: hidden;" aria-hidden="true"></span>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><radialGradient id="dwgC{{ sid }}G"><stop offset="0" stop-color="#ffd27a" stop-opacity=".75"/><stop offset=".4" stop-color="#ffb347" stop-opacity=".25"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient><radialGradient id="dwgC{{ sid }}B" cx=".4" cy=".35"><stop offset="0" stop-color="#fffbe6"/><stop offset=".5" stop-color="#ffe08a"/><stop offset="1" stop-color="#f5a623"/></radialGradient></defs><defs><radialGradient id="dwgT{{ sid }}G"><stop offset="0" stop-color="#ffd27a" stop-opacity=".75"/><stop offset=".4" stop-color="#ffb347" stop-opacity=".25"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient><radialGradient id="dwgT{{ sid }}B" cx=".4" cy=".35"><stop offset="0" stop-color="#fffbe6"/><stop offset=".5" stop-color="#ffe08a"/><stop offset="1" stop-color="#f5a623"/></radialGradient></defs></svg>
+  <img class="dwg__bg" src="{{ 'dw-diyas.webp' | asset_url }}" alt="" width="1600" height="937" loading="lazy" aria-hidden="true">
+  <div class="dwg__lights" aria-hidden="true"><svg viewBox="0 0 1500 80" preserveAspectRatio="xMidYMin slice"><path d="M0 6Q250 58 500 6" fill="none" stroke="#5a3a1a" stroke-width="1.8"/><path d="M500 6Q750 58 1000 6" fill="none" stroke="#5a3a1a" stroke-width="1.8"/><path d="M1000 6Q1250 58 1500 6" fill="none" stroke="#5a3a1a" stroke-width="1.8"/><rect x="47.5" y="15.4" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="50" cy="26.4" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="97.5" y="22.6" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="100" cy="33.6" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="147.5" y="27.8" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="150" cy="38.8" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="197.5" y="31" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="200" cy="42" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="247.5" y="32" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="250" cy="43" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="297.5" y="31" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="300" cy="42" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="347.5" y="27.8" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="350" cy="38.8" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="397.5" y="22.6" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="400" cy="33.6" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="447.5" y="15.4" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="450" cy="26.4" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="547.5" y="15.4" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="550" cy="26.4" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="597.5" y="22.6" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="600" cy="33.6" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="647.5" y="27.8" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="650" cy="38.8" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="697.5" y="31" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="700" cy="42" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="747.5" y="32" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="750" cy="43" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="797.5" y="31" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="800" cy="42" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="847.5" y="27.8" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="850" cy="38.8" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="897.5" y="22.6" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="900" cy="33.6" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="947.5" y="15.4" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="950" cy="26.4" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1047.5" y="15.4" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1050" cy="26.4" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1097.5" y="22.6" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1100" cy="33.6" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1147.5" y="27.8" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1150" cy="38.8" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1197.5" y="31" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1200" cy="42" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1247.5" y="32" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1250" cy="43" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1297.5" y="31" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1300" cy="42" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1347.5" y="27.8" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1350" cy="38.8" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1397.5" y="22.6" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1400" cy="33.6" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/><rect x="1447.5" y="15.4" width="5" height="5" rx="1.1" fill="#8a6a2e"/><ellipse cx="1450" cy="26.4" rx="4.1" ry="6.1" fill="url(#dwgT{{ sid }}B)"/></svg><svg class="dwg__glow" viewBox="0 0 1500 80" preserveAspectRatio="xMidYMin slice"><circle cx="50" cy="26.4" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="100" cy="33.6" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="150" cy="38.8" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="200" cy="42" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="250" cy="43" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="300" cy="42" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="350" cy="38.8" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="400" cy="33.6" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="450" cy="26.4" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="550" cy="26.4" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="600" cy="33.6" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="650" cy="38.8" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="700" cy="42" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="750" cy="43" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="800" cy="42" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="850" cy="38.8" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="900" cy="33.6" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="950" cy="26.4" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1050" cy="26.4" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1100" cy="33.6" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1150" cy="38.8" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1200" cy="42" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1250" cy="43" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1300" cy="42" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1350" cy="38.8" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1400" cy="33.6" r="18.7" fill="url(#dwgT{{ sid }}G)"/><circle cx="1450" cy="26.4" r="18.7" fill="url(#dwgT{{ sid }}G)"/></svg></div>
+  <div class="dwg__in">
+    <div class="dwg__head">
+      <div class="dwg__text">
+        <p class="dwg__k">{{ section.settings.kicker }}</p>
+        <h2 class="dwg__h">{{ section.settings.heading }}{% if section.settings.heading_accent != blank %} <em>{{ section.settings.heading_accent }}</em>{% endif %}</h2>
+        <div class="dwg__tabs" role="tablist" aria-label="{{ section.settings.heading | escape }}">
+          {%- for block in section.blocks -%}
+            <button type="button" class="dwg__tab" role="tab" id="dwg-t-{{ block.id }}" aria-controls="dwg-p-{{ block.id }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" {% unless forloop.first %}tabindex="-1"{% endunless %} {{ block.shopify_attributes }}>{{ block.settings.label }}</button>
+          {%- endfor -%}
+        </div>
+      </div>
+    </div>
+
+    {%- for block in section.blocks -%}
+      <div class="dwg__panel" role="tabpanel" id="dwg-p-{{ block.id }}" aria-labelledby="dwg-t-{{ block.id }}" {% unless forloop.first %}hidden{% endunless %}>
+        {%- if block.settings.note != blank -%}<p class="dwg__note">{{ block.settings.note }}</p>{%- endif -%}
+        <div class="dwg__rail">
+        <button type="button" class="dwg__arrow dwg__arrow--prev" aria-label="Previous products" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <ul class="dwg__track">
+          {%- assign c = block.settings.collection -%}
+          {%- assign list = c.products -%}
+          {%- assign cap = section.settings.limit -%}
+          {%- if block.settings.products != blank -%}{%- assign list = block.settings.products -%}{%- assign cap = 50 -%}{%- endif -%}
+          {%- for product in list limit: cap -%}
+            {%- assign v = product.selected_or_first_available_variant -%}
+            <li class="dwg__card">
+              <a class="dwg__media" href="{{ product.url }}" tabindex="-1" aria-hidden="true">
+                {%- if product.featured_media -%}
+                  {{ product.featured_media | image_url: width: 900 | image_tag: loading: 'lazy', widths: '300, 450, 600, 900', sizes: '(max-width: 749px) 66vw, (max-width: 1679px) 280px, (max-width: 2559px) 420px, 640px', alt: product.title | escape }}
+                {%- endif -%}
+              </a>
+              <div class="dwg__body">
+                <a class="dwg__t" href="{{ product.url }}">{{ product.title }}</a>
+                <p class="dwg__price">
+                  <b>{{ product.price | money_without_trailing_zeros }}</b>
+                  {%- if product.compare_at_price > product.price -%}<s>{{ product.compare_at_price | money_without_trailing_zeros }}</s>{%- endif -%}
+                </p>
+                {%- if product.has_only_default_variant and v.available -%}
+                  <button type="button" class="dwg__add" data-variant="{{ v.id }}">{{ section.settings.add_label }}</button>
+                {%- else -%}
+                  <a class="dwg__add" href="{{ product.url }}">{{ section.settings.view_label }}</a>
+                {%- endif -%}
+              </div>
+            </li>
+          {%- else -%}
+            <li class="dwg__empty">Choose products or a collection for "{{ block.settings.label }}" in the theme editor.</li>
+          {%- endfor -%}
+        </ul>
+        <button type="button" class="dwg__arrow dwg__arrow--next" aria-label="More products" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        {%- assign all_href = block.settings.all_link | default: c.url -%}
+        {%- if all_href != blank and section.settings.all_label != blank -%}
+          <a class="dwg__view dwg__view--end" href="{{ all_href }}">{{ section.settings.all_label }} <span aria-hidden="true">&rarr;</span></a>
+        {%- endif -%}
+      </div>
+    {%- endfor -%}
+  </div>
+</section>
+
+
+<script>
+  (function () {
+    var root = document.getElementById('dwg-{{ sid }}');
+    if (!root) return;
+    var tabs = [].slice.call(root.querySelectorAll('.dwg__tab'));
+    [].forEach.call(root.querySelectorAll('.dwg__rail'), function (rail) {
+      var track = rail.querySelector('.dwg__track'), prev = rail.querySelector('.dwg__arrow--prev'), next = rail.querySelector('.dwg__arrow--next');
+      function sync() {
+        var more = track.scrollWidth > track.clientWidth + 4;
+        prev.hidden = next.hidden = !more;
+        prev.disabled = track.scrollLeft < 4;
+        next.disabled = track.scrollLeft + track.clientWidth > track.scrollWidth - 4;
+      }
+      function step(dir) { var c = track.querySelector('.dwg__card'); track.scrollBy({ left: dir * (c ? c.offsetWidth + 22 : track.clientWidth * .8), behavior: 'smooth' }); }
+      prev.addEventListener('click', function () { step(-1); });
+      next.addEventListener('click', function () { step(1); });
+      track.addEventListener('scroll', sync, { passive: true });
+      addEventListener('resize', sync);
+      if ('ResizeObserver' in window) new ResizeObserver(sync).observe(track);
+      sync();
+    });
+    function pick(t, focus) {
+      tabs.forEach(function (x) {
+        var on = x === t;
+        x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1;
+        document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
+      });
+      var id = t.getAttribute('aria-controls');
+      root.querySelectorAll('[data-for]').forEach(function (el) { el.hidden = el.getAttribute('data-for') !== id; });
+      if (focus) t.focus();
+      var bar = t.parentNode;
+      if (bar.scrollWidth > bar.clientWidth) bar.scrollTo({ left: t.offsetLeft - (bar.clientWidth - t.offsetWidth) / 2, behavior: 'smooth' });
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { pick(t); });
+      t.addEventListener('keydown', function (e) {
+        var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        if (d) { e.preventDefault(); pick(tabs[(i + d + tabs.length) % tabs.length], true); }
+      });
+    });
+
+    /* Add to cart in place, then refresh (and open) the cart drawer, like the product shelves */
+    var base = window.Shopify && Shopify.routes ? Shopify.routes.root : '/';
+    root.addEventListener('click', function (e) {
+      var btn = e.target.closest('button.dwg__add[data-variant]');
+      if (!btn || btn.disabled) return;
+      var drawer = document.querySelector('cart-drawer'), label = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Adding...';
+      fetch(base + 'cart/add.js', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ items: [{ id: +btn.dataset.variant, quantity: 1 }], sections: drawer ? 'cart-drawer,cart-icon-bubble' : 'cart-icon-bubble', sections_url: location.pathname }) })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw d; return d; }); })
+        .then(function (d) {
+          if (drawer && drawer.renderContents) { drawer.classList.remove('is-empty'); drawer.renderContents(d); }
+          else if (d.sections && d.sections['cart-icon-bubble']) {
+            var el = document.getElementById('cart-icon-bubble'), h = new DOMParser().parseFromString(d.sections['cart-icon-bubble'], 'text/html').querySelector('.shopify-section');
+            if (el && h) el.innerHTML = h.innerHTML;
+          }
+          document.dispatchEvent(new CustomEvent('cart:updated', { detail: { source: 'diwali-gifts' } }));
+          btn.textContent = 'Added'; btn.classList.add('is-done');
+        }, function () { btn.textContent = 'Try again'; })
+        .then(function () { setTimeout(function () { btn.disabled = false; btn.textContent = label; btn.classList.remove('is-done'); }, 2000); });
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Diwali: gift finder",
+  "tag": "div",
+  "class": "section-diwali-gifts",
+  "settings": [
+    { "type": "text", "id": "kicker", "label": "Small line", "default": "Diwali gifting" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Who are you gifting" },
+    { "type": "text", "id": "heading_accent", "label": "Heading, gold italic part", "default": "good health to?" },
+    { "type": "range", "id": "limit", "label": "Products per person (collection only)", "min": 2, "max": 48, "step": 1, "default": 4, "info": "Picked products ignore this and all show." },
+    { "type": "text", "id": "add_label", "label": "Add button", "default": "Add to cart" },
+    { "type": "text", "id": "view_label", "label": "Button for products with options", "default": "Choose" },
+    { "type": "text", "id": "all_label", "label": "View all button", "default": "View all gifts" }
+  ],
+  "blocks": [
+    {
+      "type": "person", "name": "Person",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label", "default": "Mom and Dad" },
+        { "type": "product_list", "id": "products", "label": "Products", "limit": 50, "info": "Pick and order the products; all of them show. Empty uses the collection below." },
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "text", "id": "note", "label": "Line above the products" },
+        { "type": "url", "id": "all_link", "label": "View all link", "info": "Empty goes to the collection." }
+      ]
+    }
+  ],
+  "max_blocks": 8,
+  "presets": [
+    {
+      "name": "Diwali: gift finder",
+      "blocks": [
+        { "type": "person", "settings": { "label": "Mom and Dad" } },
+        { "type": "person", "settings": { "label": "Him" } },
+        { "type": "person", "settings": { "label": "Her" } },
+        { "type": "person", "settings": { "label": "Myself" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

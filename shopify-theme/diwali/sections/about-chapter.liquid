@@ -1,0 +1,342 @@
+{%- comment -%}
+  About Us, one editorial chapter. Left: chapter number and title (stays in
+  view on desktop). Right: the chapter's content, built from blocks:
+  text, quote, list, person, facts, plan (three systems into one plan),
+  video, logo and buttons. People, videos and logos that sit next to each
+  other are shown together in one row. The chapter fades in once.
+  The section gets id="ch-<number>" so the opening's contents can link to it.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #ach-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --line: #e8e0d9; --stone: #f6f0ec; --tint: #fdecef; --btn: #d81f48;
+    scroll-margin-top: 90px;
+    padding: 0 clamp(16px, 4vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #ach-{{ section.id }} .ach__in { max-width: 1160px; margin: 0 auto; padding: clamp(32px, 3.6vw, 56px) 0; display: grid; grid-template-columns: minmax(0, 3.2fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 80px); align-items: start; {% if s.line_above %}border-top: 1px solid var(--line);{% endif %} }
+  #ach-{{ section.id }} .ach__head { position: sticky; top: 110px; }
+  #ach-{{ section.id }} .ach__n { margin: 0 0 12px; font: 700 14px/1 'Montserrat', sans-serif; color: var(--btn); font-variant-numeric: tabular-nums; }
+  #ach-{{ section.id }} .ach__h { margin: 0; font: 800 clamp(26px, 2.6vw, 38px)/1.12 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #ach-{{ section.id }} .ach__body { display: grid; gap: clamp(18px, 2vw, 28px); min-width: 0; }
+
+  /* text */
+  #ach-{{ section.id }} .ach__text { max-width: 680px; }
+  #ach-{{ section.id }} .ach__text p { margin: 0 0 16px; font: 400 17px/1.7 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #ach-{{ section.id }} .ach__text p:last-child { margin: 0; }
+  #ach-{{ section.id }} .ach__text strong { color: var(--ink); font-weight: 700; }
+  #ach-{{ section.id }} .ach__text.lead p { font: 500 clamp(19px, 1.6vw, 23px)/1.55 'Montserrat', sans-serif; color: var(--ink); }
+  #ach-{{ section.id }} .ach__text.letter { padding: clamp(24px, 3vw, 40px); border-radius: 24px; background: var(--stone); max-width: none; }
+  #ach-{{ section.id }} .ach__text.letter p { font-size: 17.5px; color: var(--ink); }
+
+  /* quote */
+  #ach-{{ section.id }} .ach__quote { position: relative; margin: 0; padding-left: clamp(34px, 3.4vw, 48px); max-width: 720px; }
+  #ach-{{ section.id }} .ach__quote::before { content: "\201C"; position: absolute; left: 0; top: -.06em; font: 800 clamp(52px, 4.6vw, 72px)/1 Georgia, serif; color: var(--btn); }
+  #ach-{{ section.id }} .ach__quote blockquote { margin: 0; padding: 0; border: 0; font: 700 clamp(20px, 1.9vw, 26px)/1.4 'Montserrat', sans-serif; font-style: normal; letter-spacing: -.01em; color: var(--ink); text-wrap: pretty; }
+  #ach-{{ section.id }} .ach__quote figcaption { margin-top: 12px; font: 500 14px/1.4 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* list */
+  #ach-{{ section.id }} .ach__list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); counter-reset: ach; }
+  #ach-{{ section.id }} .ach__list li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 20px 0; border-bottom: 1px solid var(--line); counter-increment: ach; }
+  #ach-{{ section.id }} .ach__list.num li { grid-template-columns: 44px minmax(0, 1fr); column-gap: 8px; }
+  #ach-{{ section.id }} .ach__list.num li::before { content: counter(ach, decimal-leading-zero); grid-row: 1 / span 2; padding-top: .35em; font: 700 13px/1 'Montserrat', sans-serif; color: var(--btn); }
+  #ach-{{ section.id }} .ach__list b { font: 700 clamp(18px, 1.6vw, 21px)/1.3 'Montserrat', sans-serif; color: var(--ink); }
+  #ach-{{ section.id }} .ach__list span { font: 400 16px/1.6 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* people */
+  #ach-{{ section.id }} .ach__g--person { display: flex; flex-wrap: wrap; gap: 20px; }
+  #ach-{{ section.id }} .ach__person { width: clamp(150px, 15vw, 200px); }
+  #ach-{{ section.id }} .ach__person .pic { aspect-ratio: 4 / 5; border-radius: 18px; overflow: hidden; background: var(--stone); }
+  #ach-{{ section.id }} .ach__person img { width: 100%; height: 100%; object-fit: cover; object-position: center 12%; }
+  #ach-{{ section.id }} .ach__person b { display: block; margin-top: 12px; font: 700 15px/1.3 'Montserrat', sans-serif; }
+  #ach-{{ section.id }} .ach__person span { display: block; margin-top: 2px; font: 500 13.5px/1.35 'Montserrat', sans-serif; color: var(--mute); }
+  #ach-{{ section.id }} .ach__person p { margin: 8px 0 0; font: 400 14px/1.5 'Montserrat', sans-serif; color: var(--ink); }
+
+  /* facts */
+  #ach-{{ section.id }} .ach__facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); list-style: none; }
+  #ach-{{ section.id }} .ach__facts li { padding: 0 18px; }
+  #ach-{{ section.id }} .ach__facts li:first-child { padding-left: 0; }
+  #ach-{{ section.id }} .ach__facts li + li { border-left: 1px solid var(--line); }
+  #ach-{{ section.id }} .ach__facts b { display: block; font: 800 clamp(26px, 2.6vw, 36px)/1.05 'Montserrat', sans-serif; letter-spacing: -.02em; }
+  #ach-{{ section.id }} .ach__facts span { display: block; margin-top: 6px; font: 500 14px/1.4 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* plan: three systems into one plan */
+  #ach-{{ section.id }} .ach__plan { padding: clamp(20px, 2.6vw, 32px); border: 1px solid var(--line); border-radius: 24px; }
+  #ach-{{ section.id }} .ach__plan-l { margin: 0 0 16px; font: 700 14px/1.3 'Montserrat', sans-serif; color: var(--mute); }
+  #ach-{{ section.id }} .ach__plan-g { display: grid; grid-template-columns: minmax(0, 1.35fr) 56px minmax(0, 1fr); align-items: stretch; }
+  #ach-{{ section.id }} .ach__sys { display: grid; grid-auto-rows: 1fr; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  #ach-{{ section.id }} .ach__sys li { padding: 16px 18px; border-radius: 16px; background: var(--stone); }
+  #ach-{{ section.id }} .ach__sys b { display: block; font: 700 16px/1.3 'Montserrat', sans-serif; }
+  #ach-{{ section.id }} .ach__sys span { display: block; margin-top: 4px; font: 400 14.5px/1.5 'Montserrat', sans-serif; color: var(--mute); }
+  #ach-{{ section.id }} .ach__wire { width: 100%; height: 100%; }
+  #ach-{{ section.id }} .ach__wire path { fill: none; stroke: var(--btn); stroke-width: 1.5; opacity: .45; vector-effect: non-scaling-stroke; }
+  #ach-{{ section.id }} .ach__out { align-self: center; padding: 22px; border-radius: 18px; background: var(--tint); }
+  #ach-{{ section.id }} .ach__out b { display: block; font: 800 18px/1.25 'Montserrat', sans-serif; color: var(--btn); }
+  #ach-{{ section.id }} .ach__out p { margin: 8px 0 0; font: 600 15.5px/1.5 'Montserrat', sans-serif; color: var(--ink); }
+  #ach-{{ section.id }} .ach__plan-n { margin: 16px 0 0; font: 400 13.5px/1.5 'Montserrat', sans-serif; color: var(--mute); }
+
+  /* videos */
+  #ach-{{ section.id }} .ach__g--video { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  #ach-{{ section.id }} .ach__vid .frame { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #1d1d1d; }
+  #ach-{{ section.id }} .ach__vid button { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+  #ach-{{ section.id }} .ach__vid button img { width: 100%; height: 100%; object-fit: cover; }
+  #ach-{{ section.id }} .ach__vid button i { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; display: grid; place-items: center; background: var(--btn); color: #fff; }
+  #ach-{{ section.id }} .ach__vid button i svg { width: 18px; height: 18px; margin-left: 3px; fill: currentColor; }
+  #ach-{{ section.id }} .ach__vid button:focus-visible { outline: 3px solid var(--btn); outline-offset: -3px; }
+  #ach-{{ section.id }} .ach__vid iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  #ach-{{ section.id }} .ach__vid p { margin: 10px 0 0; font: 600 14px/1.4 'Montserrat', sans-serif; color: var(--ink); }
+
+  /* logos */
+  #ach-{{ section.id }} .ach__g--logo { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 40px; padding: 20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  #ach-{{ section.id }} .ach__logo img { display: block; height: 34px; width: auto; max-width: 150px; object-fit: contain; }
+
+  /* buttons */
+  #ach-{{ section.id }} .ach__cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
+  #ach-{{ section.id }} .ach__btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 54px; padding: 0 28px; border-radius: 999px; text-decoration: none; font: 700 16px/1 'Montserrat', sans-serif; transition: background-color .2s, border-color .2s; }
+  #ach-{{ section.id }} .ach__btn.p { background: var(--btn); color: #fff; }
+  #ach-{{ section.id }} .ach__btn.s { border: 1.5px solid var(--line); background: #fff; color: var(--ink); }
+  @media (hover: hover) {
+    #ach-{{ section.id }} .ach__btn.p:hover { background: #c11a3f; color: #fff; }
+    #ach-{{ section.id }} .ach__btn.s:hover { border-color: var(--ink); }
+  }
+  #ach-{{ section.id }} .ach__btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  #ach-{{ section.id }} .ach__cta small { flex-basis: 100%; font: 500 14px/1.4 'Montserrat', sans-serif; color: var(--mute); }
+
+  #ach-{{ section.id }}.js .ach__in { opacity: 0; transform: translateY(14px); }
+  #ach-{{ section.id }}.js.in .ach__in { opacity: 1; transform: none; transition: opacity .7s ease, transform .8s cubic-bezier(.22, 1, .36, 1); }
+
+  @media (max-width: 899.98px) {
+    #ach-{{ section.id }} .ach__in { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    #ach-{{ section.id }} .ach__head { position: static; }
+    #ach-{{ section.id }} .ach__g--video { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 749.98px) {
+    #ach-{{ section.id }} .ach__h { font-size: 26px; }
+    #ach-{{ section.id }} .ach__text p { font-size: 15.5px; }
+    #ach-{{ section.id }} .ach__text.lead p { font-size: 18px; }
+    #ach-{{ section.id }} .ach__text.letter { padding: 22px 20px; }
+    #ach-{{ section.id }} .ach__text.letter p { font-size: 15.5px; }
+    #ach-{{ section.id }} .ach__quote blockquote { font-size: 21px; }
+    #ach-{{ section.id }} .ach__list span { font-size: 14.5px; }
+    #ach-{{ section.id }} .ach__g--person { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    #ach-{{ section.id }} .ach__g--person.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #ach-{{ section.id }} .ach__person { width: auto; }
+    #ach-{{ section.id }} .ach__person b { font-size: 13.5px; margin-top: 8px; }
+    #ach-{{ section.id }} .ach__person span { font-size: 12px; }
+    #ach-{{ section.id }} .ach__person p { font-size: 13px; }
+    #ach-{{ section.id }} .ach__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 0; }
+    #ach-{{ section.id }} .ach__facts li:nth-child(odd) { padding-left: 0; border-left: 0; }
+    #ach-{{ section.id }} .ach__facts b { font-size: 26px; }
+    #ach-{{ section.id }} .ach__facts span { font-size: 13px; }
+    #ach-{{ section.id }} .ach__plan-g { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    #ach-{{ section.id }} .ach__wire { display: none; }
+    #ach-{{ section.id }} .ach__g--logo { gap: 18px 28px; }
+    #ach-{{ section.id }} .ach__logo img { height: 28px; }
+    #ach-{{ section.id }} .ach__cta { flex-direction: column; align-items: stretch; }
+  }
+  @media (min-width: 1680px) { #ach-{{ section.id }} .ach__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #ach-{{ section.id }} .ach__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #ach-{{ section.id }} .ach__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #ach-{{ section.id }} .ach__in { zoom: 2; } }
+  @media (prefers-reduced-motion: reduce) { #ach-{{ section.id }} * { transition: none !important; } }
+</style>
+
+<section id="ach-{{ section.id }}">
+  {%- if s.number != blank -%}<span id="ch-{{ s.number | strip }}" style="display: block; scroll-margin-top: 90px"></span>{%- endif -%}
+  <div class="ach__in">
+    <div class="ach__head">
+      {%- if s.number != blank -%}<p class="ach__n">{{ s.number }}</p>{%- endif -%}
+      <h2 class="ach__h">{{ s.heading }}</h2>
+    </div>
+    <div class="ach__body">
+      {%- assign prev = '' -%}
+      {%- assign prev_grouped = false -%}
+      {%- for block in section.blocks -%}
+        {%- liquid
+          assign b = block.settings
+          assign t = block.type
+          assign grouped = false
+          if t == 'person' or t == 'video' or t == 'logo'
+            assign grouped = true
+          endif
+        -%}
+        {%- if prev_grouped and t != prev -%}</div>{%- endif -%}
+        {%- if grouped and t != prev -%}
+          {%- assign same = section.blocks | where: 'type', t -%}
+          <div class="ach__g ach__g--{{ t }}{% if same.size == 2 %} two{% endif %}">
+        {%- endif -%}
+
+        {%- case t -%}
+          {%- when 'text' -%}
+            <div class="ach__text {{ b.style }}" {{ block.shopify_attributes }}>{{ b.text }}</div>
+
+          {%- when 'quote' -%}
+            <figure class="ach__quote" {{ block.shopify_attributes }}>
+              <blockquote>{{ b.quote }}</blockquote>
+              {%- if b.cite != blank -%}<figcaption>{{ b.cite }}</figcaption>{%- endif -%}
+            </figure>
+
+          {%- when 'list' -%}
+            {%- assign rows = b.rows | newline_to_br | split: '<br />' -%}
+            <ul class="ach__list{% if b.numbered %} num{% endif %}" {{ block.shopify_attributes }}>
+              {%- for r in rows -%}
+                {%- assign parts = r | strip | split: '|' -%}
+                {%- if parts.size > 0 -%}<li><b>{{ parts[0] | strip }}</b>{%- if parts[1] != blank -%}<span>{{ parts[1] | strip }}</span>{%- endif -%}</li>{%- endif -%}
+              {%- endfor -%}
+            </ul>
+
+          {%- when 'person' -%}
+            <div class="ach__person" {{ block.shopify_attributes }}>
+              <div class="pic">{%- if b.photo != blank -%}{{ b.photo | image_url: width: 500 | image_tag: alt: b.name, loading: 'lazy', widths: '200, 360, 500', sizes: '(max-width: 749.98px) 30vw, 200px' }}{%- endif -%}</div>
+              <b>{{ b.name }}</b>
+              {%- if b.role != blank -%}<span>{{ b.role }}</span>{%- endif -%}
+              {%- if b.line != blank -%}<p>{{ b.line }}</p>{%- endif -%}
+            </div>
+
+          {%- when 'facts' -%}
+            {%- assign rows = b.rows | newline_to_br | split: '<br />' -%}
+            <ul class="ach__facts" {{ block.shopify_attributes }}>
+              {%- for r in rows -%}
+                {%- assign parts = r | strip | split: '|' -%}
+                {%- if parts.size > 0 -%}<li><b>{{ parts[0] | strip }}</b>{%- if parts[1] != blank -%}<span>{{ parts[1] | strip }}</span>{%- endif -%}</li>{%- endif -%}
+              {%- endfor -%}
+            </ul>
+
+          {%- when 'plan' -%}
+            {%- assign rows = b.systems | newline_to_br | split: '<br />' -%}
+            <div class="ach__plan" {{ block.shopify_attributes }}>
+              {%- if b.label != blank -%}<p class="ach__plan-l">{{ b.label }}</p>{%- endif -%}
+              <div class="ach__plan-g">
+                <ul class="ach__sys">
+                  {%- for r in rows -%}
+                    {%- assign parts = r | strip | split: '|' -%}
+                    {%- if parts.size > 0 -%}<li><b>{{ parts[0] | strip }}</b>{%- if parts[1] != blank -%}<span>{{ parts[1] | strip }}</span>{%- endif -%}</li>{%- endif -%}
+                  {%- endfor -%}
+                </ul>
+                <svg class="ach__wire" viewBox="0 0 56 300" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0 50 C30 50 26 150 56 150"/><path d="M0 150 L56 150"/><path d="M0 250 C30 250 26 150 56 150"/>
+                </svg>
+                <div class="ach__out"><b>{{ b.plan_title }}</b>{%- if b.plan_text != blank -%}<p>{{ b.plan_text }}</p>{%- endif -%}</div>
+              </div>
+              {%- if b.note != blank -%}<p class="ach__plan-n">{{ b.note }}</p>{%- endif -%}
+            </div>
+
+          {%- when 'video' -%}
+            <div class="ach__vid" {{ block.shopify_attributes }}>
+              <div class="frame">
+                {%- if b.video != blank -%}
+                  <button type="button" data-id="{{ b.video.id }}" aria-label="{{ 'Play video' | escape }}: {{ b.title | escape }}">
+                    <img src="https://i.ytimg.com/vi/{{ b.video.id }}/hqdefault.jpg" alt="" loading="lazy" width="480" height="360">
+                    <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></i>
+                  </button>
+                {%- endif -%}
+              </div>
+              {%- if b.title != blank -%}<p>{{ b.title }}</p>{%- endif -%}
+            </div>
+
+          {%- when 'logo' -%}
+            {%- if b.logo != blank -%}
+              {%- if b.link != blank -%}<a class="ach__logo" href="{{ b.link }}" target="_blank" rel="noopener" {{ block.shopify_attributes }}>{%- else -%}<span class="ach__logo" {{ block.shopify_attributes }}>{%- endif -%}
+              {{ b.logo | image_url: width: 300 | image_tag: alt: b.name, loading: 'lazy', height: 34 }}
+              {%- if b.link != blank -%}</a>{%- else -%}</span>{%- endif -%}
+            {%- endif -%}
+
+          {%- when 'buttons' -%}
+            <div class="ach__cta" {{ block.shopify_attributes }}>
+              {%- if b.label != blank -%}<a class="ach__btn p" href="{{ b.link | default: '#' }}">{{ b.label }}</a>{%- endif -%}
+              {%- if b.label_2 != blank -%}<a class="ach__btn s" href="{{ b.link_2 | default: '#' }}"{% if b.link_2 contains 'wa.me' %} target="_blank" rel="noopener"{% endif %}>{{ b.label_2 }}</a>{%- endif -%}
+              {%- if b.note != blank -%}<small>{{ b.note }}</small>{%- endif -%}
+            </div>
+        {%- endcase -%}
+
+        {%- assign prev = t -%}
+        {%- assign prev_grouped = grouped -%}
+      {%- endfor -%}
+      {%- if prev_grouped -%}</div>{%- endif -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('ach-{{ section.id }}');
+    if (!root) return;
+    // Videos load only when someone presses play.
+    root.querySelectorAll('.ach__vid button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = document.createElement('iframe');
+        f.src = 'https://www.youtube-nocookie.com/embed/' + b.getAttribute('data-id') + '?autoplay=1&rel=0&playsinline=1';
+        f.title = b.getAttribute('aria-label');
+        f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+        f.allowFullscreen = true;
+        b.replaceWith(f);
+      });
+    });
+    if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    root.classList.add('js');
+    var io = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { root.classList.add('in'); io.disconnect(); }
+    }, { threshold: .08 });
+    io.observe(root);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "About: chapter",
+  "tag": "div",
+  "max_blocks": 16,
+  "settings": [
+    { "type": "text", "id": "number", "label": "Chapter number", "info": "e.g. 01. The opening's contents links to it.", "default": "01" },
+    { "type": "text", "id": "heading", "label": "Chapter title", "default": "Chapter title" },
+    { "type": "checkbox", "id": "line_above", "label": "Thin line above", "default": true },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" }
+  ],
+  "blocks": [
+    { "type": "text", "name": "Text", "settings": [
+      { "type": "richtext", "id": "text", "label": "Text" },
+      { "type": "select", "id": "style", "label": "Style", "default": "normal", "options": [{ "value": "normal", "label": "Normal" }, { "value": "lead", "label": "Large" }, { "value": "letter", "label": "Letter (stone panel)" }] }
+    ] },
+    { "type": "quote", "name": "Quote", "settings": [
+      { "type": "textarea", "id": "quote", "label": "Quote" },
+      { "type": "text", "id": "cite", "label": "Who said it" }
+    ] },
+    { "type": "list", "name": "List", "settings": [
+      { "type": "textarea", "id": "rows", "label": "Rows", "info": "One per line: Title|Short text" },
+      { "type": "checkbox", "id": "numbered", "label": "Numbered", "default": false }
+    ] },
+    { "type": "person", "name": "Person", "settings": [
+      { "type": "image_picker", "id": "photo", "label": "Photo" },
+      { "type": "text", "id": "name", "label": "Name" },
+      { "type": "text", "id": "role", "label": "Role" },
+      { "type": "textarea", "id": "line", "label": "Short line" }
+    ] },
+    { "type": "facts", "name": "Facts", "settings": [
+      { "type": "textarea", "id": "rows", "label": "Facts", "info": "One per line: Value|Label, e.g. 25,000+|patients have trusted us" }
+    ] },
+    { "type": "plan", "name": "Plan diagram", "settings": [
+      { "type": "text", "id": "label", "label": "Label above", "default": "Example: a plan for weight gain" },
+      { "type": "textarea", "id": "systems", "label": "Systems", "info": "Three lines: System|What it does" },
+      { "type": "text", "id": "plan_title", "label": "Plan title", "default": "Your plan" },
+      { "type": "textarea", "id": "plan_text", "label": "Plan text" },
+      { "type": "text", "id": "note", "label": "Small note" }
+    ] },
+    { "type": "video", "name": "Video", "settings": [
+      { "type": "video_url", "id": "video", "label": "YouTube link", "accept": ["youtube"] },
+      { "type": "text", "id": "title", "label": "Title" }
+    ] },
+    { "type": "logo", "name": "Press logo", "settings": [
+      { "type": "image_picker", "id": "logo", "label": "Logo" },
+      { "type": "text", "id": "name", "label": "Name" },
+      { "type": "url", "id": "link", "label": "Article link" }
+    ] },
+    { "type": "buttons", "name": "Buttons", "settings": [
+      { "type": "text", "id": "label", "label": "Main button" },
+      { "type": "url", "id": "link", "label": "Main button link" },
+      { "type": "text", "id": "label_2", "label": "Second button" },
+      { "type": "url", "id": "link_2", "label": "Second button link" },
+      { "type": "text", "id": "note", "label": "Small note" }
+    ] }
+  ],
+  "presets": [{ "name": "About: chapter" }]
+}
+{% endschema %}

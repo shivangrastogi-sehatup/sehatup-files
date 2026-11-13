@@ -1,0 +1,118 @@
+{%- comment -%}
+  Home: sehatUP in numbers, on a charcoal band. Heading and a line about
+  where Indian healthcare is heading on the left, four figures on the right
+  that count up once on first view (the real figure is in the HTML, so it
+  reads right without script). Small proof labels underneath.
+  Each figure is a block: number, what goes before/after it, label.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #hnm-{{ section.id }} {
+    --red: #ee204a;
+    padding: clamp(56px, 6vw, 104px) clamp(16px, 4vw, 48px); background: #1d1d1d; color: #fff; font-family: 'Montserrat', sans-serif;
+  }
+  #hnm-{{ section.id }} .hnm__in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5.5vw, 88px); align-items: center; }
+  #hnm-{{ section.id }} .hnm__h { margin: 0 0 18px; font: 800 clamp(30px, 3.4vw, 48px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; color: #fff; text-wrap: balance; }
+  #hnm-{{ section.id }} .hnm__lead { margin: 0; font: 400 17px/1.65 'Montserrat', sans-serif; color: rgba(255, 255, 255, .72); text-wrap: pretty; }
+  #hnm-{{ section.id }} .hnm__tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 0; padding: 0; list-style: none; }
+  #hnm-{{ section.id }} .hnm__tags li { padding: 9px 14px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; font: 600 13.5px/1 'Montserrat', sans-serif; color: rgba(255, 255, 255, .85); }
+
+  #hnm-{{ section.id }} .hnm__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #hnm-{{ section.id }} .hnm__s { padding: 28px 28px 30px; border-top: 1px solid rgba(255, 255, 255, .14); }
+  #hnm-{{ section.id }} .hnm__s:nth-child(even) { border-left: 1px solid rgba(255, 255, 255, .14); }
+  #hnm-{{ section.id }} .hnm__s:nth-child(-n + 2) { border-top: 0; }
+  #hnm-{{ section.id }} .hnm__v { display: block; font: 800 clamp(40px, 4.4vw, 64px)/1 'Montserrat', sans-serif; letter-spacing: -.03em; color: #fff; font-variant-numeric: tabular-nums; }
+  #hnm-{{ section.id }} .hnm__v small { font-size: .55em; font-weight: 700; color: var(--red); letter-spacing: 0; }
+  #hnm-{{ section.id }} .hnm__l { display: block; margin-top: 12px; font: 500 15px/1.45 'Montserrat', sans-serif; color: rgba(255, 255, 255, .7); }
+  #hnm-{{ section.id }} .hnm__src { grid-column: 1 / -1; margin: 18px 0 0; font: 400 12.5px/1.5 'Montserrat', sans-serif; color: rgba(255, 255, 255, .45); }
+
+  @media (max-width: 899.98px) {
+    #hnm-{{ section.id }} .hnm__in { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  }
+  @media (max-width: 749.98px) {
+    #hnm-{{ section.id }} .hnm__h { font-size: 30px; }
+    #hnm-{{ section.id }} .hnm__lead { font-size: 15px; }
+    #hnm-{{ section.id }} .hnm__s { padding: 20px 14px 22px 0; }
+    #hnm-{{ section.id }} .hnm__s:nth-child(even) { padding-left: 16px; }
+    #hnm-{{ section.id }} .hnm__v { font-size: 36px; }
+    #hnm-{{ section.id }} .hnm__l { font-size: 13.5px; }
+    #hnm-{{ section.id }} .hnm__tags li { font-size: 12.5px; }
+  }
+  @media (min-width: 1680px) { #hnm-{{ section.id }} .hnm__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hnm-{{ section.id }} .hnm__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #hnm-{{ section.id }} .hnm__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hnm-{{ section.id }} .hnm__in { zoom: 2; } }
+</style>
+
+<section id="hnm-{{ section.id }}">
+  <div class="hnm__in">
+    <div>
+      <h2 class="hnm__h">{{ s.heading }}</h2>
+      {%- if s.lead != blank -%}<p class="hnm__lead">{{ s.lead }}</p>{%- endif -%}
+      {%- assign tags = s.tags | split: ',' -%}
+      {%- if s.tags != blank -%}<ul class="hnm__tags">{%- for t in tags -%}<li>{{ t | strip }}</li>{%- endfor -%}</ul>{%- endif -%}
+    </div>
+    <div class="hnm__grid">
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        <div class="hnm__s" {{ block.shopify_attributes }}>
+          <span class="hnm__v">{%- if b.before != blank -%}<small>{{ b.before }}</small>{%- endif -%}<span data-to="{{ b.number }}">{{ b.number }}</span>{%- if b.after != blank -%}<small>{{ b.after }}</small>{%- endif -%}</span>
+          <span class="hnm__l">{{ b.label }}</span>
+        </div>
+      {%- endfor -%}
+      {%- if s.source != blank -%}<p class="hnm__src">{{ s.source }}</p>{%- endif -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hnm-{{ section.id }}');
+    if (!root || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var nums = [].slice.call(root.querySelectorAll('[data-to]')).map(function (el) {
+      var raw = el.getAttribute('data-to'), to = parseFloat(raw.replace(/,/g, ''));
+      if (isNaN(to)) return null;
+      var dec = (raw.split('.')[1] || '').length, comma = raw.indexOf(',') > -1;
+      return { el: el, to: to, fmt: function (v) { return comma ? Math.round(v).toLocaleString('en-IN') : v.toFixed(dec); } };
+    }).filter(Boolean);
+    nums.forEach(function (n) { n.el.textContent = n.fmt(0); });
+    var io = new IntersectionObserver(function (es) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      var t0 = performance.now();
+      (function tick(now) {
+        var p = Math.min(1, (now - t0) / 1600), e = 1 - Math.pow(1 - p, 3);
+        nums.forEach(function (n) { n.el.textContent = n.fmt(n.to * e); });
+        if (p < 1) requestAnimationFrame(tick);
+      })(t0);
+    }, { threshold: .35 });
+    io.observe(root.querySelector('.hnm__grid'));
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Home: numbers",
+  "tag": "div",
+  "max_blocks": 6,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Where Indian healthcare is heading." },
+    { "type": "textarea", "id": "lead", "label": "Line under it" },
+    { "type": "text", "id": "tags", "label": "Proof labels", "info": "Separate with commas.", "default": "AYUSH approved products, GMP certified, Verified doctors" },
+    { "type": "text", "id": "source", "label": "Small print under the figures" }
+  ],
+  "blocks": [
+    {
+      "type": "stat",
+      "name": "Figure",
+      "settings": [
+        { "type": "text", "id": "before", "label": "Before the number" },
+        { "type": "text", "id": "number", "label": "Number", "info": "e.g. 25,000 or 4.5. It counts up from 0.", "default": "25,000" },
+        { "type": "text", "id": "after", "label": "After the number", "default": "+" },
+        { "type": "text", "id": "label", "label": "What it means", "default": "patients have trusted us" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Home: numbers" }]
+}
+{% endschema %}

@@ -34,7 +34,6 @@
     border-radius: clamp(24px, 2vw, 36px); background: rgba(255, 255, 255, .42); border: 1.5px solid var(--line);
     transition: background .5s var(--ease), box-shadow .5s var(--ease), transform .5s var(--ease), border-color .5s;
   }
-  #hcp-{{ section.id }}[data-want="all"] .p__panel,
   #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"],
   #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] {
     background: #fff; border-color: #fff; transform: translateY(-4px);
@@ -44,7 +43,6 @@
   #hcp-{{ section.id }} .p__corner { position: absolute; top: -96px; right: -96px; width: 180px; height: 180px; pointer-events: none; overflow: visible; }
   #hcp-{{ section.id }} .p__corner circle { transition: stroke-dasharray .9s var(--ease); }
   #hcp-{{ section.id }} .p__corner .p__corner-arc { stroke-dasharray: 60 600; }
-  #hcp-{{ section.id }}[data-want="all"] .p__corner-arc,
   #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"] .p__corner-arc,
   #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] .p__corner-arc { stroke-dasharray: 150 600; }
 
@@ -61,7 +59,6 @@
     padding: clamp(16px, 1.4vw, 26px) 0; color: inherit; text-decoration: none; border-bottom: 1px solid var(--line);
   }
   #hcp-{{ section.id }} .p__row:last-child { border-bottom: 0; }
-  #hcp-{{ section.id }}[data-want="all"] .p__row,
   #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"] .p__row,
   #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] .p__row { --arc: 120; }
   #hcp-{{ section.id }} .p__row:hover, #hcp-{{ section.id }} .p__row:focus-visible { --arc: 239; }
@@ -85,7 +82,6 @@
     border: 1.5px solid var(--line); background: #fff; color: var(--ink); transition: background .3s, border-color .3s, color .3s, box-shadow .3s;
   }
   #hcp-{{ section.id }} .p__go svg { width: 40%; height: 40%; transition: transform .35s var(--ease); }
-  #hcp-{{ section.id }}[data-want="all"] .p__go,
   #hcp-{{ section.id }}[data-want="her"] .p__panel[data-who="her"] .p__go,
   #hcp-{{ section.id }}[data-want="him"] .p__panel[data-who="him"] .p__go,
   #hcp-{{ section.id }} .p__row:hover .p__go {
@@ -102,24 +98,6 @@
   #hcp-{{ section.id }} .p__arc { transition-delay: calc(var(--i, 0) * 110ms + 200ms); }
   #hcp-{{ section.id }}.done .p__row, #hcp-{{ section.id }}.done .p__who, #hcp-{{ section.id }}.done .p__arc { transition-delay: 0ms; }
 
-  /* Hero mode: first thing on the page. Centred headline, trust chips, and a
-     big faint ring turning slowly behind the panels (the ring section below,
-     in miniature). */
-  #hcp-{{ section.id }}.is-hero {
-    position: relative; overflow: hidden; isolation: isolate;
-    background: radial-gradient(120% 80% at 50% 0%, #fff 0%, #fff 38%, var(--stone) 100%);
-  }
-  #hcp-{{ section.id }}.is-hero .p__in { position: relative; z-index: 1; padding-top: clamp(36px, 3.4vw, 64px); }
-  #hcp-{{ section.id }}.is-hero .p__head { grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 16px; max-width: 980px; margin: 0 auto clamp(28px, 2.6vw, 48px); }
-  #hcp-{{ section.id }}.is-hero .p__eyebrow { justify-content: center; margin-bottom: 18px; }
-  #hcp-{{ section.id }}.is-hero .p__h { font-size: clamp(38px, 3.6vw, 70px); }
-  #hcp-{{ section.id }}.is-hero .p__sub { max-width: 760px; }
-  #hcp-{{ section.id }} .p__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 6px 0 0; padding: 0; list-style: none; }
-  #hcp-{{ section.id }} .p__chips li { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px 9px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(29, 29, 29, .05); font: 600 clamp(13px, .9vw, 16px)/1 'Montserrat', sans-serif; }
-  #hcp-{{ section.id }} .p__chips svg { width: 20px; height: 20px; flex: none; }
-  #hcp-{{ section.id }} .p__orbit { position: absolute; z-index: 0; left: 50%; top: 58%; width: min(1500px, 115vw); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; animation: hcp-spin-{{ section.id }} 80s linear infinite; }
-  @keyframes hcp-spin-{{ section.id }} { to { rotate: 360deg; } }
-
   @media (max-width: 899px) {
     #hcp-{{ section.id }} .p__in { padding: 48px 16px; }
     #hcp-{{ section.id }} .p__head { grid-template-columns: 1fr; gap: 14px; }
@@ -128,34 +106,17 @@
   }
   @media (prefers-reduced-motion: reduce) {
     #hcp-{{ section.id }} *, #hcp-{{ section.id }} .p__panel { transition: none !important; }
-    #hcp-{{ section.id }} .p__orbit { animation: none; }
   }
 </style>
 
-<section id="hcp-{{ section.id }}" class="hcp{% if s.hero %} is-hero{% endif %}" data-want="{% if s.hero %}all{% else %}her{% endif %}">
-  {%- if s.hero -%}
-    <svg class="p__orbit" viewBox="0 0 1000 1000" aria-hidden="true">
-      <circle cx="500" cy="500" r="480" fill="none" stroke="#ece3db" stroke-width="2"/>
-      <circle cx="500" cy="500" r="480" fill="none" stroke="{{ s.accent_color }}" stroke-opacity=".55" stroke-width="5" stroke-linecap="round" stroke-dasharray="260 2756" transform="rotate(-100 500 500)"/>
-      <circle cx="500" cy="500" r="480" fill="none" stroke="{{ s.accent_color }}" stroke-opacity=".55" stroke-width="5" stroke-linecap="round" stroke-dasharray="140 2876" transform="rotate(120 500 500)"/>
-      <circle cx="500" cy="500" r="400" fill="none" stroke="#f1e9e2" stroke-width="1.5"/>
-    </svg>
-  {%- endif -%}
+<section id="hcp-{{ section.id }}" class="hcp" data-want="her">
   <div class="p__in">
     <div class="p__head">
       <div>
         {%- if s.eyebrow != blank -%}<p class="p__eyebrow">{{ s.eyebrow }}</p>{%- endif -%}
-        {%- if s.hero -%}<h1 class="p__h">{{ s.heading }}</h1>{%- else -%}<h2 class="p__h">{{ s.heading }}</h2>{%- endif -%}
+        <h2 class="p__h">{{ s.heading }}</h2>
       </div>
       {%- if s.subheading != blank -%}<p class="p__sub">{{ s.subheading }}</p>{%- endif -%}
-      {%- assign pts = s.points | split: ',' -%}
-      {%- if s.hero and pts.size > 0 -%}
-        <ul class="p__chips">
-          {%- for pt in pts -%}
-            <li><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="{{ s.accent_color }}"/><path d="M6 10.3l2.6 2.5L14 7.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ pt | strip }}</li>
-          {%- endfor -%}
-        </ul>
-      {%- endif -%}
     </div>
 
     <div class="p__grid">
@@ -217,9 +178,8 @@
   (function () {
     var root = document.getElementById('hcp-{{ section.id }}');
     if (!root) return;
-    // Follow the For Her / For Him switch in the ring section above
-    // (not in hero mode, where both sides stay equal).
-    if (!root.classList.contains('is-hero')) document.addEventListener('hs360:who', function (e) {
+    // Follow the For Her / For Him switch in the ring section above.
+    document.addEventListener('hs360:who', function (e) {
       if (e.detail === 'her' || e.detail === 'him') root.setAttribute('data-want', e.detail);
     });
 
@@ -241,8 +201,6 @@
   "tag": "div",
   "max_blocks": 6,
   "settings": [
-    { "type": "checkbox", "id": "hero", "label": "Use as page hero", "info": "Turn on when this is the first section: the heading becomes the page title (h1), it gets trust chips and the turning ring, and both panels show equally.", "default": false },
-    { "type": "text", "id": "points", "label": "Trust chips (hero only, comma separated)", "default": "Free, About 2 minutes, A doctor calls you" },
     { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Four free checks" },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Start with what bothers you most" },
     { "type": "textarea", "id": "subheading", "label": "Line next to the heading", "default": "Each check takes about 2 minutes. A doctor goes through your answers with you on a free call." },

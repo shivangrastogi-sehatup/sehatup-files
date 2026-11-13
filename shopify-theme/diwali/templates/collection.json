@@ -1,0 +1,87 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "banner": {
+      "type": "collection-hero",
+      "blocks": {
+        "link_1": {
+          "type": "link",
+          "settings": {
+            "label": "For Him",
+            "link": "/pages/for-him"
+          }
+        },
+        "link_2": {
+          "type": "link",
+          "settings": {
+            "label": "For Her",
+            "link": "/pages/for-her"
+          }
+        },
+        "link_3": {
+          "type": "link",
+          "settings": {
+            "label": "Combos",
+            "link": "/pages/combos"
+          }
+        },
+        "link_4": {
+          "type": "link",
+          "settings": {
+            "label": "Health Score 360",
+            "link": "/pages/health-score-360"
+          }
+        }
+      },
+      "block_order": [
+        "link_1",
+        "link_2",
+        "link_3",
+        "link_4"
+      ],
+      "settings": {
+        "show_description": true,
+        "subheading": "Care made by our doctors, delivered privately to your door.",
+        "offer_on": true,
+        "offer_text": "Diwali offer: buy any 3 individual products and get 15% extra off",
+        "offer_code": "FESTIVE15",
+        "offer_note": "Not valid on combos."
+      }
+    },
+    "product-grid": {
+      "type": "main-collection-product-grid",
+      "settings": {
+        "products_per_page": 20,
+        "columns_desktop": 5,
+        "columns_mobile": "2",
+        "color_scheme": "",
+        "image_ratio": "square",
+        "image_shape": "default",
+        "show_secondary_image": false,
+        "show_vendor": false,
+        "show_rating": false,
+        "quick_add": "buttons",
+        "offer_collection": "single-products",
+        "offer_tag": "Diwali: any 3 for 15% off",
+        "enable_filtering": true,
+        "filter_type": "horizontal",
+        "enable_sorting": true,
+        "enable_collection_schema": true,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    }
+  },
+  "order": [
+    "banner",
+    "product-grid"
+  ]
+}

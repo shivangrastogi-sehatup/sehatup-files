@@ -1,0 +1,74 @@
+{
+  "patientName": "Priya Sharma",
+  "patientAge": "28",
+  "patientGender": "Female",
+  "prescriptionID": "RX-SAMPLE",
+  "displayId": "RX-SAMPLE",
+  "consultationDate": "03 Nov 2026",
+  "primaryDiagnosis": "PCOD with irregular periods and weight gain",
+  "clinicalFindings": "Sample finding for the preview. Irregular cycle, mild weight gain and tiredness.",
+  "recommendedProducts": [
+    {
+      "dosageValue": "",
+      "dosageFrequency": "",
+      "name": "HER MENSES",
+      "dosage": [
+        "1",
+        "0",
+        "0",
+        "1"
+      ],
+      "dosageType": "schedule",
+      "type": "CAPSULE",
+      "timing": "After Food",
+      "instruction": "Take with warm water",
+      "duration": "1 Month",
+      "quantity": 1,
+      "contains": "Shatavari, Ashoka, Lodhra"
+    },
+    {
+      "dosageValue": "10",
+      "dosageFrequency": "3",
+      "name": "THYRO BALANCE DROPS",
+      "dosageType": "drops",
+      "type": "LIQUID",
+      "timing": "Before Meals",
+      "instruction": "Dilute in half cup water",
+      "duration": "45 Days",
+      "quantity": 1,
+      "contains": "Fucus vesiculosus, Iodum"
+    },
+    {
+      "dosageValue": "",
+      "dosageFrequency": "",
+      "name": "IRON PLUS SYRUP",
+      "dosage": [
+        "0",
+        "0",
+        "1",
+        "0"
+      ],
+      "dosageType": "schedule",
+      "type": "SYRUP",
+      "timing": "After Food",
+      "instruction": "Take after dinner",
+      "duration": "1 Month",
+      "quantity": 1,
+      "contains": "Ferrum met, Natrum mur"
+    }
+  ],
+  "guidelines": [
+    "Avoid sugar and processed foods.",
+    "Sleep 7 to 8 hours at a regular time.",
+    "Walk for 30 minutes every day."
+  ],
+  "doctors": [
+    {
+      "name": "DR. SAMPLE DOCTOR",
+      "qualification": "BHMS\nHomeopathy",
+      "registrationNo": "REG-00000",
+      "signatures": []
+    }
+  ],
+  "cartLink": "https://sehatup.com/"
+}

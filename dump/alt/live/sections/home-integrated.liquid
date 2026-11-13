@@ -1,0 +1,311 @@
+{%- comment -%}
+  Home: "one clinic, three systems, one plan" (Claude Design "Integrated
+  Care Directions": Direction 24a on desktop, Direction 22's mobile frame).
+
+  Opening: the three photo circles stacked face-on, each casting a soft shadow
+  on the one under it: the bottom one centred, the middle one a little off to
+  the left, the top one a little off to the right. The top circle slides off
+  right, then the middle one left.
+
+  Desktop: the discs settle into three photo circles in a row while the red
+  melts into the photos; a thin red line (the
+  circles' ring colour) fades in behind them; each name fades up under its own
+  circle; then the closing line and the button. About 3 seconds, once.
+
+  Phones: the red circle opens into a cluster (one on top, two below) with a
+  small red "Your plan" circle where they meet; the names sit in a list
+  under it, then the closing line and a full-width button.
+
+  Without JS, or with reduced motion, the final picture shows straight away.
+  Stage geometry is a 1160 x 400 box; positions below are in that box.
+{%- endcomment -%}
+{%- liquid
+  assign s = section.settings
+  assign uid = 'hin-' | append: section.id
+-%}
+<style>
+  #{{ uid }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --red: #d81f48; --ease: cubic-bezier(.65, 0, .35, 1);
+    padding: clamp(24px, 3vw, 40px) clamp(16px, 4vw, 24px) clamp(32px, 3.5vw, 48px); background: {{ s.section_bg | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  /* The theme spaces body text out; this section is set tight, like the design. */
+  #{{ uid }} * { letter-spacing: normal; }
+  #{{ uid }} .hin__in { max-width: 1272px; margin: 0 auto; }
+  #{{ uid }} .hin__h span { color: var(--red); }
+  #{{ uid }} .hin__h { margin: 0 auto 36px; max-width: 1100px; text-align: center; color: var(--ink); font: 700 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+
+  #{{ uid }} .hin__h:has(+ .hin__sub) { margin-bottom: 12px; }
+  #{{ uid }} .hin__sub { margin: 0 auto 36px; max-width: 640px; text-align: center; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #{{ uid }} .hin__stage, #{{ uid }} .hin__art { position: relative; }
+  #{{ uid }} .hin__svg { display: block; width: 100%; height: auto; overflow: visible; }
+  /* The circles: HTML layers over the SVG (which only draws the joining line),
+     the same box as the SVG, so 1 stage unit = 1/1160 of its width. */
+  #{{ uid }} .hin__discs { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: 1160 / 400; container-type: inline-size; pointer-events: none; }
+  #{{ uid }} .hin__d { position: absolute; left: 0; top: 0; width: 18.9655%; aspect-ratio: 1; will-change: transform; }
+  #{{ uid }} .hin__d--1 { transform: translate(68.182%, 13.636%) scale(1); }
+  #{{ uid }} .hin__d--2 { transform: translate(213.636%, 13.636%) scale(1); }
+  #{{ uid }} .hin__d--3 { transform: translate(359.091%, 13.636%) scale(1); }
+  #{{ uid }} .hin__face { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1.25px var(--red); }
+  #{{ uid }} .hin__face img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(var(--hin-zoom, 1)); }
+  #{{ uid }} .hin__face::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--red); }
+  #{{ uid }} .hin__center { position: absolute; left: 0; top: 0; z-index: 4; width: 7.5862%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 .26cqw #fff; color: #fff; font: 800 1.293cqw/1 'Montserrat', sans-serif; transform: translate(609.091%, 204.545%); }
+  #{{ uid }} .hin__center { opacity: 0; }
+
+  /* Three columns, each centred under its circle (x = 260, 580, 900 of 1160),
+     starting just under the circles (y = 264 of 400). */
+  #{{ uid }} .hin__labs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 82.76%; margin: -11.7% auto 0; } /* names start just under the circles (y 264 of 400) */
+  #{{ uid }} .hin__lab { width: 100%; max-width: 300px; margin: 0 auto; padding: 0 8px; text-align: center; }
+  #{{ uid }} .hin__lab b { display: block; font: 800 clamp(16px, 1.7vw, 20px)/1.2 'Montserrat', sans-serif; white-space: nowrap; }
+  #{{ uid }} .hin__lab span { display: block; margin-top: 6px; font: 400 clamp(13px, 1.35vw, 16px)/1.45 'Montserrat', sans-serif; color: var(--mute); }
+
+  #{{ uid }} .hin__list { display: none; }
+  #{{ uid }} .hin__foot { margin-top: 32px; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+  #{{ uid }} .hin__close { margin: 0; max-width: 100%; font: 800 clamp(22px, 2.5vw, 34px)/1.25 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #{{ uid }} .hin__close em { font-style: normal; color: var(--red); }
+  #{{ uid }} .hin__btn { display: inline-flex; align-items: center; gap: 10px; height: 54px; padding: 0 30px; border-radius: 999px; background: var(--red); color: #fff; text-decoration: none; font: 700 16px/1 'Montserrat', sans-serif; transition: background-color .2s; }
+  @media (hover: hover) { #{{ uid }} .hin__btn:hover { background: #c11a3f; color: #fff; } }
+  #{{ uid }} .hin__btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  #{{ uid }} .hin__btn svg { width: .9em; height: .9em; }
+
+  /* ---- animation: "is-ready" waits on the first frame, "is-play" runs it ---- */
+    /* The stack: the three circles exactly on top of each other, flat (no shadow). */
+  #{{ uid }} .hin__d--2 { z-index: 1; } #{{ uid }} .hin__d--1 { z-index: 2; } #{{ uid }} .hin__d--3 { z-index: 3; }
+  #{{ uid }}.is-ready:not(.is-play) .hin__d--2 { transform: translate(213.636%, 13.636%) scale(1); }
+  #{{ uid }}.is-ready:not(.is-play) .hin__d--1 { transform: translate(213.636%, 13.636%) scale(1); }
+  #{{ uid }}.is-ready:not(.is-play) .hin__d--3 { transform: translate(213.636%, 13.636%) scale(1); }
+  /* The words, line and button are always shown; only the circles move (no blank area while scrolling in). */
+
+  #{{ uid }}.is-play .hin__d--1 { animation: {{ uid }}-d1 1.3s var(--ease) both; }
+  #{{ uid }}.is-play .hin__d--2 { animation: {{ uid }}-d2 1.3s var(--ease) both; }
+  #{{ uid }}.is-play .hin__d--3 { animation: {{ uid }}-d3 1.3s var(--ease) both; }
+
+    /* Still until 0.5s. The top circle slides off right first, the middle one (one smooth move each)
+     left a beat later, the bottom one settles into place. */
+  @keyframes {{ uid }}-d3 { 0%, 5% { transform: translate(213.636%, 13.636%) scale(1); } 50%, 100% { transform: translate(359.091%, 13.636%) scale(1); } }
+  @keyframes {{ uid }}-d1 { 0%, 13% { transform: translate(213.636%, 13.636%) scale(1); } 63%, 100% { transform: translate(68.182%, 13.636%) scale(1); } }
+  @keyframes {{ uid }}-d2 { 0%, 9% { transform: translate(213.636%, 13.636%) scale(1); } 56.7%, 100% { transform: translate(213.636%, 13.636%) scale(1); } }
+  @keyframes {{ uid }}-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes {{ uid }}-out { from { opacity: 1; } to { opacity: 0; } }
+  /* Uses `translate`, not `transform`, so it never wipes the labels' centring transform. */
+  @keyframes {{ uid }}-up { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+
+{%- if s.animation_style == 'linear' %}
+  /* LINEAR: one thing at a time, in reading order, and nothing travels. Laptop: circle, then its
+     name, left to right; then the line joining them; then the closing line; then the button.
+     Phone: the circles top, bottom-left, bottom-right; the centre label; the three names; the
+     closing line; the button. Every step is the same short fade-and-rise. */
+  #{{ uid }}.hin--linear.is-ready:not(.is-play) .hin__d--1 { transform: translate(68.182%, 13.636%) scale(1); opacity: 0; }
+  #{{ uid }}.hin--linear.is-ready:not(.is-play) .hin__d--2 { transform: translate(213.636%, 13.636%) scale(1); opacity: 0; }
+  #{{ uid }}.hin--linear.is-ready:not(.is-play) .hin__d--3 { transform: translate(359.091%, 13.636%) scale(1); opacity: 0; }
+  #{{ uid }}.hin--linear.is-play .hin__d--1 { animation: {{ uid }}-up .45s ease 0s both; }
+  #{{ uid }}.hin--linear.is-play .hin__d--2 { animation: {{ uid }}-up .45s ease .55s both; }
+  #{{ uid }}.hin--linear.is-play .hin__d--3 { animation: {{ uid }}-up .45s ease 1.1s both; }
+  #{{ uid }}.hin--linear.is-play .hin__lab--1 { animation: {{ uid }}-up .45s ease .2s both; }
+  #{{ uid }}.hin--linear.is-play .hin__lab--2 { animation: {{ uid }}-up .45s ease .75s both; }
+  #{{ uid }}.hin--linear.is-play .hin__lab--3 { animation: {{ uid }}-up .45s ease 1.3s both; }
+  #{{ uid }}.hin--linear.is-play .hin__join { animation: {{ uid }}-in .45s ease 1.8s both; }
+  #{{ uid }}.hin--linear.is-play .hin__list { animation: none; }
+  #{{ uid }}.hin--linear.is-play .hin__close { animation: {{ uid }}-up .45s ease 2.25s both; }
+  #{{ uid }}.hin--linear.is-play .hin__btn { animation: {{ uid }}-up .45s ease 2.7s both; }
+  @media (max-width: 749.98px) {
+    #{{ uid }}.hin--linear.is-ready:not(.is-play) .hin__d--1 { transform: translate(172.727%, 75.455%) scale(1); opacity: 0; }
+    #{{ uid }}.hin--linear.is-ready:not(.is-play) .hin__d--2 { transform: translate(213.636%, 4.545%) scale(1); opacity: 0; }
+    #{{ uid }}.hin--linear.is-ready:not(.is-play) .hin__d--3 { transform: translate(254.545%, 75.455%) scale(1); opacity: 0; }
+    #{{ uid }}.hin--linear.is-play .hin__d--2 { animation: {{ uid }}-up .45s ease 0s both; }
+    #{{ uid }}.hin--linear.is-play .hin__d--1 { animation: {{ uid }}-up .45s ease .5s both; }
+    #{{ uid }}.hin--linear.is-play .hin__d--3 { animation: {{ uid }}-up .45s ease 1s both; }
+    #{{ uid }}.hin--linear.is-play .hin__center { animation: {{ uid }}-in .45s ease 1.5s both; }
+    #{{ uid }}.hin--linear.is-play .hin__list li { animation: {{ uid }}-up .45s ease both; }
+    #{{ uid }}.hin--linear.is-play .hin__list li:nth-child(1) { animation-delay: 2s; }
+    #{{ uid }}.hin--linear.is-play .hin__list li:nth-child(2) { animation-delay: 2.4s; }
+    #{{ uid }}.hin--linear.is-play .hin__list li:nth-child(3) { animation-delay: 2.8s; }
+    #{{ uid }}.hin--linear.is-play .hin__close { animation: {{ uid }}-up .45s ease 3.25s both; }
+    #{{ uid }}.hin--linear.is-play .hin__btn { animation: {{ uid }}-up .45s ease 3.65s both; }
+  }
+  {%- endif %}
+  /* Phones: the cluster (one on top, two below) with "Your plan", names in a list. */
+  @media (max-width: 749.98px) {
+    #{{ uid }} .hin__h { margin-bottom: 20px; font-size: min(30px, calc((100vw - 34px) / 11.4)); } /* shrinks a little on narrow phones so the red "Integrated approach?" stays on one line */
+    #{{ uid }} .hin__sub { margin-bottom: 20px; font-size: 15px; }
+    #{{ uid }} .hin__stage { aspect-ratio: 420 / 394; overflow: hidden; max-width: 380px; margin: 0 auto; }
+    #{{ uid }} .hin__svg { width: 276.19%; margin: -.48% 0 0 -88.1%; }
+    #{{ uid }} .hin__discs { width: 276.19%; margin: -.48% 0 0 -88.1%; }
+    #{{ uid }} .hin__d--1 { transform: translate(172.727%, 75.455%) scale(1); }
+    #{{ uid }} .hin__d--2 { transform: translate(213.636%, 4.545%) scale(1); }
+    #{{ uid }} .hin__d--3 { transform: translate(254.545%, 75.455%) scale(1); }
+    /* Phones: the centre circle a little larger than desktop (same centre point) so the two short lines sit inside with room to spare. */
+    #{{ uid }} .hin__center { opacity: 1; width: 9.6%; transform: translate(470.8%, 151.1%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0; text-align: center; white-space: nowrap; box-shadow: 0 0 0 3px #fff, 0 6px 16px rgba(216, 31, 72, .35); container-type: inline-size; }
+    /* Text sized from the circle itself (cqi = 1% of its width), so the words fill it at every phone size. */
+    #{{ uid }} .hin__center > span { font: 500 14.5cqi/1.1 'Montserrat', sans-serif; letter-spacing: -.01em; }
+    /* Line 1 regular weight, the next lines bold; a hairline under line 1 ties them as one label. */
+    #{{ uid }} .hin__center small { display: block; font: 800 11.2cqi/1.12 'Montserrat', sans-serif; letter-spacing: -.01em; }
+    #{{ uid }} .hin__center span + small { margin-top: 4cqi; padding-top: 4cqi; border-top: 1px solid rgba(255, 255, 255, .5); }
+    #{{ uid }} .hin__join, #{{ uid }} .hin__labs { display: none; }
+        #{{ uid }}.is-ready:not(.is-play) .hin__d--2 { transform: translate(213.636%, 40.909%) scale(1); }
+    #{{ uid }}.is-ready:not(.is-play) .hin__d--1 { transform: translate(213.636%, 40.909%) scale(1); }
+    #{{ uid }}.is-ready:not(.is-play) .hin__d--3 { transform: translate(213.636%, 40.909%) scale(1); }
+        @keyframes {{ uid }}-d3 { 0%, 5% { transform: translate(213.636%, 40.909%) scale(1); } 50%, 100% { transform: translate(254.545%, 75.455%) scale(1); } }
+    @keyframes {{ uid }}-d1 { 0%, 13% { transform: translate(213.636%, 40.909%) scale(1); } 63%, 100% { transform: translate(172.727%, 75.455%) scale(1); } }
+    @keyframes {{ uid }}-d2 { 0%, 9% { transform: translate(213.636%, 40.909%) scale(1); } 54%, 100% { transform: translate(213.636%, 4.545%) scale(1); } }
+
+    #{{ uid }} .hin__list { display: flex; flex-direction: column; margin: 20px 0 0; padding: 0; list-style: none; border-bottom: 1px solid #e8e0d9; }
+    /* Each system: its own photo in a small red-ringed circle (like the big ones), its name and one line. */
+    #{{ uid }} .hin__list li { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; column-gap: 14px; padding: 14px 0; border-top: 1px solid #e8e0d9; }
+    #{{ uid }} .hin__tw { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; box-shadow: inset 0 0 0 1.25px var(--red); background: #fff; position: relative; }
+    #{{ uid }} .hin__tw::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--red); }
+    #{{ uid }} .hin__thumb { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(var(--hin-zoom, 1)); }
+    #{{ uid }} .hin__list b { display: block; font: 800 16.5px/1.2 'Montserrat', sans-serif; color: var(--ink); }
+    #{{ uid }} .hin__list span { display: block; margin-top: 3px; font: 400 14.5px/1.45 'Montserrat', sans-serif; color: var(--mute); }
+    #{{ uid }} .hin__foot { margin-top: 26px; gap: 20px; }
+    #{{ uid }} .hin__close { font-size: 23px; line-height: 1.3; }
+    #{{ uid }} .hin__btn { width: 100%; justify-content: center; text-align: center; text-wrap: balance; line-height: 1.25; padding-top: 12px; padding-bottom: 12px; height: auto; min-height: 54px; }
+  }
+  /* Desktop: the circles sit 30 units below the top of their 1160 x 400 box; pull the
+     box up by that much so the gap under the heading is just the heading margin. */
+  @media (min-width: 750px) { #{{ uid }} .hin__stage { margin-top: -2.6%; } #{{ uid }} .hin__h { margin-bottom: 28px; } }
+  /* Tablets: the Health Score 360 section heading size. */
+  @media (min-width: 750px) and (max-width: 1099.98px) { #{{ uid }} .hin__h { font-size: 38px; } }
+  /* Big screens: the same steps as the Health Score 360 sections. The text grows
+     and the artwork gets wider; no zoom on the artwork itself, since its circles
+     move in pixels inside the SVG and zoom would throw them out of line. */
+  @media (min-width: 1680px) { #{{ uid }} { --z: 1.12; } }
+  /* --w: wider at each step, like the Health Score 360 sections. */
+  @media (min-width: 1920px) { #{{ uid }} { --z: 1.25; --w: 1312px; } }
+  @media (min-width: 2240px) { #{{ uid }} { --z: 1.45; } }
+  @media (min-width: 2560px) { #{{ uid }} { --z: 1.65; --w: 1392px; } }
+  @media (min-width: 3200px) { #{{ uid }} { --z: 2; } }
+  @media (min-width: 3840px) { #{{ uid }} { --z: 2.4; } }
+  @media (min-width: 1680px) {
+    #{{ uid }} { padding-top: calc(40px * var(--z, 1)); padding-bottom: calc(48px * var(--z, 1)); }
+    #{{ uid }} .hin__in { max-width: calc(var(--w, 1272px) * var(--z, 1)); }
+    #{{ uid }} :is(.hin__h, .hin__sub, .hin__labs, .hin__foot) { zoom: var(--z, 1); }
+  }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  @media (max-width: 749.98px) { #{{ uid }} .hin__h, #{{ uid }} .hin__close { text-wrap: wrap; } #{{ uid }} .hin__sub { max-width: none; text-wrap: wrap; }{% if s.hide_sub_mobile %} #{{ uid }} .hin__sub { display: none; } #{{ uid }} .hin__h:has(+ .hin__sub) { margin-bottom: 20px; }{% endif %} }
+</style>
+
+<section id="{{ uid }}" class="hin{% if s.animation_style == 'linear' %} hin--linear{% endif %}" style="--hin-zoom: {{ s.photo_zoom | default: 100 | divided_by: 100.0 }}">
+  <div class="hin__in">
+    {%- if s.heading != blank -%}<h2 class="hin__h">{{ s.heading }}{% if s.heading_red != blank %} <span>{{ s.heading_red }}</span>{% endif %}</h2>{%- endif -%}
+    {%- if s.subheading != blank -%}<p class="hin__sub">{{ s.subheading }}</p>{%- endif -%}
+
+    <div class="hin__stage">
+      <div class="hin__art">
+      <svg class="hin__svg" viewBox="0 0 1160 400" aria-hidden="true" focusable="false">
+        <g class="hin__join">
+          <line x1="260" y1="140" x2="900" y2="140" stroke="#d81f48" stroke-width="1.25" vector-effect="non-scaling-stroke"/>
+        </g>
+      </svg>
+      <div class="hin__discs" aria-hidden="true">
+        {%- for i in (1..3) -%}
+          {%- capture k_img -%}sys{{ i }}_image{%- endcapture -%}
+          <div class="hin__d hin__d--{{ i }}">
+            <span class="hin__face">
+              {%- if s[k_img] != blank -%}{{ s[k_img] | image_url: width: 1600 | image_tag: alt: '', widths: '400, 600, 800, 1000, 1200, 1600', sizes: '(max-width: 749px) 380px, (max-width: 1099px) 300px, (max-width: 1679px) 520px, (max-width: 2239px) 700px, (max-width: 2999px) 900px, 1300px', loading: 'eager', fetchpriority: 'low' }}{%- endif -%}
+            </span>
+          </div>
+        {%- endfor -%}
+        <span class="hin__center">{%- assign pl = s.plan_label | split: '|' -%}{%- for line in pl -%}{%- if forloop.first -%}<span>{{ line | strip }}</span>{%- else -%}<small>{{ line | strip }}</small>{%- endif -%}{%- endfor -%}</span>
+      </div>
+
+      </div>
+      <div class="hin__labs">
+      {%- for i in (1..3) -%}
+        {%- capture k_n -%}sys{{ i }}_name{%- endcapture -%}
+        {%- capture k_t -%}sys{{ i }}_text{%- endcapture -%}
+        <p class="hin__lab hin__lab--{{ i }}"><b>{{ s[k_n] }}</b>{%- if s[k_t] != blank -%}<span>{{ s[k_t] }}</span>{%- endif -%}</p>
+      {%- endfor -%}
+      </div>
+    </div>
+
+    {%- comment -%} Phones only: top circle first, then the two below. {%- endcomment -%}
+    <ul class="hin__list">
+      {%- assign order = '2,1,3' | split: ',' -%}
+      {%- for i in order -%}
+        {%- capture k_n -%}sys{{ i }}_name{%- endcapture -%}
+        {%- capture k_t -%}sys{{ i }}_text{%- endcapture -%}
+        {%- capture k_img -%}sys{{ i }}_image{%- endcapture -%}
+        <li>
+          {%- if s[k_img] != blank -%}<span class="hin__tw"><img class="hin__thumb" src="{{ s[k_img] | image_url: width: 320 }}" alt="" width="52" height="52" loading="lazy"></span>{%- endif -%}
+          <div><b>{{ s[k_n] }}</b>{%- if s[k_t] != blank -%}<span>{{ s[k_t] }}</span>{%- endif -%}</div>
+        </li>
+      {%- endfor -%}
+    </ul>
+
+    {%- if s.closing_red != blank or s.closing != blank or s.button != blank -%}
+      <div class="hin__foot">
+        {%- if s.closing_red != blank or s.closing != blank -%}<p class="hin__close">{%- if s.closing_red != blank -%}<em>{{ s.closing_red }}</em> {% endif -%}{{ s.closing | escape | replace: '[[', '<em>' | replace: ']]', '</em>' }}</p>{%- endif -%}
+        {%- if s.button != blank -%}<a class="hin__btn" href="{{ s.button_link | default: '#' }}">{{ s.button }}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>{%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{%- if s.animate -%}
+<script>
+  (function () {
+    var root = document.getElementById('{{ uid }}');
+    if (!root || !('IntersectionObserver' in window)) return;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* Once per visit: after it has played, later views (scrolling back, other pages and back) show the final picture. */
+    var KEY = 'hin-played';
+    try { if (sessionStorage.getItem(KEY)) return; } catch (e) {}
+    root.classList.add('is-ready');
+    /* Starts as soon as the circles come onto the screen (not at 20% in), and runs 1.3s. */
+    /* The circles slide out only once their photos are ready (at most 2.5s wait), so they never move in empty. */
+    function photosReady() {
+      var imgs = [].slice.call(root.querySelectorAll('.hin__face img'));
+      return Promise.race([
+        Promise.all(imgs.map(function (i) { return i.complete && i.naturalWidth ? null : (i.decode ? i.decode().catch(function () {}) : null); })),
+        new Promise(function (r) { setTimeout(r, 2500); })
+      ]);
+    }
+    var io = new IntersectionObserver(function (es) {
+      if (!es[0].isIntersecting) return;
+      io.disconnect();
+      photosReady().then(function () { root.classList.add('is-play'); });
+      try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+    }, { rootMargin: '0px 0px -8% 0px' });
+    io.observe(root.querySelector('.hin__stage'));
+  })();
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Home: integrated care",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "One clinic, three systems, one plan." },
+    { "type": "text", "id": "heading_red", "label": "Heading, red ending", "info": "Shown in brand red after the heading." },
+    { "type": "textarea", "id": "subheading", "label": "Line under the heading", "info": "Optional." },
+    { "type": "checkbox", "id": "hide_sub_mobile", "label": "Hide the line under the heading on phones", "default": false },
+    { "type": "checkbox", "id": "animate", "label": "Play the animation", "default": true, "info": "Off shows the final picture straight away." },
+    { "type": "select", "id": "animation_style", "label": "Animation style", "default": "spread", "options": [
+      { "value": "spread", "label": "Spread: circles slide out of a stack" },
+      { "value": "linear", "label": "Linear: one thing after another, in order" }
+    ] },
+    { "type": "range", "id": "photo_zoom", "label": "Zoom the photos in their circles", "min": 100, "max": 150, "step": 5, "unit": "%", "default": 100, "info": "Raise it when a photo has white space around it, so it fills the circle." },
+    { "type": "text", "id": "plan_label", "label": "Text in the centre circle (phones)", "default": "sehatUP's|Personalized|Plan", "info": "One line per |, e.g. sehatUP's|Personalized|Plan. Keep each short." },
+    { "type": "header", "content": "Left circle (bottom left on phones)" },
+    { "type": "image_picker", "id": "sys1_image", "label": "Photo" },
+    { "type": "text", "id": "sys1_name", "label": "Name", "default": "Ayurveda" },
+    { "type": "text", "id": "sys1_text", "label": "Line", "default": "Lifestyle balance, digestion and long-term healing." },
+    { "type": "header", "content": "Middle circle (top on phones)" },
+    { "type": "image_picker", "id": "sys2_image", "label": "Photo" },
+    { "type": "text", "id": "sys2_name", "label": "Name", "default": "Homeopathy" },
+    { "type": "text", "id": "sys2_text", "label": "Line", "default": "Gentle, root-cause care with minimal side effects." },
+    { "type": "header", "content": "Right circle (bottom right on phones)" },
+    { "type": "image_picker", "id": "sys3_image", "label": "Photo" },
+    { "type": "text", "id": "sys3_name", "label": "Name", "default": "Modern medicine" },
+    { "type": "text", "id": "sys3_text", "label": "Line", "default": "Accurate diagnosis and fast relief when needed." },
+    { "type": "header", "content": "Below" },
+    { "type": "text", "id": "closing_red", "label": "Closing line, red part", "default": "Your integrated plan." },
+    { "type": "text", "id": "closing", "label": "Closing line, rest", "default": "Made by our doctors, together.", "info": "Put [[double square brackets]] around any words you want in red, for example: one complete [[360°]] care plan." },
+    { "type": "text", "id": "button", "label": "Button", "default": "Take the free Health Score 360" },
+    { "type": "url", "id": "button_link", "label": "Button link" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" }
+  ],
+  "presets": [{ "name": "Home: integrated care" }]
+}
+{% endschema %}

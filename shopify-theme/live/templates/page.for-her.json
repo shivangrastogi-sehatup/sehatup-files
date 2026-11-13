@@ -15,7 +15,7 @@
       "settings": {
         "layout_mode": "background-with-overlay-image",
         "desktop_width_percent": 100,
-        "background_image": "shopify://shop_images/Sunlit_Curtain_and_Beige_Tile_Wall.webp",
+        "background_image": "shopify://shop_images/for_her_background.webp",
         "background_image_size": "cover",
         "background_position_x": "center",
         "background_position_y": "center",
@@ -29,8 +29,8 @@
         "white_panel_opacity": 10,
         "white_panel_rounded": true,
         "white_panel_border_radius": 20,
-        "foreground_image": "shopify://shop_images/Cozy_Indian_Portrait_with_Mug.webp",
-        "foreground_image_scale": 140,
+        "foreground_image": "shopify://shop_images/for_her_person.webp",
+        "foreground_image_scale": 120,
         "foreground_image_fit": "contain",
         "foreground_position_x": "right",
         "foreground_position_y": "bottom",
@@ -40,12 +40,19 @@
         "hide_foreground_mobile": false,
         "split_layout": false,
         "mobile_crop_foreground": false,
+        "fg_text_clear": true,
+        "mobile_wash": 60,
+        "fg_grow": true,
+        "mobile_fg_height": 0,
         "kicker": "For women",
-        "heading": "Your cycle, your hormones, your weight. Finally, someone who listens.",
+        "heading": "Feel Better, Balance Your Health & Manage Your Weight&nbsp;",
+        "heading_red": "",
+        "heading_red_color": "#ee204a",
         "subheading_prefix": "",
         "subheading_highlight": "",
         "subheading_highlight_color": "#ee204a",
-        "body_text": "<p>Irregular or painful periods, PCOS, hormone swings and weight that will not move. These are common, and they are treatable. Our doctors combine Ayurveda, Homeopathy and modern medicine, privately.</p>",
+        "body_text": "<p>From hormonal balance to weight management, find the right support for your body's need.&nbsp;</p>",
+        "body_max_em": 0,
         "content_position": "left",
         "content_max_width": 1400,
         "content_text_max_width": 650,
@@ -59,7 +66,7 @@
         "body_color": "#333333",
         "text_shadow_enabled": false,
         "light_text_fade": true,
-        "button_1_text": "Take the free Health Score",
+        "button_1_text": "Take free Health Score",
         "button_1_link": "shopify://pages/health-score-360",
         "button_1_style": "filled",
         "button_1_bg_color": "#ee204a",
@@ -70,7 +77,7 @@
         "button_1_hover_border_color": "#c8183c",
         "show_button_2": true,
         "enable_doctor_new_tab": true,
-        "button_2_text": "See the products",
+        "button_2_text": "See products",
         "button_2_link": "#period-care",
         "button_2_style": "outline",
         "button_2_bg_color": "#1d1d1d",
@@ -79,7 +86,11 @@
         "button_2_hover_bg_color": "#1d1d1d",
         "button_2_hover_text_color": "#ffffff",
         "button_2_hover_border_color": "#1d1d1d",
-        "note": "Free, private, and in Hindi or English.",
+        "note": "",
+        "trust_text": "",
+        "rating": "",
+        "trust_count": 3,
+        "trust_initials": "R, A, S, P, K",
         "button_layout": "horizontal",
         "button_font_size": 16,
         "button_font_weight": "600",
@@ -87,6 +98,7 @@
         "button_padding_horizontal": 32,
         "button_border_radius": 50,
         "button_spacing": 24,
+        "desktop_height_vh": 82,
         "section_min_height": 390,
         "section_padding_top": 30,
         "section_padding_bottom": 30,
@@ -100,13 +112,14 @@
         "mobile_content_alignment": "center",
         "mobile_background_position_x": "center",
         "mobile_background_position_y": "center",
-        "mobile_background_image": "shopify://shop_images/Sunlit_Beige_Tiled_Wall.webp",
+        "mobile_background_image": "shopify://shop_images/Background_Mobile.webp",
         "mobile_bg_focus_x": 50
       }
     },
     "her_facts": {
       "type": "her-facts",
       "settings": {
+        "section_bg": "#ffffff",
         "heading": "It's far more common than you think.",
         "lead": "Doctors see these every day. Many women are told it is normal and just live with it, so it lasts longer than it needs to.",
         "pcos_issue": "PCOS",
@@ -114,14 +127,13 @@
         "pcos_text": "Indian women has PCOS, according to a pooled review of Indian studies.",
         "pcos_source": "Pooled review of Indian studies, Cureus, 2022",
         "pcos_link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9826643/",
-        "pain_issue": "Painful periods",
-        "pain_low": 46,
-        "pain_high": 76,
-        "pain_text": "of Indian women reported painful periods, across two decades of studies.",
-        "pain_source": "Review of Indian studies on menstrual disorders, 2025",
-        "pain_link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11770859/",
-        "close": "Both can be treated, and the first step is private.",
-        "section_bg": "#ffffff"
+        "pain_issue": "Weight gain",
+        "pain_low": 0,
+        "pain_high": 24,
+        "pain_text": "of Indian women aged 15 to 49 are overweight or obese, according to the National Family Health Survey.",
+        "pain_source": "National Family Health Survey (NFHS-5), reported by Down To Earth",
+        "pain_link": "https://www.downtoearth.org.in/health/obesity-increases-in-india-haryana-karnataka-among-worst-performers-nfhs-5-80381",
+        "close": "Both can be managed. Start with a free, private check"
       }
     },
     "her_roots": {
@@ -263,24 +275,30 @@
         "r4"
       ],
       "settings": {
+        "section_bg": "#f6f0ec",
         "heading": "Your symptoms are clues.",
         "lead": "Acne, hair fall, weight and late periods often come from the same place. Tap what you notice and see where it points.",
         "step_1": "Tap everything you notice",
+        "hint": "(one or more)",
         "idle_text": "Tick at least one sign and we'll show the likely cause here.",
         "top_label": "Most of your signs point to",
-        "mobile_signs": 5,
+        "also_label": "Also linked:",
+        "mobile_signs": 4,
+        "desktop_signs": 6,
         "button": "Start my free check",
         "button_link": "shopify://pages/womens-wellness-questionnaire",
-        "note": "This is not a diagnosis. A doctor looks at your answers and confirms it.",
-        "section_bg": "#ffffff"
+        "note": ""
       }
     },
     "her_cycle": {
       "type": "her-cycle",
       "settings": {
+        "section_bg": "#ffffff",
         "heading": "Your cycle, decoded.",
         "lead": "Your body changes through the month. Here is what is normal, and when to see a doctor.",
-        "fine": "Every woman is different. A cycle of 21 to 35 days is normal.",
+        "label_feel": "You may feel",
+        "label_doctor": "See a doctor if",
+        "fine": "Every woman is different. A cycle of [[21 to 35 days]] is normal.",
         "period_name": "Period",
         "period_happening": "Your body lets go of last month's lining. This is your bleeding.",
         "period_feel": "Cramps, Back pain, Tiredness, Bloating",
@@ -304,7 +322,34 @@
         "luteal_feel": "Bloating, Cravings, Sore breasts, Mood swings",
         "luteal_doctor": "Mood changes hurt your work or family life, or it gets worse every month.",
         "luteal_link": "#period-care",
-        "luteal_link_label": "See what helps",
+        "luteal_link_label": "See what helps"
+      }
+    },
+    "integrated": {
+      "type": "home-integrated",
+      "disabled": true,
+      "settings": {
+        "heading": "Three kinds of medicine. One plan for you.",
+        "heading_red": "",
+        "subheading": "",
+        "hide_sub_mobile": true,
+        "animate": true,
+        "animation_style": "spread",
+        "photo_zoom": 140,
+        "plan_label": "sehatUP's|Personalized|Plan",
+        "sys1_image": "shopify://shop_images/Ayurveda.webp",
+        "sys1_name": "Ayurveda",
+        "sys1_text": "Herbs like shatavari, ashoka and ashwagandha support cycles, hormones and stress over time.",
+        "sys2_image": "shopify://shop_images/homeopathy.webp",
+        "sys2_name": "Homeopathy",
+        "sys2_text": "Easy to take alongside your daily routine, for steady improvement without heavy doses.",
+        "sys3_image": "shopify://shop_images/Modern_medicine.webp",
+        "sys3_name": "Modern medicine",
+        "sys3_text": "Prescribed only when a doctor says it fits you, never as a first guess.",
+        "closing_red": "One plan,",
+        "closing": "made by your doctors, for your body and your routine.",
+        "button": "Take free Health Score 360",
+        "button_link": "shopify://pages/health-score-360",
         "section_bg": "#ffffff"
       }
     },
@@ -314,7 +359,7 @@
         "doc_homeo": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Shefali.webp",
+            "photo": "shopify://shop_images/Dr._Shefali.webp",
             "system": "Homeopathy",
             "name": "Dr. Shefali Chhicholia",
             "degree": "BHMS, MD (Homeopathy), 5 years experience",
@@ -324,7 +369,7 @@
         "doc_ayur": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Jayant_Kumar.webp",
+            "photo": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
             "system": "Ayurveda",
             "name": "Dr. Jayant Kumar",
             "degree": "BAMS (Ayurveda), 5 years experience",
@@ -334,7 +379,7 @@
         "doc_allo": {
           "type": "doctor",
           "settings": {
-            "photo": "shopify://shop_images/Dr_Devika.webp",
+            "photo": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
             "system": "Psychology",
             "name": "Ms. Devika Chugh",
             "degree": "Counselling Psychologist, 5 years experience",
@@ -347,14 +392,16 @@
         "doc_ayur",
         "doc_allo"
       ],
+      "disabled": true,
       "settings": {
         "eyebrow": "Your private care team",
-        "heading": "Real experts. One plan for you.",
-        "subheading": "An Ayurveda doctor, a Homeopathy doctor and a counselling psychologist look at your answers together. Your plan cares for your body and your mind.",
-        "footnote": "Free with every order. In Hindi or English, and nothing you share leaves your doctor.",
-        "button": "Talk to a doctor on WhatsApp",
+        "heading": "Meet Our Medical Experts",
+        "subheading": "",
+        "footnote": "",
+        "button": "Talk to a doctor",
         "button_link": "https://wa.me/919355539355?text=Hi%2C%20I%20want%20to%20talk%20to%20a%20doctor",
-        "background": "#ffffff",
+        "button_style": "filled",
+        "background": "#faf7f5",
         "padding_top": 32,
         "padding_bottom": 40,
         "accent_color": "#ee204a"
@@ -375,6 +422,8 @@
         "show_use": true,
         "anchor": "period-care",
         "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
         "accent_color": "#d81f48"
       }
     },
@@ -393,6 +442,8 @@
         "show_use": true,
         "anchor": "weight",
         "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
         "accent_color": "#d81f48"
       }
     },
@@ -414,6 +465,19 @@
         "show_use": true,
         "anchor": "kits",
         "legacy_anchor": "",
+        "center": false,
+        "red_buttons_mobile": true,
+        "accent_color": "#d81f48"
+      }
+    },
+    "nudge": {
+      "type": "sehat-nudge",
+      "disabled": true,
+      "settings": {
+        "heading": "Not sure what you need?",
+        "text": "Answer a few private questions and a doctor will point you to the right plan. Free, 2 minutes.",
+        "button": "Take free Health Score",
+        "link": "shopify://pages/womens-wellness-questionnaire",
         "accent_color": "#d81f48"
       }
     },
@@ -448,16 +512,89 @@
         "c3"
       ],
       "settings": {
-        "heading": "Made and checked the right way",
-        "subheading": "What you take is made to approved standards and chosen by real doctors.",
-        "section_bg": "#ffffff"
+        "section_bg": "#ffffff",
+        "heading": "Certified and doctor-checked",
+        "subheading": "What you take is made to approved standards and chosen by real doctors."
+      }
+    },
+    "note": {
+      "type": "sehat-product-story",
+      "blocks": {
+        "p1": {
+          "type": "promise",
+          "settings": {
+            "lead": "A doctor is part of it.",
+            "text": "Every order includes a consultation with one of our doctors, at no extra cost. They can adjust the plan to suit you.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p2": {
+          "type": "promise",
+          "settings": {
+            "lead": "[advance] now, rest on delivery.",
+            "text": "You pay the rest only when the parcel is in your hands. Or pay in full online and shipping is free.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p3": {
+          "type": "promise",
+          "settings": {
+            "lead": "Nobody else will know.",
+            "text": "It arrives in a plain box with nothing printed on the outside, and what you tell us stays with your doctor.",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "p4": {
+          "type": "promise",
+          "settings": {
+            "lead": "Ask before you buy.",
+            "text": "Not sure where to start? Message us and get an answer first.",
+            "link_label": "Chat with us on WhatsApp",
+            "link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20women%27s%20health"
+          }
+        }
+      },
+      "block_order": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ],
+      "settings": {
+        "section_bg": "#ffffff",
+        "note_heading": "Before you order, four things you can count on.",
+        "note_text": "sehatUP is a clinic, not a supplement shop. This is how we look after an order.",
+        "doc_1": "shopify://shop_images/Dr._Jayant_34fdd784-b3ad-4e53-bce8-ab701ddd96c0.webp",
+        "doc_2": "shopify://shop_images/Dr._Shefali.webp",
+        "doc_3": "shopify://shop_images/Devika_chugh_846daffc-c7d5-43c9-b83f-8c74abcd13a6.webp",
+        "doc_names": "Dr. Jayant Kumar, Dr. Shefali Chhicholia and Ms. Devika Chugh",
+        "doc_caption": "The experts behind your plan",
+        "show_rating": true,
+        "show_promise_text": true,
+        "advance_amount": 50,
+        "show_expect": true,
+        "expect_heading": "What to expect",
+        "expect_note": "Results vary from person to person.",
+        "doc_title": "",
+        "doc_text": "Our doctors guide you on the right dose and answer your questions.",
+        "doc_button": "Talk to a doctor",
+        "doc_link": "",
+        "accent_color": "#d81f48"
       }
     },
     "reviews": {
       "type": "health-trust",
       "settings": {
+        "layout": "stacked",
+        "show_product": true,
+        "arrows": "below",
         "heading": "What our customers say",
-        "subheading": "Honest reviews from customers who took the first step.",
+        "subheading": "",
+        "rating_value": "4.5",
+        "rating_line": "[rating] · Trusted by 25,000+ patients",
         "accent_color": "#ee204a",
         "review_products": [
           "tea-for-period-cramps",
@@ -470,6 +607,13 @@
         ],
         "min_rating": 4,
         "review_hide": "liked the color man",
+        "side_score": "4.5",
+        "mobile_heading": "",
+        "side_title": "Loved by people who took the first step.",
+        "side_text": "Real reviews from sehatUP customers across India, collected by Judge.me.",
+        "side_note": "Trusted by 25,000+ patients",
+        "side_link_label": "",
+        "side_link": "",
         "trust_1": "",
         "trust_1_text": "",
         "trust_2": "",
@@ -477,8 +621,7 @@
         "trust_3": "",
         "trust_3_text": "",
         "trust_4": "",
-        "trust_4_text": "",
-        "rating_line": "[rating] · Trusted by 25,000+ patients"
+        "trust_4_text": ""
       }
     },
     "faq": {
@@ -536,148 +679,43 @@
         "q6"
       ],
       "settings": {
+        "section_bg": "#ffffff",
         "heading": "Questions women ask us",
         "subheading": "Straight answers, in private.",
         "contact_text": "Ask us on WhatsApp",
         "contact_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20women%27s%20health",
         "open_first": true,
-        "shop_1_text": "Period care",
-        "shop_1_link": "/collections/period-care",
-        "shop_2_text": "Weight for women",
-        "shop_2_link": "/collections/women-weight",
-        "shop_3_text": "All combos",
-        "shop_3_link": "shopify://pages/combos",
-        "accent_color": "#ee204a",
-        "section_bg": "#ffffff"
+        "shop_label": "",
+        "shop_1_text": "",
+        "shop_1_link": "",
+        "shop_2_text": "",
+        "shop_2_link": "",
+        "shop_3_text": "",
+        "shop_3_link": "",
+        "accent_color": "#ee204a"
       }
     },
     "cta": {
       "type": "health-final-cta",
       "settings": {
+        "section_bg": "#ffffff",
         "heading": "Your body is talking. Start listening.",
         "subheading": "Free, private, and it takes 2 minutes.",
         "her_label": "Start my free check",
         "her_link": "shopify://pages/womens-wellness-questionnaire",
         "him_label": "",
         "him_link": "",
-        "note": "No sign-up. Your answers stay private.",
-        "section_bg": "#ffffff"
+        "note": "No sign-up. Your answers stay private."
       }
     },
     "sticky": {
       "type": "sehat-sticky-cta",
+      "disabled": true,
       "settings": {
         "label": "Take the free Health Score",
         "link": "shopify://pages/health-score-360",
         "whatsapp_link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20women%27s%20health",
         "accent_color": "#d81f48"
-      }
-    },
-    "her_promise": {
-      "type": "her-list",
-      "blocks": {
-        "p1": {
-          "type": "row",
-          "settings": {
-            "title": "A doctor is part of it.",
-            "tag": "",
-            "text": "Every order includes a consultation with one of our doctors, at no extra cost. They can adjust the plan to suit you.",
-            "link_label": "",
-            "link": "",
-            "icon": "doctor"
-          }
-        },
-        "p2": {
-          "type": "row",
-          "settings": {
-            "title": "Pay ₹50 to confirm.",
-            "tag": "",
-            "text": "You pay the rest only when the parcel is in your hands. Or pay in full online and shipping is free.",
-            "link_label": "",
-            "link": "",
-            "icon": "wallet"
-          }
-        },
-        "p3": {
-          "type": "row",
-          "settings": {
-            "title": "Nobody else will know.",
-            "tag": "",
-            "text": "It arrives in a plain box with nothing printed on the outside, and what you tell us stays with your doctor.",
-            "link_label": "",
-            "link": "",
-            "icon": "box"
-          }
-        },
-        "p4": {
-          "type": "row",
-          "settings": {
-            "title": "Ask before you buy.",
-            "tag": "",
-            "text": "Not sure where to start? Message us and get an answer first.",
-            "link_label": "Chat with us on WhatsApp",
-            "link": "https://wa.me/919355539355?text=Hi%2C%20I%20have%20a%20question%20about%20women%27s%20health",
-            "icon": "chat"
-          }
-        }
-      },
-      "block_order": [
-        "p1",
-        "p2",
-        "p3",
-        "p4"
-      ],
-      "settings": {
-        "heading": "Before you order, four things you can count on.",
-        "lead": "sehatUP is a clinic, not a supplement shop. This is how we look after an order.",
-        "button": "",
-        "button_link": "",
-        "note": "",
-        "layout": "strip"
-      }
-    },
-    "integrated": {
-      "type": "sehat-integrated",
-      "blocks": {
-        "m1": {
-          "type": "system",
-          "settings": {
-            "icon": "leaf",
-            "title": "Ayurveda",
-            "job": "Works on the root",
-            "text": "Herbs like shatavari, ashoka and ashwagandha support cycles, hormones and stress over time."
-          }
-        },
-        "m2": {
-          "type": "system",
-          "settings": {
-            "icon": "drop",
-            "title": "Homeopathy",
-            "job": "Gentle, long-term support",
-            "text": "Easy to take alongside your daily routine, for steady improvement without heavy doses."
-          }
-        },
-        "m3": {
-          "type": "system",
-          "settings": {
-            "icon": "capsule",
-            "title": "Modern medicine",
-            "job": "Faster relief when needed",
-            "text": "Prescribed only when a doctor says it fits you, never as a first guess."
-          }
-        }
-      },
-      "block_order": [
-        "m1",
-        "m2",
-        "m3"
-      ],
-      "settings": {
-        "heading": "Three kinds of medicine. One plan for you.",
-        "subheading": "Each one does a different job. Your doctors choose the mix that suits you, so you never take more than you need.",
-        "sum": "One plan, made by your doctors, for your body and your routine.",
-        "accent_color": "#d81f48",
-        "section_bg": "#ffffff"
       }
     }
   },
@@ -686,13 +724,14 @@
     "her_facts",
     "her_roots",
     "her_cycle",
-    "doctors",
     "integrated",
+    "doctors",
     "shelf_period",
     "shelf_weight",
     "shelf_kits",
+    "nudge",
     "certs",
-    "her_promise",
+    "note",
     "reviews",
     "faq",
     "cta",

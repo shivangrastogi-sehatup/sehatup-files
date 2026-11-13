@@ -1,0 +1,12 @@
+{
+  "name": "sehatup-prescription-transferable",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The live sehatUP prescription template, its assets and diet plans.",
+  "scripts": {
+    "preview": "node preview.js"
+  },
+  "dependencies": {
+    "handlebars": "^4.7.8"
+  }
+}

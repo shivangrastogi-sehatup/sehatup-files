@@ -1,0 +1,58 @@
+{
+  "condition": "PCOD (Lean Type) with Hairfall, Weakness, Heavy Periods",
+  "subtitle": "Diet planned considering hormonal imbalance, nutritional deficiency & low body weight",
+  "meals": [
+    {
+      "time": "Early Morning (7:00–8:00 AM)",
+      "food": "1 glass lukewarm water + 5 soaked almonds + 2 walnuts + 5–6 soaked black raisins",
+      "benefit": "Helps improve energy levels, supports hair growth & reduces weakness caused by heavy periods"
+    },
+    {
+      "time": "Breakfast (8:30–9:30 AM)",
+      "food": "Option 1: Paneer sandwich (multigrain bread)  |  Option 2: 2 eggs + 1 toast  |  Option 3: Vegetable poha with peanuts",
+      "benefit": "High protein + healthy fats help in weight gain, reduce hairfall & support hormonal balance"
+    },
+    {
+      "time": "Mid-Morning (11:00–12:00 PM)",
+      "food": "1 banana / chikoo / mango (seasonal)",
+      "benefit": "Supports healthy weight gain & maintains energy throughout the day"
+    },
+    {
+      "time": "Lunch (1:30–2:30 PM)",
+      "food": "2 multigrain roti + 1 bowl sabzi + 1 bowl dal/paneer + 1 bowl curd  |  Small portion salad before meal",
+      "benefit": "Balanced nutrition improves digestion, supports hormones & reduces weakness"
+    },
+    {
+      "time": "Evening Snack (5:00–6:00 PM)",
+      "food": "Tea (light) + peanut chaat / roasted chana  |  OR coconut water + handful makhana",
+      "benefit": "Maintains energy levels & reduces muscle fatigue"
+    },
+    {
+      "time": "Dinner (7:30–8:30 PM)",
+      "food": "2 roti + sabzi + paneer/dal",
+      "benefit": "No restriction on dinner quantity – focus on nourishment & recovery"
+    }
+  ],
+  "dailyAddons": {
+    "food": "1 tsp seeds mix (flax + pumpkin) + 1–2 tsp ghee daily",
+    "benefit": "Improves hormonal balance, hair health & supports weight gain"
+  },
+  "specialFocus": {
+    "title": "Heavy Periods & Weakness",
+    "food": "Include beetroot, spinach, black raisins regularly",
+    "benefit": "Helps improve blood levels & reduces fatigue"
+  },
+  "avoidFoods": [
+    "Avoid junk, packaged food, excess sugar",
+    "Limit tea/coffee (max 1–2 cups)",
+    "Prevents further hormonal imbalance"
+  ],
+  "hydration": "2.5–3 litres water daily",
+  "lifestyle": [
+    "30 minutes light exercise or walk",
+    "Proper sleep (7–8 hours)",
+    "Avoid stress & late night eating"
+  ],
+  "followUp": "Review after 15 days for weight and symptom improvement",
+  "note": "This diet is specifically designed for lean PCOD patients with weakness and heavy menstrual flow. Focus is on improving nutritional status, hormonal balance & gradual healthy weight gain."
+}

@@ -1,0 +1,292 @@
+{%- comment -%}
+  "It's far more common than you think": tells a visitor he is far from alone
+  with large published figures, each with its source. Only the figures: two
+  stat cards beside a short intro and one closing line. Every figure is a block
+  with a source link: only publish what a study says.
+{%- endcomment -%}
+
+{%- liquid
+  assign s = section.settings
+  assign facts = section.blocks | where: 'type', 'fact'
+-%}
+
+{%- comment -%} Styles first, so the browser never paints this section unstyled. {%- endcomment -%}
+<style>
+  #scm-{{ section.id }} {
+    --scm-text: #1d1d1d; --scm-muted: #5f5a56; --scm-line: #e8e0d9; --scm-soft: #f6f0ec; --scm-tint: #f6c3cd; --scm-off: #ddd3cb;
+    --scm-ink: {{ s.accent_color | color_darken: 8 }};
+    padding: clamp(32px, 3.5vw, 48px) clamp(16px, 3vw, 48px) clamp(24px, 3vw, 40px);
+    background: {{ s.section_bg | default: '#ffffff' }}; font-family: 'Montserrat', sans-serif; color: var(--scm-text);
+  }
+  #scm-{{ section.id }} * { box-sizing: border-box; }
+  #scm-{{ section.id }} .scm__inner { max-width: 1240px; margin: 0 auto; display: grid; gap: clamp(40px, 4vw, 56px); }
+  #scm-{{ section.id }} .scm__h { margin: 0; font: 800 clamp(28px, 3.2vw, 44px)/1.08 'Montserrat', sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+  #scm-{{ section.id }} .scm__lead { margin: 14px 0 0; max-width: 36em; font: 500 16px/1.6 'Montserrat', sans-serif; color: var(--scm-muted); }
+
+  /* 1. Figures. Words on the left, two stat cards on the right. Each card
+     names the problem, shows the figure big, says it in plain words, then
+     Kept short. */
+  #scm-{{ section.id }} .scm__top { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+  #scm-{{ section.id }} .scm__close { margin: 22px 0 0; max-width: 30em; font: 600 16px/1.6 'Montserrat', sans-serif; color: var(--scm-text); }
+  #scm-{{ section.id }} .scm__close a { color: var(--scm-ink); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; white-space: nowrap; }
+  #scm-{{ section.id }} .scm__close a:hover { text-decoration-thickness: 2.5px; }
+  #scm-{{ section.id }} .scm__facts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px; }
+  #scm-{{ section.id }} .scm__fact { display: flex; flex-direction: column; padding: clamp(20px, 2vw, 26px); border-radius: 22px; background: #fbf8f6; border: 1px solid #efe7e2; color: inherit; text-decoration: none; transition: border-color .25s ease, transform .3s cubic-bezier(.16, 1, .3, 1); }
+  @media (hover: hover) and (pointer: fine) { #scm-{{ section.id }} a.scm__fact:hover { transform: translateY(-2px); border-color: var(--scm-ink); } }
+  /* Second card a touch warmer, so the two read as two problems without loud colour. */
+  #scm-{{ section.id }} .scm__fact:nth-child(2) { background: #fcf6f7; border-color: #f3e6e8; }
+  #scm-{{ section.id }} .scm__issue { display: flex; align-items: center; gap: 10px; font: 800 16px/1.2 'Montserrat', sans-serif; letter-spacing: -.01em; }
+  #scm-{{ section.id }} .scm__ico { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: var(--scm-ink); box-shadow: 0 4px 12px rgba(60, 30, 20, .08); }
+  #scm-{{ section.id }} .scm__ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #scm-{{ section.id }} .scm__fig { display: block; margin-top: 16px; font: 800 clamp(34px, 3.4vw, 48px)/1 'Montserrat', sans-serif; letter-spacing: -.04em; color: var(--scm-ink); white-space: nowrap; }
+  #scm-{{ section.id }} .scm__fact p { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid rgba(29, 29, 29, .07); font: 500 14px/1.5 'Montserrat', sans-serif; color: var(--scm-muted); }
+  #scm-{{ section.id }} .scm__fact p b { font-weight: 700; color: var(--scm-text); }
+  #scm-{{ section.id }} .scm__src { display: inline-block; margin-top: auto; padding-top: 10px; font: 600 13px/1.4 'Montserrat', sans-serif; color: var(--scm-text); }
+  #scm-{{ section.id }} .scm__src svg { display: inline-block; width: 15px; height: 15px; margin-left: 5px; vertical-align: -2px; fill: none; stroke: var(--scm-ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* While the panel is on screen (.is-live, set by the script): a soft red
+     light travels round every card's border, each a little out of step, and
+     the dotted lines flow from his head out to the cards. */
+  @property --scm-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  @keyframes scm-border-{{ section.id }} { to { --scm-a: 360deg; } }
+  @keyframes scm-flow-{{ section.id }} { to { stroke-dashoffset: -16; } }
+  @media (hover: hover) and (pointer: fine) {
+  }
+  /* "Tap here" as a small red pill button, the arrow inside a hollow ring,
+     so each card reads as something to press. */
+  /* "Tap here" arrow keeps nudging while the panel is on screen. */
+  @keyframes scm-nudge-{{ section.id }} { 0%, 100% { transform: translateX(-1px); } 50% { transform: translateX(3px); } }
+  @media (prefers-reduced-motion: reduce) {
+  }
+
+  #scm-{{ section.id }} .scm__vis { position: relative; aspect-ratio: 4 / 3; margin: 10px 10px 0; border-radius: 16px; overflow: hidden; background: linear-gradient(160deg, #fbf7f3, #efe5dd); }
+  #scm-{{ section.id }} .scm__vis > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #scm-{{ section.id }} .scm__no {
+    position: absolute; left: 12px; top: 12px; z-index: 1; width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center; background: #fff; color: var(--scm-text); font: 800 15px/1 'Montserrat', sans-serif;
+    box-shadow: 0 2px 8px rgba(29, 29, 29, .12);
+  }
+  #scm-{{ section.id }} .scm__no::before { content: counter(scm); }
+
+  @media (max-width: 999px) {
+    #scm-{{ section.id }} .scm__top { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 599px) {
+    #scm-{{ section.id }} .scm__facts { grid-auto-flow: row; gap: 12px; }
+    #scm-{{ section.id }} .scm__fact { padding: 18px; border-radius: 18px; }
+  }
+  #scm-{{ section.id }} .scm__who, #scm-{{ section.id }} .scm__mfoot { display: none; }
+  @media (max-width: 749.98px) {
+    #scm-{{ section.id }} .scm__top { gap: 18px; }
+    #scm-{{ section.id }} .scm__top > div:first-child .scm__lead,
+    #scm-{{ section.id }} .scm__top > div:first-child .scm__close,
+    #scm-{{ section.id }} .scm__fact p { display: none; }
+    #scm-{{ section.id }} .scm__fact .scm__src { display: block; padding-top: 12px; }
+    #scm-{{ section.id }} .scm__facts { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+    #scm-{{ section.id }} .scm__fact { padding: 14px; border-radius: 16px; }
+    #scm-{{ section.id }} .scm__issue { gap: 8px; font-size: 13px; line-height: 1.25; min-height: 2.5em; }
+    #scm-{{ section.id }} .scm__ico { width: 28px; height: 28px; box-shadow: none; }
+    #scm-{{ section.id }} .scm__ico svg { width: 16px; height: 16px; }
+    #scm-{{ section.id }} .scm__fig { margin-top: 12px; font-size: clamp(20px, 6.4vw, 28px); }
+    #scm-{{ section.id }} .scm__who { display: block; margin-top: 6px; font: 500 12.5px/1.3 'Montserrat', sans-serif; color: var(--scm-muted); }
+    #scm-{{ section.id }} .scm__mfoot { display: block; grid-column: 1 / -1; }
+    #scm-{{ section.id }} .scm__mfoot .scm__close { margin-top: 0; font-size: 15px; }
+  }
+  @media (prefers-reduced-motion: reduce) { #scm-{{ section.id }} * { transition: none !important; } }
+  @media (min-width: 1680px) { #scm-{{ section.id }} .scm__inner { zoom: 1.12; } }
+  @media (min-width: 1920px) { #scm-{{ section.id }} .scm__inner { zoom: 1.25; } }
+  @media (min-width: 2560px) { #scm-{{ section.id }} .scm__inner { zoom: 1.65; } }
+  #scm-{{ section.id }} :is(h2, h3) { color: var(--scm-text); }
+  /* Phones: text runs the full width. Headings wrap normally instead of being balanced into short lines, and intros lose their desktop width caps. */
+  @media (max-width: 749.98px) { #scm-{{ section.id }} .scm__h { text-wrap: wrap; } #scm-{{ section.id }} .scm__lead, #scm-{{ section.id }} .scm__close { max-width: none; } }
+</style>
+
+<section id="scm-{{ section.id }}" class="scm">
+  <div class="scm__inner">
+    {%- if facts.size > 0 -%}
+      <div class="scm__top">
+        <div>
+          <h2 class="scm__h">{{ s.facts_heading }}</h2>
+          {%- if s.facts_lead != blank -%}<p class="scm__lead">{{ s.facts_lead }}</p>{%- endif -%}
+          {%- if s.facts_close != blank -%}<p class="scm__close">{{ s.facts_close }}{% if s.cta_text != blank %} <a href="{{ s.cta_link | default: '#' }}">{{ s.cta_text }}</a>{% endif %}</p>{%- endif -%}
+        </div>
+        <div class="scm__facts">
+          {%- for b in facts -%}
+            {%- liquid
+              # "18 to 55%" -> lo 18, hi 55. The range bar only shows for percentage figures.
+              assign lo = 0
+              assign hi = 0
+              if b.settings.figure contains '%'
+                assign parts = b.settings.figure | remove: '%' | split: 'to'
+                assign lo = parts.first | strip | plus: 0
+                assign hi = parts.last | strip | plus: 0
+              endif
+            -%}
+            {%- comment -%} The whole card opens its study in a new tab. {%- endcomment -%}
+            {%- if b.settings.source_link != blank -%}<a class="scm__fact" href="{{ b.settings.source_link }}" target="_blank" rel="noopener" {{ b.shopify_attributes }}>{%- else -%}<div class="scm__fact" {{ b.shopify_attributes }}>{%- endif -%}
+              {%- if b.settings.issue != blank -%}
+                <div class="scm__issue">
+                  {%- if b.settings.icon != 'none' -%}
+                    <span class="scm__ico" aria-hidden="true">
+                      {%- if b.settings.icon == 'timer' -%}<svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 2.5h5M19 6.5l-1.5 1.5"/></svg>
+                      {%- elsif b.settings.icon == 'calendar' -%}<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><circle cx="12" cy="15" r="2"/></svg>
+                      {%- elsif b.settings.icon == 'balance' -%}<svg viewBox="0 0 24 24"><path d="M12 4v16M7 20h10M5 8h14"/><path d="M5 8l-2.5 6a2.5 2.5 0 0 0 5 0zM19 8l-2.5 6a2.5 2.5 0 0 0 5 0z"/></svg>
+                      {%- else -%}<svg viewBox="0 0 24 24"><path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21l8.4-8.3a5 5 0 0 0 0-7.1z"/><path d="M3.5 12h4l1.5-2.5 2.5 5 1.5-2.5h7.5"/></svg>{%- endif -%}
+                    </span>
+                  {%- endif -%}
+                  <span>{{ b.settings.issue }}</span>
+                </div>
+              {%- endif -%}
+              <span class="scm__fig">{{ b.settings.figure }}</span>
+              {%- assign people = b.settings.people | default: s.facts_people | default: 'Indian men' -%}<span class="scm__who">of {{ people }}</span>
+              <p>{%- if hi > 0 -%}<b>{% if lo != hi %}Between {{ lo }} and {{ hi }}{% else %}{{ hi }}{% endif %} of every 100 {{ people }}</b> {% endif -%}{{ b.settings.text }}</p>
+              {%- if b.settings.source_link != blank -%}<span class="scm__src" title="{{ b.settings.source | escape }}">View source <svg class="scm__arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 12.5L12 4M5.5 3.8h6.7v6.7"/></svg></span>{%- endif -%}
+            {%- if b.settings.source_link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+          {%- endfor -%}
+        </div>
+        <div class="scm__mfoot">
+          {%- if s.facts_close != blank -%}<p class="scm__close">{{ s.facts_close }}{% if s.cta_text != blank %} <a href="{{ s.cta_link | default: '#' }}">{{ s.cta_text }}</a>{% endif %}</p>{%- endif -%}
+        </div>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Facts: far more common",
+  "tag": "div",
+  "class": "section-sehat-common",
+  "settings": [
+    {
+      "type": "color",
+      "id": "section_bg",
+      "label": "Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "text",
+      "id": "facts_heading",
+      "label": "Figures: heading",
+      "default": "It's far more common than you think."
+    },
+    {
+      "type": "text",
+      "id": "facts_people",
+      "label": "Figures: who they are about",
+      "default": "Indian men",
+      "info": "Shown as: Between 18 and 55 of every 100 Indian men"
+    },
+    {
+      "type": "textarea",
+      "id": "facts_lead",
+      "label": "Figures: line under the heading"
+    },
+    {
+      "type": "textarea",
+      "id": "facts_close",
+      "label": "Figures: closing line"
+    },
+    {
+      "type": "text",
+      "id": "cta_text",
+      "label": "Link text after the closing line",
+      "default": "Take the free Health Score"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "Button link"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent colour",
+      "default": "#d81f48"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "fact",
+      "name": "Figure",
+      "limit": 3,
+      "settings": [
+        {
+          "type": "text",
+          "id": "issue",
+          "label": "Problem this figure is about",
+          "info": "Shown as a red label at the top, e.g. Finishing too soon"
+        },
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon next to the problem",
+          "default": "none",
+          "options": [
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "timer",
+              "label": "Timer"
+            },
+            {
+              "value": "pulse",
+              "label": "Heart pulse"
+            },
+            {
+              "value": "calendar",
+              "label": "Calendar"
+            },
+            {
+              "value": "balance",
+              "label": "Balance"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "figure",
+          "label": "Figure (large)",
+          "default": "1 in 5"
+        },
+        {
+          "type": "text",
+          "id": "people",
+          "label": "Who this figure is about (optional)",
+          "info": "Leave empty to use the section setting. Use it when a figure covers only a group, e.g. urban Indian men."
+        },
+        {
+          "type": "textarea",
+          "id": "text",
+          "label": "What it means, in one sentence"
+        },
+        {
+          "type": "text",
+          "id": "source",
+          "label": "Source (shown small)"
+        },
+        {
+          "type": "url",
+          "id": "source_link",
+          "label": "Source link"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Facts: far more common",
+      "blocks": [
+        {
+          "type": "fact"
+        },
+        {
+          "type": "fact"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

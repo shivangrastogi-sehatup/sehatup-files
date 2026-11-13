@@ -131,6 +131,18 @@
     {% endif %}
   }
 
+  /* The whole card opens the post: the title link stretches over the card. */
+  .ai-blog-card-{{ ai_gen_id }} { position: relative; cursor: pointer; }
+  .ai-blog-card-title-link-{{ ai_gen_id }}::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+  .ai-blog-card-{{ ai_gen_id }}:focus-within { outline: 2px solid #1d1d1d; outline-offset: 3px; }
+  /* Big screens: the same zoom steps as the rest of the site, so the page fills a 4K screen. */
+  @media (min-width: 1680px) { .ai-blog-hero-content-{{ ai_gen_id }}, .ai-blog-main-{{ ai_gen_id }} { zoom: 1.12; } }
+  @media (min-width: 1920px) { .ai-blog-hero-content-{{ ai_gen_id }}, .ai-blog-main-{{ ai_gen_id }} { zoom: 1.25; } }
+  @media (min-width: 2240px) { .ai-blog-hero-content-{{ ai_gen_id }}, .ai-blog-main-{{ ai_gen_id }} { zoom: 1.45; } }
+  @media (min-width: 2560px) { .ai-blog-hero-content-{{ ai_gen_id }}, .ai-blog-main-{{ ai_gen_id }} { zoom: 1.65; } }
+  @media (min-width: 3200px) { .ai-blog-hero-content-{{ ai_gen_id }}, .ai-blog-main-{{ ai_gen_id }} { zoom: 2; } }
+  @media (min-width: 3840px) { .ai-blog-hero-content-{{ ai_gen_id }}, .ai-blog-main-{{ ai_gen_id }} { zoom: 2.4; } }
+
   .ai-blog-card-{{ ai_gen_id }} {
     background-color: {{ section.settings.card_background_color }};
     border-radius: {{ section.settings.card_border_radius }}px;
@@ -605,7 +617,7 @@
                             {{ article.author | slice: 0 | upcase }}
                           </div>
                         {% endif %}
-                        <span>{{ article.author }}</span>
+                        <span>By {{ article.author }}</span>
                       </div>
                     {% endif %}
 

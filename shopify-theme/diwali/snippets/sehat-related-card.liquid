@@ -1,0 +1,20 @@
+{%- comment -%} One "Often bought with this" card. Used by sections/sehat-related.liquid. {%- endcomment -%}
+{%- liquid
+  assign name = p.title | remove: ' - sehatUP' | remove: ' | SehatUP' | remove: ' | sehatUP'
+  assign v = p.selected_or_first_available_variant
+-%}
+<a class="srl__card" href="{{ p.url }}">
+  <div class="srl__img">
+    {%- if p.featured_image != blank -%}
+      <img src="{{ p.featured_image | image_url: width: 500 }}" alt="{{ p.featured_image.alt | default: name | escape }}" loading="lazy" width="500" height="500">
+    {%- endif -%}
+  </div>
+  <p class="srl__name">{{ name }}</p>
+  <p class="srl__price">
+    {{ v.price | money_without_trailing_zeros }}
+    {%- if v.compare_at_price > v.price -%}
+      <s><span class="visually-hidden">Was </span>{{ v.compare_at_price | money_without_trailing_zeros }}</s>
+      <em>{{ v.compare_at_price | minus: v.price | times: 100.0 | divided_by: v.compare_at_price | round }}% off</em>
+    {%- endif -%}
+  </p>
+</a>

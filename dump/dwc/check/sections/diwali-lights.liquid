@@ -1,0 +1,408 @@
+{%- comment -%}
+  Diwali: light the diyas. A night sky with hanging lanterns and a slow rangoli. Tap each diya (or
+  slide a finger across the row) to light it; each one shows a health wish. When all are lit,
+  fireworks go up and the Diwali gift opens. The visitor's lit state is remembered on their device.
+{%- endcomment -%}
+{%- assign sid = section.id -%}
+<style>
+  #dwl-{{ sid }} {
+    position: relative; overflow: hidden; isolation: isolate; color: #fbeedd; text-align: center;
+    background: radial-gradient(120% 75% at 50% 0%, #6b1027 0%, #3a0a17 48%, var(--dw-night, #1c0810) 100%);
+  }
+  #dwl-{{ sid }} .dwl__fx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+  #dwl-{{ sid }} .dwl__stars { position: absolute; inset: 0; z-index: 0; opacity: .7;
+    background-image:
+      radial-gradient(1.4px 1.4px at 8% 18%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 22% 42%, #ffe9c2 50%, transparent 51%),
+      radial-gradient(1.6px 1.6px at 37% 12%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 52% 34%, #ffe9c2 50%, transparent 51%),
+      radial-gradient(1.4px 1.4px at 66% 9%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 78% 38%, #ffe9c2 50%, transparent 51%),
+      radial-gradient(1.6px 1.6px at 91% 16%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 14% 70%, #ffe9c2 50%, transparent 51%),
+      radial-gradient(1.2px 1.2px at 88% 72%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 45% 60%, #ffe9c2 50%, transparent 51%);
+  }
+
+  #dwl-{{ sid }} .dwl__lanterns { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  #dwl-{{ sid }} .dwl__kandil { position: absolute; top: 0; width: 46px; height: auto; transform-origin: 50% 0;
+    transform: rotate(-2deg); }
+  #dwl-{{ sid }} .dwl__kandil--1 { left: 6%; width: 52px; }
+  #dwl-{{ sid }} .dwl__kandil--2 { right: 7%; width: 44px; top: -24px; animation-delay: -1.8s; }
+  #dwl-{{ sid }} .dwl__kandil--3 { right: 22%; width: 34px; top: -46px; animation-delay: -3.1s; opacity: .8; }
+
+  #dwl-{{ sid }} .dwl__in { position: relative; z-index: 3; max-width: 1080px; margin: 0 auto; padding: 96px 24px 88px; zoom: var(--sz, 1); }
+  #dwl-{{ sid }} .dwl__count { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 22px; padding: 7px 16px; border: 1px solid rgba(242, 196, 109, .55); border-radius: 999px;
+    font: 600 13px/1.2 'Montserrat', sans-serif; letter-spacing: .04em; color: var(--dw-gold, #f2c46d); background: rgba(242, 196, 109, .08); }
+  #dwl-{{ sid }} .dwl__count[hidden] { display: none; }
+  #dwl-{{ sid }} .dwl__count b { font-weight: 800; color: #fff3d6; }
+  #dwl-{{ sid }} .dwl__h { margin: 0 auto; max-width: 16ch; font: 500 clamp(34px, 4.6vw, 62px)/1.06 var(--dw-serif, Georgia, serif); color: #fff6e8; letter-spacing: -.01em; }
+  #dwl-{{ sid }} .dwl__h em { display: block; font-style: italic; color: var(--dw-gold, #f2c46d); }
+  #dwl-{{ sid }} .dwl__sub { margin: 18px auto 0; max-width: 46ch; font: 500 17px/1.55 'Montserrat', sans-serif; color: rgba(251, 238, 221, .78); }
+
+  #dwl-{{ sid }} .dwl__stage { position: relative; margin: 44px auto 0; max-width: 820px; }
+  #dwl-{{ sid }} .dwl__rangoli { position: absolute; left: 50%; top: 50%; width: 520px; height: 520px; margin: -260px 0 0 -260px; opacity: .16; pointer-events: none; animation: dwl-turn 140s linear infinite; }
+  @keyframes dwl-turn { to { transform: rotate(360deg); } }
+  /* the rangoli only turns while the section is on screen */
+  #dwl-{{ sid }}.dwl--off .dwl__rangoli { animation-play-state: paused; }
+  #dwl-{{ sid }} .dwl__row { position: relative; display: flex; justify-content: center; gap: clamp(6px, 2.4vw, 28px); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  #dwl-{{ sid }} .dwl__diya { position: relative; flex: 1 1 0; min-width: 0; max-width: 132px; display: grid; justify-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  #dwl-{{ sid }} .dwl__lamp { width: 100%; max-width: 132px; height: auto; overflow: visible; transition: transform .3s; }
+  #dwl-{{ sid }} .dwl__diya:hover .dwl__lamp { transform: translateY(-3px); }
+  #dwl-{{ sid }} .dwl__diya:focus-visible { outline: 2px solid var(--dw-gold, #f2c46d); outline-offset: 4px; border-radius: 12px; }
+  #dwl-{{ sid }} .dwl__flame { transform-origin: 60px 58px; transform: scale(0); transition: transform .55s cubic-bezier(.3, 1.6, .5, 1); }
+  #dwl-{{ sid }} .dwl__halo { opacity: 0; transition: opacity .7s; }
+  #dwl-{{ sid }} .is-lit .dwl__flame { transform: scale(1); }
+  #dwl-{{ sid }} .is-lit .dwl__halo { opacity: 1; }
+  @keyframes dwl-flick { 0%, 100% { transform: scale(1) skewX(0); } 25% { transform: scale(1.04, .95) skewX(2deg); } 50% { transform: scale(.96, 1.06) skewX(-2deg); } 75% { transform: scale(1.02, .98) skewX(1deg); } }
+  #dwl-{{ sid }} .dwl__diya.is-next::after { content: ""; position: absolute; left: 50%; top: 34%; width: 44%; aspect-ratio: 1; border-radius: 50%; translate: -50% -50%;
+    border: 1.5px solid rgba(242, 196, 109, .7); animation: dwl-ping 1.8s ease-out infinite; pointer-events: none; }
+  @keyframes dwl-ping { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+  #dwl-{{ sid }} .dwl__wish { font: 700 14px/1.2 'Montserrat', sans-serif; letter-spacing: .02em; color: rgba(251, 238, 221, .55); transition: color .4s; }
+  #dwl-{{ sid }} .is-lit .dwl__wish { color: var(--dw-gold, #f2c46d); }
+
+  #dwl-{{ sid }} .dwl__msg { min-height: 1.6em; margin: 26px auto 0; max-width: 40ch; font: italic 500 20px/1.5 var(--dw-serif, Georgia, serif); color: #fff1d8; }
+
+  #dwl-{{ sid }} .dwl__gift { position: relative; max-width: 460px; margin: 30px auto 0; padding: 30px 28px 28px; border-radius: 22px; color: #3a1a12;
+    background: linear-gradient(180deg, #fffaf0, var(--dw-ivory, #fdf6ea)); box-shadow: 0 30px 80px -30px rgba(255, 170, 70, .55), inset 0 0 0 1px rgba(217, 154, 43, .5), inset 0 0 0 7px #fffaf0, inset 0 0 0 8px rgba(217, 154, 43, .35); }
+  #dwl-{{ sid }} .dwl__gift.is-open { animation: dwl-pop .7s cubic-bezier(.2, 1.4, .4, 1) both; }
+  @keyframes dwl-pop { from { opacity: 0; transform: translateY(24px) scale(.92); } }
+  #dwl-{{ sid }} .dwl__gift-k { margin: 0; font: 700 12px/1 'Montserrat', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--dw-gold-deep, #d99a2b); }
+  #dwl-{{ sid }} .dwl__gift-t { margin: 10px 0 0; font: 700 clamp(26px, 2.6vw, 34px)/1.1 var(--dw-serif, Georgia, serif); color: #7a1430; }
+  #dwl-{{ sid }} .dwl__gift-p { margin: 10px 0 0; font: 500 15.5px/1.55 'Montserrat', sans-serif; color: #5f5a56; }
+  #dwl-{{ sid }} .dwl__code { display: inline-flex; align-items: center; gap: 14px; margin-top: 16px; padding: 10px 10px 10px 20px; border: 1.5px dashed #d99a2b; border-radius: 12px; background: #fff; cursor: pointer;
+    font: 800 20px/1 'Montserrat', sans-serif; letter-spacing: .12em; color: #1d1d1d; }
+  #dwl-{{ sid }} .dwl__code b { padding: 9px 14px; border-radius: 8px; background: #1d1d1d; color: #fff; font: 700 13px/1 'Montserrat', sans-serif; letter-spacing: .02em; }
+  #dwl-{{ sid }} .dwl__btn { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; margin-top: 20px; padding: 0 30px; border-radius: 999px;
+    background: #d81f48; color: #fff; text-decoration: none; font: 700 16px/1 'Montserrat', sans-serif; box-shadow: 0 12px 26px -12px rgba(216, 31, 72, .7); transition: transform .2s, background .2s; }
+  #dwl-{{ sid }} .dwl__btn:hover { background: #ee204a; transform: translateY(-2px); }
+
+  @media (max-width: 749.98px) {
+    #dwl-{{ sid }} .dwl__in { padding: 64px 16px 56px; }
+    #dwl-{{ sid }} .dwl__count { margin-bottom: 16px; font-size: 12.5px; }
+    #dwl-{{ sid }} .dwl__h { font-size: 34px; }
+    #dwl-{{ sid }} .dwl__sub { margin-top: 12px; font-size: 15px; }
+    #dwl-{{ sid }} .dwl__stage { margin-top: 30px; }
+    #dwl-{{ sid }} .dwl__rangoli { width: 340px; height: 340px; margin: -170px 0 0 -170px; }
+    #dwl-{{ sid }} .dwl__lamp { max-width: 56px; }
+    #dwl-{{ sid }} .dwl__wish { font-size: 10.5px; letter-spacing: 0; white-space: nowrap; }
+    #dwl-{{ sid }} .dwl__msg { margin-top: 18px; font-size: 17px; }
+    #dwl-{{ sid }} .dwl__gift { padding: 24px 18px 22px; }
+    #dwl-{{ sid }} .dwl__code { font-size: 18px; }
+    #dwl-{{ sid }} .dwl__btn { width: 100%; }
+    #dwl-{{ sid }} .dwl__kandil--1 { left: 3%; width: 38px; top: -18px; }
+    #dwl-{{ sid }} .dwl__kandil--2 { right: 4%; width: 34px; top: -30px; }
+    #dwl-{{ sid }} .dwl__kandil--3 { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #dwl-{{ sid }} *, #dwl-{{ sid }} .dwl__stars { animation: none !important; }
+  }
+</style>
+<section id="dwl-{{ sid }}" class="dwl" data-date="{{ section.settings.diwali_date }}">
+  {%- if section.settings.fireworks -%}<canvas class="dwl__fx" aria-hidden="true"></canvas>{%- endif -%}
+  <div class="dwl__stars" aria-hidden="true"></div>
+  <div class="dwl__lanterns" aria-hidden="true">
+    {%- for i in (1..3) -%}
+      <svg class="dwl__kandil dwl__kandil--{{ i }}" viewBox="0 0 60 150">
+        <path d="M30 0v42" stroke="#f2c46d" stroke-opacity=".5" stroke-width="1.2"/>
+        <path d="M30 42 52 66 30 100 8 66Z" fill="#c4163c"/>
+        <path d="M30 42 52 66H30Z" fill="#ee204a"/>
+        <path d="M30 100 8 66h22Z" fill="#8f0f2b"/>
+        <path d="M8 66h44" stroke="#f2c46d" stroke-width="2"/>
+        <circle cx="30" cy="66" r="7" fill="#ffd27a"/>
+        <path d="M24 102l-3 34M30 102v40M36 102l3 34" stroke="#f2c46d" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    {%- endfor -%}
+  </div>
+
+  <div class="dwl__in">
+    {%- if section.settings.show_countdown -%}<p class="dwl__count" data-count hidden></p>{%- endif -%}
+    <h2 class="dwl__h">{{ section.settings.heading }}{% if section.settings.heading_accent != blank %} <em>{{ section.settings.heading_accent }}</em>{% endif %}</h2>
+    {%- if section.settings.subheading != blank -%}<p class="dwl__sub">{{ section.settings.subheading }}</p>{%- endif -%}
+
+    <div class="dwl__stage">
+      <svg class="dwl__rangoli" viewBox="0 0 400 400" aria-hidden="true">
+        <g fill="none" stroke="#f2c46d" stroke-width="1.4">
+          <circle cx="200" cy="200" r="58"/><circle cx="200" cy="200" r="176" stroke-dasharray="2 9" stroke-linecap="round"/>
+          {%- for i in (0..11) -%}
+            <g transform="rotate({{ i | times: 30 }} 200 200)">
+              <path d="M200 142C214 112 214 76 200 44 186 76 186 112 200 142Z"/>
+              <circle cx="200" cy="28" r="5"/>
+            </g>
+          {%- endfor -%}
+        </g>
+      </svg>
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+          <radialGradient id="dwl-halo-{{ sid }}"><stop offset="0" stop-color="#ffd27a" stop-opacity=".85"/><stop offset=".45" stop-color="#ff9a3c" stop-opacity=".28"/><stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/></radialGradient>
+          <linearGradient id="dwl-fl-{{ sid }}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f97316"/><stop offset=".55" stop-color="#fbbf24"/><stop offset="1" stop-color="#fff3c4"/></linearGradient>
+          <linearGradient id="dwl-clay-{{ sid }}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cf6a31"/><stop offset="1" stop-color="#7f2f14"/></linearGradient>
+        </defs>
+      </svg>
+      <div class="dwl__row" role="group" aria-label="{{ section.settings.heading | escape }}">
+        {%- for block in section.blocks -%}
+          <button type="button" class="dwl__diya" aria-pressed="false" data-line="{{ block.settings.line | escape }}" {{ block.shopify_attributes }}>
+            <svg class="dwl__lamp" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="dwl__halo" cx="60" cy="50" r="52" fill="url(#dwl-halo-{{ sid }})"/>
+              <g class="dwl__flame">
+                <path d="M60 12C70 28 75 40 60 58 45 40 50 28 60 12Z" fill="url(#dwl-fl-{{ sid }})"/>
+                <path d="M60 34C64 42 65 49 60 56 55 49 56 42 60 34Z" fill="#fff6d6"/>
+              </g>
+              <path d="M60 55v9" stroke="#3b1d10" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M8 64Q60 56 112 64 106 98 60 102 14 98 8 64Z" fill="url(#dwl-clay-{{ sid }})"/>
+              <ellipse cx="60" cy="64" rx="52" ry="8" fill="#5a2310"/>
+              <ellipse cx="60" cy="63" rx="44" ry="4.5" fill="#d99a2b" opacity=".55"/>
+              <path d="M20 77Q60 90 100 77" fill="none" stroke="#f2c46d" stroke-width="2.4" stroke-dasharray=".1 7" stroke-linecap="round"/>
+              <g fill="#f2c46d"><circle cx="38" cy="88" r="2.6"/><circle cx="60" cy="92" r="3.2"/><circle cx="82" cy="88" r="2.6"/></g>
+              <ellipse cx="60" cy="106" rx="20" ry="5" fill="#5a2310"/>
+            </svg>
+            <span class="dwl__wish">{{ block.settings.wish }}</span>
+          </button>
+        {%- endfor -%}
+      </div>
+    </div>
+
+    <p class="dwl__msg" aria-live="polite" data-msg data-hint="{{ section.settings.hint | escape }}">{{ section.settings.hint }}</p>
+
+    <div class="dwl__gift" data-gift hidden>
+      <p class="dwl__gift-k">{{ section.settings.gift_kicker }}</p>
+      <p class="dwl__gift-t">{{ section.settings.gift_title }}</p>
+      {%- if section.settings.gift_code != blank -%}
+        <p class="dwl__gift-p">{{ section.settings.gift_text }}</p>
+        <button type="button" class="dwl__code" data-code="{{ section.settings.gift_code | escape }}">
+          <span>{{ section.settings.gift_code }}</span><b data-copy>Copy</b>
+        </button>
+      {%- else -%}
+        <p class="dwl__gift-p">{{ section.settings.gift_text_nocode }}</p>
+      {%- endif -%}
+      {%- if section.settings.button_label != blank -%}
+        <a class="dwl__btn" href="{{ section.settings.button_link | default: '#diwali-gifts' }}">{{ section.settings.button_label }}</a>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+
+<script>
+  (function () {
+    var root = document.getElementById('dwl-{{ sid }}');
+    if (!root) return;
+    var diyas = [].slice.call(root.querySelectorAll('.dwl__diya'));
+    var msg = root.querySelector('[data-msg]'), gift = root.querySelector('[data-gift]');
+    var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var KEY = 'dwl-lit-{{ section.id }}';
+
+    /* Countdown to Diwali */
+    var cnt = root.querySelector('[data-count]'), d = new Date(root.dataset.date + 'T00:00:00');
+    if (cnt && !isNaN(d)) {
+      var now = new Date(); now.setHours(0, 0, 0, 0);
+      var days = Math.round((d - now) / 864e5);
+      if (days > 1) cnt.innerHTML = 'Diwali in <b>' + days + ' days</b>';
+      else if (days === 1) cnt.innerHTML = 'Diwali is <b>tomorrow</b>';
+      else if (days >= -2) cnt.innerHTML = '<b>Shubh Deepavali</b>';
+      if (days >= -2) cnt.hidden = false;
+    }
+
+    /* Fireworks */
+    /* Fireworks only when switched on in the section settings (off: no canvas, nothing runs) */
+    var cv = root.querySelector('.dwl__fx') || document.createElement('canvas'), FX = !!root.querySelector('.dwl__fx'), cx = cv.getContext('2d'), P = [], R = [], raf = 0;
+    var dpr = Math.min(2, window.devicePixelRatio || 1), W = 0, H = 0;
+    var cols = ['#f2c46d', '#ffd9a0', '#f39a1e', '#ee204a', '#ff8fa3', '#fff3d6'];
+    function size() { W = cv.offsetWidth; H = cv.offsetHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    function at(el) {
+      var a = el.getBoundingClientRect(), b = cv.getBoundingClientRect(), k = b.width / (W || 1) || 1;
+      return { x: (a.left + a.width / 2 - b.left) / k, y: (a.top + a.height * .3 - b.top) / k };
+    }
+    /* Time-based, so it looks the same on 60Hz and 120Hz+ screens: rockets rise smoothly over ~1.2s
+       (easing out as they climb), bursts open gently, drift down slowly and fade over ~2s. */
+    /* Size of the visible stage, for scaling the bursts (phones ~0.6, laptops ~1, 4K up to ~2) */
+    var S = 1;
+    function header() {
+      var h = document.querySelector('.section-header');
+      return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0;
+    }
+    /* The part of the section the visitor can see right now, in canvas units */
+    function band() {
+      var b = cv.getBoundingClientRect(), k = b.width / (W || 1) || 1;
+      var top = Math.max(0, (header() - b.top) / k), bottom = Math.min(H, (window.innerHeight - b.top) / k);
+      S = Math.max(.55, Math.min(2, Math.min(W, bottom - top) / 820));
+      return { top: top + 24 * S, bottom: bottom };
+    }
+    function burst(x, y, n, sp) {
+      var c = cols[(Math.random() * cols.length) | 0];
+      for (var i = 0; i < n; i++) {
+        var a = Math.random() * 6.283, s = (0.45 + Math.random() * .55) * sp;
+        s *= S;
+        P.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, g: .022 * S, l: 1, dl: .0075 + Math.random() * .006, c: Math.random() < .25 ? '#fff3d6' : c, r: (1 + Math.random() * 1.5) * Math.sqrt(S) });
+      }
+      go();
+    }
+    /* from (x, y0) up to ty; y0 defaults to the bottom of the section */
+    function rocket(x, ty, delay, y0) {
+      var from = y0 == null ? H : y0;
+      R.push({ x: x, y: from, y0: from, ty: ty, t0: performance.now() + (delay || 0), dur: (from - ty) < 260 ? 900 + Math.random() * 200 : 1100 + Math.random() * 300, c: cols[(Math.random() * 3) | 0] });
+      go();
+    }
+    var last = 0;
+    function go() { if (FX && !raf && !still) raf = requestAnimationFrame(tick); }
+    function tick(now) {
+      raf = 0;
+      var dt = last ? Math.min(3, (now - last) / 16.667) : 1; last = now;
+      cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = 'rgba(0,0,0,' + (1 - Math.pow(.84, dt)).toFixed(3) + ')'; cx.fillRect(0, 0, W, H);
+      cx.globalCompositeOperation = 'lighter';
+      for (var i = R.length - 1; i >= 0; i--) {
+        var r = R[i], k = (now - r.t0) / r.dur;
+        if (k < 0) continue;
+        if (k >= 1) { R.splice(i, 1); burst(r.x, r.ty, 46, 2.1); continue; }
+        r.y = r.y0 + (r.ty - r.y0) * (1 - Math.pow(1 - k, 3));
+        cx.fillStyle = r.c; cx.beginPath(); cx.arc(r.x, r.y, 1.8, 0, 6.283); cx.fill();
+      }
+      var fr = Math.pow(.97, dt);
+      for (var j = P.length - 1; j >= 0; j--) {
+        var p = P[j]; p.vx *= fr; p.vy = p.vy * fr + p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.l -= p.dl * dt;
+        if (p.l <= 0) { P.splice(j, 1); continue; }
+        cx.globalAlpha = p.l; cx.fillStyle = p.c; cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 6.283); cx.fill();
+      }
+      cx.globalAlpha = 1;
+      if (P.length || R.length) raf = requestAnimationFrame(tick); else { cx.clearRect(0, 0, W, H); last = 0; }
+    }
+    /* The welcome show: rockets rise from the diyas and burst in the visible sky above them -
+       first the centre, then the left, then the right */
+    /* Fireworks while the visitor is on this section: rockets rise from the bottom of what they can see
+       and burst in the visible sky. Opening show (centre, left, right), then a calm firework every
+       couple of seconds while they stay. Stops when they scroll away or switch tabs. */
+    function fire(xr, hr, delay) {
+      var bd = band(), from = bd.bottom - 10, room = Math.max(80, from - bd.top);
+      rocket(W * xr, bd.top + room * hr, delay || 0, from);
+    }
+    function show() {
+      [[.5, .22], [.2, .34], [.8, .3]].forEach(function (q, i) { fire(q[0] + (Math.random() - .5) * .04, q[1] + Math.random() * .08, i * 650); });
+    }
+    var onSec = false, loop = 0;
+    function startLoop() {
+      if (loop) return;
+      show();
+      loop = setInterval(function () {
+        if (!onSec || document.hidden) return;
+        fire(.12 + Math.random() * .76, .15 + Math.random() * .35);
+      }, 2300);
+    }
+    function stopLoop() { clearInterval(loop); loop = 0; }
+    size();
+    if ('ResizeObserver' in window) new ResizeObserver(size).observe(cv); else addEventListener('resize', size);
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { root.classList.toggle('dwl--off', !e[0].isIntersecting); }).observe(root);
+    if (FX && 'IntersectionObserver' in window) {
+      /* "On the section" = it fills at least half of the screen */
+      new IntersectionObserver(function (e) {
+        var on = e[0].isIntersecting && e[0].intersectionRect.height >= window.innerHeight * .5;
+        if (on === onSec) return;
+        onSec = on;
+        if (on) startLoop(); else stopLoop();
+      }, { threshold: [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1] }).observe(root);
+    }
+
+    /* Diyas */
+    function next() {
+      var n = diyas.filter(function (b) { return !b.classList.contains('is-lit'); });
+      diyas.forEach(function (b) { b.classList.toggle('is-next', b === n[0]); });
+      return n.length;
+    }
+    function light(b, quiet) {
+      if (b.classList.contains('is-lit')) {
+        if (!quiet) {
+          msg.textContent = b.dataset.line || ''; var p = at(b); burst(p.x, p.y, 18, 2);
+          /* 2-3 rockets from the tapped diya, at random spots and heights inside the visible sky above it */
+          var bd = band(), room = Math.max(60, p.y - 50 * S - bd.top), n = 2 + ((Math.random() * 2) | 0);
+          for (var q = 0; q < n; q++) {
+            var x = Math.max(40, Math.min(W - 40, p.x + (Math.random() - .5) * W * .4));
+            rocket(x, bd.top + room * (.1 + Math.random() * .6), q * 320, p.y);
+          }
+        }
+        return;
+      }
+      b.classList.add('is-lit'); b.setAttribute('aria-pressed', 'true');
+      var left = next();
+      if (!quiet) {
+        var pt = at(b); burst(pt.x, pt.y, 26, 2.2);
+        msg.textContent = b.dataset.line || msg.dataset.hint;
+        if (navigator.vibrate) navigator.vibrate(12);
+      }
+      if (!left) open(quiet);
+    }
+    function open(quiet) {
+      if (!gift.hidden) return;
+      gift.hidden = false; gift.classList.add('is-open');
+      try { localStorage.setItem(KEY, '1'); } catch (e) {}
+      if (!quiet) { show(); setTimeout(function () { gift.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 500); }
+    }
+    var down = false;
+    root.querySelector('.dwl__row').addEventListener('pointerdown', function (e) {
+      down = true; var b = e.target.closest('.dwl__diya'); if (b) light(b);
+    });
+    addEventListener('pointerup', function () { down = false; });
+    addEventListener('pointercancel', function () { down = false; });
+    root.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var el = document.elementFromPoint(e.clientX, e.clientY), b = el && el.closest('.dwl__diya');
+      if (b && root.contains(b)) light(b);
+    });
+    /* Keyboard: Enter or Space (pointer clicks are already handled on pointerdown) */
+    diyas.forEach(function (b) { b.addEventListener('click', function (e) { if (e.detail === 0) light(b); }); });
+
+    var code = root.querySelector('.dwl__code');
+    if (code) code.addEventListener('click', function () {
+      var t = code.dataset.code, lab = code.querySelector('[data-copy]');
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { lab.textContent = 'Copied'; }, function () { lab.textContent = t; });
+      setTimeout(function () { lab.textContent = 'Copy'; }, 2200);
+    });
+
+    var was = false; try { was = localStorage.getItem(KEY) === '1'; } catch (e) {}
+    if ({{ section.settings.start_lit | json }}) { diyas.forEach(function (b) { light(b, true); }); }
+    else if (was) { diyas.forEach(function (b) { light(b, true); }); msg.textContent = {{ section.settings.done_line | json }}; }
+    else next();
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Diwali: light the diyas",
+  "tag": "div",
+  "class": "section-diwali-lights",
+  "settings": [
+    { "type": "checkbox", "id": "show_countdown", "label": "Show Diwali countdown", "info": "The 'Diwali in N days' line above the heading. Turn off after Diwali.", "default": true },
+    { "type": "text", "id": "diwali_date", "label": "Diwali date (YYYY-MM-DD)", "default": "2026-11-08", "info": "Used for the 'Diwali in N days' countdown." },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Light the diyas," },
+    { "type": "text", "id": "heading_accent", "label": "Heading, gold line", "default": "unlock your Diwali gift." },
+    { "type": "textarea", "id": "subheading", "label": "Subheading", "default": "Tap each diya, or slide your finger across them. Every light is a wish for your health." },
+    { "type": "checkbox", "id": "fireworks", "label": "Fireworks", "info": "Off: no fireworks at all (lighter page). On: a few when the section appears and when a diya is tapped.", "default": false },
+    { "type": "checkbox", "id": "start_lit", "label": "Diyas already lit", "info": "On: the diyas glow from the start and tapping one shows its wish. Off: visitors light them to unlock the gift.", "default": true },
+    { "type": "text", "id": "hint", "label": "Line under the diyas", "default": "Tap a diya to read its wish." },
+    { "type": "text", "id": "done_line", "label": "Line when a visitor comes back", "default": "Your diyas are still glowing." },
+    { "type": "header", "content": "Gift" },
+    { "type": "text", "id": "gift_kicker", "label": "Small line", "default": "Shubh Deepavali" },
+    { "type": "text", "id": "gift_title", "label": "Title", "default": "Your Diwali gift is unlocked." },
+    { "type": "text", "id": "gift_code", "label": "Discount code", "info": "Create the code in Shopify > Discounts first. Leave empty to show the text below instead." },
+    { "type": "text", "id": "gift_text", "label": "Text above the code", "default": "Use this code at checkout on any order." },
+    { "type": "textarea", "id": "gift_text_nocode", "label": "Text when there is no code", "default": "Gift good health to the people you love this Diwali, with care kits made by our doctors." },
+    { "type": "text", "id": "button_label", "label": "Button", "default": "Shop Diwali gifts" },
+    { "type": "url", "id": "button_link", "label": "Button link", "info": "Empty jumps down to the Who are you gifting section." }
+  ],
+  "blocks": [
+    {
+      "type": "diya", "name": "Diya",
+      "settings": [
+        { "type": "text", "id": "wish", "label": "Wish (under the diya)", "default": "Energy" },
+        { "type": "text", "id": "line", "label": "Line shown when lit", "default": "Festive nights, without the afternoon slump." }
+      ]
+    }
+  ],
+  "max_blocks": 7,
+  "presets": [
+    {
+      "name": "Diwali: light the diyas",
+      "blocks": [
+        { "type": "diya", "settings": { "wish": "Energy", "line": "Festive nights, without the afternoon slump." } },
+        { "type": "diya", "settings": { "wish": "Sleep", "line": "Deep rest, even after late celebrations." } },
+        { "type": "diya", "settings": { "wish": "Stamina", "line": "Strength for every puja, party and plan." } },
+        { "type": "diya", "settings": { "wish": "Balance", "line": "Hormones and moods that stay steady." } },
+        { "type": "diya", "settings": { "wish": "Digestion", "line": "Enjoy the mithai. Your gut has your back." } }
+      ]
+    }
+  ]
+}
+{% endschema %}

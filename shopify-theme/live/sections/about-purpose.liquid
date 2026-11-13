@@ -1,0 +1,78 @@
+{%- comment -%}
+  About Us: our mission and our vision. A heading, then two white cards on warm stone,
+  side by side on laptops and stacked on phones. Each card: a line icon beside the
+  label (target for mission, sunrise for vision), then the statement.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #apu-{{ section.id }} { background: #faf7f5; color: #1d1d1d; font-family: 'Montserrat', sans-serif; padding: {{ s.padding_top }}px 0 {{ s.padding_bottom }}px; }
+  #apu-{{ section.id }} * { box-sizing: border-box; letter-spacing: normal; }
+  #apu-{{ section.id }} .apu__in { max-width: 1120px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); }
+  #apu-{{ section.id }} .apu__h { text-align: center; margin: 0 0 clamp(20px, 2.6vw, 36px); font: 800 clamp(28px, 3.2vw, 44px)/1.1 'Montserrat', sans-serif; letter-spacing: -.025em; color: #1d1d1d; }
+  #apu-{{ section.id }} .apu__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); }
+  #apu-{{ section.id }} .apu__card { padding: clamp(24px, 2.8vw, 36px); border-radius: 20px; background: #fff; border: 1px solid #ece4de; box-shadow: 0 1px 2px rgba(29, 29, 29, .03); }
+  #apu-{{ section.id }} .apu__top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  #apu-{{ section.id }} .apu__ic { flex: none; width: 28px; height: 28px; color: #1d1d1d; }
+  #apu-{{ section.id }} .apu__ic svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  #apu-{{ section.id }} .apu__lab { margin: 0; font: 800 clamp(18px, 1.6vw, 21px)/1.25 'Montserrat', sans-serif; color: #1d1d1d; }
+  #apu-{{ section.id }} .apu__t { margin: 0; font: 400 clamp(15px, 1.25vw, 17px)/1.7 'Montserrat', sans-serif; color: #5f5a56; text-wrap: pretty; }
+  #apu-{{ section.id }} .apu__n { margin: 12px 0 0; font: 400 14.5px/1.6 'Montserrat', sans-serif; color: #5f5a56; }
+  @media (max-width: 749.98px) {
+    #apu-{{ section.id }} { padding-top: {{ s.padding_top_mobile }}px; padding-bottom: {{ s.padding_bottom_mobile }}px; }
+    #apu-{{ section.id }} .apu__h { font-size: 28px; }
+    #apu-{{ section.id }} .apu__grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    #apu-{{ section.id }} .apu__card { padding: 22px 20px; border-radius: 18px; }
+  }
+  @media (min-width: 1680px) { #apu-{{ section.id }} .apu__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #apu-{{ section.id }} .apu__in { zoom: 1.25; } }
+  @media (min-width: 2240px) { #apu-{{ section.id }} .apu__in { zoom: 1.45; } }
+  @media (min-width: 2560px) { #apu-{{ section.id }} .apu__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #apu-{{ section.id }} .apu__in { zoom: 2; } }
+  @media (min-width: 3840px) { #apu-{{ section.id }} .apu__in { zoom: 2.4; } }
+</style>
+
+<section id="apu-{{ section.id }}">
+  <div class="apu__in">
+    {%- if s.heading != blank -%}<h2 class="apu__h">{{ s.heading }}</h2>{%- endif -%}
+    <div class="apu__grid">
+      <div class="apu__card apu__card--m">
+        <div class="apu__top">
+          <span class="apu__ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="#d81f48" stroke="none"/></svg></span>
+          <h3 class="apu__lab">{{ s.mission_label }}</h3>
+        </div>
+        <p class="apu__t">{{ s.mission }}</p>
+        {%- if s.mission_note != blank -%}<p class="apu__n">{{ s.mission_note }}</p>{%- endif -%}
+      </div>
+      <div class="apu__card">
+        <div class="apu__top">
+          <span class="apu__ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17h18"/><path d="M6.5 17a5.5 5.5 0 0 1 11 0"/><path d="M12 6v3"/><path d="M5.2 9.2l1.6 1.6"/><path d="M18.8 9.2l-1.6 1.6"/></svg></span>
+          <h3 class="apu__lab">{{ s.vision_label }}</h3>
+        </div>
+        <p class="apu__t">{{ s.vision }}</p>
+        {%- if s.vision_note != blank -%}<p class="apu__n">{{ s.vision_note }}</p>{%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "About: mission and vision",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Our mission and our vision" },
+    { "type": "text", "id": "mission_label", "label": "Mission label", "default": "Our mission" },
+    { "type": "textarea", "id": "mission", "label": "Mission", "default": "To help people make more informed choices about their health, with Ayurveda, Homeopathy and Modern medicine together on one platform." },
+    { "type": "textarea", "id": "mission_note", "label": "Mission, smaller line below (optional)" },
+    { "type": "text", "id": "vision_label", "label": "Vision label", "default": "Our vision" },
+    { "type": "textarea", "id": "vision", "label": "Vision", "default": "A future where good healthcare is understood, trusted and within reach of everyone, whichever system of medicine they believe in." },
+    { "type": "textarea", "id": "vision_note", "label": "Vision, smaller line below (optional)" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#faf7f5" },
+    { "type": "range", "id": "padding_top", "label": "Space above", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 80 },
+    { "type": "range", "id": "padding_bottom", "label": "Space below", "min": 0, "max": 160, "step": 4, "unit": "px", "default": 80 },
+    { "type": "range", "id": "padding_top_mobile", "label": "Space above on phones", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 44 },
+    { "type": "range", "id": "padding_bottom_mobile", "label": "Space below on phones", "min": 0, "max": 120, "step": 4, "unit": "px", "default": 44 }
+  ],
+  "presets": [{ "name": "About: mission and vision" }]
+}
+{% endschema %}

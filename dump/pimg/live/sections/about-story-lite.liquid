@@ -1,0 +1,68 @@
+{%- comment -%}
+  About Us: our story, the short version, centred in one column: the heading, one
+  strong line, an optional photo, two short paragraphs, then one number.
+{%- endcomment -%}
+{%- assign s = section.settings -%}
+<style>
+  #asl-{{ section.id }} { --ink: #1d1d1d; --mute: #5f5a56; --line: #e8e0d9; --red: #d81f48; background: {{ s.section_bg | default: '#ffffff' }}; color: var(--ink); font-family: 'Montserrat', sans-serif; padding: clamp(44px, 6vw, 96px) 0 clamp(20px, 2.4vw, 36px); }
+  #asl-{{ section.id }} * { box-sizing: border-box; letter-spacing: normal; }
+  #asl-{{ section.id }} .asl__in { max-width: 1120px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); max-width: 820px; text-align: center; }
+  #asl-{{ section.id }} .asl__h { margin: 0 0 clamp(14px, 1.6vw, 22px); font: 800 clamp(30px, 3.6vw, 48px)/1.08 'Montserrat', sans-serif; letter-spacing: -.025em; color: var(--ink); }
+  #asl-{{ section.id }} .asl__q { margin: 0 auto; max-width: 30em; font: 700 clamp(20px, 2vw, 28px)/1.35 'Montserrat', sans-serif; letter-spacing: -.01em; color: var(--ink); text-wrap: pretty; }
+  #asl-{{ section.id }} .asl__ph { max-width: 640px; margin-left: auto; margin-right: auto; margin-top: clamp(22px, 2.6vw, 36px); border-radius: 22px; overflow: hidden; aspect-ratio: 4 / 3; background: #f6f0ec; }
+  #asl-{{ section.id }} .asl__ph img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  #asl-{{ section.id }} .asl__txt { max-width: 640px; margin: clamp(18px, 2.2vw, 28px) auto 0; }
+  #asl-{{ section.id }} .asl__txt p { margin: 0 0 14px; font: 400 clamp(15px, 1.2vw, 17px)/1.7 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #asl-{{ section.id }} .asl__stat { display: flex; justify-content: center; align-items: center; gap: 16px; margin-bottom: 0; margin-top: clamp(20px, 2.4vw, 32px); padding-top: clamp(20px, 2.4vw, 28px); border-top: 1px solid var(--line); }
+  #asl-{{ section.id }} .asl__stat b { font: 800 clamp(38px, 4.2vw, 56px)/1 'Montserrat', sans-serif; letter-spacing: -.03em; color: var(--red); }
+  #asl-{{ section.id }} .asl__stat span { max-width: 12.5em; text-align: left; font: 600 17px/1.3 'Montserrat', sans-serif; color: var(--ink); }
+  @media (max-width: 899.98px) {
+  }
+  @media (max-width: 749.98px) {
+    #asl-{{ section.id }} { padding: 44px 0 16px; }
+    #asl-{{ section.id }} .asl__stat { gap: 12px; }
+    #asl-{{ section.id }} .asl__stat span { font-size: 14px; max-width: 11.5em; }
+    #asl-{{ section.id }} .asl__h { font-size: 30px; }
+    #asl-{{ section.id }} .asl__q { font-size: 20px; }
+    #asl-{{ section.id }} .asl__ph { border-radius: 18px; }
+  }
+  @media (min-width: 1680px) { #asl-{{ section.id }} .asl__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #asl-{{ section.id }} .asl__in { zoom: 1.25; } }
+  @media (min-width: 2240px) { #asl-{{ section.id }} .asl__in { zoom: 1.45; } }
+  @media (min-width: 2560px) { #asl-{{ section.id }} .asl__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #asl-{{ section.id }} .asl__in { zoom: 2; } }
+  @media (min-width: 3840px) { #asl-{{ section.id }} .asl__in { zoom: 2.4; } }
+</style>
+
+<section id="asl-{{ section.id }}">
+  <div class="asl__in">
+    <div>
+      <h2 class="asl__h">{{ s.heading }}</h2>
+      {%- if s.quote != blank -%}<p class="asl__q">{{ s.quote }}</p>{%- endif -%}
+      {%- if s.image != blank -%}
+        <div class="asl__ph">{{ s.image | image_url: width: 1200 | image_tag: loading: 'lazy', widths: '480, 720, 960, 1200', sizes: '(max-width: 899px) 100vw, 560px', alt: s.image.alt }}</div>
+      {%- endif -%}
+    </div>
+    <div class="asl__txt">
+      {{ s.text }}
+      {%- if s.stat != blank -%}<p class="asl__stat"><b>{{ s.stat }}</b>{%- if s.stat_label != blank -%}<span>{{ s.stat_label }}</span>{%- endif -%}</p>{%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "About: our story (short)",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Our story" },
+    { "type": "textarea", "id": "quote", "label": "Strong line", "default": "Google said one thing. A doctor said another. Most people we met were not short of medicine. They were short of someone who looked at the whole of them." },
+    { "type": "image_picker", "id": "image", "label": "Photo (optional)", "info": "A founder or team photo. Landscape 4:3 fits best." },
+    { "type": "richtext", "id": "text", "label": "Story", "default": "<p>So we asked one question: what if healthcare treated people, not just problems? sehatUP is our answer. Doctors from Ayurveda, Homeopathy and modern medicine work together, so your plan is built around you, not around one system.</p><p>Your check is free and takes about two minutes on your phone. Your products arrive at home in a plain box.</p>" },
+    { "type": "text", "id": "stat", "label": "Number", "default": "25,000+" },
+    { "type": "text", "id": "stat_label", "label": "Under the number", "default": "people across India have trusted us" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#ffffff" }
+  ],
+  "presets": [{ "name": "About: our story (short)" }]
+}
+{% endschema %}

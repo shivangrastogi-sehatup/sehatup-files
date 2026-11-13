@@ -1,0 +1,56 @@
+{
+  "condition": "PCOD with Irregular Periods & Infertility Concerns",
+  "subtitle": "Diet planned considering hormonal imbalance, ovulation support & reproductive health",
+  "meals": [
+    {
+      "time": "Early Morning (7:00–8:00 AM)",
+      "food": "Lukewarm water + 1 tsp soaked methi seeds OR 2 walnuts",
+      "benefit": "Supports hormonal balance & ovulation function"
+    },
+    {
+      "time": "Breakfast (High Protein)",
+      "food": "Besan chilla + curd  /  Eggs + toast  /  Oats + seeds",
+      "benefit": "Improves egg quality & stabilizes hormones"
+    },
+    {
+      "time": "Mid-Morning",
+      "food": "1 fruit (apple/guava/papaya)",
+      "benefit": "Maintains energy & prevents hormonal fluctuations"
+    },
+    {
+      "time": "Lunch",
+      "food": "2 roti + sabzi + dal/paneer + salad",
+      "benefit": "Balanced nutrition supports reproductive system"
+    },
+    {
+      "time": "Evening Snack",
+      "food": "Green tea / normal tea (no sugar) + roasted chana/makhana",
+      "benefit": "Controls cravings & supports metabolism"
+    },
+    {
+      "time": "Dinner (Light & Early)",
+      "food": "1–2 roti + sabzi OR soup + paneer",
+      "benefit": "Improves digestion & supports hormonal recovery"
+    }
+  ],
+  "dailyAddons": {
+    "food": "Flax seeds, pumpkin seeds, walnuts",
+    "benefit": "Supports ovulation, hormone balance & fertility"
+  },
+  "specialFocus": {
+    "title": "Reproductive Health",
+    "food": "Include leafy greens, beetroot, nuts, seeds regularly",
+    "benefit": "Improves blood flow & reproductive health"
+  },
+  "avoidFoods": [
+    "Sugar, junk food, packaged food, excess caffeine",
+    "Prevents hormonal imbalance"
+  ],
+  "lifestyle": [
+    "30–40 min walk daily",
+    "Stress management",
+    "Proper sleep",
+    "Regular cycle support is essential"
+  ],
+  "followUp": "Review after 15 days"
+}

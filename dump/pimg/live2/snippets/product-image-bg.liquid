@@ -1,0 +1,20 @@
+{%- comment -%}
+  White background behind every product's first image, wherever it is shown (cards, product page,
+  cart, menus, app blocks). The first images are transparent PNGs (product plus shadow), so without
+  this they would take the colour of whatever section they sit on. Matches by file name, so it
+  follows the image automatically when a product's first image is changed in admin.
+  ponytail: Shopify loops stop at 50 items without paginate; the store has about 23 products.
+  Past 50 products, move this into a paginated loop on a page that ignores ?page.
+{%- endcomment -%}
+{%- capture pib_rules -%}
+  {%- for p in collections.all.products limit: 50 -%}
+    {%- if p.featured_image != blank -%}
+      {%- assign pib_file = p.featured_image | image_url | split: '?' | first | split: '/' | last | replace: '"', '' -%}
+      img[src*="/{{ pib_file }}"],
+    {%- endif -%}
+  {%- endfor -%}
+{%- endcapture -%}
+{%- assign pib_rules = pib_rules | strip | remove_last: ',' -%}
+{%- if pib_rules != blank -%}
+  <style>{{ pib_rules }} { background-color: #fff !important; }</style>
+{%- endif -%}

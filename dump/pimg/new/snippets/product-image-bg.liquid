@@ -1,0 +1,22 @@
+{%- comment -%}
+  White background behind every product image (first image, variant images and the rest of the gallery), wherever it is shown (cards, product page,
+  cart, menus, app blocks). Product images are transparent PNGs (product plus shadow), so without
+  this they would take the colour of whatever section they sit on. Matches by file name, so it
+  follows the images automatically when they are changed in admin.
+  The product page gallery (main photos and thumbnails) is left out on purpose: there the theme's own
+  background shows through.
+  ponytail: Shopify loops stop at 50 items without paginate; the store has about 23 products.
+  Past 50 products, move this into a paginated loop on a page that ignores ?page.
+{%- endcomment -%}
+{%- capture pib_rules -%}
+  {%- for p in collections.all.products limit: 50 -%}
+    {%- for pimg in p.images -%}
+      {%- assign pib_file = pimg | image_url | split: '?' | first | split: '/' | last | replace: '"', '' -%}
+      img[src*="/{{ pib_file }}"],
+    {%- endfor -%}
+  {%- endfor -%}
+{%- endcapture -%}
+{%- assign pib_rules = pib_rules | strip | remove_last: ',' -%}
+{%- if pib_rules != blank -%}
+  <style>{{ pib_rules }} { background-color: #fff !important; } .sp__gallery img, .sp__thumbs img { background-color: transparent !important; }</style>
+{%- endif -%}

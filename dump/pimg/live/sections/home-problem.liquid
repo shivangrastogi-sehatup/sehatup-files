@@ -1,0 +1,108 @@
+{%- comment -%}
+  Home: the problem, told the way people live it. Left: heading and "the
+  real issue". Right: a short chat where everyone gives different advice
+  (Google, a doctor, an influencer, a relative...), ending with the visitor's
+  own question in red. The section fades up once, all together, on first view.
+  Voices come from a textarea, one "Who|What they say" per line.
+{%- endcomment -%}
+{%- liquid
+  assign s = section.settings
+  assign voices = s.voices | newline_to_br | split: '<br />'
+-%}
+<style>
+  #hpb-{{ section.id }} {
+    --ink: #1d1d1d; --mute: #5f5a56; --line: #e8e0d9; --btn: #d81f48;
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    padding: clamp(56px, 6vw, 104px) clamp(16px, 4vw, 48px); background: {{ s.section_bg | default: '#faf7f5' }}; color: var(--ink); font-family: 'Montserrat', sans-serif;
+  }
+  #hpb-{{ section.id }} .hpb__in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5.5vw, 88px); align-items: center; }
+  #hpb-{{ section.id }} .hpb__h { margin: 0 0 18px; font: 800 clamp(30px, 3.6vw, 52px)/1.06 'Montserrat', sans-serif; letter-spacing: -.02em; color: var(--ink); text-wrap: balance; }
+  #hpb-{{ section.id }} .hpb__lead { margin: 0 0 32px; font: 400 17px/1.6 'Montserrat', sans-serif; color: var(--mute); text-wrap: pretty; }
+  #hpb-{{ section.id }} .hpb__issue { padding-top: 24px; border-top: 1px solid var(--line); }
+  #hpb-{{ section.id }} .hpb__issue small { display: block; margin-bottom: 10px; font: 700 14px/1.2 'Montserrat', sans-serif; color: var(--btn); }
+  #hpb-{{ section.id }} .hpb__issue p { margin: 0; font: 700 clamp(20px, 1.8vw, 25px)/1.35 'Montserrat', sans-serif; color: var(--ink); text-wrap: balance; }
+
+  #hpb-{{ section.id }} .hpb__chat { display: grid; gap: 14px; }
+  #hpb-{{ section.id }} .hpb__v { max-width: 84%; padding: 16px 20px; border-radius: 22px 22px 22px 6px; background: #fff; box-shadow: 0 1px 0 rgba(29, 29, 29, .04), 0 12px 30px rgba(60, 40, 30, .07); }
+  #hpb-{{ section.id }} .hpb__v:nth-child(even) { justify-self: end; border-radius: 22px 22px 6px 22px; }
+  #hpb-{{ section.id }} .hpb__v b { display: block; margin-bottom: 6px; font: 700 13px/1.2 'Montserrat', sans-serif; color: var(--mute); }
+  #hpb-{{ section.id }} .hpb__v p { margin: 0; font: 500 16.5px/1.45 'Montserrat', sans-serif; color: var(--ink); }
+  #hpb-{{ section.id }} .hpb__v.you { justify-self: end; margin-top: 6px; border-radius: 22px 22px 6px 22px; background: var(--btn); box-shadow: none; }
+  #hpb-{{ section.id }} .hpb__v.you b { color: rgba(255, 255, 255, .8); }
+  #hpb-{{ section.id }} .hpb__v.you p { color: #fff; font-weight: 700; }
+
+  /* One simple entrance: the whole section fades up together, once, when it comes into view. */
+  #hpb-{{ section.id }}.js .hpb__in { opacity: 0; transform: translateY(14px); }
+  #hpb-{{ section.id }}.js.in .hpb__in { opacity: 1; transform: none; transition: opacity .6s ease, transform .7s var(--ease); }
+
+  @media (max-width: 899.98px) {
+    #hpb-{{ section.id }} .hpb__in { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    #hpb-{{ section.id }} .hpb__issue { order: 3; }
+  }
+  @media (max-width: 749.98px) {
+    #hpb-{{ section.id }} .hpb__h { font-size: 30px; }
+    #hpb-{{ section.id }} .hpb__lead { font-size: 15px; margin-bottom: 0; }
+    #hpb-{{ section.id }} .hpb__v { max-width: 90%; padding: 13px 16px; }
+    #hpb-{{ section.id }} .hpb__v p { font-size: 15px; }
+    #hpb-{{ section.id }} .hpb__issue p { font-size: 19px; }
+  }
+  @media (min-width: 1680px) { #hpb-{{ section.id }} .hpb__in { zoom: 1.12; } }
+  @media (min-width: 1920px) { #hpb-{{ section.id }} .hpb__in { zoom: 1.25; } }
+  @media (min-width: 2560px) { #hpb-{{ section.id }} .hpb__in { zoom: 1.65; } }
+  @media (min-width: 3200px) { #hpb-{{ section.id }} .hpb__in { zoom: 2; } }
+</style>
+
+<section id="hpb-{{ section.id }}">
+  <div class="hpb__in">
+    <div class="hpb__copy">
+      <h2 class="hpb__h">{{ s.heading }}</h2>
+      {%- if s.lead != blank -%}<p class="hpb__lead">{{ s.lead }}</p>{%- endif -%}
+      {%- if s.issue != blank -%}
+        <div class="hpb__issue">{%- if s.issue_label != blank -%}<small>{{ s.issue_label }}</small>{%- endif -%}<p>{{ s.issue }}</p></div>
+      {%- endif -%}
+    </div>
+    <div class="hpb__chat">
+      {%- assign n = 0 -%}
+      {%- for line in voices -%}
+        {%- assign parts = line | strip | split: '|' -%}
+        {%- if parts.size > 1 -%}
+          <div class="hpb__v" style="--i: {{ n }}"><b>{{ parts[0] | strip }}</b><p>{{ parts[1] | strip }}</p></div>
+          {%- assign n = n | plus: 1 -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {%- if s.you_line != blank -%}<div class="hpb__v you" style="--i: {{ n }}"><b>{{ s.you_name }}</b><p>{{ s.you_line }}</p></div>{%- endif -%}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('hpb-{{ section.id }}');
+    if (!root || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var n = root.querySelectorAll('.hpb__v').length;
+    root.style.setProperty('--last', (n * .45 + .2) + 's');
+    root.classList.add('js');
+    var io = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { root.classList.add('in'); io.disconnect(); }
+    }, { threshold: .3 });
+    io.observe(root.querySelector('.hpb__chat'));
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Home: the problem",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Getting healthy today feels like guesswork." },
+    { "type": "textarea", "id": "lead", "label": "Line under it" },
+    { "type": "text", "id": "issue_label", "label": "Small line above the real issue", "default": "The real issue" },
+    { "type": "textarea", "id": "issue", "label": "The real issue" },
+    { "type": "textarea", "id": "voices", "label": "Chat", "info": "One per line: Who|What they say" },
+    { "type": "text", "id": "you_name", "label": "Last bubble name", "default": "You" },
+    { "type": "text", "id": "you_line", "label": "Last bubble (red)", "default": "So who do I listen to?" },
+    { "type": "color", "id": "section_bg", "label": "Background", "default": "#faf7f5" }
+  ],
+  "presets": [{ "name": "Home: the problem" }]
+}
+{% endschema %}
