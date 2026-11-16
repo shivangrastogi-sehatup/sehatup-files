@@ -7318,6 +7318,50 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
   // orders; drafts combine them into one (Shopify draft API allows a single applied_discount).
   const pctOrAmt = (vt, v) => vt === "percentage" ? subtotal * (Math.min(Number(v) || 0, 100) / 100) : (Number(v) || 0);
   const customAmtRaw = orderDiscountIsCustom ? pctOrAmt(orderDiscountType, orderDiscountValue) : 0;
+  // Shopify's own figure for the picked code. A product code (FESTIVE15: 15% off one
+  // collection, minimum quantity 3, once per customer) can't be worked out from the subtotal,
+  // so draftOrderCalculate prices it on the real cart. 0 = Shopify won't apply it to this cart.
+  const [codeQuote, setCodeQuote] = useStateO(null); // { key, amount }
+  const quoteCode = appliedCodeDiscount?.code || '';
+  const quoteDigits = (custPhone || preset?.phone || '').replace(/\D/g, '').slice(-10);
+  const quoteCustomerId = (cust?.id && quoteDigits.length === 10 && matchesProfilePhone(cust, phoneKey(`+91${quoteDigits}`))) ? cust.id : null;
+  const quoteLines = items.filter(p => p.isCustom || p.variantId).map(p => {
+    const dv = parseFloat(p.discountValue) || 0;
+    return {
+      ...(p.isCustom
+        ? { title: p.name, originalUnitPriceWithCurrency: { amount: Number(p.price || 0).toFixed(2), currencyCode: 'INR' } }
+        : { variantId: `gid://shopify/ProductVariant/${p.variantId}` }),
+      quantity: p.qty,
+      ...(dv > 0 && { appliedDiscount: { valueType: p.discountType === 'percentage' ? 'PERCENTAGE' : 'FIXED_AMOUNT', value: dv, title: p.discountReason || 'Discount' } }),
+    };
+  });
+  const quoteKey = quoteCode && quoteLines.length ? JSON.stringify([quoteCode, quoteCustomerId, quoteLines]) : '';
+  useEffect(() => {
+    if (!quoteKey) return;
+    let stale = false;
+    const t = setTimeout(async () => {
+      try {
+        const d = await discountGql(`mutation($input: DraftOrderInput!) {
+          draftOrderCalculate(input: $input) { calculatedDraftOrder { platformDiscounts { code totalAmount { amount } } } }
+        }`, { input: {
+          lineItems: quoteLines,
+          discountCodes: [quoteCode],
+          purchasingEntity: quoteCustomerId ? { customerId: `gid://shopify/Customer/${quoteCustomerId}` } : undefined,
+        } });
+        const hit = (d?.draftOrderCalculate?.calculatedDraftOrder?.platformDiscounts || [])
+          .find(x => (x.code || '').toLowerCase() === quoteCode.toLowerCase());
+        if (!stale) setCodeQuote({ key: quoteKey, amount: hit ? parseFloat(hit.totalAmount?.amount) || 0 : 0 });
+      } catch (e) {
+        // Fall back to the local estimate; the save-time check still compares with Shopify.
+        console.warn('[Discount] code quote failed', e.message);
+      }
+    }, 300);
+    return () => { stale = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteKey]);
+  const quotedCodeAmount = quoteKey && codeQuote?.key === quoteKey ? codeQuote.amount : null;
+  const codeQuotePending = !!quoteKey && quotedCodeAmount == null;
+
   // Code discounts are worked out first, because Shopify will not necessarily honour both.
   const codeDiscountParts = [
     (healthscoreLead && healthscoreDisc) && {
@@ -7332,7 +7376,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
       label: appliedCodeDiscount.code,
       code: appliedCodeDiscount.code,
       combines: appliedCodeDiscount.combines !== false,
-      amount: Math.round(pctOrAmt(appliedCodeDiscount.valueType, appliedCodeDiscount.value)),
+      amount: Math.round(quotedCodeAmount ?? pctOrAmt(appliedCodeDiscount.valueType, appliedCodeDiscount.value)),
     },
   ].filter(d => d && d.amount > 0);
 
@@ -7397,9 +7441,9 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     try {
       const q = `query { codeDiscountNodes(first: 50, query: "status:active") { edges { node { codeDiscount {
         __typename
-        ... on DiscountCodeBasic { title combinesWith { orderDiscounts } codes(first: 1) { edges { node { code } } } customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
-        ... on DiscountCodeBxgy { title codes(first: 1) { edges { node { code } } } }
-        ... on DiscountCodeFreeShipping { title codes(first: 1) { edges { node { code } } } }
+        ... on DiscountCodeBasic { title summary discountClasses combinesWith { orderDiscounts } codes(first: 1) { edges { node { code } } } customerGets { value { __typename ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
+        ... on DiscountCodeBxgy { title summary discountClasses codes(first: 1) { edges { node { code } } } }
+        ... on DiscountCodeFreeShipping { title summary discountClasses codes(first: 1) { edges { node { code } } } }
       } } } } }`;
       const res = await fetch('/shopify-v2/graphql.json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
       const data = await res.json();
@@ -7419,7 +7463,8 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
         let valueType = null, value = 0;
         if (v?.percentage != null) { valueType = 'percentage'; value = Math.round(v.percentage * 100); }
         else if (v?.amount?.amount != null) { valueType = 'amount'; value = parseFloat(v.amount.amount); }
-        return { code, title: cd?.title || code, valueType, value, combines: cd?.combinesWith?.orderDiscounts !== false };
+        return { code, title: cd?.title || code, valueType, value, combines: cd?.combinesWith?.orderDiscounts !== false,
+          summary: cd?.summary || '', cls: cd?.discountClasses?.[0] || 'ORDER' };
       }).filter(o => o.code);
       setDiscountCodeOptions(opts);
     } catch (e) {
@@ -7451,7 +7496,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
   // Code, custom and Healthscore all stack now — selecting a code no longer clears the custom.
   const selectDiscountCode = (opt) => {
     setOrderDiscountCode(opt.code);
-    setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value, combines: opt.combines !== false });
+    setAppliedCodeDiscount({ code: opt.code, valueType: opt.valueType, value: opt.value, combines: opt.combines !== false, summary: opt.summary, cls: opt.cls });
   };
   const enableCustomDiscount = (checked) => {
     setOrderDiscountIsCustom(checked);
@@ -7891,7 +7936,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                   <span className="lbl">First name *</span>
                   <input className="input" value={custFirstName} onChange={e => setCustFirstName(e.target.value)} placeholder="Aamina" />
                 </div>
-                <div className="span-6 field"><span className="lbl">Last name *</span><input className="input" value={custLastName} onChange={e => setCustLastName(e.target.value)} placeholder="Jan" /></div>
+                <div className="span-6 field"><span className="lbl">Last name</span><input className="input" value={custLastName} onChange={e => setCustLastName(e.target.value)} placeholder="Jan" /></div>
                 <div className="span-6 field" style={{ position: "relative" }}>
                   <span className="lbl">Phone number *</span>
                   <input className="input" value={custPhone} onFocus={() => setFocusedInput('phone')} onBlur={() => setFocusedInput(null)} onChange={e => { setCustPhone(e.target.value); setFocusedInput('phone'); }} placeholder="+91 98765 43210" />
@@ -8495,12 +8540,15 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                           placeholder="Enter a discount code"
                           value={orderDiscountCode}
                           onFocus={() => setCodeDropdownOpen(true)}
+                          onClick={() => setCodeDropdownOpen(true)}
                           onBlur={() => setTimeout(() => setCodeDropdownOpen(false), 150)}
                           onChange={e => { setOrderDiscountCode(e.target.value); setCodeDropdownOpen(true); }}
                         />
                         {codeDropdownOpen && (
                           /* In the page flow, not floating: the popup body scrolls (overflow auto), which clipped a floating list. */
-                          <div className="fade-in" style={{ marginTop: 4, border: "1px solid var(--border)", borderRadius: 8, maxHeight: 220, overflowY: "auto", background: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.18)" }}>
+                          /* preventDefault keeps focus in the input: otherwise its blur closes this list
+                             150ms after mousedown, and a slower click lands on nothing. */
+                          <div className="fade-in" onMouseDown={e => e.preventDefault()} style={{ marginTop: 4, border: "1px solid var(--border)", borderRadius: 8, maxHeight: 220, overflowY: "auto", background: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.18)" }}>
                             {discountCodeLoading ? (
                               <div className="muted" style={{ fontSize: 12.5, padding: "10px 12px" }}>Loading active codes…</div>
                             ) : discountCodeError ? (
@@ -8512,7 +8560,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                                 style={{ padding: "9px 12px", cursor: "pointer", borderBottom: i < filteredDiscountCodes.length - 1 ? "1px solid var(--border)" : "none" }}
                                 onMouseEnter={e => e.currentTarget.style.background = "var(--hover)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                                 <span className="fw5" style={{ fontSize: 13 }}>{o.code}</span>
-                                <span className="muted" style={{ fontSize: 11.5 }}>{o.valueType === "percentage" ? `${o.value}% off` : o.valueType === "amount" ? `Rs. ${o.value} off` : ""}{o.title ? `${(o.valueType ? " · " : "")}${o.title}` : ""}</span>
+                                <span className="muted" style={{ fontSize: 11.5 }}>{o.summary || <>{o.valueType === "percentage" ? `${o.value}% off` : o.valueType === "amount" ? `Rs. ${o.value} off` : ""}{o.title ? `${(o.valueType ? " · " : "")}${o.title}` : ""}</>}</span>
                               </div>
                             ))}
                           </div>
@@ -8521,11 +8569,16 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                           <div className="stack-2 fade-in" style={{ marginTop: 8, padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)" }}>
                             <div className="hstack-8" style={{ alignItems: "center" }}>
                               <span className="fw6" style={{ fontSize: 13 }}>{appliedCodeDiscount.code}</span>
-                              <span className="badge" style={{ fontSize: 10, padding: "1px 6px" }}>Order discount</span>
+                              <span className="badge" style={{ fontSize: 10, padding: "1px 6px" }}>{{ PRODUCT: "Product discount", SHIPPING: "Shipping discount" }[appliedCodeDiscount.cls] || "Order discount"}</span>
                               <span className="spacer" />
                               <button className="btn sm ghost icon" title="Remove" onClick={() => { setAppliedCodeDiscount(null); setOrderDiscountCode(''); }}><Icon name="x" size={13} /></button>
                             </div>
-                            <span className="muted" style={{ fontSize: 12 }}>{appliedCodeDiscount.valueType === "percentage" ? `${appliedCodeDiscount.value}% off entire order` : `Rs. ${appliedCodeDiscount.value} off`}</span>
+                            <span className="muted" style={{ fontSize: 12 }}>{appliedCodeDiscount.summary || (appliedCodeDiscount.valueType === "percentage" ? `${appliedCodeDiscount.value}% off entire order` : `Rs. ${appliedCodeDiscount.value} off`)}</span>
+                            <span style={{ fontSize: 12, marginTop: 2, color: quotedCodeAmount === 0 ? "var(--risk-moderate)" : "var(--fg)" }}>
+                              {codeQuotePending ? "Checking with Shopify…"
+                                : quotedCodeAmount === 0 ? "Doesn't apply to this order yet (check the eligible products, minimum quantity, or whether this customer already used it). It won't be sent."
+                                : quotedCodeAmount != null ? `− Rs. ${quotedCodeAmount.toLocaleString("en-IN")} on this order` : null}
+                            </span>
                           </div>
                         )}
                       </div>

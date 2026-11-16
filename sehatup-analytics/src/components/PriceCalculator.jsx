@@ -25,48 +25,59 @@ async function shopify(query) {
   try { return JSON.parse(text); } catch { return null; }
 }
 
-// Live product search — first variant with MRP (compareAtPrice) + selling (price).
+// Live product search — one result per variant (pack), each with its own MRP
+// (compareAtPrice) + selling (price) and its own photo when it has one.
 async function searchProducts(term) {
   const clean = term.replace(/"/g, '\\"');
   const data = await shopify(`{
     products(first: 12, query: "${clean}*") {
       edges { node { id title featuredImage { url }
-        variants(first: 1) { edges { node { id title price compareAtPrice } } } } }
+        variants(first: 20) { edges { node { id title price compareAtPrice availableForSale image { url } } } } } }
     }
   }`);
   const edges = data?.data?.products?.edges || [];
-  return edges.map(({ node }) => {
-    const v = node.variants?.edges?.[0]?.node || {};
+  return edges.flatMap(({ node }) => (node.variants?.edges || []).map(({ node: v }) => {
     const selling = num(v.price);
     const mrp = v.compareAtPrice ? num(v.compareAtPrice) : selling;
-    return { id: node.id, variantId: v.id, name: node.title, image: node.featuredImage?.url || '', mrp, selling };
-  }).filter(p => p.selling > 0);
+    const variantTitle = v.title && v.title !== 'Default Title' ? v.title : '';
+    return {
+      id: node.id, variantId: v.id,
+      name: variantTitle ? `${node.title} - ${variantTitle}` : node.title,
+      image: v.image?.url || node.featuredImage?.url || '', mrp, selling,
+      soldOut: v.availableForSale === false,
+    };
+  })).filter(p => p.selling > 0);
 }
 
-// Active discount codes, normalised.
+// Active discount codes straight from Shopify (same query as Create order).
+// Returns { list, error }; error is set when Shopify refused (e.g. missing read_discounts).
 async function fetchDiscounts() {
   const data = await shopify(`{
-    codeDiscountNodes(first: 40) { edges { node { id codeDiscount {
+    codeDiscountNodes(first: 100, query: "status:active") { edges { node { codeDiscount {
       __typename
-      ... on DiscountCodeBasic { title status codes(first:1){edges{node{node:code}}}
+      ... on DiscountCodeBasic { title codes(first: 1) { edges { node { code } } }
         customerGets { value { ... on DiscountPercentage { percentage } ... on DiscountAmount { amount { amount } } } } }
-      ... on DiscountCodeFreeShipping { title status codes(first:1){edges{node{node:code}}} }
+      ... on DiscountCodeFreeShipping { title codes(first: 1) { edges { node { code } } } }
     } } } }
   }`);
-  const edges = data?.data?.codeDiscountNodes?.edges || [];
+  if (!data || data.errors?.length) {
+    const denied = (data?.errors || []).some(e => /access|scope|read_discounts/i.test(e.message || ''));
+    return { list: [], error: denied ? "Shopify app needs the 'read_discounts' permission to load codes." : "Couldn't load discount codes from Shopify." };
+  }
   const out = [];
-  for (const { node } of edges) {
+  for (const { node } of data.data?.codeDiscountNodes?.edges || []) {
     const d = node.codeDiscount || {};
-    if (d.status && d.status !== 'ACTIVE') continue;
-    const code = d.codes?.edges?.[0]?.node?.node || d.title;
+    const code = d.codes?.edges?.[0]?.node?.code || d.title;
+    if (!code) continue;
     if (d.__typename === 'DiscountCodeFreeShipping') out.push({ code, title: d.title, kind: 'shipping', value: 0 });
     else {
       const v = d.customerGets?.value;
-      if (v?.percentage != null) out.push({ code, title: d.title, kind: 'percentage', value: v.percentage * 100 });
+      // Shopify gives 0.1 for 10%; round so 0.1 * 100 never shows as 10.000000000000002.
+      if (v?.percentage != null) out.push({ code, title: d.title, kind: 'percentage', value: Math.round(v.percentage * 10000) / 100 });
       else if (v?.amount?.amount != null) out.push({ code, title: d.title, kind: 'amount', value: num(v.amount.amount) });
     }
   }
-  return out;
+  return { list: out, error: '' };
 }
 
 // Prescriptions store variant + selling but not MRP — pull compareAtPrice in one call.
@@ -94,7 +105,8 @@ function rxToItems(rx) {
   })).filter(p => p.name);
 }
 
-const DEFAULT_DISCOUNT = { code: 'SEHAT10', title: 'SEHAT10 — 10% off', kind: 'percentage', value: 10 };
+// Pre-selected when Shopify has it active; otherwise the calculator starts with no discount.
+const DEFAULT_CODE = 'SEHAT10';
 const DEFAULT_SHIPPING = 150;
 
 // ── component ─────────────────────────────────────────────────────────────
@@ -117,8 +129,9 @@ export default function PriceCalculator({ me, canRx = false }) {
   const [rxResults, setRxResults] = useState([]);
   const [selectedRxId, setSelectedRxId] = useState(null);
 
-  const [discounts, setDiscounts] = useState([DEFAULT_DISCOUNT]);
-  const [discCode, setDiscCode] = useState('SEHAT10');
+  const [discounts, setDiscounts] = useState([]);
+  const [discCode, setDiscCode] = useState('');
+  const [discState, setDiscState] = useState('loading'); // 'loading' | 'ok' | error message
   const searchBox = useRef(null);
 
   // saved shipping charge
@@ -146,9 +159,12 @@ export default function PriceCalculator({ me, canRx = false }) {
   }, [uid, shippingCharge, partialPayment]);
 
   useEffect(() => {
-    fetchDiscounts().then(list => {
-      if (list.length) setDiscounts([DEFAULT_DISCOUNT, ...list.filter(d => d.code.toUpperCase() !== 'SEHAT10')]);
-    }).catch(() => {});
+    fetchDiscounts().then(({ list, error }) => {
+      setDiscounts(list);
+      setDiscState(error || 'ok');
+      const def = list.find(d => d.code.toUpperCase() === DEFAULT_CODE);
+      setDiscCode(prev => prev || (def ? def.code : ''));
+    }).catch(() => setDiscState("Couldn't load discount codes from Shopify."));
   }, []);
 
   useEffect(() => {
@@ -247,7 +263,7 @@ export default function PriceCalculator({ me, canRx = false }) {
                   {results.map(p => (
                     <button key={p.variantId || p.id} className="pc-result" onClick={() => addItem(p)}>
                       {p.image ? <img src={p.image} alt="" className="pc-thumb" /> : <div className="pc-thumb ph" />}
-                      <span className="pc-rname">{p.name}</span>
+                      <span className="pc-rname">{p.name}{p.soldOut && <em className="pc-soldout"> · sold out</em>}</span>
                       <span className="pc-rprice">{p.mrp > p.selling && <s>{inr(p.mrp)}</s>}<b>{inr(p.selling)}</b></span>
                     </button>
                   ))}
@@ -316,14 +332,15 @@ export default function PriceCalculator({ me, canRx = false }) {
           <div className="pc-bottomrow">
             <div className="pc-field">
               <label className="pc-label">Discount</label>
-              <select className="pc-select" value={discCode} onChange={e => setDiscCode(e.target.value)}>
-                <option value="">No discount</option>
+              <select className="pc-select" value={discCode} onChange={e => setDiscCode(e.target.value)} disabled={discState === 'loading'}>
+                <option value="">{discState === 'loading' ? 'Loading Shopify codes…' : 'No discount'}</option>
                 {discounts.map(d => (
                   <option key={d.code} value={d.code}>
                     {d.code} — {d.kind === 'percentage' ? `${d.value}% off` : d.kind === 'amount' ? `${inr(d.value)} off` : 'free shipping'}
                   </option>
                 ))}
               </select>
+              {discState !== 'loading' && discState !== 'ok' && <span className="pc-discerr">{discState}</span>}
             </div>
             <div className="pc-field">
               <label className="pc-label">Shipping</label>
@@ -429,6 +446,8 @@ const CSS = `
 .pc-thumb{width:34px;height:34px;border-radius:8px;object-fit:cover;background:var(--surface-2);flex:none}
 .pc-thumb.ph{border:1px dashed var(--border-strong)}
 .pc-rname{flex:1;font-size:13.5px;font-weight:520;color:var(--fg)}
+.pc-soldout{font-style:normal;font-weight:500;color:var(--muted)}
+.pc-discerr{font-size:11.5px;color:var(--risk-moderate,#b45309)}
 .pc-rprice{display:flex;align-items:baseline;gap:8px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12.5px}
 .pc-rprice s{color:var(--muted);font-size:11.5px}
 .pc-rprice b{color:var(--fg);font-weight:600}

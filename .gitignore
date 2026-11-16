@@ -53,3 +53,5 @@ secrets.json
 n8n/service-account-keys/
 .vercel
 .env*
+
+dump/
