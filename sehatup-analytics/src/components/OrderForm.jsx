@@ -802,8 +802,9 @@ const OrderForm = ({
                     variant_title: freeSampleVariant.variantTitle,
                     price: freeSampleVariant.price / 100,
                     quantity: 1,
+                    // Free sample is 100% off: the line is charged at Rs.0 but still shows its MRP.
                     discountType: 'percentage',
-                    discountValue: 0,
+                    discountValue: 100,
                 }];
             });
         } else {
