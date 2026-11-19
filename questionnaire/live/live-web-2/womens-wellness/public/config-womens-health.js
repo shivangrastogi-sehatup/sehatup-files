@@ -4,11 +4,13 @@ const questionnaireConfig = {
             "main-title": "Women's Wellness Health Score",
             "welcome-title": "Welcome to the Women’s Sexual Health Quiz!",
             "category": "Women's Wellness",
+            "exit-rest": "most people never recover.",
         },
         hi: {
             "main-title": "महिला वेलनेस हेल्थ स्कोर",
             "welcome-title": "महिला यौन स्वास्थ्य प्रश्नोत्तरी में आपका स्वागत है!",
             "category": "महिला वेलनेस",
+            "exit-rest": "ज़्यादातर लोग ठीक नहीं हो पाते।",
         },
     },
   id: 'womens-wellness',

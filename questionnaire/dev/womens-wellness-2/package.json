@@ -1,9 +1,0 @@
-{
-  "name": "womens-wellness-2",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "express": "^5.1.0",
-    "liquidjs": "^10.24.0"
-  }
-}

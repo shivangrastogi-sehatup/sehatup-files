@@ -25,7 +25,7 @@ const sandbox = {
 };
 const ctx = vm.createContext(sandbox);
 vm.runInContext(cfgSrc + '\n;globalThis.__cfg = questionnaireConfig;', ctx);
-vm.runInContext(src.replace(/document\.addEventListener[\s\S]*$/, '') +
+vm.runInContext(src.replace(/^document\.addEventListener[\s\S]*$/m, '') +
   '\n;globalThis.__Engine = QuestionnaireEngine;', ctx);
 const { __Engine: Engine, __cfg: config } = sandbox;
 

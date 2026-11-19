@@ -109,3 +109,60 @@ Nothing pending.
 - LIVE fix: diwali-announcement overlap after switching tabs. Phone message rotation + laptop scene swap now set every item at once, cancel the last pending step, and snap to one clean message on visibilitychange/pageshow/width change. File: sections/diwali-announcement.liquid (pushed to live 2026-11-04).
 - LIVE fix: black flash on load. Cause: sections printed their markup before their <style>, so on a slow/partial load the browser painted them unstyled (announcement bar gift/shield/stethoscope SVGs at full width in black + big text; 48 footer diya SVGs). Moved <style> before markup in sections/diwali-announcement, diwali-lights, diwali-gifts, collection-hero, snippets/diwali-footer-diyas (+ width/height on the footer diya SVG). Rule: style first in every section. Backups dump/stylefirst/. Pushed to live 2026-11-04.
 - LIVE: home-guide ("What would you like help with?") 4K: .hgd__in added to the shared 90vw big-screen width rule in layout/theme.liquid (same as HS360), heading box 760->1100px so the heading is one line (4K: 3452px wide, 184px margins, 104px heading). home-integrated: circle photos load eager (were lazy) and the slide-out waits for them (max 2.5s), so circles never animate in empty. Backups dump/4k-hin/. Pushed to live 2026-11-05.
+
+## Live theme 190038212911: questionnaire leave reminder (added 2026-11-18, PUSHED by user, tagline version confirmed live)
+Source folder: questionnaire/live/live-web-2. Upload each file as a theme asset with the same name (assets/):
+- assets/questionnaire-engine.js    <- _shared/public/questionnaire-engine.js   (leave reminder card: dynamic progress bar + one tagline, no research numbers)
+- assets/questionnaire-test.css     <- _shared/public/questionnaire-test.css    (#exit-modal tagline card styles)
+- assets/config-mens-health.js      <- mens-wellness/public/config-mens-health.js  (tagline: never recover)
+- assets/config-mens-weight.js      <- mens-weight/public/config-mens-weight.js    (tagline: never lose the weight)
+- assets/config-womens-health.js    <- womens-wellness/public/config-womens-health.js (tagline: never recover)
+- assets/config-womens-weight.js    <- womens-weight/public/config-womens-weight.js   (tagline: never lose the weight)
+Push all 6 together: the engine reads the exit-* text from the configs.
+Tests: node test-exit-prompt.mjs (in live-web-2).
+
+## Live theme 190038212911: questionnaire load order  PUSHED 2026-11-18 (by Claude, user asked)
+- sections/mens-weight.liquid, mens-wellness.liquid, womens-weight.liquid, womens-wellness.liquid
+  questionnaire-test.css moved above the Firebase SDKs, and the 3 SDK <script>s now defer.
+  Fixes the quiz painting late / unstyled while ~475 KB of Firebase downloaded. Local mirror: live-web-2/*/views/index.liquid.
+
+## Live theme 190038212911: questionnaire heading jump (added 2026-11-18, NOT pushed)
+- assets/questionnaire-test.css: `#questionnaire .header { display: block; }`. The theme's site-header rule `.header { display: grid }` also hit the quiz title box, squeezing the heading to 2 lines until the engine set an inline style. Staged copy: scratchpad/qpush/assets/questionnaire-test.css (= live-web-2/_shared/public).
+
+## Live theme 190038212911: search shows products only  PUSHED 2026-11-18 (by Claude, user asked)
+Edited the fresh live pull, staged in C:\Users\Shivang\AppData\Local\Temp\claude\a6be562759aefa36\83236b94-8fd7-422a-89d1-dae6ee59372b\scratchpad\searchfix
+- sections/sehat-header.liquid, sections/main-search.liquid, snippets/header-search.liquid, snippets/facets.liquid (3 forms)
+  Added `<input type="hidden" name="type" value="product">` after every `options[prefix]` input, so /search returns products only (no blog posts or pages with their cropped banner images). Facet/sort forms keep it while filtering. Suggestions dropdown was already product-only.
+- snippets/cho-listing.liquid (collection + search listings): pack picker on product cards was Diwali beige/gold (#fdedcf bg, #f2d9a6 border, red caret) -> white, #e8e0d9 border, charcoal caret, same as the For Him/For Her/Combos shelves; filter panel header line #f3e6cc -> #e8e0d9. PUSHED with the search change.
+  Verified live: header search lands on /search?...type=product, 6 products and 0 blog cards for "shilajit" (was 8 incl. 2 blogs); picker computed white / rgb(232,224,217).
+
+## Live theme 190038212911: "Blogs" row on search results  PUSHED 2026-11-18 (by Claude, user asked)
+- sections/main-search.liquid: after the product results, a "Blogs" heading + up to 6 matching posts (Shopify predictive search, resources[type]=article) as 16:9 cards so the 16:9 blog banners show whole; title (2 lines) + date; "All blogs" -> /blogs/news. Laptop 3 per row, tablet 2, phones one swipe row with the next card peeking. Hidden when no post matches and on results page 2+. Pre-change copy: scratchpad/main-search.before-blogs.liquid.
+  Verified live: "shilajit" = 6 products + 6 blog cards (374x210 at laptop, 281x158 on a 390px phone, no sideways page scroll).
+- sections/main-search.liquid: search box clear (x) button centred (theme pinned it at top: 1px, 6px above centre) -> top 50% + translateY(-50%). PUSHED 2026-11-18, verified live: field centre 252.8 = icon centre 252.8.
+
+## Live theme 190038212911: hero-healthcare-banner cleanup  PUSHED 2026-11-18 (by Claude, user asked; live checked on Home/For Him/For Her/Combos, phone + laptop)
+- sections/hero-healthcare-banner.liquid (Home, For Him, For Her, Combos), edited in dump/work (= live copy):
+  ai_gen_id removed. Classes ai-healthcare-hero__x-<id> -> hero__x, root -> .hero, hero-highlight -> hero__highlight;
+  every CSS selector scoped to the section wrapper `#shopify-section-{{ section.id }}` (Dawn style, so two heroes on a page still never clash);
+  <healthcare-hero-<id>> custom element -> <div>; the unused IntersectionObserver script (only added an unused .visible class) removed. 2007 -> 1972 lines.
+  Tested on the live pages before editing (same rename applied in the browser, every computed style of all hero elements compared): 0 differences on Home / For Him / For Her / Combos at 390, 820, 1280, 1920, 3840 px (only unicode-bidi normal->isolate, a div default, no visual effect).
+  Original: dump/hero-healthcare-banner.before-rename.liquid. Script: dump/rename-hero.js.
+
+## Live theme 190038212911: hero doctors photo always bottom right  PUSHED 2026-11-18 (by Claude, user asked; live files = staged, pages checked)
+- sections/hero-healthcare-banner.liquid: removed settings foreground_position_x / _y (all 4 heroes used right + bottom), the fg_x/fg_y/fg_tx/fg_ty variables and every left/center/top branch; photo is now just `right: <offset>%; bottom: <offset>%`. Offset settings relabelled "Distance from the right edge" / "Distance from the bottom". 107 settings (was 109), 1910 lines.
+- templates/index.json, page.for-him.json, page.for-her.json, page.combos.json: the 2 saved values removed (8 lines, nothing else touched).
+  Staged (section + fresh template pulls): scratchpad/fgfix. Templates MUST be re-pulled and the 2 keys removed again right before pushing if anything was saved in the theme editor after 2026-11-18 ~17:00.
+  Tested on live pages: removing the only CSS line that changes (transform: translate(0, 0)) = 0 differences on all hero elements, Home 390/1280/1920, For Him 820, For Her 1280, Combos 390.
+
+## Live theme 190038212911: hero overlay settings removed (added 2026-11-18, LOCAL ONLY, user reviewing in dump/work, NOT pushed)
+- dump/work/sections/hero-healthcare-banner.liquid: removed settings Image opacity (background_overlay_opacity, 100% everywhere = opacity: 1), Overlay color, Overlay strength (0 everywhere, so its CSS was never printed), the ov / ov_alpha variables, the `if ov > 0` block and the opacity line. Overlay <div> kept (dark/light text fades use it). 104 settings, 1876 lines.
+- dump/work/templates/index.json, page.for-him.json, page.for-her.json, page.combos.json: replaced with the live copies (they had the user's newer editor edits, e.g. doctor experience 7+/5+), then the 3 overlay values removed from each hero (12 lines).
+  Re-pull the 4 templates and redo the removal before pushing if the theme editor saved anything in between.
+  Tested on live pages: removing the opacity line (the only rendered change) = 0 differences, Home 390/1280, For Him 1280, For Her 390, Combos 1920.
+
+## Live theme 190038212911: hero-healthcare-banner REBUILT (added 2026-11-18, LOCAL ONLY in dump/work, NOT pushed) - supersedes the "overlay settings removed" entry above
+- dump/work/sections/hero-healthcare-banner.liquid: rewritten. 38 settings (was 109 this morning), 545 lines (was 2007). One "Text style" select (dark = white text on a dark photo, Home; light = dark text on a light photo, the rest) sets every colour through CSS variables (--hero-ink/body/accent/accent-hover/line/line-hover/shadow). Removed: other layout modes, white panel, split layout, mobile overrides, festive text, note, button style/colour/size settings, and every rule that was overridden at all widths (heading/subheading/button base sizes, button paddings). Section padding is one setting `padding_y`. Button 2 opens a new tab when its link is external (://), same result as before (only Home's WhatsApp).
+- dump/work/templates/index.json, page.for-him.json, page.for-her.json, page.combos.json: hero settings rewritten to the new ids (text_style, padding_y + the kept ones); everything else in the files identical to live. Script: dump/rebuild-hero-templates.js. Originals: dump/hero-healthcare-banner.before-rebuild.liquid, dump/templates-before-rebuild/.
+  Tested with `shopify theme dev` (hidden development theme 190204936495, never published) vs live: every hero element's position, size and ~55 computed styles compared on Home/For Him/For Her/Combos at 390, 820, 1280, 1920, 3840 px: no visible difference (only max-width 100%->none on .hero, the unused 1400px cap on the container below 1041px, and the wrapper text colour on the light pages, which no visible text inherits). 0 Liquid errors.
+  BEFORE PUSH: re-pull the 4 templates, re-run rebuild-hero-templates.js on them (it maps old ids -> new), push section + 4 templates together.

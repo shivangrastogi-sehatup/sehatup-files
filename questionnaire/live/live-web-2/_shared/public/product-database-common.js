@@ -1,10 +1,3 @@
-// product-database-common.js
-
-/**
- * PRODUCT_REGISTRY: The single source of truth for Shopify Handles.
- * Keys here are "Stable Internal IDs" that never change.
- * Handles are the URL parts from Shopify.
- */
 const PRODUCT_REGISTRY = {
     HER_MENSES: { handle: 'harmen' },
     ESTROGEN_BALANCE: { handle: 'estrogen-balance' },

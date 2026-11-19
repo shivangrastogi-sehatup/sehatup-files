@@ -61,10 +61,3 @@
     <p style="font-size: 16px" data-i18n="wait-moment">Please wait a moment while we analyze your responses.</p>
   </div>
 </div>
-
-{% comment %}
-  The engine owns this overlay (showLoader/hideLoader in questionnaire-engine.js).
-  The duplicate .bg-overlay and the global showLoader/hideLoader that used to live
-  here were removed: index.liquid already renders .bg-overlay, and the globals
-  hid the loader on a timer that fought the engine's own fade.
-{% endcomment %}

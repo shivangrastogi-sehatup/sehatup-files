@@ -50,7 +50,12 @@ body {
     transition: all 0.3s ease
 }
 
+/* display:block matters: the theme's site header rule `.header { display: grid;
+   grid-template-columns: 1fr 2fr 1fr }` also matches this box, and until the engine
+   sets an inline display the title was squeezed into a 1fr column (68px on phones),
+   wrapping over many lines and then jumping to one line a few seconds later. */
 #questionnaire .header {
+    display: block;
     background: linear-gradient(135deg, #dfe2e6, #ffffff);
     color: #333;
     padding: 25px;
@@ -1977,6 +1982,130 @@ body {
     box-shadow: 0 6px 15px rgba(220, 53, 69, .4)
 }
 
+/* Leave-the-quiz reminder (showExitPrompt in questionnaire-engine.js) */
+#exit-modal {
+    padding: 16px;
+    box-sizing: border-box
+}
+
+#exit-modal .modal-content {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+    padding: clamp(22px, 6vw, 32px) clamp(20px, 6vw, 32px) clamp(16px, 5vw, 22px);
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .18);
+    text-align: center;
+    font-family: "Roboto", sans-serif
+}
+
+#exit-modal p {
+    margin: 0
+}
+
+#exit-modal .exit-steps {
+    text-align: left;
+    font-size: clamp(15px, 4vw, 17px);
+    font-weight: 500;
+    color: #1f1f1f
+}
+
+/* Width is set from JS to the visitor's real progress, animating from empty. */
+#exit-modal .exit-bar {
+    height: 10px;
+    margin: 10px 0 clamp(18px, 5vw, 26px);
+    border-radius: 999px;
+    background: #ebe7e4;
+    overflow: hidden
+}
+
+#exit-modal .exit-bar span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: #ee204a;
+    transition: width .9s cubic-bezier(.2, .8, .2, 1)
+}
+
+/* The one tagline: "This is the reason" in red, the rest in charcoal. */
+#exit-modal .exit-tag {
+    font-size: clamp(22px, 6.4vw, 28px);
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -.01em;
+    color: #1f1f1f;
+    text-wrap: balance
+}
+
+#exit-modal .exit-tag span {
+    color: #ee204a
+}
+
+html[lang="hi"] #exit-modal .exit-tag {
+    line-height: 1.45;
+    letter-spacing: 0
+}
+
+#exit-modal .exit-stay {
+    display: block;
+    width: 100%;
+    min-height: 54px;
+    margin-top: clamp(20px, 6vw, 28px);
+    padding: 14px 20px;
+    border: none;
+    border-radius: 999px;
+    background: #1f1f1f;
+    color: #fff;
+    font-family: inherit;
+    font-size: clamp(16px, 4.4vw, 18px);
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background .2s
+}
+
+#exit-modal .exit-stay:hover {
+    background: #000
+}
+
+/* Block-level, so the source link can never sit on the same line beside it. */
+#exit-modal .exit-leave {
+    display: block;
+    margin: 8px auto 0;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    color: #6b6b6b;
+    font-family: inherit;
+    font-size: 15px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer
+}
+
+#exit-modal .exit-stay:focus-visible,
+#exit-modal .exit-leave:focus-visible {
+    outline: 2px solid #ee204a;
+    outline-offset: 3px
+}
+
+/* Short landscape phones: card scrolls inside the overlay instead of clipping. */
+@media (max-height: 560px) {
+    #exit-modal {
+        align-items: flex-start
+    }
+}
+
+/* Big screens: same zoom steps as the Health Score 360 page, up to 4K. */
+@media (min-width: 1680px) { #exit-modal .modal-content { zoom: 1.12 } }
+@media (min-width: 1920px) { #exit-modal .modal-content { zoom: 1.25 } }
+@media (min-width: 2240px) { #exit-modal .modal-content { zoom: 1.45 } }
+@media (min-width: 2560px) { #exit-modal .modal-content { zoom: 1.65 } }
+@media (min-width: 3200px) { #exit-modal .modal-content { zoom: 2 } }
+@media (min-width: 3840px) { #exit-modal .modal-content { zoom: 2.4 } }
+
 .modal {
     display: none;
     position: fixed;
@@ -3515,7 +3644,7 @@ html[lang="hi"] #question-content h2 {
 /* Tabs are secondary navigation, not headings: 1.6rem (25.6px) was larger than the
    body copy underneath and left no room for a longer label. */
 .desktop-steps-container .step-title {
-    font-size: 1.05rem;
+    font-size: 1.85rem;
     line-height: 1.35;
     white-space: normal;
     text-overflow: clip;

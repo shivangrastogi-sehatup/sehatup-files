@@ -182,7 +182,14 @@ class QuestionnaireEngine {
                 'ugc-verified': "Verified",
                 'ugc-alt': "Customer Review",
                 'off-label': "OFF",
-                'step-of': "Step"
+                'step-of': "Step",
+                // Leave-the-quiz reminder (showExitPrompt). Tagline = exit-head (red, shared)
+                // + exit-rest (per quiz, in each config's uiStrings).
+                'exit-title-many': "{n} steps to your report",
+                'exit-title-one': "1 step to your report",
+                'exit-head': "This is the reason",
+                'exit-stay': "Continue my assessment",
+                'exit-leave': "Leave anyway"
             },
 'hi': {
                 'risks-title': "अनदेखा करने पर संभावित स्वास्थ्य जोखिम",
@@ -268,7 +275,12 @@ class QuestionnaireEngine {
                 'ugc-verified': "सत्यापित",
                 'ugc-alt': "ग्राहक समीक्षा",
                 'off-label': "छूट",
-                'step-of': "चरण"
+                'step-of': "चरण",
+                'exit-title-many': "रिपोर्ट तक बस {n} कदम",
+                'exit-title-one': "रिपोर्ट तक बस 1 कदम",
+                'exit-head': "यही वजह है कि",
+                'exit-stay': "प्रश्नावली जारी रखें",
+                'exit-leave': "फिर भी छोड़ें"
             }
         };
 
@@ -291,6 +303,7 @@ class QuestionnaireEngine {
         // English for every label not in the engine's own table. The visible symptom
         // was a half-translated tab row: "आपके बारे में  Health  जीवनशैली  Medical".
         this.setupLanguageUI().then(() => this.init(), () => this.init());
+        this.setupExitGuard();
 
         // Fix for "Redirecting..." being stuck on back navigation
         window.addEventListener('pageshow', (event) => {
@@ -337,7 +350,8 @@ class QuestionnaireEngine {
         // Clear local storage for active session
         localStorage.removeItem(`active_session_state_${this.config.id}`);
         localStorage.removeItem(`partialDocId_${this.config.id}`);
-        
+        this.clearLead();
+
         // Ensure language is preserved
         this.currentLanguage = oldLang;
         
@@ -418,7 +432,21 @@ class QuestionnaireEngine {
         } else if (action === 'prev') {
             this.showStep(parseInt(target.dataset.step, 10));
         } else if (action === 'start') {
+            // Starting fresh must not throw away the name, phone and record the popup just saved.
+            const lead = this.readLead();
+            let leadOnly = null;
+            try { leadOnly = localStorage.getItem(this.leadOnlyKey()); } catch (e) { /* private mode */ }
             this.resetState();
+            if (lead) {
+                this.state.partialDocId = lead.docId;
+                this.state.userInfo = { name: lead.name, phone: lead.phone };
+                try {
+                    localStorage.setItem(`partialDocId_${this.config.id}`, lead.docId);
+                    localStorage.setItem(this.leadKey(), JSON.stringify(lead));
+                    if (leadOnly) localStorage.setItem(this.leadOnlyKey(), leadOnly);
+                } catch (e) { /* private mode: the in-memory state still carries it */ }
+                this.markLeadStarted();
+            }
             this.showStep(2);
         } else if (action === 'validate-user-info') {
             this.validateUserInfo();
@@ -568,29 +596,49 @@ class QuestionnaireEngine {
             '.su-lang-toggle .lang-btn+.lang-btn{border-left:1px solid #e5e7eb}',
             '.su-lang-toggle .lang-btn.active{background:#ee204a;color:#fff}',
             '.su-lang-toggle .lang-btn:focus-visible{outline:2px solid #ee204a;outline-offset:-2px}',
-            '.su-lang-modal{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;',
+            // flex-start + overflow + margin:auto on the card keeps it centred when it fits and
+            // scrollable (never cut off at the top) on a short phone with the keyboard open.
+            '.su-lang-modal{position:fixed;inset:0;z-index:9500;display:flex;align-items:flex-start;overflow-y:auto;',
             'justify-content:center;padding:20px;background:rgba(17,24,39,.55);',
             'font-family:"Roboto",system-ui,sans-serif;',
             'animation:su-lang-fade .28s ease forwards}',
             // Dismissal is driven by .su-lang-modal--out so the card can animate out
             // before the element is removed from the DOM.
             '.su-lang-modal--out{animation:su-lang-fade .22s ease reverse forwards;pointer-events:none}',
-            '.su-lang-card{background:#fff;border-radius:16px;padding:30px 28px 26px;max-width:390px;',
+            '.su-lang-card{line-height:1.4;position:relative;margin:auto;background:#fff;border-radius:16px;padding:20px 22px 18px;max-width:380px;',
             'width:100%;text-align:center;box-shadow:0 24px 60px -20px rgba(17,24,39,.5);',
             'animation:su-lang-pop .34s cubic-bezier(.16,.84,.44,1) forwards}',
             '.su-lang-modal--out .su-lang-card{animation:su-lang-pop .22s ease reverse forwards}',
             '@keyframes su-lang-fade{from{opacity:0}to{opacity:1}}',
             '@keyframes su-lang-pop{from{opacity:0;transform:translateY(12px) scale(.96)}',
             'to{opacity:1;transform:none}}',
-            '.su-lang-card h2{margin:0 0 6px;font-size:20px;font-weight:700;color:#111827}',
-            '.su-lang-card p{margin:0 0 22px;font-size:14px;color:#6b7280;line-height:1.5}',
-            '.su-lang-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}',
-            '.su-lang-opts button{padding:16px 10px;border-radius:12px;border:1.5px solid #e5e7eb;',
+            '.su-lang-card h2{margin:0 0 2px;font-size:18px;font-weight:700;color:#111827}',
+            '.su-lang-card p{margin:0 0 12px;font-size:13px;color:#6b7280;line-height:1.5}',
+            '.su-lang-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}',
+            '.su-lang-opts button{padding:9px 8px;line-height:1.3;border-radius:12px;border:1.5px solid #e5e7eb;',
             'background:#fff;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}',
             '.su-lang-opts button:hover{border-color:#ee204a;background:#fff5f7}',
             '.su-lang-opts button:focus-visible{outline:2px solid #ee204a;outline-offset:2px}',
-            '.su-lang-opts .big{display:block;font-size:19px;font-weight:700;color:#111827;margin-bottom:2px}',
+            '.su-lang-opts .big{display:block;font-size:17px;font-weight:700;color:#111827;margin-bottom:0}',
             '.su-lang-opts .small{display:block;font-size:12px;color:#6b7280}',
+            // Name and phone, asked together with the language: both required.
+            '.su-lang-fields{display:grid;gap:8px;margin:0 0 12px;text-align:left}',
+            '.su-lang-field label{display:block;margin:0 0 3px;font-size:12.5px;font-weight:600;color:#374151}',
+            '.su-lang-field label span{font-weight:500;color:#6b7280}',
+            '.su-lang-field input{width:100%;box-sizing:border-box;padding:8px 12px;font:inherit;font-size:14px;line-height:1.3;',
+            'color:#111827;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;transition:border-color .15s}',
+            '.su-lang-field input:focus{outline:none;border-color:#ee204a}',
+            '.su-lang-field.has-error input{border-color:#dc2626}',
+            '.su-lang-err{display:none;margin:3px 0 0;font-size:12px;line-height:1.4;color:#dc2626}',
+            '.su-lang-field.has-error .su-lang-err{display:block}',
+            '.su-lang-pick{margin:0 0 7px;font-size:12.5px;font-weight:600;color:#374151}',
+            '.su-lang-pick span{font-weight:500;color:#6b7280}',
+            '.su-lang-opts.is-busy{opacity:.6;pointer-events:none}',
+            '.su-lang-close{position:absolute;top:8px;right:8px;width:30px;height:30px;padding:0;border:0;',
+            'border-radius:50%;background:transparent;color:#6b7280;font-size:24px;line-height:1;cursor:pointer;',
+            'display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s}',
+            '.su-lang-close:hover{background:#f3f4f6;color:#111827}',
+            '.su-lang-close:focus-visible{outline:2px solid #ee204a;outline-offset:1px}',
             '@media (max-width:560px){.su-lang-toggle{top:8px;right:10px}',
             '.su-lang-toggle .lang-btn{padding:5px 11px;font-size:12px}}',
             '@media (prefers-reduced-motion:reduce){.su-lang-toggle .lang-btn,.su-lang-opts button{transition:none}',
@@ -629,9 +677,110 @@ class QuestionnaireEngine {
         try { return !!localStorage.getItem(this.langChosenKey()); } catch (e) { return false; }
     }
 
+    // True when this browser has a questionnaire already past the welcome screen. The popup is
+    // only for the start, so a returning visitor is not asked for their details again mid-way.
+    hasSessionInProgress() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('active_session_state_' + this.config.id) || 'null');
+            return !!(saved && saved.currentStep > 1);
+        } catch (e) { return false; }
+    }
+
     markLanguageChosen() {
         this._langChosen = true;
         try { localStorage.setItem(this.langChosenKey(), '1'); } catch (e) { /* private mode */ }
+    }
+
+    /* ---- Contact captured by the language popup ---------------------------------------
+       The popup asks for name + phone and writes them to partial_submissions straight away,
+       so a visitor who leaves without starting still leaves a lead. The record's id and the
+       contact are remembered here so that "About you" can prefill them and then COMPLETE the
+       same record instead of creating a second one. */
+    leadKey() { return 'su_lead_' + ((this.config && this.config.id) || 'default'); }
+    leadOnlyKey() { return 'su_lead_only_' + ((this.config && this.config.id) || 'default'); }
+
+    readLead() {
+        try {
+            const lead = JSON.parse(localStorage.getItem(this.leadKey()) || 'null');
+            return lead && lead.docId ? lead : null;
+        } catch (e) { return null; }
+    }
+
+    clearLead() {
+        try {
+            localStorage.removeItem(this.leadKey());
+            localStorage.removeItem(this.leadOnlyKey());
+        } catch (e) { /* private mode */ }
+    }
+
+    async saveLeadContact(name, phone) {
+        // Visible to the rest of the flow straight away, even if the write below fails.
+        this.state.userInfo = Object.assign({}, this.state.userInfo, { name, phone });
+        if (!this.db) { console.warn('Lead not saved: Firestore is not ready.'); return; }
+
+        const id = this.config.id;
+        const col = this.db.collection('partial_submissions');
+        // One record per visitor: reuse one that already exists (an earlier visit on this
+        // browser) rather than starting a second.
+        let docId = this.state.partialDocId || localStorage.getItem('partialDocId_' + id);
+        let created = false;
+
+        if (docId) {
+            await col.doc(docId).set({ name, phone, userInfo: { name, phone }, lastUpdated: new Date() }, { merge: true });
+        } else {
+            const ref = col.doc();
+            docId = ref.id;
+            await ref.set({
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                name: name,
+                phone: phone,
+                userInfo: { name, phone },
+                status: 'incomplete',
+                reminderSent: false,
+                questionnaireId: id,
+                source: 'language_popup',
+                // Told apart from a real partial (someone who began the questionnaire): these two
+                // flip to leadOnly:false / stage:'started' once they click Start Questionnaire.
+                leadOnly: true,
+                stage: 'popup',
+                createdAt: new Date(),
+                lastUpdated: new Date()
+            });
+            created = true;
+            if (typeof fbq === 'function') fbq('track', 'Contact');
+        }
+
+        this.state.partialDocId = docId;
+        try {
+            localStorage.setItem('partialDocId_' + id, docId);
+            localStorage.setItem(this.leadKey(), JSON.stringify({ docId, name, phone }));
+            // A record this popup made has no answers yet, so coming back must not ask
+            // "resume your previous session?" for it. One that already had progress keeps asking.
+            if (created) localStorage.setItem(this.leadOnlyKey(), '1');
+        } catch (e) { /* private mode: the in-memory state still carries it */ }
+        this.saveLocalState();
+    }
+
+    // The visitor clicked Start Questionnaire: the record stops being a popup-only lead.
+    // Best effort, never blocks the questionnaire.
+    markLeadStarted() {
+        if (!this.db || !this.state.partialDocId) return;
+        this.db.collection('partial_submissions').doc(this.state.partialDocId)
+            .set({ leadOnly: false, stage: 'started', startedAt: new Date(), lastUpdated: new Date() }, { merge: true })
+            .catch((err) => console.error('markLeadStarted failed:', err));
+    }
+
+    // Fills "About you" from the popup's name and phone, without touching anything the visitor typed.
+    prefillAboutYou() {
+        const lead = this.readLead() || {};
+        const info = this.state.userInfo || {};
+        const u = { name: info.name || lead.name, phone: info.phone || lead.phone };
+        const fill = (fieldId, value) => {
+            const el = document.getElementById(fieldId);
+            if (el && !el.value && value) el.value = value;
+        };
+        fill('name', u.name);
+        fill('phone', u.phone);
     }
 
     showLanguagePicker() {
@@ -646,19 +795,99 @@ class QuestionnaireEngine {
         // Hindi must be able to find the Hindi button without first reading English.
         modal.innerHTML =
             '<div class="su-lang-card">' +
+              '<button type="button" class="su-lang-close" data-close aria-label="Close / बंद करें">&times;</button>' +
               '<h2>Choose your language</h2>' +
               '<p lang="hi">अपनी भाषा चुनें</p>' +
+              '<div class="su-lang-fields">' +
+                '<div class="su-lang-field" data-field="name">' +
+                  '<label for="su-lead-name">Your name <span lang="hi">/ आपका नाम</span></label>' +
+                  '<input id="su-lead-name" type="text" autocomplete="name" maxlength="60" required>' +
+                  '<div class="su-lang-err" role="alert"></div>' +
+                '</div>' +
+                '<div class="su-lang-field" data-field="phone">' +
+                  '<label for="su-lead-phone">Mobile number <span lang="hi">/ मोबाइल नंबर</span></label>' +
+                  '<input id="su-lead-phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="10-digit number" required>' +
+                  '<div class="su-lang-err" role="alert"></div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="su-lang-pick">Now tap your language <span lang="hi">/ अब अपनी भाषा चुनें</span></div>' +
               '<div class="su-lang-opts">' +
                 '<button type="button" data-pick="en"><span class="big">English</span><span class="small">Continue in English</span></button>' +
                 '<button type="button" data-pick="hi" lang="hi"><span class="big">हिंदी</span><span class="small">हिंदी में जारी रखें</span></button>' +
               '</div>' +
             '</div>';
 
-        modal.addEventListener('click', (e) => {
+        // Digits only in the phone box, so a pasted "+91 98765 43210" still lands as a number.
+        const nameInput = modal.querySelector('#su-lead-name');
+        const phoneInput = modal.querySelector('#su-lead-phone');
+        phoneInput.addEventListener('input', () => {
+            let d = phoneInput.value.replace(/\D/g, '');
+            if (d.length > 10 && d.indexOf('91') === 0) d = d.slice(2);
+            else if (d.length > 10 && d.charAt(0) === '0') d = d.slice(1);
+            phoneInput.value = d.slice(0, 10);
+        });
+        [nameInput, phoneInput].forEach((inp) => inp.addEventListener('input', () => {
+            inp.closest('.su-lang-field').classList.remove('has-error');
+        }));
+        nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); phoneInput.focus(); } });
+
+        const showFieldError = (field, msg) => {
+            const box = modal.querySelector('[data-field="' + field + '"]');
+            box.classList.add('has-error');
+            box.querySelector('.su-lang-err').textContent = msg;
+        };
+
+        // Closing (the X, a tap outside the card, or Escape) skips the popup for this visit. It is
+        // not a language choice and saves nothing, so it is asked again next time; the EN/हिं
+        // toggle appears so the language can still be switched.
+        const dismiss = () => {
+            if (modal.classList.contains('su-lang-modal--out')) return;
+            if (modal.querySelector('.su-lang-opts.is-busy')) return; // a save is in flight
+            document.removeEventListener('keydown', onKey);
+            modal.classList.add('su-lang-modal--out');
+            modal.addEventListener('animationend', () => modal.remove(), { once: true });
+            setTimeout(() => modal.remove(), 400);
+            this.renderLanguageToggle();
+            this.updateStaticUI();
+        };
+        const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+        document.addEventListener('keydown', onKey);
+        // A drag that starts in a field and ends on the backdrop (selecting text) is not a tap outside.
+        let downOnBackdrop = false;
+        modal.addEventListener('pointerdown', (e) => { downOnBackdrop = e.target === modal; });
+
+        modal.addEventListener('click', async (e) => {
+            if (e.target.closest('[data-close]') || (e.target === modal && downOnBackdrop)) { dismiss(); return; }
             const btn = e.target.closest('[data-pick]');
             if (!btn) return;
             const lang = btn.dataset.pick;
+
+            // Name and phone are both required before the visitor can go on.
+            const name = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            const nameOk = name.length >= 2 && /\p{L}/u.test(name);
+            const phoneOk = /^\d{10}$/.test(phone);
+            if (!nameOk) showFieldError('name', 'Please enter your name. / कृपया अपना नाम दर्ज करें।');
+            if (!phoneOk) showFieldError('phone', 'Enter a valid 10-digit mobile number. / सही 10 अंकों का मोबाइल नंबर दर्ज करें।');
+            if (!nameOk || !phoneOk) {
+                (nameOk ? phoneInput : nameInput).focus();
+                return;
+            }
+
+            // Saved before the modal closes, but never allowed to trap the visitor: a slow or
+            // failed write is logged and the questionnaire carries on (About You creates the
+            // record later if this one did not go through).
+            const opts = modal.querySelector('.su-lang-opts');
+            opts.classList.add('is-busy');
+            await Promise.race([
+                this.saveLeadContact(name, phone).catch((err) => console.error('Lead save failed:', err)),
+                new Promise((resolve) => setTimeout(resolve, 3500))
+            ]);
+            opts.classList.remove('is-busy');
+
+            document.removeEventListener('keydown', onKey);
             this.markLanguageChosen();
+            this.prefillAboutYou();
             // Let the exit animation finish, but never leave the overlay behind if
             // animationend does not fire (reduced motion, background tab).
             modal.classList.add('su-lang-modal--out');
@@ -688,7 +917,7 @@ class QuestionnaireEngine {
             await this.loadCatalogue(this.currentLanguage);
             this.updateStaticUI();
         }
-        if (this.hasChosenLanguage()) {
+        if (this.hasChosenLanguage() || this.hasSessionInProgress()) {
             this.renderLanguageToggle();
         } else {
             // The toggle appears only after the choice, so the two controls never ask
@@ -839,6 +1068,9 @@ class QuestionnaireEngine {
         console.log(`[showStep] Triggered for step: ${step}`);
         this.state.currentStep = step;
         this.saveLocalState();
+        // Only right after a tap/click: Chrome makes Back skip history entries added
+        // without one, so arming from a page-load resume would silently do nothing.
+        if (!navigator.userActivation || navigator.userActivation.isActive) this.armExitGuard();
         const questionnaireEl = document.getElementById('questionnaire');
         if (questionnaireEl) {
             if (step === 99) { // Results mode
@@ -951,6 +1183,8 @@ class QuestionnaireEngine {
         } else {
             const stepEl = document.getElementById(`step-${step}`);
             if (stepEl) stepEl.classList.add('active');
+            // "About you": the name and phone from the language popup are already filled in.
+            if (step === 2) this.prefillAboutYou();
         }
 
         const desktopSteps = document.getElementById('desktop-steps');
@@ -1258,6 +1492,7 @@ class QuestionnaireEngine {
                     lastUpdated: new Date()
                 });
                 console.log("✅ Partial doc SUCCESSFULLY CREATED in 'partial_submissions'");
+                if (typeof fbq === 'function') fbq('track', 'Contact');
             } catch (err) {
                 console.error("ERROR creating partial doc:", err);
                 console.error("Firebase Details:", {
@@ -1265,6 +1500,23 @@ class QuestionnaireEngine {
                     db: !!this.db
                 });
             }
+        } else {
+            // The language popup (or an earlier visit) already made this visitor's record:
+            // complete it with the date of birth and any corrected name or phone, no second record.
+            try {
+                await this.db.collection('partial_submissions').doc(this.state.partialDocId).set({
+                    name: name,
+                    dob: dob,
+                    phone: phone,
+                    leadOnly: false,
+                    stage: 'started',
+                    lastUpdated: new Date()
+                }, { merge: true });
+            } catch (err) {
+                console.error("ERROR updating partial doc:", err);
+            }
+            // From here the record has real progress, so a later visit may offer to resume it.
+            try { localStorage.removeItem(this.leadOnlyKey()); } catch (e) { /* private mode */ }
         }
 
         const metricsSection = document.getElementById('metrics-section');
@@ -1517,9 +1769,12 @@ class QuestionnaireEngine {
                 try {
                     await this.db.collection('partial_submissions').doc(this.state.partialDocId).delete();
                     localStorage.removeItem(`partialDocId_${this.config.id}`);
+                    this.clearLead();
                     this.state.partialDocId = null;
                 } catch (e) { console.warn('partial cleanup failed (non-fatal):', e); }
             }
+
+            if (typeof fbq === 'function') fbq('track', 'CompleteRegistration');
 
             this.hideLoader();
 
@@ -1832,6 +2087,15 @@ class QuestionnaireEngine {
         const docId = localStorage.getItem(`partialDocId_${this.config.id}`);
         if (!docId) return;
 
+        // A record the language popup made holds only a name and phone, so there is nothing
+        // to resume: keep it (About you will prefill and complete it) and skip the prompt.
+        if (localStorage.getItem(this.leadOnlyKey())) {
+            const lead = this.readLead();
+            this.state.partialDocId = docId;
+            if (lead) this.state.userInfo = Object.assign({}, this.state.userInfo, { name: lead.name, phone: lead.phone });
+            return;
+        }
+
         const shouldResume = await new Promise((resolve) => {
             this.showResumeModal(
                 "Welcome back!",
@@ -1870,6 +2134,7 @@ class QuestionnaireEngine {
                     this.showStep(this.state.currentStep);
                 } else {
                     localStorage.removeItem(`partialDocId_${this.config.id}`);
+                    this.clearLead();
                     this.showStep(1);
                 }
             } catch (e) {
@@ -1937,16 +2202,9 @@ class QuestionnaireEngine {
         delete dataToSave.healthScore;
 
         try {
-            // update(), not set(..., { merge: true }).
-            //
-            // set-with-merge CREATES the document when it is missing, so a partial
-            // that staff deleted in the CRM came straight back the next time the
-            // visitor answered a question — the delete looked broken when it had
-            // actually worked. update() fails on a deleted doc instead, which is
-            // the correct outcome: once it is removed, it stays removed.
-            await docRef.update(dataToSave);
+            await docRef.set(dataToSave, { merge: true });
         } catch (e) {
-            console.warn('Partial not persisted (it may have been deleted):', e.message);
+            console.error('Error persisting partial data:', e);
         }
     }
 
@@ -2023,6 +2281,109 @@ class QuestionnaireEngine {
     closeModal(target) {
         const modal = target.closest('.modal');
         if (modal) modal.style.display = 'none';
+    }
+
+    // ── Leave-the-quiz reminder ──────────────────────────────────────────────
+    // The quiz is a single page, so the phone/browser Back button leaves it
+    // entirely. Once someone is past the welcome screen we add one history entry:
+    // Back pops that entry instead of leaving, and we show a reminder with a
+    // research fact for this quiz. Desktop also gets it when the mouse heads for
+    // the tab bar. At most once per visit (sessionStorage), never on the welcome
+    // or results screens, and "Leave anyway" always lets them go in one tap.
+    exitPromptKey() { return 'su_exit_prompt_' + this.config.id; }
+
+    exitPromptUsed() {
+        try { return !!sessionStorage.getItem(this.exitPromptKey()); } catch (e) { return false; }
+    }
+
+    quizInProgress() {
+        const groups = this.config.questionGroups;
+        const resultsStep = groups.length ? groups[groups.length - 1].step + 1 : 2;
+        const s = this.state.currentStep;
+        const loader = document.getElementById('loader');
+        return s >= 2 && s < resultsStep && !(loader && loader.style.display === 'flex');
+    }
+
+    armExitGuard() {
+        if (this.exitGuardArmed || this.exitPromptUsed() || !this.quizInProgress()) return;
+        history.pushState({ suExitGuard: true }, '');
+        this.exitGuardArmed = true;
+    }
+
+    setupExitGuard() {
+        window.addEventListener('popstate', () => {
+            if (!this.exitGuardArmed) return;
+            this.exitGuardArmed = false; // this Back press used up our entry
+            if (this.quizInProgress() && !this.exitPromptUsed()) this.showExitPrompt('back');
+            else history.back(); // finished or already reminded: complete the Back press
+        });
+        if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) {
+            document.addEventListener('mouseout', (e) => {
+                if (!e.relatedTarget && e.clientY <= 0 && this.quizInProgress() && !this.exitPromptUsed()) {
+                    this.showExitPrompt('exit-intent');
+                }
+            });
+        }
+        // Covers a resumed session, where showStep ran on page load without a tap.
+        document.addEventListener('click', () => setTimeout(() => this.armExitGuard(), 0));
+    }
+
+    showExitPrompt(trigger) {
+        try { sessionStorage.setItem(this.exitPromptKey(), trigger); } catch (e) { /* private mode */ }
+        const ui = this.uiTranslations[this.currentLanguage] || this.uiTranslations.en;
+        const here = this.progressConfig.find((p) => p.step === this.state.currentStep);
+        const total = this.progressConfig.length;
+        const done = here ? here.displayStep - 1 : 0; // whole steps already finished
+        const left = Math.max(1, total - done);
+        // Bar = finished steps plus the share of the current step's questions answered.
+        const group = here && this.config.questionGroups.find((g) => g.step === here.step);
+        const inStep = group && group.questions.length
+            ? Math.min(1, (this.state.allAnswers[group.key] || []).length / group.questions.length) : 0;
+        const pct = Math.max(6, Math.round(Math.min(1, (done + inStep) / total) * 100));
+        const title = (left === 1 ? ui['exit-title-one'] : ui['exit-title-many']).replace('{n}', left);
+
+        let modal = document.getElementById('exit-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'exit-modal';
+            modal.className = 'modal';
+            document.body.appendChild(modal);
+        }
+        modal.innerHTML = `
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="exit-tag">
+                <p class="exit-steps">${title}</p>
+                <div class="exit-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span></span></div>
+                <p class="exit-tag" id="exit-tag"><span>${ui['exit-head']}</span> ${ui['exit-rest'] || ''}</p>
+                <button type="button" class="exit-stay">${ui['exit-stay']}</button>
+                <button type="button" class="exit-leave">${ui['exit-leave']}</button>
+            </div>`;
+        modal.style.display = 'flex';
+        // Grow the bar from empty once painted, so it visibly fills to where they are.
+        const fill = modal.querySelector('.exit-bar span');
+        requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = pct + '%'; }));
+
+        const close = (choice) => {
+            modal.style.display = 'none';
+            this.logExitPrompt(trigger, choice);
+            if (choice === 'leave' && trigger === 'back') history.back();
+        };
+        modal.querySelector('.exit-stay').onclick = () => close('stay');
+        modal.querySelector('.exit-leave').onclick = () => close('leave');
+        modal.onclick = (e) => { if (e.target === modal) close('stay'); };
+        modal.querySelector('.exit-stay').focus();
+        this.logExitPrompt(trigger, 'shown');
+    }
+
+    // Recorded on the visitor's partial_submissions doc as exitPrompt.{trigger, step,
+    // shownAt, stayAt | leaveAt}. Nothing before "About You", as no doc exists yet.
+    logExitPrompt(trigger, choice) {
+        const id = this.state.partialDocId;
+        if (!this.db || !id) return;
+        // ponytail: fire-and-forget, so a leaveAt write can be cut off by the page
+        // navigating away. shownAt without stayAt still counts those people as leavers.
+        this.db.collection('partial_submissions').doc(id).set({
+            exitPrompt: { trigger, step: this.state.currentStep, [choice + 'At']: new Date() }
+        }, { merge: true }).catch(() => {});
     }
 
     renderUGCContent() {
@@ -2551,7 +2912,7 @@ class QuestionnaireEngine {
                     }
                 }
 
-                window.open(`https://wa.me/919355539355?text=I want my detailed HealthScore360 report`, '_blank');
+                window.open(`https://wa.me/918287006498?text=I want my detailed HealthScore360 report`, '_blank');
                 this.closeOtpPopup();
             } else {
                 alert("Invalid OTP. Please try again.");

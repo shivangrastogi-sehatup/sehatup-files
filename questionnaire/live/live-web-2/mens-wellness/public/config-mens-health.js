@@ -473,6 +473,7 @@ const questionnaireConfig = {
             "btn-pe": "Premature Ejaculation (PE)",
             "btn-both": "Both",
             "category": "Men's Wellness",
+            "exit-rest": "most people never recover.",
         },
         hi: {
             "main-title": "पुरुष यौन स्वास्थ्य स्कोर",
@@ -482,6 +483,7 @@ const questionnaireConfig = {
             "btn-pe": "शीघ्रपतन (PE)",
             "btn-both": "दोनों",
             "category": "पुरुष वेलनेस",
+            "exit-rest": "ज़्यादातर लोग ठीक नहीं हो पाते।",
         },
     },
     id: 'mens-wellness',
