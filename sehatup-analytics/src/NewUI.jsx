@@ -6178,6 +6178,20 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
   // Results of the last dry run: [{ step, ok, detail }]. Non-null opens the panel.
   const [testReport, setTestReport] = useStateO(null);
 
+  // What validateOrderAddresses checks: shared by the save and by the confirm popup, so the
+  // popup never shows an order the save would then refuse.
+  const orderAddressInput = (rawPhone) => ({
+    phone: rawPhone, email: custEmail,
+    shipping: {
+      name: custFirstName || preset?.name, address: shippingAddress || billingAddress,
+      city: city || billingCity, state: stateName || billingStateName, pin: pincode || billingPincode,
+    },
+    billing: differentBillingAddress ? {
+      name: billingFirstName || custFirstName, address: billingAddress,
+      city: billingCity, state: billingStateName, pin: billingPincode, phone: billingPhone,
+    } : null,
+  });
+
   const handleSaveToCRM = async (mode = 'draft') => {
     // A dry run walks the REAL code below - same validation, same payloads, same
     // reconciliation - and only swaps the calls that would write. Re-implementing it
@@ -6197,17 +6211,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     // Every field Shopify / the courier will see, checked before anything is written. A saved
     // address skips the pincode lookup, which is how #1995 shipped to "83210" (5 digits, which
     // Shopify flagged "Postal code doesn't match Jharkhand").
-    const addrErrors = await validateOrderAddresses({
-      phone: rawPhone, email: custEmail,
-      shipping: {
-        name: custFirstName || preset?.name, address: shippingAddress || billingAddress,
-        city: city || billingCity, state: stateName || billingStateName, pin: pincode || billingPincode,
-      },
-      billing: differentBillingAddress ? {
-        name: billingFirstName || custFirstName, address: billingAddress,
-        city: billingCity, state: billingStateName, pin: billingPincode, phone: billingPhone,
-      } : null,
-    });
+    const addrErrors = await validateOrderAddresses(orderAddressInput(rawPhone));
     if (addrErrors.length) {
       if (dryRun) { step('Form validation', false, addrErrors.join(' | ')); setTestReport({ steps, at: new Date() }); return; }
       return alert('Please fix before creating the order:\n\n- ' + addrErrors.join('\n- '));
@@ -7735,31 +7739,54 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     setHealthscoreLead(true);
   };
 
+  // The free sample is always 100% off, however it reaches the cart: the checkbox, the product
+  // search, or a repeat customer's last order. Added from the search it used to go in at full
+  // price, which is how a "free" Ashwagandha was charged.
+  const isFreeSampleProduct = (title, variantId) =>
+    (freeSampleVariant && String(variantId) === String(freeSampleVariant.id)) || /free\s*sample/i.test(title || "");
+
+  // One cart line from a Shopify variant (price in paise) and its product.
+  const buildOrderLine = (variant, product) => {
+    const base = {
+      variantId: variant.id,
+      productId: product.id,
+      name: product.title,
+      price: variant.price / 100,
+      sku: variant.sku || "-",
+      image: product.image || null,
+      qty: 1,
+    };
+    if (isFreeSampleProduct(product.title, variant.id)) {
+      return {
+        ...base,
+        id: `sample-${variant.id}`,
+        subtitle: variant.title === "Default Title" ? "Free sample" : variant.title,
+        isFreeSample: true,
+        discountType: "percentage",
+        discountValue: "100",
+        discountReason: "Free Sample",
+      };
+    }
+    return {
+      ...base,
+      id: `variant-${variant.id}`,
+      subtitle: variant.title === "Default Title" ? "Shopify product" : variant.title,
+      discountType: "amount",
+      discountValue: "",
+      discountReason: "",
+    };
+  };
+
   const addVariantToOrder = (variant, product) => {
+    const line = buildOrderLine(variant, product);
     setItems((current) => {
-      let next = [...current];
-      const existingIndex = next.findIndex(item => item.variantId === variant.id);
-      if (existingIndex >= 0) {
-        next = next.map((item, index) => index === existingIndex ? { ...item, qty: item.qty + 1 } : item);
-      } else {
-        const isDefaultVariant = variant.title === "Default Title";
-        next.push({
-          id: `variant-${variant.id}`,
-          variantId: variant.id,
-          productId: product.id,
-          name: product.title,
-          subtitle: isDefaultVariant ? "Shopify product" : variant.title,
-          price: variant.price / 100,
-          sku: variant.sku || "-",
-          image: product.image || null,
-          qty: 1,
-          discountType: "amount",
-          discountValue: "",
-          discountReason: "",
-        });
-      }
-      return next;
+      const existingIndex = current.findIndex(item => item.variantId === variant.id);
+      if (existingIndex < 0) return [...current, line];
+      // One free sample per order: adding it again changes nothing.
+      if (line.isFreeSample) return current;
+      return current.map((item, index) => index === existingIndex ? { ...item, qty: item.qty + 1 } : item);
     });
+    if (line.isFreeSample && freeSampleVariant && String(variant.id) === String(freeSampleVariant.id)) setIncludeSample(true);
     setProductSearch("");
   };
 
@@ -7770,21 +7797,11 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     setItems(current => {
       const sampleId = `sample-${freeSampleVariant.id}`;
       if (!checked) return current.filter(item => item.id !== sampleId);
-      if (current.some(item => item.id === sampleId)) return current;
-      return [...current, {
-        id: sampleId,
-        variantId: freeSampleVariant.id,
-        name: freeSampleVariant.productTitle,
-        subtitle: freeSampleVariant.variantTitle === "Default Title" ? "Free sample" : freeSampleVariant.variantTitle,
-        price: freeSampleVariant.price / 100,
-        sku: freeSampleVariant.sku || "-",
-        image: freeSampleVariant.image,
-        qty: 1,
-        isFreeSample: true,
-        discountType: "percentage",
-        discountValue: "100",
-        discountReason: "Free Sample",
-      }];
+      if (current.some(item => item.variantId === freeSampleVariant.id)) return current;
+      return [...current, buildOrderLine(
+        { id: freeSampleVariant.id, title: freeSampleVariant.variantTitle, sku: freeSampleVariant.sku, price: freeSampleVariant.price },
+        { id: undefined, title: freeSampleVariant.productTitle, image: freeSampleVariant.image },
+      )];
     });
   };
 
@@ -7846,6 +7863,179 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
     setItems(items.filter((_, itemIndex) => itemIndex !== index));
   };
 
+  // ── Repeat customers: their last order's products ──────────────────────────
+  // Picking a customer already fills the address from their profile; this does the same for the
+  // cart, from their latest order that was not cancelled. Prices and availability are TODAY's
+  // from Shopify (never the old order's price) and the old line discounts are not copied, so a
+  // repeat order is priced like any new one. It fills an empty cart only; if the agent has
+  // already added something, the banner offers the last order as a button instead.
+  const [lastOrder, setLastOrder] = useStateO(null); // { customerId, name, date, lines, skipped, applied, ids }
+  const lastOrderRef = React.useRef(null);
+  lastOrderRef.current = lastOrder;
+  const itemsRef = React.useRef(items);
+  itemsRef.current = items;
+
+  // Runs when the picked customer changes (not on every keystroke: it keys on the id only).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const customerId = cust?.id && /^\d+$/.test(String(cust.id)) ? String(cust.id) : null;
+    // Another customer picked: take out the lines that came from the previous one's history.
+    const prev = lastOrderRef.current;
+    if (prev?.applied && prev.ids.length) {
+      setItems(current => current.filter(item => !prev.ids.includes(item.id)));
+      if (prev.ids.some(id => id.startsWith("sample-"))) setIncludeSample(false);
+    }
+    setLastOrder(null);
+    if (!customerId) return;
+
+    let stale = false;
+    (async () => {
+      try {
+        const res = await fetch(`/shopify-v2/orders.json?customer_id=${customerId}&status=any&limit=10&fields=id,name,created_at,cancelled_at,line_items`);
+        if (!res.ok) throw new Error(`orders ${res.status}`);
+        const { orders = [] } = await res.json();
+        const order = orders
+          .filter(o => !o.cancelled_at)
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        if (!order || stale) return;
+
+        const oldLines = (order.line_items || []).filter(li => li.quantity > 0);
+        const withVariant = oldLines.filter(li => li.variant_id);
+        // Custom lines (no variant) were priced by hand for that order; they are not repeated.
+        const skipped = oldLines.filter(li => !li.variant_id).map(li => li.title);
+        let nodes = [];
+        if (withVariant.length) {
+          const d = await discountGql(`query($ids: [ID!]!) {
+            nodes(ids: $ids) { ... on ProductVariant { id title price sku image { url } product { id title status featuredImage { url } } } }
+          }`, { ids: [...new Set(withVariant.map(li => `gid://shopify/ProductVariant/${li.variant_id}`))] });
+          nodes = (d.nodes || []).filter(Boolean);
+        }
+        const byVariant = new Map(nodes.map(n => [String(n.id).split("/").pop(), n]));
+
+        const lines = [];
+        for (const li of withVariant) {
+          const v = byVariant.get(String(li.variant_id));
+          // Deleted, archived or draft products cannot be ordered any more.
+          if (!v || v.product?.status !== "ACTIVE") { skipped.push(li.title); continue; }
+          const line = buildOrderLine(
+            { id: Number(li.variant_id), title: v.title, sku: v.sku, price: Math.round(parseFloat(v.price) * 100) },
+            { id: Number(String(v.product.id).split("/").pop()), title: v.product.title, image: v.image?.url || v.product.featuredImage?.url || null },
+          );
+          const same = lines.find(l => l.id === line.id);
+          if (same) { if (!line.isFreeSample) same.qty += li.quantity; }
+          else lines.push(line.isFreeSample ? line : { ...line, qty: li.quantity });
+        }
+        if (stale) return;
+
+        const info = { customerId, name: order.name, date: order.created_at, lines, skipped, applied: false, ids: [] };
+        if (lines.length && itemsRef.current.length === 0) {
+          setItems(lines.map(l => ({ ...l })));
+          if (lines.some(l => l.isFreeSample && freeSampleVariant && String(l.variantId) === String(freeSampleVariant.id))) setIncludeSample(true);
+          info.applied = true;
+          info.ids = lines.map(l => l.id);
+        }
+        setLastOrder(info);
+      } catch (err) {
+        // The agent can still add products by hand; nothing here blocks the order.
+        console.warn("[Last order] could not load:", err.message);
+      }
+    })();
+    return () => { stale = true; };
+  }, [cust?.id]);
+
+  // Banner buttons: add the last order's products to the cart, or take them back out.
+  const applyLastOrder = () => {
+    if (!lastOrder?.lines.length) return;
+    const present = new Set(items.map(i => i.variantId).filter(Boolean));
+    const fresh = lastOrder.lines.filter(l => !present.has(l.variantId));
+    setItems(current => [...current, ...fresh.map(l => ({ ...l }))]);
+    if (fresh.some(l => l.isFreeSample && freeSampleVariant && String(l.variantId) === String(freeSampleVariant.id))) setIncludeSample(true);
+    setLastOrder({ ...lastOrder, applied: true, ids: fresh.map(l => l.id) });
+  };
+  const undoLastOrder = () => {
+    if (!lastOrder) return;
+    setItems(current => current.filter(item => !lastOrder.ids.includes(item.id)));
+    if (lastOrder.ids.some(id => id.startsWith("sample-"))) setIncludeSample(false);
+    setLastOrder({ ...lastOrder, applied: false, ids: [] });
+  };
+
+  // ── Check before creating ──────────────────────────────────────────────────
+  // "Create Active Order" first opens a summary of exactly what will be charged, and asks Shopify
+  // to price the same cart (draftOrderCalculate: read-only, saves nothing). A price that moved in
+  // Shopify, a code it will not apply, or a free sample charged at full price shows up here,
+  // before the order exists, instead of on the order afterwards.
+  const [confirmOrder, setConfirmOrder] = useStateO(null); // { status: 'checking'|'done'|'error', quote, error }
+  const [confirmClosing, setConfirmClosing] = useStateO(false);
+
+  const quoteOrderWithShopify = async () => {
+    const shippingLine = useCustomShipping
+      ? { title: customShippingTitle.trim() || "Custom Shipping", price: (parseFloat(customShippingPrice) || 0).toFixed(2) }
+      : selectedShipping ? { title: selectedShipping.title, price: selectedShipping.price.toFixed(2) } : undefined;
+    const d = await discountGql(`mutation($input: DraftOrderInput!) {
+      draftOrderCalculate(input: $input) {
+        calculatedDraftOrder {
+          lineItems { quantity originalUnitPriceSet { shopMoney { amount } } }
+          subtotalPriceSet { shopMoney { amount } }
+          totalShippingPriceSet { shopMoney { amount } }
+          totalDiscountsSet { shopMoney { amount } }
+          totalPriceSet { shopMoney { amount } }
+        }
+        userErrors { field message }
+      }
+    }`, { input: {
+      lineItems: items.map(p => {
+        const dv = parseFloat(p.discountValue) || 0;
+        return {
+          ...(p.isCustom
+            ? { title: p.name, originalUnitPriceWithCurrency: { amount: Number(p.price || 0).toFixed(2), currencyCode: "INR" }, requiresShipping: p.requiresShipping !== false, taxable: p.taxable !== false }
+            : { variantId: `gid://shopify/ProductVariant/${p.variantId}` }),
+          quantity: p.qty,
+          ...(dv > 0 && { appliedDiscount: { valueType: p.discountType === "percentage" ? "PERCENTAGE" : "FIXED_AMOUNT", value: dv, title: p.discountReason || "Discount" } }),
+        };
+      }),
+      shippingLine,
+      appliedDiscount: manualDiscountAmount > 0 ? { valueType: "FIXED_AMOUNT", value: manualDiscountAmount, title: manualDiscountLabel } : undefined,
+      discountCodes: orderDiscountCodesToSend.length ? orderDiscountCodesToSend : undefined,
+      purchasingEntity: quoteCustomerId ? { customerId: `gid://shopify/Customer/${quoteCustomerId}` } : undefined,
+    } });
+    const r = d.draftOrderCalculate;
+    if (r?.userErrors?.length) throw new Error(r.userErrors.map(e => e.message).join("; "));
+    const c = r?.calculatedDraftOrder;
+    const amt = (x) => parseFloat(x?.shopMoney?.amount ?? "0");
+    return {
+      total: amt(c.totalPriceSet),
+      subtotal: amt(c.subtotalPriceSet),
+      shipping: amt(c.totalShippingPriceSet),
+      discounts: amt(c.totalDiscountsSet),
+      // Same order as the lines sent, so line i is items[i].
+      unitPrices: (c.lineItems || []).map(li => amt(li.originalUnitPriceSet)),
+    };
+  };
+
+  const openOrderConfirm = async () => {
+    const rawPhone = (custPhone || preset?.phone || "").replace(/\D/g, "");
+    if (!rawPhone) return alert("Phone number is required for CRM orders.");
+    if (!items.length) return alert("Please add at least one product to the order.");
+    if (pay !== "Prepaid" && pay !== "COD") return alert("Please select a payment type (Prepaid or COD) before creating the order.");
+    const addrErrors = await validateOrderAddresses(orderAddressInput(rawPhone));
+    if (addrErrors.length) return alert("Please fix before creating the order:\n\n- " + addrErrors.join("\n- "));
+    setConfirmOrder({ status: "checking" });
+    try {
+      const quote = await quoteOrderWithShopify();
+      setConfirmOrder(current => current && { status: "done", quote });
+    } catch (err) {
+      setConfirmOrder(current => current && { status: "error", error: err.message });
+    }
+  };
+  const closeOrderConfirm = () => {
+    setConfirmClosing(true);
+    setTimeout(() => { setConfirmClosing(false); setConfirmOrder(null); }, 200);
+  };
+  const confirmAndCreate = () => {
+    setConfirmOrder(null);
+    handleSaveToCRM("active");
+  };
+
   return (
     <div className="col fade-in" style={{ paddingTop: 16 }}>
       <div className="page-head">
@@ -7896,7 +8086,7 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
               <Icon name={savingMode === 'test' ? "refresh" : "bolt"} className={savingMode === 'test' ? "spin" : ""} /> {savingMode === 'test' ? 'Testing...' : 'Test order'}
             </button>
           ) : (
-          <button className="btn primary" onClick={() => handleSaveToCRM('active')} disabled={savingMode !== null}>
+          <button className="btn primary" onClick={openOrderConfirm} disabled={savingMode !== null || confirmOrder !== null}>
             <Icon name={savingMode === 'active' ? "refresh" : "check"} className={savingMode === 'active' ? "spin" : ""} /> {savingMode === 'active' ? 'Creating...' : 'Create Active Order'}
           </button>
           )}
@@ -8152,6 +8342,23 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                 <label className="checkbox"><input type="checkbox" checked={includeSample} onChange={e => toggleFreeSample(e.target.checked)} /> Include Ashwagandha 30 Tablets (free sample)</label>
               )}
             </div>
+            {/* Repeat customer: what they ordered last time, at today's prices. */}
+            {lastOrder && (lastOrder.lines.length > 0 || lastOrder.skipped.length > 0) && (
+              <div className="hstack-8" style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "var(--accent-soft)", fontSize: 13, alignItems: "center", flexWrap: "wrap" }}>
+                <Icon name="refresh" size={14} />
+                <span>
+                  {lastOrder.applied ? "Filled from" : "Last order"} <span className="fw6">{lastOrder.name}</span>
+                  {" "}({new Date(lastOrder.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})
+                  {!lastOrder.applied && lastOrder.lines.length > 0 && <>: {lastOrder.lines.map(l => `${l.name}${l.qty > 1 ? ` x${l.qty}` : ""}`).join(", ")}</>}
+                  <span className="muted"> · today's prices, old discounts not copied</span>
+                  {lastOrder.skipped.length > 0 && <span className="muted"> · not available any more: {lastOrder.skipped.join(", ")}</span>}
+                </span>
+                <span className="spacer" />
+                {lastOrder.applied
+                  ? <button type="button" className="btn sm ghost" onClick={undoLastOrder}>Remove these</button>
+                  : lastOrder.lines.length > 0 && <button type="button" className="btn sm" onClick={applyLastOrder}><Icon name="plus" size={13} /> Add these products</button>}
+              </div>
+            )}
             {/* Add bar — searching the catalogue and adding an off-catalogue line are the same
                 job (put a line on this order), so they share one control instead of competing
                 as two buttons. */}
@@ -8371,6 +8578,132 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
 
           {/* Add custom item — same chrome as the order-discount dialog so the two money
               dialogs on this page behave identically. */}
+          {confirmOrder && createPortal((() => {
+            const rs = (v) => `Rs.${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const q = confirmOrder.status === "done" ? confirmOrder.quote : null;
+            // Lines Shopify prices differently from the cart (the catalogue price moved since it was added).
+            const priceMoved = q ? items.map((p, i) => (!p.isCustom && q.unitPrices[i] != null && Math.abs(q.unitPrices[i] - p.price) > 0.5) ? q.unitPrices[i] : null) : [];
+            const freeCharged = items.filter(p => isFreeSampleProduct(p.name, p.variantId) && getDiscountedUnitPrice(p) > 0);
+            const drift = q ? Math.abs(q.total - total) : 0;
+            const problems = [
+              ...freeCharged.map(p => `${p.name} is a free sample but is being charged ${rs(getDiscountedUnitPrice(p) * p.qty)}. Set its discount to 100%.`),
+              ...items.flatMap((p, i) => priceMoved[i] != null ? [`${p.name}: Shopify price is ${rs(priceMoved[i])}, the cart shows ${rs(p.price)}. Remove and add it again.`] : []),
+              ...droppedCodeDiscounts.map(d => `Code ${d.label} will not be applied (Shopify keeps only the bigger code).`),
+              ...(q && drift > 1 ? [`Shopify will charge ${rs(q.total)}, not ${rs(total)} (difference ${rs(drift)}).`] : []),
+            ];
+            const name = `${custFirstName} ${custLastName}`.trim() || preset?.name || "No name";
+            const addressLine = [shippingAddress, shippingLandmark, city, stateName, pincode].filter(Boolean).join(", ");
+            return (
+              <div className={`theme-light accent-rose ${confirmClosing ? "fade-out" : "fade-in"}`} style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg)" }}>
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)" }} onClick={closeOrderConfirm} />
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Check the order before creating it"
+                  style={{ position: "relative", width: "min(46rem, 96vw)", maxHeight: "90vh", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "0 24px 60px rgba(0,0,0,.2)", textAlign: "left", display: "flex", flexDirection: "column", overflow: "hidden" }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="hstack-10" style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
+                    <div className="fw6">Check the order before creating it</div>
+                    <span className="spacer" />
+                    <button type="button" className="btn sm ghost" onClick={closeOrderConfirm} aria-label="Close"><Icon name="x" /></button>
+                  </div>
+
+                  <div style={{ padding: 20, overflowY: "auto" }} className="stack-2">
+                    {/* Who and how */}
+                    <div className="hstack-8" style={{ flexWrap: "wrap", alignItems: "baseline", marginBottom: 4 }}>
+                      <span className="fw6">{name}</span>
+                      <span className="muted">{custPhone || preset?.phone}</span>
+                      <span className="spacer" />
+                      <span className="fw6" style={{ padding: "2px 10px", borderRadius: 999, background: "var(--accent-soft)", fontSize: 12 }}>{pay}</span>
+                    </div>
+                    {addressLine && <div className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{addressLine}</div>}
+
+                    {/* Lines */}
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr className="muted" style={{ textAlign: "left", fontSize: 12 }}>
+                          <th style={{ padding: "6px 0", fontWeight: 500 }}>Product</th>
+                          <th style={{ padding: "6px 8px", fontWeight: 500, textAlign: "center" }}>Qty</th>
+                          <th style={{ padding: "6px 8px", fontWeight: 500, textAlign: "right" }}>Price</th>
+                          <th style={{ padding: "6px 8px", fontWeight: 500, textAlign: "right" }}>Discount</th>
+                          <th style={{ padding: "6px 0", fontWeight: 500, textAlign: "right" }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((p, i) => {
+                          const unit = getDiscountedUnitPrice(p);
+                          const lineDiscount = (p.price - unit) * p.qty;
+                          const free = p.price > 0 && unit === 0;
+                          const flagged = priceMoved[i] != null || freeCharged.includes(p);
+                          return (
+                            <tr key={p.id || i} style={{ borderTop: "1px solid var(--border)", background: flagged ? "rgba(239,68,68,.08)" : undefined }}>
+                              <td style={{ padding: "8px 0" }}>
+                                <div className="fw5">{p.name}</div>
+                                {p.subtitle && <div className="muted" style={{ fontSize: 12 }}>{p.subtitle}</div>}
+                              </td>
+                              <td style={{ padding: "8px", textAlign: "center" }}>{p.qty}</td>
+                              <td className="num" style={{ padding: "8px", textAlign: "right", whiteSpace: "nowrap" }}>{rs(p.price)}</td>
+                              <td className="num" style={{ padding: "8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                {lineDiscount > 0 ? `-${rs(lineDiscount)}` : <span className="muted">-</span>}
+                              </td>
+                              <td className="num fw6" style={{ padding: "8px 0", textAlign: "right", whiteSpace: "nowrap" }}>
+                                {free ? <span style={{ color: "var(--risk-low)" }}>FREE</span> : rs(unit * p.qty)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    {/* Totals */}
+                    <div style={{ marginTop: 12, marginLeft: "auto", width: "min(20rem, 100%)", fontSize: 13 }} className="stack-2">
+                      <div className="hstack-8"><span className="muted">Subtotal</span><span className="spacer" /><span className="num">{rs(subtotal)}</span></div>
+                      <div className="hstack-8"><span className="muted">Shipping ({shippingLabel})</span><span className="spacer" /><span className="num">{shipping > 0 ? rs(shipping) : "Free"}</span></div>
+                      {activeDiscounts.map(d => (
+                        <div key={d.key} className="hstack-8"><span className="muted">Discount: {d.label}</span><span className="spacer" /><span className="num">-{rs(d.amount)}</span></div>
+                      ))}
+                      <div className="hstack-8" style={{ borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 4, fontSize: 15 }}>
+                        <span className="fw6">{pay === "COD" ? "Customer pays on delivery" : "Total"}</span><span className="spacer" /><span className="num fw6">{rs(total)}</span>
+                      </div>
+                    </div>
+
+                    {/* Shopify's own price for this exact cart */}
+                    <div className="hstack-8" style={{
+                      marginTop: 14, padding: "10px 12px", borderRadius: 10, fontSize: 13, alignItems: "flex-start",
+                      background: confirmOrder.status === "checking" ? "var(--accent-soft)" : problems.length ? "rgba(239,68,68,.10)" : confirmOrder.status === "error" ? "rgba(234,179,8,.14)" : "rgba(34,197,94,.12)",
+                    }}>
+                      <Icon
+                        name={confirmOrder.status === "checking" ? "refresh" : (problems.length || confirmOrder.status === "error") ? "flag" : "check"}
+                        className={confirmOrder.status === "checking" ? "spin" : ""}
+                        size={15}
+                        color={problems.length ? "var(--risk-critical)" : confirmOrder.status === "done" ? "var(--risk-low)" : undefined}
+                      />
+                      <div className="stack-2">
+                        {confirmOrder.status === "checking" && <span>Checking the prices with Shopify...</span>}
+                        {confirmOrder.status === "error" && <span>Could not check the prices with Shopify ({confirmOrder.error}). Check the lines above carefully.</span>}
+                        {confirmOrder.status === "done" && !problems.length && <span>Shopify prices this order at <span className="fw6">{rs(q.total)}</span>, the same as above.</span>}
+                        {problems.map((m, i) => <span key={i}>{m}</span>)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hstack-10" style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", justifyContent: "flex-end" }}>
+                    <button type="button" className="btn" onClick={closeOrderConfirm}><Icon name="chevron_left" /> Back to edit</button>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={confirmAndCreate}
+                      disabled={confirmOrder.status === "checking" || savingMode !== null}
+                      style={problems.length ? { background: "var(--risk-critical)", borderColor: "var(--risk-critical)" } : undefined}
+                    >
+                      <Icon name="check" /> {problems.length ? "Create anyway" : `Confirm and create (${rs(total)})`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })(), document.body)}
           {customItemModal && createPortal(
             <div className={`theme-light accent-rose ${customItemClosing ? 'fade-out' : 'fade-in'}`} style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg)' }}>
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' }} onClick={closeCustomItemModal} />
