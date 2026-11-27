@@ -302,9 +302,23 @@ const INDIAN_STATES = [
 // Map a raw state string (from an address book or a pincode API) to the canonical
 // INDIAN_STATES spelling, so the <select> matches a real option instead of silently
 // falling back to the first one ("Andaman and Nicobar Islands"). Returns "" for blanks.
+// Old or alternate names the pincode directories still use for the same state.
+const STATE_ALIASES = {
+  "orissa": "Odisha",
+  "pondicherry": "Puducherry",
+  "andaman nicobar": "Andaman and Nicobar Islands",
+  "andaman and nicobar": "Andaman and Nicobar Islands",
+  "daman and diu": "Dadra and Nagar Haveli and Daman and Diu",
+  "dadra and nagar haveli": "Dadra and Nagar Haveli and Daman and Diu",
+  "jammu & kashmir": "Jammu and Kashmir",
+  "uttaranchal": "Uttarakhand",
+};
+
 const normalizeState = (raw) => {
   if (!raw) return "";
   const clean = String(raw).trim();
+  const alias = STATE_ALIASES[clean.toLowerCase()];
+  if (alias) return alias;
   const exact = INDIAN_STATES.find(s => s.toLowerCase() === clean.toLowerCase());
   if (exact) return exact;
   const canon = (str) => str.toLowerCase().replace(/&/g, "and").replace(/[^a-z]/g, "");
@@ -8183,15 +8197,29 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
               <span className="spacer" />
               <label className="checkbox"><input type="checkbox" checked={differentBillingAddress} onChange={e => setDifferentBillingAddress(e.target.checked)} /> Different billing address</label>
             </div>
-            {/* Address picker — shown when the selected customer has multiple saved addresses */}
-            {cust?.allAddresses?.length > 1 && (
+            {/* Address picker — shown when the selected customer has more than one distinct saved address */}
+            {(() => {
+              // Shopify keeps an address per order, so the same place is often saved twice, sometimes
+              // differing only in the landmark. Exact repeats are shown once; near-repeats lead with
+              // the part that differs, and only the address that matches every field is "selected".
+              const norm = v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+              const pin6 = z => (z ? String(z).replace(/\D/g, '').slice(0, 6) : '');
+              const placeKey = a => [a.address1, a.city, pin6(a.zip)].map(norm).join('|');
+              const fullKey = a => [a.address1, a.address2, a.city, a.province, pin6(a.zip)].map(norm).join('|');
+              const saved = (cust?.allAddresses || []).filter((a, i, all) => all.findIndex(b => fullKey(b) === fullKey(a)) === i);
+              if (saved.length < 2) return null;
+              return (
               <div style={{ marginTop: 8, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, color: 'var(--muted)', flexShrink: 0 }}>
-                  <Icon name="map_pin" size={12} /> {cust.allAddresses.length} saved addresses:
+                  <Icon name="map_pin" size={12} /> {saved.length} saved addresses:
                 </span>
-                {cust.allAddresses.map((addr, i) => {
-                  const label = [addr.address1, addr.city, addr.zip].filter(Boolean).join(', ');
-                  const isActive = (addr.address1 || '') === shippingAddress && (addr.zip ? String(addr.zip).replace(/\D/g, '').slice(0, 6) : '') === pincode;
+                {saved.map((addr, i) => {
+                  const base = [addr.address1, addr.city, pin6(addr.zip)].filter(Boolean).join(', ');
+                  const sameSpot = saved.some(b => b !== addr && placeKey(b) === placeKey(addr));
+                  const label = sameSpot ? `${addr.address2 ? `Landmark: ${addr.address2}` : 'No landmark'} · ${base}` : base;
+                  const isActive = norm(addr.address1) === norm(shippingAddress)
+                    && norm(addr.address2) === norm(shippingLandmark)
+                    && pin6(addr.zip) === pincode;
                   return (
                     <button
                       key={i}
@@ -8205,14 +8233,15 @@ function OrderCreate({ context = {}, setRoute, me = null }) {
                         cursor: 'pointer', fontWeight: isActive ? 600 : 400,
                         maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}
-                      title={label}
+                      title={[addr.address1, addr.address2, addr.city, addr.province, pin6(addr.zip)].filter(Boolean).join(', ') + (addr.default ? ' (default address)' : '')}
                     >
-                      {i === 0 ? '★ ' : ''}{label || `Address ${i + 1}`}
+                      {addr.default ? '★ ' : ''}{label || `Address ${i + 1}`}
                     </button>
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
             <div className="grid-12" style={{ marginTop: 12 }}>
               <div className="span-12 field"><span className="lbl">Address *</span><input className="input" value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} placeholder="House / flat / street" /></div>
               <div className="span-6 field"><span className="lbl">Landmark</span><input className="input" value={shippingLandmark} onChange={e => setShippingLandmark(e.target.value)} placeholder="Near Apollo Hospital" /></div>

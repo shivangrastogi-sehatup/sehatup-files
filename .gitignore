@@ -55,3 +55,5 @@ n8n/service-account-keys/
 .env*
 
 dump/
+# separate AWS CRM repos (cloned for reference, not part of this repo)
+AWS-crm/
