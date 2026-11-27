@@ -766,6 +766,7 @@
         M-A-E-N: Morning - Afternoon - Evening - Night
     </div>
 
+    {{#if guidelines}}
     <div class="advice-section" style="margin-top: 30px; display: block !important;">
         <div class="advice-header">
             <h2 style="font-size: 18px; font-weight: 700; color: #111827; text-transform: none; letter-spacing: normal;">Lifestyle & Dietary Guidelines</h2>
@@ -777,6 +778,7 @@
             {{/each}}
         </ul>
     </div>
+    {{/if}}
 
 
     <div class="signature-row" style="display: flex; {{#if (eq (len doctors) 1)}}justify-content: flex-start;{{else}}justify-content: space-between;{{/if}} align-items: flex-start; margin-top: 15px; text-align: center; gap: 20px;">

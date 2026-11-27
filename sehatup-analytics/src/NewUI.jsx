@@ -5222,7 +5222,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
           return {
             ...it,
             frequency,
-            duration: `${it.durationValue || 1} ${it.durationUnit || 'month'}${(it.durationValue || 1) > 1 ? 's' : ''}`,
+            duration: `${it.durationUnit === 'sos' ? 'SOS (as needed)' : `${it.durationValue || 1} ${it.durationUnit || 'month'}${(it.durationValue || 1) > 1 ? 's' : ''}`}`,
             type: it.detailsHeader?.split('|')?.[0]?.trim() || 'TABLET',
             timing: it.detailsHeader?.split('|')?.[1]?.trim() || 'As directed',
             instruction: it.detailsSubtext || '',
@@ -5546,11 +5546,12 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
                     }}>
                       <option value="schedule">Capsule</option>
                       <option value="drops">Drops</option>
+                      <option value="tablet">Tablet</option>
                       <option value="topical">Topical</option>
                     </select>
                   </div>
 
-                  {(!it.dosageType || it.dosageType === 'schedule') && (
+                  {(!it.dosageType || it.dosageType === 'schedule' || it.dosageType === 'tablet') && (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: 6 }}>
                         {[0, 1, 2, 3].map(dIdx => (
@@ -5676,6 +5677,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
                       <option value="day">Day(s)</option>
                       <option value="week">Week(s)</option>
                       <option value="month">Month(s)</option>
+                      <option value="sos">SOS (as needed)</option>
                     </select>
                   </div>
                 </div>
@@ -5764,7 +5766,7 @@ function PrescriptionComposer({ customer, prefillOverride, onPrefillConsumed }) 
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</div>
                             <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                              {[doseStr, `${it.durationValue || 1} ${it.durationUnit || 'month'}${(it.durationValue || 1) > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
+                              {[doseStr, `${it.durationUnit === 'sos' ? 'SOS (as needed)' : `${it.durationValue || 1} ${it.durationUnit || 'month'}${(it.durationValue || 1) > 1 ? 's' : ''}`}`].filter(Boolean).join(' · ')}
                             </div>
                           </div>
                           <span style={{ fontSize: 12, color: 'var(--muted)', flexShrink: 0 }}>qty {it.qty || 1}</span>
@@ -13363,14 +13365,15 @@ function CatalogEntryEditor({ entry, onChange }) {
         <div className="span-3 field" style={{ margin: 0 }}>
           <span className="lbl">Type</span>
           <select className="select" value={entry.dosageType || 'schedule'} onChange={e => onChange('dosageType', e.target.value)}>
-            <option value="schedule">Capsule / Tablet</option>
+            <option value="schedule">Capsule</option>
             <option value="drops">Drops</option>
-            <option value="topical">Topical</option>
+            <option value="tablet">Tablet</option>
+                      <option value="topical">Topical</option>
           </select>
         </div>
 
         {/* Dosage inputs — vary by type */}
-        {(!entry.dosageType || entry.dosageType === 'schedule') && (
+        {(!entry.dosageType || entry.dosageType === 'schedule' || entry.dosageType === 'tablet') && (
           <div className="span-4 field" style={{ margin: 0 }}>
             <span className="lbl">Dosage</span>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -13422,6 +13425,7 @@ function CatalogEntryEditor({ entry, onChange }) {
             <option value="day">Day(s)</option>
             <option value="week">Week(s)</option>
             <option value="month">Month(s)</option>
+                      <option value="sos">SOS (as needed)</option>
           </select>
         </div>
       </div>

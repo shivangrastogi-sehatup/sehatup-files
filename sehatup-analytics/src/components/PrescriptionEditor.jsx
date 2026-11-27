@@ -569,7 +569,7 @@ const LivePreview = ({ data }) => {
                                     )}
                                 </td>
                                 <td style={{ padding: '20px 14px', verticalAlign: 'top', textAlign: 'right' }}>
-                                    <div style={{ fontWeight: 800, color: '#1E293B', fontSize: 14 }}>{p.durationQty || '1'} {p.durationUnit || 'Month'}{p.durationQty > 1 ? 's' : ''}</div>
+                                    <div style={{ fontWeight: 800, color: '#1E293B', fontSize: 14 }}>{p.durationUnit === 'SOS' ? 'SOS (as needed)' : `${p.durationUnit === 'SOS' ? 'SOS (as needed)' : `${p.durationQty || '1'} ${p.durationUnit || 'Month'}${p.durationQty > 1 ? 's' : ''}`}`}</div>
                                 </td>
                             </tr>
                         ))}
@@ -1027,7 +1027,7 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
                     return {
                         ...p,
                         frequency,
-                        duration: `${p.durationQty || '1'} ${p.durationUnit || 'Month'}${p.durationQty > 1 ? 's' : ''}`,
+                        duration: `${p.durationUnit === 'SOS' ? 'SOS (as needed)' : `${p.durationQty || '1'} ${p.durationUnit || 'Month'}${p.durationQty > 1 ? 's' : ''}`}`,
                         type: p.detailsHeader?.split('|')?.[0]?.trim() || 'TABLET',
                         timing: p.detailsHeader?.split('|')?.[1]?.trim() || 'As directed',
                         instruction: p.detailsSubtext || '',
@@ -1479,11 +1479,12 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
                                         >
                                             <option value="schedule" style={{ background: '#1a1a1a' }}>Capsule</option>
                                             <option value="drops" style={{ background: '#1a1a1a' }}>Drops</option>
+                                            <option value="tablet" style={{ background: '#1a1a1a' }}>Tablet</option>
                                             <option value="topical" style={{ background: '#1a1a1a' }}>Topical</option>
                                         </select>
                                     </div>
 
-                                    {(!prod.dosageType || prod.dosageType === 'schedule') && (
+                                    {(!prod.dosageType || prod.dosageType === 'schedule' || prod.dosageType === 'tablet') && (
                                         <>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 4px 1fr 4px 1fr 4px 1fr', alignItems: 'center', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px' }}>
                                                 {[0, 1, 2, 3].map(dIdx => (
@@ -1616,9 +1617,9 @@ export default function PrescriptionEditor({ patient, onClose, onSaved, collecti
                                             onChange={e => updatePField(idx, 'durationUnit', e.target.value)}
                                             style={{ flex: 1, height: 38, background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, padding: '0 8px', cursor: 'pointer', outline: 'none' }}
                                         >
-                                            {['Day', 'Week', 'Month', 'Year'].map(u => (
+                                            {['Day', 'Week', 'Month', 'Year', 'SOS'].map(u => (
                                                 <option key={u} value={u} style={{ background: '#1a1a1a' }}>
-                                                    {u}{prod.durationQty > 1 ? 's' : ''}
+                                                    {u}{u === 'SOS' ? ' (as needed)' : (prod.durationQty > 1 ? 's' : '')}
                                                 </option>
                                             ))}
                                         </select>
